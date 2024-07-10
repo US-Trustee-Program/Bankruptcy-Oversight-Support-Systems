@@ -216,7 +216,11 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                 <Button
                   id={`accordion-reject-button-${viewModel.order.id}`}
                   onClick={() =>
-                    viewModel.showConfirmationModal(viewModel.selectedCases, viewModel.leadCase!)
+                    viewModel.showConfirmationModal(
+                      viewModel.selectedCases,
+                      viewModel.leadCase!,
+                      'rejected',
+                    )
                   }
                   uswdsStyle={UswdsButtonStyle.Outline}
                   className="margin-right-2"

@@ -64,6 +64,7 @@ export default defineConfig({
         'src/lib/components/utils/http.adapter.ts',
         'src/lib/components/**/*Examples.tsx',
         '**/*.d.ts',
+        '**/*.test.ts{,x}',
       ],
       thresholds: {
         branches: 90,
