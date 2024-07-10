@@ -9,7 +9,7 @@ import {
 import { ResponseBody } from '@common/api/response';
 
 export default class Api {
-  public static beforeHooks: (() => Promise<void>)[];
+  public static beforeHooks: (() => Promise<void>)[] = [];
   public static headers: Record<string, string> = {};
 
   public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
