@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { OktaRefreshToken } from './OktaRefreshToken';
+import { registerOktaRefreshToken } from './registerOktaRefreshToken';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -67,7 +67,7 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   return (
-    <OktaRefreshToken>
+    <registerOktaRefreshToken>
       <Session
         provider="okta"
         user={camsUser}
@@ -76,6 +76,6 @@ export function OktaSession(props: OktaSessionProps) {
       >
         {props.children}
       </Session>
-    </OktaRefreshToken>
+    </registerOktaRefreshToken>
   );
 }
