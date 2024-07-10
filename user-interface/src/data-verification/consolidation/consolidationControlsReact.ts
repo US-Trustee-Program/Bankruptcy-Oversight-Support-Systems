@@ -8,6 +8,7 @@ import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase } from '@common/cams/orders';
 
 export function useConsolidationControlsReact(): ConsolidationControls {
+  // TODO: move these back to the Presenter (i.e. ConsolidationOrderAccordion.tsx)
   const approveButtonRef = useRef<ButtonRef>(null);
   const caseTableRef = useRef<OrderTableImperative>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
