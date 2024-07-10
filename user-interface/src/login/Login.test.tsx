@@ -72,7 +72,7 @@ describe('Login', () => {
   });
 
   test('should check for an existing login and continue if a session does not exist', () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('mock');
+    getLoginProviderFromEnv.mockReturnValue('mock');
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -85,7 +85,7 @@ describe('Login', () => {
 
   test('should check for an existing mock login and skip if a session exists', () => {
     getAuthIssuerFromEnv.mockReturnValue(undefined);
-    getLoginProviderFromEnv.mockReturnValueOnce('mock');
+    getLoginProviderFromEnv.mockReturnValue('mock');
     getSession.mockReturnValueOnce({
       apiToken: MockData.getJwt(),
       provider: 'mock',
@@ -106,8 +106,8 @@ describe('Login', () => {
 
   test('should check for an existing okta login and skip if a session exists', () => {
     getAuthIssuerFromEnv.mockReturnValue(issuer);
-    getLoginProviderFromEnv.mockReturnValueOnce('okta');
-    getSession.mockReturnValueOnce({
+    getLoginProviderFromEnv.mockReturnValue('okta');
+    getSession.mockReturnValue({
       apiToken: MockData.getJwt(),
       provider: 'okta',
       user: {
@@ -126,7 +126,7 @@ describe('Login', () => {
   });
 
   test('should clear an existing session if the provider changed', () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('okta');
+    getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
       apiToken: MockData.getJwt(),
       provider: 'mock',
@@ -146,8 +146,8 @@ describe('Login', () => {
   });
 
   test('should clear an existing session if the issuer changed', () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('okta');
-    getAuthIssuerFromEnv.mockReturnValueOnce('http://bogus.issuer.com/oauth/default');
+    getLoginProviderFromEnv.mockReturnValue('okta');
+    getAuthIssuerFromEnv.mockReturnValue('http://bogus.issuer.com/oauth/default');
 
     getSession.mockReturnValue({
       apiToken: MockData.getJwt(),
@@ -168,7 +168,7 @@ describe('Login', () => {
   });
 
   test('should render OktaProvider for okta provider type', async () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('okta');
+    getLoginProviderFromEnv.mockReturnValue('okta');
     vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(false);
     render(
       <BrowserRouter>
@@ -183,7 +183,7 @@ describe('Login', () => {
   });
 
   test('should render MockProvider for mock provider type', async () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('mock');
+    getLoginProviderFromEnv.mockReturnValue('mock');
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -194,7 +194,7 @@ describe('Login', () => {
   });
 
   test('should render Session for none provider type', async () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('none');
+    getLoginProviderFromEnv.mockReturnValue('none');
     render(
       <BrowserRouter>
         <Login></Login>
@@ -205,7 +205,7 @@ describe('Login', () => {
   });
 
   test('should render Session for none provider type if passed to Login component directly', async () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('none');
+    getLoginProviderFromEnv.mockReturnValue('none');
     render(
       <BrowserRouter>
         <Login provider="none"></Login>
@@ -216,7 +216,7 @@ describe('Login', () => {
   });
 
   test('should render BadConfiguration for other provider types', async () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('bogus');
+    getLoginProviderFromEnv.mockReturnValue('bogus');
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -228,7 +228,7 @@ describe('Login', () => {
   });
 
   test('should render BadConfiguration if provider is not configured', async () => {
-    getLoginProviderFromEnv.mockReturnValueOnce('');
+    getLoginProviderFromEnv.mockReturnValue('');
     render(
       <BrowserRouter>
         <Login>{children}</Login>
