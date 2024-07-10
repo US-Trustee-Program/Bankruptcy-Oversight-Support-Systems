@@ -32,7 +32,7 @@
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "@vitest/coverage-v8": "^1.6.0",
+    "@vitest/coverage-v8": "^2.0.1",
     "c8": "^10.1.2",
     "dependency-cruiser": "^16.3.6",
     "esbuild": "^0.23.0",
