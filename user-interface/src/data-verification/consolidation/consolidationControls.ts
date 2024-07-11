@@ -18,15 +18,15 @@ export type Ref<T> = {
 
 interface ConsolidationControls {
   approveButton: Ref<ButtonRef>;
-  caseTableRef: Ref<OrderTableImperative>;
+  caseTableActions: Ref<OrderTableImperative>;
   clearButton: Ref<ButtonRef>;
-  confirmationModalRef: Ref<ConfirmationModalImperative>;
-  jointAdministrationRef: Ref<RadioRef>;
-  leadCaseDivisionRef: Ref<InputRef>;
-  leadCaseNumberRef: Ref<InputRef>;
+  confirmationModal: Ref<ConfirmationModalImperative>;
+  jointAdministrationRadio: Ref<RadioRef>;
+  leadCaseDivisionInput: Ref<InputRef>;
+  leadCaseNumberInput: Ref<InputRef>;
   rejectButton: Ref<ButtonRef>;
-  substantiveRef: Ref<RadioRef>;
-  toggleLeadCaseFormRef: Ref<CheckboxRef>;
+  substantiveRadio: Ref<RadioRef>;
+  leadCaseFormToggle: Ref<CheckboxRef>;
 
   showConfirmationModal: ShowConfirmationModal;
   clearLeadCase: () => void;
