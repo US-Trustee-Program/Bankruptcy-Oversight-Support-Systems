@@ -28,12 +28,11 @@ export type OnOrderUpdate = (
 export type OnExpand = (id: string) => void;
 
 export interface ConsolidationsUseCase {
-  clearLeadCase(): void;
-  clearSelectedCases(): void;
-  disableLeadCaseForm(disabled: boolean): void;
+  // clearLeadCase(): void;
+  // clearSelectedCases(): void;
   updateSubmitButtonsState(): void;
-  selectedCasesAreConsolidationCases(): void;
-  setOrderWithDataEnhancement(order: ConsolidationOrder): void;
+  // selectedCasesAreConsolidationCases(): void;
+  // setOrderWithDataEnhancement(order: ConsolidationOrder): void;
   updateAllSelections(caseList: ConsolidationOrderCase[]): void;
   getValidLeadCase(): void;
 
@@ -44,6 +43,7 @@ export interface ConsolidationsUseCase {
   handleLeadCaseInputChange(): void;
   handleMarkLeadCase(bCase: ConsolidationOrderCase): void;
   handleOnExpand(): void;
+  handleRejectButtonClick(): void;
   handleSelectConsolidationType(value: string): void;
   handleSelectLeadCaseCourt(option: CamsSelectOptionList): void;
   handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void;
@@ -58,16 +58,13 @@ const consolidationUseCase = (
   function clearLeadCase(): void {
     store.setLeadCase(null);
     store.setLeadCaseId('');
+    store.setLeadCaseCourt('');
     controls.clearLeadCase();
   }
 
   function clearSelectedCases(): void {
     store.setSelectedCases([]);
     controls.clearAllCheckBoxes();
-  }
-
-  function disableLeadCaseForm(disabled: boolean) {
-    controls.disableLeadCaseForm(disabled);
   }
 
   function getValidLeadCase() {
@@ -77,7 +74,7 @@ const consolidationUseCase = (
       leadCaseNumber: store.leadCaseNumber,
     });
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
-      disableLeadCaseForm(true);
+      controls.disableLeadCaseForm(true);
       store.setIsValidatingLeadCaseNumber(true);
       store.setLeadCaseNumberError('');
       store.setLeadCaseId('');
@@ -126,13 +123,13 @@ const consolidationUseCase = (
                   `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
                 store.setLeadCaseNumberError(message);
                 store.setIsValidatingLeadCaseNumber(false);
-                disableLeadCaseForm(false);
+                controls.disableLeadCaseForm(false);
                 store.setFoundValidCaseNumber(false);
               } else if (previousConsolidationFacts.isAlreadyConsolidated) {
                 const message = `This case is already part of a consolidation.`;
                 store.setLeadCaseNumberError(message);
                 store.setIsValidatingLeadCaseNumber(false);
-                disableLeadCaseForm(false);
+                controls.disableLeadCaseForm(false);
                 store.setFoundValidCaseNumber(false);
               } else {
                 api2.getCaseAssignments(currentLeadCaseId).then((response) => {
@@ -147,7 +144,7 @@ const consolidationUseCase = (
                   store.setLeadCaseId(currentLeadCaseId);
                   store.setIsValidatingLeadCaseNumber(false);
                   store.setFoundValidCaseNumber(true);
-                  disableLeadCaseForm(false);
+                  controls.disableLeadCaseForm(false);
                 });
               }
             })
@@ -156,7 +153,7 @@ const consolidationUseCase = (
                 'Cannot verify lead case is not part of another consolidation. ' + error.message;
               store.setLeadCaseNumberError(message);
               store.setIsValidatingLeadCaseNumber(false);
-              disableLeadCaseForm(false);
+              controls.disableLeadCaseForm(false);
               store.setFoundValidCaseNumber(false);
             });
         })
@@ -168,7 +165,7 @@ const consolidationUseCase = (
             : 'Cannot verify lead case number.';
           store.setLeadCaseNumberError(message);
           store.setIsValidatingLeadCaseNumber(false);
-          disableLeadCaseForm(false);
+          controls.disableLeadCaseForm(false);
           store.setFoundValidCaseNumber(false);
         });
     }
@@ -299,6 +296,10 @@ const consolidationUseCase = (
     );
   }
 
+  function handleRejectButtonClick() {
+    controls.showConfirmationModal(store.selectedCases, store.leadCase!, 'rejected');
+  }
+
   function handleClearInputs(): void {
     clearLeadCase();
     clearSelectedCases();
@@ -347,7 +348,6 @@ const consolidationUseCase = (
 
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
     controls.enableLeadCaseForm(false);
-    controls.clearLeadCase();
     store.setShowLeadCaseForm(false);
     store.setFoundValidCaseNumber(false);
 
@@ -398,13 +398,12 @@ const consolidationUseCase = (
   }
 
   return {
-    clearLeadCase,
-    clearSelectedCases,
-    disableLeadCaseForm,
+    // clearLeadCase,
+    // clearSelectedCases,
     getValidLeadCase,
     updateSubmitButtonsState,
-    selectedCasesAreConsolidationCases,
-    setOrderWithDataEnhancement,
+    // selectedCasesAreConsolidationCases,
+    // setOrderWithDataEnhancement,
     updateAllSelections,
     handleApproveButtonClick,
     handleClearInputs,
@@ -413,6 +412,7 @@ const consolidationUseCase = (
     handleLeadCaseInputChange,
     handleMarkLeadCase,
     handleOnExpand,
+    handleRejectButtonClick,
     handleSelectConsolidationType,
     handleSelectLeadCaseCourt,
     handleToggleLeadCaseForm,

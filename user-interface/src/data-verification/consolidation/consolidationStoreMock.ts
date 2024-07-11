@@ -3,111 +3,80 @@ import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
 
-export function useConsolidationStoreMock(
-  props: ConsolidationOrderAccordionProps,
-  officesList: OfficeDetails[],
-): ConsolidationStore {
-  let consolidationType: ConsolidationType | null = null;
-  const setConsolidationType = (newType: ConsolidationType): void => {
-    consolidationType = newType;
+export class ConsolidationStoreMock implements ConsolidationStore {
+  consolidationType: ConsolidationType | null = null;
+  filteredOfficesList: OfficeDetails[] | null;
+  foundValidCaseNumber: boolean = false;
+  isProcessing: boolean = false;
+  isDataEnhanced: boolean = false;
+  isValidatingLeadCaseNumber: boolean = false;
+  leadCase: ConsolidationOrderCase | null = null;
+  leadCaseCourt: string = '';
+  leadCaseId: string = '';
+  leadCaseNumber: string = '';
+  leadCaseNumberError: string = '';
+  order: ConsolidationOrder;
+  selectedCases: ConsolidationOrderCase[] = [];
+  showLeadCaseForm: boolean = false;
+
+  constructor(props: ConsolidationOrderAccordionProps, officesList: OfficeDetails[]) {
+    this.filteredOfficesList = filterCourtByDivision(props.order.courtDivisionCode, officesList);
+    this.order = props.order;
+  }
+
+  setConsolidationType = (newType: ConsolidationType): void => {
+    this.consolidationType = newType;
   };
 
-  let filteredOfficesList: OfficeDetails[] | null = filterCourtByDivision(
-    props.order.courtDivisionCode,
-    officesList,
-  );
-  const setFilteredOfficesList = (val: OfficeDetails[]): void => {
-    filteredOfficesList = val;
+  setFilteredOfficesList = (val: OfficeDetails[]): void => {
+    this.filteredOfficesList = val;
   };
 
-  let foundValidCaseNumber: boolean = false;
-  const setFoundValidCaseNumber = (val: boolean): void => {
-    foundValidCaseNumber = val;
+  setFoundValidCaseNumber = (val: boolean): void => {
+    this.foundValidCaseNumber = val;
   };
 
-  let isProcessing: boolean = false;
-  const setIsProcessing = (val: boolean): void => {
-    isProcessing = val;
+  setIsProcessing = (val: boolean): void => {
+    this.isProcessing = val;
   };
 
-  let isDataEnhanced: boolean = false;
-  const setIsDataEnhanced = (val: boolean): void => {
-    isDataEnhanced = val;
+  setIsDataEnhanced = (val: boolean): void => {
+    this.isDataEnhanced = val;
   };
 
-  let isValidatingLeadCaseNumber: boolean = false;
-  const setIsValidatingLeadCaseNumber = (val: boolean): void => {
-    isValidatingLeadCaseNumber = val;
+  setIsValidatingLeadCaseNumber = (val: boolean): void => {
+    this.isValidatingLeadCaseNumber = val;
   };
 
-  let leadCase: ConsolidationOrderCase | null = null;
-  const setLeadCase = (val: ConsolidationOrderCase | null): void => {
-    leadCase = val;
+  setLeadCase = (val: ConsolidationOrderCase | null): void => {
+    this.leadCase = val;
   };
 
-  let leadCaseCourt: string = '';
-  const setLeadCaseCourt = (val: string): void => {
-    leadCaseCourt = val;
+  setLeadCaseCourt = (val: string): void => {
+    this.leadCaseCourt = val;
   };
 
-  let leadCaseId: string = '';
-  const setLeadCaseId = (val: string): void => {
-    leadCaseId = val;
+  setLeadCaseId = (val: string): void => {
+    this.leadCaseId = val;
   };
 
-  let leadCaseNumber: string = '';
-  const setLeadCaseNumber = (val: string): void => {
-    leadCaseNumber = val;
+  setLeadCaseNumber = (val: string): void => {
+    this.leadCaseNumber = val;
   };
 
-  let leadCaseNumberError: string = '';
-  const setLeadCaseNumberError = (val: string): void => {
-    leadCaseNumberError = val;
+  setLeadCaseNumberError = (val: string): void => {
+    this.leadCaseNumberError = val;
   };
 
-  let order: ConsolidationOrder = props.order;
-  const setOrder = (val: ConsolidationOrder): void => {
-    order = val;
+  setOrder = (val: ConsolidationOrder): void => {
+    this.order = val;
   };
 
-  let selectedCases: ConsolidationOrderCase[] = [];
-  const setSelectedCases = (val: ConsolidationOrderCase[]): void => {
-    selectedCases = val;
+  setSelectedCases = (val: ConsolidationOrderCase[]): void => {
+    this.selectedCases = val;
   };
 
-  let showLeadCaseForm: boolean = false;
-  const setShowLeadCaseForm = (val: boolean): void => {
-    showLeadCaseForm = val;
-  };
-
-  return {
-    consolidationType,
-    setConsolidationType,
-    filteredOfficesList,
-    setFilteredOfficesList,
-    foundValidCaseNumber,
-    setFoundValidCaseNumber,
-    isProcessing,
-    setIsProcessing,
-    isDataEnhanced,
-    setIsDataEnhanced,
-    isValidatingLeadCaseNumber,
-    setIsValidatingLeadCaseNumber,
-    leadCase,
-    setLeadCase,
-    leadCaseCourt,
-    setLeadCaseCourt,
-    leadCaseId,
-    setLeadCaseId,
-    leadCaseNumber,
-    setLeadCaseNumber,
-    leadCaseNumberError,
-    setLeadCaseNumberError,
-    order,
-    setOrder,
-    selectedCases,
-    setSelectedCases,
-    showLeadCaseForm,
-    setShowLeadCaseForm,
+  setShowLeadCaseForm = (val: boolean): void => {
+    this.showLeadCaseForm = val;
   };
 }
