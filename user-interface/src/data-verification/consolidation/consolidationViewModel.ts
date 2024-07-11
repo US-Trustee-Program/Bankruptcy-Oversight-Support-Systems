@@ -46,6 +46,7 @@ interface ConsolidationViewModel {
   handleLeadCaseInputChange: (caseNumber?: string) => void;
   handleMarkLeadCase: (bCase: ConsolidationOrderCase) => void;
   handleOnExpand: () => void;
+  handleRejectButtonClick: () => void;
   handleSelectConsolidationType: (value: string) => void;
   handleSelectLeadCaseCourt: (option: CamsSelectOptionList) => void;
   handleToggleLeadCaseForm: (ev: ChangeEvent<HTMLInputElement>) => void;
