@@ -9,15 +9,15 @@ import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/
 
 export function useConsolidationControlsReact(): ConsolidationControls {
   const approveButton = useRef<ButtonRef>(null);
-  const caseTableRef = useRef<OrderTableImperative>(null);
+  const caseTableActions = useRef<OrderTableImperative>(null);
   const clearButton = useRef<ButtonRef>(null);
-  const confirmationModalRef = useRef<ConfirmationModalImperative>(null);
-  const jointAdministrationRef = useRef<RadioRef>(null);
-  const leadCaseDivisionRef = useRef<InputRef>(null);
-  const leadCaseNumberRef = useRef<InputRef>(null);
+  const confirmationModal = useRef<ConfirmationModalImperative>(null);
+  const jointAdministrationRadio = useRef<RadioRef>(null);
+  const leadCaseDivisionInput = useRef<InputRef>(null);
+  const leadCaseNumberInput = useRef<InputRef>(null);
   const rejectButton = useRef<ButtonRef>(null);
-  const substantiveRef = useRef<RadioRef>(null);
-  const toggleLeadCaseFormRef = useRef<CheckboxRef>(null);
+  const substantiveRadio = useRef<RadioRef>(null);
+  const leadCaseFormToggle = useRef<CheckboxRef>(null);
 
   const showConfirmationModal = (
     selectedCases: ConsolidationOrderCase[],
@@ -25,7 +25,7 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     status: OrderStatus,
     consolidationType?: ConsolidationType,
   ) => {
-    confirmationModalRef.current?.show({
+    confirmationModal.current?.show({
       status,
       cases: selectedCases,
       leadCase,
@@ -34,25 +34,25 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   };
 
   const clearLeadCase = () => {
-    caseTableRef.current?.clearLeadCase();
-    leadCaseNumberRef.current?.clearValue();
+    caseTableActions.current?.clearLeadCase();
+    leadCaseNumberInput.current?.clearValue();
   };
 
   const disableLeadCaseForm = (disabled: boolean) => {
-    leadCaseDivisionRef.current?.disable(disabled);
-    leadCaseNumberRef.current?.disable(disabled);
+    leadCaseDivisionInput.current?.disable(disabled);
+    leadCaseNumberInput.current?.disable(disabled);
   };
   const unsetConsolidationType = () => {
-    jointAdministrationRef.current?.check(false);
-    substantiveRef.current?.check(false);
+    jointAdministrationRadio.current?.check(false);
+    substantiveRadio.current?.check(false);
   };
 
   const clearAllCheckBoxes = () => {
-    caseTableRef.current?.clearAllCheckboxes();
+    caseTableActions.current?.clearAllCheckboxes();
   };
 
   const enableLeadCaseForm = (checked: boolean) => {
-    toggleLeadCaseFormRef.current?.setChecked(checked);
+    leadCaseFormToggle.current?.setChecked(checked);
   };
 
   const disableButton = (button: React.RefObject<ButtonRef>, state: boolean) => {
@@ -61,15 +61,15 @@ export function useConsolidationControlsReact(): ConsolidationControls {
 
   return {
     approveButton,
-    caseTableRef,
+    caseTableActions,
     clearButton,
-    confirmationModalRef,
-    jointAdministrationRef,
-    leadCaseDivisionRef,
-    leadCaseNumberRef,
+    confirmationModal,
+    jointAdministrationRadio,
+    leadCaseDivisionInput,
+    leadCaseNumberInput,
     rejectButton,
-    substantiveRef,
-    toggleLeadCaseFormRef,
+    substantiveRadio,
+    leadCaseFormToggle,
     showConfirmationModal,
     clearLeadCase,
     disableLeadCaseForm,

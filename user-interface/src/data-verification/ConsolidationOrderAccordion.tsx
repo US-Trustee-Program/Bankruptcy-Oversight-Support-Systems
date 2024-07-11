@@ -59,10 +59,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   //========== FORM SUBMISSION ==========
 
   const viewModel: ConsolidationViewModel = {
-    approveButtonRef: consolidationControls.approveButton,
-    caseTableRef: consolidationControls.caseTableRef,
-    clearButtonRef: consolidationControls.clearButton,
-    confirmationModalRef: consolidationControls.confirmationModalRef,
+    approveButton: consolidationControls.approveButton,
+    caseTableActions: consolidationControls.caseTableActions,
+    clearButton: consolidationControls.clearButton,
+    confirmationModal: consolidationControls.confirmationModal,
     divisionCode: getUniqueDivisionCodeOrUndefined(consolidationStore.order.childCases),
     expandedAccordionId: expandedId!,
     filteredOfficeRecords: getOfficeList(
@@ -74,19 +74,19 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     isDataEnhanced: consolidationStore.isDataEnhanced,
     isProcessing: consolidationStore.isProcessing,
     isValidatingLeadCaseNumber: consolidationStore.isValidatingLeadCaseNumber,
-    jointAdministrationRef: consolidationControls.jointAdministrationRef,
+    jointAdministrationRadio: consolidationControls.jointAdministrationRadio,
     leadCase: consolidationStore.leadCase,
-    leadCaseDivisionRef: consolidationControls.leadCaseDivisionRef,
+    leadCaseDivisionInput: consolidationControls.leadCaseDivisionInput,
     leadCaseNumberError: consolidationStore.leadCaseNumberError,
-    leadCaseNumberRef: consolidationControls.leadCaseNumberRef,
+    leadCaseNumberInput: consolidationControls.leadCaseNumberInput,
     order: consolidationStore.order,
     orderType: orderType, // TODO: why is orderType a Map<string, string>?
-    rejectButtonRef: consolidationControls.rejectButton,
+    rejectButton: consolidationControls.rejectButton,
     selectedCases: consolidationStore.selectedCases,
     showLeadCaseForm: consolidationStore.showLeadCaseForm,
     statusType: statusType, // TODO: why is statusType a Map<string, string>?
-    substantiveRef: consolidationControls.substantiveRef,
-    toggleLeadCaseFormRef: consolidationControls.toggleLeadCaseFormRef,
+    substantiveRadio: consolidationControls.substantiveRadio,
+    leadCaseFormToggle: consolidationControls.leadCaseFormToggle,
 
     handleApproveButtonClick: useCase.handleApproveButtonClick,
     handleClearInputs: useCase.handleClearInputs,
@@ -95,6 +95,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleLeadCaseInputChange: useCase.handleLeadCaseInputChange,
     handleMarkLeadCase: useCase.handleMarkLeadCase,
     handleOnExpand: useCase.handleOnExpand,
+    handleRejectButtonClick: useCase.handleRejectButtonClick,
     handleSelectConsolidationType: useCase.handleSelectConsolidationType,
     handleSelectLeadCaseCourt: useCase.handleSelectLeadCaseCourt,
     handleToggleLeadCaseForm: useCase.handleToggleLeadCaseForm,

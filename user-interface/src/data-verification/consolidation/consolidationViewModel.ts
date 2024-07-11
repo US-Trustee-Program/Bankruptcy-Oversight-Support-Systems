@@ -12,10 +12,10 @@ import { CamsSelectOptionList } from '@/lib/components/CamsSelect';
 import { ShowConfirmationModal } from '@/data-verification/consolidation/consolidationControls';
 
 interface ConsolidationViewModel {
-  approveButtonRef: React.Ref<ButtonRef>;
-  caseTableRef: React.Ref<OrderTableImperative>;
-  clearButtonRef: React.Ref<ButtonRef>;
-  confirmationModalRef: React.Ref<ConfirmationModalImperative>;
+  approveButton: React.Ref<ButtonRef>;
+  caseTableActions: React.Ref<OrderTableImperative>;
+  clearButton: React.Ref<ButtonRef>;
+  confirmationModal: React.Ref<ConfirmationModalImperative>;
   divisionCode: string | undefined;
   expandedAccordionId: string;
   filteredOfficeRecords: Record<string, string>[] | null;
@@ -25,19 +25,19 @@ interface ConsolidationViewModel {
   isDataEnhanced: boolean;
   isProcessing: boolean;
   isValidatingLeadCaseNumber: boolean;
-  jointAdministrationRef: React.Ref<RadioRef>;
+  jointAdministrationRadio: React.Ref<RadioRef>;
   leadCase: ConsolidationOrderCase | null;
-  leadCaseDivisionRef: React.Ref<InputRef>;
+  leadCaseDivisionInput: React.Ref<InputRef>;
   leadCaseNumberError: string;
-  leadCaseNumberRef: React.Ref<InputRef>;
+  leadCaseNumberInput: React.Ref<InputRef>;
   order: ConsolidationOrder;
   orderType: Map<string, string>;
-  rejectButtonRef: React.Ref<ButtonRef>;
+  rejectButton: React.Ref<ButtonRef>;
   selectedCases: ConsolidationOrderCase[];
   showLeadCaseForm: boolean;
   statusType: Map<string, string>;
-  substantiveRef: React.Ref<RadioRef>;
-  toggleLeadCaseFormRef: React.Ref<CheckboxRef>;
+  substantiveRadio: React.Ref<RadioRef>;
+  leadCaseFormToggle: React.Ref<CheckboxRef>;
 
   handleApproveButtonClick: () => void;
   handleClearInputs: () => void;

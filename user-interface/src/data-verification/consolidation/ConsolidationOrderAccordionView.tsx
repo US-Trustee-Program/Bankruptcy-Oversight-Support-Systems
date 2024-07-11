@@ -91,7 +91,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                     value="administrative"
                     className="text-no-wrap"
                     onChange={viewModel.handleSelectConsolidationType}
-                    ref={viewModel.jointAdministrationRef}
+                    ref={viewModel.jointAdministrationRadio}
                   />
                   <Radio
                     id={`substantive-${viewModel.order.id}`}
@@ -99,7 +99,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                     label="Substantive Consolidation"
                     value="substantive"
                     onChange={viewModel.handleSelectConsolidationType}
-                    ref={viewModel.substantiveRef}
+                    ref={viewModel.substantiveRadio}
                   />
                 </RadioGroup>
               </div>
@@ -115,7 +115,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   onSelect={viewModel.handleIncludeCase}
                   updateAllSelections={viewModel.updateAllSelections}
                   isDataEnhanced={viewModel.isDataEnhanced}
-                  ref={viewModel.caseTableRef}
+                  ref={viewModel.caseTableActions}
                   onMarkLead={viewModel.handleMarkLeadCase}
                 ></ConsolidationCaseTable>
               </div>
@@ -132,7 +132,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   className="lead-case-form-toggle"
                   onChange={viewModel.handleToggleLeadCaseForm}
                   value=""
-                  ref={viewModel.toggleLeadCaseFormRef}
+                  ref={viewModel.leadCaseFormToggle}
                   label="Lead Case Not Listed"
                 ></Checkbox>
                 {viewModel.showLeadCaseForm && (
@@ -146,7 +146,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         required={true}
                         options={viewModel.filteredOfficeRecords!}
                         onChange={viewModel.handleSelectLeadCaseCourt}
-                        ref={viewModel.leadCaseDivisionRef}
+                        ref={viewModel.leadCaseDivisionInput}
                         label="Select a court"
                         value={viewModel.divisionCode}
                         isSearchable={true}
@@ -161,7 +161,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         allowPartialCaseNumber={false}
                         required={true}
                         label="Enter a case number"
-                        ref={viewModel.leadCaseNumberRef}
+                        ref={viewModel.leadCaseNumberInput}
                       />
                       {viewModel.leadCaseNumberError ? (
                         <Alert
@@ -209,7 +209,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   onClick={viewModel.handleClearInputs}
                   uswdsStyle={UswdsButtonStyle.Unstyled}
                   className="unstyled-button"
-                  ref={viewModel.clearButtonRef}
+                  ref={viewModel.clearButton}
                 >
                   Clear
                 </Button>
@@ -218,7 +218,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   onClick={viewModel.handleRejectButtonClick}
                   uswdsStyle={UswdsButtonStyle.Outline}
                   className="margin-right-2"
-                  ref={viewModel.rejectButtonRef}
+                  ref={viewModel.rejectButton}
                 >
                   Reject
                 </Button>
@@ -226,7 +226,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   id={`accordion-approve-button-${viewModel.order.id}`}
                   onClick={viewModel.handleApproveButtonClick}
                   disabled={true}
-                  ref={viewModel.approveButtonRef}
+                  ref={viewModel.approveButton}
                 >
                   Verify
                 </Button>
@@ -234,7 +234,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
             </div>
             <ConsolidationOrderModal
-              ref={viewModel.confirmationModalRef}
+              ref={viewModel.confirmationModal}
               id={`confirmation-modal-${viewModel.order.id}`}
               onCancel={() => {}}
               onConfirm={viewModel.handleConfirmAction}
