@@ -34,15 +34,15 @@ export interface ConsolidationsUseCase {
   // selectedCasesAreConsolidationCases(): void;
   // setOrderWithDataEnhancement(order: ConsolidationOrder): void;
   updateAllSelections(caseList: ConsolidationOrderCase[]): void;
-  getValidLeadCase(): void;
+  getValidLeadCase(): Promise<void>;
 
   handleApproveButtonClick(): void;
   handleClearInputs(): void;
   handleConfirmAction(action: ConfirmActionResults): void;
   handleIncludeCase(bCase: ConsolidationOrderCase): void;
-  handleLeadCaseInputChange(): void;
+  handleLeadCaseInputChange(caseNumber?: string): void;
   handleMarkLeadCase(bCase: ConsolidationOrderCase): void;
-  handleOnExpand(): void;
+  handleOnExpand(): Promise<void>;
   handleRejectButtonClick(): void;
   handleSelectConsolidationType(value: string): void;
   handleSelectLeadCaseCourt(option: CamsSelectOptionList): void;
@@ -56,9 +56,12 @@ const consolidationUseCase = (
   onExpand?: OnExpand,
 ): ConsolidationsUseCase => {
   function clearLeadCase(): void {
-    store.setLeadCase(null);
+    // store.setLeadCase(null);
     store.setLeadCaseId('');
     store.setLeadCaseCourt('');
+    store.setLeadCaseNumber('');
+    store.setLeadCaseNumberError('');
+    store.setFoundValidCaseNumber(false);
     controls.clearLeadCase();
   }
 
@@ -67,7 +70,7 @@ const consolidationUseCase = (
     controls.clearAllCheckBoxes();
   }
 
-  function getValidLeadCase() {
+  async function getValidLeadCase() {
     const api2 = useApi2();
     const currentLeadCaseId = getCurrentLeadCaseId({
       leadCaseCourt: store.leadCaseCourt,
@@ -170,6 +173,7 @@ const consolidationUseCase = (
         });
     }
   }
+
   function approveConsolidation(action: ConfirmActionResults) {
     const genericApi = useGenericApi();
     const genericErrorMessage =
@@ -303,9 +307,6 @@ const consolidationUseCase = (
   function handleClearInputs(): void {
     clearLeadCase();
     clearSelectedCases();
-    store.setLeadCaseNumber('');
-    store.setLeadCaseNumberError('');
-    store.setFoundValidCaseNumber(false);
     store.setShowLeadCaseForm(false);
     controls.unsetConsolidationType();
     controls.enableLeadCaseForm(false);
@@ -338,18 +339,14 @@ const consolidationUseCase = (
     if (caseNumber) {
       store.setLeadCaseNumber(caseNumber);
     } else {
-      store.setLeadCaseNumber('');
-      store.setFoundValidCaseNumber(false);
-      store.setLeadCase(null);
-      store.setLeadCaseNumberError('');
+      clearLeadCase();
       controls.disableButton(controls.approveButton, true);
     }
   }
 
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
     controls.enableLeadCaseForm(false);
-    store.setShowLeadCaseForm(false);
-    store.setFoundValidCaseNumber(false);
+    clearLeadCase();
 
     if (store.leadCaseId === bCase.caseId) {
       store.setLeadCaseId('');
