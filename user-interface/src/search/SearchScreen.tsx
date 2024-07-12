@@ -53,7 +53,15 @@ function useSearchScreenActionsAndState(initialState: SearchScreenState): {
   actions: SearchScreenActions;
   state: SearchScreenState;
 } {
-  const [state, setState] = useState<SearchScreenState>(initialState);
+  const [state, setState2] = useState<SearchScreenState>(initialState);
+
+  function setState(s: SearchScreenState) {
+    console.log('calling setState');
+    setState2(s);
+  }
+  function copyState() {
+    return { ...state };
+  }
 
   const api = useApi2();
 
@@ -69,39 +77,49 @@ function useSearchScreenActionsAndState(initialState: SearchScreenState): {
   }
 
   async function getOffices() {
+    const newState = copyState();
     api
       .getOffices()
       .then((response) => {
-        state.officesList = response.data.sort(officeSorter);
+        console.log('response', response.data.sort(officeSorter));
+        newState.officesList = response.data.sort(officeSorter);
       })
       .catch(() => {
-        state.errorAlert = {
+        newState.errorAlert = {
           ...DEFAULT_ALERT,
           title: 'Error',
           message: 'Cannot load office list',
           show: true,
         };
+      })
+      .finally(() => {
+        setState(newState);
       });
-    setState(state);
   }
 
   function disableSearchForm(value: boolean) {
+    const newState = copyState();
+
     state.form.caseNumberInput.disabled = value;
     state.form.courtSelection.disabled = value;
     state.form.chapterSelection.disabled = value;
-    setState(state);
+    setState(newState);
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
+    const newState = copyState();
+
     if (state.searchPredicate.caseNumber != caseNumber) {
       const newPredicate = { ...state.searchPredicate, caseNumber };
       if (!caseNumber) delete newPredicate.caseNumber;
       state.searchPredicate = newPredicate;
-      setState(state);
+      setState(newState);
     }
   }
 
   function handleCourtSelection(selection: ComboOption[]) {
+    const newState = copyState();
+
     const newPredicate = {
       ...state.searchPredicate,
     };
@@ -109,11 +127,13 @@ function useSearchScreenActionsAndState(initialState: SearchScreenState): {
     if (selection.length) {
       newPredicate.divisionCodes = selection.map((kv: ComboOption) => kv.value);
     }
-    state.searchPredicate = newPredicate;
-    setState(state);
+    newState.searchPredicate = newPredicate;
+    setState(newState);
   }
 
   function handleChapterSelection(selections: ComboOption[]) {
+    const newState = copyState();
+
     const { searchPredicate } = state;
     let performSearch = false;
 
@@ -137,8 +157,8 @@ function useSearchScreenActionsAndState(initialState: SearchScreenState): {
         newPredicate.chapters = selections.map((option: ComboOption) => option.value);
       }
 
-      state.searchPredicate = newPredicate;
-      setState(state);
+      newState.searchPredicate = newPredicate;
+      setState(newState);
     }
   }
 
