@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -7,36 +7,53 @@ import {
 import { OfficeDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
 import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
-import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import './SearchScreen.scss';
+import Alert, { AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import './SearchScreen.scss';
 
-const DEFAULT_ALERT = {
-  show: false,
-  title: '',
-  message: '',
-  type: UswdsAlertStyle.Error,
-  timeout: 5,
+type InputState = {
+  disabled: boolean;
 };
 
-export default function SearchScreen() {
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
-    limit: DEFAULT_SEARCH_LIMIT,
-    offset: DEFAULT_SEARCH_OFFSET,
-  });
+type SearchScreenState = {
+  searchPredicate: CasesSearchPredicate;
+  chapterList: ComboOption[];
+  officesList: OfficeDetails[];
+  errorAlert: AlertProps;
+  form: {
+    caseNumberInput: InputState;
+    courtSelection: InputState;
+    chapterSelection: InputState;
+  };
+};
 
-  const [chapterList, setChapterList] = useState<ComboOption[]>([]);
-  const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
-  const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
+type SearchScreenActions = {
+  getChapters: () => void;
+  getOffices: () => void;
+  disableSearchForm: (value: boolean) => void;
+  handleCaseNumberChange: (caseNumber?: string) => void;
+  handleCourtSelection: (selection: ComboOption[]) => void;
+  handleChapterSelection: (selections: ComboOption[]) => void;
+};
 
-  const caseNumberInputRef = useRef<InputRef>(null);
-  const courtSelectionRef = useRef<ComboBoxRef>(null);
-  const chapterSelectionRef = useRef<ComboBoxRef>(null);
-  const errorAlertRef = useRef<AlertRefType>(null);
+// function useCamsActions<A, S>(initialState: S): { actions: A; state: S } {
+//   const [state, setState] = useState<S>(initialState);
+//   const actions: A = {} as A;
+//   setState({} as S);
+//   return {
+//     state,
+//     actions,
+//   };
+// }
+
+function useSearchScreenActionsAndState(initialState: SearchScreenState): {
+  actions: SearchScreenActions;
+  state: SearchScreenState;
+} {
+  const [state, setState] = useState<SearchScreenState>(initialState);
 
   const api = useApi2();
 
@@ -47,52 +64,57 @@ export default function SearchScreen() {
       chapterArray.push({ label: item, value: item, selected: false });
     }
 
-    setChapterList(chapterArray);
+    state.chapterList = chapterArray;
+    setState(state);
   }
 
   async function getOffices() {
     api
       .getOffices()
       .then((response) => {
-        setOfficesList(response.data.sort(officeSorter));
+        state.officesList = response.data.sort(officeSorter);
       })
       .catch(() => {
-        setErrorAlert({
+        state.errorAlert = {
           ...DEFAULT_ALERT,
           title: 'Error',
           message: 'Cannot load office list',
           show: true,
-        });
-        errorAlertRef.current?.show(false);
+        };
       });
+    setState(state);
   }
 
   function disableSearchForm(value: boolean) {
-    caseNumberInputRef.current?.disable(value);
-    courtSelectionRef.current?.disable(value);
-    chapterSelectionRef.current?.disable(value);
+    state.form.caseNumberInput.disabled = value;
+    state.form.courtSelection.disabled = value;
+    state.form.chapterSelection.disabled = value;
+    setState(state);
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
-    if (searchPredicate.caseNumber != caseNumber) {
-      const newPredicate = { ...searchPredicate, caseNumber };
+    if (state.searchPredicate.caseNumber != caseNumber) {
+      const newPredicate = { ...state.searchPredicate, caseNumber };
       if (!caseNumber) delete newPredicate.caseNumber;
-      setSearchPredicate(newPredicate);
+      state.searchPredicate = newPredicate;
+      setState(state);
     }
   }
 
   function handleCourtSelection(selection: ComboOption[]) {
     const newPredicate = {
-      ...searchPredicate,
+      ...state.searchPredicate,
     };
     delete newPredicate.divisionCodes;
     if (selection.length) {
       newPredicate.divisionCodes = selection.map((kv: ComboOption) => kv.value);
     }
-    setSearchPredicate(newPredicate);
+    state.searchPredicate = newPredicate;
+    setState(state);
   }
 
   function handleChapterSelection(selections: ComboOption[]) {
+    const { searchPredicate } = state;
     let performSearch = false;
 
     if (searchPredicate.chapters && searchPredicate.chapters.length == selections.length) {
@@ -115,18 +137,59 @@ export default function SearchScreen() {
         newPredicate.chapters = selections.map((option: ComboOption) => option.value);
       }
 
-      setSearchPredicate(newPredicate);
+      state.searchPredicate = newPredicate;
+      setState(state);
     }
   }
 
+  const actions = {
+    getChapters,
+    getOffices,
+    disableSearchForm,
+    handleCaseNumberChange,
+    handleCourtSelection,
+    handleChapterSelection,
+  };
+
+  return {
+    state,
+    actions,
+  };
+}
+
+const DEFAULT_ALERT = {
+  show: false,
+  title: '',
+  message: '',
+  type: UswdsAlertStyle.Error,
+  timeout: 5,
+};
+
+export default function SearchScreen() {
+  const initialState: SearchScreenState = {
+    searchPredicate: {
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
+    },
+    chapterList: [],
+    officesList: [],
+    errorAlert: DEFAULT_ALERT,
+    form: {
+      caseNumberInput: { disabled: false },
+      chapterSelection: { disabled: false },
+      courtSelection: { disabled: false },
+    },
+  };
+  const { actions, state } = useSearchScreenActionsAndState(initialState);
+
   useEffect(() => {
-    getOffices();
-    getChapters();
+    actions.getOffices();
+    actions.getChapters();
   }, []);
 
   return (
     <div className="search-screen" data-testid="search">
-      <Alert ref={errorAlertRef} inline={false} {...errorAlert}></Alert>
+      <Alert inline={false} {...state.errorAlert}></Alert>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
@@ -147,10 +210,10 @@ export default function SearchScreen() {
                   name="basic-search"
                   label="Case Number"
                   autoComplete="off"
-                  onChange={handleCaseNumberChange}
+                  onChange={actions.handleCaseNumberChange}
                   allowEnterKey={true}
                   allowPartialCaseNumber={false}
-                  ref={caseNumberInputRef}
+                  disabled={state.form.caseNumberInput.disabled}
                 />
               </div>
             </div>
@@ -161,13 +224,13 @@ export default function SearchScreen() {
                   className="new-court__select"
                   label="District (Division)"
                   ariaLabelPrefix="District (Division)"
-                  onClose={handleCourtSelection}
-                  onPillSelection={handleCourtSelection}
-                  options={getOfficeList(officesList)}
+                  onClose={actions.handleCourtSelection}
+                  onPillSelection={actions.handleCourtSelection}
+                  options={getOfficeList(state.officesList)}
                   required={false}
                   multiSelect={true}
                   wrapPills={true}
-                  ref={courtSelectionRef}
+                  disabled={state.form.courtSelection.disabled}
                 />
               </div>
             </div>
@@ -178,12 +241,12 @@ export default function SearchScreen() {
                   className="case-chapter__select"
                   label="Chapter"
                   ariaLabelPrefix="Chapter"
-                  onClose={handleChapterSelection}
-                  onPillSelection={handleChapterSelection}
-                  options={chapterList}
+                  onClose={actions.handleChapterSelection}
+                  onPillSelection={actions.handleChapterSelection}
+                  options={state.chapterList}
                   required={false}
                   multiSelect={true}
-                  ref={chapterSelectionRef}
+                  disabled={state.form.chapterSelection.disabled}
                 />
               </div>
             </div>
@@ -191,7 +254,7 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-8">
           <h2>Results</h2>
-          {!isValidSearchPredicate(searchPredicate) && (
+          {!isValidSearchPredicate(state.searchPredicate) && (
             <div className="search-alert">
               <Alert
                 id="default-state-alert"
@@ -204,15 +267,15 @@ export default function SearchScreen() {
               ></Alert>
             </div>
           )}
-          {isValidSearchPredicate(searchPredicate) && (
+          {isValidSearchPredicate(state.searchPredicate) && (
             <SearchResults
               id="search-results"
-              searchPredicate={searchPredicate}
+              searchPredicate={state.searchPredicate}
               onStartSearching={() => {
-                disableSearchForm(true);
+                actions.disableSearchForm(true);
               }}
               onEndSearching={() => {
-                disableSearchForm(false);
+                actions.disableSearchForm(false);
               }}
             />
           )}
