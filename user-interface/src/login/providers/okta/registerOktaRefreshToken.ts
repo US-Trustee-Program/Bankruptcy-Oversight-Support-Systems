@@ -3,6 +3,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { registerSemaphore, useSemaphore } from '@/lib/utils/semaphore';
 import { addApiBeforeHook } from '@/lib/models/api';
 
+// TODO: Make this a sane value like 5 minutes / 300 seconds
 const SAFE_LIMIT = 30; // Seconds
 
 const OKTA_TOKEN_REFRESH = 'OKTA_TOKEN_REFRESH';
