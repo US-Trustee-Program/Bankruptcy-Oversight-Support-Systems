@@ -16,7 +16,7 @@ const beforeHooks: (() => Promise<void>)[] = [];
 
 export function addApiBeforeHook(hook: () => Promise<void>) {
   const hookExists = beforeHooks.reduce((doesExist, registeredHook) => {
-    return doesExist || registeredHook === hook;
+    return doesExist || registeredHook.toString() === hook.toString();
   }, false);
   if (!hookExists) {
     beforeHooks.push(hook);

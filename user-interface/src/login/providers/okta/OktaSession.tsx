@@ -66,16 +66,16 @@ export function OktaSession(props: OktaSessionProps) {
     return <AccessDenied />;
   }
 
+  registerOktaRefreshToken(oktaAuth);
+
   return (
-    <registerOktaRefreshToken>
-      <Session
-        provider="okta"
-        user={camsUser}
-        apiToken={apiToken}
-        validatedClaims={authState?.accessToken?.claims ?? {}}
-      >
-        {props.children}
-      </Session>
-    </registerOktaRefreshToken>
+    <Session
+      provider="okta"
+      user={camsUser}
+      apiToken={apiToken}
+      validatedClaims={authState?.accessToken?.claims ?? {}}
+    >
+      {props.children}
+    </Session>
   );
 }
