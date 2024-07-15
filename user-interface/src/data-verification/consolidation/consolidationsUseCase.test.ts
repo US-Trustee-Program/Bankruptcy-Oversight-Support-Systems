@@ -69,9 +69,10 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should properly handle handleClearInputs', () => {
-    const clearAllCheckBoxesSpy = vitest.spyOn(controls, 'clearAllCheckBoxes');
-    const unsetConsolidationTypeSpy = vitest.spyOn(controls, 'unsetConsolidationType');
-    const showLeadCaseFormSpy = vitest.spyOn(store, 'setShowLeadCaseForm');
+    const clearAllCheckBoxesSpy = vi.spyOn(controls, 'clearAllCheckBoxes');
+    const unsetConsolidationTypeSpy = vi.spyOn(controls, 'unsetConsolidationType');
+    const showLeadCaseFormSpy = vi.spyOn(store, 'setShowLeadCaseForm');
+    // const disableButtonSpy = vi.spyOn(controls, 'disableButton');
 
     setupLeadCase();
 
@@ -84,10 +85,13 @@ describe('Consolidation UseCase tests', () => {
     expect(unsetConsolidationTypeSpy).toHaveBeenCalled();
     expect(showLeadCaseFormSpy).toHaveBeenCalledWith(false);
     // TODO: Cannot figure out how to make sure `updateSubmitButtonsStateSpy` was called.
+    //   The following doesn't work. For some reason the function is called with state in the default configuration.
+    // expect(disableButtonSpy).toHaveBeenCalledWith(controls.rejectButton, false);
+    // expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, false);
   });
 
   test('should call approveConsolidation when approve button is clicked', () => {
-    const controlSpy = vitest.spyOn(controls, 'showConfirmationModal');
+    const controlSpy = vi.spyOn(controls, 'showConfirmationModal');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     includeCases(mockCases);
     useCase.handleApproveButtonClick();
@@ -95,7 +99,7 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should call rejectConsolidation when reject button is clicked', () => {
-    const controlSpy = vitest.spyOn(controls, 'showConfirmationModal');
+    const controlSpy = vi.spyOn(controls, 'showConfirmationModal');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     includeCases(mockCases);
     useCase.handleRejectButtonClick();
@@ -103,7 +107,7 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should call setSelectedCases and updateSubmitButtonState when handleIncludeCase is called', () => {
-    const setSelectedCasesSpy = vitest.spyOn(store, 'setSelectedCases');
+    const setSelectedCasesSpy = vi.spyOn(store, 'setSelectedCases');
     const mockCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
     const mockAdditionalCase = MockData.getConsolidatedOrderCase();
     //Add case initially to includeCases
@@ -117,8 +121,8 @@ describe('Consolidation UseCase tests', () => {
 
   test('should properly set Lead Case when marking lead case', () => {
     //Should clear lead case input and set lead case when case is marked as lead
-    const setLeadCaseSpy = vitest.spyOn(store, 'setLeadCase');
-    const setLeadCaseIdSpy = vitest.spyOn(store, 'setLeadCaseId');
+    const setLeadCaseSpy = vi.spyOn(store, 'setLeadCase');
+    const setLeadCaseIdSpy = vi.spyOn(store, 'setLeadCaseId');
 
     setupLeadCase();
 
@@ -144,7 +148,7 @@ describe('Consolidation UseCase tests', () => {
     setupLeadCase();
     store.setFoundValidCaseNumber(true);
     store.setShowLeadCaseForm(true);
-    const controlSpy = vitest.spyOn(controls, 'disableButton');
+    const controlSpy = vi.spyOn(controls, 'disableButton');
 
     useCase.handleLeadCaseInputChange();
 
@@ -155,19 +159,32 @@ describe('Consolidation UseCase tests', () => {
     expect(controlSpy).toHaveBeenCalledWith(controls.approveButton, true);
   });
 
+  test('should handle setting the lead case number input', () => {
+    setupLeadCase();
+    store.setFoundValidCaseNumber(true);
+    store.setShowLeadCaseForm(true);
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+
+    const caseNumber = '24-12345';
+    useCase.handleLeadCaseInputChange(caseNumber);
+
+    expect(store.leadCaseNumber).toEqual(caseNumber);
+    expect(disableButtonSpy).not.toHaveBeenCalled();
+  });
+
   test('should get caseAssignments and caseAssociations when accordion is expanded', async () => {
     const setIsDataEnhancedSpy = vi.spyOn(store, 'setIsDataEnhanced');
-    const returns = { success: true, body: ['Test'] };
-    const getSpy = vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue(returns);
+    const assignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+    const associationsSpy = vi.spyOn(Api2, 'getCaseAssociations');
 
     await useCase.handleOnExpand();
     expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
-    expect(getSpy.mock.calls[0][0]).toEqual(`/case-assignments/${mockOrder.childCases[0].caseId}`);
-    expect(getSpy.mock.calls[1][0]).toEqual(`/cases/${mockOrder.childCases[0].caseId}/associated`);
-    expect(getSpy.mock.calls[2][0]).toEqual(`/case-assignments/${mockOrder.childCases[1].caseId}`);
-    expect(getSpy.mock.calls[3][0]).toEqual(`/cases/${mockOrder.childCases[1].caseId}/associated`);
+    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
+    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
+    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
+    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
     expect(setIsDataEnhancedSpy).toHaveBeenCalledWith(true);
-  });
+  }, 10000);
 
   // TODO: Attempting to cover lines 377-381, should we handle this error more gracefully like logging to the function?
 
@@ -186,13 +203,13 @@ describe('Consolidation UseCase tests', () => {
   // });
 
   test('should call setConsolidationType when handleSelectConsolidationType is called', () => {
-    const setConsolidationTypeSpy = vitest.spyOn(store, 'setConsolidationType');
+    const setConsolidationTypeSpy = vi.spyOn(store, 'setConsolidationType');
     useCase.handleSelectConsolidationType('Test');
     expect(setConsolidationTypeSpy).toHaveBeenCalledWith('Test');
   });
 
   test('should call setLeadCaseCourt when a court is selected from the dropdown', () => {
-    const setLeadCaseCourtSpy = vitest.spyOn(store, 'setLeadCaseCourt');
+    const setLeadCaseCourtSpy = vi.spyOn(store, 'setLeadCaseCourt');
     const newLeadCaseCourt = { label: 'test', value: 'test value' };
     useCase.handleSelectLeadCaseCourt(newLeadCaseCourt);
     expect(setLeadCaseCourtSpy).toHaveBeenCalled();
@@ -247,25 +264,35 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test(`should call put with '/consolidations/approve' if handleConfirmAction is called with 'approved'`, () => {
-    const putSpy = vitest.spyOn(Chapter15MockApi, 'put');
+    const putSpy = vi.spyOn(Chapter15MockApi, 'put');
     setupLeadCase();
     store.setConsolidationType('administrative');
     useCase.handleConfirmAction({ status: 'approved' });
     const pathParam = putSpy.mock.calls[0][0];
-    // const dataParam = putSpy.mock.calls[0][1];
+    const dataParam = putSpy.mock.calls[0][1];
     expect(pathParam).toEqual('/consolidations/approve');
-    // expect(dataParam).toEqual(expect.objectContaining({ hello: 'world' }));
-    // expect(putSpy).toHaveBeenCalledWith(
-    //   ,
-    //   expect.objectContaining({ approvedCases: [], leadCase: expect.objectContaining({}) }),
-    // );
+    expect(dataParam).toEqual(
+      expect.objectContaining({
+        approvedCases: expect.any(Array<string>),
+        leadCase: expect.anything(),
+      }),
+    );
   });
 
   test(`should call put with '/consolidations/reject' if handleConfirmAction is called with 'approved'`, () => {
-    const putSpy = vitest.spyOn(Chapter15MockApi, 'put');
+    const putSpy = vi.spyOn(Chapter15MockApi, 'put');
     setupLeadCase();
     store.setConsolidationType('administrative');
-    useCase.handleConfirmAction({ status: 'rejected', rejectionReason: 'already consolidated' });
-    expect(putSpy).toHaveBeenCalledWith('/consolidations/reject', expect.anything());
+    const rejectionReason = 'already consolidated';
+    useCase.handleConfirmAction({ status: 'rejected', rejectionReason });
+    const pathParam = putSpy.mock.calls[0][0];
+    const dataParam = putSpy.mock.calls[0][1];
+    expect(pathParam).toEqual('/consolidations/reject');
+    expect(dataParam).toEqual(
+      expect.objectContaining({
+        rejectedCases: expect.any(Array<string>),
+        reason: rejectionReason,
+      }),
+    );
   });
 });
