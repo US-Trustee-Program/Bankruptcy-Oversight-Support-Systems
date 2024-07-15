@@ -173,26 +173,25 @@ describe('test ConsolidationCasesTable component', () => {
     expect(alert).not.toBeInTheDocument();
   });
 
-  test('should change lead case button styles and labels and call onMarkLead', () => {
+  test('should render default button style and Lead Case and call onMarkLead when Mark as Lead is clicked', () => {
     const tableRef = React.createRef<OrderTableImperative>();
-    let leadCaseButton: HTMLButtonElement;
     const onMarkLead = vi.fn();
+    const cases = MockData.buildArray(() => MockData.getConsolidatedOrderCase(), 3);
 
     const props = {
-      cases: MockData.buildArray(() => MockData.getConsolidatedOrderCase(), 3),
+      cases,
       onMarkLead,
+      leadCaseId: cases[0].caseId,
     };
 
     renderWithProps(props, tableRef);
 
     const leadCaseButtons = document.querySelectorAll('.mark-as-lead-button');
-    leadCaseButtons.forEach((button) => {
-      expect(button).toHaveClass(UswdsButtonStyle.Outline);
-      expect(button).toHaveTextContent('Mark as Lead');
-    });
 
-    let selectedLeadCaseIndex = 0;
-    leadCaseButton = screen.getByTestId(`button-assign-lead-${tableId}-${selectedLeadCaseIndex}`);
+    const selectedLeadCaseIndex = 0;
+    const leadCaseButton = screen.getByTestId(
+      `button-assign-lead-${tableId}-${selectedLeadCaseIndex}`,
+    );
     fireEvent.click(leadCaseButton);
     expect(onMarkLead.mock.calls[0][0]).toEqual(props.cases[selectedLeadCaseIndex]);
 
@@ -205,24 +204,29 @@ describe('test ConsolidationCasesTable component', () => {
         expect(button).toHaveTextContent('Mark as Lead');
       }
     });
+  });
 
-    selectedLeadCaseIndex = 1;
-    leadCaseButton = screen.getByTestId(`button-assign-lead-${tableId}-${selectedLeadCaseIndex}`);
+  test('should render outline button style and Mark as Lead and call onMarkLead when Lead Case is clicked', () => {
+    const tableRef = React.createRef<OrderTableImperative>();
+    const onMarkLead = vi.fn();
+    const cases = MockData.buildArray(() => MockData.getConsolidatedOrderCase(), 3);
+
+    const props = {
+      cases,
+      onMarkLead,
+    };
+
+    renderWithProps(props, tableRef);
+
+    const leadCaseButtons = document.querySelectorAll('.mark-as-lead-button');
+
+    const selectedLeadCaseIndex = 1;
+    const leadCaseButton = screen.getByTestId(
+      `button-assign-lead-${tableId}-${selectedLeadCaseIndex}`,
+    );
     fireEvent.click(leadCaseButton);
-    expect(onMarkLead.mock.calls[1][0]).toEqual(props.cases[selectedLeadCaseIndex]);
+    expect(onMarkLead.mock.calls[0][0]).toEqual(props.cases[selectedLeadCaseIndex]);
 
-    leadCaseButtons.forEach((button) => {
-      if (leadCaseButton.id === button.id) {
-        expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
-        expect(button).toHaveTextContent('Lead Case');
-      } else {
-        expect(button).toHaveClass(UswdsButtonStyle.Outline);
-        expect(button).toHaveTextContent('Mark as Lead');
-      }
-    });
-
-    fireEvent.click(leadCaseButton);
-    expect(onMarkLead.mock.calls[2][0]).toEqual(props.cases[selectedLeadCaseIndex]);
     leadCaseButtons.forEach((button) => {
       expect(button).toHaveClass(UswdsButtonStyle.Outline);
       expect(button).toHaveTextContent('Mark as Lead');
