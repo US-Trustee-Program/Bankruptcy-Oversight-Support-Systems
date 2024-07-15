@@ -15,6 +15,8 @@ import { OktaProvider } from './providers/okta/OktaProvider';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { addApiAfterHook } from '@/lib/models/api';
+import { http401Hook } from './login-http401';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -33,6 +35,8 @@ export function Login(props: LoginProps): React.ReactNode {
       `Build variable value: '${provider}'.`;
     return <BadConfiguration message={errorMessage} />;
   }
+
+  addApiAfterHook(http401Hook);
 
   const session: CamsSession | null = LocalStorage.getSession();
   if (session) {

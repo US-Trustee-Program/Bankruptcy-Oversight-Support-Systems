@@ -12,16 +12,6 @@ import {
 import { LocalStorage } from '../utils/local-storage';
 
 let context: ApiClient;
-const beforeHooks: (() => Promise<void>)[] = [];
-
-export function addApiBeforeHook(hook: () => Promise<void>) {
-  const hookExists = beforeHooks.reduce((doesExist, registeredHook) => {
-    return doesExist || registeredHook.toString() === hook.toString();
-  }, false);
-  if (!hookExists) {
-    beforeHooks.push(hook);
-  }
-}
 
 /**
  * Factory function returning an API client instance based on legacy environment variable setting.
@@ -30,7 +20,6 @@ export function addApiBeforeHook(hook: () => Promise<void>) {
  */
 function legacyConfiguration(): ApiClient {
   const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  api.beforeHooks = beforeHooks;
   return api;
 }
 
