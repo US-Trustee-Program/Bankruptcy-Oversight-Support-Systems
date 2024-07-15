@@ -15,10 +15,16 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CamsSelectOptionList, SearchableSelectOption } from '@/lib/components/CamsSelect';
 import { ConfirmActionResults } from '../ConsolidationOrderModal';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CaseAssignment } from '@common/cams/assignments';
+import { Consolidation } from '@common/cams/events';
+import { ResponseBodySuccess } from '@common/api/response';
 
-// TODO: we may only need one of these.
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
-type PreviousConsolidationFacts = { isAlreadyConsolidated: boolean; childCase?: CaseSummary };
+type PreviousLeadConsolidationFacts = {
+  isAlreadyConsolidated: boolean;
+  consolidationType?: ConsolidationType;
+  childCase?: CaseSummary;
+};
 export type OnOrderUpdate = (
   alertDetails: AlertDetails,
   orders?: ConsolidationOrder[],
@@ -27,15 +33,15 @@ export type OnOrderUpdate = (
 export type OnExpand = (id: string) => void;
 
 export interface ConsolidationsUseCase {
-  // clearLeadCase(): void;
-  // clearSelectedCases(): void;
   updateSubmitButtonsState(): void;
-  // selectedCasesAreConsolidationCases(): void;
-  // setOrderWithDataEnhancement(order: ConsolidationOrder): void;
   updateAllSelections(caseList: ConsolidationOrderCase[]): void;
   getValidLeadCase(): Promise<void>;
 
   handleApproveButtonClick(): void;
+  handleCaseAssociationResponse(
+    response: ResponseBodySuccess<Consolidation[]>,
+    currentLeadCaseId: string,
+  ): Consolidation[];
   handleClearInputs(): void;
   handleConfirmAction(action: ConfirmActionResults): void;
   handleIncludeCase(bCase: ConsolidationOrderCase): void;
@@ -61,12 +67,70 @@ const consolidationUseCase = (
     store.setLeadCaseNumber('');
     store.setLeadCaseNumberError('');
     store.setFoundValidCaseNumber(false);
-    // controls.clearLeadCase();
   }
 
   function clearSelectedCases(): void {
     store.setSelectedCases([]);
     controls.clearAllCheckBoxes();
+  }
+
+  function handleCaseAssociationResponse(
+    response: ResponseBodySuccess<Consolidation[]>,
+    currentLeadCaseId: string,
+  ) {
+    const associations = response.data;
+    const childCaseFactsList = associations
+      .filter((reference) => reference.caseId === currentLeadCaseId)
+      .filter((reference) => reference.documentType === 'CONSOLIDATION_TO')
+      .map((reference) => {
+        return {
+          isConsolidationChildCase: true,
+          leadCase: reference.otherCase,
+        } as ChildCaseFacts;
+      });
+    if (childCaseFactsList.length > 1) {
+      throw new Error();
+    }
+    const childCaseFacts: ChildCaseFacts =
+      childCaseFactsList.length === 1 ? childCaseFactsList[0] : { isConsolidationChildCase: false };
+
+    const previousConsolidationFactsList = associations
+      .filter((reference) => reference.caseId === currentLeadCaseId)
+      .filter((reference) => reference.documentType === 'CONSOLIDATION_FROM')
+      .map((reference) => {
+        return {
+          isAlreadyConsolidated: true,
+          consolidationType: reference.consolidationType,
+          childCase: reference.otherCase,
+        } as PreviousLeadConsolidationFacts;
+      });
+    const previousConsolidationFacts: PreviousLeadConsolidationFacts =
+      previousConsolidationFactsList.length > 0
+        ? previousConsolidationFactsList[0]
+        : { isAlreadyConsolidated: false };
+
+    if (childCaseFacts.isConsolidationChildCase) {
+      const message =
+        `Case ${getCaseNumber(currentLeadCaseId)} is a consolidated ` +
+        `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
+      store.setLeadCaseNumberError(message);
+      store.setIsValidatingLeadCaseNumber(false);
+      controls.disableLeadCaseForm(false);
+      store.setFoundValidCaseNumber(false);
+      throw new Error(message);
+    } else if (
+      previousConsolidationFacts.isAlreadyConsolidated &&
+      previousConsolidationFacts.consolidationType === store.consolidationType
+    ) {
+      const message = `This case is already part of a consolidation with the same consolidation type.`;
+      store.setLeadCaseNumberError(message);
+      store.setIsValidatingLeadCaseNumber(false);
+      controls.disableLeadCaseForm(false);
+      store.setFoundValidCaseNumber(false);
+      throw new Error(message);
+    } else {
+      return response.data as Consolidation[];
+    }
   }
 
   async function getValidLeadCase() {
@@ -80,96 +144,59 @@ const consolidationUseCase = (
       store.setIsValidatingLeadCaseNumber(true);
       store.setLeadCaseNumberError('');
       store.setLeadCaseId('');
-      api2
-        .getCaseSummary(currentLeadCaseId)
-        .then((response) => {
-          const caseSummary = response.data;
-          api2
-            .getCaseAssociations(caseSummary.caseId)
-            .then((response) => {
-              const associations = response.data;
-              const childCaseFactsList = associations
-                .filter((reference) => reference.caseId === caseSummary.caseId)
-                .filter((reference) => reference.documentType === 'CONSOLIDATION_TO')
-                .map((reference) => {
-                  return {
-                    isConsolidationChildCase: true,
-                    leadCase: reference.otherCase,
-                  } as ChildCaseFacts;
-                });
-              if (childCaseFactsList.length > 1) {
-                throw new Error();
-              }
-              const childCaseFacts: ChildCaseFacts =
-                childCaseFactsList.length === 1
-                  ? childCaseFactsList[0]
-                  : { isConsolidationChildCase: false };
-
-              const previousConsolidationFactsList = associations
-                .filter((reference) => reference.caseId === caseSummary.caseId)
-                .filter((reference) => reference.documentType === 'CONSOLIDATION_FROM')
-                .map((reference) => {
-                  return {
-                    isAlreadyConsolidated: true,
-                    childCase: reference.otherCase,
-                  } as PreviousConsolidationFacts;
-                });
-              const previousConsolidationFacts: PreviousConsolidationFacts =
-                previousConsolidationFactsList.length > 0
-                  ? previousConsolidationFactsList[0]
-                  : { isAlreadyConsolidated: false };
-
-              if (childCaseFacts.isConsolidationChildCase) {
-                const message =
-                  `Case ${getCaseNumber(caseSummary.caseId)} is a consolidated ` +
-                  `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
-                store.setLeadCaseNumberError(message);
-                store.setIsValidatingLeadCaseNumber(false);
-                controls.disableLeadCaseForm(false);
-                store.setFoundValidCaseNumber(false);
-              } else if (previousConsolidationFacts.isAlreadyConsolidated) {
-                const message = `This case is already part of a consolidation.`;
-                store.setLeadCaseNumberError(message);
-                store.setIsValidatingLeadCaseNumber(false);
-                controls.disableLeadCaseForm(false);
-                store.setFoundValidCaseNumber(false);
-              } else {
-                api2.getCaseAssignments(currentLeadCaseId).then((response) => {
-                  const attorneys = response.data;
-                  store.setLeadCase({
-                    ...caseSummary,
-                    docketEntries: [],
-                    orderDate: store.order.orderDate,
-                    attorneyAssignments: attorneys,
-                    associations,
-                  });
-                  store.setLeadCaseId(currentLeadCaseId);
-                  store.setIsValidatingLeadCaseNumber(false);
-                  store.setFoundValidCaseNumber(true);
-                  controls.disableLeadCaseForm(false);
-                });
-              }
-            })
-            .catch((error) => {
-              const message =
-                'Cannot verify lead case is not part of another consolidation. ' + error.message;
-              store.setLeadCaseNumberError(message);
-              store.setIsValidatingLeadCaseNumber(false);
-              controls.disableLeadCaseForm(false);
-              store.setFoundValidCaseNumber(false);
-            });
-        })
-        .catch((error) => {
-          // Brittle way to determine if we have encountered a 404...
-          const isNotFound = (error.message as string).startsWith('404');
-          const message = isNotFound
-            ? "We couldn't find a case with that number."
-            : 'Cannot verify lead case number.';
-          store.setLeadCaseNumberError(message);
-          store.setIsValidatingLeadCaseNumber(false);
-          controls.disableLeadCaseForm(false);
-          store.setFoundValidCaseNumber(false);
+      const calls = [];
+      calls.push(
+        api2
+          .getCaseSummary(currentLeadCaseId)
+          .then((response) => {
+            return response.data as CaseSummary;
+          })
+          .catch((error) => {
+            // Brittle way to determine if we have encountered a 404...
+            const isNotFound = (error.message as string).startsWith('404');
+            const message = isNotFound
+              ? "We couldn't find a case with that number."
+              : 'Cannot verify lead case number.';
+            store.setLeadCaseNumberError(message);
+            store.setIsValidatingLeadCaseNumber(false);
+            controls.disableLeadCaseForm(false);
+            store.setFoundValidCaseNumber(false);
+          }),
+      );
+      calls.push(
+        api2
+          .getCaseAssociations(currentLeadCaseId)
+          .then((response) => handleCaseAssociationResponse(response, currentLeadCaseId))
+          .catch((error) => {
+            const message =
+              'Cannot verify lead case is not part of another consolidation. ' + error.message;
+            store.setLeadCaseNumberError(message);
+            store.setIsValidatingLeadCaseNumber(false);
+            controls.disableLeadCaseForm(false);
+            store.setFoundValidCaseNumber(false);
+          }),
+      );
+      calls.push(
+        api2.getCaseAssignments(currentLeadCaseId).then((response) => {
+          return response.data as CaseAssignment[];
+        }),
+      );
+      Promise.all(calls).then((responses) => {
+        const caseSummary = responses[0] as CaseSummary;
+        const attorneyAssignments = responses[1] as CaseAssignment[];
+        const associations = responses[2] as Consolidation[];
+        store.setLeadCase({
+          ...caseSummary,
+          docketEntries: [],
+          orderDate: store.order.orderDate,
+          attorneyAssignments,
+          associations,
         });
+        store.setLeadCaseId(currentLeadCaseId);
+        store.setIsValidatingLeadCaseNumber(false);
+        store.setFoundValidCaseNumber(true);
+        controls.disableLeadCaseForm(false);
+      });
     }
   }
 
@@ -307,7 +334,6 @@ const consolidationUseCase = (
   function handleClearInputs(): void {
     clearLeadCase();
     clearSelectedCases();
-    // The form toggle checkbox is not being unchecked
     handleToggleLeadCaseForm(false);
     controls.unsetConsolidationType();
     updateSubmitButtonsState();
@@ -345,12 +371,10 @@ const consolidationUseCase = (
   }
 
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
-    // These next three lines are not working
     store.setShowLeadCaseForm(false);
     store.setLeadCaseNumber('');
     store.setLeadCaseCourt('');
 
-    // We also don't seem to be changing the state of the button
     if (store.leadCaseId === bCase.caseId) {
       store.setLeadCaseId('');
       store.setLeadCase(null);
@@ -398,14 +422,11 @@ const consolidationUseCase = (
   }
 
   return {
-    // clearLeadCase,
-    // clearSelectedCases,
     getValidLeadCase,
     updateSubmitButtonsState,
-    // selectedCasesAreConsolidationCases,
-    // setOrderWithDataEnhancement,
     updateAllSelections,
     handleApproveButtonClick,
+    handleCaseAssociationResponse,
     handleClearInputs,
     handleConfirmAction,
     handleIncludeCase,
