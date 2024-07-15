@@ -29,12 +29,10 @@ interface ConsolidationControls {
   leadCaseFormToggle: Ref<CheckboxRef>;
 
   showConfirmationModal: ShowConfirmationModal;
-  clearLeadCase: () => void;
   disableLeadCaseForm: (disabled: boolean) => void;
   clearAllCheckBoxes: () => void;
   disableButton: (button: Ref<ButtonRef>, state: boolean) => void;
   unsetConsolidationType: () => void;
-  enableLeadCaseForm: (checked: boolean) => void;
 }
 
 export type { ConsolidationControls };

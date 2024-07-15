@@ -33,10 +33,9 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     });
   };
 
-  const clearLeadCase = () => {
-    caseTableActions.current?.clearLeadCase();
-    leadCaseNumberInput.current?.clearValue();
-  };
+  // const clearLeadCase = () => {
+  //   leadCaseNumberInput.current?.clearValue();
+  // };
 
   const disableLeadCaseForm = (disabled: boolean) => {
     leadCaseDivisionInput.current?.disable(disabled);
@@ -49,10 +48,6 @@ export function useConsolidationControlsReact(): ConsolidationControls {
 
   const clearAllCheckBoxes = () => {
     caseTableActions.current?.clearAllCheckboxes();
-  };
-
-  const enableLeadCaseForm = (checked: boolean) => {
-    leadCaseFormToggle.current?.setChecked(checked);
   };
 
   const disableButton = (button: React.RefObject<ButtonRef>, state: boolean) => {
@@ -71,11 +66,9 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     substantiveRadio,
     leadCaseFormToggle,
     showConfirmationModal,
-    clearLeadCase,
     disableLeadCaseForm,
     clearAllCheckBoxes,
     disableButton,
     unsetConsolidationType,
-    enableLeadCaseForm,
   };
 }

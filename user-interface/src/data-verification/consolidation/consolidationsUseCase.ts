@@ -13,7 +13,6 @@ import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CamsSelectOptionList, SearchableSelectOption } from '@/lib/components/CamsSelect';
-import { ChangeEvent } from 'react';
 import { ConfirmActionResults } from '../ConsolidationOrderModal';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
@@ -46,7 +45,7 @@ export interface ConsolidationsUseCase {
   handleRejectButtonClick(): void;
   handleSelectConsolidationType(value: string): void;
   handleSelectLeadCaseCourt(option: CamsSelectOptionList): void;
-  handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void;
+  handleToggleLeadCaseForm(checked: boolean): void;
 }
 
 const consolidationUseCase = (
@@ -56,13 +55,13 @@ const consolidationUseCase = (
   onExpand?: OnExpand,
 ): ConsolidationsUseCase => {
   function clearLeadCase(): void {
-    // store.setLeadCase(null);
+    store.setLeadCase(null);
     store.setLeadCaseId('');
     store.setLeadCaseCourt('');
     store.setLeadCaseNumber('');
     store.setLeadCaseNumberError('');
     store.setFoundValidCaseNumber(false);
-    controls.clearLeadCase();
+    // controls.clearLeadCase();
   }
 
   function clearSelectedCases(): void {
@@ -256,6 +255,7 @@ const consolidationUseCase = (
         });
     }
   }
+
   function updateSubmitButtonsState() {
     if (store.selectedCases.length) {
       const disableApprove =
@@ -307,9 +307,9 @@ const consolidationUseCase = (
   function handleClearInputs(): void {
     clearLeadCase();
     clearSelectedCases();
-    store.setShowLeadCaseForm(false);
+    // The form toggle checkbox is not being unchecked
+    handleToggleLeadCaseForm(false);
     controls.unsetConsolidationType();
-    controls.enableLeadCaseForm(false);
     updateSubmitButtonsState();
   }
 
@@ -345,9 +345,12 @@ const consolidationUseCase = (
   }
 
   function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
-    controls.enableLeadCaseForm(false);
-    clearLeadCase();
+    // These next three lines are not working
+    store.setShowLeadCaseForm(false);
+    store.setLeadCaseNumber('');
+    store.setLeadCaseCourt('');
 
+    // We also don't seem to be changing the state of the button
     if (store.leadCaseId === bCase.caseId) {
       store.setLeadCaseId('');
       store.setLeadCase(null);
@@ -389,9 +392,9 @@ const consolidationUseCase = (
     store.setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
   }
 
-  function handleToggleLeadCaseForm(ev: ChangeEvent<HTMLInputElement>): void {
+  function handleToggleLeadCaseForm(checked: boolean): void {
     clearLeadCase();
-    store.setShowLeadCaseForm(ev.target.checked);
+    store.setShowLeadCaseForm(checked);
   }
 
   return {

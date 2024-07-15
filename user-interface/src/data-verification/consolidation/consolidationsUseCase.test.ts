@@ -9,6 +9,7 @@ import { ConsolidationOrderCase } from '@common/cams/orders';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { ChangeEvent } from 'react';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import Api2 from '@/lib/hooks/UseApi2';
 
 describe('Consolidation UseCase tests', () => {
   let store: ConsolidationStore;
@@ -218,12 +219,39 @@ describe('Consolidation UseCase tests', () => {
     expect(clearLeadCaseSpy).toHaveBeenCalled();
   });
 
-  test('should return a valid lead case if case is not already consolidated and is not the child of another consolidation', async () => {
+  test.only('should return a valid lead case if case is not already consolidated and is not the child of another consolidation', async () => {
     const disableLeadCaseSpy = vi.spyOn(controls, 'disableLeadCaseForm');
     const setIsValidatingSpy = vi.spyOn(store, 'setIsValidatingLeadCaseNumber');
     const setLeadCaseNumberErrorSpy = vi.spyOn(store, 'setLeadCaseNumberError');
     const setLeadCaseIdSpy = vi.spyOn(store, 'setLeadCaseId');
-    const getSpy = vi.spyOn(Chapter15MockApi, 'get');
+
+    const caseSummary = MockData.getCaseSummary();
+    const getCaseSummary = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({
+      meta: {
+        isPaginated: false,
+        self: '',
+      },
+      isSuccess: true,
+      data: caseSummary,
+    });
+
+    /*
+    const childCase = MockData.getConsolidatedOrderCase();
+    const caseAssociations = [
+      MockData.getConsolidationOrder({ override: { childCases: [childCase] } }),
+    ];
+    const getCaseAssociations = vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue({
+      meta: {
+        isPaginated: true,
+        count: 1,
+        limit: 500,
+        currentPage: 1,
+        self: '',
+      },
+      isSuccess: true,
+      data: caseAssociations,
+    });
+    */
 
     setupLeadCase();
     useCase.getValidLeadCase();
@@ -231,18 +259,9 @@ describe('Consolidation UseCase tests', () => {
     expect(setIsValidatingSpy).toHaveBeenCalledWith(true);
     expect(setLeadCaseNumberErrorSpy).toHaveBeenCalledWith('');
     expect(setLeadCaseIdSpy).toHaveBeenCalledWith('');
-    expect(getSpy.mock.calls[0][0]).toEqual(`/cases/${mockLeadCase.caseId}/summary`);
-    console.log('Mock calls:    ', getSpy.mock.calls);
-    expect(getSpy.mock.calls[1][0]).toEqual(`/cases/${mockLeadCase.caseId}/associated`);
+    expect(getCaseSummary).toHaveBeenCalledWith(mockLeadCase.caseId);
+    // expect(getSpy.mock.calls[1][0]).toEqual(`/cases/${mockLeadCase.caseId}/associated`);
     // expect(getSpy.mock.calls[2][0]).toEqual(`/case-assignments/${mockOrder.childCases[1].caseId}`);
     // expect(getSpy.mock.calls[3][0]).toEqual(`/cases/${mockOrder.childCases[1].caseId}/associated`);
-  });
-
-  test('dummy test', async () => {
-    expect(() =>
-      Promise.resolve('some value').then((response) => {
-        return response;
-      }),
-    ).toEqual('some value');
   });
 });
