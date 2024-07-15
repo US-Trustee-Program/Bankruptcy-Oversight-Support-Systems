@@ -13,6 +13,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderModal } from '@/data-verification/ConsolidationOrderModal';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
+import { getCaseNumber } from '../../lib/utils/formatCaseNumber';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -116,6 +117,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   updateAllSelections={viewModel.updateAllSelections}
                   isDataEnhanced={viewModel.isDataEnhanced}
                   ref={viewModel.caseTableActions}
+                  leadCaseId={viewModel.showLeadCaseForm ? undefined : viewModel.leadCase?.caseId}
                   onMarkLead={viewModel.handleMarkLeadCase}
                 ></ConsolidationCaseTable>
               </div>
@@ -130,10 +132,11 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                 <Checkbox
                   id={`lead-case-form-checkbox-toggle-${viewModel.order.id}`}
                   className="lead-case-form-toggle"
-                  onChange={viewModel.handleToggleLeadCaseForm}
+                  onChange={(ev) => viewModel.handleToggleLeadCaseForm(ev.target.checked)}
                   value=""
                   ref={viewModel.leadCaseFormToggle}
                   label="Lead Case Not Listed"
+                  checked={viewModel.showLeadCaseForm}
                 ></Checkbox>
                 {viewModel.showLeadCaseForm && (
                   <section
@@ -157,6 +160,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         id={`lead-case-input-${viewModel.order.id}`}
                         data-testid={`lead-case-input-${viewModel.order.id}`}
                         className="usa-input"
+                        value={getCaseNumber(viewModel.leadCase?.caseId)}
                         onChange={viewModel.handleLeadCaseInputChange}
                         allowPartialCaseNumber={false}
                         required={true}

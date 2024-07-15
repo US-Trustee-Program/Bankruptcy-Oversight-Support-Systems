@@ -7,7 +7,7 @@ import {
   ConfirmActionResults,
   ConfirmationModalImperative,
 } from '@/data-verification/ConsolidationOrderModal';
-import React, { ChangeEvent } from 'react';
+import React from 'react';
 import { CamsSelectOptionList } from '@/lib/components/CamsSelect';
 import { ShowConfirmationModal } from '@/data-verification/consolidation/consolidationControls';
 
@@ -49,7 +49,7 @@ interface ConsolidationViewModel {
   handleRejectButtonClick: () => void;
   handleSelectConsolidationType: (value: string) => void;
   handleSelectLeadCaseCourt: (option: CamsSelectOptionList) => void;
-  handleToggleLeadCaseForm: (ev: ChangeEvent<HTMLInputElement>) => void;
+  handleToggleLeadCaseForm: (checked: boolean) => void;
   showConfirmationModal: ShowConfirmationModal;
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
 }
