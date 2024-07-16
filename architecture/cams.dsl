@@ -8,6 +8,10 @@ workspace {
 
         # System
         cams = softwareSystem "CAMS" "CAse Management System" {
+            okta = container "Okta" "SSO Provider for CAMS" {
+                oktaLoginScreen = component "Okta Login" "SSO for CAMS"
+                oktaRefreshToken = component "Okta Refresh token for the API"
+            }
             webapp = container "Webapp" "The user interface for CAMS" {
                 caseAssignmentsScreen = component "Assignments Screen" "Displays case assignment data and provides for creating assignments"
                 caseDetailsScreen = component "Case Details Screen" "Displays case data including dates and assigned staff, court docket, and audit history"
@@ -48,6 +52,12 @@ workspace {
         attorney -> caseAssignmentsScreen "Views cases assigned to them"
         dataQualityAnalyst -> dataVerificationScreen "Reviews, approves, and rejects case events"
 
+        ## SSO to System Components
+        webapp -> oktaLoginScreen "Allows user to authenticate"
+        oktaLoginScreen -> webapp "Once authenticated returns user to app"
+        nodeapi -> oktaRefreshToken "registers refresh token for 30 minute timeout and validates token"
+        oktaRefreshToken -> nodeapi "refresh token validation"
+
         ## System components to system components
         webapp -> nodeapi "Reads and writes case data and assignments"
         webapp -> cases "Reads and writes case data"
@@ -62,6 +72,7 @@ workspace {
         webapp -> ordersSuggestions "Reads case summaries for data verification"
         webapp -> consolidations "Reads and writes consolidation order data"
         webapp -> associatedCases "Reads associated orders from consolidation"
+
 
         nodeapi -> cosmos "Reads and writes case assignments, orders, cases, etc."
 
@@ -108,6 +119,7 @@ workspace {
             include *
             animation {
                 aust
+                okta
                 webapp
                 nodeapi
                 dxtrsql
@@ -115,7 +127,6 @@ workspace {
             }
             autoLayout
         }
-
         component webapp "CAMSWebapp" {
             include *
             animation {
@@ -138,7 +149,10 @@ workspace {
             }
             autolayout
         }
-
+        component okta "OktaLogin" {
+            include *
+            autolayout
+        }
         component nodeapi "FunctionsAPIwithWebapp" {
             include *
             animation {
