@@ -35,7 +35,7 @@ export type OnExpand = (id: string) => void;
 export interface ConsolidationsUseCase {
   updateSubmitButtonsState(): void;
   updateAllSelections(caseList: ConsolidationOrderCase[]): void;
-  getValidLeadCase(): Promise<void>;
+  getValidLeadCase(): void; //Promise<void>;
 
   handleApproveButtonClick(): void;
   handleCaseAssociationResponse(
@@ -78,7 +78,9 @@ const consolidationUseCase = (
     response: ResponseBodySuccess<Consolidation[]>,
     currentLeadCaseId: string,
   ) {
+    // TODO: implement the stubs at the bottom of the test file
     const associations = response.data;
+    // if lead is a child of another case
     const childCaseFactsList = associations
       .filter((reference) => reference.caseId === currentLeadCaseId)
       .filter((reference) => reference.documentType === 'CONSOLIDATION_TO')
@@ -88,9 +90,6 @@ const consolidationUseCase = (
           leadCase: reference.otherCase,
         } as ChildCaseFacts;
       });
-    if (childCaseFactsList.length > 1) {
-      throw new Error();
-    }
     const childCaseFacts: ChildCaseFacts =
       childCaseFactsList.length === 1 ? childCaseFactsList[0] : { isConsolidationChildCase: false };
 
@@ -120,7 +119,7 @@ const consolidationUseCase = (
       throw new Error(message);
     } else if (
       previousConsolidationFacts.isAlreadyConsolidated &&
-      previousConsolidationFacts.consolidationType === store.consolidationType
+      previousConsolidationFacts.consolidationType !== store.consolidationType
     ) {
       const message = `This case is already part of a consolidation with the same consolidation type.`;
       store.setLeadCaseNumberError(message);
@@ -133,7 +132,7 @@ const consolidationUseCase = (
     }
   }
 
-  async function getValidLeadCase() {
+  function getValidLeadCase() {
     const api2 = useApi2();
     const currentLeadCaseId = getCurrentLeadCaseId({
       leadCaseCourt: store.leadCaseCourt,
@@ -157,10 +156,7 @@ const consolidationUseCase = (
             const message = isNotFound
               ? "We couldn't find a case with that number."
               : 'Cannot verify lead case number.';
-            store.setLeadCaseNumberError(message);
-            store.setIsValidatingLeadCaseNumber(false);
-            controls.disableLeadCaseForm(false);
-            store.setFoundValidCaseNumber(false);
+            throw new Error(message);
           }),
       );
       calls.push(
@@ -170,33 +166,43 @@ const consolidationUseCase = (
           .catch((error) => {
             const message =
               'Cannot verify lead case is not part of another consolidation. ' + error.message;
-            store.setLeadCaseNumberError(message);
-            store.setIsValidatingLeadCaseNumber(false);
-            controls.disableLeadCaseForm(false);
-            store.setFoundValidCaseNumber(false);
+            throw new Error(message);
           }),
       );
       calls.push(
-        api2.getCaseAssignments(currentLeadCaseId).then((response) => {
-          return response.data as CaseAssignment[];
-        }),
+        api2
+          .getCaseAssignments(currentLeadCaseId)
+          .then((response) => {
+            return response.data as CaseAssignment[];
+          })
+          .catch((reason) => {
+            const message = 'Cannot verify lead case assignments. ' + reason.message;
+            throw new Error(message);
+          }),
       );
-      Promise.all(calls).then((responses) => {
-        const caseSummary = responses[0] as CaseSummary;
-        const attorneyAssignments = responses[1] as CaseAssignment[];
-        const associations = responses[2] as Consolidation[];
-        store.setLeadCase({
-          ...caseSummary,
-          docketEntries: [],
-          orderDate: store.order.orderDate,
-          attorneyAssignments,
-          associations,
+      Promise.all(calls)
+        .then((responses) => {
+          const caseSummary = responses[0] as CaseSummary;
+          const attorneyAssignments = responses[1] as CaseAssignment[];
+          const associations = responses[2] as Consolidation[];
+          store.setLeadCase({
+            ...caseSummary,
+            docketEntries: [],
+            orderDate: store.order.orderDate,
+            attorneyAssignments,
+            associations,
+          });
+          store.setLeadCaseId(currentLeadCaseId);
+          store.setIsValidatingLeadCaseNumber(false);
+          store.setFoundValidCaseNumber(true);
+          controls.disableLeadCaseForm(false);
+        })
+        .catch((reason) => {
+          store.setLeadCaseNumberError(reason.message);
+          store.setIsValidatingLeadCaseNumber(false);
+          controls.disableLeadCaseForm(false);
+          store.setFoundValidCaseNumber(false);
         });
-        store.setLeadCaseId(currentLeadCaseId);
-        store.setIsValidatingLeadCaseNumber(false);
-        store.setFoundValidCaseNumber(true);
-        controls.disableLeadCaseForm(false);
-      });
     }
   }
 
@@ -289,7 +295,7 @@ const consolidationUseCase = (
         !store.isDataEnhanced ||
         store.leadCaseId === '' ||
         store.consolidationType === null ||
-        selectedCasesAreConsolidationCases();
+        areAnySelectedCasesConsolidated();
 
       controls.disableButton(controls.rejectButton, false);
       controls.disableButton(controls.approveButton, disableApprove);
@@ -300,13 +306,11 @@ const consolidationUseCase = (
     controls.disableButton(controls.clearButton, store.isProcessing);
   }
 
-  function selectedCasesAreConsolidationCases() {
-    return store.order.childCases.reduce((itDoes, bCase) => {
-      if (!store.selectedCases.includes(bCase)) {
-        return itDoes;
-      }
-      return itDoes || !!bCase.associations?.length;
-    }, false);
+  function areAnySelectedCasesConsolidated() {
+    const consolidatedSelections = store.selectedCases.filter(
+      (bCase) => bCase.associations!.length > 0,
+    );
+    return consolidatedSelections.length !== 0;
   }
 
   function setOrderWithDataEnhancement(order: ConsolidationOrder) {
@@ -314,6 +318,7 @@ const consolidationUseCase = (
   }
 
   function updateAllSelections(caseList: ConsolidationOrderCase[]) {
+    console.log(caseList);
     store.setSelectedCases(caseList);
   }
 
@@ -357,6 +362,7 @@ const consolidationUseCase = (
     } else {
       tempSelectedCases = [...store.selectedCases, bCase];
     }
+    console.log(tempSelectedCases);
     store.setSelectedCases(tempSelectedCases);
     updateSubmitButtonsState();
   }

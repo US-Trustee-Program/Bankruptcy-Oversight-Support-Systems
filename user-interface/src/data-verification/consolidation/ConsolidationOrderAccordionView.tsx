@@ -113,11 +113,11 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   id={`case-list-${viewModel.order.id}`}
                   data-testid={`${viewModel.order.id}-case-list`}
                   cases={viewModel.order.childCases}
+                  leadCaseId={viewModel.showLeadCaseForm ? undefined : viewModel.leadCase?.caseId}
                   onSelect={viewModel.handleIncludeCase}
                   updateAllSelections={viewModel.updateAllSelections}
                   isDataEnhanced={viewModel.isDataEnhanced}
                   ref={viewModel.caseTableActions}
-                  leadCaseId={viewModel.showLeadCaseForm ? undefined : viewModel.leadCase?.caseId}
                   onMarkLead={viewModel.handleMarkLeadCase}
                 ></ConsolidationCaseTable>
               </div>
