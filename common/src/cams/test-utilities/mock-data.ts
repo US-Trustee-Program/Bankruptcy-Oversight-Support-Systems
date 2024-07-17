@@ -175,11 +175,18 @@ function getCaseDetail(
   return { ...caseDetail, ...override };
 }
 
+/**
+ * @param data T required There is no simple way to determine what type T is and generate
+ *  random data accordingly, so it is required to provide it. We could modify to behave like
+ *  buildArray does and accept a function from here as well, but it should verify the type
+ *  is correct if we do that.
+ * @param self String optional The URI for the resource being mocked
+ */
 function getNonPaginatedResponseBodySuccess<T>(
   data: T,
   self: string = 'some-url',
 ): ResponseBodySuccess<T> {
-  const response: ResponseBodySuccess<T> = {
+  return {
     meta: {
       self,
       isPaginated: false,
@@ -187,16 +194,33 @@ function getNonPaginatedResponseBodySuccess<T>(
     isSuccess: true,
     data,
   };
-  return response;
 }
 
+/**
+ * @param data T required There is no simple way to determine what type T is and generate
+ *  random data accordingly, so it is required to provide it. We could modify to behave like
+ *  buildArray does and accept a function from here as well, but it should verify the type
+ *  is correct if we do that.
+ * @param options Options<WithPagination> optional Provide an object like the following:
+ *  {
+ *    entityType?: 'company' | 'person',
+ *    override?: {
+ *      count?: number,
+ *      previous?: UriString,
+ *      next?: UriString,
+ *      limit?: number,
+ *      currentPage?: number
+ *    }
+ *  }
+ * @param self String optional The URI for the resource being mocked
+ */
 function getPaginatedResponseBodySuccess<T>(
   data: T,
   options: Options<WithPagination> = { override: {} },
   self: string = 'some-url',
 ): ResponseBodySuccess<T> {
   const { override } = options;
-  const response: ResponseBodySuccess<T> = {
+  return {
     meta: {
       self,
       isPaginated: true,
@@ -209,7 +233,6 @@ function getPaginatedResponseBodySuccess<T>(
     isSuccess: true,
     data,
   };
-  return response;
 }
 
 function getTransferOrder(options: Options<TransferOrder> = { override: {} }): TransferOrder {
