@@ -6,6 +6,7 @@ import { LoggerImpl } from '../services/logger.service';
 import { getUserSessionGateway } from '../../factory';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { SessionCache } from './sessionCache';
+import * as jwt from 'jsonwebtoken';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -42,7 +43,17 @@ async function getApplicationContextSession(context: ApplicationContext) {
       message: 'Bearer token not found in authorization header',
     });
   }
-  const accessToken = match[1];
+
+  let accessToken = '';
+  const jwtToken = jwt.decode(match[1]);
+  if (jwtToken) {
+    accessToken = match[1];
+  } else {
+    throw new UnauthorizedError(MODULE_NAME, {
+      message: 'Malformed Bearer token in authorization header',
+    });
+  }
+
   const sessionGateway: SessionCache = getUserSessionGateway(context);
   return await sessionGateway.lookup(context, accessToken, context.config.authConfig.provider);
 }
