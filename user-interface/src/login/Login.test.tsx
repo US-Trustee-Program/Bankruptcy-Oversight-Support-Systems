@@ -55,7 +55,7 @@ describe('Login', () => {
     vi.resetAllMocks();
   });
 
-  test('should load provider and issuer from environment vars', () => {
+  test('should load provider from environment vars', () => {
     vi.stubEnv('CAMS_LOGIN_PROVIDER', 'okta');
     vi.stubEnv(
       'CAMS_LOGIN_PROVIDER_CONFIG',
@@ -67,7 +67,6 @@ describe('Login', () => {
       </BrowserRouter>,
     );
     expect(getLoginProviderFromEnv).toHaveBeenCalled();
-    expect(getAuthIssuerFromEnv).toHaveBeenCalled();
     vi.unstubAllEnvs();
   });
 
@@ -121,6 +120,7 @@ describe('Login', () => {
       </BrowserRouter>,
     );
     expect(getSession).toHaveBeenCalled();
+    expect(getAuthIssuerFromEnv).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
   });
