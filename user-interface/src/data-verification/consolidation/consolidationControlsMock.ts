@@ -3,7 +3,7 @@ import {
   ConsolidationControls,
   Ref,
 } from '@/data-verification/consolidation/consolidationControls';
-import { ShowOptionParams } from '@/data-verification/ConsolidationOrderModal';
+import { ShowOptionParams } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { CheckboxState } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { ButtonRef } from '@/lib/components/uswds/Button';
@@ -84,12 +84,10 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     status: OrderStatus,
     consolidationType?: ConsolidationType,
   ) => {};
-  const clearLeadCase = () => {};
   const disableLeadCaseForm = (disabled: boolean) => {};
   const clearAllCheckBoxes = () => {};
   const disableButton = (button: Ref<ButtonRef>, state: boolean) => {};
   const unsetConsolidationType = () => {};
-  const enableLeadCaseForm = (checked: boolean) => {};
 
   return {
     approveButton,
@@ -103,11 +101,9 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     substantiveRadio: substantiveRef,
     leadCaseFormToggle: toggleLeadCaseFormRef,
     showConfirmationModal,
-    clearLeadCase,
     disableLeadCaseForm,
     clearAllCheckBoxes,
     disableButton,
     unsetConsolidationType,
-    enableLeadCaseForm,
   };
 }
