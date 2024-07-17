@@ -33,10 +33,6 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     });
   };
 
-  // const clearLeadCase = () => {
-  //   leadCaseNumberInput.current?.clearValue();
-  // };
-
   const disableLeadCaseForm = (disabled: boolean) => {
     leadCaseDivisionInput.current?.disable(disabled);
     leadCaseNumberInput.current?.disable(disabled);
