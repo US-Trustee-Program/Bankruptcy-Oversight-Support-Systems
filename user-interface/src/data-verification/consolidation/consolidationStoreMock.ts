@@ -1,4 +1,4 @@
-import { ConsolidationOrderAccordionProps } from '@/data-verification/ConsolidationOrderAccordion';
+import { ConsolidationOrderAccordionProps } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
 import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';

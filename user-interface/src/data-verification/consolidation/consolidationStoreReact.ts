@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
 import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
-import { ConsolidationOrderAccordionProps } from '@/data-verification/ConsolidationOrderAccordion';
+import { ConsolidationOrderAccordionProps } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 
 export function useConsolidationStoreReact(

@@ -5,7 +5,7 @@ import { ConsolidationOrder } from '@common/cams/orders';
 import {
   ConsolidationOrderAccordion,
   ConsolidationOrderAccordionProps,
-} from '@/data-verification/ConsolidationOrderAccordion';
+} from '@/data-verification/consolidation/ConsolidationOrderAccordion';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
@@ -20,7 +20,7 @@ import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/
 import { CaseSummary } from '@common/cams/cases';
 import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 
-vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
+vi.mock('../../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
