@@ -18,7 +18,7 @@ export type TransferTo = EventBase & {
 
 export type Transfer = TransferFrom | TransferTo;
 
-type ConsolidationDocumentTypes = 'CONSOLIDATION_FROM' | 'CONSOLIDATION_TO';
+export type ConsolidationDocumentTypes = 'CONSOLIDATION_FROM' | 'CONSOLIDATION_TO';
 
 type ConsolidationDetails = {
   consolidationType: ConsolidationType;

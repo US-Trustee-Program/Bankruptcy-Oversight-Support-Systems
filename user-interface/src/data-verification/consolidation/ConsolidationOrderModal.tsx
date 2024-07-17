@@ -35,7 +35,7 @@ export interface ConsolidationOrderModalProps {
   courts?: OfficeDetails[];
 }
 
-type ShowOptionParams = {
+export type ShowOptionParams = {
   status: OrderStatus;
   cases: ConsolidationOrderCase[];
   leadCase: ConsolidationOrderCase;

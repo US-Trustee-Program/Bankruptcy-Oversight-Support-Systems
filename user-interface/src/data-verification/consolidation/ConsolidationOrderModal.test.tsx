@@ -5,7 +5,7 @@ import {
   ConfirmationModalImperative,
   ConsolidationOrderModalProps,
   formatListForDisplay,
-} from '@/data-verification/ConsolidationOrderModal';
+} from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -15,7 +15,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CaseSummary } from '@common/cams/cases';
 import { Consolidation } from '@common/cams/events';
 
-vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
+vi.mock('../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
 
 describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();
