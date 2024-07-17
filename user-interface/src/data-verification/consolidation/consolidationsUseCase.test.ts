@@ -84,13 +84,16 @@ describe('Consolidation UseCase tests', () => {
     useCase = consolidationUseCase(store, controls, props.onOrderUpdate, props.onExpand);
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.resetModules();
+    await import('@/lib/hooks/UseApi2');
     initUseCase();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   test('should properly handle handleClearInputs', () => {
@@ -235,21 +238,18 @@ describe('Consolidation UseCase tests', () => {
     expect(setIsDataEnhancedSpy).toHaveBeenCalledWith(true);
   }, 10000);
 
-  // TODO: Attempting to cover lines 377-381, should we handle this error more gracefully like logging to the function?
+  test('should set isDataEnhanced to false if call for associations fails on handleOnExpand', async () => {
+    const assignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+    const associationsSpy = vi.spyOn(Api2, 'getCaseAssociations').mockRejectedValue(new Error());
 
-  // test('should throw an error when accordion expanded and api calls fail', () => {
-  //   const getCaseAssignmentsSpy = vi
-  //     .spyOn(Api, 'get')
-  //     .mockResolvedValueOnce({ success: true, body: ['Assignment Test'] });
-  //   const getCaseAssociationsSpy = vi
-  //     .spyOn(Api, 'get')
-  //     .mockResolvedValueOnce({ success: true, body: ['Association Test'] });
-
-  //   useCase.handleOnExpand();
-  //   expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
-  //   expect(getCaseAssignmentsSpy).toHaveBeenCalled();
-  //   expect(getCaseAssociationsSpy).toHaveBeenCalled();
-  // });
+    await useCase.handleOnExpand();
+    expect(onExpand.mock.calls[0][0]).toEqual(`order-list-${mockOrder.id}`);
+    expect(assignmentsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
+    expect(assignmentsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
+    expect(associationsSpy.mock.calls[0][0]).toEqual(mockOrder.childCases[0].caseId);
+    expect(associationsSpy.mock.calls[1][0]).toEqual(mockOrder.childCases[1].caseId);
+    expect(store.isDataEnhanced).toBeFalsy();
+  }, 10000);
 
   test('should call setConsolidationType when handleSelectConsolidationType is called', () => {
     const setConsolidationTypeSpy = vi.spyOn(store, 'setConsolidationType');
@@ -532,6 +532,51 @@ describe('Consolidation UseCase tests', () => {
       message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${
         leadCase.courtName
       } (${leadCase.courtDivisionName}) was successful.`,
+      type: UswdsAlertStyle.Success,
+      timeOut: 8,
+    };
+    const expectedFailureAlert = {
+      message: 'An unknown error has occurred and has been logged.  Please try again later.',
+      type: UswdsAlertStyle.Error,
+      timeOut: 8,
+    };
+
+    const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
+    useCase.handleConfirmAction(action);
+
+    expect(putSpy).toHaveBeenCalled();
+
+    await waitFor(() => {
+      return onOrderUpdateSpy.mock.calls.length > 0;
+    });
+    if (success) {
+      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert, consolidationOrders, order);
+    } else {
+      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert);
+    }
+  });
+
+  const rejectedAlerts = [{ success: true }, { success: false }];
+  test.each(rejectedAlerts)('should process rejected consolidation', async ({ success }) => {
+    const action: ConfirmActionResults = {
+      status: 'rejected',
+    };
+    store.setSelectedCases(MockData.buildArray(MockData.getConsolidatedOrderCase, 4));
+    const consolidationOrders = [
+      MockData.getConsolidationOrder({ override: { status: 'rejected' } }),
+    ];
+    const order = MockData.getConsolidationOrder();
+    store.setOrder(order);
+    let putSpy;
+    if (success) {
+      putSpy = vi
+        .spyOn(Chapter15MockApi, 'put')
+        .mockResolvedValue({ message: '', count: 1, body: consolidationOrders });
+    } else {
+      putSpy = vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue('some server error');
+    }
+    const expectedSuccessfulAlert = {
+      message: `Rejection of consolidation order was successful.`,
       type: UswdsAlertStyle.Success,
       timeOut: 8,
     };

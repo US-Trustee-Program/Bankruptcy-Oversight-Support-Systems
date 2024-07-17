@@ -4,7 +4,7 @@ import { ConsolidationOrder } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import './ConsolidationOrderAccordion.scss';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
-import { getUniqueDivisionCodeOrUndefined } from '@/data-verification/consolidation/consolidationOrderAccordion';
+import { getUniqueDivisionCodeOrUndefined } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
 import type { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { useConsolidationStoreReact } from '@/data-verification/consolidation/consolidationStoreReact';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';

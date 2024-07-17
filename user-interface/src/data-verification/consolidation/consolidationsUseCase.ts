@@ -7,7 +7,7 @@ import {
 } from '@common/cams/orders';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
-import { getCurrentLeadCaseId } from './consolidationOrderAccordion';
+import { getCurrentLeadCaseId } from './consolidationOrderAccordionUtils';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
@@ -212,12 +212,13 @@ const consolidationUseCase = (
       'An unknown error has occurred and has been logged.  Please try again later.';
 
     if (action.status === 'approved' && store.leadCase && store.consolidationType) {
+      const leadCaseId = store.leadCase.caseId;
       const data: ConsolidationOrderActionApproval = {
         ...store.order,
         consolidationType: store.consolidationType,
         approvedCases: store.selectedCases
           .map((bCase) => bCase.caseId)
-          .filter((caseId) => (store.leadCase ? caseId !== store.leadCase.caseId : false)),
+          .filter((caseId) => caseId !== leadCaseId),
         leadCase: store.leadCase,
       };
 
@@ -318,7 +319,6 @@ const consolidationUseCase = (
   }
 
   function updateAllSelections(caseList: ConsolidationOrderCase[]) {
-    console.log(caseList);
     store.setSelectedCases(caseList);
   }
 
@@ -362,7 +362,6 @@ const consolidationUseCase = (
     } else {
       tempSelectedCases = [...store.selectedCases, bCase];
     }
-    console.log(tempSelectedCases);
     store.setSelectedCases(tempSelectedCases);
     updateSubmitButtonsState();
   }
@@ -396,22 +395,25 @@ const consolidationUseCase = (
       onExpand(`order-list-${store.order.id}`);
     }
     if (!store.isDataEnhanced) {
+      let isDataEnhanced = true;
       for (const bCase of store.order.childCases) {
         try {
           const assignmentsResponse = await api2.getCaseAssignments(bCase.caseId);
           bCase.attorneyAssignments = assignmentsResponse.data;
-
-          const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
-          bCase.associations = associatedResponse.data;
-        } catch (reason) {
-          // TODO: This seems out of date. Maybe assignments aren't a big deal here, but associations are.
-          console.error('enhancing data error', reason);
+        } finally {
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }
+
+        try {
+          const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
+          bCase.associations = associatedResponse.data;
+        } catch (reason) {
+          isDataEnhanced = false;
+        }
       }
       setOrderWithDataEnhancement(store.order);
-      store.setIsDataEnhanced(true);
+      store.setIsDataEnhanced(isDataEnhanced);
     }
   }
 
