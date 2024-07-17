@@ -1,8 +1,8 @@
 import React, { useRef } from 'react';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
-import { OrderTableImperative } from '@/data-verification/ConsolidationCasesTable';
+import { OrderTableImperative } from '@/data-verification/consolidation/ConsolidationCasesTable';
 import { ButtonRef } from '@/lib/components/uswds/Button';
-import { ConfirmationModalImperative } from '@/data-verification/ConsolidationOrderModal';
+import { ConfirmationModalImperative } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';

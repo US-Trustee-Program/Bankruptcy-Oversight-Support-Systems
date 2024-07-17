@@ -1,12 +1,12 @@
 import { ConsolidationOrder, ConsolidationOrderCase } from '@common/cams/orders';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
-import { OrderTableImperative } from '@/data-verification/ConsolidationCasesTable';
+import { OrderTableImperative } from '@/data-verification/consolidation/ConsolidationCasesTable';
 import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { ButtonRef } from '@/lib/components/uswds/Button';
 import {
   ConfirmActionResults,
   ConfirmationModalImperative,
-} from '@/data-verification/ConsolidationOrderModal';
+} from '@/data-verification/consolidation/ConsolidationOrderModal';
 import React from 'react';
 import { CamsSelectOptionList } from '@/lib/components/CamsSelect';
 import { ShowConfirmationModal } from '@/data-verification/consolidation/consolidationControls';

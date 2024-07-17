@@ -6,7 +6,7 @@ import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
-import { ConsolidationOrderAccordion } from './ConsolidationOrderAccordion';
+import { ConsolidationOrderAccordion } from './consolidation/ConsolidationOrderAccordion';
 import {
   ConsolidationOrder,
   Order,
