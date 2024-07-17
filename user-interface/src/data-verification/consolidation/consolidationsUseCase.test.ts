@@ -505,4 +505,54 @@ describe('Consolidation UseCase tests', () => {
     expect(store.isValidatingLeadCaseNumber).toBe(false);
     expect(store.foundValidCaseNumber).toBe(false);
   });
+
+  const approvalAlerts = [{ success: true }, { success: false }];
+  test.each(approvalAlerts)('should process approved consolidation', async ({ success }) => {
+    const action: ConfirmActionResults = {
+      status: 'approved',
+    };
+    const leadCase = MockData.getConsolidatedOrderCase();
+    store.setLeadCase(leadCase);
+    store.setConsolidationType('administrative');
+    store.setSelectedCases(MockData.buildArray(MockData.getConsolidatedOrderCase, 4));
+    const consolidationOrders = [
+      MockData.getConsolidationOrder({ override: { leadCase, status: 'approved' } }),
+    ];
+    const order = MockData.getConsolidationOrder();
+    store.setOrder(order);
+    let putSpy;
+    if (success) {
+      putSpy = vi
+        .spyOn(Chapter15MockApi, 'put')
+        .mockResolvedValue({ message: '', count: 1, body: consolidationOrders });
+    } else {
+      putSpy = vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue('some server error');
+    }
+    const expectedSuccessfulAlert = {
+      message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${
+        leadCase.courtName
+      } (${leadCase.courtDivisionName}) was successful.`,
+      type: UswdsAlertStyle.Success,
+      timeOut: 8,
+    };
+    const expectedFailureAlert = {
+      message: 'An unknown error has occurred and has been logged.  Please try again later.',
+      type: UswdsAlertStyle.Error,
+      timeOut: 8,
+    };
+
+    const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
+    useCase.handleConfirmAction(action);
+
+    expect(putSpy).toHaveBeenCalled();
+
+    await waitFor(() => {
+      return onOrderUpdateSpy.mock.calls.length > 0;
+    });
+    if (success) {
+      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert, consolidationOrders, order);
+    } else {
+      expect(onOrderUpdateSpy).toHaveBeenCalledWith(expectedAlert);
+    }
+  });
 });
