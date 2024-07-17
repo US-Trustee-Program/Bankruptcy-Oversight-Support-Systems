@@ -13,7 +13,7 @@ import { ResponseBodySuccess } from '@common/api/response';
 import { Consolidation } from '@common/cams/events';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CaseSummary } from '@common/cams/cases';
-import { ConfirmActionResults } from '../ConsolidationOrderModal';
+import { ConfirmActionResults } from './ConsolidationOrderModal';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
