@@ -78,7 +78,6 @@ const consolidationUseCase = (
     response: ResponseBodySuccess<Consolidation[]>,
     currentLeadCaseId: string,
   ) {
-    // TODO: implement the stubs at the bottom of the test file
     const associations = response.data;
     // if lead is a child of another case
     const childCaseFactsList = associations

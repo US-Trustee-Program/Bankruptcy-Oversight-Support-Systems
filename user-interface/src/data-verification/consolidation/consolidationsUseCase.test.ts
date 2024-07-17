@@ -172,7 +172,6 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should properly set Lead Case when marking lead case', () => {
-    //Should clear lead case input and set lead case when case is marked as lead
     const setLeadCaseSpy = vi.spyOn(store, 'setLeadCase');
     const setLeadCaseIdSpy = vi.spyOn(store, 'setLeadCaseId');
 
