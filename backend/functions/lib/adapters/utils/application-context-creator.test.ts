@@ -53,6 +53,14 @@ describe('Application Context Creator', () => {
       );
     });
 
+    test('should throw an UnauthorizedError if authorization header contains Bearer with malformed token', async () => {
+      context.req.headers.authorization = 'Bearer some-text-that-is-not-possibly-a-valid-jwt';
+
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Malformed Bearer token in authorization header',
+      );
+    });
+
     test('should call user session gateway lookup', async () => {
       const lookupSpy = jest.spyOn(MockUserSessionGateway.prototype, 'lookup');
       await ContextCreator.getApplicationContextSession(context);

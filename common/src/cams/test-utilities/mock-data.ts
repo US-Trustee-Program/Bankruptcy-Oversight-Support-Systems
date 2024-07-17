@@ -10,6 +10,7 @@ import {
 import {
   ConsolidationOrder,
   ConsolidationOrderCase,
+  ConsolidationType,
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
@@ -17,9 +18,16 @@ import { DebtorAttorney, Party } from '../parties';
 import { OFFICES } from './offices.mock';
 import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
-import { ConsolidationFrom, ConsolidationTo } from '../events';
+import {
+  Consolidation,
+  ConsolidationDocumentTypes,
+  ConsolidationFrom,
+  ConsolidationTo,
+} from '../events';
 import { CaseAssignment } from '../assignments';
 import { CamsSession } from '../session';
+import { ResponseBodySuccess } from '../../api/response';
+import { WithPagination } from '../../api/pagination';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -86,6 +94,19 @@ interface Options<T> {
   override?: Partial<T>;
 }
 
+function getConsolidation(options: Options<Consolidation> = { override: {} }): Consolidation {
+  const { override } = options;
+  const documentType: ConsolidationDocumentTypes = override.documentType ?? 'CONSOLIDATION_TO';
+  const consolidationType: ConsolidationType = override.consolidationType ?? 'administrative';
+  return {
+    documentType,
+    consolidationType,
+    caseId: override.caseId ?? randomCaseId(),
+    orderDate: override.orderDate ?? randomDate(),
+    otherCase: override.otherCase ?? getCaseSummary(),
+  } as Consolidation;
+}
+
 function getConsolidatedOrderCase(
   options: Options<ConsolidationOrderCase> = { entityType: 'person', override: {} },
 ) {
@@ -96,6 +117,7 @@ function getConsolidatedOrderCase(
     orderDate: docketEntries[0].dateFiled,
     docketEntries,
     attorneyAssignments: override.attorneyAssignments ?? [getAttorneyAssignment()],
+    associations: override.associations ?? [],
   };
 
   return { ...consolidatedCaseSummary, ...override };
@@ -151,6 +173,66 @@ function getCaseDetail(
     judgeName: faker.person.fullName(),
   };
   return { ...caseDetail, ...override };
+}
+
+/**
+ * @param data T required There is no simple way to determine what type T is and generate
+ *  random data accordingly, so it is required to provide it. We could modify to behave like
+ *  buildArray does and accept a function from here as well, but it should verify the type
+ *  is correct if we do that.
+ * @param self String optional The URI for the resource being mocked
+ */
+function getNonPaginatedResponseBodySuccess<T>(
+  data: T,
+  self: string = 'some-url',
+): ResponseBodySuccess<T> {
+  return {
+    meta: {
+      self,
+      isPaginated: false,
+    },
+    isSuccess: true,
+    data,
+  };
+}
+
+/**
+ * @param data T required There is no simple way to determine what type T is and generate
+ *  random data accordingly, so it is required to provide it. We could modify to behave like
+ *  buildArray does and accept a function from here as well, but it should verify the type
+ *  is correct if we do that.
+ * @param options Options<WithPagination> optional Provide an object like the following:
+ *  {
+ *    entityType?: 'company' | 'person',
+ *    override?: {
+ *      count?: number,
+ *      previous?: UriString,
+ *      next?: UriString,
+ *      limit?: number,
+ *      currentPage?: number
+ *    }
+ *  }
+ * @param self String optional The URI for the resource being mocked
+ */
+function getPaginatedResponseBodySuccess<T>(
+  data: T,
+  options: Options<WithPagination> = { override: {} },
+  self: string = 'some-url',
+): ResponseBodySuccess<T> {
+  const { override } = options;
+  return {
+    meta: {
+      self,
+      isPaginated: true,
+      count: override.count ?? 5,
+      previous: override.previous ?? undefined,
+      next: override.next ?? undefined,
+      limit: override.limit ?? 25,
+      currentPage: override.currentPage ?? 1,
+    },
+    isSuccess: true,
+    data,
+  };
 }
 
 function getTransferOrder(options: Options<TransferOrder> = { override: {} }): TransferOrder {
@@ -360,8 +442,11 @@ export const MockData = {
   getOffices,
   getParty,
   getDocketEntry,
+  getNonPaginatedResponseBodySuccess,
+  getPaginatedResponseBodySuccess,
   getTransferOrder,
   getDebtorAttorney,
+  getConsolidation,
   getConsolidationOrder,
   getConsolidatedOrderCase,
   getConsolidationReference,
