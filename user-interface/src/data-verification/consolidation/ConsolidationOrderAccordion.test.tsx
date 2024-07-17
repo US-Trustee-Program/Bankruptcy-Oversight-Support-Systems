@@ -796,8 +796,10 @@ describe('ConsolidationOrderAccordion tests', () => {
     openAccordion(order.id!);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
+    const rejectButton = document.querySelector(`#accordion-reject-button-${order.id}`);
     const cancelButton = document.querySelector(`#accordion-cancel-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
+    expect(rejectButton).not.toBeEnabled();
 
     const checkbox1 = clickCaseCheckbox(order.id!, 0);
     const checkbox2 = clickCaseCheckbox(order.id!, 1);
@@ -808,6 +810,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
     fireEvent.click(approveButton as HTMLButtonElement);
 
@@ -815,6 +818,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(checkbox1.checked).toBeTruthy();
       expect(checkbox2.checked).toBeTruthy();
       expect(approveButton).toBeEnabled();
+      expect(rejectButton).toBeEnabled();
     });
 
     fireEvent.click(cancelButton as HTMLButtonElement);
@@ -823,6 +827,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(checkbox1.checked).toBeFalsy();
       expect(checkbox2.checked).toBeFalsy();
       expect(approveButton).not.toBeEnabled();
+      expect(rejectButton).not.toBeEnabled();
     });
   });
 

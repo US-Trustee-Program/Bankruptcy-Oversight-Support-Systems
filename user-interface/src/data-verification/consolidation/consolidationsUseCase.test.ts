@@ -100,7 +100,6 @@ describe('Consolidation UseCase tests', () => {
     const clearAllCheckBoxesSpy = vi.spyOn(controls, 'clearAllCheckBoxes');
     const unsetConsolidationTypeSpy = vi.spyOn(controls, 'unsetConsolidationType');
     const showLeadCaseFormSpy = vi.spyOn(store, 'setShowLeadCaseForm');
-    // const disableButtonSpy = vi.spyOn(controls, 'disableButton');
 
     setupLeadCase();
 
@@ -112,10 +111,6 @@ describe('Consolidation UseCase tests', () => {
     expect(clearAllCheckBoxesSpy).toHaveBeenCalled();
     expect(unsetConsolidationTypeSpy).toHaveBeenCalled();
     expect(showLeadCaseFormSpy).toHaveBeenCalledWith(false);
-    // TODO: Cannot figure out how to make sure `updateSubmitButtonsStateSpy` was called.
-    //   The following doesn't work. For some reason the function is called with state in the default configuration.
-    // expect(disableButtonSpy).toHaveBeenCalledWith(controls.rejectButton, false);
-    // expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, false);
   });
 
   test('should call approveConsolidation when approve button is clicked', () => {

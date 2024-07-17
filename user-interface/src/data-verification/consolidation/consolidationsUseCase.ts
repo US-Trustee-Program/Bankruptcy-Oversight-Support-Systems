@@ -340,7 +340,6 @@ const consolidationUseCase = (
     clearSelectedCases();
     handleToggleLeadCaseForm(false);
     controls.unsetConsolidationType();
-    updateSubmitButtonsState();
   }
 
   function handleConfirmAction(action: ConfirmActionResults): void {
