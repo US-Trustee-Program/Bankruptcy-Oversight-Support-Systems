@@ -13,7 +13,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderModal } from '@/data-verification/ConsolidationOrderModal';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
-import { getCaseNumber } from '../../lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;

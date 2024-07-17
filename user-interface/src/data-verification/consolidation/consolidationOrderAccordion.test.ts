@@ -1,7 +1,7 @@
 import {
   fetchLeadCaseAttorneys,
   getCurrentLeadCaseId,
-} from '@/data-verification/consolidation/consolidationOrderAccordion';
+} from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseAssignment } from '@common/cams/assignments';

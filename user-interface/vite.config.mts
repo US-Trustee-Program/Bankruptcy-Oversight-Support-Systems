@@ -63,6 +63,8 @@ export default defineConfig({
         'src/lib/components/**/*.mock.tsx',
         'src/lib/components/utils/http.adapter.ts',
         'src/lib/components/**/*Examples.tsx',
+        '**/data-verification/ConsolidationOrderAccordion.test.tsx',
+        '**/data-verification/*Mock.ts',
         '**/*.d.ts',
         '**/*.test.ts{,x}',
       ],
