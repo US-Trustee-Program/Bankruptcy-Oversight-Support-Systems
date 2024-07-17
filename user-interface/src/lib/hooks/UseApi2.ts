@@ -5,26 +5,26 @@ import { Consolidation } from '@common/cams/events';
 import { useGenericApi } from './UseApi';
 import { Order } from '@common/cams/orders';
 
-const api = useGenericApi();
+const api = useGenericApi;
 
 async function getCaseSummary(caseId: string) {
-  return api.get<CaseSummary>(`/cases/${caseId}/summary`);
+  return api().get<CaseSummary>(`/cases/${caseId}/summary`);
 }
 
 async function getCaseAssignments(caseId: string) {
-  return api.get<CaseAssignment[]>(`/case-assignments/${caseId}`);
+  return api().get<CaseAssignment[]>(`/case-assignments/${caseId}`);
 }
 
 async function getCaseAssociations(caseId: string) {
-  return api.get<Consolidation[]>(`/cases/${caseId}/associated`);
+  return api().get<Consolidation[]>(`/cases/${caseId}/associated`);
 }
 
 async function getOffices() {
-  return api.get<OfficeDetails[]>(`/offices`);
+  return api().get<OfficeDetails[]>(`/offices`);
 }
 
 async function getOrders() {
-  return api.get<Order[]>(`/orders`, {});
+  return api().get<Order[]>(`/orders`, {});
 }
 
 export const Api2 = {
