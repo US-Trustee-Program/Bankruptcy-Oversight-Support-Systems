@@ -40,8 +40,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
 
   const { hidden, statusType, orderType, expandedId } = props;
 
-  //========== USE EFFECTS ==========
-
   useEffect(() => {
     useCase.updateSubmitButtonsState();
   }, [
@@ -55,8 +53,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   useEffect(() => {
     useCase.getValidLeadCase();
   }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
-
-  //========== FORM SUBMISSION ==========
 
   const viewModel: ConsolidationViewModel = {
     approveButton: consolidationControls.approveButton,
