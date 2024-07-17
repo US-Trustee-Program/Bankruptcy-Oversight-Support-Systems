@@ -70,6 +70,13 @@ export type ConsolidationOrder = {
   reason?: string;
 };
 
+const consolidationOrderCaseKeys = [
+  'docketEntries',
+  'orderDate',
+  'attorneyAssignments',
+  'associations',
+];
+
 export type ConsolidationOrderCase = CaseSummary & {
   docketEntries: CaseDocketEntry[];
   orderDate: string;
@@ -80,15 +87,15 @@ export type ConsolidationOrderCase = CaseSummary & {
 export function getCaseSummaryFromConsolidationOrderCase(
   order: RawConsolidationOrder | ConsolidationOrderCase,
 ): CaseSummary {
+  const excludedKeys = [...consolidationOrderCaseKeys, ...rawConsolidationOrderKeys];
+
   const temp: RawConsolidationOrder = { ...(order as RawConsolidationOrder) };
-  delete temp.docketEntries;
-  delete temp.orderDate;
-  delete temp.leadCaseIdHint;
-  delete temp.jobId;
-  delete temp.attorneyAssignments;
+  excludedKeys.forEach((key) => delete temp[key]);
 
   return temp;
 }
+
+const rawConsolidationOrderKeys = ['jobId', 'leadCaseIdHint'];
 
 export type RawConsolidationOrder = ConsolidationOrderCase & {
   jobId: number;

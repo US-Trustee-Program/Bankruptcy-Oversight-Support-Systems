@@ -27,7 +27,7 @@ import {
 import { CaseAssignment } from '../assignments';
 import { CamsSession } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
-import { WithPagination } from '../../../dist/api/pagination';
+import { WithPagination } from '../../api/pagination';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
