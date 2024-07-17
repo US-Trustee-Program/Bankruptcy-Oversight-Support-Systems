@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { registerOktaRefreshToken } from './registerOktaRefreshToken';
+import { registerRefreshOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -66,7 +66,7 @@ export function OktaSession(props: OktaSessionProps) {
     return <AccessDenied />;
   }
 
-  registerOktaRefreshToken(oktaAuth);
+  registerRefreshOktaToken(oktaAuth);
 
   return (
     <Session
