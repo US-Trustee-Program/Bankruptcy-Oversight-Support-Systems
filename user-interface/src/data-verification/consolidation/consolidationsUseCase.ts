@@ -13,7 +13,7 @@ import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CamsSelectOptionList, SearchableSelectOption } from '@/lib/components/CamsSelect';
-import { ConfirmActionResults } from '../ConsolidationOrderModal';
+import { ConfirmActionResults } from './ConsolidationOrderModal';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseAssignment } from '@common/cams/assignments';
 import { Consolidation } from '@common/cams/events';
