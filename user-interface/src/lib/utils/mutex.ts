@@ -1,13 +1,13 @@
 // TODO: Maybe this should be delegated to local storage... WHat happens if the map is scoped to unique tabs/windows if modules are not shared between tabs/windows?
 const allLocks = new Map<string, string[]>();
 
-export function registerSemaphore(name: string) {
+export function registerMutex(name: string) {
   if (!allLocks.has(name)) {
     allLocks.set(name, []);
   }
 }
 
-export function useSemaphore(name: string) {
+export function useMutex(name: string) {
   if (!allLocks.has(name)) {
     throw new Error(`Lock not registered for "${name}"`);
   }
