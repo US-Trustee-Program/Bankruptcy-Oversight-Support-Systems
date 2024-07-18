@@ -2,6 +2,7 @@ import { CamsSession } from '@common/cams/session';
 
 export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
+export const REFRESHING_TOKEN = 'cams:refreshing-token';
 
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
@@ -57,6 +58,32 @@ function removeAck() {
   }
 }
 
+function isTokenBeingRefreshed() {
+  if (window.localStorage) {
+    const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
+    return alreadyRefreshing === 'true';
+  }
+  return null;
+}
+
+function setRefreshingToken() {
+  if (window.localStorage) {
+    const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
+    if (alreadyRefreshing !== 'true') {
+      window.localStorage.setItem(REFRESHING_TOKEN, 'true');
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+function removeRefreshingToken() {
+  if (window.localStorage) {
+    window.localStorage.removeItem(REFRESHING_TOKEN);
+  }
+}
+
 export const LocalStorage = {
   getSession,
   setSession,
@@ -64,6 +91,9 @@ export const LocalStorage = {
   getAck,
   setAck,
   removeAck,
+  isTokenBeingRefreshed,
+  setRefreshingToken,
+  removeRefreshingToken,
 };
 
 export default LocalStorage;

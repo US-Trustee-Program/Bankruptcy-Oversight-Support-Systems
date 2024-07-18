@@ -73,7 +73,6 @@ workspace {
         webapp -> consolidations "Reads and writes consolidation order data"
         webapp -> associatedCases "Reads associated orders from consolidation"
 
-
         nodeapi -> cosmos "Reads and writes case assignments, orders, cases, etc."
 
         cases -> dxtrsql "Gets case data"
@@ -127,6 +126,7 @@ workspace {
             }
             autoLayout
         }
+
         component webapp "CAMSWebapp" {
             include *
             animation {
@@ -149,10 +149,12 @@ workspace {
             }
             autolayout
         }
+
         component okta "OktaLogin" {
             include *
             autolayout
         }
+
         component nodeapi "FunctionsAPIwithWebapp" {
             include *
             animation {
@@ -176,5 +178,4 @@ workspace {
         }
         theme default
     }
-
 }
