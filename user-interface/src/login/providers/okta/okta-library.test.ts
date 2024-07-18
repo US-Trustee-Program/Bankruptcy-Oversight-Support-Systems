@@ -100,7 +100,7 @@ describe('Okta library', () => {
       user: { name: 'mock user' },
       validatedClaims: userClaims,
     };
-    const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue(camsSession);
+    const getSession = vi.spyOn(LocalStorage, 'getSession');
     const setSession = vi.spyOn(LocalStorage, 'setSession');
 
     const lock = vi.fn();
@@ -136,7 +136,7 @@ describe('Okta library', () => {
       expect(setSession).not.toHaveBeenCalled();
     });
 
-    test.only('should refresh the access token', async () => {
+    test('should refresh the access token', async () => {
       vi.spyOn(Date, 'now').mockReturnValue(JUST_BEFORE_EXPIRATION);
       lock.mockReturnValue(MOCK_RECEIPT);
 
@@ -144,6 +144,7 @@ describe('Okta library', () => {
         claims: { ...userClaims, exp: NEW_EXPIRATION },
       } as unknown as AccessToken;
 
+      getSession.mockReturnValue(camsSession);
       getAuthState.mockReturnValueOnce({ isAuthenticated: true }).mockReturnValue({
         isAuthenticated: true,
         accessToken: refreshedAccessToken,
@@ -174,6 +175,8 @@ describe('Okta library', () => {
     test('should refresh the access token after it has expired', async () => {
       vi.spyOn(Date, 'now').mockReturnValue(AFTER_EXPIRATION);
       lock.mockReturnValue(MOCK_RECEIPT);
+
+      getSession.mockReturnValue(camsSession);
       getAuthState.mockReturnValue({ isAuthenticated: true });
       getUser.mockResolvedValue(userClaims);
 
