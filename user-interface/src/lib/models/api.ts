@@ -30,8 +30,6 @@ export function addApiAfterHook(hook: (response: Response) => Promise<void>) {
 }
 
 export default class Api {
-  // public static beforeHooks: (() => Promise<void>)[] = beforeHooks;
-  // public static afterHooks: ((response: Response) => Promise<void>)[] = afterHooks;
   public static headers: Record<string, string> = {};
 
   public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
@@ -47,9 +45,9 @@ export default class Api {
     return path;
   }
 
-  private static executeBeforeHooks() {
+  private static async executeBeforeHooks() {
     for (const hook of beforeHooks) {
-      hook();
+      await hook();
     }
   }
 
@@ -65,7 +63,7 @@ export default class Api {
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
-      this.executeBeforeHooks();
+      await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
@@ -86,7 +84,7 @@ export default class Api {
 
   public static async list(path: string, options: ObjectKeyVal = {}): Promise<ResponseData> {
     try {
-      this.executeBeforeHooks();
+      await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
@@ -117,7 +115,7 @@ export default class Api {
     | ResponseBody
   > {
     try {
-      this.executeBeforeHooks();
+      await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
@@ -144,7 +142,7 @@ export default class Api {
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
-      this.executeBeforeHooks();
+      await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
@@ -168,7 +166,7 @@ export default class Api {
     options?: ObjectKeyVal,
   ): Promise<ResponseData> {
     try {
-      this.executeBeforeHooks();
+      await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPut({ url: Api.host + pathStr, body, headers: this.headers });
