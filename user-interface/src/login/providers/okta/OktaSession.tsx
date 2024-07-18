@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { registerRefreshOktaToken } from './okta-library';
+import { getCamsUser, getValidatedClaims, registerRefreshOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -57,9 +57,7 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   // Map Okta user information to CAMS user
-  const camsUser: CamsUser = {
-    name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN',
-  };
+  const camsUser: CamsUser = getCamsUser(oktaUser);
   const apiToken = oktaAuth.getAccessToken();
 
   if (!apiToken) {
@@ -73,7 +71,7 @@ export function OktaSession(props: OktaSessionProps) {
       provider="okta"
       user={camsUser}
       apiToken={apiToken}
-      validatedClaims={authState?.accessToken?.claims ?? {}}
+      validatedClaims={getValidatedClaims(authState)}
     >
       {props.children}
     </Session>
