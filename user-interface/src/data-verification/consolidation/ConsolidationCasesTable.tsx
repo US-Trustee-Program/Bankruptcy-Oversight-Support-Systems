@@ -20,12 +20,12 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
   selectAllCheckboxes: () => void;
-  clearLeadCase: () => void;
 };
 
 export interface ConsolidationCaseTableProps {
   id: string;
   cases: Array<ConsolidationOrderCase>;
+  leadCaseId?: string;
   onSelect?: (bCase: ConsolidationOrderCase) => void;
   updateAllSelections?: (caseList: ConsolidationOrderCase[]) => void;
   isDataEnhanced: boolean;
@@ -37,14 +37,13 @@ function _ConsolidationCaseTable(
   props: ConsolidationCaseTableProps,
   OrderTableRef: React.Ref<OrderTableImperative>,
 ) {
-  const { id, cases, onSelect, updateAllSelections, onMarkLead } = props;
+  const { id, cases, leadCaseId, onSelect, updateAllSelections, onMarkLead } = props;
 
   const toggleCheckboxRef = useRef<CheckboxRef>(null);
   const [included, setIncluded] = useState<Array<number>>([]);
   const [checkboxGroupState, _setCheckboxGroupState] = useState<CheckboxState>(
     CheckboxState.UNCHECKED,
   );
-  const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
 
   const setCheckboxGroupState = (groupState: CheckboxState) => {
     toggleCheckboxRef.current?.setChecked(groupState);
@@ -108,30 +107,22 @@ function _ConsolidationCaseTable(
   }
 
   function handleLeadCaseButton(bCase: ConsolidationOrderCase) {
-    if (leadCase && leadCase.caseId === bCase.caseId) {
-      setLeadCase(null);
-    } else {
-      setLeadCase(bCase);
-    }
     if (onMarkLead) onMarkLead(bCase);
   }
 
   function setLeadCaseStyle(caseId: string) {
-    return leadCase && leadCase.caseId === caseId
+    return leadCaseId && leadCaseId === caseId
       ? UswdsButtonStyle.Default
       : UswdsButtonStyle.Outline;
   }
 
   function setLeadCaseButtonLabels(caseId: string): ReactNode {
-    return leadCase && leadCase.caseId === caseId ? 'Lead Case' : 'Mark as Lead';
+    return leadCaseId && leadCaseId === caseId ? 'Lead Case' : 'Mark as Lead';
   }
 
   useImperativeHandle(OrderTableRef, () => ({
     clearAllCheckboxes,
     selectAllCheckboxes,
-    clearLeadCase: () => {
-      setLeadCase(null);
-    },
   }));
 
   return (

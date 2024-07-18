@@ -63,7 +63,7 @@ describe('orders model tests', () => {
       expect(summary).toHaveProperty(summaryProperties[idx]);
     }
     for (const idx in consolidationOnlyProperties) {
-      expect(summary).not.toHaveProperty(consolidationOnlyProperties[idx]);
+      expect(summary[consolidationOnlyProperties[idx]]).toBeUndefined();
     }
   });
 
