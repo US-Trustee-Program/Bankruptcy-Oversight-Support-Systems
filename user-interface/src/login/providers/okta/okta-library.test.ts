@@ -10,7 +10,7 @@ import {
 import LocalStorage from '@/lib/utils/local-storage';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
-import * as semaphoreLib from '@/lib/utils/semaphore';
+import * as mutexLib from '@/lib/utils/mutex';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
@@ -105,7 +105,7 @@ describe('Okta library', () => {
 
     const lock = vi.fn();
     const unlock = vi.fn();
-    const useSemaphore = vi.spyOn(semaphoreLib, 'useSemaphore').mockReturnValue({ lock, unlock });
+    const useMutex = vi.spyOn(mutexLib, 'useMutex').mockReturnValue({ lock, unlock });
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -159,7 +159,7 @@ describe('Okta library', () => {
       expect(getOrRenewAccessToken).toHaveBeenCalled();
       expect(getUser).toHaveBeenCalled();
 
-      expect(useSemaphore).toHaveBeenCalled();
+      expect(useMutex).toHaveBeenCalled();
       expect(lock).toHaveBeenCalled();
       expect(unlock).toHaveBeenCalledWith(MOCK_RECEIPT);
 

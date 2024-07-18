@@ -1,12 +1,12 @@
 import OktaAuth, { AuthState, UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
-import { registerSemaphore, useSemaphore } from '@/lib/utils/semaphore';
+import { registerMutex, useMutex } from '@/lib/utils/mutex';
 import { addApiBeforeHook } from '@/lib/models/api';
 
 const SAFE_LIMIT = 300;
 
 const OKTA_TOKEN_REFRESH = 'OKTA_TOKEN_REFRESH';
-registerSemaphore(OKTA_TOKEN_REFRESH);
+registerMutex(OKTA_TOKEN_REFRESH);
 
 export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
   addApiBeforeHook(async () => refreshOktaToken(oktaAuth));
@@ -29,8 +29,8 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
-    const semaphore = useSemaphore(OKTA_TOKEN_REFRESH);
-    const receipt = semaphore.lock();
+    const mutex = useMutex(OKTA_TOKEN_REFRESH);
+    const receipt = mutex.lock();
     if (receipt) {
       try {
         const authState = oktaAuth.authStateManager.getAuthState();
@@ -51,7 +51,7 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
       } catch {
         // failed to renew access token.
       } finally {
-        semaphore.unlock(receipt);
+        mutex.unlock(receipt);
       }
     }
   }
