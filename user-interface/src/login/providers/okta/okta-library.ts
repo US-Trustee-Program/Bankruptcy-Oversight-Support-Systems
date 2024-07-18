@@ -1,12 +1,9 @@
 import OktaAuth, { AuthState, UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
-import { registerMutex, useMutex } from '@/lib/utils/mutex';
 import { addApiBeforeHook } from '@/lib/models/api';
+import { randomInt } from 'node:crypto';
 
 const SAFE_LIMIT = 300;
-
-const OKTA_TOKEN_REFRESH = 'OKTA_TOKEN_REFRESH';
-registerMutex(OKTA_TOKEN_REFRESH);
 
 export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
   addApiBeforeHook(async () => refreshOktaToken(oktaAuth));
@@ -29,30 +26,40 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
-    const mutex = useMutex(OKTA_TOKEN_REFRESH);
-    const receipt = mutex.lock();
-    if (receipt) {
-      try {
-        const authState = oktaAuth.authStateManager.getAuthState();
-        if (authState?.isAuthenticated) {
-          const apiToken = await oktaAuth.getOrRenewAccessToken();
-          const oktaUser = await oktaAuth.getUser();
-          const updatedAuthState = oktaAuth.authStateManager.getAuthState();
+    const isTokenBeingRefreshed = LocalStorage.isTokenBeingRefreshed();
+    if (isTokenBeingRefreshed === null || isTokenBeingRefreshed) {
+      return;
+    } else if (!isTokenBeingRefreshed) {
+      setTimeout(() => refreshTheToken(oktaAuth), randomInt(15));
+    }
+  }
+}
 
-          if (apiToken) {
-            LocalStorage.setSession({
-              provider: 'okta',
-              apiToken,
-              user: getCamsUser(oktaUser),
-              validatedClaims: getValidatedClaims(updatedAuthState),
-            });
-          }
-        }
-      } catch {
-        // failed to renew access token.
-      } finally {
-        mutex.unlock(receipt);
+async function refreshTheToken(oktaAuth: OktaAuth) {
+  const isTokenBeingRefreshed = LocalStorage.isTokenBeingRefreshed();
+  if (isTokenBeingRefreshed === null || isTokenBeingRefreshed) {
+    return;
+  }
+  LocalStorage.setRefreshingToken();
+  try {
+    const authState = oktaAuth.authStateManager.getAuthState();
+    if (authState?.isAuthenticated) {
+      const apiToken = await oktaAuth.getOrRenewAccessToken();
+      const oktaUser = await oktaAuth.getUser();
+      const updatedAuthState = oktaAuth.authStateManager.getAuthState();
+
+      if (apiToken) {
+        LocalStorage.setSession({
+          provider: 'okta',
+          apiToken,
+          user: getCamsUser(oktaUser),
+          validatedClaims: getValidatedClaims(updatedAuthState),
+        });
       }
     }
+  } catch {
+    // failed to renew access token.
+  } finally {
+    LocalStorage.removeRefreshingToken();
   }
 }
