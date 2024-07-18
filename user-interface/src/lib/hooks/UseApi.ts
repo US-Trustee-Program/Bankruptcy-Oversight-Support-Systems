@@ -19,8 +19,7 @@ let context: ApiClient;
  * @returns ApiClient
  */
 function legacyConfiguration(): ApiClient {
-  const api = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
-  return api;
+  return import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : Api;
 }
 
 /**
