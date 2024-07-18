@@ -28,6 +28,7 @@ import { CaseAssignment } from '../assignments';
 import { CamsSession } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
+import { randomUUID } from 'crypto';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -423,7 +424,7 @@ function getJwt(): string {
   const ONE_HOUR = 3600;
 
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR}}`;
+  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR}},"random":"${randomUUID()}"}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
 
@@ -458,3 +459,5 @@ export const MockData = {
   getCamsSession,
   getJwt,
 };
+
+export default MockData;
