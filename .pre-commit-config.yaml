@@ -15,9 +15,10 @@ repos:
           types: [ file ]
           additional_dependencies:
           -   eslint@8.57.0
-          -   eslint-config-prettier
-          -   eslint-plugin-prettier
+          -   eslint-config-prettier@9.1.0
+          -   eslint-plugin-prettier@5.1.3
           -   eslint-plugin-react
+          -   prettier@3.3.2
           -   typescript
           -   '@typescript-eslint/eslint-plugin'
           -   '@typescript-eslint/parser'
