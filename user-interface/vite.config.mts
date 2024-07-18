@@ -63,7 +63,10 @@ export default defineConfig({
         'src/lib/components/**/*.mock.tsx',
         'src/lib/components/utils/http.adapter.ts',
         'src/lib/components/**/*Examples.tsx',
+        '**/data-verification/consolidation/ConsolidationOrderAccordionView.tsx',
+        '**/data-verification/consolidation/*Mock.ts',
         '**/*.d.ts',
+        '**/*.test.ts{,x}',
       ],
       thresholds: {
         branches: 90,
