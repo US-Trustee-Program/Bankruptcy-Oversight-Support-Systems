@@ -424,7 +424,7 @@ function getJwt(): string {
   const ONE_HOUR = 3600;
 
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR}},"random":"${Math.random()}"}`;
+  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR},"random":"${Math.random()}"}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
 

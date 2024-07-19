@@ -31,6 +31,7 @@ describe('MockSession', () => {
         provider: 'mock',
         user,
         accessToken: expect.anything(),
+        expires: expect.any(Number),
         validatedClaims: {},
       },
       {},
