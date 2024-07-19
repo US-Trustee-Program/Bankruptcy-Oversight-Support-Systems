@@ -75,7 +75,7 @@ export function Login(props: LoginProps): React.ReactNode {
       providerComponent = (
         <Session
           provider="none"
-          apiToken={MockData.getJwt()}
+          accessToken={MockData.getJwt()}
           user={props.user ?? { name: 'Super User' }}
           validatedClaims={{}}
         >

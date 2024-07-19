@@ -63,7 +63,6 @@ function isTokenBeingRefreshed() {
     const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
     return alreadyRefreshing === 'true';
   }
-  return null;
 }
 
 function setRefreshingToken() {

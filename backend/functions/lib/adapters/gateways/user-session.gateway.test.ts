@@ -26,13 +26,13 @@ describe('user-session.gateway test', () => {
   const mockName = 'Mock User';
   const expectedSession = MockData.getCamsSession({
     user: { name: mockName },
-    apiToken: jwt,
+    accessToken: jwt,
     provider,
     validatedClaims,
   });
   const mockGetValue = {
     user: { name: 'Wrong Name' },
-    apiToken: jwt,
+    accessToken: jwt,
     provider,
     validatedClaims,
     signature: '',

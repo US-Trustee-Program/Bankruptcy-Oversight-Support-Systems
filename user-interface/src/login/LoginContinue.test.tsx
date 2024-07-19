@@ -22,7 +22,7 @@ describe('LoginContinue', () => {
     .mockImplementation((props: PropsWithChildren) => {
       return (
         <Session
-          apiToken={MockData.getJwt()}
+          accessToken={MockData.getJwt()}
           provider="okta"
           user={{ name: 'Mock User' }}
           validatedClaims={{}}

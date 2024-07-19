@@ -1,9 +1,8 @@
-import OktaAuth, { AuthState, UserClaims } from '@okta/okta-auth-js';
+import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
 import { addApiBeforeHook } from '@/lib/models/api';
-import { randomInt } from 'node:crypto';
 
-const SAFE_LIMIT = 300;
+const SAFE_LIMIT = 2700;
 
 export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
   addApiBeforeHook(async () => refreshOktaToken(oktaAuth));
@@ -13,49 +12,43 @@ export function getCamsUser(oktaUser: UserClaims | null) {
   return { name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
 }
 
-export function getValidatedClaims(authState: AuthState | null) {
-  return authState?.accessToken?.claims ?? {};
-}
-
 export async function refreshOktaToken(oktaAuth: OktaAuth) {
   const now = Math.floor(Date.now() / 1000);
   const session = LocalStorage.getSession();
-  if (!session || !session.validatedClaims.exp) return;
+  if (!session) return;
 
-  const expiration = session.validatedClaims.exp as number;
+  const expiration = session.expires;
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
     const isTokenBeingRefreshed = LocalStorage.isTokenBeingRefreshed();
-    if (isTokenBeingRefreshed === null || isTokenBeingRefreshed) {
+    if (isTokenBeingRefreshed === undefined || isTokenBeingRefreshed) {
       return;
     } else if (!isTokenBeingRefreshed) {
-      setTimeout(() => refreshTheToken(oktaAuth), randomInt(15));
+      const theTime = Math.floor(Math.random() * 15);
+      setTimeout(() => refreshTheToken(oktaAuth), theTime);
     }
   }
 }
 
 async function refreshTheToken(oktaAuth: OktaAuth) {
   const isTokenBeingRefreshed = LocalStorage.isTokenBeingRefreshed();
-  if (isTokenBeingRefreshed === null || isTokenBeingRefreshed) {
+  if (isTokenBeingRefreshed === undefined || isTokenBeingRefreshed) {
     return;
   }
   LocalStorage.setRefreshingToken();
   try {
-    const authState = oktaAuth.authStateManager.getAuthState();
-    if (authState?.isAuthenticated) {
-      const apiToken = await oktaAuth.getOrRenewAccessToken();
-      const oktaUser = await oktaAuth.getUser();
-      const updatedAuthState = oktaAuth.authStateManager.getAuthState();
-
-      if (apiToken) {
-        LocalStorage.setSession({
-          provider: 'okta',
-          apiToken,
-          user: getCamsUser(oktaUser),
-          validatedClaims: getValidatedClaims(updatedAuthState),
-        });
-      }
+    const accessToken = await oktaAuth.getOrRenewAccessToken();
+    const oktaUser = await oktaAuth.getUser();
+    if (accessToken) {
+      const jwt = oktaAuth.token.decode(accessToken);
+      LocalStorage.setSession({
+        provider: 'okta',
+        accessToken,
+        user: getCamsUser(oktaUser),
+        expires: jwt.payload.exp ?? 0,
+        validatedClaims: jwt.payload,
+      });
     }
   } catch {
     // failed to renew access token.

@@ -86,7 +86,7 @@ describe('Login', () => {
     getAuthIssuerFromEnv.mockReturnValue(undefined);
     getLoginProviderFromEnv.mockReturnValue('mock');
     getSession.mockReturnValueOnce({
-      apiToken: MockData.getJwt(),
+      accessToken: MockData.getJwt(),
       provider: 'mock',
       user: {
         name: 'Mock User',
@@ -107,7 +107,7 @@ describe('Login', () => {
     getAuthIssuerFromEnv.mockReturnValue(issuer);
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
-      apiToken: MockData.getJwt(),
+      accessToken: MockData.getJwt(),
       provider: 'okta',
       user: {
         name: 'Mock User',
@@ -128,7 +128,7 @@ describe('Login', () => {
   test('should clear an existing session if the provider changed', () => {
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
-      apiToken: MockData.getJwt(),
+      accessToken: MockData.getJwt(),
       provider: 'mock',
       user: {
         name: 'Mock User',
@@ -150,7 +150,7 @@ describe('Login', () => {
     getAuthIssuerFromEnv.mockReturnValue('http://bogus.issuer.com/oauth/default');
 
     getSession.mockReturnValue({
-      apiToken: MockData.getJwt(),
+      accessToken: MockData.getJwt(),
       provider: 'okta',
       user: {
         name: 'Mock User',

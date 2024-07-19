@@ -8,13 +8,13 @@ import * as accessDeniedModule from '../../AccessDenied';
 import { CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 
-const apiToken = MockData.getJwt();
+const accessToken = MockData.getJwt();
 
 describe('OktaSession', () => {
   const authState = {
     isAuthenticated: false,
   };
-  const getAccessToken = vi.fn().mockReturnValue(apiToken);
+  const getAccessToken = vi.fn().mockReturnValue(accessToken);
   const getUser = vi.fn().mockResolvedValue({
     name: 'Mock User',
     email: 'mock@user.com',
@@ -65,7 +65,14 @@ describe('OktaSession', () => {
     });
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'okta', user, apiToken, validatedClaims: {} },
+      {
+        children: children,
+        provider: 'okta',
+        user,
+        accessToken,
+        expires: expect.any(Number),
+        validatedClaims: {},
+      },
       {},
     );
   });
@@ -97,7 +104,14 @@ describe('OktaSession', () => {
     });
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'okta', user, apiToken, validatedClaims: {} },
+      {
+        children: children,
+        provider: 'okta',
+        user,
+        accessToken,
+        expires: expect.any(Number),
+        validatedClaims: {},
+      },
       {},
     );
   });
@@ -127,7 +141,14 @@ describe('OktaSession', () => {
     });
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'okta', user, apiToken, validatedClaims: {} },
+      {
+        children: children,
+        provider: 'okta',
+        user,
+        expires: expect.any(Number),
+        accessToken,
+        validatedClaims: {},
+      },
       {},
     );
   });

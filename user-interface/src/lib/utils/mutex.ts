@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 // TODO: Maybe this should be delegated to local storage... WHat happens if the map is scoped to unique tabs/windows if modules are not shared between tabs/windows?
 const allLocks = new Map<string, string[]>();
 
@@ -14,7 +16,7 @@ export function useMutex(name: string) {
   const locks = allLocks.get(name)!;
 
   function lock() {
-    const receipt = crypto.randomUUID();
+    const receipt = randomUUID();
     locks.push(receipt);
 
     if (locks[0] === receipt) {
