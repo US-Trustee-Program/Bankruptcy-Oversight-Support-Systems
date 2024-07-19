@@ -25,6 +25,7 @@ describe('LoginContinue', () => {
           accessToken={MockData.getJwt()}
           provider="okta"
           user={{ name: 'Mock User' }}
+          expires={Number.MAX_SAFE_INTEGER}
           validatedClaims={{}}
         >
           {props.children}

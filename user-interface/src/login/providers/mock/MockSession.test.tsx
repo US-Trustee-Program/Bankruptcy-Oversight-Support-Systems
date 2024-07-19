@@ -15,7 +15,9 @@ describe('MockSession', () => {
     const children = <div data-testid={testId}>{childText}</div>;
     render(
       <BrowserRouter>
-        <MockSession user={user}>{children}</MockSession>
+        <MockSession user={user} expires={Number.MAX_SAFE_INTEGER}>
+          {children}
+        </MockSession>
       </BrowserRouter>,
     );
 

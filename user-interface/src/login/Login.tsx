@@ -77,6 +77,7 @@ export function Login(props: LoginProps): React.ReactNode {
           provider="none"
           accessToken={MockData.getJwt()}
           user={props.user ?? { name: 'Super User' }}
+          expires={Number.MAX_SAFE_INTEGER}
           validatedClaims={{}}
         >
           {props.children}

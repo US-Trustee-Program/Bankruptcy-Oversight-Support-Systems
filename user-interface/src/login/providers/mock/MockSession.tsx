@@ -5,7 +5,13 @@ export type MockSessionProps = Omit<SessionProps, 'provider' | 'accessToken' | '
 
 export function MockSession(props: MockSessionProps) {
   return (
-    <Session provider="mock" user={props.user} accessToken={MockData.getJwt()} validatedClaims={{}}>
+    <Session
+      provider="mock"
+      user={props.user}
+      accessToken={MockData.getJwt()}
+      expires={Number.MAX_SAFE_INTEGER}
+      validatedClaims={{}}
+    >
       {props.children}
     </Session>
   );

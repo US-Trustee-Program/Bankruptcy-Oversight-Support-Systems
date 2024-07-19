@@ -91,6 +91,7 @@ describe('Login', () => {
       user: {
         name: 'Mock User',
       },
+      expires: Number.MAX_SAFE_INTEGER,
       validatedClaims: {},
     });
     render(
@@ -112,6 +113,7 @@ describe('Login', () => {
       user: {
         name: 'Mock User',
       },
+      expires: Number.MAX_SAFE_INTEGER,
       validatedClaims: { iss: issuer },
     });
     render(
@@ -133,6 +135,7 @@ describe('Login', () => {
       user: {
         name: 'Mock User',
       },
+      expires: Number.MAX_SAFE_INTEGER,
       validatedClaims: {},
     });
     render(
@@ -155,6 +158,7 @@ describe('Login', () => {
       user: {
         name: 'Mock User',
       },
+      expires: Number.MAX_SAFE_INTEGER,
       validatedClaims: { iss: issuer },
     });
     render(
