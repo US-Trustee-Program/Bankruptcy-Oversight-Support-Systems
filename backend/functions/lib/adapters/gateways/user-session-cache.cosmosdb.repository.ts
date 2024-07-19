@@ -55,7 +55,7 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
       const tokenParts = session.accessToken.split('.');
       ttl = Math.floor(claims.exp - Date.now() / 1000);
       signature = tokenParts[2];
-    } catch {
+    } catch (_err) {
       throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
     }
 
