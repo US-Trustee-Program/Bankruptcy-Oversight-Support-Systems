@@ -42,9 +42,10 @@ export function MockLogin(props: MockLoginProps) {
     if (!payload) return;
 
     const newSession: CamsSession = {
-      apiToken: payload.token,
+      accessToken: payload.token,
       user: selectedRole.user,
       provider: 'mock',
+      expires: Number.MAX_SAFE_INTEGER,
       validatedClaims: {},
     };
     setSession(newSession);
@@ -67,7 +68,8 @@ export function MockLogin(props: MockLoginProps) {
       <Session
         provider="mock"
         user={session.user}
-        apiToken={session.apiToken}
+        accessToken={session.accessToken}
+        expires={session.expires}
         validatedClaims={session.validatedClaims}
       >
         {props.children}

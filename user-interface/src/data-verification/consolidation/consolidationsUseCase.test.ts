@@ -15,24 +15,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { CaseSummary } from '@common/cams/cases';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-
-function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
-  const startTime = Date.now();
-
-  return new Promise((resolve, reject) => {
-    const checkCondition = () => {
-      if (condition()) {
-        resolve();
-      } else if (Date.now() - startTime >= timeout) {
-        reject(new Error('waitFor timed out'));
-      } else {
-        setTimeout(checkCondition, interval);
-      }
-    };
-
-    checkCondition();
-  });
-}
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Consolidation UseCase tests', () => {
   let store: ConsolidationStore;
@@ -43,6 +26,7 @@ describe('Consolidation UseCase tests', () => {
   const mockLeadCase = MockData.getConsolidatedOrderCase();
   const mockOrder = MockData.getConsolidationOrder();
   const onOrderUpdateSpy = vi.fn();
+  const { waitFor } = TestingUtilities;
 
   function setupLeadCase() {
     store.setLeadCase(mockLeadCase);
@@ -141,7 +125,7 @@ describe('Consolidation UseCase tests', () => {
 
     useCase.handleConfirmAction(action);
 
-    await waitFor(() => {
+    await TestingUtilities.waitFor(() => {
       return store.isProcessing === false;
     });
 

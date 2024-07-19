@@ -11,7 +11,6 @@ import {
 } from '@common/api/response';
 import { LocalStorage } from '../utils/local-storage';
 
-// TODO: Possibly use the React Context API to scope the API context to the DOM rather than the module. Add a provider component to configure the API context.
 let context: ApiClient;
 
 /**
@@ -40,7 +39,7 @@ export function setApiContext(api: ApiClient) {
 export function useApi(): ApiClient {
   const api = context ?? legacyConfiguration();
   const session = LocalStorage.getSession();
-  api.headers['Authorization'] = `Bearer ${session?.apiToken}`;
+  api.headers['Authorization'] = `Bearer ${session?.accessToken}`;
   return api;
 }
 

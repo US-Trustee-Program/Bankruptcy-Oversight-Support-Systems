@@ -13,7 +13,8 @@ describe('Session', () => {
       name: 'Mock User',
     },
     provider: 'mock',
-    apiToken: MockData.getJwt(),
+    accessToken: MockData.getJwt(),
+    expires: Number.MAX_SAFE_INTEGER,
     validatedClaims: {},
   };
 

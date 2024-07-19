@@ -4,12 +4,10 @@ import { render, screen } from '@testing-library/react';
 import * as sessionModule from '../../Session';
 import { BrowserRouter } from 'react-router-dom';
 import { CamsUser } from '@common/cams/session';
-import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('MockSession', () => {
   test('should pass a mapped CamsUser, provider, and children to the Session component', () => {
     const user: CamsUser = { name: 'First Last' };
-    const apiToken = MockData.getJwt();
     const testId = 'child-div';
     const childText = 'TEST';
 
@@ -17,7 +15,9 @@ describe('MockSession', () => {
     const children = <div data-testid={testId}>{childText}</div>;
     render(
       <BrowserRouter>
-        <MockSession user={user}>{children}</MockSession>
+        <MockSession user={user} expires={Number.MAX_SAFE_INTEGER}>
+          {children}
+        </MockSession>
       </BrowserRouter>,
     );
 
@@ -26,7 +26,14 @@ describe('MockSession', () => {
     expect(childDiv).toHaveTextContent(childText);
 
     expect(sessionSpy).toHaveBeenCalledWith(
-      { children: children, provider: 'mock', user, apiToken, validatedClaims: {} },
+      {
+        children: children,
+        provider: 'mock',
+        user,
+        accessToken: expect.anything(),
+        expires: expect.any(Number),
+        validatedClaims: {},
+      },
       {},
     );
   });
