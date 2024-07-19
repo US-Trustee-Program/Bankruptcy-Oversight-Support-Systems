@@ -1,4 +1,4 @@
-function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
+async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
   const startTime = Date.now();
 
   return new Promise((resolve, reject) => {

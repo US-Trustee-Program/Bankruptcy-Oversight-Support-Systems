@@ -55,8 +55,9 @@ export class UserSessionGateway implements SessionCache {
       const user = await authGateway.getUser(token);
       const session: CamsSession = {
         user,
-        apiToken: token,
+        accessToken: token,
         provider: provider,
+        expires: jwt.claims.exp,
         validatedClaims: jwt.claims,
       };
       await caseRepository.put(context, session);

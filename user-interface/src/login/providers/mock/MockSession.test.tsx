@@ -28,7 +28,7 @@ describe('MockSession', () => {
         children: children,
         provider: 'mock',
         user,
-        apiToken: expect.anything(),
+        accessToken: expect.anything(),
         validatedClaims: {},
       },
       {},
