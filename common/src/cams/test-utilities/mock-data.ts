@@ -413,6 +413,7 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
     user: { name: 'Mock Name' },
     accessToken: getJwt(),
     provider: 'mock',
+    expires: Number.MAX_SAFE_INTEGER,
     validatedClaims: { claimOne: '' },
     ...override,
   };
