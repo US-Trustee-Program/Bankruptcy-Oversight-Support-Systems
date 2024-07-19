@@ -47,15 +47,15 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
   }
 
   public async put(context: ApplicationContext, session: CamsSession): Promise<CamsSession> {
-    const claims = jwt.decode(session.apiToken) as CamsJwtClaims;
+    const claims = jwt.decode(session.accessToken) as CamsJwtClaims;
 
     let signature;
     let ttl;
     try {
-      const tokenParts = session.apiToken.split('.');
+      const tokenParts = session.accessToken.split('.');
       ttl = Math.floor(claims.exp - Date.now() / 1000);
       signature = tokenParts[2];
-    } catch {
+    } catch (_err) {
       throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
     }
 

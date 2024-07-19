@@ -15,6 +15,8 @@ import { OktaProvider } from './providers/okta/OktaProvider';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { addApiAfterHook } from '@/lib/models/api';
+import { http401Hook } from './login-http401';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -33,17 +35,25 @@ export function Login(props: LoginProps): React.ReactNode {
       `Build variable value: '${provider}'.`;
     return <BadConfiguration message={errorMessage} />;
   }
-  if (provider == 'okta') {
-    issuer = getAuthIssuerFromEnv();
-  }
+
+  addApiAfterHook(http401Hook);
+
   const session: CamsSession | null = LocalStorage.getSession();
   if (session) {
+    if (provider == 'okta') {
+      issuer = getAuthIssuerFromEnv();
+    }
     if (
       session.provider === provider &&
       session.validatedClaims &&
       issuer === session.validatedClaims['iss']
     ) {
-      return <Session {...session}>{props.children}</Session>;
+      const sessionComponent = <Session {...session}>{props.children}</Session>;
+      if (provider == 'okta') {
+        return <OktaProvider>{sessionComponent}</OktaProvider>;
+      } else {
+        return sessionComponent;
+      }
     } else {
       LocalStorage.removeSession();
     }
@@ -65,8 +75,9 @@ export function Login(props: LoginProps): React.ReactNode {
       providerComponent = (
         <Session
           provider="none"
-          apiToken={MockData.getJwt()}
+          accessToken={MockData.getJwt()}
           user={props.user ?? { name: 'Super User' }}
+          expires={Number.MAX_SAFE_INTEGER}
           validatedClaims={{}}
         >
           {props.children}

@@ -47,7 +47,7 @@ describe('User session cache Cosmos repository tests', () => {
   });
 
   test('put should throw for invalid token', async () => {
-    const newSession = { ...expected, apiToken: 'invalid.token' };
+    const newSession = { ...expected, accessToken: 'invalid.token' };
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     await expect(repo.put(context, newSession)).rejects.toThrow('Invalid token received.');
     expect(createSpy).not.toHaveBeenCalled();
@@ -55,7 +55,7 @@ describe('User session cache Cosmos repository tests', () => {
 
   test('put should return CamsSession and create valid ttl on success', async () => {
     const newSession = { ...expected };
-    const camsJwtClaims = jwt.decode(newSession.apiToken) as CamsJwtClaims;
+    const camsJwtClaims = jwt.decode(newSession.accessToken) as CamsJwtClaims;
     const createSpy = jest
       .spyOn(MockHumbleItems.prototype, 'create')
       .mockResolvedValue({ resource: expected });

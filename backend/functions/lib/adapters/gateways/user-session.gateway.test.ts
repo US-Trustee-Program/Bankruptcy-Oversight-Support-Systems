@@ -20,19 +20,19 @@ describe('user-session.gateway test', () => {
     sub: 'user@fake.com',
     aud: 'api://default',
     iat: 0,
-    exp: Math.floor(Date.now() / 1000) + 600,
+    exp: Number.MAX_SAFE_INTEGER,
   };
   const provider = 'okta';
   const mockName = 'Mock User';
   const expectedSession = MockData.getCamsSession({
     user: { name: mockName },
-    apiToken: jwt,
+    accessToken: jwt,
     provider,
     validatedClaims,
   });
   const mockGetValue = {
     user: { name: 'Wrong Name' },
-    apiToken: jwt,
+    accessToken: jwt,
     provider,
     validatedClaims,
     signature: '',
@@ -78,7 +78,7 @@ describe('user-session.gateway test', () => {
       resource: mockGetValue,
     });
     const session = await gateway.lookup(context, jwt, provider);
-    expect(session).toEqual(expectedSession);
+    expect(session).toEqual({ ...expectedSession, expires: expect.any(Number) });
     expect(createSpy).toHaveBeenCalled();
   });
 
@@ -88,7 +88,7 @@ describe('user-session.gateway test', () => {
     });
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const session = await gateway.lookup(context, jwt, provider);
-    expect(session).toEqual(expectedSession);
+    expect(session).toEqual({ ...expectedSession, expires: expect.any(Number) });
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -145,7 +145,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(OktaGateway, 'verifyToken').mockRejectedValue(conflictError);
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const session = await gateway.lookup(context, jwt, provider);
-    expect(session).toEqual(expectedSession);
+    expect(session).toEqual({ ...expectedSession, expires: expect.any(Number) });
     expect(createSpy).not.toHaveBeenCalled();
   });
 

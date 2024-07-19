@@ -398,7 +398,7 @@ const consolidationUseCase = (
         try {
           const assignmentsResponse = await api2.getCaseAssignments(bCase.caseId);
           bCase.attorneyAssignments = assignmentsResponse.data;
-        } finally {
+        } catch {
           // The child case assignments are not critical to perform the consolidation. Catch any error
           // and don't set the attorney assignment for this specific case.
         }

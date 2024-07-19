@@ -4,7 +4,8 @@ export type CamsUser = {
 
 export type CamsSession = {
   user: CamsUser;
-  apiToken: string;
+  accessToken: string;
   provider: string;
+  expires: number;
   validatedClaims: { [key: string]: unknown };
 };

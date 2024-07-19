@@ -8,6 +8,10 @@ workspace {
 
         # System
         cams = softwareSystem "CAMS" "CAse Management System" {
+            okta = container "Okta" "SSO Provider for CAMS" {
+                oktaLoginScreen = component "Okta Login" "SSO for CAMS"
+                oktaRefreshToken = component "Okta Refresh token for the API"
+            }
             webapp = container "Webapp" "The user interface for CAMS" {
                 caseAssignmentsScreen = component "Assignments Screen" "Displays case assignment data and provides for creating assignments"
                 caseDetailsScreen = component "Case Details Screen" "Displays case data including dates and assigned staff, court docket, and audit history"
@@ -47,6 +51,12 @@ workspace {
         aust -> caseAssignmentsScreen "Assigns cases to attorneys"
         attorney -> caseAssignmentsScreen "Views cases assigned to them"
         dataQualityAnalyst -> dataVerificationScreen "Reviews, approves, and rejects case events"
+
+        ## SSO to System Components
+        webapp -> oktaLoginScreen "Allows user to authenticate"
+        oktaLoginScreen -> webapp "Once authenticated returns user to app"
+        nodeapi -> oktaRefreshToken "registers refresh token for 30 minute timeout and validates token"
+        oktaRefreshToken -> nodeapi "refresh token validation"
 
         ## System components to system components
         webapp -> nodeapi "Reads and writes case data and assignments"
@@ -108,6 +118,7 @@ workspace {
             include *
             animation {
                 aust
+                okta
                 webapp
                 nodeapi
                 dxtrsql
@@ -139,6 +150,11 @@ workspace {
             autolayout
         }
 
+        component okta "OktaLogin" {
+            include *
+            autolayout
+        }
+
         component nodeapi "FunctionsAPIwithWebapp" {
             include *
             animation {
@@ -162,5 +178,4 @@ workspace {
         }
         theme default
     }
-
 }

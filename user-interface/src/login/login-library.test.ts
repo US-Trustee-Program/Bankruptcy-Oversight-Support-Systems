@@ -1,5 +1,6 @@
 import { describe } from 'vitest';
 import {
+  getAuthIssuerFromEnv,
   getLoginConfigurationFromEnv,
   getLoginProviderFromEnv,
   isLoginProviderType,
@@ -48,6 +49,21 @@ describe('Login library', () => {
       const expectedConfiguration = { url: 'http://localhost/' };
       vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, 'url=http://localhost/');
       expect(getLoginConfigurationFromEnv()).toEqual(expectedConfiguration);
+    });
+  });
+
+  describe('getAuthIssuerFromEnv', () => {
+    test('should get the auth issuer from the environment', () => {
+      const expectedIssuer = 'http://localhost/';
+      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, `issuer=${expectedIssuer}`);
+      const issuer = getAuthIssuerFromEnv();
+      expect(issuer).toEqual(expectedIssuer);
+    });
+
+    test('should return undefined for the issuer from the environment if not set', () => {
+      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, `foo=bar`);
+      const issuer = getAuthIssuerFromEnv();
+      expect(issuer).toBeUndefined();
     });
   });
 });

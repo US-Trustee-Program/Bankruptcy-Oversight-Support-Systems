@@ -411,8 +411,9 @@ function getDateBeforeToday() {
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
     user: { name: 'Mock Name' },
-    apiToken: getJwt(),
+    accessToken: getJwt(),
     provider: 'mock',
+    expires: Number.MAX_SAFE_INTEGER,
     validatedClaims: { claimOne: '' },
     ...override,
   };
@@ -421,9 +422,10 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
 function getJwt(): string {
   const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
   const ONE_HOUR = 3600;
+  const salt = Math.floor(Math.random() * 10);
 
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR}}`;
+  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR + salt}}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
 
@@ -458,3 +460,5 @@ export const MockData = {
   getCamsSession,
   getJwt,
 };
+
+export default MockData;
