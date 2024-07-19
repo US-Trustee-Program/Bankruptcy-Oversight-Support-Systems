@@ -45,6 +45,7 @@ export function MockLogin(props: MockLoginProps) {
       accessToken: payload.token,
       user: selectedRole.user,
       provider: 'mock',
+      expires: Number.MAX_SAFE_INTEGER,
       validatedClaims: {},
     };
     setSession(newSession);
@@ -68,6 +69,7 @@ export function MockLogin(props: MockLoginProps) {
         provider="mock"
         user={session.user}
         accessToken={session.accessToken}
+        expires={session.expires}
         validatedClaims={session.validatedClaims}
       >
         {props.children}
