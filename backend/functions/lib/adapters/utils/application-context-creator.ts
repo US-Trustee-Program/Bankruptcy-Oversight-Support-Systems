@@ -55,7 +55,13 @@ async function getApplicationContextSession(context: ApplicationContext) {
   }
 
   const sessionGateway: SessionCache = getUserSessionGateway(context);
-  return await sessionGateway.lookup(context, accessToken, context.config.authConfig.provider);
+  const session = await sessionGateway.lookup(
+    context,
+    accessToken,
+    context.config.authConfig.provider,
+  );
+  session.offices = [];
+  return session;
 }
 
 const ContextCreator = {

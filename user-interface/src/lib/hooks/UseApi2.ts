@@ -4,6 +4,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import { Consolidation } from '@common/cams/events';
 import { useGenericApi } from './UseApi';
 import { Order } from '@common/cams/orders';
+import { CamsSession } from '@common/cams/session';
 
 const api = useGenericApi;
 
@@ -19,6 +20,10 @@ async function getCaseAssociations(caseId: string) {
   return api().get<Consolidation[]>(`/cases/${caseId}/associated`);
 }
 
+async function getMe() {
+  return api().get<CamsSession>(`/me`);
+}
+
 async function getOffices() {
   return api().get<OfficeDetails[]>(`/offices`);
 }
@@ -31,6 +36,7 @@ export const Api2 = {
   getCaseSummary,
   getCaseAssignments,
   getCaseAssociations,
+  getMe,
   getOffices,
   getOrders,
 };
