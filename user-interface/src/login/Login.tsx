@@ -16,8 +16,8 @@ import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
-import { http401Hook } from './login-http401';
-import { initializeInactiveLogout } from './login-inactive-logout';
+import { http401Hook } from './http401-logout';
+import { initializeInactiveLogout } from './inactive-logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
