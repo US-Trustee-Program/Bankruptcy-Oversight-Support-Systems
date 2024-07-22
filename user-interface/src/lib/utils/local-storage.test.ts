@@ -1,5 +1,6 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import {
+  LAST_INTERACTION_KEY,
   LocalStorage,
   LOGIN_LOCAL_STORAGE_ACK_KEY,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
@@ -128,6 +129,27 @@ describe('Local storage', () => {
       window.localStorage.setItem(REFRESHING_TOKEN, 'true');
       LocalStorage.removeRefreshingToken();
       expect(window.localStorage.getItem(REFRESHING_TOKEN)).toBeNull();
+    });
+  });
+
+  describe('getLastInteraction', () => {
+    test('should return a timestamp', () => {
+      window.localStorage.setItem(LAST_INTERACTION_KEY, '100');
+      const actual = LocalStorage.getLastInteraction();
+      expect(actual).toEqual(100);
+    });
+
+    test('should return null if the timestamp is not set', () => {
+      window.localStorage.removeItem(LAST_INTERACTION_KEY);
+      const actual = LocalStorage.getLastInteraction();
+      expect(actual).toEqual(null);
+    });
+  });
+
+  describe('setLastInteraction', () => {
+    test('should set a timestamp', () => {
+      LocalStorage.setLastInteraction(100);
+      expect(window.localStorage.getItem(LAST_INTERACTION_KEY)).toEqual('100');
     });
   });
 });

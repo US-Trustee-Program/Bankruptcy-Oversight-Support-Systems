@@ -1,5 +1,5 @@
 import { describe, expect } from 'vitest';
-import { http401Hook } from './login-http401';
+import { http401Hook } from './http401-logout';
 import { LOGOUT_PATH } from './login-library';
 import * as configModule from '@/configuration/apiConfiguration';
 
