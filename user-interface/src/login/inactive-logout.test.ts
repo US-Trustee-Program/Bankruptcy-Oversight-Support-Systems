@@ -5,7 +5,7 @@ import {
   checkForInactivity,
   initializeInactiveLogout,
   resetLastInteraction,
-} from './login-inactive-logout';
+} from './inactive-logout';
 
 describe('Login Inactive Logout', () => {
   describe('inactiveLogoutHook', () => {
