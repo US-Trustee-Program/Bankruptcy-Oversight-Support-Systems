@@ -95,8 +95,11 @@ function setLastInteraction(timestamp: number) {
 function getNumber(key: string): number | null {
   const value = localStorage.getItem(key);
   if (!value) return null;
-  // TODO: Safe parse.
-  return Number.parseInt(value);
+  try {
+    return Number.parseInt(value);
+  } catch {
+    return null;
+  }
 }
 
 function setNumber(key: string, value: number) {
