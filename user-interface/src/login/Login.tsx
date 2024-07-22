@@ -16,7 +16,8 @@ import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
-import { http401Hook } from './login-http401';
+import { http401Hook } from './http401-logout';
+import { initializeInactiveLogout } from './inactive-logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -37,6 +38,7 @@ export function Login(props: LoginProps): React.ReactNode {
   }
 
   addApiAfterHook(http401Hook);
+  initializeInactiveLogout();
 
   const session: CamsSession | null = LocalStorage.getSession();
   if (session) {

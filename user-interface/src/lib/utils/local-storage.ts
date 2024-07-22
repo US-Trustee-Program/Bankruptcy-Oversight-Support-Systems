@@ -3,6 +3,7 @@ import { CamsSession } from '@common/cams/session';
 export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
+export const LAST_INTERACTION_KEY = 'cams:last-interaction';
 
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
@@ -83,6 +84,28 @@ function removeRefreshingToken() {
   }
 }
 
+function getLastInteraction(): number | null {
+  return getNumber(LAST_INTERACTION_KEY);
+}
+
+function setLastInteraction(timestamp: number) {
+  setNumber(LAST_INTERACTION_KEY, timestamp);
+}
+
+function getNumber(key: string): number | null {
+  const value = localStorage.getItem(key);
+  if (!value) return null;
+  try {
+    return Number.parseInt(value);
+  } catch {
+    return null;
+  }
+}
+
+function setNumber(key: string, value: number) {
+  localStorage.setItem(key, value.toString());
+}
+
 export const LocalStorage = {
   getSession,
   setSession,
@@ -93,6 +116,8 @@ export const LocalStorage = {
   isTokenBeingRefreshed,
   setRefreshingToken,
   removeRefreshingToken,
+  getLastInteraction,
+  setLastInteraction,
 };
 
 export default LocalStorage;
