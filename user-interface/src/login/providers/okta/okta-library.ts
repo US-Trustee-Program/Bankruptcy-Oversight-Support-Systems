@@ -42,6 +42,7 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
     const oktaUser = await oktaAuth.getUser();
     if (accessToken) {
       const jwt = oktaAuth.token.decode(accessToken);
+      // TODO: THIS REFRESH IS NOT "AUGMENTED".
       LocalStorage.setSession({
         provider: 'okta',
         accessToken,
