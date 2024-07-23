@@ -13,7 +13,7 @@ type SessionState = {
   errorMessage: string | null;
 };
 
-export function useActions() {
+export function useStateAndActions() {
   const [state, setState] = useState<SessionState>({
     isLoaded: false,
     isError: false,
@@ -58,7 +58,7 @@ export function Session(props: SessionProps) {
   const { accessToken, provider, user, expires, validatedClaims } = props;
   const navigate = useNavigate();
   const location = useLocation();
-  const { state, actions } = useActions();
+  const { state, actions } = useStateAndActions();
 
   useEffect(() => {
     const preflight: CamsSession = { accessToken, provider, user, expires, validatedClaims };
