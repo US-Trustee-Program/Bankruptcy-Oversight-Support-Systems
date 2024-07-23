@@ -4,7 +4,7 @@ import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
-import { PropsWithChildren, useEffect, useState } from 'react';
+import { PropsWithChildren, useCallback, useEffect, useState } from 'react';
 import { getCamsUser, registerRefreshOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
@@ -26,23 +26,27 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   useEffect(() => {
-    oktaAuth
-      .handleLoginRedirect()
-      .then(() => {
-        setRedirectComplete(true);
-      })
-      .catch((e) => {
-        const error = e as Error;
-        // Only report if the error is not the parse error during the continuation redirects.
-        if (error.message !== 'Unable to parse a token from the url') {
-          setCallbackError(error);
-        }
-      });
-  }, [oktaAuth, !authState?.error]);
-
-  useEffect(() => {
     if (redirectComplete && authState?.isAuthenticated) getCurrentUser();
   }, [redirectComplete, authState]);
+
+  const handleLoginRedirect = useCallback(async () => {
+    try {
+      await oktaAuth.handleLoginRedirect();
+      setRedirectComplete(true);
+      Promise.resolve(true);
+    } catch (e) {
+      const error = e as Error;
+      // Only report if the error is not the parse error during the continuation redirects.
+      if (error.message !== 'Unable to parse a token from the url') {
+        setCallbackError(error);
+      }
+      Promise.reject(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    handleLoginRedirect();
+  }, [oktaAuth, !authState?.error]);
 
   if (authState?.error || callbackError) {
     return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
@@ -53,6 +57,7 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   if (redirectComplete && !oktaUser) {
+    setRedirectComplete(false);
     return <Interstitial id="interstital-getuser" caption="Get user information..."></Interstitial>;
   }
 
