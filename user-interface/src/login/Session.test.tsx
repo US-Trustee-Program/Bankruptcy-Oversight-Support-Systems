@@ -15,7 +15,7 @@ describe('Session', () => {
     provider: 'mock',
     accessToken: MockData.getJwt(),
     expires: Number.MAX_SAFE_INTEGER,
-    validatedClaims: {},
+    issuer: 'http://issuer',
   };
 
   const navigate = vi.fn();

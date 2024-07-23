@@ -16,6 +16,7 @@ async function waitFor(condition: () => boolean, timeout = 5000, interval = 50):
   });
 }
 
+export const urlRegex = /https?:\/\/.*\//;
 export const TestingUtilities = {
   waitFor,
 };

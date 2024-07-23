@@ -88,11 +88,11 @@ describe('Login', () => {
     getSession.mockReturnValueOnce({
       accessToken: MockData.getJwt(),
       provider: 'mock',
+      issuer: 'http://issuer',
       user: {
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
-      validatedClaims: {},
     });
     render(
       <BrowserRouter>
@@ -110,11 +110,12 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'okta',
+      issuer: 'http://issuer',
+
       user: {
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
-      validatedClaims: { iss: issuer },
     });
     render(
       <BrowserRouter>
@@ -132,11 +133,11 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'mock',
+      issuer: 'http://issuer',
       user: {
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
-      validatedClaims: {},
     });
     render(
       <BrowserRouter>
@@ -155,11 +156,11 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'okta',
+      issuer: 'http://different.issuer.com/oauth/default',
       user: {
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
-      validatedClaims: { iss: issuer },
     });
     render(
       <BrowserRouter>

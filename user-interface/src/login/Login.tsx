@@ -45,11 +45,7 @@ export function Login(props: LoginProps): React.ReactNode {
     if (provider == 'okta') {
       issuer = getAuthIssuerFromEnv();
     }
-    if (
-      session.provider === provider &&
-      session.validatedClaims &&
-      issuer === session.validatedClaims['iss']
-    ) {
+    if (session.provider === provider && issuer === session.issuer) {
       const sessionComponent = <Session {...session}>{props.children}</Session>;
       if (provider == 'okta') {
         return <OktaProvider>{sessionComponent}</OktaProvider>;
@@ -80,7 +76,7 @@ export function Login(props: LoginProps): React.ReactNode {
           accessToken={MockData.getJwt()}
           user={props.user ?? { name: 'Super User' }}
           expires={Number.MAX_SAFE_INTEGER}
-          validatedClaims={{}}
+          issuer={issuer ?? ''}
         >
           {props.children}
         </Session>

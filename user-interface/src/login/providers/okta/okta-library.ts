@@ -48,7 +48,7 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
         accessToken,
         user: getCamsUser(oktaUser),
         expires: jwt.payload.exp ?? 0,
-        validatedClaims: jwt.payload,
+        issuer: jwt.payload.iss ?? '',
       });
     }
   } catch {

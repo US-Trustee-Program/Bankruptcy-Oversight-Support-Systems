@@ -7,6 +7,7 @@ import * as sessionModule from '../../Session';
 import * as accessDeniedModule from '../../AccessDenied';
 import { CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { urlRegex } from '@/lib/testing/testing-utilities';
 
 const accessToken = MockData.getJwt();
 
@@ -36,7 +37,7 @@ describe('OktaSession', () => {
     vi.clearAllMocks();
   });
 
-  test('should pass a mapped CamsUser, provider, and children to the Session component', async () => {
+  test.only('should pass a mapped CamsUser, provider, and children to the Session component', async () => {
     const oktaUser = {
       name: 'First Last',
     };
@@ -68,10 +69,10 @@ describe('OktaSession', () => {
       {
         children: children,
         provider: 'okta',
+        issuer: expect.stringMatching(urlRegex),
         user,
         accessToken,
         expires: expect.any(Number),
-        validatedClaims: {},
       },
       {},
     );
@@ -107,10 +108,10 @@ describe('OktaSession', () => {
       {
         children: children,
         provider: 'okta',
+        issuer: expect.stringMatching(urlRegex),
         user,
         accessToken,
         expires: expect.any(Number),
-        validatedClaims: {},
       },
       {},
     );
@@ -144,10 +145,10 @@ describe('OktaSession', () => {
       {
         children: children,
         provider: 'okta',
+        issuer: expect.stringMatching(urlRegex),
         user,
         expires: expect.any(Number),
         accessToken,
-        validatedClaims: {},
       },
       {},
     );

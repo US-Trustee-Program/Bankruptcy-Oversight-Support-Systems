@@ -413,8 +413,8 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
     user: { name: 'Mock Name' },
     accessToken: getJwt(),
     provider: 'mock',
+    issuer: 'http://issuer',
     expires: Number.MAX_SAFE_INTEGER,
-    validatedClaims: { claimOne: '' },
     ...override,
   };
 }
@@ -425,7 +425,7 @@ function getJwt(): string {
   const salt = Math.floor(Math.random() * 10);
 
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR + salt}}`;
+  const payload = `{"iss":"http://fake.issuer.com/oauth2/default","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR + salt}}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
 

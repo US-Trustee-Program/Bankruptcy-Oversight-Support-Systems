@@ -14,6 +14,7 @@ async function applicationContextCreator(
   functionContext: Context,
   request: HttpRequest,
 ): Promise<ApplicationContext> {
+  console.log('applicationContextCreator', request.headers['authorization']);
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
   const logger = new LoggerImpl(functionContext.invocationId, functionContext.log);
@@ -60,7 +61,6 @@ async function getApplicationContextSession(context: ApplicationContext) {
     accessToken,
     context.config.authConfig.provider,
   );
-  session.offices = [];
   return session;
 }
 
