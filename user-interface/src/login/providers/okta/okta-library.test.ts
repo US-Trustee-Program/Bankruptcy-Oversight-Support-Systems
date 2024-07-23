@@ -4,7 +4,8 @@ import { getCamsUser, refreshOktaToken, registerRefreshOktaToken } from './okta-
 import LocalStorage from '@/lib/utils/local-storage';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { urlRegex } from '@/lib/testing/testing-utilities';
+import { CamsSession } from '@common/cams/session';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
@@ -58,6 +59,7 @@ describe('Okta library', () => {
     let oktaAuth: OktaAuth;
 
     const userClaims: UserClaims = {
+      iss: 'http://issuer',
       sub: 'nobody@nodomain.xyz',
       name: 'mock user',
       exp: EXPIRATION_SECONDS,
@@ -65,12 +67,12 @@ describe('Okta library', () => {
     const getUser = vi.spyOn(OktaAuth.prototype, 'getUser');
     const getOrRenewAccessToken = vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken');
 
-    const camsSession = {
+    const camsSession: CamsSession = {
       provider: 'okta',
       accessToken: ACCESS_TOKEN,
       user: { name: 'mock user' },
       expires: EXPIRATION_SECONDS,
-      validatedClaims: userClaims,
+      issuer: userClaims.iss ?? '',
     };
     const getSession = vi.spyOn(LocalStorage, 'getSession');
     const setSession = vi.spyOn(LocalStorage, 'setSession');
@@ -142,7 +144,7 @@ describe('Okta library', () => {
         accessToken: REFRESHED_ACCESS_TOKEN,
         user: expect.any(Object),
         expires: expect.any(Number),
-        validatedClaims: expect.any(Object),
+        issuer: expect.stringMatching(urlRegex),
       });
     });
 

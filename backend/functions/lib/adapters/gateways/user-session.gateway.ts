@@ -52,13 +52,14 @@ export class UserSessionGateway implements SessionCache {
           message: 'Unable to verify token.',
         });
       }
+      // TODO: map jwt.claims to user.offices and user.roles
       const user = await authGateway.getUser(token);
       const session: CamsSession = {
         user,
         accessToken: token,
         provider: provider,
         expires: jwt.claims.exp,
-        validatedClaims: jwt.claims,
+        issuer: jwt.claims.iss,
       };
       await caseRepository.put(context, session);
 

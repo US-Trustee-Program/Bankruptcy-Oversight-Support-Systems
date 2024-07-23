@@ -60,7 +60,7 @@ export function OktaSession(props: OktaSessionProps) {
   const camsUser: CamsUser = getCamsUser(oktaUser);
   const accessToken = oktaAuth.getAccessToken();
   const expires = authState?.accessToken?.claims?.exp ?? 0;
-  const validatedClaims = authState?.accessToken?.claims ?? {};
+  const issuer = authState?.accessToken?.claims.iss ?? '';
 
   if (!accessToken) {
     return <AccessDenied />;
@@ -74,7 +74,7 @@ export function OktaSession(props: OktaSessionProps) {
       user={camsUser}
       accessToken={accessToken}
       expires={expires}
-      validatedClaims={validatedClaims}
+      issuer={issuer}
     >
       {props.children}
     </Session>

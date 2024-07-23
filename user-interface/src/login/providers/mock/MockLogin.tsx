@@ -8,7 +8,6 @@ import { BlankPage } from '@/login/BlankPage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import { usersWithRole, MockRole } from '@common/cams/mock-role';
 import apiConfiguration from '@/configuration/apiConfiguration';
-import ComboBox from '@/lib/components/combobox/ComboBox';
 
 type MockLoginState = {
   session: CamsSession | null;
@@ -62,8 +61,8 @@ export function useStateAndActions() {
       accessToken: payload.token,
       user: state.selectedRole.user,
       provider: 'mock',
+      issuer,
       expires: Number.MAX_SAFE_INTEGER,
-      validatedClaims: {},
     };
 
     setState(newState);
@@ -99,7 +98,7 @@ export function MockLogin(props: MockLoginProps) {
         user={state.session.user}
         accessToken={state.session.accessToken}
         expires={state.session.expires}
-        validatedClaims={state.session.validatedClaims}
+        issuer={state.session.issuer}
       >
         {props.children}
       </Session>
@@ -113,8 +112,6 @@ export function MockLogin(props: MockLoginProps) {
         heading={'Login'}
         content={
           <>
-            <label htmlFor="office">Choose and office:</label>
-            <ComboBox name="office" options={[]}></ComboBox>
             <RadioGroup label="Choose a role:">
               {usersWithRole.map((role, idx) => {
                 return (

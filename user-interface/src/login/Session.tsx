@@ -55,13 +55,13 @@ export function useStateAndActions() {
 export type SessionProps = CamsSession & PropsWithChildren;
 
 export function Session(props: SessionProps) {
-  const { accessToken, provider, user, expires, validatedClaims } = props;
+  const { accessToken, provider, user, expires, issuer } = props;
   const navigate = useNavigate();
   const location = useLocation();
   const { state, actions } = useStateAndActions();
 
   useEffect(() => {
-    const preflight: CamsSession = { accessToken, provider, user, expires, validatedClaims };
+    const preflight: CamsSession = { accessToken, provider, user, expires, issuer };
     LocalStorage.setSession(preflight);
     actions.getMe();
   }, []);
@@ -79,7 +79,6 @@ export function Session(props: SessionProps) {
   }
 
   if (state.isLoaded && !state.isError) {
-    //if (LOGIN_PATHS.includes(location.pathname)) return <></>;
     return <>{props.children}</>;
   }
 }

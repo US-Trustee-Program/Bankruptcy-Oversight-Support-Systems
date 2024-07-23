@@ -26,7 +26,7 @@ describe('LoginContinue', () => {
           provider="okta"
           user={{ name: 'Mock User' }}
           expires={Number.MAX_SAFE_INTEGER}
-          validatedClaims={{}}
+          issuer="http://issuer"
         >
           {props.children}
         </Session>
