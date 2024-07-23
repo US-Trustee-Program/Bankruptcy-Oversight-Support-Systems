@@ -37,11 +37,10 @@ describe('OktaSession', () => {
     vi.clearAllMocks();
   });
 
-  test.only('should pass a mapped CamsUser, provider, and children to the Session component', async () => {
+  test('should pass a mapped CamsUser, provider, and children to the Session component', async () => {
     const oktaUser = {
       name: 'First Last',
     };
-    const user: CamsUser = { name: oktaUser.name };
     const testId = 'child-div';
     const childText = 'TEST';
 
@@ -70,7 +69,7 @@ describe('OktaSession', () => {
         children: children,
         provider: 'okta',
         issuer: expect.stringMatching(urlRegex),
-        user,
+        user: oktaUser,
         accessToken,
         expires: expect.any(Number),
       },
