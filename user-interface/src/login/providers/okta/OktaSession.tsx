@@ -62,14 +62,21 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   // Map Okta user information to CAMS user
+  // TODO: This is the first of two calls to getUser, but this response is not the one we use. The api returns user details with the /me endpoint. Just skip this call??
   const camsUser: CamsUser = getCamsUser(oktaUser);
   const accessToken = oktaAuth.getAccessToken();
-  const expires = authState?.accessToken?.claims?.exp ?? 0;
-  const issuer = authState?.accessToken?.claims.iss ?? '';
 
   if (!accessToken) {
     return <AccessDenied />;
   }
+  const oktaJwt = oktaAuth.token.decode(accessToken);
+
+  if (!oktaJwt.payload.iss || !oktaJwt.payload.exp) {
+    return <AccessDenied message="Invalid issuer or expiration claims." />;
+  }
+
+  const expires = oktaJwt.payload.exp;
+  const issuer = oktaJwt.payload.iss;
 
   registerRefreshOktaToken(oktaAuth);
 

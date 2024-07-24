@@ -56,7 +56,11 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
 export async function getUser(accessToken: string) {
   const decodedToken = jwt.decode(accessToken);
   const role = mockRoles.find((role) => role.sub === decodedToken.sub);
-  return role.user;
+
+  // The list of mock users has the full augmented CamsUser, but this is not what a third party IdP will return.
+  // Limit the user response to only the properties expected to come from the IdP.
+  const { name } = role.user;
+  return { name };
 }
 
 const MockOpenIdConnectGateway: OpenIdConnectGateway = {
