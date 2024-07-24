@@ -5,7 +5,7 @@ import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/hooks/UseApi2';
 import { AccessDenied } from './AccessDenied';
-import { BlankPage } from './BlankPage';
+import { Interstitial } from './Interstitial';
 
 type SessionState = {
   isLoaded: boolean;
@@ -71,7 +71,9 @@ export function Session(props: SessionProps) {
   }, [state.isLoaded === true]);
 
   if (!state.isLoaded) {
-    return <BlankPage>Loading AUGMENTED session from Cams API</BlankPage>;
+    return (
+      <Interstitial id="interstital-loading-session" caption="Loading session..."></Interstitial>
+    );
   }
 
   if (state.isError) {
