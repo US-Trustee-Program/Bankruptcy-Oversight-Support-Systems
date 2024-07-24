@@ -1,7 +1,7 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { MockRole, usersWithRole } from '../../../../../common/src/cams/mock-role';
+import { MockRole, usersWithRole } from '../../../../../common/src/cams/test-utilities/mock-role';
 import {
   CamsJwt,
   CamsJwtClaims,
