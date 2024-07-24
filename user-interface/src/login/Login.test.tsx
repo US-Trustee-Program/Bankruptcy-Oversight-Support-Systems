@@ -88,7 +88,7 @@ describe('Login', () => {
     getSession.mockReturnValueOnce({
       accessToken: MockData.getJwt(),
       provider: 'mock',
-      issuer: 'http://issuer',
+      issuer: 'http://issuer/',
       user: {
         name: 'Mock User',
       },
@@ -110,7 +110,7 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'okta',
-      issuer: 'http://issuer',
+      issuer: 'http://issuer/',
 
       user: {
         name: 'Mock User',
@@ -133,7 +133,7 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'mock',
-      issuer: 'http://issuer',
+      issuer: 'http://issuer/',
       user: {
         name: 'Mock User',
       },

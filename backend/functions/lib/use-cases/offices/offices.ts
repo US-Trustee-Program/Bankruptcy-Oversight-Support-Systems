@@ -7,4 +7,13 @@ export class OfficesUseCase {
     const gateway = getOfficesGateway(applicationContext);
     return gateway.getOffices(applicationContext);
   }
+
+  public async getOfficesByCourtIdAndOfficeCode(
+    applicationContext: ApplicationContext,
+    courtId: string,
+    officeCode: string,
+  ): Promise<OfficeDetails> {
+    const gateway = getOfficesGateway(applicationContext);
+    return gateway.getOfficeByCourtIdAndOfficeCode(applicationContext, courtId, officeCode);
+  }
 }

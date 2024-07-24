@@ -70,6 +70,10 @@ function getOffices() {
   return OFFICES;
 }
 
+function getOfficeByCourtIdAndOfficeCode(courtId: string, officeCode: string) {
+  return OFFICES.find((office) => office.courtId === courtId && office.officeCode === officeCode);
+}
+
 function randomOffice() {
   return OFFICES[randomInt(OFFICES.length - 1)];
 }
@@ -413,7 +417,7 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
     user: { name: 'Mock Name' },
     accessToken: getJwt(),
     provider: 'mock',
-    issuer: 'http://issuer',
+    issuer: 'http://issuer/',
     expires: Number.MAX_SAFE_INTEGER,
     ...override,
   };
@@ -442,6 +446,7 @@ export const MockData = {
   getCaseSummary,
   getCaseDetail,
   getOffices,
+  getOfficeByCourtIdAndOfficeCode,
   getParty,
   getDocketEntry,
   getNonPaginatedResponseBodySuccess,

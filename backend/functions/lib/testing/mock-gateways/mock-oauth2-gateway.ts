@@ -29,6 +29,8 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
     sub: validMockRole.sub,
     iss: context.req.url,
     exp: SECONDS_SINCE_EPOCH + ONE_DAY,
+    //groups: validMockRole.groups,
+    groups: [],
   };
 
   const token = jwt.sign(claims, key);
@@ -42,6 +44,7 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
     sub: payload.sub!,
     aud: payload.aud!,
     exp: payload.exp!,
+    groups: payload.groups!,
     ...payload,
   };
 
@@ -56,11 +59,7 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
 export async function getUser(accessToken: string) {
   const decodedToken = jwt.decode(accessToken);
   const role = mockRoles.find((role) => role.sub === decodedToken.sub);
-
-  // The list of mock users has the full augmented CamsUser, but this is not what a third party IdP will return.
-  // Limit the user response to only the properties expected to come from the IdP.
-  const { name } = role.user;
-  return { name };
+  return role.user;
 }
 
 const MockOpenIdConnectGateway: OpenIdConnectGateway = {

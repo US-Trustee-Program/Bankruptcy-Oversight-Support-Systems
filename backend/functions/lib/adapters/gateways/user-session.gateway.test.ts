@@ -35,7 +35,7 @@ describe('user-session.gateway test', () => {
     user: { name: 'Wrong Name' },
     accessToken: jwt,
     provider,
-    issuer: 'http://issuer',
+    issuer: 'http://issuer/',
     expires: Number.MAX_SAFE_INTEGER,
     // signature: '',
     // ttl: 0,
