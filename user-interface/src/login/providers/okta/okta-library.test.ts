@@ -59,7 +59,7 @@ describe('Okta library', () => {
     let oktaAuth: OktaAuth;
 
     const userClaims: UserClaims = {
-      iss: 'http://issuer',
+      iss: 'http://issuer/',
       sub: 'nobody@nodomain.xyz',
       name: 'mock user',
       exp: EXPIRATION_SECONDS,

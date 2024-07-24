@@ -19,4 +19,12 @@ export class MockOfficesGateway implements OfficesGatewayInterface {
   getOffices(_applicationContext: ApplicationContext): Promise<OfficeDetails[]> {
     return Promise.resolve(MockData.getOffices());
   }
+
+  async getOfficeByCourtIdAndOfficeCode(
+    _applicationContext: ApplicationContext,
+    courtId: string,
+    officeCode: string,
+  ): Promise<OfficeDetails> {
+    return MockData.getOfficeByCourtIdAndOfficeCode(courtId, officeCode);
+  }
 }
