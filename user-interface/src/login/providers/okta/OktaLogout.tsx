@@ -18,6 +18,8 @@ export function OktaLogout() {
     });
   }, []);
 
-  if (!loggedOut) return <Interstitial caption="Logging out..."></Interstitial>;
+  if (!loggedOut) {
+    return <Interstitial id="interstital-logout" caption="Logging out..."></Interstitial>;
+  }
   return <SessionEnd />;
 }
