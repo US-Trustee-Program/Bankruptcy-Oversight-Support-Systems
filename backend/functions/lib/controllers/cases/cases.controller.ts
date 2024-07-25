@@ -24,7 +24,30 @@ export class CasesController {
     return this.caseManagement.getCaseDetail(this.applicationContext, requestQueryFilters.caseId);
   }
 
-  public async searchCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
+  public async getCasesByUserSessionOffices(
+    request: CamsHttpRequest,
+  ): Promise<ResponseBody<CaseBasics[]>> {
+    type CasesSearchQueryString = Omit<CasesSearchPredicate, 'chapters'> & {
+      chapters: string;
+    };
+
+    const queryString = request.query as unknown as CasesSearchQueryString;
+    const { chapters, ...otherProps } = queryString;
+
+    const divisionCodes = this.applicationContext.session.user.offices.map(
+      (office) => office.courtDivisionCode,
+    );
+
+    const predicate: CasesSearchPredicate = setPaginationDefaults({
+      ...otherProps,
+      divisionCodes,
+      chapters: chapters?.split(','),
+    });
+
+    return this.searchCases(predicate, request.url);
+  }
+
+  public async searchAllCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
     type CasesSearchQueryString = Omit<CasesSearchPredicate, 'divisionCodes, chapters'> & {
       divisionCodes: string;
       chapters: string;
@@ -38,17 +61,24 @@ export class CasesController {
       chapters: chapters?.split(','),
     });
 
+    return this.searchCases(predicate, request.url);
+  }
+
+  async searchCases(
+    predicate: CasesSearchPredicate,
+    url: string,
+  ): Promise<ResponseBody<CaseBasics[]>> {
     const cases = await this.caseManagement.searchCases(this.applicationContext, predicate);
 
     const meta: ResponseMetaData = {
       isPaginated: true,
       count: cases.length,
-      self: request.url,
+      self: url,
       limit: predicate.limit,
       currentPage: getCurrentPage(cases.length, predicate),
     };
     if (cases.length > predicate.limit) {
-      const next = new URL(request.url);
+      const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
       meta.next = next.href;
@@ -56,7 +86,7 @@ export class CasesController {
       meta.count = cases.length;
     }
     if (predicate.offset > 0) {
-      const previous = new URL(request.url);
+      const previous = new URL(url);
       previous.searchParams.set('limit', predicate.limit.toString());
       previous.searchParams.set('offset', (predicate.offset - predicate.limit).toString());
       meta.previous = previous.href;

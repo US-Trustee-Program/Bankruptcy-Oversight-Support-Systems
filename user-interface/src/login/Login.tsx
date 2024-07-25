@@ -18,6 +18,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';
+import ApiConfiguration from '@/configuration/apiConfiguration';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -44,6 +45,10 @@ export function Login(props: LoginProps): React.ReactNode {
   if (session) {
     if (provider == 'okta') {
       issuer = getAuthIssuerFromEnv();
+    } else if (provider === 'mock') {
+      const { protocol, server, port, basePath } = ApiConfiguration;
+      const portString = port ? ':' + port : '';
+      issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
     }
     if (session.provider === provider && issuer === session.issuer) {
       const sessionComponent = <Session {...session}>{props.children}</Session>;

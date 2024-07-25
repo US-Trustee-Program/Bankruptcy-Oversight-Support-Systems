@@ -414,7 +414,7 @@ function getDateBeforeToday() {
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
-    user: { name: 'Mock Name' },
+    user: { name: 'Mock Name', offices: [randomOffice()] },
     accessToken: getJwt(),
     provider: 'mock',
     issuer: 'http://issuer/',
@@ -441,6 +441,7 @@ function getJwt(): string {
 
 export const MockData = {
   randomCaseId,
+  randomOffice,
   getAttorneyAssignment,
   getCaseBasics,
   getCaseSummary,

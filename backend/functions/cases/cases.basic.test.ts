@@ -57,7 +57,7 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
             return result;
           }
         },
-        searchCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
+        searchAllCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
           return buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
         },
       };

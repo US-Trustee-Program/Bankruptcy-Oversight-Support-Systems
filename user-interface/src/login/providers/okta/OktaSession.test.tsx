@@ -257,4 +257,100 @@ describe('OktaSession', () => {
       expect(accessDeniedSpy).toHaveBeenCalled();
     });
   });
+
+  test('should render AccessDenied if a JWT does not have expiration', async () => {
+    const oktaUser = {
+      name: 'First Last',
+    };
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const decode = vi.fn().mockReturnValue({
+      payload: {
+        exp: undefined,
+        iss: 'https://issuer/',
+      },
+    });
+
+    getAccessToken.mockReturnValue(accessToken);
+    getUser.mockResolvedValue(oktaUser);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+    useOktaAuth.mockImplementation(() => {
+      return {
+        oktaAuth: {
+          handleLoginRedirect,
+          getUser,
+          getAccessToken,
+          token: {
+            decode,
+          },
+        },
+        authState,
+      };
+    });
+
+    const accessDeniedSpy = vi.spyOn(accessDeniedModule, 'AccessDenied');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(accessDeniedSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should render AccessDenied if a JWT does not have issuer', async () => {
+    const oktaUser = {
+      name: 'First Last',
+    };
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const decode = vi.fn().mockReturnValue({
+      payload: {
+        exp: Number.MAX_SAFE_INTEGER,
+        iss: undefined,
+      },
+    });
+
+    getAccessToken.mockReturnValue(accessToken);
+    getUser.mockResolvedValue(oktaUser);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+    useOktaAuth.mockImplementation(() => {
+      return {
+        oktaAuth: {
+          handleLoginRedirect,
+          getUser,
+          getAccessToken,
+          token: {
+            decode,
+          },
+        },
+        authState,
+      };
+    });
+
+    const accessDeniedSpy = vi.spyOn(accessDeniedModule, 'AccessDenied');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+    await waitFor(() => {
+      expect(accessDeniedSpy).toHaveBeenCalledWith(
+        {
+          message: 'Invalid issuer or expiration claims.',
+        },
+        {},
+      );
+    });
+  });
 });
