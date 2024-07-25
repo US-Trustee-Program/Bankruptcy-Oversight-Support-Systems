@@ -55,9 +55,15 @@ describe('Login', () => {
     vi.resetAllMocks();
   });
 
-  test('should load provider from environment vars', () => {
+  test('should load provider from environment vars', async () => {
     vi.stubEnv('CAMS_LOGIN_PROVIDER', 'okta');
     vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', `{"issuer": "${issuer}", "clientId": "000000000000"}`);
+
+    vi.resetModules();
+    const { Login } = await import('./Login');
+    const libraryModule = await import('@/login/login-library');
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -79,10 +85,20 @@ describe('Login', () => {
     expect(sessionComponent).not.toHaveBeenCalled();
   });
 
-  test('should check for an existing mock login and skip if a session exists', () => {
-    getAuthIssuerFromEnv.mockReturnValue(undefined);
-    getLoginProviderFromEnv.mockReturnValue('mock');
-    getSession.mockReturnValueOnce({
+  test('should check for an existing mock login and skip if a session exists', async () => {
+    vi.stubEnv('CAMS_LOGIN_PROVIDER', 'mock');
+    vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', '');
+    vi.stubEnv('CAMS_SERVER_PROTOCOL', 'https');
+    vi.stubEnv('CAMS_SERVER_HOSTNAME', 'fake.issuer.com');
+    vi.stubEnv('CAMS_SERVER_PORT', '');
+    vi.stubEnv('CAMS_BASE_PATH', '');
+
+    vi.resetModules();
+    const { LocalStorage } = await import('@/lib/utils/local-storage');
+    const { Login } = await import('./Login');
+    const sessionModule = await import('./Session');
+
+    const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'mock',
       issuer,
@@ -91,6 +107,8 @@ describe('Login', () => {
       },
       expires: Number.MAX_SAFE_INTEGER,
     });
+    const sessionComponent = vi.spyOn(sessionModule, 'Session');
+
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -99,6 +117,7 @@ describe('Login', () => {
     expect(getSession).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
+    vi.unstubAllEnvs();
   });
 
   test('should check for an existing okta login and skip if a session exists', () => {

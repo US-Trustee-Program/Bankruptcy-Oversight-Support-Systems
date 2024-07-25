@@ -11,6 +11,8 @@ import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 import { CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { ResourceActions } from '../../../../common/src/api/response';
+import { CamsRole } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -34,9 +36,28 @@ export class CaseManagement {
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
-  ): Promise<CaseBasics[]> {
+  ): Promise<Array<CaseBasics & Partial<ResourceActions>>> {
     try {
-      const cases = await this.casesGateway.searchCases(context, predicate);
+      const cases: Array<CaseBasics & Partial<ResourceActions>> =
+        await this.casesGateway.searchCases(context, predicate);
+      const userDivisions = context.session.user.offices.map((office) => office.courtDivisionCode);
+      cases.forEach((bCase) => {
+        if (
+          userDivisions.includes(bCase.courtDivisionCode) &&
+          context.session.user.roles.includes(CamsRole.CaseAssignmentManager)
+        ) {
+          bCase = {
+            ...bCase,
+            actions: [
+              {
+                actionName: 'manage assignments',
+                method: 'POST',
+                url: `/case-assignments/${bCase.caseId}`,
+              },
+            ],
+          };
+        }
+      });
       return cases;
     } catch (originalError) {
       if (!isCamsError(originalError)) {
