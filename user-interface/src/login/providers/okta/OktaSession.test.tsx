@@ -21,12 +21,21 @@ describe('OktaSession', () => {
     email: 'mock@user.com',
   });
   const handleLoginRedirect = vi.fn().mockResolvedValue({});
+  const decode = vi.fn().mockReturnValue({
+    payload: {
+      exp: Number.MAX_SAFE_INTEGER,
+      iss: 'https://issuer/',
+    },
+  });
   const useOktaAuth = vi.fn().mockImplementation(() => {
     return {
       oktaAuth: {
         handleLoginRedirect,
         getUser,
         getAccessToken,
+        token: {
+          decode,
+        },
       },
       authState,
     };
