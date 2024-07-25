@@ -51,6 +51,7 @@ describe('Okta gateway tests', () => {
       aud: 'api://default',
       iat: 0,
       exp: Math.floor(Date.now() / 1000) + 600,
+      groups: [],
     };
     const jwtHeader = {
       alg: 'RS256',
