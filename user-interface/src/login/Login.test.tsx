@@ -57,10 +57,7 @@ describe('Login', () => {
 
   test('should load provider from environment vars', () => {
     vi.stubEnv('CAMS_LOGIN_PROVIDER', 'okta');
-    vi.stubEnv(
-      'CAMS_LOGIN_PROVIDER_CONFIG',
-      '{"issuer": "https://fake.okta.com/oauth2/default", "clientId": "000000000000"}',
-    );
+    vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', `{"issuer": "${issuer}", "clientId": "000000000000"}`);
     render(
       <BrowserRouter>
         <Login>{children}</Login>
@@ -88,7 +85,7 @@ describe('Login', () => {
     getSession.mockReturnValueOnce({
       accessToken: MockData.getJwt(),
       provider: 'mock',
-      issuer: 'http://issuer/',
+      issuer,
       user: {
         name: 'Mock User',
       },
@@ -110,8 +107,7 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'okta',
-      issuer: 'http://issuer/',
-
+      issuer,
       user: {
         name: 'Mock User',
       },
@@ -133,7 +129,7 @@ describe('Login', () => {
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
       provider: 'mock',
-      issuer: 'http://issuer/',
+      issuer,
       user: {
         name: 'Mock User',
       },
