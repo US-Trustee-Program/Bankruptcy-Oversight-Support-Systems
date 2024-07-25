@@ -14,20 +14,20 @@ graph TB
     3["<div style='font-weight: bold'>Data Quality Analyst</div><div style='font-size: 70%; margin-top: 0px'>[Person]</div><div style='font-size: 80%; margin-top:10px'>Verify case events</div>"]
     style 3 fill:#08427b,stroke:#052e56,color:#ffffff
 
-    subgraph 5 [Webapp]
-      style 5 fill:#ffffff,stroke:#2e6295,color:#2e6295
+    subgraph 8 [Webapp]
+      style 8 fill:#ffffff,stroke:#2e6295,color:#2e6295
 
-      6("<div style='font-weight: bold'>Assignments Screen</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Displays case assignment data<br />and provides for creating<br />assignments</div>")
-      style 6 fill:#85bbf0,stroke:#5d82a8,color:#000000
-      7("<div style='font-weight: bold'>Case Details Screen</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Displays case data including<br />dates and assigned staff,<br />court docket, and audit<br />history</div>")
-      style 7 fill:#85bbf0,stroke:#5d82a8,color:#000000
-      8("<div style='font-weight: bold'>Data Verification Screen</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Displays case events for data<br />quality analysts to review</div>")
-      style 8 fill:#85bbf0,stroke:#5d82a8,color:#000000
+      10("<div style='font-weight: bold'>Case Details Screen</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Displays case data including<br />dates and assigned staff,<br />court docket, and audit<br />history</div>")
+      style 10 fill:#85bbf0,stroke:#5d82a8,color:#000000
+      11("<div style='font-weight: bold'>Data Verification Screen</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Displays case events for data<br />quality analysts to review</div>")
+      style 11 fill:#85bbf0,stroke:#5d82a8,color:#000000
+      9("<div style='font-weight: bold'>Assignments Screen</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Displays case assignment data<br />and provides for creating<br />assignments</div>")
+      style 9 fill:#85bbf0,stroke:#5d82a8,color:#000000
     end
 
-    2-. "<div>Views bankruptcy cases</div><div style='font-size: 70%'></div>" .->7
-    1-. "<div>Assigns cases to attorneys</div><div style='font-size: 70%'></div>" .->6
-    2-. "<div>Views cases assigned to them</div><div style='font-size: 70%'></div>" .->6
-    3-. "<div>Reviews, approves, and<br />rejects case events</div><div style='font-size: 70%'></div>" .->8
+    2-. "<div>Views bankruptcy cases</div><div style='font-size: 70%'></div>" .->10
+    1-. "<div>Assigns cases to attorneys</div><div style='font-size: 70%'></div>" .->9
+    2-. "<div>Views cases assigned to them</div><div style='font-size: 70%'></div>" .->9
+    3-. "<div>Reviews, approves, and<br />rejects case events</div><div style='font-size: 70%'></div>" .->11
   end
 ```
