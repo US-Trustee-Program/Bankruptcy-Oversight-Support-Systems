@@ -23,11 +23,12 @@ describe('user-session.gateway test', () => {
     aud: 'api://default',
     iat: 0,
     exp: Number.MAX_SAFE_INTEGER,
+    groups: [],
   };
   const provider = 'okta';
   const mockName = 'Mock User';
   const expectedSession = MockData.getCamsSession({
-    user: { name: mockName },
+    user: { name: mockName, offices: [], roles: [] },
     accessToken: jwt,
     provider,
   });
