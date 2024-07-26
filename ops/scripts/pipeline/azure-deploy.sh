@@ -98,6 +98,16 @@ while [[ $# -gt 0 ]]; do
         cosmos_id_name_param="cosmosIdentityName=${2}"
         shift 2
         ;;
+    --cosmosDatabaseName)
+        cosmos_database_name="${2}"
+        cosmos_database_name_param="cosmosDatabaseName=${2}"
+        shift 2
+        ;;
+    --cosmosAccountName)
+        cosmos_account_name="${2}"
+        cosmos_account_name_param="cosmosAccountName=${2}"
+        shift 2
+        ;;
     --deployVnet)
         deploy_vnet="${2}"
         shift 2
@@ -151,6 +161,11 @@ while [[ $# -gt 0 ]]; do
         login_provider_config="${2}"
         login_provider_config_param="loginProviderConfig=${2}"
         shift 2
+        ;;
+    --isUstpDeployment)
+        is_ustp_deployment=true
+        is_ustp_deployment_param="isUstpDeployment=true"
+        shift
         ;;
     # collection of key=value delimited by space e.g. 'appName=ustp-dev-01 deployVnet=false deployNetwork=true linkVnetIds=[]'
     -p | --environmentParameters)
@@ -245,8 +260,15 @@ if [[ -z "${login_provider_config}" ]]; then
     echo "Error: Missing loginProviderConfig"
     exit 10
 fi
-
-deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param} ${login_provider_param} ${login_provider_config_param}"
+if [[ -z "${cosmos_database_name}" ]]; then
+    echo "Error: Missing cosmosDatabaseName"
+    exit 10
+fi
+if [[ -z "${cosmos_account_name}" ]]; then
+    echo "Error: Missing cosmosAccountName"
+    exit 10
+fi
+deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param} ${login_provider_param} ${login_provider_config_param} ${cosmos_account_name_param} ${cosmos_database_name_param}"
 # Check and add conditional parameters
 if [[ "${create_alerts}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${create_alerts_param}"
@@ -254,7 +276,9 @@ fi
 if [[ "${deploy_app_insights}" == true ]]; then
   deployment_parameters="${deployment_parameters} ${deploy_app_insights_param}"
 fi
-
+if [[ "${is_ustp_deployment}" == true ]]; then
+    deployment_parameters="${deployment_parameters} ${is_ustp_deployment_param}"
+fi
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [[ "$(az_vnet_exists_func "${network_resource_group}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
     deployment_parameters="${deployment_parameters} deployVnet=true"

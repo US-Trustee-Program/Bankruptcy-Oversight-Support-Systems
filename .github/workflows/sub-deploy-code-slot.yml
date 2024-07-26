@@ -111,8 +111,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
-          --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }}"
+          --slotName ${{ inputs.slotName }}"
 
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-retry
@@ -122,8 +121,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
-          --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }}"
+          --slotName ${{ inputs.slotName }}"
 
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-service-slot]
