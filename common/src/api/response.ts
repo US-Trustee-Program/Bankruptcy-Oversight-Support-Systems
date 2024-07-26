@@ -18,8 +18,8 @@ export type Action = {
   url: string;
 };
 
-export type ResourceActions = {
-  actions: Action[];
+export type ResourceActions<T> = T & {
+  _actions?: Action[];
 };
 
 export type ResponseBodyError<E extends Error = Error> = {

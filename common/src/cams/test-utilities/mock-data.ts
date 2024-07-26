@@ -414,7 +414,7 @@ function getDateBeforeToday() {
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
-    user: { name: 'Mock Name', offices: [randomOffice()] },
+    user: { name: 'Mock Name', offices: [randomOffice()], roles: [] },
     accessToken: getJwt(),
     provider: 'mock',
     issuer: 'http://issuer/',

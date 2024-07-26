@@ -6,7 +6,11 @@ import { describe } from 'node:test';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CaseDetail } from '../../../../common/src/cams/cases';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { createMockApplicationContext } from '../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../testing/testing-utilities';
+import { CamsRole } from '../../../../common/src/cams/session';
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
@@ -52,12 +56,18 @@ jest.mock('./case.assignment', () => {
 describe('Case management tests', () => {
   let applicationContext;
   let useCase;
-
+  const userOffice = MockData.randomOffice();
+  const user = {
+    name: 'Mock Name',
+    offices: [userOffice],
+    roles: [CamsRole.CaseAssignmentManager],
+  };
   beforeAll(async () => {
     applicationContext = await createMockApplicationContext({
       STARTING_MONTH: '-6',
       DATABASE_MOCK: 'true',
     });
+    applicationContext.session = await createMockApplicationContextSession({ user });
     useCase = new CaseManagement(applicationContext);
   });
 
@@ -67,7 +77,7 @@ describe('Case management tests', () => {
 
   describe('Case detail tests', () => {
     test('Should return a properly formatted case when a case number is supplied', async () => {
-      const applicationContext = await createMockApplicationContext();
+      // const applicationContext = await createMockApplicationContext();
       const caseId = caseIdWithAssignments;
       const dateFiled = '2018-11-16';
       const closedDate = '2019-06-21';
@@ -118,15 +128,36 @@ describe('Case management tests', () => {
 
     test('should return an empty array for no matches', async () => {
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
-      const actual = await useCase.searchCases({ caseNumber });
+      const actual = await useCase.searchCases(applicationContext, { caseNumber });
       expect(actual).toEqual([]);
     });
 
     test('should return a match', async () => {
       const caseList = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(caseList);
-      const actual = await useCase.searchCases({ caseNumber });
+      const actual = await useCase.searchCases(applicationContext, { caseNumber });
       expect(actual).toEqual(caseList);
+    });
+
+    test('should return cases and actions for the user', async () => {
+      const bCase = MockData.getCaseSummary({
+        override: {
+          caseId: '999-' + caseNumber,
+          courtDivisionCode: applicationContext.session.user.offices[0].courtDivisionCode,
+        },
+      });
+      const _actions = [
+        {
+          actionName: 'manage assignments',
+          method: 'POST',
+          url: `/case-assignments/${bCase.caseId}`,
+        },
+      ];
+
+      const expected = [{ ...bCase, _actions }];
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([bCase]);
+      const actual = await useCase.searchCases(applicationContext, { caseNumber });
+      expect(actual).toEqual(expected);
     });
 
     test('should throw UnknownError', async () => {

@@ -2,6 +2,7 @@ import { ApplicationContext } from '../adapters/types/basic';
 import ContextCreator from '../adapters/utils/application-context-creator';
 import { HttpRequest } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { CamsSession } from '../../../../common/src/cams/session';
 const functionContext = require('azure-function-context-mock');
 
 export async function createMockApplicationContext(
@@ -15,8 +16,10 @@ export async function createMockApplicationContext(
   return await ContextCreator.applicationContextCreator(functionContext, createMockRequest());
 }
 
-export async function createMockApplicationContextSession() {
-  return MockData.getCamsSession();
+export async function createMockApplicationContextSession(
+  override: Partial<CamsSession> = {},
+): Promise<CamsSession> {
+  return MockData.getCamsSession(override);
 }
 
 export function createMockRequest(request: Partial<HttpRequest> = {}): HttpRequest {
