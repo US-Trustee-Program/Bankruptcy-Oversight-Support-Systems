@@ -1,6 +1,6 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSummaryController } from './case-summary.controller';
-import { CaseManagement } from '../../use-cases/case-management';
+import CaseManagement from '../../use-cases/case-management';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 

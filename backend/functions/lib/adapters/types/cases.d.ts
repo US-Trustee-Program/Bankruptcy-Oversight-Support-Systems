@@ -1,3 +1,4 @@
+import { ResourceActions } from '../../../../../common/src/cams/actions';
 import { CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
 
 export interface CaseSummaryListDbResult {
@@ -11,7 +12,7 @@ export interface CaseDetailsDbResult {
   success: boolean;
   message: string;
   body: {
-    caseDetails: CaseDetail;
+    caseDetails: ResourceActions<CaseDetail>;
   };
 }
 

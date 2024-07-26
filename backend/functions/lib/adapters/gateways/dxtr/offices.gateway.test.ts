@@ -9,7 +9,7 @@ describe('offices gateway tests', () => {
   describe('getOffice tests', () => {
     test('should return the name of a known office by ID', () => {
       const gateway = new OfficesDxtrGateway();
-      const office = gateway.getOffice('011');
+      const office = gateway.getOfficeName('011');
       expect(office).toEqual('Boston');
     });
 
@@ -20,7 +20,7 @@ describe('offices gateway tests', () => {
         data: { id: 'AAA' },
       });
       expect(() => {
-        gateway.getOffice('AAA');
+        gateway.getOfficeName('AAA');
       }).toThrow(expectedException);
     });
   });

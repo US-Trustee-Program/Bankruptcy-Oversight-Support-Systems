@@ -285,7 +285,9 @@ export default class CasesDxtrGateway implements CasesInterface {
       const divisionCodeVars = predicate.divisionCodes
         .map((_, idx) => `@divisionCode${idx}`)
         .join(', ');
-      parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
+      if (divisionCodeVars.length) {
+        parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
+      }
     }
     const chapters: string[] = [];
     if (predicate.chapters) {

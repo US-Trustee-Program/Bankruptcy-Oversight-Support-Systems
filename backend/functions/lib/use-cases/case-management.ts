@@ -11,12 +11,27 @@ import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 import { CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
-import { ResourceActions } from '../../../../common/src/api/response';
 import { CamsRole } from '../../../../common/src/cams/session';
+import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
-export class CaseManagement {
+export function getAction<T extends CaseBasics>(
+  context: ApplicationContext,
+  bCase: ResourceActions<T>,
+): Action[] {
+  const userDivisions = context.session.user.offices.map((office) => office.courtDivisionCode);
+  const actions: Action[] = [];
+  if (
+    userDivisions.includes(bCase.courtDivisionCode) &&
+    context.session.user.roles.includes(CamsRole.CaseAssignmentManager)
+  ) {
+    actions.push(Actions.merge(Actions.ManageAssignments, bCase));
+  }
+  return actions;
+}
+
+export default class CaseManagement {
   casesGateway: CasesInterface;
   casesRepo: CasesRepository;
   officesGateway: OfficesGatewayInterface;
@@ -42,21 +57,9 @@ export class CaseManagement {
         context,
         predicate,
       );
-      const userDivisions = context.session.user.offices.map((office) => office.courtDivisionCode);
-      cases.forEach((bCase) => {
-        if (
-          userDivisions.includes(bCase.courtDivisionCode) &&
-          context.session.user.roles.includes(CamsRole.CaseAssignmentManager)
-        ) {
-          bCase._actions = [
-            {
-              actionName: 'manage assignments',
-              method: 'POST',
-              url: `/case-assignments/${bCase.caseId}`,
-            },
-          ];
-        }
-      });
+      for (const casesKey in cases) {
+        cases[casesKey]._actions = getAction<CaseBasics>(context, cases[casesKey]);
+      }
       return cases;
     } catch (originalError) {
       if (!isCamsError(originalError)) {
@@ -80,13 +83,14 @@ export class CaseManagement {
     caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
     caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
     caseDetails.assignments = await this.getCaseAssigneeNames(applicationContext, caseDetails);
-    caseDetails.officeName = this.officesGateway.getOffice(caseDetails.courtDivisionCode);
+    caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
+    const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
     return {
       success: true,
       message: '',
       body: {
-        caseDetails,
+        caseDetails: { ...caseDetails, _actions },
       },
     };
   }
@@ -96,7 +100,7 @@ export class CaseManagement {
     caseId: string,
   ): Promise<CaseDetail> {
     const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-    caseSummary.officeName = this.officesGateway.getOffice(caseSummary.courtDivisionCode);
+    caseSummary.officeName = this.officesGateway.getOfficeName(caseSummary.courtDivisionCode);
     return caseSummary;
   }
 
