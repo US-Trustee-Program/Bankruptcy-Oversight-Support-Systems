@@ -108,9 +108,6 @@ param cosmosAccountName string
 
 param cosmosDatabaseName string
 
-@description('Hash of Git commit for the changes deployed')
-param infoSha string
-
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
 
@@ -142,7 +139,6 @@ resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
   name: cosmosIdentityName
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
-
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -311,10 +307,6 @@ var applicationSettings = concat(
     {
       name: 'COSMOS_MANAGED_IDENTITY'
       value: cosmosIdentity.id
-    }
-    {
-      name: 'INFO_SHA'
-      value: infoSha
     }
     {
       name: 'MSSQL_HOST'
