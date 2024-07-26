@@ -2,8 +2,6 @@ param stackName string
 
 param location string = resourceGroup().location
 
-param infoSha string
-
 param appResourceGroup string = resourceGroup().name
 
 @description('Flag: determines deployment of vnet. Determined at workflow runtime. True on initial deployment outside of USTP.')
@@ -231,7 +229,6 @@ if (deployFunctions) {
       loginProvider: loginProvider
       cosmosAccountName: cosmosAccountName
       cosmosDatabaseName: cosmosDatabaseName
-      infoSha: infoSha
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
     }
