@@ -97,16 +97,13 @@ jobs:
         id: deploy-backend-step
         continue-on-error: true
         run: |
+          sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
           --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
-          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
-          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ inputs.cosmosDbClientId }} \
+          --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           INFO_SHA=${{ github.sha }}" \
           --identities "${{ inputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
@@ -120,11 +117,7 @@ jobs:
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
           --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-          --kvSettings "MSSQL_HOST MSSQL_DATABASE_DXTR MSSQL_CLIENT_ID MSSQL_ENCRYPT MSSQL_TRUST_UNSIGNED_CERT FEATURE_FLAG_SDK_KEY" \
-          --settings "STARTING_MONTH=${{ vars.STARTING_MONTH }} \
-          COSMOS_ENDPOINT=https://${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}.documents.azure.us:443/ \
-          COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          COSMOS_MANAGED_IDENTITY=${{ inputs.cosmosDbClientId }} \
+          --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           INFO_SHA=${{ github.sha }}" \
           --identities "${{ inputs.cosmosDbPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}

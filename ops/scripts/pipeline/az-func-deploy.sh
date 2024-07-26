@@ -40,16 +40,6 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --kvName)
-        kv_name="${2}"
-        shift 2
-        ;;
-
-    --kvSettings)
-        kv_settings="${2}"
-        shift 2
-        ;;
-
     --settings)
         app_settings="${2}"
         shift 2
@@ -59,8 +49,8 @@ while [[ $# -gt 0 ]]; do
         identities="${2}"
         shift 2
         ;;
-
-    --identitiesResourceGroup) # TODO : Should be refactor so that all identities do not have to belong to a single resource
+# TODO : Should be refactor so that all identities do not have to belong to a single resource
+    --identitiesResourceGroup)
         id_rg="${2}"
         shift 2
         ;;
@@ -115,18 +105,9 @@ if [[ -n ${identities} ]]; then
     done
 fi
 
-decorated_kv_settings=""
-# configure KeyVault Settings
-if [[ -n ${kv_settings} && -n ${kv_name} ]]; then
-    for skey in ${kv_settings}; do
-        # EXAMPLE :: SECRET_KEY=@Microsoft.KeyVault(VaultName=vault-name;SecretName=SECRET-KEY)
-        modifiedskey=$(echo "${skey}" | sed -r 's/[_]+/-/g')
-        decorated_kv_settings+="${skey}=@Microsoft.KeyVault(VaultName=${kv_name};SecretName=${modifiedskey}) "
-    done
-fi
 # configure Application Settings
 if [[ -n ${app_settings} ]]; then
     echo "Set Application Settings for ${app_name}"
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --settings ${app_settings} ${decorated_kv_settings} --query "[].name" --output tsv
+    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --settings ${app_settings} --query "[].name" --output tsv
 fi
