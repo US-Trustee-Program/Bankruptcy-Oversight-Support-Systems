@@ -36,26 +36,25 @@ export class CaseManagement {
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
-  ): Promise<Array<CaseBasics & Partial<ResourceActions>>> {
+  ): Promise<ResourceActions<CaseBasics>[]> {
     try {
-      const cases: Array<CaseBasics & Partial<ResourceActions>> =
-        await this.casesGateway.searchCases(context, predicate);
+      const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
+        context,
+        predicate,
+      );
       const userDivisions = context.session.user.offices.map((office) => office.courtDivisionCode);
       cases.forEach((bCase) => {
         if (
           userDivisions.includes(bCase.courtDivisionCode) &&
           context.session.user.roles.includes(CamsRole.CaseAssignmentManager)
         ) {
-          bCase = {
-            ...bCase,
-            actions: [
-              {
-                actionName: 'manage assignments',
-                method: 'POST',
-                url: `/case-assignments/${bCase.caseId}`,
-              },
-            ],
-          };
+          bCase._actions = [
+            {
+              actionName: 'manage assignments',
+              method: 'POST',
+              url: `/case-assignments/${bCase.caseId}`,
+            },
+          ];
         }
       });
       return cases;
