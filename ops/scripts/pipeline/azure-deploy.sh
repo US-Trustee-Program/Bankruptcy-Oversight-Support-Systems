@@ -36,6 +36,11 @@ function az_deploy_func() {
     # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --parameter
     az deployment group create -g ${rg} --template-file ${templateFile} --parameter $deploymentParameter -o json --query properties.outputs | tee outputs.json
 }
+requiredUSTPParams=("resource-group" "file" "stackName"  "networkResourceGroupName" "vnetName" "analyticsWorkspaceId" "idKeyvaultAppConfiguration" "cosmosIdentityName" "cosmosDatabaseName" "cosmosAccountName" "deployVnet" "camsReactSelectHash" "ustpIssueCollectorHash" "createAlerts" "deployAppInsights" "functionPlanType" "webappPlanType" "deployFunctions" "deployWebapp" "loginProvider" "loginProviderConfig" "sqlServerName" "sqlServerResourceGroupName" "oktaUrl" "location" "webappSubnetName" "functionSubnetName" "privateEndpointSubnetName" "webappSubnetAddressPrefix" "functionSubnetAddressPrefix" "privateDnsZoneName" "privateDnsZoneResourceGroup" "privateDnsZoneSubscriptionId" "analyticsResourceGroupName" "kvAppConfigResourceGroupName" "deployDns" "kvAppConfigName")
+requiredFlexionParams=("resource-group" "file" "stackName" "networkResourceGroupName" "vnetName" "analyticsWorkspaceId" "idKeyvaultAppConfiguration" "cosmosIdentityName" "cosmosDatabaseName" "cosmosAccountName" "deployVnet" "camsReactSelectHash" "ustpIssueCollectorHash" "createAlerts" "deployAppInsights" "functionPlanType" "webappPlanType" "deployFunctions" "deployWebapp" "loginProvider" "loginProviderConfig" "sqlServerName" "sqlServerResourceGroupName" "oktaUrl" )
+
+# shellcheck disable=SC2128 # REASON: temp disable
+echo "${requiredFlexionParams} ${requiredUSTPParams}"
 
 show_what_if=false
 create_alerts=false
@@ -56,14 +61,14 @@ while [[ $# -gt 0 ]]; do
         ;;
 
     # default resource group name
-    -g | --resource-group)
+    --resource-group)
         app_rg="${2}"
         app_rg_param="appResourceGroup=${2}"
         shift 2
         ;;
 
     # path to main bicep
-    -f | --file)
+    --file)
         deployment_file="${2}"
         shift 2
         ;;
@@ -110,6 +115,7 @@ while [[ $# -gt 0 ]]; do
         ;;
     --deployVnet)
         deploy_vnet="${2}"
+        deploy_vnet_param="deployVnet=${2}"
         shift 2
         ;;
     --camsReactSelectHash)
@@ -178,6 +184,7 @@ while [[ $# -gt 0 ]]; do
         ;;
     esac
 done
+
 if [[ -z "${deployment_file}" ]]; then
     echo "Error: Missing deployment file"
     exit 11
@@ -268,6 +275,7 @@ if [[ -z "${cosmos_account_name}" ]]; then
     echo "Error: Missing cosmosAccountName"
     exit 10
 fi
+
 deployment_parameters="${deployment_parameters} ${stack_name_param} ${app_rg_param} ${analytics_workspace_id_param} ${vnet_name_param} ${network_resource_group_param} ${cosmos_id_name_param} ${keyvault_app_config_id_param} ${cams_react_select_hash_param} ${ustp_issue_collector_hash_param} ${webapp_plan_type_param} ${function_plan_type_param} ${deploy_functions_param} ${deploy_webapp_param} ${login_provider_param} ${login_provider_config_param} ${cosmos_account_name_param} ${cosmos_database_name_param}"
 # Check and add conditional parameters
 if [[ "${create_alerts}" == true ]]; then
@@ -281,7 +289,7 @@ if [[ "${is_ustp_deployment}" == true ]]; then
 fi
 # Check if existing vnet exists. Set createVnet to true. NOTE that this will be evaluated with deployVnet parameters.
 if [[ "$(az_vnet_exists_func "${network_resource_group}" "${vnet_name}")" != true || "${deploy_vnet}" == true ]]; then
-    deployment_parameters="${deployment_parameters} deployVnet=true"
+    deployment_parameters="${deployment_parameters} ${deploy_vnet_param}"
 fi
 
 az_deploy_func "${app_rg}" "${deployment_file}" "${deployment_parameters}"
