@@ -3,11 +3,12 @@ import { TableRow, TableRowData, TableRowProps } from '@/lib/components/uswds/Ta
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseBasics } from '@common/cams/cases';
+import Actions from '@common/cams/actions';
 
 export type AssignAttorneyCasesRowProps = TableRowProps & {
   bCase: CaseBasics;
@@ -39,6 +40,52 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
       });
   }, []);
 
+  let assignments;
+  let actionButton;
+
+  if (internalCase.assignments && internalCase.assignments.length > 0) {
+    assignments = internalCase.assignments?.map((attorney, key: number) => (
+      <div key={key}>
+        {attorney}
+        <br />
+      </div>
+    ));
+    actionButton = (
+      <ToggleModalButton
+        uswdsStyle={UswdsButtonStyle.Outline}
+        className="case-assignment-modal-toggle"
+        buttonIndex={`${idx}`}
+        toggleAction="open"
+        toggleProps={{
+          bCase: internalCase,
+        }}
+        modalId={`${modalId}`}
+        modalRef={modalRef}
+        title="edit assignments"
+      >
+        Edit
+      </ToggleModalButton>
+    );
+  } else {
+    assignments = <>(unassigned)</>;
+    actionButton = (
+      <ToggleModalButton
+        className="case-assignment-modal-toggle"
+        buttonIndex={`${idx}`}
+        toggleAction="open"
+        toggleProps={{
+          bCase: internalCase,
+        }}
+        modalId={`${modalId}`}
+        modalRef={modalRef}
+        title="add assignments"
+      >
+        {}
+        Assign
+      </ToggleModalButton>
+    );
+  }
+
   return (
     <TableRow {...otherProps}>
       <TableRowData className="case-number">
@@ -68,64 +115,13 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
             <div className="attorney-list-container">
               <LoadingSpinner caption="Loading..." />
             </div>
-            <div className="table-column-toolbar">
-              <Button
-                uswdsStyle={UswdsButtonStyle.Outline}
-                className="case-assignment-modal-toggle"
-                title="edit assignments"
-                disabled={true}
-              >
-                Edit
-              </Button>
-            </div>
           </div>
         )}
-        {!isLoading && internalCase.assignments && internalCase.assignments.length > 0 && (
+        {!isLoading && (
           <div className="table-flex-container">
-            <div className="attorney-list-container">
-              {internalCase.assignments?.map((attorney, key: number) => (
-                <div key={key}>
-                  {attorney}
-                  <br />
-                </div>
-              ))}
-            </div>
+            <div className="attorney-list-container">{assignments}</div>
             <div className="table-column-toolbar">
-              <ToggleModalButton
-                uswdsStyle={UswdsButtonStyle.Outline}
-                className="case-assignment-modal-toggle"
-                buttonIndex={`${idx}`}
-                toggleAction="open"
-                toggleProps={{
-                  bCase: internalCase,
-                }}
-                modalId={`${modalId}`}
-                modalRef={modalRef}
-                title="edit assignments"
-              >
-                Edit
-              </ToggleModalButton>
-            </div>
-          </div>
-        )}
-        {!isLoading && (!internalCase.assignments || !internalCase.assignments.length) && (
-          <div className="table-flex-container">
-            <div className="attorney-list-container">(unassigned)</div>
-            <div className="table-column-toolbar">
-              <ToggleModalButton
-                className="case-assignment-modal-toggle"
-                buttonIndex={`${idx}`}
-                toggleAction="open"
-                toggleProps={{
-                  bCase: internalCase,
-                }}
-                modalId={`${modalId}`}
-                modalRef={modalRef}
-                title="add assignments"
-              >
-                {}
-                Assign
-              </ToggleModalButton>
+              {Actions.contains(internalCase, Actions.ManageAssignments) && actionButton}
             </div>
           </div>
         )}

@@ -1,6 +1,6 @@
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseManagement } from '../../use-cases/case-management';
+import CaseManagement from '../../use-cases/case-management';
 import { CasesController } from './cases.controller';
 import {
   buildResponseBodySuccess,

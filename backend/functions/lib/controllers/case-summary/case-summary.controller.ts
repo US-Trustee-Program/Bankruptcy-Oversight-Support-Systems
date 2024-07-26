@@ -3,7 +3,7 @@ import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsResponse } from '../controller-types';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
-import { CaseManagement } from '../../use-cases/case-management';
+import CaseManagement from '../../use-cases/case-management';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
 

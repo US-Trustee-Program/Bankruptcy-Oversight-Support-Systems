@@ -12,16 +12,6 @@ export type ResponseBodySuccess<T = unknown> = {
   data: T;
 };
 
-export type Action = {
-  actionName: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  url: string;
-};
-
-export type ResourceActions<T> = T & {
-  _actions?: Action[];
-};
-
 export type ResponseBodyError<E extends Error = Error> = {
   meta: ResponseMetaData;
   isSuccess: false;
