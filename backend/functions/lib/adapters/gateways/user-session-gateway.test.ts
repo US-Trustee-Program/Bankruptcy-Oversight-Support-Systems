@@ -208,6 +208,8 @@ describe('user-session.gateway test', () => {
       get: jest.fn().mockResolvedValue(null),
     });
 
+    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(OktaGateway);
+
     const localContext = { ...context, featureFlags: { ...context.featureFlags } };
     localContext.featureFlags['restrict-case-assignment'] = false;
 
