@@ -153,13 +153,18 @@ jobs:
       - name: Check if Initial Deployment
         id: check-initial-deployment
         run: |
+          echo "Query Webapp..."
           webappCount=$(az webapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.apiName }}'])" 2>/dev/null)
+          echo "Query Api..."
           apiCount=$(az functionapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.webappName }}'])" 2>/dev/null)
           if [[ ${webappCount} -eq 0 || ${apiCount} -eq 0 ]]; then
+            echo "Is Initial Deployment"
             initialDeployment=true
           else
+            echo "Is not Initial Deployment"
             intialDeployment=false
           fi
+
           echo "Initial Deployment: $deployBicep"
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
 
