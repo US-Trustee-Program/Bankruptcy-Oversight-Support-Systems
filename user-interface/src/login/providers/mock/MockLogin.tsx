@@ -7,11 +7,11 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import apiConfiguration from '@/configuration/apiConfiguration';
-import { MockRole, usersWithRole } from '@common/cams/test-utilities/mock-role';
+import { MockUser, MockUsers } from '@common/cams/test-utilities/mock-role';
 
 type MockLoginState = {
   session: CamsSession | null;
-  selectedRole: MockRole | null;
+  selectedRole: MockUser | null;
   form: {
     submitDisabled: boolean;
   };
@@ -28,7 +28,7 @@ export function useStateAndActions() {
 
   function handleRoleSelection(sub: string) {
     const newState = { ...state };
-    const role = usersWithRole.find((role) => role.sub === sub);
+    const role = MockUsers.find((role) => role.sub === sub);
     if (role) {
       newState.selectedRole = role;
       newState.form.submitDisabled = false;
@@ -113,7 +113,7 @@ export function MockLogin(props: MockLoginProps) {
         content={
           <>
             <RadioGroup label="Choose a role:">
-              {usersWithRole.map((role, idx) => {
+              {MockUsers.map((role, idx) => {
                 return (
                   <Radio
                     key={`radio-role-${idx}`}

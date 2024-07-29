@@ -1,15 +1,16 @@
 import * as jwt from 'jsonwebtoken';
-import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { SessionCache } from '../../adapters/utils/sessionCache';
+import { SessionGateway } from '../../adapters/utils/session-gateway';
 import { getUser } from './mock-oauth2-gateway';
 import { CamsJwtClaims } from '../../adapters/types/authorization';
+import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 const cache = new Map<string, CamsSession>();
 
-export class MockUserSessionGateway implements SessionCache {
+export class MockUserSessionGateway implements SessionGateway {
   async lookup(
-    _context: ApplicationContext,
+    context: ApplicationContext,
     accessToken: string,
     provider: string,
   ): Promise<CamsSession> {
@@ -20,6 +21,13 @@ export class MockUserSessionGateway implements SessionCache {
 
     if (cache.has(key)) {
       return cache.get(key);
+    }
+
+    // Simulate the legacy behavior by appending roles and Manhattan office to the user
+    // if the 'restrict-case-assignment' feature flag is not set.
+    if (!context.featureFlags['restrict-case-assignment']) {
+      user.offices = [OFFICES.find((office) => office.courtDivisionCode === '081')];
+      user.roles = [CamsRole.CaseAssignmentManager];
     }
 
     const { iss: issuer, exp: expires } = jwt.decode(accessToken) as CamsJwtClaims;

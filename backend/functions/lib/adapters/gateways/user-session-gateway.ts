@@ -1,5 +1,5 @@
 import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
-import { SessionCache } from '../utils/sessionCache';
+import { SessionGateway } from '../utils/session-gateway';
 import {
   getAuthorizationGateway,
   getOfficesGateway,
@@ -11,6 +11,7 @@ import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import LocalStorageGateway from './storage/local-storage-gateway';
+import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -63,7 +64,7 @@ async function getOffices(context: ApplicationContext, groups: string[]): Promis
   return returnStuff;
 }
 
-export class UserSessionGateway implements SessionCache {
+export class UserSessionGateway implements SessionGateway {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const caseRepository = getUserSessionCacheRepository(context);
     const cached = await caseRepository.get(context, token);
@@ -85,24 +86,17 @@ export class UserSessionGateway implements SessionCache {
           message: 'Unable to verify token.',
         });
       }
-      // TODO: map jwt.claims to user.offices and user.roles
-      // 1. Check cache
-      //   1. cache miss
-      //     1. verify token with okta
-      //       1. decorate session
-      //         1. user
-      //           1. call getUser from Okta
-      //           1. get roles from local map
-      //           1. get offices from local map
-      //           1. get office details from DXTR
-      //     1. store in cache
-      //     1. return session
-      //   1. cache hit
-      //     1. return session
       const user = await authGateway.getUser(token);
 
-      user.roles = getRoles(jwt.claims.groups);
-      user.offices = await getOffices(context, jwt.claims.groups);
+      // Simulate the legacy behavior by appending roles and Manhattan office to the user
+      // if the 'restrict-case-assignment' feature flag is not set.
+      if (context.featureFlags['restrict-case-assignment']) {
+        user.roles = getRoles(jwt.claims.groups);
+        user.offices = await getOffices(context, jwt.claims.groups);
+      } else {
+        user.offices = [OFFICES.find((office) => office.courtDivisionCode === '081')];
+        user.roles = [CamsRole.CaseAssignmentManager];
+      }
 
       const session: CamsSession = {
         user,

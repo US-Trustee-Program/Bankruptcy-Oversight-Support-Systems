@@ -1,7 +1,7 @@
 import { CamsRole, CamsUser } from '../session';
 import MockData from './mock-data';
 
-export type MockRole = {
+export type MockUser = {
   sub: string;
   label: string;
   user: CamsUser;
@@ -12,7 +12,7 @@ const offices = MockData.getOffices();
 const MANHATTAN = offices.find((office) => office.courtDivisionCode === '081');
 const BUFFALO = offices.find((office) => office.courtDivisionCode === '091');
 
-export const usersWithRole: MockRole[] = [
+export const MockUsers: MockUser[] = [
   {
     sub: 'jpearson@fake.com',
     label: 'Jessica Pearson - Trial Attorney (Manhattan)',
@@ -53,3 +53,5 @@ export const usersWithRole: MockRole[] = [
     },
   },
 ];
+
+export default MockUsers;
