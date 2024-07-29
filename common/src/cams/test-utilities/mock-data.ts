@@ -29,6 +29,9 @@ import { CamsSession } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
 
+export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
+export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
+
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
 
@@ -414,7 +417,7 @@ function getDateBeforeToday() {
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
-    user: { name: 'Mock Name', offices: [randomOffice()], roles: [] },
+    user: { name: 'Mock Name', offices: [MANHATTAN], roles: [] },
     accessToken: getJwt(),
     provider: 'mock',
     issuer: 'http://issuer/',

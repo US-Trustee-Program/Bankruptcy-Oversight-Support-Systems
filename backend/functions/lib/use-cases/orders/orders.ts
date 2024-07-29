@@ -40,6 +40,7 @@ import {
 } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case.assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsRole } from '../../../../../common/src/cams/session';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -410,6 +411,7 @@ export class OrdersUseCase {
             childCase.caseId,
             leadCaseAttorneys,
             'TrialAttorney',
+            { processRoles: [CamsRole.CaseAssignmentManager] },
           );
 
           // Add the child case lead case history.
