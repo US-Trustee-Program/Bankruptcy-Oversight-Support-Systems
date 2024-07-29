@@ -48,7 +48,7 @@ export const usersWithRole: MockRole[] = [
     label: "Martha's Son - Super User",
     user: {
       name: "Martha's Son",
-      roles: [CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
+      roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
       offices: [],
     },
   },

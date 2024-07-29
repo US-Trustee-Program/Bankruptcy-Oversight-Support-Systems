@@ -14,6 +14,7 @@ import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButto
 import { useRef } from 'react';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Actions from '@common/cams/actions';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -81,18 +82,19 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
           <div className="assigned-staff-information padding-bottom-4 case-card">
             <h3>
               Assigned Staff{' '}
-              {caseDetail.chapter === '15' && (
-                <ToggleModalButton
-                  uswdsStyle={UswdsButtonStyle.Unstyled}
-                  modalId={'assignmentModalId'}
-                  toggleAction={'open'}
-                  modalRef={assignmentModalRef}
-                  toggleProps={{ bCase: caseDetail }}
-                  ariaLabel="Edit assigned staff."
-                >
-                  <Icon name="edit" />
-                </ToggleModalButton>
-              )}
+              {Actions.contains(caseDetail, Actions.ManageAssignments) &&
+                caseDetail.chapter === '15' && (
+                  <ToggleModalButton
+                    uswdsStyle={UswdsButtonStyle.Unstyled}
+                    modalId={'assignmentModalId'}
+                    toggleAction={'open'}
+                    modalRef={assignmentModalRef}
+                    toggleProps={{ bCase: caseDetail }}
+                    ariaLabel="Edit assigned staff."
+                  >
+                    <Icon name="edit" />
+                  </ToggleModalButton>
+                )}
             </h3>
             <div className="assigned-staff-list">
               {caseDetail.regionId && (

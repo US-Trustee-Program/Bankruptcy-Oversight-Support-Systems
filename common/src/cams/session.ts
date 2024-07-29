@@ -1,6 +1,7 @@
 import { OfficeDetails } from './courts';
 
 export enum CamsRole {
+  SuperUser = 'SuperUser',
   CaseAssignmentManager = 'CaseAssignmentManager',
   TrialAttorney = 'TrialAttorney',
 }
