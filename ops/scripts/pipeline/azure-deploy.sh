@@ -194,11 +194,6 @@ if [ ! -f "${deployment_file}" ]; then
     echo "Error: File (${deployment_file}) does not exist."
     exit 12
 fi
-
-if [[ -z "${deployment_parameters}" ]]; then
-    echo "Error: Missing deployment parameters"
-    exit 13
-fi
 if [[ -z "${app_rg}" ]]; then
     echo "Error: Missing default resource group"
     exit 10
