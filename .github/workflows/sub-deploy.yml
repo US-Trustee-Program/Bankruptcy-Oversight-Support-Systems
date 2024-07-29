@@ -39,6 +39,9 @@ on:
       deployBicep:
         required: true
         type: string
+      initialDeployment:
+        required: true
+        type: string
     outputs:
       cosmosDbClientId:
         description: "CosmosDB Principal ID"
@@ -83,7 +86,7 @@ jobs:
     name: Slot Resources
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
     needs: [deploy-infra]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{ inputs.deployBicep =='true' }}
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       webAppName: ${{ inputs.webappName }}
       apiName: ${{ inputs.apiName }}
@@ -93,4 +96,5 @@ jobs:
       slotName: ${{ inputs.slotName }}
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       environmentHash: ${{ inputs.environmentHash }}
+      initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret

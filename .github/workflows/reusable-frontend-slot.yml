@@ -53,9 +53,9 @@ jobs:
           webAppSubnetName="snet-${{ inputs.webAppName }}"
 
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
+              --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --webappName ${{ inputs.webappName }} \
               --apiName ${{ inputs.apiName }} \
-              --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --slotName ${{ inputs.slotName }} \
               --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
               --network-rg ${{ steps.rgNetwork.outputs.out }} \
