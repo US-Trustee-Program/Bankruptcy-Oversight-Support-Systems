@@ -1,4 +1,7 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
 import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import {
@@ -49,6 +52,7 @@ describe('Orders use case', () => {
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    mockContext.session = await createMockApplicationContextSession();
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
@@ -307,15 +311,17 @@ describe('Orders use case', () => {
     expect(mockGetState).toHaveBeenCalled();
   });
 
-  test('should approve a consolidation order', async () => {
+  test.only('should approve a consolidation order', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder({
       override: {
         status: 'approved',
       },
     });
+
     const mockDelete = jest
       .spyOn(CosmosDbRepository.prototype, 'delete')
       .mockResolvedValue(pendingConsolidation);
+
     const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...pendingConsolidation,
@@ -324,46 +330,56 @@ describe('Orders use case', () => {
       }),
       leadCase: leadCaseSummary,
     };
+
     const newConsolidation = {
       ...pendingConsolidation,
       leadCase: leadCaseSummary,
       id: crypto.randomUUID(),
     };
+
     const mockPut = jest
       .spyOn(CosmosDbRepository.prototype, 'put')
       .mockResolvedValue(newConsolidation);
+
     const leadCaseBefore: ConsolidationOrderSummary = {
       status: 'pending',
       childCases: [],
     };
+
     const childCaseSummaries = newConsolidation.childCases.map((bCase) =>
       getCaseSummaryFromConsolidationOrderCase(bCase),
     );
+
     const leadCaseAfter: ConsolidationOrderSummary = {
       status: 'approved',
       childCases: childCaseSummaries,
     };
+
     const leadCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: newConsolidation.leadCase.caseId,
       before: leadCaseBefore,
       after: leadCaseAfter,
     };
+
     const before: ConsolidationOrderSummary = {
       status: 'pending',
       childCases: [],
     };
+
     const after: ConsolidationOrderSummary = {
       status: 'approved',
       leadCase: newConsolidation.leadCase,
       childCases: [],
     };
+
     const childCaseHistory: Partial<CaseHistory> = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
       before,
       after,
     };
+
     const initialCaseHistory: CaseHistory = {
       documentType: 'AUDIT_CONSOLIDATION',
       caseId: pendingConsolidation.childCases[0].caseId,
@@ -371,11 +387,13 @@ describe('Orders use case', () => {
       after: before,
       occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
     };
+
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
+
     const mockCreateHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
@@ -384,6 +402,7 @@ describe('Orders use case', () => {
       CaseAssignmentUseCase.prototype,
       'createTrialAttorneyAssignments',
     );
+
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
