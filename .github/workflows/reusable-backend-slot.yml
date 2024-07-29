@@ -59,7 +59,7 @@ jobs:
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
-              --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
+              --idResourceGroup ${{ secrets.AZURE_RG }} \
               --apiName ${{ inputs.apiName }} \
               --webappName ${{ inputs.webappName }} \
               --slotName ${{ inputs.slotName }} \
