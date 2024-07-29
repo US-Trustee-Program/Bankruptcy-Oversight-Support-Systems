@@ -29,7 +29,7 @@ on:
           - "false"
           - "true"
       enableSlotDeployment:
-        description: "enableSlotDeployment: Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment. Do not set initialDeployment to true is this is true"
+        description: "enableSlotDeployment: Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment."
         required: true
         default: "false"
         type: choice
@@ -38,14 +38,6 @@ on:
           - "true"
       enableBicepDeployment:
         description: "enableBicepDeployment: Execute main.bicep deployment for application component Azure resources"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
-      initialDeployment:
-        description: "initialDeployment: Set to true if an envrionment has not been setup for the branch"
         required: true
         default: "false"
         type: choice
@@ -162,7 +154,7 @@ jobs:
       slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
-      initialDeployment: ${{ inputs.initialDeployment == 'true' }}
+      initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code:
