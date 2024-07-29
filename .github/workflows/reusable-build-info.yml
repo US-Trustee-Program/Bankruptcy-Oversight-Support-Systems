@@ -154,9 +154,9 @@ jobs:
         id: check-initial-deployment
         run: |
           echo "Query Webapp..."
-          webappCount=$(az webapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.apiName }}'])")
+          webappCount=$(az webapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.apiName }}'])" || true)
           echo "Query Api..."
-          apiCount=$(az functionapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.webappName }}'])")
+          apiCount=$(az functionapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.webappName }}'])" || true)
           if [[ ${webappCount} -eq 0 || ${apiCount} -eq 0 ]]; then
             echo "Is Initial Deployment"
             initialDeployment=true
