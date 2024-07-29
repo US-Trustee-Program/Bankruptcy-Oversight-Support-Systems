@@ -46,6 +46,8 @@ show_what_if=false
 create_alerts=false
 deploy_app_insights=false
 deployment_parameters=''
+is_ustp_deployment=false
+
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
