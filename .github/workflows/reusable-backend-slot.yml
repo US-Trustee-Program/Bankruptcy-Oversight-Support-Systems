@@ -27,6 +27,7 @@ on:
       environmentHash:
         required: true
         type: string
+
 jobs:
   deploy-backend-slot-resources:
     runs-on: ubuntu-latest
@@ -55,17 +56,16 @@ jobs:
         if: (inputs.slotDeploymentEnabled == 'true')
         run: |
           slotStorageAccountName=ustpslot${{ inputs.environmentHash }}
-          cosmosDbManageIdName="id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user"
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
+              --resourceGroup ${{ steps.rgApp.outputs.out }} \
+              --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
               --apiName ${{ inputs.apiName }} \
               --webappName ${{ inputs.webappName }} \
-              --resourceGroup ${{ steps.rgApp.outputs.out }} \
-              --idResourceGroup ${{ secrets.AZURE_RG }} \
               --slotName ${{ inputs.slotName }} \
               --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
               --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --cosmosIdName ${cosmosDbManageIdName} \
-              --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
+              --cosmosIdName ${{ secrets.AZ_COSMOS_ID_NAME }} \
+              --storageAccName ${slotStorageAccountName:0:24} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-              --storageAccName ${slotStorageAccountName:0:24}
+              --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
