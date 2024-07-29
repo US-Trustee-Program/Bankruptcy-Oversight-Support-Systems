@@ -1,4 +1,4 @@
-import { ConflictError, isConflictError, UserSessionGateway } from './user-session.gateway';
+import { ConflictError, isConflictError, UserSessionGateway } from './user-session-gateway';
 import OktaGateway from './okta/okta-gateway';
 import { CamsJwtHeader } from '../types/authorization';
 import { ApplicationContext } from '../types/basic';
@@ -12,8 +12,10 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
 import { urlRegex } from '../../../../../user-interface/src/lib/testing/testing-utilities';
+import * as featureFlags from '../utils/feature-flag';
+import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 describe('user-session.gateway test', () => {
   const jwt = MockData.getJwt();
@@ -38,8 +40,6 @@ describe('user-session.gateway test', () => {
     provider,
     issuer: 'http://issuer/',
     expires: Number.MAX_SAFE_INTEGER,
-    // signature: '',
-    // ttl: 0,
   };
   let context: ApplicationContext;
   let gateway: UserSessionGateway;
@@ -197,5 +197,29 @@ describe('user-session.gateway test', () => {
     });
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(ServerConfigError);
+  });
+
+  test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
+      resources: [],
+    });
+
+    const caseAssignmentFeatureFlag = {};
+    caseAssignmentFeatureFlag['restrict-case-assignment'] = false;
+    jest.spyOn(featureFlags, 'getFeatureFlags').mockResolvedValue(caseAssignmentFeatureFlag);
+
+    context = await createMockApplicationContext({
+      AUTH_ISSUER: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
+    });
+
+    context.config.authConfig.provider = 'okta';
+    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
+    context.config.authConfig.audience = 'api://default';
+
+    const session = await gateway.lookup(context, jwt, provider);
+    expect(session.user.offices).toEqual([
+      OFFICES.find((office) => office.courtDivisionCode === '081'),
+    ]);
+    expect(session.user.roles).toEqual([CamsRole.CaseAssignmentManager]);
   });
 });
