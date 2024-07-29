@@ -46,6 +46,9 @@ on:
       deployBicep:
         description: ""
         value: ${{ jobs.build-info.outputs.deployBicep }}
+      initialDeployment:
+        description: ""
+        value: ${{ jobs.build-info.outputs.initialDeployment }}
       ghaEnvironment:
         description: ""
         value: ${{ inputs.environment }}
@@ -66,6 +69,7 @@ jobs:
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
+      initialDeployment: ${{ steps.check-bicep.outputs.check-initial-deployment }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
     steps:
       - name: Checkout
@@ -145,6 +149,19 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ steps.rgApp.outputs.out }}
+
+      - name: Check if Initial Deployment
+        id: check-initial-deployment
+        run: |
+          webappCount=$(az webapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.apiName }}'])" 2>/dev/null)
+          apiCount=$(az functionapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.webappName }}'])" 2>/dev/null)
+          if [[ ${webappCount} -eq 0 || ${apiCount} -eq 0 ]]; then
+            initialDeployment=true
+          else
+            intialDeployment=false
+          fi
+          echo "Initial Deployment: $deployBicep"
+          echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
 
       - name: Check Bicep Deployment
         id: check-bicep
