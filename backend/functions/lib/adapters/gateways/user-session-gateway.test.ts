@@ -14,7 +14,6 @@ import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
 import { urlRegex } from '../../../../../user-interface/src/lib/testing/testing-utilities';
-import * as featureFlags from '../utils/feature-flag';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 describe('user-session.gateway test', () => {
@@ -204,19 +203,15 @@ describe('user-session.gateway test', () => {
       resources: [],
     });
 
-    const caseAssignmentFeatureFlag = {};
-    caseAssignmentFeatureFlag['restrict-case-assignment'] = false;
-    jest.spyOn(featureFlags, 'getFeatureFlags').mockResolvedValue(caseAssignmentFeatureFlag);
-
-    context = await createMockApplicationContext({
-      AUTH_ISSUER: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
+    jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
+      put: jest.fn(),
+      get: jest.fn().mockResolvedValue(null),
     });
 
-    context.config.authConfig.provider = 'okta';
-    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
-    context.config.authConfig.audience = 'api://default';
+    const localContext = { ...context, featureFlags: { ...context.featureFlags } };
+    localContext.featureFlags['restrict-case-assignment'] = false;
 
-    const session = await gateway.lookup(context, jwt, provider);
+    const session = await gateway.lookup(localContext, jwt, provider);
     expect(session.user.offices).toEqual([
       OFFICES.find((office) => office.courtDivisionCode === '081'),
     ]);

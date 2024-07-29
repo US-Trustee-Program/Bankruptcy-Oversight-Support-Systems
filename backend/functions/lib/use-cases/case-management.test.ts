@@ -62,6 +62,7 @@ describe('Case management tests', () => {
     offices: [userOffice],
     roles: [CamsRole.CaseAssignmentManager],
   };
+
   beforeAll(async () => {
     applicationContext = await createMockApplicationContext({
       STARTING_MONTH: '-6',
@@ -89,7 +90,7 @@ describe('Case management tests', () => {
         {
           actionName: 'manage assignments',
           method: 'POST',
-          url: `/case-assignments/${bCase.caseId}`,
+          path: `/case-assignments/${bCase.caseId}`,
         },
       ];
 
@@ -190,7 +191,7 @@ describe('Case management tests', () => {
         {
           actionName: 'manage assignments',
           method: 'POST',
-          url: `/case-assignments/${bCase.caseId}`,
+          path: `/case-assignments/${bCase.caseId}`,
         },
       ];
 
@@ -253,7 +254,7 @@ describe('Case management tests', () => {
         {
           actionName: 'manage assignments',
           method: 'POST',
-          url: `/case-assignments/${bCase.caseId}`,
+          path: `/case-assignments/${bCase.caseId}`,
         },
       ];
 

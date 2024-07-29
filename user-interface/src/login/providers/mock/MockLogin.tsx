@@ -7,7 +7,7 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
 import { CamsSession, CamsUser } from '@common/cams/session';
 import apiConfiguration from '@/configuration/apiConfiguration';
-import { MockUser, MockUsers } from '@common/cams/test-utilities/mock-role';
+import { MockUser, MockUsers } from '@common/cams/test-utilities/mock-user';
 
 type MockLoginState = {
   session: CamsSession | null;
