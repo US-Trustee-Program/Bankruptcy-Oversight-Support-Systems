@@ -9,8 +9,8 @@ export type MockRole = {
 
 const offices = MockData.getOffices();
 
-const MANHATTAN = offices.filter((office) => office.courtDivisionCode === '081')[0];
-const BUFFALO = offices.filter((office) => office.courtDivisionCode === '091')[0];
+const MANHATTAN = offices.find((office) => office.courtDivisionCode === '081');
+const BUFFALO = offices.find((office) => office.courtDivisionCode === '091');
 
 export const usersWithRole: MockRole[] = [
   {
