@@ -2,7 +2,7 @@
 
 # Title:        az-slot-web-resource-deploy.sh
 # Description:  Helper script to provision Azure slot deployment resources for Azure webapp
-# Usage:        ./az-slot-web-resource-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
+# Usage:        ./az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiName apiName --slotName staging --subscription networkSubscription --network-rg networkResourceGroup --vnet vnetName --subnet webappSubnetName"
 #
 # Exitcodes
 # ==========
@@ -15,7 +15,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiName functionappName --slotName staging"
+        echo "USAGE: az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiName apiName --slotName staging --subscription networkSubscription --network-rg networkResourceGroup --vnet vnetName --subnet webappSubnetName"
         exit 0
         ;;
     --resourceGroup)
@@ -64,7 +64,9 @@ echo "Creating deployment slot for webapp: ${webapp_name}..."
 az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
 
 echo "Modifying app settings for deployment slot..."
-az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
+az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
+
+az webapp config set -g "${app_rg}" -n "${webapp_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
 
 # shellcheck disable=SC2086
 az webapp traffic-routing set --distribution ${slot_name}=0 --name "${webapp_name}" --resource-group "${app_rg}"

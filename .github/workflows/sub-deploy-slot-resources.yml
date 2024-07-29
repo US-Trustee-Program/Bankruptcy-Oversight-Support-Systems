@@ -27,6 +27,9 @@ on:
       environmentHash:
         required: true
         type: string
+      initialDeployment:
+        required: true
+        type: string
 jobs:
   deploy-frontend-slot-resources:
     uses: ./.github/workflows/reusable-frontend-slot.yml
@@ -52,3 +55,34 @@ jobs:
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       environmentHash: ${{ inputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
+
+  config-prod-slot-on-initial:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    if: ${{ inputs.initialDeployment == 'true' }}
+    steps:
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Config Prod Slot on initial Deployment
+        run: |
+          ./ops/scripts/pipeline/az-config-initial-deployment.sh \
+            --resourceGroup ${{ steps.rgApp.outputs.out }} \
+            --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
+            --apiName ${{ inputs.apiName }} \
+            --webappName ${{ inputs.webappName }} \
+            --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
+            --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
+            --cosmosIdName ${{ secrets.AZ_COSMOS_ID_NAME }} \
+            --apiSettings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            INFO_SHA=${{ github.sha }}" \
+            --identitiesResourceGroup ${{ secrets.AZURE_RG }}
