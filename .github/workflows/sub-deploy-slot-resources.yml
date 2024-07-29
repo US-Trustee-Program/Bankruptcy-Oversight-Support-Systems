@@ -83,6 +83,5 @@ jobs:
             --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
             --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --cosmosIdName ${{ secrets.AZ_COSMOS_ID_NAME }} \
-            --apiSettings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            INFO_SHA=${{ github.sha }}" \
+            --apiSettings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} INFO_SHA=${{ github.sha }}" \
             --identitiesResourceGroup ${{ secrets.AZURE_RG }}
