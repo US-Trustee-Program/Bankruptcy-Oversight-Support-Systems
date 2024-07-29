@@ -27,12 +27,11 @@ export function useStateAndActions() {
       .then((response) => {
         if (response.isSuccess) {
           const session = response.data;
-          console.log('session from API', session);
           LocalStorage.setSession(session);
           newState.isLoaded = true;
         } else {
           newState.isError = true;
-          newState.errorMessage = 'Something went wrong';
+          newState.errorMessage = 'Unable to retrieve user session.';
         }
       })
       .catch((error) => {
