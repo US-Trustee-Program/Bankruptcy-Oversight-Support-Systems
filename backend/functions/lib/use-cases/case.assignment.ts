@@ -27,8 +27,10 @@ export class CaseAssignmentUseCase {
     caseId: string,
     newAssignments: string[],
     role: string,
+    options: { processRoles?: CamsRole[] } = {},
   ): Promise<AttorneyAssignmentResponseInterface> {
-    if (!context.session.user.roles.includes(CamsRole.CaseAssignmentManager)) {
+    const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
+    if (!userAndProcessRoles.includes(CamsRole.CaseAssignmentManager)) {
       return {
         success: false,
         message: 'User does not have appropriate access to create assignments.',

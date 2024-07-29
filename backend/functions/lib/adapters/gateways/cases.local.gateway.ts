@@ -91,6 +91,7 @@ export class CasesLocalGateway implements CasesInterface {
     let caseDetail;
 
     try {
+      // TODO: Tests are breaking because the caseId cannot be found in this lookup file.
       const cases = gatewayHelper.getAllCasesMockExtract();
       caseDetail = cases.find((bCase) => {
         return bCase.caseId === caseId;
