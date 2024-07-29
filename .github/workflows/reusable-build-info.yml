@@ -157,15 +157,14 @@ jobs:
           webappCount=$(az webapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.apiName }}'])" || true)
           echo "Query Api..."
           apiCount=$(az functionapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.webappName }}'])" || true)
+
           if [[ ${webappCount} != 1 || ${apiCount} != 1 ]]; then
-            echo "Is Initial Deployment"
-            initialDeployment=true
+            initialDeployment='true'
           else
-            echo "Is not Initial Deployment"
-            intialDeployment=false
+            intialDeployment='false'
           fi
 
-          echo "Initial Deployment: $deployBicep"
+          echo "Initial Deployment: $initialDeployment"
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
 
       - name: Check Bicep Deployment
