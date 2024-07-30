@@ -196,6 +196,7 @@ describe('Case management tests', () => {
       ];
 
       // TODO: This is gross. The response wrapper should be added by the controller, not the use case.
+      // I Agree.  This is gross.
       const expected = {
         body: { caseDetails: { ...bCase, officeName, _actions } },
         message: '',
@@ -205,6 +206,14 @@ describe('Case management tests', () => {
       jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
       const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
       expect(actual).toEqual(expected);
+    });
+
+    test('should throw an AssignmentError when CaseAssignmentUseCase.findAssignmentsByCaseId throws an error', async () => {
+      const bCase = MockData.getCaseDetail({ override: { caseId: 'ThrowError' } });
+
+      await expect(useCase.getCaseDetail(applicationContext, bCase.caseId)).rejects.toThrow(
+        'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
+      );
     });
   });
 

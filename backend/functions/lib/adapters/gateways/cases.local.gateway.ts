@@ -5,6 +5,7 @@ import { getMonthDayYearStringFromDate } from '../utils/date-helper';
 import { CaseBasics, CaseDetail } from '../../../../../common/src/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 
@@ -46,10 +47,11 @@ export class CasesLocalGateway implements CasesInterface {
     let caseDetail;
 
     try {
-      const cases = gatewayHelper.getAllCasesMockExtract();
-      caseDetail = cases.find((bCase) => {
-        return bCase.caseId === caseId;
-      });
+      caseDetail = MockData.getCaseDetail({ override: { caseId } });
+      //const cases = gatewayHelper.getAllCasesMockExtract();
+      //caseDetail = cases.find((bCase) => {
+      //  return bCase.caseId === caseId;
+      //});
       const debtors = gatewayHelper.getAllDebtorsMockExtract();
       const debtorAttorneys = gatewayHelper.getAllDebtorAttorneysMockExtract();
 
@@ -87,25 +89,27 @@ export class CasesLocalGateway implements CasesInterface {
   }
 
   getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
-    const gatewayHelper = new GatewayHelper();
+    // const gatewayHelper = new GatewayHelper();
     let caseDetail;
 
     try {
+      caseDetail = MockData.getCaseDetail({ override: { caseId } });
+      caseDetail.courtDivisionCode = caseId.split('-')[0];
       // TODO: Tests are breaking because the caseId cannot be found in this lookup file.
-      const cases = gatewayHelper.getAllCasesMockExtract();
-      caseDetail = cases.find((bCase) => {
-        return bCase.caseId === caseId;
-      });
+      // const cases = gatewayHelper.getAllCasesMockExtract();
+      // caseDetail = cases.find((bCase) => {
+      //   return bCase.caseId === caseId;
+      // });
 
-      caseDetail.dateFiled = caseDetail.dateFiled
-        ? getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled))
-        : undefined;
-      caseDetail.courtDivisionCode = '081';
-      caseDetail.courtDivisionName = 'Manhattan';
-      caseDetail.courtName = 'Southern District of New York';
-      caseDetail.regionId = '02';
-      caseDetail.debtorTypeLabel = 'Corporate Debtor';
-      caseDetail.petitionLabel = 'Voluntary';
+      // caseDetail.dateFiled = caseDetail.dateFiled
+      //   ? getMonthDayYearStringFromDate(new Date(caseDetail.dateFiled))
+      //   : undefined;
+      // caseDetail.courtDivisionCode = '081';
+      // caseDetail.courtDivisionName = 'Manhattan';
+      // caseDetail.courtName = 'Southern District of New York';
+      // caseDetail.regionId = '02';
+      // caseDetail.debtorTypeLabel = 'Corporate Debtor';
+      // caseDetail.petitionLabel = 'Voluntary';
     } catch (err) {
       applicationContext.logger.error(
         MODULE_NAME,
