@@ -239,8 +239,6 @@ if (deployFunctions) {
 
 // main.bicep outputs
 
-output vnetName string = virtualNetworkName
-
 resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: idKeyvaultAppConfiguration
   scope: resourceGroup(kvAppConfigResourceGroupName)

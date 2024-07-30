@@ -72,12 +72,11 @@ jobs:
         if: inputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
-            --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/main.bicep \
             --stackName ${{ inputs.stackName }} \
             --networkResourceGroupName ${{ steps.rgNetwork.outputs.out }} \
-            --vnetName ${{ vars.AZ_NETWORK_VNET_NAME }} \
+            --virtualNetworkName ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}  \
             --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
             --cosmosIdentityName ${{secrets.AZ_COSMOS_ID_NAME }}  \
@@ -94,4 +93,8 @@ jobs:
             --deployWebapp true \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
-            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }}'
+            --sqlServerName ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            --sqlServerResourceGroupName ${{ secrets.AZURE_RG }} \
+            --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
+            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+            --oktaUrl ${{ vars.OKTA_URL }}
