@@ -37,7 +37,7 @@ function az_vnet_exists_func() {
 }
 
 function validateParameters() {
-    local -n requiredParams=("${requiredFlexionParams[@]}")
+    requiredParams=("${requiredFlexionParams[@]}")
     if [[ $is_ustp_deployment == true ]]; then
         requiredParams=("${requiredUSTPParams[@]}")
     fi
