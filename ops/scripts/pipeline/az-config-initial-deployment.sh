@@ -13,6 +13,8 @@
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 sql_id_name=''
+api_settings=''
+
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -100,10 +102,11 @@ echo "Setting KeyVaultReferenceIdentity..."
 az functionapp update --resource-group "$app_rg"  --name "$api_name" --set keyVaultReferenceIdentity="$kv_ref_id"
 
 # configure Node Api Application Settings
-echo "Set Application Settings for ${api_name}"
-# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-az functionapp config appsettings set -g "${app_rg}" -n "${api_name}" --settings ${api_settings} --query "[].name" --output tsv
-
+if [[ $api_settings != '' ]]; then
+    echo "Set Application Settings for ${api_name}"
+    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
+    az functionapp config appsettings set -g "${app_rg}" -n "${api_name}" --settings ${api_settings} --query "[].name" --output tsv
+fi
 echo "Configuring Webapp container runtime..."
 # Configure Webapp Alternative workaround to set Azure app service container runtime
 az webapp config set -g "${app_rg}" -n "${webapp_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
