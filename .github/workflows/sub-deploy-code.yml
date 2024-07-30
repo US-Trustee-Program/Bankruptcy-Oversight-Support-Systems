@@ -116,7 +116,6 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
-          --kvName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
           --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           INFO_SHA=${{ github.sha }}" \
           --identities "${{ inputs.cosmosDbPrincipalId }}" \
