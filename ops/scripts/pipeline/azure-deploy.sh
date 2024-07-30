@@ -73,13 +73,6 @@ function az_deploy_func() {
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-    -h | --help)
-        printf ""
-        printf "USAGE: azure-deploy.sh -sw -g ustp-app-rg -f ../cloud-deployment/ustp-cams.bicep -p 'key01=value-01 key02=value-02 arrays=[\"test\resource\"] keyBool=true'"
-        printf ""
-        shift
-        ;;
-
     # default resource group name
     --resource-group)
         inputParams+=("${1}")
@@ -88,7 +81,6 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${app_rg_param}"
         shift 2
         ;;
-
     # path to main bicep
     --file)
         inputParams+=("${1}")
