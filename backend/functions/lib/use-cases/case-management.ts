@@ -41,6 +41,7 @@ export default class CaseManagement {
     casesGateway?: CasesInterface,
     casesRepo?: CasesRepository,
   ) {
+    // TODO: This condition seems completely unneccessary to me, since they seem to be covered by the 2 ternaries below
     if (!casesGateway || !casesRepo) {
       this.casesRepo = casesRepo ? casesRepo : getCasesRepository(applicationContext);
       this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
