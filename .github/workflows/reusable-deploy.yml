@@ -79,6 +79,7 @@ jobs:
             --virtualNetworkName ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}  \
             --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
+            --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
             --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --cosmosIdentityName ${{secrets.AZ_COSMOS_ID_NAME }}  \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
