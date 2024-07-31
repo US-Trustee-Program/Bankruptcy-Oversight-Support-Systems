@@ -9,6 +9,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getFullName } from '@common/name-helper';
 import Api from '@/lib/models/api';
+import Actions from '@common/cams/actions';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -24,6 +25,7 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
     judgeName: TEST_JUDGE_NAME,
     assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
     debtorAttorney: TEST_DEBTOR_ATTORNEY,
+    _actions: [Actions.ManageAssignments],
   },
 });
 const TRANSFER_FROM: Transfer = {
@@ -106,6 +108,21 @@ describe('Case detail basic information panel', () => {
         const attorneyLabel = screen.getByTestId(`checkbox-label-${idx}-checkbox`);
         expect(attorneyLabel).toHaveTextContent(getFullName(attorney));
       });
+    });
+
+    test('should not show edit button for trial attorney assignments', () => {
+      const caseDetailNoActions = MockData.getCaseDetail({
+        override: {
+          caseId: TEST_CASE_ID,
+          chapter: '15',
+          judgeName: TEST_JUDGE_NAME,
+          assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
+          debtorAttorney: TEST_DEBTOR_ATTORNEY,
+        },
+      });
+      renderWithProps({ caseDetail: caseDetailNoActions });
+      const element = screen.queryByTestId('toggle-modal-button');
+      expect(element).not.toBeInTheDocument();
     });
   });
 

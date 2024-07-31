@@ -28,6 +28,7 @@ import { CaseAssignment } from '../assignments';
 import { CamsSession } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
+import { Action, ResourceActions } from '../actions';
 
 export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
 export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
@@ -131,8 +132,8 @@ function getConsolidatedOrderCase(
 }
 
 function getCaseBasics(
-  options: Options<CaseBasics> = { entityType: 'person', override: {} },
-): CaseBasics {
+  options: Options<ResourceActions<CaseBasics>> = { entityType: 'person', override: {} },
+): ResourceActions<CaseBasics> {
   const { entityType, override } = options;
   const debtor = getParty({ entityType });
   const debtorTypeCode = entityType === 'person' ? 'IC' : 'CB';
@@ -148,7 +149,9 @@ function getCaseBasics(
     debtorTypeCode,
     debtorTypeLabel,
   };
-  return { ...caseSummary, ...override };
+  const _actions: Action[] = [];
+
+  return { ...caseSummary, _actions, ...override };
 }
 
 function getCaseSummary(
@@ -165,8 +168,8 @@ function getCaseSummary(
 }
 
 function getCaseDetail(
-  options: Options<CaseDetail> = { entityType: 'person', override: {} },
-): CaseDetail {
+  options: Options<ResourceActions<CaseDetail>> = { entityType: 'person', override: {} },
+): ResourceActions<CaseDetail> {
   const { entityType, override } = options;
   const caseDetail: CaseDetail = {
     ...getCaseSummary({ entityType }),
@@ -179,7 +182,10 @@ function getCaseDetail(
     debtorAttorney: getDebtorAttorney(),
     judgeName: faker.person.fullName(),
   };
-  return { ...caseDetail, ...override };
+
+  const _actions: Action[] = [];
+
+  return { ...caseDetail, _actions, ...override };
 }
 
 /**

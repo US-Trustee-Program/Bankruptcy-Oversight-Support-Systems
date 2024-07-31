@@ -9,6 +9,8 @@ export type ResourceActions<T> = T & {
 };
 
 function contains(resource: ResourceActions<object>, action: Action) {
+  console.log(resource._actions);
+  console.log(action);
   if (!resource._actions) return false;
   return !!resource._actions.find((resourceAction) => {
     return resourceAction.actionName === action.actionName;
