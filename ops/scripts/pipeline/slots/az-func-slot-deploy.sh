@@ -16,7 +16,7 @@ enable_debug=false
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-func-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName --settings=\"key1=value1 key2=value2\""
+        echo "USAGE: az-func-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName"
         exit 0
         ;;
 
@@ -42,11 +42,6 @@ while [[ $# -gt 0 ]]; do
 
     --slotName)
         slot_name="${2}"
-        shift 2
-        ;;
-
-    --settings)
-        app_settings="${2}"
         shift 2
         ;;
 
@@ -84,10 +79,3 @@ fi
 echo "Deployment started"
 eval "${cmd}"
 echo "Deployment completed"
-
-# configure Application Settings
-if [[ -n ${app_settings} ]]; then
-    echo "Set Application Settings for ${app_name}"
-    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    eval "az functionapp config appsettings set -g '${app_rg}' -n '${app_name}' --slot '$slot_name' --settings ${app_settings} --query '[].name' --output tsv"
-fi
