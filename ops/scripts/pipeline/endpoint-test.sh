@@ -86,7 +86,7 @@ webStatusCode=$("${webCmd[@]}")
 echo "Checking API endpoint: ${targetApiURL}"
 apiStatusCode=$("${apiCmd[@]}")
 
-if [[ -n "${expected_git_sha}" ]]; then
+if [[ "${expected_git_sha}" != '' ]]; then
   echo "Expect sha ${expected_git_sha}"
   retry=0
   currentGitSha=""
