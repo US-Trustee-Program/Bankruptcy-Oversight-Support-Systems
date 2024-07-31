@@ -26,11 +26,16 @@ describe('orders model tests', () => {
   });
 
   describe('temporary mapper function tests', () => {
+    const restMetaDataFields = ['_actions'];
     test('should get CaseSummary from TransferOrder', () => {
       const summaryIdentity = MockData.getCaseSummary();
-      const summaryProperties = Object.getOwnPropertyNames(summaryIdentity);
+      const summaryProperties = Object.getOwnPropertyNames(summaryIdentity).filter(
+        (propName) => !restMetaDataFields.includes(propName),
+      );
       const transferIdentity = MockData.getTransferOrder();
-      const transferProperties = Object.getOwnPropertyNames(transferIdentity);
+      const transferProperties = Object.getOwnPropertyNames(transferIdentity).filter(
+        (propName) => !restMetaDataFields.includes(propName),
+      );
       const transferOnlyProperties = transferProperties.filter(
         (prop) => !summaryProperties.includes(prop),
       );
