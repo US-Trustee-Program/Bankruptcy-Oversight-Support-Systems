@@ -186,4 +186,5 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
+      initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
