@@ -86,6 +86,8 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
     );
   }
 
+  console.log(internalCase);
+  console.log(Actions);
   return (
     <TableRow {...otherProps}>
       <TableRowData className="case-number">
