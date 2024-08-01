@@ -9,22 +9,26 @@ param deployVnet bool = false
 
 param vnetAddressPrefix array = [ '10.10.0.0/16' ]
 
-@description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
-param deployDns bool = true
+param virtualNetworkName string = 'vnet-${stackName}'
 
 param networkResourceGroupName string
-
-param virtualNetworkName string = 'vnet-${stackName}'
 
 @description('Array of Vnets to link to DNS Zone.')
 param linkVnetIds array = []
 
+@description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
+param deployDns bool = true
+
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+
+param privateDnsZoneResourceGroup string = networkResourceGroupName
+
+@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
+param privateDnsZoneSubscriptionId string = subscription().subscriptionId
+
 param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
 
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
-
-@description('Flag: Deploy Bicep config for webapp. False on slot deployments.')
-param deployWebapp bool = true
 
 param webappName string = '${stackName}-webapp'
 
@@ -40,9 +44,6 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
 ])
 param webappPlanType string = 'P1v2'
 
-@description('Flag: Deploy Bicep config for Azure function. False on slot deployments.')
-param deployFunctions bool = true
-
 param functionName string = '${stackName}-node-api'
 
 param functionSubnetName string = 'snet-${functionName}'
@@ -57,12 +58,7 @@ param functionSubnetAddressPrefix string = '10.10.11.0/28'
 ])
 param functionPlanType string = 'P1v2'
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
-param privateDnsZoneResourceGroup string = networkResourceGroupName
-
-@description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
-param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
@@ -165,8 +161,7 @@ module network './lib//network/ustp-cams-network.bicep' = {
     virtualNetworkName: virtualNetworkName
   }
 }
-module ustpWebapp 'frontend-webapp-deploy.bicep' =
-  if (deployWebapp) {
+module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
     params: {
@@ -195,10 +190,9 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' =
     dependsOn: [
       network
     ]
-  }
+}
 
-module ustpFunctions 'backend-api-deploy.bicep' =
-if (deployFunctions) {
+module ustpFunctions 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
@@ -238,7 +232,7 @@ if (deployFunctions) {
     dependsOn: [
       network
     ]
-  }
+}
 
 // main.bicep outputs
 

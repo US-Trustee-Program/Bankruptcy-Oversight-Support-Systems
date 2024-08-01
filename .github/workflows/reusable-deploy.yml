@@ -92,8 +92,6 @@ jobs:
             --deployAppInsights true \
             --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
-            --deployFunctions true \
-            --deployWebapp true \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
             --sqlServerName ${{ secrets.AZ_SQL_SERVER_NAME }} \
