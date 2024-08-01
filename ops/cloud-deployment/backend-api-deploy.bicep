@@ -315,6 +315,10 @@ var applicationSettings = concat(
       value: 'ProductionSlot'
     }
     {
+      name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+      value: false
+    }
+    {
       name: 'MSSQL_HOST'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
     }
