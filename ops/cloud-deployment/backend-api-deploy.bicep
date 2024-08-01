@@ -104,6 +104,8 @@ param idKeyvaultAppConfiguration string
 @secure()
 param cosmosIdentityName string
 
+param cosmosClientId string
+
 param cosmosAccountName string
 
 param cosmosDatabaseName string
@@ -306,7 +308,7 @@ var applicationSettings = concat(
     }
     {
       name: 'COSMOS_MANAGED_IDENTITY'
-      value: cosmosIdentity.id
+      value: cosmosClientId
     }
     {
       name: 'MSSQL_HOST'
