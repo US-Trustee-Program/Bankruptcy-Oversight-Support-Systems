@@ -87,7 +87,7 @@ jobs:
             --cosmosIdentityName ${{secrets.AZ_COSMOS_ID_NAME }}  \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --cosmosAccountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
-            --cosmosClientId ${{ inputs.cosmosClientId }}
+            --cosmosClientId ${{ inputs.cosmosClientId }} \
             --deployVnet ${{ inputs.execVnetDeploy }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
