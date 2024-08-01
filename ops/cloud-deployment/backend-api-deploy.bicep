@@ -340,14 +340,17 @@ var applicationSettings = concat(
       name: 'FEATURE_FLAG_SDK_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
     }
+    {
+      name: 'INFO_SHA'
+      value: infoSha
+    }
   ],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
     : [],
   isUstpDeployment
     ? [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }, { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL_PASS)' }]
-    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }],
-  !empty(infoSha) ? [{ name: 'INFO_SHA', value: infoSha }]: [{ name: 'INFO_SHA', value: '' }]
+    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
 )
 
 var ipSecurityRestrictionsRules = concat(
