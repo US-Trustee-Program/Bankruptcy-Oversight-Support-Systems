@@ -166,7 +166,7 @@ jobs:
           echo "Query Api..."
           apiCount=$(az functionapp list -g "${{ steps.rgAppDecode.outputs.out }}" --query "length([?name=='${{ steps.build-info.outputs.webappName }}'])" || true)
 
-          if [[ ${webappCount} != 1 || ${apiCount} != 1 ]]; then
+          if [[ ${webappCount} -ne 1 || ${apiCount} -ne 1 ]]; then
             initialDeployment='true'
           else
             intialDeployment='false'
