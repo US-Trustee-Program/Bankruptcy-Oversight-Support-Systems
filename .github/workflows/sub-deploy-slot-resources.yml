@@ -77,7 +77,6 @@ jobs:
         run: |
           ./ops/scripts/pipeline/az-config-initial-deployment.sh \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --identitiesResourceGroup ${{ secrets.AZURE_RG }} \
             --apiName ${{ inputs.apiName }} \
             --webappName ${{ inputs.webappName }} \
             --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
