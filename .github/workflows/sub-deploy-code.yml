@@ -24,7 +24,7 @@ on:
       cosmosDbClientId:
         required: true
         type: string
-      cosmosPrincipalIdEncrypted:
+      cosmosPrincipalId:
         required: true
         type: string
 
@@ -111,7 +111,7 @@ jobs:
           --src ./${{ inputs.apiName }}.zip \
           --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
+          --identities "${{ inputs.cosmosPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
       - name: Retry Deploy Azure Functions backend
@@ -124,7 +124,7 @@ jobs:
           --src ./${{ inputs.apiName }}.zip \
           --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
           INFO_SHA=${{ github.sha }}" \
-          --identities "${{ steps.cosmosPrincipalId.outputs.out }}" \
+          --identities "${{ inputs.cosmosPrincipalId }}" \
           --identitiesResourceGroup ${{ secrets.AZURE_RG }}
 
   endpoint-test-application:
