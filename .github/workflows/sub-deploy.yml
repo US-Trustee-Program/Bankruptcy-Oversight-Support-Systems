@@ -66,6 +66,7 @@ jobs:
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
       cosmosClientId: ${{ inputs.cosmosClientId }}
+      initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-db:
