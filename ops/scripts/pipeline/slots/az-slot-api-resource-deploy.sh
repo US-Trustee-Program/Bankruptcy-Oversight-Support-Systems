@@ -104,7 +104,9 @@ fi
 
 echo "Database Name :${databaseName}"
 
-az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --settings "INFO_SHA=$info_sha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+commitSha=$(git rev-parse HEAD)
+
+az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
 
 
 echo "Setting CORS Allowed origins for the API..."
