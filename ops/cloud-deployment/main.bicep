@@ -124,6 +124,8 @@ param camsReactSelectHash string
 @secure()
 param cosmosIdentityName string
 
+param cosmosClientId string
+
 param cosmosDatabaseName string
 
 param cosmosAccountName string
@@ -231,6 +233,7 @@ if (deployFunctions) {
       cosmosDatabaseName: cosmosDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
+      cosmosClientId: cosmosClientId
     }
     dependsOn: [
       network

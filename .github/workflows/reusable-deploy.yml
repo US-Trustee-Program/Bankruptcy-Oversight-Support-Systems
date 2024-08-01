@@ -30,6 +30,9 @@ on:
       deployBicep:
         required: true
         type: string
+      cosmosClientIdEncrypted:
+        required: true
+        type: string
 
 jobs:
   deploy-azure-infrastructure:
@@ -56,6 +59,13 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ inputs.azResourceGrpNetworkEncrypted }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosClientId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.cosmosClientIdEncrypted }}
 
       - name: Create Azure resource groups
         id: azure-resource-group
@@ -84,6 +94,7 @@ jobs:
             --cosmosIdentityName ${{secrets.AZ_COSMOS_ID_NAME }}  \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --cosmosAccountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+            --cosmosClientId ${{ steps.cosmosClientId.outputs.out }}
             --deployVnet ${{ inputs.execVnetDeploy }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \

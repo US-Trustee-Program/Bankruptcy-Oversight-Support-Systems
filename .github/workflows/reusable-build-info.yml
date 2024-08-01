@@ -65,6 +65,8 @@ jobs:
       apiName: ${{ steps.build-info.outputs.apiName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
+      cosmosClientIdEncrpyted: ${{ steps.cosmosClientId.outputs.out }}
+      cosmosPrincipalIdEncrpyted: ${{ steps.cosmosPrincipalId.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
@@ -166,6 +168,28 @@ jobs:
 
           echo "Initial Deployment: $initialDeployment"
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
+
+      - name: Get Cosmos Client ID
+        id: get-cosmos-ids
+        run: |
+          cosmosDbClientId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
+          cosmosDbPrincipalId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosClientId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.get-cosmos-ids.outputs.cosmosDbClientId }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: cosmosPrincipalId
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: encode
+          in: ${{ steps.get-cosmos-ids.outputs.cosmosDbClientId }}
 
       - name: Check Bicep Deployment
         id: check-bicep
