@@ -77,7 +77,7 @@ jobs:
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
       slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
-      initialDeployment: ${{ steps.check-bicep.outputs.check-initial-deployment }}
+      initialDeployment: ${{ steps.check-initial-deployment.outputs.initialDeployment }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
     steps:
       - name: Checkout
