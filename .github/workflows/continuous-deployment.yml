@@ -154,7 +154,7 @@ jobs:
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
       initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
-      cosmosClientIdEncrypted: ${{ needs.setup.outputs.cosmosClientIdEncrypted }}
+      cosmosClientId: ${{ needs.setup.outputs.cosmosClientId }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code:
@@ -169,8 +169,8 @@ jobs:
       apiName: ${{ needs.setup.outputs.apiName }}
       webAppName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      cosmosDbClientId: ${{ needs.setup.outputs.cosmosClientIdEncrypted }}
-      cosmosPrincipalIdEncrypted: ${{ needs.setup.outputs.cosmosPrincipalIdEncrypted }}
+      cosmosDbClientId: ${{ needs.setup.outputs.cosmosClientId }}
+      cosmosPrincipalId: ${{ needs.setup.outputs.cosmosPrincipalId }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code-slot:
