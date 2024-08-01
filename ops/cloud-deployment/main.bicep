@@ -1,7 +1,5 @@
 param stackName string
 
-param infoSha string = ''
-
 param location string = resourceGroup().location
 
 param appResourceGroup string = resourceGroup().name
@@ -209,7 +207,6 @@ if (deployFunctions) {
       location: location
       planType: functionPlanType
       planName: 'plan-${functionName}'
-      infoSha: infoSha
       functionName: functionName
       functionsRuntime: 'node'
       functionSubnetId: network.outputs.functionSubnetId
