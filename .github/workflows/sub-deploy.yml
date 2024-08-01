@@ -33,16 +33,10 @@ on:
       slotName:
         required: true
         type: string
-      slotDeploymentEnabled:
-        required: true
-        type: string
       deployBranch:
         required: true
         type: string
       deployBicep:
-        required: true
-        type: string
-      initialDeployment:
         required: true
         type: string
     outputs:
@@ -62,11 +56,9 @@ jobs:
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
       execVnetDeploy: ${{ inputs.execVnetDeploy }}
-      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
       cosmosClientId: ${{ inputs.cosmosClientId }}
-      initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-db:
@@ -93,7 +85,5 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
-      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       environmentHash: ${{ inputs.environmentHash }}
-      initialDeployment: ${{ inputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret

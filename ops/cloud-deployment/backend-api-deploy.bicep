@@ -1,7 +1,5 @@
 param location string = resourceGroup().location
 
-param infoSha string = ''
-
 @description('Application service plan name')
 param planName string
 
@@ -314,7 +312,11 @@ var applicationSettings = concat(
     }
     {
       name: 'INFO_SHA'
-      value: infoSha
+      value: 'ProductionSlot'
+    }
+    {
+      name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+      value: false
     }
     {
       name: 'MSSQL_HOST'
@@ -346,8 +348,7 @@ var applicationSettings = concat(
     : [],
   isUstpDeployment
     ? [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }, { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL_PASS)' }]
-    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }],
-  contains(infoSha,'false') ? [{name: 'INFO_SHA', value: infoSha}] : []
+    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
 )
 
 var ipSecurityRestrictionsRules = concat(
