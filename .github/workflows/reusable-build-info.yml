@@ -71,8 +71,8 @@ jobs:
       apiName: ${{ steps.build-info.outputs.apiName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
-      cosmosClientId: ${{ steps.get-cosmos-ids.outputs.out }}
-      cosmosPrincipalId: ${{ steps.get-cosmos-ids.outputs.out }}
+      cosmosClientId: ${{ steps.get-cosmos-ids.outputs.cosmosClientId }}
+      cosmosPrincipalId: ${{ steps.get-cosmos-ids.outputs.cosmosPrincipalId }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
@@ -178,10 +178,10 @@ jobs:
       - name: Get Cosmos Client ID
         id: get-cosmos-ids
         run: |
-          cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
-          echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
-          cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
-          echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
+          cosmosClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          echo "cosmosClientId=${cosmosClientId}" >> $GITHUB_OUTPUT
+          cosmosPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          echo "cosmosPrincipalId=${cosmosPrincipalId}" >> $GITHUB_OUTPUT
           echo "CosmosClientId: ${cosmosClientId}"
 
       - name: Check Bicep Deployment
