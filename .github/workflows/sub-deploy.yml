@@ -12,7 +12,7 @@ on:
       azResourceGrpNetworkEncrypted:
         required: true
         type: string
-      cosmosClientIdEncrypted:
+      cosmosClientId:
         required: true
         type: string
       stackName:
@@ -65,7 +65,7 @@ jobs:
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
-      cosmosClientIdEncrypted: ${{ inputs.cosmosClientIdEncrypted }}
+      cosmosClientId: ${{ inputs.cosmosClientId }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-db:
