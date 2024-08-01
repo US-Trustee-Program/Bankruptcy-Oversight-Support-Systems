@@ -107,4 +107,4 @@ jobs:
             --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --oktaUrl ${{ vars.OKTA_URL }} \
-            --infoSha ${{ inputs.initialDeployment == 'true' && github.sha || ''}}
+            --infoSha ${{ inputs.initialDeployment == 'true' && github.sha || 'false'}}
