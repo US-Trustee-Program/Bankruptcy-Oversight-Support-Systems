@@ -1,7 +1,6 @@
 import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { OfficeDetails } from './courts';
-import { Action } from './actions';
 
 export interface CaseBasics extends OfficeDetails {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
@@ -49,7 +48,3 @@ export type CaseDocketEntry = {
 };
 
 export type CaseDocket = Array<CaseDocketEntry>;
-
-export type CaseAssignmentAction = Partial<Action> & {
-  actionName: 'manage assignments';
-};

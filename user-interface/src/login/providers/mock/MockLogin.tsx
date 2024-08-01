@@ -111,22 +111,20 @@ export function MockLogin(props: MockLoginProps) {
         modalId={modalId}
         heading={'Login'}
         content={
-          <>
-            <RadioGroup label="Choose a role:">
-              {MockUsers.map((role, idx) => {
-                return (
-                  <Radio
-                    key={`radio-role-${idx}`}
-                    id={`radio-role-${idx}`}
-                    name="role"
-                    label={role.label}
-                    value={role.sub}
-                    onChange={actions.handleRoleSelection}
-                  />
-                );
-              })}
-            </RadioGroup>
-          </>
+          <RadioGroup label="Choose a role:">
+            {MockUsers.map((role, idx) => {
+              return (
+                <Radio
+                  key={`radio-role-${idx}`}
+                  id={`radio-role-${idx}`}
+                  name="role"
+                  label={role.label}
+                  value={role.sub}
+                  onChange={actions.handleRoleSelection}
+                />
+              );
+            })}
+          </RadioGroup>
         }
         forceAction={true}
         actionButtonGroup={{

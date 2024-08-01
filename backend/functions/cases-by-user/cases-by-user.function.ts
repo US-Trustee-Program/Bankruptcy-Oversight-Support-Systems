@@ -9,9 +9,6 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 
 initializeApplicationInsights();
 
-// TODO: This patch kinda made me spit up a litte. Maybe we should make this more palatable <sp?>
-// path = /cases-by-user
-
 const MODULE_NAME = 'CASES-BY-USER-FUNCTION';
 
 const httpTrigger: AzureFunction = async function (

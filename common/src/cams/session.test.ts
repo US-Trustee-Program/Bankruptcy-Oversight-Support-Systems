@@ -5,6 +5,7 @@ describe('session', () => {
     test('should have expected values for the enum items', () => {
       expect(CamsRole.CaseAssignmentManager).toEqual('CaseAssignmentManager');
       expect(CamsRole.TrialAttorney).toEqual('TrialAttorney');
+      expect(CamsRole.SuperUser).toEqual('SuperUser');
     });
   });
 });

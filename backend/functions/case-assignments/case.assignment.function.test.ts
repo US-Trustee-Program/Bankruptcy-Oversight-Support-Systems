@@ -21,13 +21,11 @@ describe('Case Assignment Function Tests', () => {
   });
   const context = require('azure-function-context-mock');
 
-  beforeEach(async () => {
-    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-      MockData.getCamsSession({
-        user: { name: 'Bob Jones', offices: [MANHATTAN], roles: [CamsRole.CaseAssignmentManager] },
-      }),
-    );
-  });
+  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getCamsSession({
+      user: { name: 'Bob Jones', offices: [MANHATTAN], roles: [CamsRole.CaseAssignmentManager] },
+    }),
+  );
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
     const expectedResponse = {

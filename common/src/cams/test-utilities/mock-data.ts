@@ -132,8 +132,8 @@ function getConsolidatedOrderCase(
 }
 
 function getCaseBasics(
-  options: Options<ResourceActions<CaseBasics>> = { entityType: 'person', override: {} },
-): ResourceActions<CaseBasics> {
+  options: Options<CaseBasics> = { entityType: 'person', override: {} },
+): CaseBasics {
   const { entityType, override } = options;
   const debtor = getParty({ entityType });
   const debtorTypeCode = entityType === 'person' ? 'IC' : 'CB';
@@ -149,9 +149,8 @@ function getCaseBasics(
     debtorTypeCode,
     debtorTypeLabel,
   };
-  const _actions: Action[] = [];
 
-  return { ...caseSummary, _actions, ...override };
+  return { ...caseSummary, ...override };
 }
 
 function getCaseSummary(
