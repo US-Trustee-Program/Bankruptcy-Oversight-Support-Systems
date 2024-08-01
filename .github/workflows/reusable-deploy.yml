@@ -33,6 +33,9 @@ on:
       cosmosClientId:
         required: true
         type: string
+      initialDeployment:
+        required: true
+        type: string
 
 jobs:
   deploy-azure-infrastructure:
@@ -95,12 +98,13 @@ jobs:
             --deployAppInsights true \
             --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
-            --deployFunctions true \
-            --deployWebapp true \
+            --deployFunctions ${{ (inputs.slotDeploymentEnabled != 'true') || (inputs.initialDeployment == 'true') }} \
+            --deployWebapp ${{ (inputs.slotDeploymentEnabled != 'true') || (inputs.initialDeployment == 'true')}} \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
             --sqlServerName ${{ secrets.AZ_SQL_SERVER_NAME }} \
             --sqlServerResourceGroupName ${{ secrets.AZURE_RG }} \
             --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --oktaUrl ${{ vars.OKTA_URL }}
+            --oktaUrl ${{ vars.OKTA_URL }} \
+            --infoSha ${{ inputs.initialDeployment == 'true' && github.sha || ''}}

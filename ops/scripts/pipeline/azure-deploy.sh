@@ -21,7 +21,7 @@ requiredUSTPParams=("--isUstpDeployment" "--resource-group" "--file" "--stackNam
 requiredFlexionParams=("--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosIdentityName" "--cosmosDatabaseName" "--cosmosAccountName" "--cosmosClientId" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--deployFunctions" "--deployWebapp" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosIdentityName" "--cosmosDatabaseName" "--cosmosAccountName" "--cosmosClientId" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--deployFunctions" "--deployWebapp" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
+allParams=("--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosIdentityName" "--cosmosDatabaseName" "--cosmosAccountName" "--cosmosClientId" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--deployFunctions" "--deployWebapp" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan" "--infoSha")
 
 
 function az_vnet_exists_func() {
@@ -92,6 +92,12 @@ while [[ $# -gt 0 ]]; do
         inputParams+=("${1}")
         stack_name_param="stackName=${2}"
         deployment_parameters="${deployment_parameters} ${stack_name_param}"
+        shift 2
+        ;;
+    --infoSha)
+        inputParams+=("${1}")
+        info_sha_param="infoSha=${2}"
+        deployment_parameters="${deployment_parameters} ${info_sha_param}"
         shift 2
         ;;
     --networkResourceGroupName)
