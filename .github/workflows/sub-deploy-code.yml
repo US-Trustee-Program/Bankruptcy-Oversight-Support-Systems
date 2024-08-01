@@ -93,13 +93,6 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: cosmosPrincipalId
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.cosmosPrincipalIdEncrypted }}
-
       - name: Deploy Azure Functions backend
         id: deploy-backend-step
         continue-on-error: true
