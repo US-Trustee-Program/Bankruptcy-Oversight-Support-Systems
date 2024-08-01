@@ -29,7 +29,6 @@ on:
         type: string
 
 jobs:
-  ##TODO: we want to be able to test the Production slot on an initial deployment of anew environment
   playwright-e2e-test:
     environment: ${{ inputs.ghaEnvironment }}
     runs-on: ubuntu-latest
