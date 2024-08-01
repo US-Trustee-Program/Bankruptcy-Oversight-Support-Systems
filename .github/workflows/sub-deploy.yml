@@ -12,6 +12,9 @@ on:
       azResourceGrpNetworkEncrypted:
         required: true
         type: string
+      cosmosClientIdEncrypted:
+        required: true
+        type: string
       stackName:
         required: true
         type: string
@@ -43,12 +46,6 @@ on:
         required: true
         type: string
     outputs:
-      cosmosDbClientId:
-        description: "CosmosDB Principal ID"
-        value: ${{ jobs.deploy-db.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId:
-        description: "CosmosDB Principal ID"
-        value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
       e2eCosmosDbExists:
         description: "Does E2E Cosmos DB Already Exists before deployment"
         value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
@@ -68,6 +65,7 @@ jobs:
       slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
+      cosmosClientIdEncrypted: ${{ inputs.cosmosClientIdEncrypted }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-db:
