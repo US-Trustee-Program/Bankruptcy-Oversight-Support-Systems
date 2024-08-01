@@ -1,11 +1,10 @@
-import { CamsUser } from '@common/cams/session';
 import { AccessDenied } from '@/login/AccessDenied';
 import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';
 import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { getCamsUser, registerRefreshOktaToken } from './okta-library';
+import { registerRefreshOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
 
@@ -56,9 +55,6 @@ export function OktaSession(props: OktaSessionProps) {
     return <Interstitial id="interstital-getuser" caption="Get user information..."></Interstitial>;
   }
 
-  // Map Okta user information to CAMS user
-  // TODO: This is the first of two calls to getUser, but this response is not the one we use. The api returns user details with the /me endpoint. Just skip this call??
-  const camsUser: CamsUser = getCamsUser(oktaUser);
   const accessToken = oktaAuth.getAccessToken();
 
   if (!accessToken) {
@@ -76,13 +72,7 @@ export function OktaSession(props: OktaSessionProps) {
   registerRefreshOktaToken(oktaAuth);
 
   return (
-    <Session
-      provider="okta"
-      user={camsUser}
-      accessToken={accessToken}
-      expires={expires}
-      issuer={issuer}
-    >
+    <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
       {props.children}
     </Session>
   );

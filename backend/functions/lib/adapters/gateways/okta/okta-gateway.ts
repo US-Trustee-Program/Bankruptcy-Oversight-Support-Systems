@@ -33,10 +33,10 @@ async function verifyToken(token: string): Promise<CamsJwt> {
   }
   try {
     const maybeCamsJwt = await verifyAccessToken(issuer, token, audience);
-    if (maybeCamsJwt.claims.groups) {
-      return maybeCamsJwt as CamsJwt;
+    if (!maybeCamsJwt.claims.groups) {
+      throw new Error('Access token claims missing groups.');
     }
-    throw new Error('Access token claims missing groups.');
+    return maybeCamsJwt as CamsJwt;
   } catch (originalError) {
     throw new UnauthorizedError(MODULE_NAME, { originalError });
   }

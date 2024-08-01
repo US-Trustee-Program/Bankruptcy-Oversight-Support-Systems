@@ -2,14 +2,15 @@ import { Table, TableBody, TableHeader, TableHeaderData } from '@/lib/components
 import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { AssignAttorneyCasesRow } from './AssignAttorneyCasesRow';
 import { CaseBasics } from '@common/cams/cases';
+import { ResourceActions } from '@common/cams/actions';
 import './AssignAttorneyCasesTable.scss';
 
 type AssignedCasesTableProps = {
-  caseList: CaseBasics[];
+  caseList: ResourceActions<CaseBasics>[];
   modalId: string;
   modalRef: React.RefObject<AssignAttorneyModalRef>;
 };
-
+// TODO: We might want to reevaluate the ue of generic tables
 // ===== GENERIC TABLE EXPERIMENT =====
 
 // export function AssignedCasesTableX(props: AssignedCasesTableProps) {

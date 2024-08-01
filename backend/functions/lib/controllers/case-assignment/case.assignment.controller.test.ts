@@ -22,9 +22,6 @@ describe('Case Assignment Creation Tests', () => {
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
     applicationContext.session = await createMockApplicationContextSession({ user });
-    // jest
-    //   .spyOn(ContextCreator, 'getApplicationContextSession')
-    //   .mockResolvedValue(MockData.getCamsSession());
   });
 
   afterEach(() => {

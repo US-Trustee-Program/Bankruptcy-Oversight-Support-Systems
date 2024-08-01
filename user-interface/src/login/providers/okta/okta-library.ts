@@ -43,6 +43,8 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
     if (accessToken) {
       const jwt = oktaAuth.token.decode(accessToken);
       // TODO: THIS REFRESH IS NOT "AUGMENTED". WE NEED TO CALL THE /me ENDPOINT.
+      // Map Okta user information to CAMS user
+      // TODO: This is the first of two calls to getUser, but this response is not the one we use. The api returns user details with the /me endpoint. Just skip this call??
       LocalStorage.setSession({
         provider: 'okta',
         accessToken,

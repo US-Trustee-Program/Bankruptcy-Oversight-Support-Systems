@@ -216,11 +216,12 @@ export default class Chapter15MockApi extends Api {
       const randomCases: ResourceActions<CaseBasics>[] = [];
       //TODO: Revisit chapter 15 for pa11y
       randomCaseIds.forEach((bCaseId) => {
-        randomCases.push(
-          MockData.getCaseBasics({
-            override: { caseId: bCaseId, _actions: caseActions, chapter: '15' },
+        randomCases.push({
+          ...MockData.getCaseBasics({
+            override: { caseId: bCaseId, chapter: '15' },
           }),
-        );
+          _actions: caseActions,
+        });
       });
 
       response = buildResponseBodySuccess<ResourceActions<CaseBasics>[]>(randomCases, {

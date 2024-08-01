@@ -11,6 +11,7 @@ import {
   createMockApplicationContextSession,
 } from '../testing/testing-utilities';
 import { CamsRole } from '../../../../common/src/cams/session';
+import { getCasesGateway, getCasesRepository } from '../factory';
 
 const attorneyJaneSmith = 'Jane Smith';
 const attorneyJoeNobel = 'Joe Nobel';
@@ -74,6 +75,21 @@ describe('Case management tests', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe('contructor tests', () => {
+    test('should always set casesRepo and officesGateway', () => {
+      const casesGateway = getCasesGateway(applicationContext);
+      const casesRepo = getCasesRepository(applicationContext);
+
+      const basic = new CaseManagement(applicationContext);
+      const withOptionalParams = new CaseManagement(applicationContext, casesGateway, casesRepo);
+
+      expect(basic.casesGateway).toBeDefined();
+      expect(basic.casesRepo).toBeDefined();
+      expect(withOptionalParams.casesGateway).toBeDefined();
+      expect(withOptionalParams.casesRepo).toBeDefined();
+    });
   });
 
   describe('getAction tests', () => {
@@ -272,8 +288,6 @@ describe('Case management tests', () => {
       const actual = await useCase.searchCases(applicationContext, { caseNumber });
       expect(actual).toEqual(expected);
     });
-
-    // TODO: We need the negative test case for the _actions here.
 
     test('should throw UnknownError', async () => {
       const error = new Error('test error');
