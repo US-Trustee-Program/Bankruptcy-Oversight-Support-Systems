@@ -16,12 +16,6 @@ on:
         required: true
         type: string
     outputs:
-      cosmosDbClientId:
-        description: "CosmosDB Client ID"
-        value: ${{ jobs.deploy-db.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId:
-        description: "CosmosDB Principal ID"
-        value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
       e2eCosmosDbExists:
         description: "Does E2E Cosmos DB Already Exists before deployment"
         value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
