@@ -178,10 +178,11 @@ jobs:
       - name: Get Cosmos Client ID
         id: get-cosmos-ids
         run: |
-          cosmosDbClientId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          cosmosDbClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
           echo "cosmosDbClientId=${cosmosDbClientId}" >> $GITHUB_OUTPUT
-          cosmosDbPrincipalId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          cosmosDbPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
           echo "cosmosDbPrincipalId=${cosmosDbPrincipalId}" >> $GITHUB_OUTPUT
+          echo "CosmosClientId: ${cosmosClientId}"
 
       - name: Check Bicep Deployment
         id: check-bicep
