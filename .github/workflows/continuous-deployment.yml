@@ -28,14 +28,6 @@ on:
         options:
           - "false"
           - "true"
-      enableSlotDeployment:
-        description: "enableSlotDeployment: Execute Slot Deployment and Swap. False for initial environment deployment or direct resource deployment."
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
       enableBicepDeployment:
         description: "enableBicepDeployment: Execute main.bicep deployment for application component Azure resources"
         required: true
@@ -52,7 +44,6 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
-      enableSlotDeployment: ${{ inputs.enableSlotDeployment }}
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
       deployVnet: ${{ inputs.deployVnet }}
 
@@ -151,34 +142,15 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
       slotName: ${{ needs.setup.outputs.slotName }}
-      slotDeploymentEnabled: ${{ needs.setup.outputs.slotDeploymentEnabled }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
-      initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
       cosmosClientId: ${{ needs.setup.outputs.cosmosClientId }}
-    secrets: inherit # pragma: allowlist secret
-
-  deploy-code:
-    name: Production Code Deployment
-    uses: ./.github/workflows/sub-deploy-code.yml
-    needs: [setup, deploy]
-    if: needs.setup.outputs.slotDeploymentEnabled == 'false'
-    with:
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
-      environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      cosmosDbClientId: ${{ needs.setup.outputs.cosmosClientId }}
-      cosmosPrincipalId: ${{ needs.setup.outputs.cosmosPrincipalId }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code-slot:
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code-slot.yml
     needs: [setup, deploy]
-    if: ${{ needs.setup.outputs.slotDeploymentEnabled == 'true' }}
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
@@ -188,5 +160,4 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
-      initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret

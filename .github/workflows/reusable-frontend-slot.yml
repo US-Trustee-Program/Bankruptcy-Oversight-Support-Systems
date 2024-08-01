@@ -21,9 +21,6 @@ on:
       slotName:
         required: true
         type: string
-      slotDeploymentEnabled:
-        required: true
-        type: string
 jobs:
   deploy-frontend-slot-resources:
     runs-on: ubuntu-latest
@@ -48,7 +45,6 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpNetworkEncrypted  }}
       - name: Create Webapp Slot Resource
-        if: (inputs.slotDeploymentEnabled == 'true')
         run: |
           webAppSubnetName="snet-${{ inputs.webAppName }}"
 

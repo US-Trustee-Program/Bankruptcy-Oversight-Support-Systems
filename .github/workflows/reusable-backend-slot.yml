@@ -21,9 +21,6 @@ on:
       slotName:
         required: true
         type: string
-      slotDeploymentEnabled:
-        required: true
-        type: string
       environmentHash:
         required: true
         type: string
@@ -53,7 +50,6 @@ jobs:
           in: ${{ inputs.azResourceGrpNetworkEncrypted  }}
 
       - name: Create API Slot Resource
-        if: (inputs.slotDeploymentEnabled == 'true')
         run: |
           slotStorageAccountName=ustpslot${{ inputs.environmentHash }}
 
