@@ -1,7 +1,6 @@
 import { AccessDenied } from '@/login/AccessDenied';
 import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';
-import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { registerRefreshOktaToken } from './okta-library';
@@ -9,20 +8,10 @@ import { registerRefreshOktaToken } from './okta-library';
 export type OktaSessionProps = PropsWithChildren;
 
 export function OktaSession(props: OktaSessionProps) {
-  const [oktaUser, setOktaUser] = useState<UserClaims | null>(null);
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
 
   const { oktaAuth, authState } = useOktaAuth();
-
-  async function getCurrentUser() {
-    try {
-      const user = await oktaAuth.getUser();
-      setOktaUser(user);
-    } catch (e) {
-      setCallbackError(e as Error);
-    }
-  }
 
   useEffect(() => {
     oktaAuth
@@ -39,20 +28,12 @@ export function OktaSession(props: OktaSessionProps) {
       });
   }, [oktaAuth, !authState?.error]);
 
-  useEffect(() => {
-    if (redirectComplete && authState?.isAuthenticated) getCurrentUser();
-  }, [redirectComplete, authState]);
-
   if (authState?.error || callbackError) {
     return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
   }
 
-  if (!redirectComplete && !oktaUser) {
+  if (!redirectComplete) {
     return <Interstitial id="interstital-continue" caption="Continue from Okta..."></Interstitial>;
-  }
-
-  if (redirectComplete && !oktaUser) {
-    return <Interstitial id="interstital-getuser" caption="Get user information..."></Interstitial>;
   }
 
   const accessToken = oktaAuth.getAccessToken();
