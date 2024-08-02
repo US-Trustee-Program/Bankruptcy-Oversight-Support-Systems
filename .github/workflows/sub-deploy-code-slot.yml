@@ -27,8 +27,24 @@ on:
       e2eCosmosDbExists:
         required: true
         type: string
+      initialDeployment:
+        required: true
+        type: string
 
 jobs:
+  deploy-code:
+    if: ${{ inputs.initialDeployment == 'true' }}
+    name: Slot Code Deployment
+    uses: ./.github/workflows/sub-deploy-code.yml
+    with:
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      environmentHash: ${{ inputs.environmentHash }}
+      stackName: ${{ inputs.stackName }}
+      webAppName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+    secrets: inherit # pragma: allowlist secret
+
   deploy-webapp-slot:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}

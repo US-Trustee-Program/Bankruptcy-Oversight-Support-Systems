@@ -46,6 +46,9 @@ on:
       deployBicep:
         description: ""
         value: ${{ jobs.build-info.outputs.deployBicep }}
+      initialDeployment:
+        description: ""
+        value: ${{ jobs.build-info.outputs.initialDeployment }}
       ghaEnvironment:
         description: ""
         value: ${{ inputs.environment }}
@@ -68,6 +71,7 @@ jobs:
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
+      initialDeployment: ${{ steps.check-initial-deployment.outputs.initialDeployment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -147,11 +151,18 @@ jobs:
       - name: Get Cosmos Client ID
         id: get-cosmos-ids
         run: |
-          cosmosClientId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          cosmosClientId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
           echo "cosmosClientId=${cosmosClientId}" >> $GITHUB_OUTPUT
-          cosmosPrincipalId=$(az identity list -g bankruptcy-oversight-support-systems --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          cosmosPrincipalId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
           echo "cosmosPrincipalId=${cosmosPrincipalId}" >> $GITHUB_OUTPUT
           echo "CosmosClientId: ${cosmosClientId}"
+
+      - name: Check Initial Deployment
+        id: check-initial-deployment
+        run: |
+          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiName }})
+          echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
+          echo "Initial Deployment: ${initialDeployment}"
 
       - name: Check Bicep Deployment
         id: check-bicep

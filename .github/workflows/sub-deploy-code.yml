@@ -21,12 +21,6 @@ on:
       azResourceGrpAppEncrypted:
         required: true
         type: string
-      cosmosDbClientId:
-        required: true
-        type: string
-      cosmosPrincipalId:
-        required: true
-        type: string
 
 jobs:
   deploy-webapp:
@@ -101,11 +95,7 @@ jobs:
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip \
-          --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          INFO_SHA=${{ github.sha }}" \
-          --identities "${{ inputs.cosmosPrincipalId }}" \
-          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
+          --src ./${{ inputs.apiName }}.zip
 
       - name: Retry Deploy Azure Functions backend
         if: steps.deploy-backend-step.outcome != 'success'
@@ -114,11 +104,7 @@ jobs:
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip \
-          --settings "COSMOS_DATABASE_NAME=${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-          INFO_SHA=${{ github.sha }}" \
-          --identities "${{ inputs.cosmosPrincipalId }}" \
-          --identitiesResourceGroup ${{ secrets.AZURE_RG }}
+          --src ./${{ inputs.apiName }}.zip
 
   endpoint-test-application:
     needs: [deploy-webapp, deploy-service]
