@@ -23,7 +23,12 @@ describe('Case Assignment Function Tests', () => {
 
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
     MockData.getCamsSession({
-      user: { name: 'Bob Jones', offices: [MANHATTAN], roles: [CamsRole.CaseAssignmentManager] },
+      user: {
+        id: 'userId-Bob Jones',
+        name: 'Bob Jones',
+        offices: [MANHATTAN],
+        roles: [CamsRole.CaseAssignmentManager],
+      },
     }),
   );
 

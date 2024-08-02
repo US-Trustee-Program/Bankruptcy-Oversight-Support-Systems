@@ -23,6 +23,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-01',
       name: 'Alfred',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -30,6 +31,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-02',
       name: 'Bradford',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -39,6 +41,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-03',
       name: 'Charles',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -46,6 +49,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-04',
       name: 'Daniel',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -53,6 +57,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-05',
       name: 'Edward',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',

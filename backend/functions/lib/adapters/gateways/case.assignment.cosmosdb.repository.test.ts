@@ -28,6 +28,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment1: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseId,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -35,6 +36,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment2: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId,
+      userId: 'userId-perryMason',
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -67,6 +69,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseId,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -88,6 +91,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const existingCaseAttorneyAssignment: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseId,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -98,6 +102,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
+      userId: 'userId-benMatlock',
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -114,6 +119,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment1: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -121,6 +127,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment2: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
+      userId: 'userId-perryMason',
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -158,6 +165,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
+      userId: 'userId-benMatlock',
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -202,6 +210,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment1: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
+      userId: 'userId-perryMason',
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -209,6 +218,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment2: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdOne,
+      userId: 'userId-benMatlock',
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -218,6 +228,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment3: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -225,6 +236,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment4: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdTwo,
+      userId: 'userId-perryMason',
       name: perryMason,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -234,6 +246,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment5: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdThree,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -241,6 +254,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const testCaseAttorneyAssignment6: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseIdThree,
+      userId: 'userId-benMatlock',
       name: benMatlock,
       role: CaseAssignmentRole[trialAttorneyRole],
       assignedOn: currentDate,
@@ -330,6 +344,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const existingCaseAttorneyAssignment: CaseAssignment = {
       documentType: 'ASSIGNMENT',
       caseId: caseId,
+      userId: 'userId-clairHuxtable',
       name: clairHuxtable,
       role: CaseAssignmentRole.TrialAttorney,
       assignedOn: currentDate,
@@ -345,6 +360,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       documentType: 'ASSIGNMENT',
       id: 'some-id',
       caseId: THROW_UNKNOWN_ERROR_CASE_ID,
+      userId: 'userId-benMatlock',
       name: benMatlock,
       role: CaseAssignmentRole.TrialAttorney,
       assignedOn: currentDate,

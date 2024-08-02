@@ -40,18 +40,18 @@ describe('Okta library', () => {
       const name = 'Bobby Flay';
       const email = 'bobbyFlay@fake.com';
       const userClaims: UserClaims = { sub: email, name, email };
-      expect(getCamsUser(userClaims)).toEqual({ name });
+      expect(getCamsUser(userClaims)).toEqual({ id: userClaims.sub, name });
     });
 
     test('should return user email', () => {
       const email = 'bobbyFlay@fake.com';
       const userClaims: UserClaims = { sub: email, email };
-      expect(getCamsUser(userClaims)).toEqual({ name: email });
+      expect(getCamsUser(userClaims)).toEqual({ id: userClaims.sub, name: email });
     });
 
     test('should return UNKNOWN', () => {
       const userClaims: UserClaims = { sub: 'nobody@nodomain.xyz' };
-      expect(getCamsUser(userClaims)).toEqual({ name: 'UNKNOWN' });
+      expect(getCamsUser(userClaims)).toEqual({ id: userClaims.sub, name: 'UNKNOWN' });
     });
   });
 
@@ -70,7 +70,7 @@ describe('Okta library', () => {
     const camsSession: CamsSession = {
       provider: 'okta',
       accessToken: ACCESS_TOKEN,
-      user: { name: 'mock user' },
+      user: { id: userClaims.sub, name: 'mock user' },
       expires: EXPIRATION_SECONDS,
       issuer: userClaims.iss ?? '',
     };

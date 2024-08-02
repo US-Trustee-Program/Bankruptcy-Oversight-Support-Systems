@@ -9,6 +9,7 @@ import {
   CaseAssignment,
 } from '../../../../../common/src/cams/assignments';
 import { CamsResponse } from '../controller-types';
+import { CamsUserReference } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -46,7 +47,7 @@ export class CaseAssignmentController {
 
   public async createTrialAttorneyAssignments(params: {
     caseId: string;
-    listOfAttorneyNames: string[];
+    listOfAttorneyNames: CamsUserReference[];
     role: string;
   }): Promise<AttorneyAssignmentResponseInterface> {
     this.validateRequestParameters(params);
@@ -70,7 +71,7 @@ export class CaseAssignmentController {
 
   private validateRequestParameters(params: {
     caseId: string;
-    listOfAttorneyNames: string[];
+    listOfAttorneyNames: CamsUserReference[];
     role: string;
   }) {
     const badParams = [];

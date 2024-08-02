@@ -82,6 +82,7 @@ export function Login(props: LoginProps): React.ReactNode {
           accessToken={MockData.getJwt()}
           user={
             props.user ?? {
+              id: 'SUPERUSER',
               name: 'Super User',
               roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager],
               offices: OFFICES,

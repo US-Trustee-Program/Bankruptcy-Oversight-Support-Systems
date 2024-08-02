@@ -41,6 +41,7 @@ export default class FakeAssignmentsCosmosClientHumble {
                 assignment = {
                   documentType: 'ASSIGNMENT',
                   caseId: '012-23-12345',
+                  userId: 'userId-Test Attorney',
                   name: 'Test Attorney',
                   role: 'TrialAttorney',
                   assignedOn: '2024-03-05',

@@ -103,6 +103,7 @@ describe('Login', () => {
       provider: 'mock',
       issuer,
       user: {
+        id: 'mockId',
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
@@ -128,6 +129,7 @@ describe('Login', () => {
       provider: 'okta',
       issuer,
       user: {
+        id: 'mockId',
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
@@ -150,6 +152,7 @@ describe('Login', () => {
       provider: 'mock',
       issuer,
       user: {
+        id: 'mockId',
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,
@@ -173,6 +176,7 @@ describe('Login', () => {
       provider: 'okta',
       issuer: 'http://different.issuer.com/oauth/default',
       user: {
+        id: 'mockId',
         name: 'Mock User',
       },
       expires: Number.MAX_SAFE_INTEGER,

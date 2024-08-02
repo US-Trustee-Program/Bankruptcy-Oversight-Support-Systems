@@ -21,6 +21,7 @@ const assignments: CaseAssignment[] = [
     documentType: 'ASSIGNMENT',
     id: '1',
     caseId: '081-23-01176',
+    userId: `userId-${attorneyJaneSmith}`,
     name: attorneyJaneSmith,
     role: CaseAssignmentRole.TrialAttorney,
     assignedOn: currentDate,
@@ -29,6 +30,7 @@ const assignments: CaseAssignment[] = [
     documentType: 'ASSIGNMENT',
     id: '2',
     caseId: '081-23-01176',
+    userId: `userId-${attorneyJoeNobel}`,
     name: attorneyJoeNobel,
     role: CaseAssignmentRole.TrialAttorney,
     assignedOn: currentDate,
@@ -59,6 +61,7 @@ describe('Case management tests', () => {
   let useCase;
   const userOffice = MockData.randomOffice();
   const user = {
+    id: 'userId-Mock Name',
     name: 'Mock Name',
     offices: [userOffice],
     roles: [CamsRole.CaseAssignmentManager],
@@ -116,6 +119,7 @@ describe('Case management tests', () => {
 
     test('should not return post action if the user does not have case assignment role', async () => {
       const user = {
+        id: 'userId-Mock Name',
         name: 'Mock Name',
         offices: [userOffice],
         roles: [],
@@ -141,6 +145,7 @@ describe('Case management tests', () => {
 
     test('should not return post action if the user does not have correct office assigned', async () => {
       const user = {
+        id: 'userId-Mock Name',
         name: 'Mock Name',
         offices: [],
         roles: [CamsRole.CaseAssignmentManager],
