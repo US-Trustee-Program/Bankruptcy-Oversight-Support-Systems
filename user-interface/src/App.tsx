@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from './lib/hooks/UseApplicationInsights';
+import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import Home from './home/Home';
@@ -14,7 +15,6 @@ import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeature
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import './App.scss';
-import { useState } from 'react';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
