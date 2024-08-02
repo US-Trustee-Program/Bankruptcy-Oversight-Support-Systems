@@ -9,7 +9,7 @@ import {
 } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
-import { CamsRole } from '../../../../common/src/cams/session';
+import { CamsRole, CamsUserReference } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -25,7 +25,7 @@ export class CaseAssignmentUseCase {
   public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     caseId: string,
-    newAssignments: string[],
+    newAssignments: CamsUserReference[],
     role: string,
     options: { processRoles?: CamsRole[] } = {},
   ): Promise<AttorneyAssignmentResponseInterface> {
@@ -75,7 +75,7 @@ export class CaseAssignmentUseCase {
   private async assignTrialAttorneys(
     context: ApplicationContext,
     caseId: string,
-    newAssignments: string[],
+    newAssignments: CamsUserReference[],
     role: string,
   ): Promise<string[]> {
     context.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
@@ -87,7 +87,8 @@ export class CaseAssignmentUseCase {
       const assignment: CaseAssignment = {
         documentType: 'ASSIGNMENT',
         caseId: caseId,
-        name: attorney,
+        userId: attorney.id,
+        name: attorney.name,
         role: CaseAssignmentRole[role],
         assignedOn: currentDate,
       };

@@ -10,6 +10,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 describe('Session', () => {
   const testSession: CamsSession = {
     user: {
+      id: 'mockId',
       name: 'Mock User',
     },
     provider: 'mock',

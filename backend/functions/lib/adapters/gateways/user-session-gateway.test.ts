@@ -29,12 +29,12 @@ describe('user-session.gateway test', () => {
   const provider = 'okta';
   const mockName = 'Mock User';
   const expectedSession = MockData.getCamsSession({
-    user: { name: mockName, offices: [], roles: [] },
+    user: { id: `userId-${mockName}`, name: mockName, offices: [], roles: [] },
     accessToken: jwt,
     provider,
   });
   const mockGetValue: CamsSession = {
-    user: { name: 'Wrong Name' },
+    user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
     accessToken: jwt,
     provider,
     issuer: 'http://issuer/',
@@ -62,7 +62,9 @@ describe('user-session.gateway test', () => {
       claims,
       header: jwtHeader as CamsJwtHeader,
     });
-    jest.spyOn(OktaGateway, 'getUser').mockResolvedValue({ name: mockName });
+    jest
+      .spyOn(OktaGateway, 'getUser')
+      .mockResolvedValue({ id: `userId-${mockName}`, name: mockName });
     jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: mockGetValue,
     });

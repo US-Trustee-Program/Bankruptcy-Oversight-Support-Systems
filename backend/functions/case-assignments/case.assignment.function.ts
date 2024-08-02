@@ -6,6 +6,7 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { CamsUserReference } from '../../../common/src/cams/session';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
@@ -54,7 +55,7 @@ async function handleGetMethod(applicationContext, caseId) {
 async function handlePostMethod(
   applicationContext: ApplicationContext,
   caseId: string,
-  listOfAttorneyNames: string[],
+  listOfAttorneyNames: CamsUserReference[],
   role,
 ) {
   const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(

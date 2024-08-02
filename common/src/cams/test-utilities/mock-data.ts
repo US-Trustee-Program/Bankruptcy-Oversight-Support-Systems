@@ -25,7 +25,7 @@ import {
   ConsolidationTo,
 } from '../events';
 import { CaseAssignment } from '../assignments';
-import { CamsSession } from '../session';
+import { CamsSession, CamsUser, CamsUserReference } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
 import { Action, ResourceActions } from '../actions';
@@ -48,6 +48,10 @@ const debtorTypeLabelMap = new Map<string, string>([
 
 function randomTruth() {
   return randomInt(2) > 0;
+}
+
+function randomId() {
+  return `guid-${('00000' + randomInt(100000)).slice(-5)}`;
 }
 
 function randomInt(range: number) {
@@ -385,9 +389,10 @@ function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorn
 function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssignment {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
   return {
-    id: `guid-${('00000' + randomInt(100000)).slice(-5)}`,
+    id: randomId(),
     documentType: 'ASSIGNMENT',
     caseId: randomCaseId(),
+    userId: randomId(),
     name: faker.person.fullName(),
     role: 'TrialAttorney',
     assignedOn: firstDate,
@@ -420,9 +425,32 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
+function getCamsUserReference(override: Partial<CamsUserReference> = {}): CamsUserReference {
+  return {
+    id: randomId(),
+    name: faker.person.fullName(),
+    ...override,
+  };
+}
+
+function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
+  return {
+    id: randomId(),
+    name: faker.person.fullName(),
+    offices: [randomOffice()],
+    roles: [],
+    ...override,
+  };
+}
+
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
-    user: { name: 'Mock Name', offices: [MANHATTAN], roles: [] },
+    user: {
+      id: randomId(),
+      name: 'Mock Name',
+      offices: [MANHATTAN],
+      roles: [],
+    },
     accessToken: getJwt(),
     provider: 'mock',
     issuer: 'http://issuer/',
@@ -471,6 +499,8 @@ export const MockData = {
   getTrialAttorneys,
   getConsolidationHistory,
   getDateBeforeToday,
+  getCamsUserReference,
+  getCamsUser,
   getCamsSession,
   getJwt,
 };

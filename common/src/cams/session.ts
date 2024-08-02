@@ -6,8 +6,12 @@ export enum CamsRole {
   TrialAttorney = 'TrialAttorney',
 }
 
-export type CamsUser = {
+export type CamsUserReference = {
+  id: string;
   name: string;
+};
+
+export type CamsUser = CamsUserReference & {
   offices?: OfficeDetails[];
   roles?: CamsRole[];
 };

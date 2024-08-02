@@ -35,6 +35,7 @@ describe('Case assignment tests', () => {
   let applicationContext: ApplicationContext;
   const userOffice = MockData.randomOffice();
   const user = {
+    id: 'userId-Mock Name',
     name: 'Mock Name',
     offices: [userOffice],
     roles: [CamsRole.CaseAssignmentManager],
@@ -76,8 +77,8 @@ describe('Case assignment tests', () => {
   });
 
   describe('createTrialAttorneyAssignments', () => {
-    const attorneyJaneSmith = 'Jane Smith';
-    const attorneyJoeNobel = 'Joe Nobel';
+    const attorneyJaneSmith = { id: 'userId-Jane Smith', name: 'Jane Smith' };
+    const attorneyJoeNobel = { id: 'userId-Joe Nobel', name: 'Joe Nobel' };
     const caseId = '081-23-01176';
     const role = CaseAssignmentRole.TrialAttorney;
 

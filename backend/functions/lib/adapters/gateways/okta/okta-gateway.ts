@@ -53,7 +53,9 @@ async function getUser(accessToken: string): Promise<CamsUser> {
 
     if (response.ok) {
       const oktaUser = (await response.json()) as OktaUserInfo;
+      // TODO: We need to decide on the claim we will map to CamsUser.id
       const camsUser: CamsUser = {
+        id: oktaUser.sub,
         name: oktaUser.name,
       };
 

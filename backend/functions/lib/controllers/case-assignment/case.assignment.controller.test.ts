@@ -8,13 +8,18 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import { CamsRole } from '../../../../../common/src/cams/session';
+import { CamsRole, CamsUserReference } from '../../../../../common/src/cams/session';
+
+const Jane = MockData.getCamsUserReference({ name: 'Jane' });
+const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
+const Tom = MockData.getCamsUserReference({ name: 'Tom' });
 
 describe('Case Assignment Creation Tests', () => {
   const trialAttorneyRole = 'TrialAttorney';
   let applicationContext;
 
   const user = {
+    ...MockData.getCamsUserReference(),
     name: 'Mock Name',
     offices: [MANHATTAN],
     roles: [CamsRole.CaseAssignmentManager],
@@ -29,7 +34,7 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('A case is assigned to an attorney when requested', async () => {
-    const listOfAttorneyNames = ['Jane'];
+    const listOfAttorneyNames = [Jane];
     const testCaseAssignment = {
       caseId: '081-18-12345',
       listOfAttorneyNames,
@@ -52,7 +57,7 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should assign all attorneys in the list', async () => {
-    const listOfAttorneyNames = ['Jane', 'Tom', 'Adrian'];
+    const listOfAttorneyNames = [Jane, Tom, Adrian];
     const testCaseAssignment = {
       caseId: '081-18-12345',
       listOfAttorneyNames,
@@ -75,14 +80,14 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should create only one assignment per attorney', async () => {
-    const listOfAttorneyNames = ['Jane', 'Tom', 'Jane', 'Adrian', 'Tom'];
+    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
     const testCaseAssignment = {
       caseId: '081-18-12345',
-      listOfAttorneyNames,
+      listOfAttorneyNames: listOfAttorneys,
       role: trialAttorneyRole,
     };
 
-    const expectedNumberOfAssignees = Array.from(new Set(listOfAttorneyNames)).length;
+    const expectedNumberOfAssignees = Array.from(new Set(listOfAttorneys)).length;
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
