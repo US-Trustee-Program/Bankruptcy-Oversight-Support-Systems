@@ -9,6 +9,8 @@ import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ResponseBody, buildResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
+import Actions from '@common/cams/actions';
+import { ResourceActions } from '../../../../common/src/cams/actions';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -60,7 +62,10 @@ export default class Chapter15MockApi extends Api {
   ];
 
   static caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
-  static caseDetails = MockData.getCaseDetail();
+  static caseActions = [Actions.ManageAssignments];
+  static caseDetails = MockData.getCaseDetail({
+    override: { _actions: this.caseActions, chapter: '15' },
+  });
   static offices = MockData.getOffices().slice(0, 5);
 
   // Consolidated Lead Case
@@ -205,6 +210,23 @@ export default class Chapter15MockApi extends Api {
           caseDetails: Chapter15MockApi.caseDetails,
         },
       };
+    } else if (path.match(/\/cases-by-user/)) {
+      const randomCaseIds = MockData.buildArray(() => MockData.randomCaseId('081'), 5);
+      const caseActions = [Actions.ManageAssignments];
+      const randomCases: ResourceActions<CaseBasics>[] = [];
+      //TODO: Revisit chapter 15 for pa11y
+      randomCaseIds.forEach((bCaseId) => {
+        randomCases.push({
+          ...MockData.getCaseBasics({
+            override: { caseId: bCaseId, chapter: '15' },
+          }),
+          _actions: caseActions,
+        });
+      });
+
+      response = buildResponseBodySuccess<ResourceActions<CaseBasics>[]>(randomCases, {
+        self: 'self-uri',
+      });
     } else if (path.match(/\/cases/)) {
       const searchRequest = options as { caseNumber: string };
       const caseNumber = searchRequest.caseNumber;

@@ -1,29 +1,17 @@
-import { CamsUser } from '@common/cams/session';
 import { AccessDenied } from '@/login/AccessDenied';
 import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';
-import { UserClaims } from '@okta/okta-auth-js';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { getCamsUser, registerRefreshOktaToken } from './okta-library';
+import { registerRefreshOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
 
 export function OktaSession(props: OktaSessionProps) {
-  const [oktaUser, setOktaUser] = useState<UserClaims | null>(null);
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
 
   const { oktaAuth, authState } = useOktaAuth();
-
-  async function getCurrentUser() {
-    try {
-      const user = await oktaAuth.getUser();
-      setOktaUser(user);
-    } catch (e) {
-      setCallbackError(e as Error);
-    }
-  }
 
   useEffect(() => {
     oktaAuth
@@ -40,42 +28,32 @@ export function OktaSession(props: OktaSessionProps) {
       });
   }, [oktaAuth, !authState?.error]);
 
-  useEffect(() => {
-    if (redirectComplete && authState?.isAuthenticated) getCurrentUser();
-  }, [redirectComplete, authState]);
-
   if (authState?.error || callbackError) {
     return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
   }
 
-  if (!redirectComplete && !oktaUser) {
+  if (!redirectComplete) {
     return <Interstitial id="interstital-continue" caption="Continue from Okta..."></Interstitial>;
   }
 
-  if (redirectComplete && !oktaUser) {
-    return <Interstitial id="interstital-getuser" caption="Get user information..."></Interstitial>;
-  }
-
-  // Map Okta user information to CAMS user
-  const camsUser: CamsUser = getCamsUser(oktaUser);
   const accessToken = oktaAuth.getAccessToken();
-  const expires = authState?.accessToken?.claims?.exp ?? 0;
-  const validatedClaims = authState?.accessToken?.claims ?? {};
 
   if (!accessToken) {
     return <AccessDenied />;
   }
+  const oktaJwt = oktaAuth.token.decode(accessToken);
+
+  if (!oktaJwt.payload.iss || !oktaJwt.payload.exp) {
+    return <AccessDenied message="Invalid issuer or expiration claims." />;
+  }
+
+  const expires = oktaJwt.payload.exp;
+  const issuer = oktaJwt.payload.iss;
 
   registerRefreshOktaToken(oktaAuth);
 
   return (
-    <Session
-      provider="okta"
-      user={camsUser}
-      accessToken={accessToken}
-      expires={expires}
-      validatedClaims={validatedClaims}
-    >
+    <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
       {props.children}
     </Session>
   );

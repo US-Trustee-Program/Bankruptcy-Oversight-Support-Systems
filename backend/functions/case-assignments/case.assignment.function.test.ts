@@ -5,26 +5,27 @@ import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
-import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
+import { MANHATTAN, MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
+import { CamsRole } from '../../../common/src/cams/session';
 
 describe('Case Assignment Function Tests', () => {
   const request = createMockAzureFunctionRequest({
     method: 'POST',
     query: {},
     body: {
-      caseId: '001-67-89123',
+      caseId: '081-67-89123',
       attorneyList: ['Bob Bob'],
       role: 'TrialAttorney',
     },
   });
   const context = require('azure-function-context-mock');
 
-  beforeEach(async () => {
-    jest
-      .spyOn(ContextCreator, 'getApplicationContextSession')
-      .mockResolvedValue(MockData.getCamsSession());
-  });
+  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getCamsSession({
+      user: { name: 'Bob Jones', offices: [MANHATTAN], roles: [CamsRole.CaseAssignmentManager] },
+    }),
+  );
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
     const expectedResponse = {
@@ -41,7 +42,7 @@ describe('Case Assignment Function Tests', () => {
     const requestOverride = {
       ...request,
       body: {
-        caseId: '001-67-89123',
+        caseId: '081-67-89123',
         attorneyList: ['John', 'Rachel'],
         role: 'TrialAttorney',
       },
@@ -61,7 +62,7 @@ describe('Case Assignment Function Tests', () => {
     const requestOverride = {
       ...request,
       body: {
-        caseId: '001-67-89123',
+        caseId: '081-67-89123',
         attorneyList: ['Jane', 'Jane'],
         role: 'TrialAttorney',
       },

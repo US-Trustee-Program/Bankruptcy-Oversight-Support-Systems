@@ -28,6 +28,10 @@ import { CaseAssignment } from '../assignments';
 import { CamsSession } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
+import { Action, ResourceActions } from '../actions';
+
+export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
+export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -68,6 +72,10 @@ function randomEin() {
 
 function getOffices() {
   return OFFICES;
+}
+
+function getOfficeByCourtIdAndOfficeCode(courtId: string, officeCode: string) {
+  return OFFICES.find((office) => office.courtId === courtId && office.officeCode === officeCode);
 }
 
 function randomOffice() {
@@ -141,6 +149,7 @@ function getCaseBasics(
     debtorTypeCode,
     debtorTypeLabel,
   };
+
   return { ...caseSummary, ...override };
 }
 
@@ -158,8 +167,8 @@ function getCaseSummary(
 }
 
 function getCaseDetail(
-  options: Options<CaseDetail> = { entityType: 'person', override: {} },
-): CaseDetail {
+  options: Options<ResourceActions<CaseDetail>> = { entityType: 'person', override: {} },
+): ResourceActions<CaseDetail> {
   const { entityType, override } = options;
   const caseDetail: CaseDetail = {
     ...getCaseSummary({ entityType }),
@@ -172,7 +181,10 @@ function getCaseDetail(
     debtorAttorney: getDebtorAttorney(),
     judgeName: faker.person.fullName(),
   };
-  return { ...caseDetail, ...override };
+
+  const _actions: Action[] = [];
+
+  return { ...caseDetail, _actions, ...override };
 }
 
 /**
@@ -410,11 +422,11 @@ function getDateBeforeToday() {
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
-    user: { name: 'Mock Name' },
+    user: { name: 'Mock Name', offices: [MANHATTAN], roles: [] },
     accessToken: getJwt(),
     provider: 'mock',
+    issuer: 'http://issuer/',
     expires: Number.MAX_SAFE_INTEGER,
-    validatedClaims: { claimOne: '' },
     ...override,
   };
 }
@@ -425,7 +437,7 @@ function getJwt(): string {
   const salt = Math.floor(Math.random() * 10);
 
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload = `{"iss":"http://fake.issuer.com","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR + salt}}`;
+  const payload = `{"iss":"http://fake.issuer.com/oauth2/default","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR + salt}}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
   const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
 
@@ -437,11 +449,13 @@ function getJwt(): string {
 
 export const MockData = {
   randomCaseId,
+  randomOffice,
   getAttorneyAssignment,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,
   getOffices,
+  getOfficeByCourtIdAndOfficeCode,
   getParty,
   getDocketEntry,
   getNonPaginatedResponseBodySuccess,

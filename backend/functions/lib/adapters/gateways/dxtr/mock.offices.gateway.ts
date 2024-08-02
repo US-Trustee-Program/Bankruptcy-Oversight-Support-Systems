@@ -8,7 +8,7 @@ import { OfficeDetails } from '../../../../../../common/src/cams/courts';
 const MODULE_NAME = 'MOCK-OFFICES-GATEWAY';
 
 export class MockOfficesGateway implements OfficesGatewayInterface {
-  getOffice(id: string): string {
+  getOfficeName(id: string): string {
     if (USTP_OFFICE_NAME_MAP.has(id)) return USTP_OFFICE_NAME_MAP.get(id);
     throw new CamsError(MODULE_NAME, {
       message: 'Cannot find office by ID',
@@ -18,5 +18,13 @@ export class MockOfficesGateway implements OfficesGatewayInterface {
 
   getOffices(_applicationContext: ApplicationContext): Promise<OfficeDetails[]> {
     return Promise.resolve(MockData.getOffices());
+  }
+
+  async getOfficeByCourtIdAndOfficeCode(
+    _applicationContext: ApplicationContext,
+    courtId: string,
+    officeCode: string,
+  ): Promise<OfficeDetails> {
+    return MockData.getOfficeByCourtIdAndOfficeCode(courtId, officeCode);
   }
 }

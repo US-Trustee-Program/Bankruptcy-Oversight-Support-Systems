@@ -37,10 +37,12 @@ import { OpenIdConnectGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
 import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
-import { SessionCache } from './adapters/utils/sessionCache';
-import { UserSessionGateway } from './adapters/gateways/user-session.gateway';
+import { SessionGateway } from './adapters/utils/session-gateway';
+import { UserSessionGateway } from './adapters/gateways/user-session-gateway';
 import { MockUserSessionGateway } from './testing/mock-gateways/mock-user-session-gateway';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
+import { StorageGateway } from './adapters/types/storage';
+import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return new AttorneyLocalGateway();
@@ -149,7 +151,7 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
   return null;
 };
 
-export const getUserSessionGateway = (context: ApplicationContext): SessionCache => {
+export const getUserSessionGateway = (context: ApplicationContext): SessionGateway => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionGateway();
   }
@@ -160,4 +162,8 @@ export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
   return new UserSessionCacheCosmosDbRepository(context);
+};
+
+export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
+  return LocalStorageGateway;
 };

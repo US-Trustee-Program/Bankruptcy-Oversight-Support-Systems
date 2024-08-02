@@ -32,13 +32,17 @@ async function verifyToken(token: string): Promise<CamsJwt> {
     throw new ServerConfigError(MODULE_NAME, { message: 'Audience not provided.' });
   }
   try {
-    return await verifyAccessToken(issuer, token, audience);
+    const maybeCamsJwt = await verifyAccessToken(issuer, token, audience);
+    if (!maybeCamsJwt.claims.groups) {
+      throw new Error('Access token claims missing groups.');
+    }
+    return maybeCamsJwt as CamsJwt;
   } catch (originalError) {
     throw new UnauthorizedError(MODULE_NAME, { originalError });
   }
 }
 
-async function getUser(accessToken): Promise<CamsUser> {
+async function getUser(accessToken: string): Promise<CamsUser> {
   const { userInfoUri } = getAuthorizationConfig();
 
   try {
@@ -46,11 +50,13 @@ async function getUser(accessToken): Promise<CamsUser> {
       method: 'GET',
       headers: { authorization: 'Bearer ' + accessToken },
     });
+
     if (response.ok) {
-      const userInfo = (await response.json()) as OktaUserInfo;
+      const oktaUser = (await response.json()) as OktaUserInfo;
       const camsUser: CamsUser = {
-        name: userInfo.name,
+        name: oktaUser.name,
       };
+
       return camsUser;
     } else {
       throw new Error('Failed to retrieve user info from Okta.');
