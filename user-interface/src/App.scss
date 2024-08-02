@@ -10,6 +10,8 @@ body {
   overflow-y: hidden;
 }
 .App {
+  display: flex;
+  flex-direction: column;
   position: absolute;
   padding: 0;
   overflow-y: auto;
@@ -23,7 +25,8 @@ body {
   height: auto;
   min-height: 100vh;
 
-  .body {
+  .cams-content {
+    flex: 1;
     padding: 0 0 50px 0;
 
     h1, h2 {
@@ -48,21 +51,32 @@ body {
     }
   }
 
-  .privacy-footer {
+  .privacy-footer.short-screen {
     display: flex;
     position: fixed;
     top: auto;
     bottom: 0;
     right: 0;
     left: 0;
+  }
+
+  .privacy-footer {
+    display: block;
+    position: relative;
+    top: auto;
+    bottom: auto;
+    right: 0;
+    left: 0;
     line-height: 1rem;
     align-items: center;
-    margin-left: auto;
-    margin-right: auto;
     padding: 5px 100px;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    > div {
+      display: flex;
+      justify-content: center;
+    }
   }
 
   .App-logo {
