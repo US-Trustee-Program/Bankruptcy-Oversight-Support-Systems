@@ -8,6 +8,8 @@ import {
   CaseAssignment,
 } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
+import CaseManagement from './case-management';
+import { CamsRole } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -25,7 +27,28 @@ export class CaseAssignmentUseCase {
     caseId: string,
     newAssignments: string[],
     role: string,
+    options: { processRoles?: CamsRole[] } = {},
   ): Promise<AttorneyAssignmentResponseInterface> {
+    const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
+    if (!userAndProcessRoles.includes(CamsRole.CaseAssignmentManager)) {
+      return {
+        success: false,
+        message: 'User does not have appropriate access to create assignments.',
+        count: 0,
+        body: [],
+      };
+    }
+    const caseManagement = new CaseManagement(context);
+    const bCase = await caseManagement.getCaseSummary(context, caseId);
+    const offices = context.session.user.offices.map((office) => office.courtDivisionCode);
+    if (!offices.includes(bCase.courtDivisionCode)) {
+      return {
+        success: false,
+        message: 'User does not have appropriate access to create assignments for this office.',
+        count: 0,
+        body: [],
+      };
+    }
     const assignmentIds = await this.assignTrialAttorneys(context, caseId, newAssignments, role);
 
     // Reassign all child cases if this is a joint administration lead case.

@@ -13,4 +13,5 @@ export const defaultFeatureFlags: FeatureFlagSet = {
   'transfer-orders-enabled': true,
   'consolidations-enabled': true,
   'case-search-enabled': true,
+  'restrict-case-assignment': true,
 };

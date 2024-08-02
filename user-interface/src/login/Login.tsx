@@ -13,11 +13,13 @@ import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import { LocalStorage } from '@/lib/utils/local-storage';
-import { CamsSession, CamsUser } from '@common/cams/session';
+import { CamsRole, CamsSession, CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';
+import ApiConfiguration from '@/configuration/apiConfiguration';
+import { OFFICES } from '@common/cams/test-utilities/offices.mock';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -44,12 +46,12 @@ export function Login(props: LoginProps): React.ReactNode {
   if (session) {
     if (provider == 'okta') {
       issuer = getAuthIssuerFromEnv();
+    } else if (provider === 'mock') {
+      const { protocol, server, port, basePath } = ApiConfiguration;
+      const portString = port ? ':' + port : '';
+      issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
     }
-    if (
-      session.provider === provider &&
-      session.validatedClaims &&
-      issuer === session.validatedClaims['iss']
-    ) {
+    if (session.provider === provider && issuer === session.issuer) {
       const sessionComponent = <Session {...session}>{props.children}</Session>;
       if (provider == 'okta') {
         return <OktaProvider>{sessionComponent}</OktaProvider>;
@@ -78,9 +80,15 @@ export function Login(props: LoginProps): React.ReactNode {
         <Session
           provider="none"
           accessToken={MockData.getJwt()}
-          user={props.user ?? { name: 'Super User' }}
+          user={
+            props.user ?? {
+              name: 'Super User',
+              roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager],
+              offices: OFFICES,
+            }
+          }
           expires={Number.MAX_SAFE_INTEGER}
-          validatedClaims={{}}
+          issuer={issuer ?? ''}
         >
           {props.children}
         </Session>

@@ -5,8 +5,8 @@ import { OktaSession } from './OktaSession';
 import { render, screen, waitFor } from '@testing-library/react';
 import * as sessionModule from '../../Session';
 import * as accessDeniedModule from '../../AccessDenied';
-import { CamsUser } from '@common/cams/session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { urlRegex } from '@/lib/testing/testing-utilities';
 
 const accessToken = MockData.getJwt();
 
@@ -15,17 +15,21 @@ describe('OktaSession', () => {
     isAuthenticated: false,
   };
   const getAccessToken = vi.fn().mockReturnValue(accessToken);
-  const getUser = vi.fn().mockResolvedValue({
-    name: 'Mock User',
-    email: 'mock@user.com',
-  });
   const handleLoginRedirect = vi.fn().mockResolvedValue({});
+  const decode = vi.fn().mockReturnValue({
+    payload: {
+      exp: Number.MAX_SAFE_INTEGER,
+      iss: 'https://issuer/',
+    },
+  });
   const useOktaAuth = vi.fn().mockImplementation(() => {
     return {
       oktaAuth: {
         handleLoginRedirect,
-        getUser,
         getAccessToken,
+        token: {
+          decode,
+        },
       },
       authState,
     };
@@ -36,15 +40,10 @@ describe('OktaSession', () => {
     vi.clearAllMocks();
   });
 
-  test('should pass a mapped CamsUser, provider, and children to the Session component', async () => {
-    const oktaUser = {
-      name: 'First Last',
-    };
-    const user: CamsUser = { name: oktaUser.name };
+  test('should pass properties to the Session component', async () => {
     const testId = 'child-div';
     const childText = 'TEST';
 
-    getUser.mockResolvedValue(oktaUser);
     handleLoginRedirect.mockImplementation(() => {
       authState.isAuthenticated = true;
       return Promise.resolve();
@@ -68,108 +67,12 @@ describe('OktaSession', () => {
       {
         children: children,
         provider: 'okta',
-        user,
+        issuer: expect.stringMatching(urlRegex),
         accessToken,
         expires: expect.any(Number),
-        validatedClaims: {},
       },
       {},
     );
-  });
-
-  test('should map Okta user email to CamsUser if Okta user name is not present', async () => {
-    const oktaUser = {
-      email: 'someone@somedomain.com',
-    };
-    const user: CamsUser = { name: oktaUser.email };
-    const testId = 'child-div';
-    const childText = 'TEST';
-
-    getUser.mockResolvedValue(oktaUser);
-    handleLoginRedirect.mockImplementation(() => {
-      authState.isAuthenticated = true;
-      return Promise.resolve();
-    });
-
-    const sessionSpy = vi.spyOn(sessionModule, 'Session');
-    const children = <div data-testid={testId}>{childText}</div>;
-    render(
-      <BrowserRouter>
-        <OktaSession>{children}</OktaSession>
-      </BrowserRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId(testId)).toBeInTheDocument();
-    });
-
-    expect(sessionSpy).toHaveBeenCalledWith(
-      {
-        children: children,
-        provider: 'okta',
-        user,
-        accessToken,
-        expires: expect.any(Number),
-        validatedClaims: {},
-      },
-      {},
-    );
-  });
-
-  test('should map UNKNOWN to CamsUser if Okta user name and email are not present', async () => {
-    const oktaUser = {};
-    const user: CamsUser = { name: 'UNKNOWN' };
-    const testId = 'child-div';
-    const childText = 'TEST';
-
-    getUser.mockResolvedValue(oktaUser);
-    handleLoginRedirect.mockImplementation(() => {
-      authState.isAuthenticated = true;
-      return Promise.resolve();
-    });
-
-    const sessionSpy = vi.spyOn(sessionModule, 'Session');
-    const children = <div data-testid={testId}>{childText}</div>;
-    render(
-      <BrowserRouter>
-        <OktaSession>{children}</OktaSession>
-      </BrowserRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId(testId)).toBeInTheDocument();
-    });
-
-    expect(sessionSpy).toHaveBeenCalledWith(
-      {
-        children: children,
-        provider: 'okta',
-        user,
-        expires: expect.any(Number),
-        accessToken,
-        validatedClaims: {},
-      },
-      {},
-    );
-  });
-
-  test('should show an error message if the user cannot be retrieved from Okta', async () => {
-    const errorMessage = 'error message';
-    getUser.mockRejectedValue(new Error(errorMessage));
-    handleLoginRedirect.mockImplementation(() => {
-      authState.isAuthenticated = true;
-      return Promise.resolve();
-    });
-
-    render(
-      <BrowserRouter>
-        <OktaSession></OktaSession>
-      </BrowserRouter>,
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('alert-message')).toHaveTextContent(errorMessage);
-    });
   });
 
   test('should show an error message if the redirect from Okta cannot be handled', async () => {
@@ -193,7 +96,6 @@ describe('OktaSession', () => {
       return {
         oktaAuth: {
           handleLoginRedirect,
-          getUser,
         },
         authState: {
           error: new Error(errorMessage),
@@ -213,14 +115,10 @@ describe('OktaSession', () => {
   });
 
   test('should render AccessDenied if a JWT cannot be retrieved from Okta', async () => {
-    const oktaUser = {
-      name: 'First Last',
-    };
     const testId = 'child-div';
     const childText = 'TEST';
 
     getAccessToken.mockReturnValue(undefined);
-    getUser.mockResolvedValue(oktaUser);
     handleLoginRedirect.mockImplementation(() => {
       authState.isAuthenticated = true;
       return Promise.resolve();
@@ -229,7 +127,6 @@ describe('OktaSession', () => {
       return {
         oktaAuth: {
           handleLoginRedirect,
-          getUser,
           getAccessToken,
         },
         authState,
@@ -246,6 +143,92 @@ describe('OktaSession', () => {
 
     await waitFor(() => {
       expect(accessDeniedSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should render AccessDenied if a JWT does not have expiration', async () => {
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const decode = vi.fn().mockReturnValue({
+      payload: {
+        exp: undefined,
+        iss: 'https://issuer/',
+      },
+    });
+
+    getAccessToken.mockReturnValue(accessToken);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+    useOktaAuth.mockImplementation(() => {
+      return {
+        oktaAuth: {
+          handleLoginRedirect,
+          getAccessToken,
+          token: {
+            decode,
+          },
+        },
+        authState,
+      };
+    });
+
+    const accessDeniedSpy = vi.spyOn(accessDeniedModule, 'AccessDenied');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(accessDeniedSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should render AccessDenied if a JWT does not have issuer', async () => {
+    const testId = 'child-div';
+    const childText = 'TEST';
+    const decode = vi.fn().mockReturnValue({
+      payload: {
+        exp: Number.MAX_SAFE_INTEGER,
+        iss: undefined,
+      },
+    });
+
+    getAccessToken.mockReturnValue(accessToken);
+    handleLoginRedirect.mockImplementation(() => {
+      authState.isAuthenticated = true;
+      return Promise.resolve();
+    });
+    useOktaAuth.mockImplementation(() => {
+      return {
+        oktaAuth: {
+          handleLoginRedirect,
+          getAccessToken,
+          token: {
+            decode,
+          },
+        },
+        authState,
+      };
+    });
+
+    const accessDeniedSpy = vi.spyOn(accessDeniedModule, 'AccessDenied');
+    const children = <div data-testid={testId}>{childText}</div>;
+    render(
+      <BrowserRouter>
+        <OktaSession>{children}</OktaSession>
+      </BrowserRouter>,
+    );
+    await waitFor(() => {
+      expect(accessDeniedSpy).toHaveBeenCalledWith(
+        {
+          message: 'Invalid issuer or expiration claims.',
+        },
+        {},
+      );
     });
   });
 });

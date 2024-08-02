@@ -1,11 +1,21 @@
+import { OfficeDetails } from './courts';
+
+export enum CamsRole {
+  SuperUser = 'SuperUser',
+  CaseAssignmentManager = 'CaseAssignmentManager',
+  TrialAttorney = 'TrialAttorney',
+}
+
 export type CamsUser = {
   name: string;
+  offices?: OfficeDetails[];
+  roles?: CamsRole[];
 };
 
 export type CamsSession = {
   user: CamsUser;
   accessToken: string;
   provider: string;
+  issuer: string;
   expires: number;
-  validatedClaims: { [key: string]: unknown };
 };

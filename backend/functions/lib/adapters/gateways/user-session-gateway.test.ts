@@ -1,4 +1,4 @@
-import { ConflictError, isConflictError, UserSessionGateway } from './user-session.gateway';
+import { ConflictError, isConflictError, UserSessionGateway } from './user-session-gateway';
 import OktaGateway from './okta/okta-gateway';
 import { CamsJwtHeader } from '../types/authorization';
 import { ApplicationContext } from '../types/basic';
@@ -12,31 +12,33 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
+import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
+import { urlRegex } from '../../../../../user-interface/src/lib/testing/testing-utilities';
+import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 describe('user-session.gateway test', () => {
   const jwt = MockData.getJwt();
-  const validatedClaims = {
+  const claims = {
     iss: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
     sub: 'user@fake.com',
     aud: 'api://default',
     iat: 0,
     exp: Number.MAX_SAFE_INTEGER,
+    groups: [],
   };
   const provider = 'okta';
   const mockName = 'Mock User';
   const expectedSession = MockData.getCamsSession({
-    user: { name: mockName },
+    user: { name: mockName, offices: [], roles: [] },
     accessToken: jwt,
     provider,
-    validatedClaims,
   });
-  const mockGetValue = {
+  const mockGetValue: CamsSession = {
     user: { name: 'Wrong Name' },
     accessToken: jwt,
     provider,
-    validatedClaims,
-    signature: '',
-    ttl: 0,
+    issuer: 'http://issuer/',
+    expires: Number.MAX_SAFE_INTEGER,
   };
   let context: ApplicationContext;
   let gateway: UserSessionGateway;
@@ -57,7 +59,7 @@ describe('user-session.gateway test', () => {
       kid: '',
     };
     jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue({
-      claims: validatedClaims,
+      claims,
       header: jwtHeader as CamsJwtHeader,
     });
     jest.spyOn(OktaGateway, 'getUser').mockResolvedValue({ name: mockName });
@@ -78,7 +80,11 @@ describe('user-session.gateway test', () => {
       resource: mockGetValue,
     });
     const session = await gateway.lookup(context, jwt, provider);
-    expect(session).toEqual({ ...expectedSession, expires: expect.any(Number) });
+    expect(session).toEqual({
+      ...expectedSession,
+      expires: expect.any(Number),
+      issuer: expect.stringMatching(urlRegex),
+    });
     expect(createSpy).toHaveBeenCalled();
   });
 
@@ -88,7 +94,11 @@ describe('user-session.gateway test', () => {
     });
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const session = await gateway.lookup(context, jwt, provider);
-    expect(session).toEqual({ ...expectedSession, expires: expect.any(Number) });
+    expect(session).toEqual({
+      ...expectedSession,
+      expires: expect.any(Number),
+      issuer: expect.stringMatching(urlRegex),
+    });
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -145,7 +155,11 @@ describe('user-session.gateway test', () => {
     jest.spyOn(OktaGateway, 'verifyToken').mockRejectedValue(conflictError);
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const session = await gateway.lookup(context, jwt, provider);
-    expect(session).toEqual({ ...expectedSession, expires: expect.any(Number) });
+    expect(session).toEqual({
+      ...expectedSession,
+      expires: expect.any(Number),
+      issuer: expect.stringMatching(urlRegex),
+    });
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -182,5 +196,27 @@ describe('user-session.gateway test', () => {
     });
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(ServerConfigError);
+  });
+
+  test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
+    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
+      resources: [],
+    });
+
+    jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
+      put: jest.fn(),
+      get: jest.fn().mockResolvedValue(null),
+    });
+
+    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(OktaGateway);
+
+    const localContext = { ...context, featureFlags: { ...context.featureFlags } };
+    localContext.featureFlags['restrict-case-assignment'] = false;
+
+    const session = await gateway.lookup(localContext, jwt, provider);
+    expect(session.user.offices).toEqual([
+      OFFICES.find((office) => office.courtDivisionCode === '081'),
+    ]);
+    expect(session.user.roles).toEqual([CamsRole.CaseAssignmentManager]);
   });
 });

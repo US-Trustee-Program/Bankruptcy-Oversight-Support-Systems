@@ -1,5 +1,6 @@
 {
   "defaults": {
+    "useIncognitoBrowserContext": false,
     "chromeLaunchConfig": {
       "args": [
         "--no-sandbox"

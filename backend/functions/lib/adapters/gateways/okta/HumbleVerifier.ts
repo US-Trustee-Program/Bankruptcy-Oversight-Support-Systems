@@ -1,5 +1,5 @@
-import { CamsJwt } from '../../types/authorization';
 import OktaJwtVerifier = require('@okta/jwt-verifier');
+import { CamsJwt } from '../../types/authorization';
 
 type Algorithm =
   | 'HS256'
@@ -51,5 +51,13 @@ export async function verifyAccessToken(
   const oktaJwtVerifier = new OktaJwtVerifier({ issuer });
   const oktaJwt: Jwt = await oktaJwtVerifier.verifyAccessToken(token, audience);
 
-  return { claims: { ...oktaJwt.claims }, header: { ...oktaJwt.header } };
+  // DOJ Login Okta instances return a custom `groups` attribute on claims that does not
+  // appear on standard Okta claims. This line checks to see if it exists and if not
+  // appends an empty array for groups that will carry no permissions for the user.
+  const groups: string[] = oktaJwt.claims.groups ? (oktaJwt.claims.groups as string[]) : [];
+
+  return {
+    claims: { ...oktaJwt.claims, groups },
+    header: { ...oktaJwt.header },
+  };
 }

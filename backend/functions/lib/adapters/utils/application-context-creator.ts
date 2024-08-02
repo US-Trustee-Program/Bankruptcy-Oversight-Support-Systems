@@ -5,7 +5,7 @@ import { getFeatureFlags } from './feature-flag';
 import { LoggerImpl } from '../services/logger.service';
 import { getUserSessionGateway } from '../../factory';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { SessionCache } from './sessionCache';
+import { SessionGateway } from './session-gateway';
 import * as jwt from 'jsonwebtoken';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
@@ -54,8 +54,13 @@ async function getApplicationContextSession(context: ApplicationContext) {
     });
   }
 
-  const sessionGateway: SessionCache = getUserSessionGateway(context);
-  return await sessionGateway.lookup(context, accessToken, context.config.authConfig.provider);
+  const sessionGateway: SessionGateway = getUserSessionGateway(context);
+  const session = await sessionGateway.lookup(
+    context,
+    accessToken,
+    context.config.authConfig.provider,
+  );
+  return session;
 }
 
 const ContextCreator = {
