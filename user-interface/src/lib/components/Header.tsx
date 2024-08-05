@@ -9,8 +9,10 @@ import { useEffect, useState } from 'react';
 
 export enum NavState {
   DEFAULT,
-  CASES,
+  CASE_ASSIGNMENT,
+  CASE_DETAIL,
   DATA_VERIFICATION,
+  MY_CASES,
   SEARCH,
 }
 
@@ -18,11 +20,13 @@ function mapNavState(path: string) {
   const cleanPath = path.replace(/^\//, '').split('/');
   switch (cleanPath[0]) {
     case 'case-assignment':
-      return NavState.CASES;
+      return NavState.CASE_ASSIGNMENT;
     case 'case-detail':
-      return NavState.CASES;
+      return NavState.CASE_ASSIGNMENT;
     case 'data-verification':
       return NavState.DATA_VERIFICATION;
+    case 'my-cases':
+      return NavState.MY_CASES;
     case 'search':
       return NavState.SEARCH;
     default:
@@ -77,14 +81,26 @@ export const Header = () => {
             <ul className="usa-nav__primary usa-accordion">
               <li className="usa-nav__primary-item">
                 <NavLink
-                  to="/case-assignment"
-                  data-testid="header-cases-link"
-                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASES)}
+                  to="/my-cases"
+                  data-testid="header-my-cases-link"
+                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
                   onClick={() => {
-                    return setActiveNav(NavState.CASES);
+                    return setActiveNav(NavState.MY_CASES);
                   }}
                 >
-                  Cases
+                  My Cases
+                </NavLink>
+              </li>
+              <li className="usa-nav__primary-item">
+                <NavLink
+                  to="/case-assignment"
+                  data-testid="header-case-assignment-link"
+                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_ASSIGNMENT)}
+                  onClick={() => {
+                    return setActiveNav(NavState.CASE_ASSIGNMENT);
+                  }}
+                >
+                  Case Assignment
                 </NavLink>
               </li>
               {transferOrdersFlag && (

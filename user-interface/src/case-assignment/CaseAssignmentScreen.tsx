@@ -32,7 +32,7 @@ export const CaseAssignment = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
-  function sortByDate(a: CaseBasics, b: CaseBasics): number {
+  function sortByDateFiled(a: CaseBasics, b: CaseBasics): number {
     if (a.dateFiled < b.dateFiled) {
       return 1;
     } else if (a.dateFiled > b.dateFiled) {
@@ -61,7 +61,7 @@ export const CaseAssignment = () => {
         caseList.forEach((bCase) => {
           bCase.assignments = bCase.assignments ?? [];
         });
-        caseList.sort(sortByDate).sort(sortByCaseId);
+        caseList.sort(sortByDateFiled).sort(sortByCaseId);
         setCaseList(caseList);
 
         isFetching = false;
@@ -136,7 +136,7 @@ export const CaseAssignment = () => {
         return aCase.caseId !== bCase.caseId;
       });
       updatedCaseList.push(bCase);
-      updatedCaseList.sort(sortByDate).sort(sortByCaseId);
+      updatedCaseList.sort(sortByDateFiled).sort(sortByCaseId);
       setCaseList(updatedCaseList);
 
       const alertMessage =

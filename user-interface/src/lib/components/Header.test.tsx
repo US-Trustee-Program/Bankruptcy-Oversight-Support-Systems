@@ -32,16 +32,17 @@ describe('Header', () => {
     renderWithoutProps();
     const mainTitle = await screen.findByText('U.S. Trustee Program');
     const subTitle = await screen.findByText('CAse Management System (CAMS)');
-    const caseMenu = await screen.findByTestId('header-cases-link');
+    const caseAssignmentMenu = await screen.findByTestId('header-case-assignment-link');
 
     expect(mainTitle).toBeInTheDocument();
     expect(subTitle).toBeInTheDocument();
-    expect(caseMenu).toBeInTheDocument();
+    expect(caseAssignmentMenu).toBeInTheDocument();
   });
 
   const highlightTestCases = [
-    ['case assignment', '/case-assignment', 'header-cases-link'],
-    ['case detail', '/case-detail', 'header-cases-link'],
+    ['my cases', '/my-cases', 'header-my-cases-link'],
+    ['case assignment', '/case-assignment', 'header-case-assignment-link'],
+    ['case detail', '/case-detail', 'header-case-assignment-link'],
     ['data verification', '/data-verification', 'header-data-verification-link'],
     ['search', '/search', 'header-search-link'],
   ];
@@ -69,8 +70,9 @@ describe('Header', () => {
   });
 
   const linkTestIds = [
-    ['header-cases-link'],
+    ['header-case-assignment-link'],
     ['header-data-verification-link'],
+    ['header-my-cases-link'],
     ['header-search-link'],
   ];
   test.each(linkTestIds)('should activate %s link when clicked', async (linkTestId: string) => {
