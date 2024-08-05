@@ -1,4 +1,4 @@
-import { DebtorAttorney, Party } from './parties';
+import { AttorneyRecord, DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { OfficeDetails } from './courts';
 
@@ -12,7 +12,7 @@ export interface CaseBasics extends OfficeDetails {
   petitionLabel?: string;
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
-  assignments?: string[];
+  assignments?: AttorneyRecord[];
 }
 
 export interface CaseSummary extends CaseBasics {
@@ -24,7 +24,7 @@ export interface CaseDetail extends CaseSummary {
   dismissedDate?: string;
   reopenedDate?: string;
   courtId: string;
-  assignments?: string[];
+  assignments?: AttorneyRecord[];
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
