@@ -102,13 +102,15 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        name: attorneyJaneSmith,
+        userId: attorneyJaneSmith.id,
+        name: attorneyJaneSmith.name,
         role,
       };
 
       const assignmentTwo = {
         caseId,
-        name: attorneyJoeNobel,
+        userId: attorneyJoeNobel.id,
+        name: attorneyJoeNobel.name,
         role,
       };
 
@@ -134,13 +136,15 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        name: attorneyJaneSmith,
+        userId: attorneyJaneSmith.id,
+        name: attorneyJaneSmith.name,
         role,
       };
 
       const assignmentTwo = {
         caseId,
-        name: attorneyJoeNobel,
+        userId: attorneyJoeNobel.id,
+        name: attorneyJoeNobel.name,
         role,
       };
 
@@ -177,7 +181,8 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        name: attorneyJaneSmith,
+        userId: attorneyJaneSmith.id,
+        name: attorneyJaneSmith.name,
         role,
       };
 
