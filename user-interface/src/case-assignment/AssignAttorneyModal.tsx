@@ -12,6 +12,7 @@ import { getFullName } from '@common/name-helper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
+import { AttorneyRecord } from '@common/cams/parties';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -36,8 +37,8 @@ export interface AttorneyListResponseData extends ResponseData {
 
 export interface CallBackProps {
   bCase: CaseBasics;
-  selectedAttorneyList: string[];
-  previouslySelectedList: string[];
+  selectedAttorneyList: AttorneyRecord[];
+  previouslySelectedList: AttorneyRecord[];
   status: 'success' | 'error';
   apiResult: object;
 }
@@ -59,7 +60,7 @@ function AssignAttorneyModalComponent(
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
 
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
-  const [previouslySelectedList, setPreviouslySelectedList] = useState<string[]>([]);
+  const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyRecord[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
 
   const actionButtonGroup = {
@@ -81,7 +82,9 @@ function AssignAttorneyModalComponent(
       if (showProps.bCase) {
         setBCase(showProps.bCase);
         if (showProps.bCase.assignments) {
-          setCheckListValues([...showProps.bCase.assignments]);
+          setCheckListValues([
+            ...showProps.bCase.assignments.map((assignment) => assignment.fullName),
+          ]);
           setPreviouslySelectedList([...showProps.bCase.assignments]);
         }
       }
@@ -119,7 +122,10 @@ function AssignAttorneyModalComponent(
     const isTheSame =
       localCheckListValues &&
       !!bCase.assignments &&
-      areArraysSame(localCheckListValues, bCase.assignments);
+      areArraysSame(
+        localCheckListValues,
+        bCase.assignments.map((assignment) => assignment.fullName),
+      );
 
     modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 
@@ -133,7 +139,7 @@ function AssignAttorneyModalComponent(
 
   async function submitValues() {
     if (!bCase) return;
-    let finalAttorneyList: string[] = [];
+    let finalAttorneyList: AttorneyRecord[] = [];
 
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
 
@@ -141,7 +147,11 @@ function AssignAttorneyModalComponent(
     finalAttorneyList = props.attorneyList
       .filter((attorney) => checkListValues.includes(getFullName(attorney)))
       .map((atty) => {
-        return getFullName(atty);
+        return {
+          fullName: getFullName(atty),
+          userId: atty.userId,
+          userName: atty.userName,
+        };
       });
 
     // send attorney IDs to API

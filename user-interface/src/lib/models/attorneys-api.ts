@@ -13,6 +13,8 @@ export default class AttorneysApi {
         if (atty.middleName !== undefined) attorney.middleName = atty.middleName;
         if (atty.generation !== undefined) attorney.generation = atty.generation;
         if (atty.caseLoad !== undefined) attorney.caseLoad = atty.caseLoad;
+        if (atty.userId !== undefined) attorney.userId = atty.userId;
+        if (atty.userName !== undefined) attorney.userName = atty.userName;
         return attorney;
       });
       return attorneys;
