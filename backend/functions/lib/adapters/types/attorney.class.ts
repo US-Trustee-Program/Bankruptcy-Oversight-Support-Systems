@@ -8,6 +8,8 @@ export class Attorney implements Person {
   generation: string;
   office: string;
   caseLoad: number;
+  userId: string;
+  userName: string;
 
   constructor(attorney?: ObjectKeyVal) {
     if (attorney) {
@@ -20,6 +22,10 @@ export class Attorney implements Person {
           this.lastName = value as string;
         } else if (key === 'generation') {
           this.generation = value as string;
+        } else if (key === 'userId') {
+          this.userId = value as string;
+        } else if (key === 'userName') {
+          this.userName = value as string;
         }
       });
     }
@@ -33,6 +39,8 @@ export class Attorney implements Person {
       generation: this.generation,
       office: this.office,
       caseLoad: this.caseLoad,
+      userId: this.userId,
+      userName: this.userName,
     };
   }
 }

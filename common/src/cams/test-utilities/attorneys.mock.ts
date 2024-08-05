@@ -6,6 +6,8 @@ export const ATTORNEYS = [
     lastName: 'Riffkin',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY001',
+    userName: 'lariffkin',
   },
   {
     firstName: 'Susan',
@@ -13,6 +15,8 @@ export const ATTORNEYS = [
     lastName: 'Arbeit',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY002',
+    userName: 'sarbeit',
   },
   {
     firstName: 'Mark',
@@ -20,6 +24,8 @@ export const ATTORNEYS = [
     lastName: 'Bruh',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY003',
+    userName: 'mbruh',
   },
   {
     firstName: 'Shara',
@@ -27,6 +33,8 @@ export const ATTORNEYS = [
     lastName: 'Cornell',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY004',
+    userName: 'scornell',
   },
   {
     firstName: 'Brian',
@@ -34,6 +42,8 @@ export const ATTORNEYS = [
     lastName: 'Masumoto',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY005',
+    userName: 'bsmasumoto',
   },
   {
     firstName: 'Andrea',
@@ -41,6 +51,8 @@ export const ATTORNEYS = [
     lastName: 'Schwartz',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY006',
+    userName: 'abschwartz',
   },
   {
     firstName: 'Paul',
@@ -48,6 +60,8 @@ export const ATTORNEYS = [
     lastName: 'Schwartzberg',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY007',
+    userName: 'pkschwartzberg',
   },
   {
     firstName: 'Shannon',
@@ -55,6 +69,8 @@ export const ATTORNEYS = [
     lastName: 'Scott',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY008',
+    userName: 'sscott',
   },
   {
     firstName: 'Tara',
@@ -62,6 +78,8 @@ export const ATTORNEYS = [
     lastName: 'Tiantian',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY009',
+    userName: 'ttiantian',
   },
   {
     firstName: 'Andy',
@@ -69,6 +87,8 @@ export const ATTORNEYS = [
     lastName: 'Velez-Rivera',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY010',
+    userName: 'avelezrivera',
   },
   {
     firstName: 'Daniel',
@@ -76,6 +96,8 @@ export const ATTORNEYS = [
     lastName: 'Rudewicz',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY011',
+    userName: 'drudewicz',
   },
   {
     firstName: 'Annie',
@@ -83,6 +105,8 @@ export const ATTORNEYS = [
     lastName: 'Wells',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY012',
+    userName: 'awells',
   },
   {
     firstName: 'Greg',
@@ -90,5 +114,7 @@ export const ATTORNEYS = [
     lastName: 'Zipes',
     generation: '',
     office: 'Manhattan',
+    userId: 'ATY013',
+    userName: 'gmzipes',
   },
 ];
