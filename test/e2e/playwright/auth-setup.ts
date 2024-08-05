@@ -24,6 +24,7 @@ async function mockLogin(page: Page) {
 
   await page.goto(TARGET_HOST + LOGIN_PATH);
   await page.getByTestId('button-auo-confirm').click();
+  await page.waitForSelector('[data-test-id=modal-content-login-modal]');
   await expect(page.getByTestId('modal-content-login-modal')).toBeVisible();
   await page.getByTestId('radio-role-0-click-target').click();
   await page.getByTestId('button-login-modal-submit-button').click();
