@@ -30,8 +30,8 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
-  onStartSearching: () => void;
-  onEndSearching: () => void;
+  onStartSearching?: () => void;
+  onEndSearching?: () => void;
 };
 
 export function SearchResults(props: SearchResultsProps) {
@@ -83,14 +83,14 @@ export function SearchResults(props: SearchResultsProps) {
 
     trackSearchEvent(searchPredicate);
     setIsSearching(true);
-    onStartSearching();
+    if (onStartSearching) onStartSearching();
     api
       .get<CaseBasics[]>('/cases', searchPredicate)
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
         setIsSearching(false);
-        onEndSearching();
+        if (onEndSearching) onEndSearching();
       });
   }
 
