@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, Request } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
@@ -17,13 +17,20 @@ interface OrdersResponse {
 
 test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
+  let ordersRequestPromise: Promise<Request>;
+  let officesRequestPromise: Promise<Request>;
 
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
     const orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
-      { timeout: 30000 },
     );
+    ordersRequestPromise = page.waitForEvent('requestfinished', {
+      predicate: (e) => e.url().includes('api/orders'),
+    });
+    officesRequestPromise = page.waitForEvent('requestfinished', {
+      predicate: (e) => e.url().includes('api/offices'),
+    });
 
     await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
@@ -39,15 +46,6 @@ test.describe('Transfer Orders', () => {
   });
 
   test('test pending transfer order form', async ({ page }) => {
-    const ordersRequestPromise = page.waitForEvent('requestfinished', {
-      predicate: (e) => e.url().includes('api/orders'),
-      timeout: 30000,
-    });
-    const officesRequestPromise = page.waitForEvent('requestfinished', {
-      predicate: (e) => e.url().includes('api/offices'),
-      timeout: 30000,
-    });
-    await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     // get pending transfer order id
     const pendingTransferOrder: Order = orderResponseBody.find(
@@ -87,7 +85,6 @@ test.describe('Transfer Orders', () => {
     const caseNumber = '18-61881';
     const summaryRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes(`/api/cases/081-${caseNumber}/summary`),
-      timeout: 30000,
     });
     await page.getByTestId(`new-case-input-${firstOrderId}`).fill(caseNumber);
     await summaryRequestPromise;
