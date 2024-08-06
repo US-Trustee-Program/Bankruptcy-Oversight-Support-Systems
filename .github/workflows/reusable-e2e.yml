@@ -74,6 +74,7 @@ jobs:
       - name: Restart API and Install Node dependencies
         working-directory: test/e2e
         run: |
+          az functionapp restart --name ${{ inputs.apiName }} --resource-group ${{ steps.rgApp.outputs.out }} & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
           az functionapp restart --name ${{ inputs.apiName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging
           sleep 10
           npm ci
