@@ -70,18 +70,7 @@ jobs:
 
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-slot-step
-        continue-on-error: true
         run: |
-          ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
-          --src ./${{ inputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.webappName }} \
-          --slotName ${{ inputs.slotName }}
-
-      - name: Retry Deploy to Azure WebApp slot
-        if: steps.deploy-webapp-slot-step.outcome != 'success'
-        run: |
-          sleep 30 &&
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -113,17 +102,6 @@ jobs:
 
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-step
-        continue-on-error: true
-        run: |
-          ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip \
-          --slotName ${{ inputs.slotName }}
-
-      - name: Deploy Azure Functions slot backend
-        id: deploy-backend-slot-retry
-        if: steps.deploy-backend-slot-step.outcome != 'success'
         run: |
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
