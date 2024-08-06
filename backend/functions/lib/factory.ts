@@ -1,5 +1,4 @@
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
-import { AttorneyLocalGateway } from './adapters/gateways/attorneys.inmemory.gateway';
 import { CasesInterface } from './use-cases/cases.interface';
 import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
@@ -43,9 +42,10 @@ import { MockUserSessionGateway } from './testing/mock-gateways/mock-user-sessio
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
 import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
+import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
-  return new AttorneyLocalGateway();
+  return MockAttorneysGateway;
 };
 
 export const getCasesGateway = (applicationContext: ApplicationContext): CasesInterface => {

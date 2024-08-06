@@ -1,6 +1,6 @@
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
-import { BUFFALO, MANHATTAN } from './mock-data';
+import { BUFFALO, MANHATTAN } from './offices.mock';
 
 export type MockUser = {
   sub: string;
@@ -13,7 +13,7 @@ export const MockUsers: MockUser[] = [
     sub: 'jpearson@fake.com',
     label: 'Jessica Pearson - Trial Attorney (Manhattan)',
     user: {
-      id: '==MOCKUSER=jpearson@fake.com==',
+      id: 'manAtty0001',
       name: 'Jessica Pearson',
       roles: [CamsRole.TrialAttorney],
       offices: [MANHATTAN],
@@ -23,7 +23,7 @@ export const MockUsers: MockUser[] = [
     sub: 'jmccoy@fake.com',
     label: 'Jack McCoy - Trial Attorney (Manhattan)',
     user: {
-      id: '==MOCKUSER=jmccoy@fake.com==',
+      id: 'manAtty0002',
       name: 'Jack McCoy',
       roles: [CamsRole.TrialAttorney],
       offices: [MANHATTAN],
@@ -33,7 +33,7 @@ export const MockUsers: MockUser[] = [
     sub: 'sgoodman@fake.com',
     label: 'Saul Goodman - Trial Attorney (Buffalo)',
     user: {
-      id: '==MOCKUSER=sgoodman@fake.com==',
+      id: 'bufAtty0001',
       name: 'Saul Goodman',
       roles: [CamsRole.TrialAttorney],
       offices: [BUFFALO],
@@ -43,7 +43,7 @@ export const MockUsers: MockUser[] = [
     sub: 'rzane@fake.com',
     label: 'Rachel Zane - Trial Attorney (Buffalo)',
     user: {
-      id: '==MOCKUSER=rzane@fake.com==',
+      id: 'bufAtty0002',
       name: 'Rachel Zane',
       roles: [CamsRole.TrialAttorney],
       offices: [BUFFALO],

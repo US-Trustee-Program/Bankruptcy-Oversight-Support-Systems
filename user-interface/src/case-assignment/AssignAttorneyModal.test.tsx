@@ -7,9 +7,10 @@ import AssignAttorneyModal, {
 import React from 'react';
 import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import Api from '@/lib/models/api';
-import { MANHATTAN, MockData } from '@common/cams/test-utilities/mock-data';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
+import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
 
 const offices = [MANHATTAN!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });

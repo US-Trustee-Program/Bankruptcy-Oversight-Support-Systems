@@ -115,8 +115,9 @@ describe('Case Detail screen tests', () => {
             assigneeMap.set(name, role);
           }
         });
-        expect(assigneeMap.get(`${brianWilson}`)).toEqual(trialAttorneyRole);
-        expect(assigneeMap.get(`${carlWilson}`)).toEqual(trialAttorneyRole);
+        console.log(assigneeMap);
+        expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyRole);
 
         const judgeName = screen.getByTestId('case-detail-judge-name');
         expect(judgeName).toHaveTextContent(rickBHartName);
