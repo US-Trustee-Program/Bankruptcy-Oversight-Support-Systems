@@ -1,4 +1,4 @@
-import { CamsRole } from '../../../../../../common/src/cams/session';
+import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
 
 let roleMapping;

@@ -9,7 +9,7 @@ import {
   CaseAssignment,
 } from '../../../../../common/src/cams/assignments';
 import { CamsResponse } from '../controller-types';
-import { CamsUserReference } from '../../../../../common/src/cams/session';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =

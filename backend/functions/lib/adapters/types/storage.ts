@@ -1,4 +1,4 @@
-import { CamsRole } from '../../../../../common/src/cams/session';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 import { DxtrOfficeKeys } from '../gateways/storage/local-storage-gateway';
 
 export type StorageGateway = {

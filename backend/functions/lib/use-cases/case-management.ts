@@ -11,8 +11,9 @@ import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
 import { CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
-import { CamsRole } from '../../../../common/src/cams/session';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -80,7 +81,7 @@ export default class CaseManagement {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
     caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
     caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
-    caseDetails.assignments = await this.getCaseAssigneeNames(applicationContext, caseDetails);
+    caseDetails.assignments = await this.getCaseAssignments(applicationContext, caseDetails);
     caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
     const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
@@ -102,14 +103,17 @@ export default class CaseManagement {
     return caseSummary;
   }
 
-  private async getCaseAssigneeNames(context: ApplicationContext, bCase: CaseDetail) {
+  private async getCaseAssignments(
+    context: ApplicationContext,
+    bCase: CaseDetail,
+  ): Promise<CamsUserReference[]> {
     const caseAssignment = new CaseAssignmentUseCase(context);
     try {
       const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(
         bCase.caseId,
       );
       return assignments.map((a) => {
-        return a.name;
+        return { id: a.userId, name: a.name };
       });
     } catch (e) {
       throw new AssignmentError(MODULE_NAME, {

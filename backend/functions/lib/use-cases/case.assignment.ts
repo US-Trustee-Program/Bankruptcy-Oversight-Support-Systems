@@ -9,7 +9,8 @@ import {
 } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
-import { CamsRole, CamsUserReference } from '../../../../common/src/cams/session';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsRole } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 

@@ -1,10 +1,11 @@
 import * as jwt from 'jsonwebtoken';
-import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { SessionGateway } from '../../adapters/utils/session-gateway';
 import { getUser } from './mock-oauth2-gateway';
 import { CamsJwtClaims } from '../../adapters/types/authorization';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 const cache = new Map<string, CamsSession>();
 

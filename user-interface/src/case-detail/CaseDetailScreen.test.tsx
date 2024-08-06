@@ -9,11 +9,13 @@ import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 
 const caseId = '101-23-12345';
-const brianWilsonName = 'Brian Wilson';
-const carlWilsonName = 'Carl Wilson';
-const trialAttorneyRole = 'Trial Attorney';
+
+const brianWilson = { id: '001', name: 'Brian Wilson' };
+const carlWilson = { id: '002', name: 'Carl Wilson' };
 
 const rickBHartName = 'Rick B Hart';
+
+const trialAttorneyRole = 'Trial Attorney';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -55,7 +57,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilsonName, carlWilsonName],
+      assignments: [brianWilson, carlWilson],
       debtor: {
         name: 'Roger Rabbit',
         address1: '123 Rabbithole Lane',
@@ -113,8 +115,8 @@ describe('Case Detail screen tests', () => {
             assigneeMap.set(name, role);
           }
         });
-        expect(assigneeMap.get(`${brianWilsonName}`)).toEqual(trialAttorneyRole);
-        expect(assigneeMap.get(`${carlWilsonName}`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${brianWilson}`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${carlWilson}`)).toEqual(trialAttorneyRole);
 
         const judgeName = screen.getByTestId('case-detail-judge-name');
         expect(judgeName).toHaveTextContent(rickBHartName);
@@ -166,7 +168,7 @@ describe('Case Detail screen tests', () => {
         petitionLabel: 'Voluntary',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilsonName, carlWilsonName],
+        assignments: [brianWilson, carlWilson],
         debtor: {
           name: 'Roger Rabbit',
         },
@@ -226,7 +228,7 @@ describe('Case Detail screen tests', () => {
         petitionLabel: 'Voluntary',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilsonName, carlWilsonName],
+        assignments: [brianWilson, carlWilson],
         debtor: {
           name: 'Roger Rabbit',
           address1,
@@ -297,7 +299,7 @@ describe('Case Detail screen tests', () => {
         petitionLabel: 'Voluntary',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilsonName, carlWilsonName],
+        assignments: [brianWilson, carlWilson],
         debtor: {
           name: 'Roger Rabbit',
           ssn,
@@ -358,7 +360,7 @@ describe('Case Detail screen tests', () => {
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilsonName, carlWilsonName],
+      assignments: [brianWilson, carlWilson],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -397,7 +399,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilsonName, carlWilsonName],
+      assignments: [brianWilson, carlWilson],
       judgeName: 'Honorable Jason Smith',
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
@@ -441,7 +443,7 @@ describe('Case Detail screen tests', () => {
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
-      assignments: [brianWilsonName, carlWilsonName],
+      assignments: [brianWilson, carlWilson],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -484,7 +486,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
-      assignments: [brianWilsonName, carlWilsonName],
+      assignments: [brianWilson, carlWilson],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -533,7 +535,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
-      assignments: [brianWilsonName, carlWilsonName],
+      assignments: [brianWilson, carlWilson],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -664,7 +666,7 @@ describe('Case Detail screen tests', () => {
         dateFiled: '01-04-1962',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilsonName, carlWilsonName],
+        assignments: [brianWilson, carlWilson],
         debtor: {
           name: 'Roger Rabbit',
         },
