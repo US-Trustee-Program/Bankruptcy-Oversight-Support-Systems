@@ -40,7 +40,8 @@ import {
 } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case.assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsRole, CamsUserReference } from '../../../../../common/src/cams/session';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {

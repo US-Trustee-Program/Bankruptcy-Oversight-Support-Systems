@@ -1,4 +1,4 @@
-import { CamsRole } from './session';
+import { CamsRole } from './roles';
 
 describe('session', () => {
   describe('CamsRole enum', () => {

@@ -1,13 +1,13 @@
 import { render } from '@testing-library/react';
 import { MyCasesScreen } from './MyCasesScreen';
 import { CasesSearchPredicate } from '@common/api/search';
-import { CamsUser, getCamsUserReference } from '@common/cams/session';
 import { CaseSummary } from '@common/cams/cases';
 import { ResponseBodySuccess } from '@common/api/response';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search/SearchResults';
 import * as genericApiModule from '@/lib/hooks/UseApi';
+import { CamsUser } from '@common/cams/users';
 
 describe('MyCasesScreen', () => {
   test('should render a list of cases assigned to a user', async () => {
@@ -26,7 +26,7 @@ describe('MyCasesScreen', () => {
     });
 
     const expectedPredicate: CasesSearchPredicate = {
-      assignments: [getCamsUserReference(user)],
+      assignments: [user.id],
     };
     const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
 

@@ -25,10 +25,11 @@ import {
   ConsolidationTo,
 } from '../events';
 import { CaseAssignment } from '../assignments';
-import { CamsSession, CamsUser, CamsUserReference } from '../session';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
 import { Action, ResourceActions } from '../actions';
+import { CamsUser, CamsUserReference } from '../users';
+import { CamsSession } from '../session';
 
 export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
 export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');

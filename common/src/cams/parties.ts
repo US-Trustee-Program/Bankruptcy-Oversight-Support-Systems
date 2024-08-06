@@ -22,9 +22,3 @@ export type DebtorAttorney = Omit<Party, 'taxId' | 'ssn'> & {
   email?: string;
   office?: string;
 };
-
-export type AttorneyRecord = {
-  fullName: string;
-  userId?: string;
-  userName?: string;
-};

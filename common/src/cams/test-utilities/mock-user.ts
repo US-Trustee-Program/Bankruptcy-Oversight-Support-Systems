@@ -1,4 +1,5 @@
-import { CamsRole, CamsUser } from '../session';
+import { CamsRole } from '../roles';
+import { CamsUser } from '../users';
 import { BUFFALO, MANHATTAN } from './mock-data';
 
 export type MockUser = {

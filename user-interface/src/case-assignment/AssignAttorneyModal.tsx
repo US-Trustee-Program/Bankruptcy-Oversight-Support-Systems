@@ -12,7 +12,7 @@ import { getFullName } from '@common/name-helper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
-import { AttorneyRecord } from '@common/cams/parties';
+import { AttorneyUser } from '@common/cams/users';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -37,8 +37,8 @@ export interface AttorneyListResponseData extends ResponseData {
 
 export interface CallBackProps {
   bCase: CaseBasics;
-  selectedAttorneyList: AttorneyRecord[];
-  previouslySelectedList: AttorneyRecord[];
+  selectedAttorneyList: AttorneyUser[];
+  previouslySelectedList: AttorneyUser[];
   status: 'success' | 'error';
   apiResult: object;
 }
@@ -60,7 +60,7 @@ function AssignAttorneyModalComponent(
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
 
   const [checkListValues, setCheckListValues] = useState<string[]>([]);
-  const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyRecord[]>([]);
+  const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
 
   const actionButtonGroup = {
@@ -139,7 +139,7 @@ function AssignAttorneyModalComponent(
 
   async function submitValues() {
     if (!bCase) return;
-    let finalAttorneyList: AttorneyRecord[] = [];
+    let finalAttorneyList: AttorneyUser[] = [];
 
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
 

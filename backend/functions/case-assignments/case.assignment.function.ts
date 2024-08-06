@@ -6,7 +6,7 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { CamsUserReference } from '../../../common/src/cams/session';
+import { CamsUserReference } from '../../../common/src/cams/users';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 

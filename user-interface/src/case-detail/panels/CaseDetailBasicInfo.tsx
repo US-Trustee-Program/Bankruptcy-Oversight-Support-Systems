@@ -15,6 +15,7 @@ import { useRef } from 'react';
 import { Attorney } from '@/lib/type-declarations/attorneys';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
+import { AttorneyUser } from '@common/cams/users';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -109,15 +110,17 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
               <ul className="usa-list usa-list--unstyled">
                 {caseDetail.assignments &&
                   caseDetail.assignments.length > 0 &&
-                  (caseDetail.assignments as Array<string>)?.map((staff: string, idx: number) => {
-                    return (
-                      <li key={idx} className="individual-assignee">
-                        <span className="assignee-name">{staff}</span>
-                        <span className="vertical-divider">|</span>
-                        <span className="assignee-role">Trial Attorney</span>
-                      </li>
-                    );
-                  })}
+                  (caseDetail.assignments as Array<AttorneyUser>)?.map(
+                    (staff: AttorneyUser, idx: number) => {
+                      return (
+                        <li key={idx} className="individual-assignee">
+                          <span className="assignee-name">{staff.name}</span>
+                          <span className="vertical-divider">|</span>
+                          <span className="assignee-role">Trial Attorney</span>
+                        </li>
+                      );
+                    },
+                  )}
                 {caseDetail.assignments?.length == 0 && (
                   <span className="unassigned-placeholder">(unassigned)</span>
                 )}
