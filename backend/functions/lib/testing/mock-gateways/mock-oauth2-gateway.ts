@@ -18,7 +18,7 @@ const key = 'mock-secret'; //pragma: allowlist secret
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
   if (context.config.authConfig.provider !== 'mock') {
-    throw new ForbiddenError(MODULE_NAME);
+    throw new ForbiddenError(MODULE_NAME, { message: 'Not in mock mode...' });
   }
   const requestedSubject = context.req.body as Pick<MockUser, 'sub'>;
   const validMockRole = mockUsers.find((role) => role.sub === requestedSubject.sub);
