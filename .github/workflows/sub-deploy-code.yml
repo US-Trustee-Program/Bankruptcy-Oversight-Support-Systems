@@ -48,17 +48,7 @@ jobs:
 
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
-        continue-on-error: true
         run: |
-          ./ops/scripts/pipeline/az-app-deploy.sh \
-          --src ./${{ inputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.webappName }}
-
-      - name: Retry Deploy to Azure WebApp
-        if: steps.deploy-webapp-step.outcome != 'success'
-        run: |
-          sleep 30 &&
           ./ops/scripts/pipeline/az-app-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -89,16 +79,6 @@ jobs:
 
       - name: Deploy Azure Functions backend
         id: deploy-backend-step
-        continue-on-error: true
-        run: |
-          sleep 30 &&
-          ./ops/scripts/pipeline/az-func-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip
-
-      - name: Retry Deploy Azure Functions backend
-        if: steps.deploy-backend-step.outcome != 'success'
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
