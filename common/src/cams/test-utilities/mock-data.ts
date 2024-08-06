@@ -15,7 +15,7 @@ import {
   TransferOrder,
 } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
-import { OFFICES } from './offices.mock';
+import { MANHATTAN, OFFICES } from './offices.mock';
 import { ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import {
@@ -30,9 +30,6 @@ import { WithPagination } from '../../api/pagination';
 import { Action, ResourceActions } from '../actions';
 import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
 import { CamsSession } from '../session';
-
-export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
-export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';

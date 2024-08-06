@@ -20,4 +20,6 @@ export type CasesSearchPredicate = SearchPredicate & {
   divisionCodes?: string[];
   chapters?: string[];
   assignments?: string[];
+  // TODO: Maybe the case management use case use the assignment use case to "augment" a search predicate to contain the list of case numbers to return.
+  caseNumbers?: string[];
 };

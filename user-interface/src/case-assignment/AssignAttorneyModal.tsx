@@ -11,6 +11,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
+import { getCamsUserReference } from '@common/cams/session';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -103,25 +104,31 @@ function AssignAttorneyModalComponent(
     };
   });
 
-  function areArraysSame(ar1: string[], ar2: string[]): boolean {
-    return JSON.stringify(ar1.sort()) === JSON.stringify(ar2.sort());
+  function areArraysSame(ar1: AttorneyUser[], ar2: AttorneyUser[]): boolean {
+    const ar1ids = ar1.map((ar) => ar.id);
+    const ar2ids = ar2.map((ar) => ar.id);
+    return JSON.stringify(ar1ids.sort()) === JSON.stringify(ar2ids.sort());
   }
 
-  function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, name: string) {
+  function attorneyIsInCheckList(attorney: AttorneyUser): boolean {
+    const result = checkListValues.find((theAttorney) => theAttorney.id === attorney.id);
+    return result !== undefined;
+  }
+
+  function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser) {
     if (!bCase) return;
     let localCheckListValues = [...checkListValues];
-    if (ev.target.checked && !checkListValues.includes(name)) {
-      localCheckListValues.push(name);
-    } else if (!ev.target.checked && checkListValues.includes(name)) {
-      localCheckListValues = checkListValues.filter((theName) => theName !== name);
+    if (ev.target.checked && !attorneyIsInCheckList(attorney)) {
+      localCheckListValues.push(attorney);
+    } else if (!ev.target.checked && attorneyIsInCheckList(attorney)) {
+      localCheckListValues = checkListValues.filter(
+        (theAttorney) => theAttorney.id !== attorney.id,
+      );
     }
     const isTheSame =
       localCheckListValues &&
       !!bCase.assignments &&
-      areArraysSame(
-        localCheckListValues,
-        bCase.assignments.map((assignment) => assignment.fullName),
-      );
+      areArraysSame(localCheckListValues, bCase.assignments);
 
     modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 
@@ -135,13 +142,17 @@ function AssignAttorneyModalComponent(
 
   async function submitValues() {
     if (!bCase) return;
-    let finalAttorneyList: AttorneyUser[] = [];
+    let finalAttorneyList: CamsUserReference[] = [];
 
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
 
     // call callback from parent with IDs and names of attorneys, and case id.
     const ids = checkListValues.map((item) => item.id);
-    finalAttorneyList = props.attorneyList.filter((attorney) => ids.includes(attorney.id));
+    finalAttorneyList = props.attorneyList
+      .filter((attorney) => ids.includes(attorney.id))
+      .map((attorney) => {
+        return getCamsUserReference(attorney);
+      });
 
     // send attorney IDs to API
     setIsUpdatingAssignment(true);
@@ -231,18 +242,17 @@ function AssignAttorneyModalComponent(
               <tbody data-testid="case-load-table-body">
                 {props.attorneyList.length > 0 &&
                   props.attorneyList.map((attorney: AttorneyUser, idx: number) => {
-                    const name = attorney.name;
                     return (
                       <tr key={idx}>
                         <td className="assign-attorney-checkbox-column">
                           <Checkbox
                             id={`${idx}-checkbox`}
-                            value={`${name}`}
+                            value={attorney.id}
                             onFocus={handleFocus}
-                            onChange={(event) => updateCheckList(event, name)}
-                            checked={checkListValues.includes(name)}
+                            onChange={(event) => updateCheckList(event, attorney)}
+                            checked={attorneyIsInCheckList(attorney)}
                             className="attorney-list-checkbox"
-                            label={name}
+                            label={attorney.name}
                           />
                         </td>
                       </tr>

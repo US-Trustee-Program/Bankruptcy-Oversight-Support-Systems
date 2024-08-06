@@ -28,10 +28,10 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
 import { CaseHistory } from '@common/cams/history';
 import AttorneysApi from '@/lib/models/attorneys-api';
-import { Attorney } from '@/lib/type-declarations/attorneys';
 import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { AttorneyUser } from '@common/cams/users';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -202,7 +202,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
-  const [attorneysList, setAttorneysList] = useState<Attorney[]>([]);
+  const [attorneysList, setAttorneysList] = useState<AttorneyUser[]>([]);
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);

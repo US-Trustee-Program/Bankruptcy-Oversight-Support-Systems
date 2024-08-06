@@ -300,6 +300,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     parametersList.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
+    // TODO: We need to add a predicate for a list of case Ids returned from a Cosmos query to find assignments by attorney user Id.
     const CASE_SEARCH_QUERY_PREDICATE =
       parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
 
