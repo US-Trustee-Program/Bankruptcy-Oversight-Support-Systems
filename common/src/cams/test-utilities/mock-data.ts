@@ -28,7 +28,7 @@ import { CaseAssignment } from '../assignments';
 import { ResponseBodySuccess } from '../../api/response';
 import { WithPagination } from '../../api/pagination';
 import { Action, ResourceActions } from '../actions';
-import { CamsUser, CamsUserReference } from '../users';
+import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
 import { CamsSession } from '../session';
 
 export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
@@ -444,6 +444,13 @@ function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
   };
 }
 
+function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
+  return {
+    ...getCamsUser(),
+    ...override,
+  };
+}
+
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   return {
     user: {
@@ -502,6 +509,7 @@ export const MockData = {
   getDateBeforeToday,
   getCamsUserReference,
   getCamsUser,
+  getAttorneyUser,
   getCamsSession,
   getJwt,
 };

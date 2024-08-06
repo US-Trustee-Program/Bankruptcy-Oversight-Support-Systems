@@ -4,15 +4,13 @@ import Modal from '../lib/components/uswds/modal/Modal';
 import React from 'react';
 import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
-import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import Api from '../lib/models/api';
 import { ModalRefType, SubmitCancelButtonGroupRef } from '../lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { getFullName } from '@common/name-helper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
-import { AttorneyUser } from '@common/cams/users';
+import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -25,14 +23,14 @@ export interface AssignAttorneyModalRef {
 }
 
 export interface AssignAttorneyModalProps {
-  attorneyList: Attorney[];
+  attorneyList: AttorneyUser[];
   modalId: string;
   callBack: (props: CallBackProps) => void;
   alertMessage?: AlertDetails;
 }
 
 export interface AttorneyListResponseData extends ResponseData {
-  attorneyList: Array<AttorneyInfo>;
+  attorneyList: Array<AttorneyUser>;
 }
 
 export interface CallBackProps {
@@ -59,7 +57,7 @@ function AssignAttorneyModalComponent(
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
 
-  const [checkListValues, setCheckListValues] = useState<string[]>([]);
+  const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
   const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
 
@@ -82,9 +80,7 @@ function AssignAttorneyModalComponent(
       if (showProps.bCase) {
         setBCase(showProps.bCase);
         if (showProps.bCase.assignments) {
-          setCheckListValues([
-            ...showProps.bCase.assignments.map((assignment) => assignment.fullName),
-          ]);
+          setCheckListValues([...showProps.bCase.assignments]);
           setPreviouslySelectedList([...showProps.bCase.assignments]);
         }
       }
@@ -144,15 +140,8 @@ function AssignAttorneyModalComponent(
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
 
     // call callback from parent with IDs and names of attorneys, and case id.
-    finalAttorneyList = props.attorneyList
-      .filter((attorney) => checkListValues.includes(getFullName(attorney)))
-      .map((atty) => {
-        return {
-          fullName: getFullName(atty),
-          userId: atty.userId,
-          userName: atty.userName,
-        };
-      });
+    const ids = checkListValues.map((item) => item.id);
+    finalAttorneyList = props.attorneyList.filter((attorney) => ids.includes(attorney.id));
 
     // send attorney IDs to API
     setIsUpdatingAssignment(true);
@@ -241,8 +230,8 @@ function AssignAttorneyModalComponent(
               </thead>
               <tbody data-testid="case-load-table-body">
                 {props.attorneyList.length > 0 &&
-                  props.attorneyList.map((attorney: Attorney, idx: number) => {
-                    const name = getFullName(attorney);
+                  props.attorneyList.map((attorney: AttorneyUser, idx: number) => {
+                    const name = attorney.name;
                     return (
                       <tr key={idx}>
                         <td className="assign-attorney-checkbox-column">

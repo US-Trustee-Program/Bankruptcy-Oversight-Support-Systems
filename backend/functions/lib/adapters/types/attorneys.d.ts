@@ -1,7 +1,7 @@
-import { ObjectKeyVal } from './basic';
+import { AttorneyUser } from '../../../../../common/src/cams/users';
 
 export interface AttorneyListRecordSet {
-  attorneyList: ObjectKeyVal[];
+  attorneyList: AttorneyUser[];
   initialized?: boolean;
 }
 
