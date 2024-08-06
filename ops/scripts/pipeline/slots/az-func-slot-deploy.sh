@@ -79,3 +79,6 @@ fi
 echo "Deployment started"
 eval "${cmd}"
 echo "Deployment completed"
+
+# shellcheck disable=SC2086
+az webapp traffic-routing set --distribution ${slot_name}=0 --name "${app_name}" --resource-group "${app_rg}"
