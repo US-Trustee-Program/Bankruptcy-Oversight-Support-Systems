@@ -1,7 +1,12 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseDetailsDbResult } from '../adapters/types/cases';
 import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
-import { getCasesGateway, getCasesRepository, getOfficesGateway } from '../factory';
+import {
+  getAssignmentRepository,
+  getCasesGateway,
+  getCasesRepository,
+  getOfficesGateway,
+} from '../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from './case.assignment';
 import { UnknownError } from '../common-errors/unknown-error';
@@ -14,6 +19,7 @@ import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -33,6 +39,7 @@ export function getAction<T extends CaseBasics>(
 }
 
 export default class CaseManagement {
+  assignmentGateway: CaseAssignmentRepositoryInterface;
   casesGateway: CasesInterface;
   casesRepo: CasesRepository;
   officesGateway: OfficesGatewayInterface;
@@ -42,6 +49,7 @@ export default class CaseManagement {
     casesGateway?: CasesInterface,
     casesRepo?: CasesRepository,
   ) {
+    this.assignmentGateway = getAssignmentRepository(applicationContext);
     this.casesRepo = casesRepo ? casesRepo : getCasesRepository(applicationContext);
     this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
     this.officesGateway = getOfficesGateway(applicationContext);
@@ -52,6 +60,16 @@ export default class CaseManagement {
     predicate: CasesSearchPredicate,
   ): Promise<ResourceActions<CaseBasics>[]> {
     try {
+      if (predicate.assignments && predicate.assignments.length > 0) {
+        const caseIdSet = new Set<string>();
+        for (const userId of predicate.assignments) {
+          const caseAssignments = await this.assignmentGateway.findAssignmentsByAssignee(userId);
+          caseAssignments.forEach((caseAssignment) => {
+            caseIdSet.add(caseAssignment.caseId);
+          });
+        }
+        predicate.caseIds = Array.from(caseIdSet);
+      }
       const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
         context,
         predicate,

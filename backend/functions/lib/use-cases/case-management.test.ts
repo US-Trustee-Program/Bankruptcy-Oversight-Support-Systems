@@ -10,19 +10,19 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../testing/testing-utilities';
-import { CamsRole } from '../../../../common/src/cams/session';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCasesGateway, getCasesRepository } from '../factory';
 
-const attorneyJaneSmith = 'Jane Smith';
-const attorneyJoeNobel = 'Joe Nobel';
+const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
+const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
 const currentDate = new Date().toISOString();
 const assignments: CaseAssignment[] = [
   {
     documentType: 'ASSIGNMENT',
     id: '1',
     caseId: '081-23-01176',
-    userId: `userId-${attorneyJaneSmith}`,
-    name: attorneyJaneSmith,
+    userId: attorneyJaneSmith.id,
+    name: attorneyJaneSmith.name,
     role: CaseAssignmentRole.TrialAttorney,
     assignedOn: currentDate,
   },
@@ -30,8 +30,8 @@ const assignments: CaseAssignment[] = [
     documentType: 'ASSIGNMENT',
     id: '2',
     caseId: '081-23-01176',
-    userId: `userId-${attorneyJoeNobel}`,
-    name: attorneyJoeNobel,
+    userId: attorneyJoeNobel.id,
+    name: attorneyJoeNobel.name,
     role: CaseAssignmentRole.TrialAttorney,
     assignedOn: currentDate,
   },
@@ -302,13 +302,15 @@ describe('Case management tests', () => {
         originalError: error,
       });
       jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
-      await expect(useCase.searchCases({ caseNumber })).rejects.toThrow(expectedError);
+      await expect(useCase.searchCases(applicationContext, { caseNumber })).rejects.toThrow(
+        expectedError,
+      );
     });
 
     test('should throw CamsError', async () => {
       const error = new CamsError('TEST', { message: 'test error' });
       jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
-      await expect(useCase.searchCases({ caseNumber })).rejects.toThrow(error);
+      await expect(useCase.searchCases(applicationContext, { caseNumber })).rejects.toThrow(error);
     });
   });
 });

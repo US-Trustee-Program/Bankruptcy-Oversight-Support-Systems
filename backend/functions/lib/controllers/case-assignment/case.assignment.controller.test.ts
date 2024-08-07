@@ -1,6 +1,6 @@
 import { CaseAssignmentController } from './case.assignment.controller';
 import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
-import { MANHATTAN, MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
 import { CamsError } from '../../common-errors/cams-error';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -8,7 +8,9 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import { CamsRole, CamsUserReference } from '../../../../../common/src/cams/session';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });

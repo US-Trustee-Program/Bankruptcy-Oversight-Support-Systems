@@ -12,7 +12,8 @@ describe('Test attorneys use-case', () => {
       body: {
         attorneyList: [
           {
-            foo: 'bar',
+            id: 'testUserId',
+            name: 'Test User',
           },
         ],
       },
@@ -40,7 +41,8 @@ describe('Test attorneys use-case', () => {
       body: {
         attorneyList: [
           {
-            foo: 'bar',
+            id: 'testUserId',
+            name: 'Test User',
           },
         ],
       },

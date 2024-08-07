@@ -267,9 +267,9 @@ describe('Test case assignment cosmosdb repository tests', () => {
     await repository.createAssignment(testCaseAttorneyAssignment5);
     await repository.createAssignment(testCaseAttorneyAssignment6);
 
-    const perryAssignments = await repository.findAssignmentsByAssigneeName(perryMason);
-    const clairAssignments = await repository.findAssignmentsByAssigneeName(clairHuxtable);
-    const benAssignments = await repository.findAssignmentsByAssigneeName(benMatlock);
+    const perryAssignments = await repository.findAssignmentsByAssignee('userId-perryMason');
+    const clairAssignments = await repository.findAssignmentsByAssignee('userId-clairHuxtable');
+    const benAssignments = await repository.findAssignmentsByAssignee('userId-benMatlock');
 
     expect(perryAssignments.length).toEqual(2);
     expect(perryAssignments).toEqual(
