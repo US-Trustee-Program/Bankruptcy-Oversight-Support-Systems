@@ -96,7 +96,7 @@ jobs:
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      slotName: "self"
+      slotName: "initial"
     secrets: inherit # pragma: allowlist secret
 
   enable-access:

@@ -70,6 +70,9 @@ if [[ ${slot_name} == "staging" ]]; then
   targetWebAppURL="${targetWebAppURL}?x-ms-routing-name=${slot_name}"
 else
   echo "No Slot Provided"
+fi
+
+if [[ ${slot_name} == "initial" ]]; then
   expected_git_sha="ProductionSlot"
 fi
 
