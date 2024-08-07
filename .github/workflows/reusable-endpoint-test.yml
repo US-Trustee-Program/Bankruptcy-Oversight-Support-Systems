@@ -9,7 +9,7 @@ on:
       slotName:
         required: false
         type: string
-        default: "self"
+        default: "initial"
       webappName:
         required: true
         type: string
@@ -65,8 +65,8 @@ jobs:
           --apiName ${{ inputs.apiName }} \
           --webappName ${{ inputs.webappName }} \
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
-          --slotName ${{ inputs.slotName }} \
-          --gitSha ${{ github.sha }}
+          --gitSha ${{ github.sha }} \
+          --slotName ${{ inputs.slotName }}
 
       - name: Disable GHA runner access
         if: always()

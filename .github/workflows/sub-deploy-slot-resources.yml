@@ -21,9 +21,6 @@ on:
       slotName:
         required: true
         type: string
-      slotDeploymentEnabled:
-        required: true
-        type: string
       environmentHash:
         required: true
         type: string
@@ -37,7 +34,6 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
-      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-backend-slot-resources:
@@ -49,6 +45,5 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
-      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       environmentHash: ${{ inputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret

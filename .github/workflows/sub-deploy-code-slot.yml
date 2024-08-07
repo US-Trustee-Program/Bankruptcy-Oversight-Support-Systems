@@ -21,12 +21,6 @@ on:
       azResourceGrpAppEncrypted:
         required: true
         type: string
-      cosmosDbClientId:
-        required: true
-        type: string
-      cosmosDbPrincipalId:
-        required: true
-        type: string
       slotName:
         required: true
         type: string
@@ -36,7 +30,21 @@ on:
       initialDeployment:
         required: true
         type: string
+
 jobs:
+  deploy-code:
+    if: ${{ inputs.initialDeployment == 'true' }}
+    name: Slot Code Deployment
+    uses: ./.github/workflows/sub-deploy-code.yml
+    with:
+      ghaEnvironment: ${{ inputs.ghaEnvironment }}
+      environmentHash: ${{ inputs.environmentHash }}
+      stackName: ${{ inputs.stackName }}
+      webAppName: ${{ inputs.webappName }}
+      apiName: ${{ inputs.apiName }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+    secrets: inherit # pragma: allowlist secret
+
   deploy-webapp-slot:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
@@ -62,18 +70,7 @@ jobs:
 
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-slot-step
-        continue-on-error: true
         run: |
-          ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
-          --src ./${{ inputs.webappName }}.zip \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.webappName }} \
-          --slotName ${{ inputs.slotName }}
-
-      - name: Retry Deploy to Azure WebApp slot
-        if: steps.deploy-webapp-slot-step.outcome != 'success'
-        run: |
-          sleep 30 &&
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
@@ -105,25 +102,12 @@ jobs:
 
       - name: Deploy Azure Functions slot backend
         id: deploy-backend-slot-step
-        continue-on-error: true
         run: |
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.apiName }} \
           --src ./${{ inputs.apiName }}.zip \
-          --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }}"
-
-      - name: Deploy Azure Functions slot backend
-        id: deploy-backend-slot-retry
-        if: steps.deploy-backend-slot-step.outcome != 'success'
-        run: |
-          ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
-          -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip \
-          --slotName ${{ inputs.slotName }} \
-          --settings "INFO_SHA=${{ github.sha }}"
+          --slotName ${{ inputs.slotName }}
 
   endpoint-test-application-slot:
     needs: [deploy-webapp-slot, deploy-service-slot]
@@ -154,10 +138,10 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   swap-webapp-deployment-slot:
+    if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ inputs.initialDeployment != 'true' }}
     env:
       webappName: ${{ inputs.webappName }}
       slotName: ${{ inputs.slotName }}
@@ -178,10 +162,10 @@ jobs:
           az webapp traffic-routing clear --name ${{ env.webappName }} -g ${{ steps.rgApp.outputs.out }}
 
   swap-nodeapi-deployment-slot:
+    if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
     needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
-    if: ${{ inputs.initialDeployment != 'true' }}
     env:
       apiName: ${{ inputs.apiName }}
       slotName: ${{ inputs.slotName }}
@@ -204,7 +188,6 @@ jobs:
   endpoint-test-application-post-swap:
     needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
     uses: ./.github/workflows/reusable-endpoint-test.yml
-    if: ${{ inputs.initialDeployment != 'true' }}
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
