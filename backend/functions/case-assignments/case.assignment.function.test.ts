@@ -5,9 +5,10 @@ import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
-import { MANHATTAN, MockData } from '../../../common/src/cams/test-utilities/mock-data';
+import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
-import { CamsRole } from '../../../common/src/cams/session';
+import { CamsRole } from '../../../common/src/cams/roles';
+import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 
 describe('Case Assignment Function Tests', () => {
   const request = createMockAzureFunctionRequest({

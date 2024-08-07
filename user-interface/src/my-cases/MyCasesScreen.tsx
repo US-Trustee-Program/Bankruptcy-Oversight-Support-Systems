@@ -16,6 +16,7 @@ export const MyCasesScreen = () => {
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
   const searchPredicate: CasesSearchPredicate = {
+    chapters: ['15'],
     assignments: [session!.user.id],
   };
 
