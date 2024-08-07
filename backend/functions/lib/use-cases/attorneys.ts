@@ -27,7 +27,7 @@ export default class AttorneysList {
     for (const atty of attorneys.body.attorneyList) {
       try {
         // TODO: Assignments use case needs to be updated to use a user ID rather than a name.
-        atty.caseLoad = await assignmentsUseCase.getCaseLoad(atty.name);
+        atty.caseLoad = await assignmentsUseCase.getCaseLoad(atty.id);
       } catch (e) {
         applicationContext.logger.error(MODULE_NAME, 'Unable to retrieve attorney case load.', e);
       }

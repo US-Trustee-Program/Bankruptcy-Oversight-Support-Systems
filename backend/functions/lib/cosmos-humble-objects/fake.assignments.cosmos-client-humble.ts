@@ -73,7 +73,7 @@ export default class FakeAssignmentsCosmosClientHumble {
                         if (caseItem.caseId === params.value) {
                           result.push(caseItem);
                         }
-                        if (caseItem.name === params.value) {
+                        if (caseItem.userId === params.value) {
                           result.push(caseItem);
                         }
                       });

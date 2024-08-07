@@ -10,19 +10,21 @@ import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../testing/testing-utilities';
-import { CamsRole } from '../../../../common/src/cams/session';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCasesGateway, getCasesRepository } from '../factory';
+import { ApplicationContext } from '../adapters/types/basic';
+import { BUFFALO, MANHATTAN } from '../../../../common/src/cams/test-utilities/offices.mock';
 
-const attorneyJaneSmith = 'Jane Smith';
-const attorneyJoeNobel = 'Joe Nobel';
+const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
+const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
 const currentDate = new Date().toISOString();
 const assignments: CaseAssignment[] = [
   {
     documentType: 'ASSIGNMENT',
     id: '1',
     caseId: '081-23-01176',
-    userId: `userId-${attorneyJaneSmith}`,
-    name: attorneyJaneSmith,
+    userId: attorneyJaneSmith.id,
+    name: attorneyJaneSmith.name,
     role: CaseAssignmentRole.TrialAttorney,
     assignedOn: currentDate,
   },
@@ -30,8 +32,8 @@ const assignments: CaseAssignment[] = [
     documentType: 'ASSIGNMENT',
     id: '2',
     caseId: '081-23-01176',
-    userId: `userId-${attorneyJoeNobel}`,
-    name: attorneyJoeNobel,
+    userId: attorneyJoeNobel.id,
+    name: attorneyJoeNobel.name,
     role: CaseAssignmentRole.TrialAttorney,
     assignedOn: currentDate,
   },
@@ -57,8 +59,8 @@ jest.mock('./case.assignment', () => {
 });
 
 describe('Case management tests', () => {
-  let applicationContext;
-  let useCase;
+  let applicationContext: ApplicationContext;
+  let useCase: CaseManagement;
   const userOffice = MockData.randomOffice();
   const user = {
     id: 'userId-Mock Name',
@@ -294,6 +296,28 @@ describe('Case management tests', () => {
       expect(actual).toEqual(expected);
     });
 
+    test('should return search cases by assignment', async () => {
+      const user = MockData.getCamsUser({ offices: [MANHATTAN, BUFFALO] });
+      const caseIds = ['081-00-12345', '081-11-23456', '091-12-34567'];
+      const assignments = caseIds.map((caseId) => MockData.getAttorneyAssignment({ caseId }));
+      const cases = caseIds.map((caseId) => {
+        return MockData.getCaseSummary({ override: { caseId } });
+      });
+      const findAssignmentsByAssignee = jest
+        .spyOn(useCase.assignmentGateway, 'findAssignmentsByAssignee')
+        .mockResolvedValue(assignments);
+      const searchCases = jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(cases);
+
+      const actual = await useCase.searchCases(applicationContext, { assignments: [user.id] });
+
+      expect(actual).toEqual(cases);
+      expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
+      expect(searchCases).toHaveBeenCalledWith(expect.any(Object), {
+        assignments: [user.id],
+        caseIds,
+      });
+    });
+
     test('should throw UnknownError', async () => {
       const error = new Error('test error');
       const expectedError = new UnknownError('TEST', {
@@ -302,13 +326,15 @@ describe('Case management tests', () => {
         originalError: error,
       });
       jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
-      await expect(useCase.searchCases({ caseNumber })).rejects.toThrow(expectedError);
+      await expect(useCase.searchCases(applicationContext, { caseNumber })).rejects.toThrow(
+        expectedError,
+      );
     });
 
     test('should throw CamsError', async () => {
       const error = new CamsError('TEST', { message: 'test error' });
       jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
-      await expect(useCase.searchCases({ caseNumber })).rejects.toThrow(error);
+      await expect(useCase.searchCases(applicationContext, { caseNumber })).rejects.toThrow(error);
     });
   });
 });
