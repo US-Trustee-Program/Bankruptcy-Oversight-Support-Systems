@@ -26,6 +26,7 @@ describe('MyCasesScreen', () => {
     });
 
     const expectedPredicate: CasesSearchPredicate = {
+      chapters: ['15'],
       assignments: [user.id],
     };
     const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
