@@ -33,6 +33,7 @@ export type SearchResultsProps = {
   searchPredicate: CasesSearchPredicate;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
+  noResultsMessage?: string;
 };
 
 export function SearchResults(props: SearchResultsProps) {
@@ -52,6 +53,9 @@ export function SearchResults(props: SearchResultsProps) {
   const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
     ? searchResults?.meta
     : undefined;
+
+  const noResultsMessage =
+    props.noResultsMessage ?? 'Modify your search criteria to include more cases.';
 
   const api = useGenericApi();
 
@@ -128,7 +132,7 @@ export function SearchResults(props: SearchResultsProps) {
         <div className="search-alert">
           <Alert
             id="no-results-alert"
-            message="Modify your search criteria to include more cases."
+            message={noResultsMessage}
             title="No cases found"
             type={UswdsAlertStyle.Info}
             show={true}

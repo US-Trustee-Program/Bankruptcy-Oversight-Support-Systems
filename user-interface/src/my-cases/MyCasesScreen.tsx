@@ -45,7 +45,11 @@ export const MyCasesScreen = () => {
               <IconLabel label={'Information'} icon={'info'}></IconLabel>
             </ToggleModalButton>
           </div>
-          <SearchResults id="search-results" searchPredicate={searchPredicate}></SearchResults>
+          <SearchResults
+            id="search-results"
+            searchPredicate={searchPredicate}
+            noResultsMessage="No cases currently assigned."
+          ></SearchResults>
         </div>
         <div className="grid-col-1"></div>
       </div>
