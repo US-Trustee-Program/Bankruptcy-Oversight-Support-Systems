@@ -25,7 +25,6 @@ import { useApi } from '@/lib/hooks/UseApi';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
-import { CaseHistory } from '@common/cams/history';
 import AttorneysApi from '@/lib/models/attorneys-api';
 import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
 import './CaseDetailScreen.scss';
@@ -174,7 +173,6 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
 interface CaseDetailProps {
   caseDetail?: CaseDetail;
   caseDocketEntries?: CaseDocketEntry[];
-  caseHistory?: CaseHistory[];
   associatedCases?: EventCaseReference[];
 }
 
@@ -541,12 +539,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     />
                     <Route
                       path="audit-history"
-                      element={
-                        <CaseDetailAuditHistory
-                          caseId={caseId ?? ''}
-                          caseHistory={props.caseHistory ?? []}
-                        />
-                      }
+                      element={<CaseDetailAuditHistory caseId={caseId ?? ''} />}
                     />
                     <Route
                       path="associated-cases"
