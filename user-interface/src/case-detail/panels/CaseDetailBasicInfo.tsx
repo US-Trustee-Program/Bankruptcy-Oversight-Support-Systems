@@ -1,5 +1,4 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import Icon from '@/lib/components/uswds/Icon';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
@@ -15,6 +14,8 @@ import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import Icon from '@/lib/components/uswds/Icon';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -92,7 +93,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     toggleProps={{ bCase: caseDetail }}
                     ariaLabel="Edit assigned staff."
                   >
-                    <Icon name="edit" />
+                    <IconLabel icon="edit" label="Edit" />
                   </ToggleModalButton>
                 )}
             </h3>
@@ -271,7 +272,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                       )} - ${caseDetail.caseTitle}`}
                     >
                       {caseDetail.debtorAttorney.email}
-                      <Icon className="link-icon" name="mail_outline"></Icon>
+                      <Icon className="link-icon" name="mail_outline" />
                     </a>
                   </div>
                 )}
