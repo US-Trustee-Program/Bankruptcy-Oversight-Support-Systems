@@ -12,7 +12,6 @@ import AssignAttorneyModal, {
 } from '@/case-assignment/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { useRef } from 'react';
-import { Attorney } from '@/lib/type-declarations/attorneys';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
@@ -23,7 +22,7 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 export interface CaseDetailBasicInfoProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
-  attorneyList: Attorney[];
+  attorneyList: AttorneyUser[];
   onCaseAssignment: (props: CallBackProps) => void;
 }
 
@@ -115,7 +114,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                       return (
                         <li key={idx} className="individual-assignee">
                           <span className="assignee-name">{staff.name}</span>
-                          <span className="vertical-divider">|</span>
+                          <span className="vertical-divider"> | </span>
                           <span className="assignee-role">Trial Attorney</span>
                         </li>
                       );

@@ -1,7 +1,6 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
 import {
-  CaseAssignmentHistoryResponseData,
   CaseDocket,
   CaseDocketEntry,
   Chapter15CaseDetailsResponseData,
@@ -183,7 +182,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
-  const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
   const api = useApi();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
@@ -191,7 +189,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
-  const [caseHistory, setCaseHistory] = useState<CaseHistory[]>([]);
   const [associatedCases, setAssociatedCases] = useState<EventCaseReference[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
@@ -245,23 +242,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       .catch(() => {
         setCaseDocketEntries([]);
         setIsDocketLoading(false);
-      });
-  }
-
-  async function fetchCaseAssignmentHistory() {
-    setIsAuditHistoryLoading(true);
-    api
-      .get(`/cases/${caseId}/history`, {})
-      .then((data) => {
-        const response = data as CaseAssignmentHistoryResponseData;
-        if (response) {
-          setCaseHistory(response.body);
-          setIsAuditHistoryLoading(false);
-        }
-      })
-      .catch(() => {
-        setCaseHistory([]);
-        setIsAuditHistoryLoading(false);
       });
   }
 
@@ -361,14 +341,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       setAssociatedCases(props.associatedCases);
     } else {
       fetchAssociatedCases();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (props.caseHistory) {
-      setCaseHistory(props.caseHistory);
-    } else {
-      fetchCaseAssignmentHistory();
     }
   }, []);
 
@@ -571,8 +543,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       path="audit-history"
                       element={
                         <CaseDetailAuditHistory
-                          caseHistory={caseHistory}
-                          isAuditHistoryLoading={isAuditHistoryLoading}
+                          caseId={caseId ?? ''}
+                          caseHistory={props.caseHistory ?? []}
                         />
                       }
                     />

@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import AssignAttorneyModal, { AssignAttorneyModalRef, CallBackProps } from './AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
-import { Attorney } from '@/lib/type-declarations/attorneys';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { AssignAttorneyCasesTable } from './AssignAttorneyCasesTable';
 import { CaseBasics } from '@common/cams/cases';
+import { AttorneyUser } from '@common/cams/users';
 
 const modalId = 'assign-attorney-modal';
 
@@ -28,7 +28,7 @@ export const CaseAssignment = () => {
     type: UswdsAlertStyle;
     timeOut: number;
   }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
-  const [attorneyList, setAttorneyList] = useState<Attorney[]>([]);
+  const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   let isFetching = false;
 
@@ -122,11 +122,13 @@ export const CaseAssignment = () => {
       );
 
       if (addedAssignments.length > 0) {
-        messageArr.push(`${addedAssignments.map((attorney) => attorney).join(', ')} assigned to`);
+        messageArr.push(
+          `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
+        );
       }
       if (removedAssignments.length > 0) {
         messageArr.push(
-          `${removedAssignments.map((attorney) => attorney).join(', ')} unassigned from`,
+          `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
         );
       }
 
