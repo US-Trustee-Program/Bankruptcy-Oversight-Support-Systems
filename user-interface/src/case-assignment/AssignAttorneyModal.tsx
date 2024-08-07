@@ -263,11 +263,9 @@ function AssignAttorneyModalComponent(
             </table>
           </div>
           {props.alertMessage && <Alert {...props.alertMessage} show={true} inline={true} />}
-          <LoadingSpinner
-            caption="Updating assignment..."
-            height="40px"
-            hidden={!isUpdatingAssignment}
-          />
+          {isUpdatingAssignment && (
+            <LoadingSpinner caption="Updating assignment..." height="40px" />
+          )}
         </>
       }
       actionButtonGroup={actionButtonGroup}

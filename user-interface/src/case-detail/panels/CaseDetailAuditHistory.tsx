@@ -14,11 +14,10 @@ import { CaseAssignmentHistoryResponseData } from '@/lib/type-declarations/chapt
 
 export interface CaseDetailAuditHistoryProps {
   caseId: string;
-  caseHistory: CaseHistory[];
 }
 
 export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProps) {
-  const [caseHistory, setCaseHistory] = useState<CaseHistory[]>(props.caseHistory);
+  const [caseHistory, setCaseHistory] = useState<CaseHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
   const api = useApi();
 
@@ -100,11 +99,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
   }
 
   useEffect(() => {
-    if (props.caseHistory && props.caseHistory.length > 0) {
-      setCaseHistory(props.caseHistory);
-    } else {
-      fetchCaseAssignmentHistory();
-    }
+    fetchCaseAssignmentHistory();
   }, []);
 
   return (

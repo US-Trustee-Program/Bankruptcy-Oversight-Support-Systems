@@ -1,0 +1,16 @@
+.cams-icon-label {
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+
+  span {
+    position: relative;
+    font-size: 1rem;
+  }
+
+  svg {
+    top: 0.35rem;
+    height: 1.5rem;
+    width: 1.5rem;
+  }
+}

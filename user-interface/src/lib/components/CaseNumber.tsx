@@ -19,7 +19,7 @@ export function CaseNumber(props: CaseNumberProps) {
         data-testid={dataTestId}
         to={`/case-detail/${caseId}/`}
         className={`usa-link`}
-        title={`Open case ${caseId}`}
+        title={`View case details.`}
         target={target}
         reloadDocument={true}
       >
