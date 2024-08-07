@@ -148,10 +148,13 @@ export class CaseAssignmentUseCase {
     return await this.assignmentRepository.findAssignmentsByCaseId(caseId);
   }
 
-  // TODO: Assignments use case needs to be updated to use a user ID rather than a name.
-  // TODO: This function can be a template to get the case numbers, not just the count, for all cases assigned to a user Id.
-  public async getCaseLoad(name: string): Promise<number> {
-    const assignments = await this.assignmentRepository.findAssignmentsByAssigneeName(name);
+  public async getCaseLoad(userId: string): Promise<number> {
+    const assignments = await this.getCaseAssignments(userId);
     return assignments.length;
+  }
+
+  public async getCaseAssignments(userId: string): Promise<CaseAssignment[]> {
+    const assignments = await this.assignmentRepository.findAssignmentsByAssignee(userId);
+    return assignments;
   }
 }

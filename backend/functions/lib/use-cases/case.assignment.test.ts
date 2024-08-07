@@ -6,7 +6,7 @@ import {
   createMockApplicationContextSession,
 } from '../testing/testing-utilities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CamsRole } from '../../../../common/src/cams/session';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import CaseManagement from './case-management';
 
 const randomId = () => {

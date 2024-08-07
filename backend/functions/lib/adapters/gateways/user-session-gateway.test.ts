@@ -12,7 +12,8 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
+import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../../user-interface/src/lib/testing/testing-utilities';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
