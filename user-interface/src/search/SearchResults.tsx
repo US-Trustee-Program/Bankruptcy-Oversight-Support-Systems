@@ -19,6 +19,7 @@ import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { formatDate } from '@/lib/utils/datetime';
+import { deepEqual } from '@/lib/utils/objectEquality';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -99,7 +100,9 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   useEffect(() => {
-    setSearchPredicate(props.searchPredicate);
+    if (!deepEqual(props.searchPredicate, searchPredicate)) {
+      setSearchPredicate(props.searchPredicate);
+    }
   }, [props.searchPredicate]);
 
   useEffect(() => {

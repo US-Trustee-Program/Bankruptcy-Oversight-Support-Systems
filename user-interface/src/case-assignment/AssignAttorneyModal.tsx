@@ -1,7 +1,6 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, useRef, useImperativeHandle, useState, RefObject } from 'react';
+import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '../lib/components/uswds/modal/Modal';
-import React from 'react';
 import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
 import Api from '../lib/models/api';
@@ -249,7 +248,9 @@ function AssignAttorneyModalComponent(
                             id={`${idx}-checkbox`}
                             value={attorney.id}
                             onFocus={handleFocus}
-                            onChange={(event) => updateCheckList(event, attorney)}
+                            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                              updateCheckList(event, attorney)
+                            }
                             checked={attorneyIsInCheckList(attorney)}
                             className="attorney-list-checkbox"
                             label={attorney.name}

@@ -16,7 +16,6 @@ export const MyCasesScreen = () => {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1 data-testid="case-list-heading">{screenTitle}</h1>
-          {/* <h2 data-testid="case-list-subtitle">{subTitle}</h2> */}
           <SearchResults id="search-results" searchPredicate={searchPredicate}></SearchResults>
         </div>
         <div className="grid-col-1"></div>

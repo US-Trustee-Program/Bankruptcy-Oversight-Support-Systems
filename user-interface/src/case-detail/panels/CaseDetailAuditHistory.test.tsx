@@ -5,6 +5,8 @@ import { CaseHistory } from '@common/cams/history';
 import { CaseAssignment } from '@common/cams/assignments';
 import { ConsolidationOrder } from '@common/cams/orders';
 
+// TODO: Case History is now loaded in from a useEffect inside CaseDetailAuditHistory
+// we should mock the API call to fetch the case history rather than passing it as a parameter to the component
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
   const pendingTransferOrder = MockData.getTransferOrder({
@@ -101,7 +103,7 @@ describe('audit history tests', () => {
   test('should display loading indicator if loading', async () => {
     const caseHistory: CaseHistory[] = [];
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={true} />);
+    render(<CaseDetailAuditHistory caseId={caseId} caseHistory={caseHistory} />);
 
     const historyTable = screen.queryByTestId('loading-indicator');
     expect(historyTable).toBeInTheDocument();
@@ -110,7 +112,7 @@ describe('audit history tests', () => {
   test('should display no assignments message if no history exists', async () => {
     const caseHistory: CaseHistory[] = [];
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseHistory={caseHistory} caseId={caseId} />);
 
     const emptyAssignments = await screen.findByTestId('empty-assignments-test-id');
     expect(emptyAssignments).toHaveTextContent('There are no assignments in the case history.');
@@ -123,7 +125,7 @@ describe('audit history tests', () => {
     const expectedPrevious = assignmentBefore.map((n) => n.name).join(', ');
     const expectedNew = assignmentAfter.map((n) => n.name).join(', ');
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseHistory={caseHistory} caseId={caseId} />);
 
     const previousElement = screen.queryByTestId('previous-assignment-0');
     expect(previousElement).toBeInTheDocument();
@@ -150,7 +152,7 @@ describe('audit history tests', () => {
       },
     ];
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseHistory={caseHistory} caseId={caseId} />);
 
     const previousElement = screen.queryByTestId('previous-assignment-0');
     expect(previousElement).toBeInTheDocument();
@@ -181,7 +183,7 @@ describe('audit history tests', () => {
       },
     ];
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseHistory={caseHistory} caseId={caseId} />);
 
     const previousElement1 = screen.queryByTestId('previous-order-0');
     expect(previousElement1).toBeInTheDocument();

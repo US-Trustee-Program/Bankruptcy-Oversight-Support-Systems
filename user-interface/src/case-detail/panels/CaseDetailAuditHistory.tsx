@@ -2,20 +2,42 @@ import { formatDate } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { orderStatusType } from '@/lib/utils/labels';
+import { useApi } from '@/lib/hooks/UseApi';
 import {
   CaseAssignmentHistory,
   CaseConsolidationHistory,
   CaseHistory,
   CaseTransferHistory,
 } from '@common/cams/history';
+import { useEffect, useState } from 'react';
+import { CaseAssignmentHistoryResponseData } from '@/lib/type-declarations/chapter-15';
 
 export interface CaseDetailAuditHistoryProps {
+  caseId: string;
   caseHistory: CaseHistory[];
-  isAuditHistoryLoading: boolean;
 }
 
 export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProps) {
-  const { caseHistory, isAuditHistoryLoading } = props;
+  const [caseHistory, setCaseHistory] = useState<CaseHistory[]>(props.caseHistory);
+  const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
+  const api = useApi();
+
+  async function fetchCaseAssignmentHistory() {
+    setIsAuditHistoryLoading(true);
+    api
+      .get(`/cases/${props.caseId}/history`, {})
+      .then((data) => {
+        const response = data as CaseAssignmentHistoryResponseData;
+        if (response) {
+          setCaseHistory(response.body);
+          setIsAuditHistoryLoading(false);
+        }
+      })
+      .catch(() => {
+        setCaseHistory([]);
+        setIsAuditHistoryLoading(false);
+      });
+  }
 
   function showCaseAssignmentHistory(history: CaseAssignmentHistory, idx: number) {
     return (
@@ -76,6 +98,14 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
       }
     });
   }
+
+  useEffect(() => {
+    if (props.caseHistory && props.caseHistory.length > 0) {
+      setCaseHistory(props.caseHistory);
+    } else {
+      fetchCaseAssignmentHistory();
+    }
+  }, []);
 
   return (
     <div className="case-audit-history">
