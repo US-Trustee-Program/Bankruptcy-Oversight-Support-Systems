@@ -284,7 +284,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       const divisionsAndCaseNumbers = predicate.caseIds.reduce((acc, caseId) => {
         const { divisionCode, caseNumber } = getCaseIdParts(caseId);
         let caseNumbers;
-        if (!acc.has(divisionCode)) {
+        if (acc.has(divisionCode)) {
           caseNumbers = acc.get(divisionCode);
         } else {
           caseNumbers = [];
