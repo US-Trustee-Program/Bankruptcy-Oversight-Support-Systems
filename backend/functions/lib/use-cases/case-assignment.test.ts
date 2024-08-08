@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentUseCase } from './case.assignment';
+import { CaseAssignmentUseCase } from './case-assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import {
   createMockApplicationContext,
