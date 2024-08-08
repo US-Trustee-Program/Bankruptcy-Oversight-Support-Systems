@@ -91,7 +91,8 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     toggleAction={'open'}
                     modalRef={assignmentModalRef}
                     toggleProps={{ bCase: caseDetail }}
-                    ariaLabel="Edit assigned staff."
+                    ariaLabel="Edit assigned staff"
+                    title="Open Staff Assignment window"
                   >
                     <IconLabel icon="edit" label="Edit" />
                   </ToggleModalButton>

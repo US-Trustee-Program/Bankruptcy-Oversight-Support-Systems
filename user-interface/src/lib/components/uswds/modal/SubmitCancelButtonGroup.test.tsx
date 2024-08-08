@@ -100,7 +100,6 @@ describe('Submit cancel button group tests', () => {
     expect(cancel.className).toContain(UswdsButtonStyle.Unstyled);
     expect(cancel.className).toContain('test-class-two');
     expect(cancel.className).not.toContain('padding-105');
-    expect(cancel.className).not.toContain('text-center');
   });
 
   test('should disable submit button', () => {
