@@ -4,7 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { THROW_UNKNOWN_ERROR_CASE_ID } from '../../testing/testing-constants';
 
-jest.mock('../../use-cases/case.assignment', () => {
+jest.mock('../../use-cases/case-assignment', () => {
   return {
     CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
