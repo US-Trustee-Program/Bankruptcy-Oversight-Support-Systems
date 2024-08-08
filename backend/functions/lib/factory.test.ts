@@ -1,7 +1,5 @@
 import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
-import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
@@ -22,6 +20,8 @@ import {
 } from './factory';
 import { createMockApplicationContext } from './testing/testing-utilities';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
+import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
+import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
 
 describe('Factory functions', () => {
   let dbContext: ApplicationContext;
