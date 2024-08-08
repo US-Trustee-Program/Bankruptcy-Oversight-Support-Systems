@@ -8,7 +8,7 @@ import {
   getOfficesGateway,
 } from '../factory';
 import { CasesInterface } from './cases.interface';
-import { CaseAssignmentUseCase } from './case.assignment';
+import { CaseAssignmentUseCase } from './case-assignment';
 import { UnknownError } from '../common-errors/unknown-error';
 import { isCamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';

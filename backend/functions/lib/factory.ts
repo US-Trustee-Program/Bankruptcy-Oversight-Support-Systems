@@ -22,10 +22,8 @@ import {
   RuntimeStateRepository,
 } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
-import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
 import { OfficesGatewayInterface } from './use-cases/offices/offices.gateway.interface';
-import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.gateway';
-import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
@@ -43,6 +41,8 @@ import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gatewa
 import { StorageGateway } from './adapters/types/storage';
 import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
 import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
+import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
+import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
