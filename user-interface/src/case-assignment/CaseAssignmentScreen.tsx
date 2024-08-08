@@ -61,7 +61,7 @@ export const CaseAssignment = () => {
         caseList.forEach((bCase) => {
           bCase.assignments = bCase.assignments ?? [];
         });
-        caseList.sort(sortByDateFiled).sort(sortByCaseId);
+        caseList.sort(sortByCaseId).sort(sortByDateFiled);
         setCaseList(caseList);
 
         isFetching = false;

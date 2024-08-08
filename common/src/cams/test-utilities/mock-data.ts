@@ -85,7 +85,7 @@ function randomOffice() {
 }
 
 function randomDate(year = '2024') {
-  return someDateAfterThisDate(`${year}-01-01`, 28);
+  return someDateAfterThisDate(`${year}-01-01`);
 }
 
 function someDateAfterThisDate(thisDateString: string, days?: number): string {
