@@ -104,6 +104,18 @@
         "width": 1280,
         "height": 2048
       }
+    },
+    {
+      "url": "http://localhost:3000/my-cases",
+      "actions": [
+        "wait for element [data-testid='toggle-modal-button'] to be visible",
+        "wait for element #search-results-table-body to be visible",
+        "click element [data-testid='toggle-modal-button']",
+        "wait for element #info-modal-heading to be visible",
+        "wait for element #info-modal-cancel-button to be visible",
+        "click element #info-modal-cancel-button",
+        "wait for element #info-modal-heading to be hidden"
+      ]
     }
   ],
   "standard": "WCAG2AA"

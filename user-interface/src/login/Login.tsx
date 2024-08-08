@@ -18,10 +18,9 @@ import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';
 import ApiConfiguration from '@/configuration/apiConfiguration';
-import { OFFICES } from '@common/cams/test-utilities/offices.mock';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
-import { CamsRole } from '@common/cams/roles';
+import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -82,14 +81,7 @@ export function Login(props: LoginProps): React.ReactNode {
         <Session
           provider="none"
           accessToken={MockData.getJwt()}
-          user={
-            props.user ?? {
-              id: 'SUPERUSER',
-              name: 'Super User',
-              roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager],
-              offices: OFFICES,
-            }
-          }
+          user={props.user ?? SUPERUSER.user}
           expires={Number.MAX_SAFE_INTEGER}
           issuer={issuer ?? ''}
         >

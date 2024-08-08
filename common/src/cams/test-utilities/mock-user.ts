@@ -7,6 +7,16 @@ export type MockUser = {
   label: string;
   user: CamsUser;
 };
+export const SUPERUSER = {
+  sub: 'user@fake.com',
+  label: "Martha's Son - Super User",
+  user: {
+    id: '==MOCKUSER=user@fake.com==',
+    name: "Martha's Son",
+    roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
+    offices: [],
+  },
+};
 
 export const MockUsers: MockUser[] = [
   {
@@ -64,16 +74,7 @@ export const MockUsers: MockUser[] = [
     label: 'Charlie - Assistant US Trustee',
     user: { id: '==MOCKUSER=aust==', name: 'Charlie', roles: [], offices: [MANHATTAN] },
   },
-  {
-    sub: 'user@fake.com',
-    label: "Martha's Son - Super User",
-    user: {
-      id: '==MOCKUSER=user@fake.com==',
-      name: "Martha's Son",
-      roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
-      offices: [],
-    },
-  },
+  SUPERUSER,
 ];
 
 export default MockUsers;
