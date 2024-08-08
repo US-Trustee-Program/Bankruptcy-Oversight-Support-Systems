@@ -280,7 +280,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       });
       parametersList.push("cs.CASE_ID LIKE @caseNumber+'%' ");
     }
-    if (!predicate.caseNumber && predicate.caseIds) {
+    if (!predicate.caseNumber && predicate.caseIds && predicate.caseIds.length > 0) {
       const divisionsAndCaseNumbers = predicate.caseIds.reduce((acc, caseId) => {
         const { divisionCode, caseNumber } = getCaseIdParts(caseId);
         let caseNumbers;

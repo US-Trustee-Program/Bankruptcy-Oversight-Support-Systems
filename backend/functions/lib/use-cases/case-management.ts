@@ -69,6 +69,10 @@ export default class CaseManagement {
           });
         }
         predicate.caseIds = Array.from(caseIdSet);
+        // if we're requesting cases with specific assignments, and none are found, return [] early
+        if (predicate.caseIds.length == 0) {
+          return [];
+        }
       }
       const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
         context,
