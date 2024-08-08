@@ -40,7 +40,7 @@ const assignments: CaseAssignment[] = [
 ];
 
 const caseIdWithAssignments = '081-23-01176';
-jest.mock('./case.assignment', () => {
+jest.mock('./case-assignment', () => {
   return {
     CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
