@@ -36,6 +36,7 @@ describe('MyCasesScreen', () => {
     expect(SearchResults).toHaveBeenCalledWith(
       {
         id: 'search-results',
+        noResultsMessage: 'No cases currently assigned.',
         searchPredicate: expectedPredicate,
       },
       expect.any(Object),

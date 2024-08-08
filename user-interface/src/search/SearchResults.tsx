@@ -119,6 +119,7 @@ export function SearchResults(props: SearchResultsProps) {
         <div className="search-alert">
           <Alert
             id="search-error-alert"
+            className="measure-6"
             message={alertInfo.message}
             title={alertInfo.title}
             type={UswdsAlertStyle.Error}
@@ -132,6 +133,7 @@ export function SearchResults(props: SearchResultsProps) {
         <div className="search-alert">
           <Alert
             id="no-results-alert"
+            className="measure-6"
             message={noResultsMessage}
             title="No cases found"
             type={UswdsAlertStyle.Info}
