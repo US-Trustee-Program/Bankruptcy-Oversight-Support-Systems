@@ -15,6 +15,7 @@ import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeature
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import './App.scss';
+import { MyCasesScreen } from './my-cases/MyCasesScreen';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -55,6 +56,7 @@ function App() {
             <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
+            <Route path="/my-cases" element={<MyCasesScreen />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>

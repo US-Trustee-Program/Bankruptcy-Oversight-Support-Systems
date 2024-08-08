@@ -11,6 +11,7 @@ import { ResponseBody, buildResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
 import Actions from '@common/cams/actions';
 import { ResourceActions } from '../../../../common/src/cams/actions';
+import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -123,7 +124,12 @@ export default class Chapter15MockApi extends Api {
     }),
   ];
 
-  public static async list(path: string): Promise<ResponseData> {
+  // TODO: add handling of other uses of POST (e.g. case assignment creation)
+  public static async post(_path: string, _body: object, _options?: ObjectKeyVal) {
+    return Promise.reject(new Error());
+  }
+
+  public static async list(path: string, _options: ObjectKeyVal): Promise<ResponseData> {
     let response: ResponseData;
     switch (path) {
       case '/cases':
@@ -275,6 +281,11 @@ export default class Chapter15MockApi extends Api {
         count: 1,
         body: Chapter15MockApi.offices,
       };
+    } else if (path.match(/\/me/)) {
+      response = {
+        success: true,
+        body: MockData.getCamsSession({ user: SUPERUSER.user }),
+      };
     } else {
       response = {
         message: 'not found',
@@ -288,26 +299,21 @@ export default class Chapter15MockApi extends Api {
     return Promise.resolve(response as Chapter15CaseDetailsResponseData);
   }
 
-  public static async patch(_path: string, data: object, _options?: ObjectKeyVal) {
+  public static async patch(_path: string, body: object, _options?: ObjectKeyVal) {
     const response = {
       message: '',
       count: 1,
-      body: data,
+      body,
     };
     return Promise.resolve(response);
   }
 
-  public static async put(_path: string, data: object, _options?: ObjectKeyVal) {
+  public static async put(_path: string, body: object, _options?: ObjectKeyVal) {
     const response = {
       message: '',
       count: 1,
-      body: data,
+      body,
     };
     return Promise.resolve(response);
-  }
-
-  // TODO: add handling of other uses of POST (e.g. case assignment creation)
-  public static async post(_path: string, _data: object, _options?: ObjectKeyVal) {
-    return Promise.reject(new Error());
   }
 }

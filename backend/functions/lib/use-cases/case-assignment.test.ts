@@ -1,12 +1,12 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentUseCase } from './case.assignment';
+import { CaseAssignmentUseCase } from './case-assignment';
 import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../testing/testing-utilities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CamsRole } from '../../../../common/src/cams/session';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import CaseManagement from './case-management';
 
 const randomId = () => {
@@ -35,6 +35,7 @@ describe('Case assignment tests', () => {
   let applicationContext: ApplicationContext;
   const userOffice = MockData.randomOffice();
   const user = {
+    id: 'userId-Mock Name',
     name: 'Mock Name',
     offices: [userOffice],
     roles: [CamsRole.CaseAssignmentManager],
@@ -76,8 +77,8 @@ describe('Case assignment tests', () => {
   });
 
   describe('createTrialAttorneyAssignments', () => {
-    const attorneyJaneSmith = 'Jane Smith';
-    const attorneyJoeNobel = 'Joe Nobel';
+    const attorneyJaneSmith = { id: 'userId-Jane Smith', name: 'Jane Smith' };
+    const attorneyJoeNobel = { id: 'userId-Joe Nobel', name: 'Joe Nobel' };
     const caseId = '081-23-01176';
     const role = CaseAssignmentRole.TrialAttorney;
 
@@ -101,13 +102,15 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        name: attorneyJaneSmith,
+        userId: attorneyJaneSmith.id,
+        name: attorneyJaneSmith.name,
         role,
       };
 
       const assignmentTwo = {
         caseId,
-        name: attorneyJoeNobel,
+        userId: attorneyJoeNobel.id,
+        name: attorneyJoeNobel.name,
         role,
       };
 
@@ -133,13 +136,15 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        name: attorneyJaneSmith,
+        userId: attorneyJaneSmith.id,
+        name: attorneyJaneSmith.name,
         role,
       };
 
       const assignmentTwo = {
         caseId,
-        name: attorneyJoeNobel,
+        userId: attorneyJoeNobel.id,
+        name: attorneyJoeNobel.name,
         role,
       };
 
@@ -176,7 +181,8 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        name: attorneyJaneSmith,
+        userId: attorneyJaneSmith.id,
+        name: attorneyJaneSmith.name,
         role,
       };
 

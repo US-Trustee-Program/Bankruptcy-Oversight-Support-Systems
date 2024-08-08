@@ -101,14 +101,14 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
     return response as CaseAssignment[];
   }
 
-  async findAssignmentsByAssigneeName(name: string): Promise<CaseAssignment[]> {
+  async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
     const querySpec = {
       query:
-        'SELECT * FROM c WHERE c.name = @name AND c.documentType = "ASSIGNMENT" AND NOT IS_DEFINED(c.unassignedOn)',
+        'SELECT * FROM c WHERE c.userId = @userId AND c.documentType = "ASSIGNMENT" AND NOT IS_DEFINED(c.unassignedOn)',
       parameters: [
         {
-          name: '@name',
-          value: name,
+          name: '@userId',
+          value: userId,
         },
       ],
     };

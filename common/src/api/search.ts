@@ -19,4 +19,6 @@ export type CasesSearchPredicate = SearchPredicate & {
   caseNumber?: string;
   divisionCodes?: string[];
   chapters?: string[];
+  assignments?: string[];
+  caseIds?: string[];
 };

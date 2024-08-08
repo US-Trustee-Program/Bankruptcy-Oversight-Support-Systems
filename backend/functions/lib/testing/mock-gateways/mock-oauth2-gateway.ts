@@ -8,8 +8,9 @@ import {
   CamsJwtHeader,
   OpenIdConnectGateway,
 } from '../../adapters/types/authorization';
-import { CamsRole, CamsUser } from '../../../../../common/src/cams/session';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { CamsUser } from '../../../../../common/src/cams/users';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockUsers: MockUser[] = MockUsers;

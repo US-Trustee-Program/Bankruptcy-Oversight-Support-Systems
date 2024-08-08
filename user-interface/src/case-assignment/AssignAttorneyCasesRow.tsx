@@ -31,7 +31,9 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
       .then((response) =>
         setBCase({
           ...internalCase,
-          assignments: response.data.map((assignment) => assignment.name),
+          assignments: response.data.map((assignment) => {
+            return { id: assignment.userId, name: assignment.name };
+          }),
         }),
       )
       .catch((_reason) => {})
@@ -46,7 +48,7 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
   if (internalCase.assignments && internalCase.assignments.length > 0) {
     assignments = internalCase.assignments?.map((attorney, key: number) => (
       <div key={key}>
-        {attorney}
+        {attorney.name}
         <br />
       </div>
     ));

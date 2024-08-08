@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
+import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../../adapters/types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -9,6 +9,7 @@ import {
   CaseAssignment,
 } from '../../../../../common/src/cams/assignments';
 import { CamsResponse } from '../controller-types';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -46,7 +47,7 @@ export class CaseAssignmentController {
 
   public async createTrialAttorneyAssignments(params: {
     caseId: string;
-    listOfAttorneyNames: string[];
+    listOfAttorneyNames: CamsUserReference[];
     role: string;
   }): Promise<AttorneyAssignmentResponseInterface> {
     this.validateRequestParameters(params);
@@ -70,7 +71,7 @@ export class CaseAssignmentController {
 
   private validateRequestParameters(params: {
     caseId: string;
-    listOfAttorneyNames: string[];
+    listOfAttorneyNames: CamsUserReference[];
     role: string;
   }) {
     const badParams = [];

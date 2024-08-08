@@ -48,17 +48,24 @@ export class CasesController {
   }
 
   public async searchAllCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
-    type CasesSearchQueryString = Omit<CasesSearchPredicate, 'divisionCodes, chapters'> & {
+    type CasesSearchQueryString = Omit<
+      CasesSearchPredicate,
+      'divisionCodes' | 'chapters' | 'assignments' | 'caseIds'
+    > & {
       divisionCodes: string;
       chapters: string;
+      assignments: string;
+      caseIds: string;
     };
 
     const queryString = request.query as unknown as CasesSearchQueryString;
-    const { divisionCodes, chapters, ...otherProps } = queryString;
+    const { divisionCodes, chapters, assignments, caseIds, ...otherProps } = queryString;
     const predicate: CasesSearchPredicate = setPaginationDefaults({
       ...otherProps,
       divisionCodes: divisionCodes?.split(','),
       chapters: chapters?.split(','),
+      assignments: assignments?.split(','),
+      caseIds: caseIds?.split(','),
     });
 
     return this.searchCases(predicate, request.url);

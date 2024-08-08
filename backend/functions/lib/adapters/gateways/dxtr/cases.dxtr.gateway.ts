@@ -25,6 +25,12 @@ const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
 
+export function getCaseIdParts(caseId: string) {
+  const parts = caseId.split('-');
+  const divisionCode = parts[0];
+  const caseNumber = `${parts[1]}-${parts[2]}`;
+  return { divisionCode, caseNumber };
+}
 export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
@@ -274,6 +280,30 @@ export default class CasesDxtrGateway implements CasesInterface {
       });
       parametersList.push("cs.CASE_ID LIKE @caseNumber+'%' ");
     }
+    if (!predicate.caseNumber && predicate.caseIds && predicate.caseIds.length > 0) {
+      const divisionsAndCaseNumbers = predicate.caseIds.reduce((acc, caseId) => {
+        const { divisionCode, caseNumber } = getCaseIdParts(caseId);
+        let caseNumbers;
+        if (acc.has(divisionCode)) {
+          caseNumbers = acc.get(divisionCode);
+        } else {
+          caseNumbers = [];
+        }
+        caseNumbers.push(caseNumber);
+        acc.set(divisionCode, caseNumbers);
+        return acc;
+      }, new Map<string, string[]>());
+      const divisionAndCaseNumberParams = [];
+
+      divisionsAndCaseNumbers.forEach((caseNumbers, divisionCode) => {
+        divisionAndCaseNumberParams.push(
+          `( cs.CS_DIV = '${divisionCode}' AND cs.CASE_ID IN ('${caseNumbers.join("', '")}')) `,
+        );
+      });
+      const params = `(${divisionAndCaseNumberParams.join(' OR ')})`;
+      parametersList.push(params);
+    }
+
     if (predicate.divisionCodes) {
       predicate.divisionCodes.forEach((divisionCode, idx) => {
         replacementVariables.push({

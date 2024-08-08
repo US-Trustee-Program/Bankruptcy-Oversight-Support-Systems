@@ -1,10 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseHistory } from '@common/cams/history';
 import { CaseAssignment } from '@common/cams/assignments';
+import { CaseHistory } from '@common/cams/history';
 import { ConsolidationOrder } from '@common/cams/orders';
+import MockData from '@common/cams/test-utilities/mock-data';
+import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 
+// TODO: Case History is now loaded in from a useEffect inside CaseDetailAuditHistory
+// we should mock the API call to fetch the case history rather than passing it as a parameter to the component
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
   const pendingTransferOrder = MockData.getTransferOrder({
@@ -23,6 +26,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-01',
       name: 'Alfred',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -30,6 +34,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-02',
       name: 'Bradford',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -39,6 +44,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-03',
       name: 'Charles',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -46,6 +52,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-04',
       name: 'Daniel',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -53,6 +60,7 @@ describe('audit history tests', () => {
     {
       caseId,
       documentType: 'ASSIGNMENT',
+      userId: 'userId-05',
       name: 'Edward',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
@@ -94,18 +102,26 @@ describe('audit history tests', () => {
   ];
 
   test('should display loading indicator if loading', async () => {
-    const caseHistory: CaseHistory[] = [];
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: 'test message',
+      count: 0,
+      body: [],
+    });
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={true} />);
+    render(<CaseDetailAuditHistory caseId={caseId} />);
 
     const historyTable = screen.queryByTestId('loading-indicator');
     expect(historyTable).toBeInTheDocument();
   });
 
   test('should display no assignments message if no history exists', async () => {
-    const caseHistory: CaseHistory[] = [];
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: 'test message',
+      count: 0,
+      body: [],
+    });
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseId={caseId} />);
 
     const emptyAssignments = await screen.findByTestId('empty-assignments-test-id');
     expect(emptyAssignments).toHaveTextContent('There are no assignments in the case history.');
@@ -115,14 +131,22 @@ describe('audit history tests', () => {
   });
 
   test('should display assignment history when history exists', async () => {
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: 'test message',
+      count: 0,
+      body: caseHistory,
+    });
+
     const expectedPrevious = assignmentBefore.map((n) => n.name).join(', ');
     const expectedNew = assignmentAfter.map((n) => n.name).join(', ');
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseId={caseId} />);
 
-    const previousElement = screen.queryByTestId('previous-assignment-0');
-    expect(previousElement).toBeInTheDocument();
-    expect(previousElement).toHaveTextContent(expectedPrevious);
+    await waitFor(() => {
+      const previousElement = screen.queryByTestId('previous-assignment-0');
+      expect(previousElement).toBeInTheDocument();
+      expect(previousElement).toHaveTextContent(expectedPrevious);
+    });
 
     const newElement = screen.queryByTestId('new-assignment-0');
     expect(newElement).toBeInTheDocument();
@@ -144,12 +168,19 @@ describe('audit history tests', () => {
         after: [],
       },
     ];
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: 'test message',
+      count: 0,
+      body: caseHistory,
+    });
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseId={caseId} />);
 
-    const previousElement = screen.queryByTestId('previous-assignment-0');
-    expect(previousElement).toBeInTheDocument();
-    expect(previousElement).toHaveTextContent('(none)');
+    await waitFor(() => {
+      const previousElement = screen.queryByTestId('previous-assignment-0');
+      expect(previousElement).toBeInTheDocument();
+      expect(previousElement).toHaveTextContent('(none)');
+    });
 
     const newElement = screen.queryByTestId('new-assignment-0');
     expect(newElement).toBeInTheDocument();
@@ -175,12 +206,19 @@ describe('audit history tests', () => {
         after: pendingTransferOrder,
       },
     ];
+    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
+      message: 'test message',
+      count: 0,
+      body: caseHistory,
+    });
 
-    render(<CaseDetailAuditHistory caseHistory={caseHistory} isAuditHistoryLoading={false} />);
+    render(<CaseDetailAuditHistory caseId={caseId} />);
 
-    const previousElement1 = screen.queryByTestId('previous-order-0');
-    expect(previousElement1).toBeInTheDocument();
-    expect(previousElement1).toHaveTextContent('Pending Review');
+    await waitFor(() => {
+      const previousElement1 = screen.queryByTestId('previous-order-0');
+      expect(previousElement1).toBeInTheDocument();
+      expect(previousElement1).toHaveTextContent('Pending Review');
+    });
 
     const newElement1 = screen.queryByTestId('new-order-0');
     expect(newElement1).toBeInTheDocument();

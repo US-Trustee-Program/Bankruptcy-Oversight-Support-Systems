@@ -24,7 +24,7 @@ describe('LoginContinue', () => {
         <Session
           accessToken={MockData.getJwt()}
           provider="okta"
-          user={{ name: 'Mock User' }}
+          user={{ id: 'mockId', name: 'Mock User' }}
           expires={Number.MAX_SAFE_INTEGER}
           issuer="http://issuer/"
         >

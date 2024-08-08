@@ -7,21 +7,22 @@ import AssignAttorneyModal, {
 import React from 'react';
 import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import Api from '@/lib/models/api';
-import { Attorney } from '@/lib/type-declarations/attorneys';
-import { getFullName } from '@common/name-helper';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
+import { getCamsUserReference } from '@common/cams/session';
+import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
 
-const susan = new Attorney('Susan', 'Arbeit', 'Manhattan');
-const mark = new Attorney('Mark', 'Bruh', 'Manhattan');
-const shara = new Attorney('Shara', 'Cornell', 'Manhattan');
-const brian = new Attorney('Brian', 'Masumoto', 'Manhattan', { middleName: 'S' });
-const joe = new Attorney('Joe', 'Cornell', 'Manhattan');
-const bob = new Attorney('Bob', 'Cornell', 'Manhattan');
-const frank = new Attorney('Frank', 'Cornell', 'Manhattan');
-const sally = new Attorney('Sally', 'Cornell', 'Manhattan');
-const may = new Attorney('May', 'Cornell', 'Manhattan');
-const mobnext = new Attorney('Mobnext', 'Cornell', 'Manhattan');
+const offices = [MANHATTAN!];
+const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
+const mark = MockData.getAttorneyUser({ name: 'Mark Bruh', offices });
+const shara = MockData.getAttorneyUser({ name: 'Shara Cornell', offices });
+const brian = MockData.getAttorneyUser({ name: 'Brian Masumoto', offices });
+const joe = MockData.getAttorneyUser({ name: 'Joe Cornell', offices });
+const bob = MockData.getAttorneyUser({ name: 'Bob Cornell', offices });
+const frank = MockData.getAttorneyUser({ name: 'Frank Cornell', offices });
+const sally = MockData.getAttorneyUser({ name: 'Sally Cornell', offices });
+const may = MockData.getAttorneyUser({ name: 'May Cornell', offices });
+const mobnext = MockData.getAttorneyUser({ name: 'Mobnext Cornell', offices });
 const attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mobnext];
 
 const modalId = 'some-modal-id';
@@ -163,9 +164,9 @@ describe('Test Assign Attorney Modal Component', () => {
         '/case-assignments',
         expect.objectContaining({
           attorneyList: expect.arrayContaining([
-            getFullName(mark),
-            getFullName(shara),
-            getFullName(brian),
+            getCamsUserReference(mark),
+            getCamsUserReference(shara),
+            getCamsUserReference(brian),
           ]),
           caseId: '123',
           role: 'TrialAttorney',

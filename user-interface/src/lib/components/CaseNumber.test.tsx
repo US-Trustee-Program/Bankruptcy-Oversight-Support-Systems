@@ -31,7 +31,7 @@ describe('CaseNumber component', () => {
     const link = screen.getByTestId(linkTestId);
     expect(link).toBeInTheDocument();
     expect(link.attributes.getNamedItem('href')?.value).toEqual(`/case-detail/${caseId}/`);
-    expect(link.attributes.getNamedItem('title')?.value).toEqual(`Open case ${caseId}`);
+    expect(link.attributes.getNamedItem('title')?.value).toEqual(`View case details`);
     expect(link.attributes.getNamedItem('target')?.value).toEqual(`CAMS-case-detail-${caseId}`);
 
     const span = screen.getByTestId(testId);

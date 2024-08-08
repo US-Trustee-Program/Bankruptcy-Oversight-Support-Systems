@@ -14,7 +14,6 @@ import {
 } from '../../factory';
 import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
-import { MockOrdersGateway } from '../../adapters/gateways/dxtr/mock.orders.gateway';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
@@ -36,6 +35,7 @@ import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.reposi
 import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
+import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';

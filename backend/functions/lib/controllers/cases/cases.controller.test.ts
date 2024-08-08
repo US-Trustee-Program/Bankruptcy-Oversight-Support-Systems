@@ -235,7 +235,9 @@ describe('cases controller test', () => {
     const divisionCodes = offices.map((office) => office.courtDivisionCode);
 
     beforeAll(async () => {
-      applicationContext.session = MockData.getCamsSession({ user: { name: 'tester', offices } });
+      applicationContext.session = MockData.getCamsSession({
+        user: MockData.getCamsUser({ offices }),
+      });
     });
 
     test('should get cases for the users offices', async () => {

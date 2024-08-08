@@ -4,6 +4,16 @@ import { getYearMonthDayStringFromDate } from '../utils/date-helper';
 import { ApplicationContext } from '../types/basic';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 
+const Daisy = { id: '0001', name: 'Daisy' };
+const Roger = { id: '0002', name: 'Roger' };
+const Frank = { id: '0003', name: 'Frank' };
+const MrJones = { id: '0004', name: 'Mr. Jones' };
+const Diana = { id: '0005', name: 'Diana' };
+const Joe = { id: '0006', name: 'Joe' };
+
+// TODO: We need a list of attorneys from the attorney endpoint...
+// const attorneyUsers: AttorneyUser[] = [Daisy, Roger, Frank, MrJones, Diana, Joe];
+
 export class MockCasesGateway implements CasesInterface {
   startingMonth: number;
   private caseList: CaseDetail[] = [];
@@ -88,7 +98,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 7, today.getDate()),
         ),
-        assignments: ['Mr. Jones', 'Diana', 'Joe'],
+        assignments: [MrJones, Diana, Joe],
         courtId: '',
         courtDivisionName: '',
         courtName: '',
@@ -161,7 +171,7 @@ export class MockCasesGateway implements CasesInterface {
         dateFiled: getYearMonthDayStringFromDate(
           new Date(today.getFullYear(), today.getMonth() - 3, today.getDate()),
         ),
-        assignments: ['Daisy', 'Roger', 'Frank'],
+        assignments: [Daisy, Roger, Frank],
         courtId: '',
         courtDivisionName: '',
         courtName: '',

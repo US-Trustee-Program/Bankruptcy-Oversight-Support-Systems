@@ -41,6 +41,7 @@ export default class FakeAssignmentsCosmosClientHumble {
                 assignment = {
                   documentType: 'ASSIGNMENT',
                   caseId: '012-23-12345',
+                  userId: 'userId-Test Attorney',
                   name: 'Test Attorney',
                   role: 'TrialAttorney',
                   assignedOn: '2024-03-05',
@@ -72,7 +73,7 @@ export default class FakeAssignmentsCosmosClientHumble {
                         if (caseItem.caseId === params.value) {
                           result.push(caseItem);
                         }
-                        if (caseItem.name === params.value) {
+                        if (caseItem.userId === params.value) {
                           result.push(caseItem);
                         }
                       });
