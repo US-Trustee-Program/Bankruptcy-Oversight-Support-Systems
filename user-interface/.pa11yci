@@ -46,6 +46,10 @@
       ]
     },
     {
+      "url": "http://localhost:3000/my-cases",
+      "actions": []
+    },
+    {
       "url": "http://localhost:3000/search",
       "actions": [
         "wait for element .search-screen to be visible",
