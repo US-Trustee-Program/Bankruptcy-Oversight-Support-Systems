@@ -1,4 +1,6 @@
 import { CamsRole } from './roles';
+import { getCamsUserReference } from './session';
+import MockData from './test-utilities/mock-data';
 
 describe('session', () => {
   describe('CamsRole enum', () => {
@@ -7,5 +9,11 @@ describe('session', () => {
       expect(CamsRole.TrialAttorney).toEqual('TrialAttorney');
       expect(CamsRole.SuperUser).toEqual('SuperUser');
     });
+  });
+  describe('getCamsUserReference', () => {
+    const user = MockData.getCamsUser();
+    const expected = { id: user.id, name: user.name };
+    const actual = getCamsUserReference(user);
+    expect(actual).toEqual(expected);
   });
 });
