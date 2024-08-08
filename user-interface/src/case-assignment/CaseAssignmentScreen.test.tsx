@@ -107,6 +107,34 @@ describe('CaseAssignment Component Tests', () => {
     });
   });
 
+  test('/attorneys endpoint should trigger alert when error status is received from Attorneys api', async () => {
+    const expectAlertMessage = 'Mocked error attorneys request';
+
+    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string): Promise<ResponseData> => {
+      return Promise.reject(new Error(expectAlertMessage));
+    });
+
+    vi.spyOn(AttorneysMockApi, 'list').mockRejectedValue(new Error(expectAlertMessage));
+
+    render(
+      <BrowserRouter>
+        <CaseAssignment />
+      </BrowserRouter>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    await waitFor(
+      () => {
+        expect(alert).toHaveClass('usa-alert__visible');
+      },
+      { timeout: 6000 },
+    ).then(() => {
+      expect(alert).toHaveAttribute('role', 'status');
+      expect(alert).toHaveClass('usa-alert--error ');
+      expect(screen.getByTestId('alert-message')).toContainHTML(expectAlertMessage);
+    });
+  });
+
   test('/cases should contain table displaying assigned cases when all cases are assigned', async () => {
     const caseList = [
       MockData.getCaseBasics({ override: { chapter: '9' } }),
@@ -131,6 +159,53 @@ describe('CaseAssignment Component Tests', () => {
       const data = tableBody[0].querySelectorAll('tr');
       expect(data).toHaveLength(caseList.length);
     });
+  });
+
+  test('/cases should be sorted properly by date', async () => {
+    const caseList = [
+      MockData.getCaseBasics({ override: { dateFiled: '2024-08-10', caseId: '020-25-00001' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2024-01-01', caseId: '001-24-00001' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2024-04-15', caseId: '001-24-00002' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2024-12-12', caseId: '020-23-00001' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2024-04-15', caseId: '020-25-00000' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2024-03-21', caseId: '001-24-00002' } }),
+    ];
+    vi.spyOn(Chapter15MockApi, 'get').mockImplementation(
+      (_path: string): Promise<ResponseBodySuccess<CaseBasics[]>> => {
+        return Promise.resolve(buildResponseBodySuccess<CaseBasics[]>(caseList));
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <CaseAssignment />
+      </BrowserRouter>,
+    );
+
+    let tableBody, data;
+    await waitFor(() => {
+      tableBody = screen.getAllByTestId('case-list-table-body');
+      data = tableBody[0].querySelectorAll('tr');
+      expect(data).toHaveLength(caseList.length);
+    });
+
+    expect(data![0].querySelector('td:nth-child(1)')).toHaveTextContent('23-00001');
+    expect(data![0].querySelector('td:nth-child(4)')).toHaveTextContent('12/12/2024');
+
+    expect(data![1].querySelector('td:nth-child(1)')).toHaveTextContent('25-00001');
+    expect(data![1].querySelector('td:nth-child(4)')).toHaveTextContent('08/10/2024');
+
+    expect(data![2].querySelector('td:nth-child(1)')).toHaveTextContent('25-00000');
+    expect(data![2].querySelector('td:nth-child(4)')).toHaveTextContent('04/15/2024');
+
+    expect(data![3].querySelector('td:nth-child(1)')).toHaveTextContent('24-00002');
+    expect(data![3].querySelector('td:nth-child(4)')).toHaveTextContent('04/15/2024');
+
+    expect(data![4].querySelector('td:nth-child(1)')).toHaveTextContent('24-00002');
+    expect(data![4].querySelector('td:nth-child(4)')).toHaveTextContent('03/21/2024');
+
+    expect(data![5].querySelector('td:nth-child(1)')).toHaveTextContent('24-00001');
+    expect(data![5].querySelector('td:nth-child(4)')).toHaveTextContent('01/01/2024');
   });
 
   describe('Feature flag chapter-twelve-enabled', () => {
