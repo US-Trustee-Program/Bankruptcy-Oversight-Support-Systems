@@ -21,7 +21,7 @@ import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.reposi
 import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
-import { CaseAssignmentUseCase } from '../case.assignment';
+import { CaseAssignmentUseCase } from '../case-assignment';
 
 describe('Orders use case', () => {
   let mockContext;
