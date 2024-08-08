@@ -2,7 +2,7 @@ import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assig
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
 import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
-import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.gateway';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';

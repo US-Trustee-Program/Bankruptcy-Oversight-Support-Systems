@@ -1,5 +1,5 @@
 import { CamsError } from '../../../common-errors/cams-error';
-import OfficesDxtrGateway from './offices.gateway';
+import OfficesDxtrGateway from './offices.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import * as database from '../../utils/database';
