@@ -11,6 +11,7 @@ import { ResponseBody, buildResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
 import Actions from '@common/cams/actions';
 import { ResourceActions } from '../../../../common/src/cams/actions';
+import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 
 export default class Chapter15MockApi extends Api {
   static caseList = [
@@ -279,6 +280,11 @@ export default class Chapter15MockApi extends Api {
         message: '',
         count: 1,
         body: Chapter15MockApi.offices,
+      };
+    } else if (path.match(/\/me/)) {
+      response = {
+        success: true,
+        body: MockData.getCamsSession({ user: SUPERUSER.user }),
       };
     } else {
       response = {
