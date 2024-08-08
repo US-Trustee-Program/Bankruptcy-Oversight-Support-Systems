@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentUseCase } from '../../use-cases/case.assignment';
+import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
 import { CaseAssignmentRole } from '../../adapters/types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';

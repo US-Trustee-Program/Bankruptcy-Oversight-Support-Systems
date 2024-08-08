@@ -2,7 +2,7 @@ import { AttorneyGatewayInterface } from './attorney.gateway.interface';
 import { AttorneyListDbResult } from '../adapters/types/attorneys';
 import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
-import { CaseAssignmentUseCase } from './case.assignment';
+import { CaseAssignmentUseCase } from './case-assignment';
 
 const MODULE_NAME = 'ATTORNEYS-USE-CASE';
 
