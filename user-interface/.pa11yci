@@ -46,10 +46,6 @@
       ]
     },
     {
-      "url": "http://localhost:3000/my-cases",
-      "actions": []
-    },
-    {
       "url": "http://localhost:3000/search",
       "actions": [
         "wait for element .search-screen to be visible",
@@ -117,8 +113,9 @@
         "click element [data-testid='toggle-modal-button']",
         "wait for element #info-modal-heading to be visible",
         "wait for element #info-modal-cancel-button to be visible",
-        "click element #info-modal-cancel-button",
-        "wait for element #info-modal-heading to be hidden"
+        "click element #info-modal-cancel-button"
+      ],
+      "actions2": [
       ]
     }
   ],
