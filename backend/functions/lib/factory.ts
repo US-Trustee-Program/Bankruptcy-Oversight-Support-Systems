@@ -24,7 +24,7 @@ import {
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { MockOrdersGateway } from './adapters/gateways/dxtr/mock.orders.gateway';
 import { OfficesGatewayInterface } from './use-cases/offices/offices.gateway.interface';
-import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.gateway';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { MockOfficesGateway } from './adapters/gateways/dxtr/mock.offices.gateway';
 import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
