@@ -6,16 +6,16 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { Consolidation, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { Attorney } from '@/lib/type-declarations/attorneys';
-import { getFullName } from '@common/name-helper';
 import Api from '@/lib/models/api';
 import Actions from '@common/cams/actions';
+import { AttorneyUser } from '@common/cams/users';
+import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
 const NEW_CASE_ID = '222-24-00001';
-const TEST_TRIAL_ATTORNEY_1 = 'Brian Wilson';
-const TEST_TRIAL_ATTORNEY_2 = 'Carl Wilson';
+const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
+const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
 const TEST_JUDGE_NAME = 'Rick B Hart';
 const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
@@ -56,18 +56,7 @@ const CONSOLIDATE_FROM: Consolidation = {
   documentType: 'CONSOLIDATION_FROM',
 };
 
-const attorneyList: Attorney[] = [
-  {
-    firstName: 'Joe',
-    lastName: 'Bob',
-    office: 'Your office',
-  },
-  {
-    firstName: 'Francis',
-    lastName: 'Jones',
-    office: 'His office',
-  },
-];
+const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
 describe('Case detail basic information panel', () => {
   function renderWithProps(props?: Partial<CaseDetailBasicInfoProps>) {
@@ -106,7 +95,7 @@ describe('Case detail basic information panel', () => {
 
       attorneyList.forEach((attorney, idx) => {
         const attorneyLabel = screen.getByTestId(`checkbox-label-${idx}-checkbox`);
-        expect(attorneyLabel).toHaveTextContent(getFullName(attorney));
+        expect(attorneyLabel).toHaveTextContent(attorney.name);
       });
     });
 

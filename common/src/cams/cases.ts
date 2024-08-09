@@ -1,6 +1,7 @@
 import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { OfficeDetails } from './courts';
+import { AttorneyUser } from './users';
 
 export interface CaseBasics extends OfficeDetails {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
@@ -12,7 +13,7 @@ export interface CaseBasics extends OfficeDetails {
   petitionLabel?: string;
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
-  assignments?: string[];
+  assignments?: AttorneyUser[];
 }
 
 export interface CaseSummary extends CaseBasics {
@@ -24,7 +25,7 @@ export interface CaseDetail extends CaseSummary {
   dismissedDate?: string;
   reopenedDate?: string;
   courtId: string;
-  assignments?: string[];
+  assignments?: AttorneyUser[];
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;

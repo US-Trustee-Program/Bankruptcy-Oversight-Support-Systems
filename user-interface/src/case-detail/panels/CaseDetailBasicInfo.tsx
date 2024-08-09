@@ -1,5 +1,4 @@
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import Icon from '@/lib/components/uswds/Icon';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
@@ -12,9 +11,11 @@ import AssignAttorneyModal, {
 } from '@/case-assignment/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { useRef } from 'react';
-import { Attorney } from '@/lib/type-declarations/attorneys';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
+import { AttorneyUser } from '@common/cams/users';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import Icon from '@/lib/components/uswds/Icon';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -22,7 +23,7 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 export interface CaseDetailBasicInfoProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
-  attorneyList: Attorney[];
+  attorneyList: AttorneyUser[];
   onCaseAssignment: (props: CallBackProps) => void;
 }
 
@@ -90,9 +91,10 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     toggleAction={'open'}
                     modalRef={assignmentModalRef}
                     toggleProps={{ bCase: caseDetail }}
-                    ariaLabel="Edit assigned staff."
+                    ariaLabel="Edit assigned staff"
+                    title="Open Staff Assignment window"
                   >
-                    <Icon name="edit" />
+                    <IconLabel icon="edit" label="Edit" />
                   </ToggleModalButton>
                 )}
             </h3>
@@ -109,15 +111,17 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
               <ul className="usa-list usa-list--unstyled">
                 {caseDetail.assignments &&
                   caseDetail.assignments.length > 0 &&
-                  (caseDetail.assignments as Array<string>)?.map((staff: string, idx: number) => {
-                    return (
-                      <li key={idx} className="individual-assignee">
-                        <span className="assignee-name">{staff}</span>
-                        <span className="vertical-divider">|</span>
-                        <span className="assignee-role">Trial Attorney</span>
-                      </li>
-                    );
-                  })}
+                  (caseDetail.assignments as Array<AttorneyUser>)?.map(
+                    (staff: AttorneyUser, idx: number) => {
+                      return (
+                        <li key={idx} className="individual-assignee">
+                          <span className="assignee-name">{staff.name}</span>
+                          <span className="vertical-divider"> | </span>
+                          <span className="assignee-role">Trial Attorney</span>
+                        </li>
+                      );
+                    },
+                  )}
                 {caseDetail.assignments?.length == 0 && (
                   <span className="unassigned-placeholder">(unassigned)</span>
                 )}
@@ -269,7 +273,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                       )} - ${caseDetail.caseTitle}`}
                     >
                       {caseDetail.debtorAttorney.email}
-                      <Icon className="link-icon" name="mail_outline"></Icon>
+                      <Icon className="link-icon" name="mail_outline" />
                     </a>
                   </div>
                 )}

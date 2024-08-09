@@ -1,7 +1,6 @@
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { CasesRepository } from './gateways.types';
 import {
   AttorneyAssignmentResponseInterface,
@@ -9,7 +8,8 @@ import {
 } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
-import { CamsRole } from '../../../../common/src/cams/session';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsRole } from '../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -25,7 +25,7 @@ export class CaseAssignmentUseCase {
   public async createTrialAttorneyAssignments(
     context: ApplicationContext,
     caseId: string,
-    newAssignments: string[],
+    newAssignments: CamsUserReference[],
     role: string,
     options: { processRoles?: CamsRole[] } = {},
   ): Promise<AttorneyAssignmentResponseInterface> {
@@ -75,7 +75,7 @@ export class CaseAssignmentUseCase {
   private async assignTrialAttorneys(
     context: ApplicationContext,
     caseId: string,
-    newAssignments: string[],
+    newAssignments: CamsUserReference[],
     role: string,
   ): Promise<string[]> {
     context.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
@@ -87,8 +87,9 @@ export class CaseAssignmentUseCase {
       const assignment: CaseAssignment = {
         documentType: 'ASSIGNMENT',
         caseId: caseId,
-        name: attorney,
-        role: CaseAssignmentRole[role],
+        userId: attorney.id,
+        name: attorney.name,
+        role: CamsRole[role],
         assignedOn: currentDate,
       };
       listOfAssignments.push(assignment);
@@ -146,8 +147,13 @@ export class CaseAssignmentUseCase {
     return await this.assignmentRepository.findAssignmentsByCaseId(caseId);
   }
 
-  public async getCaseLoad(name: string): Promise<number> {
-    const assignments = await this.assignmentRepository.findAssignmentsByAssigneeName(name);
+  public async getCaseLoad(userId: string): Promise<number> {
+    const assignments = await this.getCaseAssignments(userId);
     return assignments.length;
+  }
+
+  public async getCaseAssignments(userId: string): Promise<CaseAssignment[]> {
+    const assignments = await this.assignmentRepository.findAssignmentsByAssignee(userId);
+    return assignments;
   }
 }

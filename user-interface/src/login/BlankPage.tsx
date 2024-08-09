@@ -35,7 +35,7 @@ export function BlankPage(props: BlankPageProps) {
           </nav>
         </div>
       </header>
-      <div className="case-assignment case-list">
+      <div className="main-content">
         <div className="grid-row grid-gap-lg">
           <div className="grid-col-1"></div>
           <div className="grid-col-10 centered">{props.children}</div>

@@ -85,9 +85,11 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   };
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
-    const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
-    if (onClick) onClick(e);
-    if (closeOnClick !== false) close(e);
+    if (props.actionButtonGroup.submitButton?.onClick) {
+      const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
+      if (onClick) onClick(e);
+      if (closeOnClick !== false) close(e);
+    }
   }
 
   function cancelBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
@@ -171,21 +173,31 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                   ref={submitCancelButtonGroupRef}
                   modalId={props.modalId}
                   modalRef={ref as React.RefObject<ModalRefType>}
-                  submitButton={{
-                    label: props.actionButtonGroup.submitButton.label,
-                    onClick: submitBtnClick,
-                    className: props.actionButtonGroup.submitButton.className ?? '',
-                    disabled: props.actionButtonGroup.submitButton.disabled ?? false,
-                    uswdsStyle:
-                      props.actionButtonGroup.submitButton.uswdsStyle ?? UswdsButtonStyle.Default,
-                  }}
-                  cancelButton={{
-                    label: props.actionButtonGroup.cancelButton?.label ?? '',
-                    onClick: cancelBtnClick,
-                    className: props.actionButtonGroup.cancelButton?.className ?? '',
-                    uswdsStyle:
-                      props.actionButtonGroup.cancelButton?.uswdsStyle ?? UswdsButtonStyle.Unstyled,
-                  }}
+                  submitButton={
+                    props.actionButtonGroup.submitButton
+                      ? {
+                          label: props.actionButtonGroup.submitButton.label,
+                          onClick: submitBtnClick,
+                          className: props.actionButtonGroup.submitButton.className ?? '',
+                          disabled: props.actionButtonGroup.submitButton.disabled ?? false,
+                          uswdsStyle:
+                            props.actionButtonGroup.submitButton.uswdsStyle ??
+                            UswdsButtonStyle.Default,
+                        }
+                      : undefined
+                  }
+                  cancelButton={
+                    props.actionButtonGroup.cancelButton
+                      ? {
+                          label: props.actionButtonGroup.cancelButton?.label ?? '',
+                          onClick: cancelBtnClick,
+                          className: props.actionButtonGroup.cancelButton?.className ?? '',
+                          uswdsStyle:
+                            props.actionButtonGroup.cancelButton?.uswdsStyle ??
+                            UswdsButtonStyle.Unstyled,
+                        }
+                      : undefined
+                  }
                 ></SubmitCancelButtonGroup>
               </div>
             </div>

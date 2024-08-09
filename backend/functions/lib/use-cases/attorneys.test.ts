@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { createMockApplicationContext } from '../testing/testing-utilities';
 import AttorneysList from './attorneys';
-import { CaseAssignmentUseCase } from './case.assignment';
+import { CaseAssignmentUseCase } from './case-assignment';
 
 describe('Test attorneys use-case', () => {
   test('Should use gateway passed to it in constructor', async () => {
@@ -12,7 +12,8 @@ describe('Test attorneys use-case', () => {
       body: {
         attorneyList: [
           {
-            foo: 'bar',
+            id: 'testUserId',
+            name: 'Test User',
           },
         ],
       },
@@ -40,7 +41,8 @@ describe('Test attorneys use-case', () => {
       body: {
         attorneyList: [
           {
-            foo: 'bar',
+            id: 'testUserId',
+            name: 'Test User',
           },
         ],
       },

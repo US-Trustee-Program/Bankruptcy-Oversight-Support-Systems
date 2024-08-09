@@ -1,4 +1,3 @@
-import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
 import { SessionGateway } from '../utils/session-gateway';
 import {
   getAuthorizationGateway,
@@ -12,6 +11,8 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import LocalStorageGateway from './storage/local-storage-gateway';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsSession } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 

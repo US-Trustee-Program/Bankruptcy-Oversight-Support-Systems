@@ -1,17 +1,17 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, useRef, useImperativeHandle, useState, RefObject } from 'react';
+import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '../lib/components/uswds/modal/Modal';
-import React from 'react';
 import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
-import { Attorney, AttorneyInfo } from '@/lib/type-declarations/attorneys';
 import Api from '../lib/models/api';
 import { ModalRefType, SubmitCancelButtonGroupRef } from '../lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { getFullName } from '@common/name-helper';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
+import { AttorneyUser, CamsUserReference } from '@common/cams/users';
+import { getCamsUserReference } from '@common/cams/session';
+import { deepEqual } from '@/lib/utils/objectEquality';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -24,20 +24,20 @@ export interface AssignAttorneyModalRef {
 }
 
 export interface AssignAttorneyModalProps {
-  attorneyList: Attorney[];
+  attorneyList: AttorneyUser[];
   modalId: string;
   callBack: (props: CallBackProps) => void;
   alertMessage?: AlertDetails;
 }
 
 export interface AttorneyListResponseData extends ResponseData {
-  attorneyList: Array<AttorneyInfo>;
+  attorneyList: Array<AttorneyUser>;
 }
 
 export interface CallBackProps {
   bCase: CaseBasics;
-  selectedAttorneyList: string[];
-  previouslySelectedList: string[];
+  selectedAttorneyList: AttorneyUser[];
+  previouslySelectedList: AttorneyUser[];
   status: 'success' | 'error';
   apiResult: object;
 }
@@ -58,8 +58,8 @@ function AssignAttorneyModalComponent(
 
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
 
-  const [checkListValues, setCheckListValues] = useState<string[]>([]);
-  const [previouslySelectedList, setPreviouslySelectedList] = useState<string[]>([]);
+  const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
+  const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
 
   const actionButtonGroup = {
@@ -104,22 +104,25 @@ function AssignAttorneyModalComponent(
     };
   });
 
-  function areArraysSame(ar1: string[], ar2: string[]): boolean {
-    return JSON.stringify(ar1.sort()) === JSON.stringify(ar2.sort());
+  function attorneyIsInCheckList(attorney: AttorneyUser): boolean {
+    const result = checkListValues.find((theAttorney) => theAttorney.id === attorney.id);
+    return result !== undefined;
   }
 
-  function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, name: string) {
+  function updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser) {
     if (!bCase) return;
     let localCheckListValues = [...checkListValues];
-    if (ev.target.checked && !checkListValues.includes(name)) {
-      localCheckListValues.push(name);
-    } else if (!ev.target.checked && checkListValues.includes(name)) {
-      localCheckListValues = checkListValues.filter((theName) => theName !== name);
+    if (ev.target.checked && !attorneyIsInCheckList(attorney)) {
+      localCheckListValues.push(attorney);
+    } else if (!ev.target.checked && attorneyIsInCheckList(attorney)) {
+      localCheckListValues = checkListValues.filter(
+        (theAttorney) => theAttorney.id !== attorney.id,
+      );
     }
     const isTheSame =
       localCheckListValues &&
       !!bCase.assignments &&
-      areArraysSame(localCheckListValues, bCase.assignments);
+      deepEqual(localCheckListValues, bCase.assignments);
 
     modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 
@@ -133,15 +136,16 @@ function AssignAttorneyModalComponent(
 
   async function submitValues() {
     if (!bCase) return;
-    let finalAttorneyList: string[] = [];
+    let finalAttorneyList: CamsUserReference[] = [];
 
     modalRef.current?.buttons?.current?.disableSubmitButton(true);
 
     // call callback from parent with IDs and names of attorneys, and case id.
+    const ids = checkListValues.map((item) => item.id);
     finalAttorneyList = props.attorneyList
-      .filter((attorney) => checkListValues.includes(getFullName(attorney)))
-      .map((atty) => {
-        return getFullName(atty);
+      .filter((attorney) => ids.includes(attorney.id))
+      .map((attorney) => {
+        return getCamsUserReference(attorney);
       });
 
     // send attorney IDs to API
@@ -231,19 +235,20 @@ function AssignAttorneyModalComponent(
               </thead>
               <tbody data-testid="case-load-table-body">
                 {props.attorneyList.length > 0 &&
-                  props.attorneyList.map((attorney: Attorney, idx: number) => {
-                    const name = getFullName(attorney);
+                  props.attorneyList.map((attorney: AttorneyUser, idx: number) => {
                     return (
                       <tr key={idx}>
                         <td className="assign-attorney-checkbox-column">
                           <Checkbox
                             id={`${idx}-checkbox`}
-                            value={`${name}`}
+                            value={attorney.id}
                             onFocus={handleFocus}
-                            onChange={(event) => updateCheckList(event, name)}
-                            checked={checkListValues.includes(name)}
+                            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                              updateCheckList(event, attorney)
+                            }
+                            checked={attorneyIsInCheckList(attorney)}
                             className="attorney-list-checkbox"
-                            label={name}
+                            label={attorney.name}
                           />
                         </td>
                       </tr>
@@ -253,11 +258,9 @@ function AssignAttorneyModalComponent(
             </table>
           </div>
           {props.alertMessage && <Alert {...props.alertMessage} show={true} inline={true} />}
-          <LoadingSpinner
-            caption="Updating assignment..."
-            height="40px"
-            hidden={!isUpdatingAssignment}
-          />
+          {isUpdatingAssignment && (
+            <LoadingSpinner caption="Updating assignment..." height="40px" />
+          )}
         </>
       }
       actionButtonGroup={actionButtonGroup}

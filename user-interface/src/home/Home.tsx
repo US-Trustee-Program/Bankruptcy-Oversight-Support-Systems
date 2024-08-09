@@ -1,12 +1,12 @@
+import { useEffect } from 'react';
 import './Home.scss';
-import CaseAssignment from '../case-assignment/CaseAssignmentScreen';
 
 function Home() {
-  return (
-    <div className="home">
-      <CaseAssignment />
-    </div>
-  );
+  useEffect(() => {
+    window.location.assign('/my-cases');
+  });
+
+  return <></>;
 }
 
 export default Home;

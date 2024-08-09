@@ -12,7 +12,8 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CamsRole, CamsSession } from '../../../../../common/src/cams/session';
+import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../../user-interface/src/lib/testing/testing-utilities';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
@@ -29,12 +30,12 @@ describe('user-session.gateway test', () => {
   const provider = 'okta';
   const mockName = 'Mock User';
   const expectedSession = MockData.getCamsSession({
-    user: { name: mockName, offices: [], roles: [] },
+    user: { id: `userId-${mockName}`, name: mockName, offices: [], roles: [] },
     accessToken: jwt,
     provider,
   });
   const mockGetValue: CamsSession = {
-    user: { name: 'Wrong Name' },
+    user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
     accessToken: jwt,
     provider,
     issuer: 'http://issuer/',
@@ -62,7 +63,9 @@ describe('user-session.gateway test', () => {
       claims,
       header: jwtHeader as CamsJwtHeader,
     });
-    jest.spyOn(OktaGateway, 'getUser').mockResolvedValue({ name: mockName });
+    jest
+      .spyOn(OktaGateway, 'getUser')
+      .mockResolvedValue({ id: `userId-${mockName}`, name: mockName });
     jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
       resource: mockGetValue,
     });
