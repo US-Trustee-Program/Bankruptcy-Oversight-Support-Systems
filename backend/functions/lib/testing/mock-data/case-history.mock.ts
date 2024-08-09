@@ -1,4 +1,5 @@
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
 export const CASE_HISTORY: CaseAssignmentHistory[] = [
   {
@@ -16,6 +17,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         name: 'Susan Arbeit',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
+        changedBy: MockData.getCamsUserReference(),
       },
       {
         id: 'de6f4277-b7a8-4d90-bdb7-59a52d14d895',
@@ -25,6 +27,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         name: 'Mark Bruh',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
+        changedBy: MockData.getCamsUserReference(),
       },
       {
         id: 'a2cb1c7c-2c1f-412d-bd0a-c1b412769de1',
@@ -34,6 +37,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         name: 'Shara Cornell',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
+        changedBy: MockData.getCamsUserReference(),
       },
     ],
   },
@@ -51,6 +55,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         name: 'Susan Arbeit',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
+        changedBy: MockData.getCamsUserReference(),
       },
       {
         id: 'de6f4277-b7a8-4d90-bdb7-59a52d14d895',
@@ -60,6 +65,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         name: 'Mark Bruh',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
+        changedBy: MockData.getCamsUserReference(),
       },
       {
         id: 'a2cb1c7c-2c1f-412d-bd0a-c1b412769de1',
@@ -69,6 +75,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         name: 'Shara Cornell',
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
+        changedBy: MockData.getCamsUserReference(),
       },
     ],
     after: [
@@ -80,6 +87,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:18.909Z',
         id: 'a2cb1c7c-2c1f-412d-bd0a-c1b412769de1',
+        changedBy: MockData.getCamsUserReference(),
       },
       {
         documentType: 'ASSIGNMENT',
@@ -89,6 +97,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:26.755Z',
         id: '8d101caa-e3c8-4927-8cf4-3a57a481bf9c',
+        changedBy: MockData.getCamsUserReference(),
       },
       {
         documentType: 'ASSIGNMENT',
@@ -98,6 +107,7 @@ export const CASE_HISTORY: CaseAssignmentHistory[] = [
         role: 'TrialAttorney',
         assignedOn: '2023-12-14T21:39:26.755Z',
         id: '7a6e1dba-4a27-4c59-85bb-919a6746a676',
+        changedBy: MockData.getCamsUserReference(),
       },
     ],
   },

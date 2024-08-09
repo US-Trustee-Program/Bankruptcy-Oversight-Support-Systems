@@ -1,6 +1,7 @@
 import { CaseAssignment } from './assignments';
 import { CaseSummary } from './cases';
 import { OrderStatus, TransferOrder } from './orders';
+import { CamsUserReference } from './users';
 
 export interface ConsolidationOrderSummary {
   status: OrderStatus;
@@ -25,6 +26,7 @@ type AbstractCaseHistory<B, A> = {
   occurredAtTimestamp: string;
   before: B;
   after: A;
+  changedBy?: CamsUserReference;
 };
 
 export type CaseAssignmentHistory = AbstractCaseHistory<CaseAssignment[], CaseAssignment[]> & {

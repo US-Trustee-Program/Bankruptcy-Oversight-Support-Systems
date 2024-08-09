@@ -9,7 +9,7 @@ export type CaseAssignment = {
   role: string;
   assignedOn: string;
   unassignedOn?: string;
-  assignmentChangedBy: CamsUserReference;
+  changedBy: CamsUserReference;
 };
 
 export type AttorneyAssignmentResponseInterface = {
