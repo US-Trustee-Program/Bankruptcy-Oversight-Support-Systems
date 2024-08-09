@@ -65,14 +65,19 @@ export const MockUsers: MockUser[] = [
     user: {
       id: '==MOCKUSER=paralegal==',
       name: 'Bert',
-      roles: [CamsRole.CaseAssignmentManager],
+      roles: [],
       offices: [MANHATTAN],
     },
   },
   {
     sub: 'aust',
     label: 'Charlie - Assistant US Trustee',
-    user: { id: '==MOCKUSER=aust==', name: 'Charlie', roles: [], offices: [MANHATTAN] },
+    user: {
+      id: '==MOCKUSER=aust==',
+      name: 'Charlie',
+      roles: [CamsRole.CaseAssignmentManager],
+      offices: [MANHATTAN],
+    },
   },
   SUPERUSER,
 ];
