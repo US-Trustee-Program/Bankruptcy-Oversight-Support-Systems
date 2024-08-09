@@ -290,6 +290,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     return;
   }
 
+  function handleFacetClear(values: ComboOption[]) {
+    if (values.length === 0) {
+      setSelectedFacets([]);
+    }
+  }
+
   function handleSelectedFacet(newValue: ComboOption[]) {
     const selected = (newValue as ComboOption[]).map((value: ComboOption) => {
       const { value: selection } = value;
@@ -451,6 +457,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           options={getSummaryFacetList(caseDocketSummaryFacets)}
                           onClose={handleSelectedFacet}
                           onPillSelection={handleSelectedFacet}
+                          onUpdateSelection={handleFacetClear}
                           label="Filter by Summary"
                           multiSelect={true}
                           ref={facetPickerRef}
