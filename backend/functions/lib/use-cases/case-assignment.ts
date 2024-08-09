@@ -10,6 +10,7 @@ import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -91,6 +92,7 @@ export class CaseAssignmentUseCase {
         name: attorney.name,
         role: CamsRole[role],
         assignedOn: currentDate,
+        assignmentChangedBy: getCamsUserReference(context.session!.user),
       };
       listOfAssignments.push(assignment);
     });
