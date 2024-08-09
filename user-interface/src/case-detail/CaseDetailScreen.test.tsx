@@ -16,7 +16,7 @@ const carlWilson = MockAttorneys.Carl;
 
 const rickBHartName = 'Rick B Hart';
 
-const trialAttorneyRole = 'Trial Attorney';
+const trialAttorneyLabel = 'Trial Attorney';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -116,8 +116,8 @@ describe('Case Detail screen tests', () => {
             assigneeMap.set(name, role);
           }
         });
-        expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyRole);
-        expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyRole);
+        expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyLabel);
+        expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyLabel);
 
         const judgeName = screen.getByTestId('case-detail-judge-name');
         expect(judgeName).toHaveTextContent(rickBHartName);

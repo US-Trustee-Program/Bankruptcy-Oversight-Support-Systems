@@ -14,7 +14,6 @@ describe('Test case assignment cosmosdb repository tests', () => {
   const perryMason = 'Perry Mason';
   const benMatlock = 'Ben Matlock';
   const clairHuxtable = 'Clair Huxtable';
-  const trialAttorneyRole = 'TrialAttorney';
   let repository: CaseAssignmentCosmosDbRepository;
 
   beforeEach(async () => {
