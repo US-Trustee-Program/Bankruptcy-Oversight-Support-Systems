@@ -3,6 +3,7 @@ import { CaseAssignmentController } from './case.assignment.controller';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { THROW_UNKNOWN_ERROR_CASE_ID } from '../../testing/testing-constants';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 jest.mock('../../use-cases/case-assignment', () => {
   return {
@@ -18,7 +19,6 @@ jest.mock('../../use-cases/case-assignment', () => {
 
 describe('test case assignment controller using mocked use case', () => {
   let applicationContext: ApplicationContext;
-  const trialAttorneyRole = 'TrialAttorney';
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
@@ -28,7 +28,7 @@ describe('test case assignment controller using mocked use case', () => {
     const testCaseAssignment = {
       caseId: THROW_UNKNOWN_ERROR_CASE_ID,
       listOfAttorneyNames: [],
-      role: trialAttorneyRole,
+      role: CamsRole.TrialAttorney,
     };
 
     const assignmentController = new CaseAssignmentController(applicationContext);

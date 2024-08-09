@@ -17,7 +17,7 @@ const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
 const Tom = MockData.getCamsUserReference({ name: 'Tom' });
 
 describe('Case Assignment Creation Tests', () => {
-  const trialAttorneyRole = 'TrialAttorney';
+  const trialAttorneyRole = CamsRole.TrialAttorney;
   let applicationContext;
 
   const user = {
