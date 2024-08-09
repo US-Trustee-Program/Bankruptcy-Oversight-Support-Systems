@@ -29,8 +29,9 @@ describe('Case docket function', () => {
     };
 
     const expectedResponseBody = {
-      success: true,
-      body: CASE_HISTORY,
+      isSuccess: true,
+      meta: expect.any(Object),
+      data: CASE_HISTORY,
     };
 
     await httpTrigger(context, requestOverride);

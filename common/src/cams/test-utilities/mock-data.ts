@@ -395,6 +395,7 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
     role: 'TrialAttorney',
     assignedOn: firstDate,
     unassignedOn: someDateAfterThisDate(firstDate, 28),
+    changedBy: getCamsUserReference(),
     ...override,
   };
 }

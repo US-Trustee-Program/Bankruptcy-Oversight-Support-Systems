@@ -92,7 +92,7 @@ export class CaseAssignmentUseCase {
         name: attorney.name,
         role: CamsRole[role],
         assignedOn: currentDate,
-        assignmentChangedBy: getCamsUserReference(context.session!.user),
+        changedBy: getCamsUserReference(context.session!.user),
       };
       listOfAssignments.push(assignment);
     });
@@ -133,6 +133,7 @@ export class CaseAssignmentUseCase {
       occurredAtTimestamp: currentDate,
       before: existingAssignmentRecords,
       after: newAssignmentRecords,
+      changedBy: getCamsUserReference(context.session!.user),
     };
     await this.casesRepository.createCaseHistory(context, history);
 
