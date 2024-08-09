@@ -1,3 +1,5 @@
+import { CamsUserReference } from './users';
+
 export type CaseAssignment = {
   id?: string;
   documentType: 'ASSIGNMENT';
@@ -7,6 +9,7 @@ export type CaseAssignment = {
   role: string;
   assignedOn: string;
   unassignedOn?: string;
+  changedBy: CamsUserReference;
 };
 
 export type AttorneyAssignmentResponseInterface = {

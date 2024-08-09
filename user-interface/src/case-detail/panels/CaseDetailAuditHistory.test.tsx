@@ -28,6 +28,7 @@ describe('audit history tests', () => {
       name: 'Alfred',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
+      changedBy: MockData.getCamsUserReference(),
     },
     {
       caseId,
@@ -36,6 +37,7 @@ describe('audit history tests', () => {
       name: 'Bradford',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
+      changedBy: MockData.getCamsUserReference(),
     },
   ];
   const assignmentAfter: CaseAssignment[] = [
@@ -46,6 +48,7 @@ describe('audit history tests', () => {
       name: 'Charles',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
+      changedBy: MockData.getCamsUserReference(),
     },
     {
       caseId,
@@ -54,6 +57,7 @@ describe('audit history tests', () => {
       name: 'Daniel',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
+      changedBy: MockData.getCamsUserReference(),
     },
     {
       caseId,
@@ -62,6 +66,7 @@ describe('audit history tests', () => {
       name: 'Edward',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
+      changedBy: MockData.getCamsUserReference(),
     },
   ];
   const caseHistory: CaseHistory[] = [
@@ -72,6 +77,7 @@ describe('audit history tests', () => {
       occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
       before: assignmentBefore,
       after: assignmentAfter,
+      changedBy: MockData.getCamsUserReference(),
     },
     {
       id: '1234567890',
@@ -80,6 +86,7 @@ describe('audit history tests', () => {
       occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
       before: pendingTransferOrder,
       after: approvedTransferOrder,
+      changedBy: MockData.getCamsUserReference(),
     },
     {
       id: '1234567890',
@@ -88,6 +95,7 @@ describe('audit history tests', () => {
       occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
       before: null,
       after: pendingConsolidationOrder,
+      changedBy: MockData.getCamsUserReference(),
     },
     {
       id: '1234567890',
@@ -96,6 +104,7 @@ describe('audit history tests', () => {
       occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
       before: pendingConsolidationOrder,
       after: rejectedConsolidationOrder,
+      changedBy: MockData.getCamsUserReference(),
     },
   ];
 
@@ -153,6 +162,10 @@ describe('audit history tests', () => {
     const dateElement = screen.queryByTestId('change-date-0');
     expect(dateElement).toBeInTheDocument();
     expect(dateElement).toHaveTextContent('12/25/2023');
+
+    const changedByElement = screen.queryByTestId('changed-by-0');
+    expect(changedByElement).toBeInTheDocument();
+    expect(changedByElement).toHaveTextContent(caseHistory[0].changedBy!.name);
   });
 
   test('should display (none) when no assignments exist.', async () => {
