@@ -110,7 +110,7 @@ describe('offices gateway tests', () => {
       expect(offices).toEqual(MANHATTAN);
     });
 
-    test('should throw error when success is false', async () => {
+    test('should throw invalid parameter exception with invalid parameters', async () => {
       const gateway = new OfficesDxtrGateway();
       await expect(async () => {
         await gateway.getOfficeByCourtIdAndOfficeCode(applicationContext, '081', '1');

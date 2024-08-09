@@ -150,13 +150,7 @@ describe('Orders use case', () => {
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
-    let actual;
-    try {
-      actual = await useCase.approveConsolidation(mockContext, approval);
-    } catch (e) {
-      console.log(e as Error);
-    }
-
+    const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length + 1);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();

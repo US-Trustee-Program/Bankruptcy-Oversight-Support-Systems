@@ -61,7 +61,11 @@ export const CaseAssignment = () => {
         caseList.forEach((bCase) => {
           bCase.assignments = bCase.assignments ?? [];
         });
-        caseList.sort(sortByCaseId).sort(sortByDateFiled);
+        caseList.sort((a, b) => {
+          // Date filed take priority over case Id.
+          const byDateFiled = sortByDateFiled(a, b);
+          return byDateFiled === 0 ? sortByCaseId(a, b) : byDateFiled;
+        });
         setCaseList(caseList);
 
         isFetching = false;

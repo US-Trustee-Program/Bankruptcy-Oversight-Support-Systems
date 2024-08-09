@@ -115,7 +115,6 @@ describe('Case Detail screen tests', () => {
             assigneeMap.set(name, role);
           }
         });
-        console.log(assigneeMap);
         expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyRole);
         expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyRole);
 
