@@ -81,6 +81,14 @@ export default function SearchScreen() {
     }
   }
 
+  function handleCourtClear(options: ComboOption[]) {
+    if (options.length === 0 && searchPredicate.divisionCodes) {
+      const newPredicate = { ...searchPredicate };
+      delete newPredicate.divisionCodes;
+      setSearchPredicate(newPredicate);
+    }
+  }
+
   function handleCourtSelection(selection: ComboOption[]) {
     const newPredicate = {
       ...searchPredicate,
@@ -90,6 +98,14 @@ export default function SearchScreen() {
       newPredicate.divisionCodes = selection.map((kv: ComboOption) => kv.value);
     }
     setSearchPredicate(newPredicate);
+  }
+
+  function handleChapterClear(options: ComboOption[]) {
+    if (options.length === 0 && searchPredicate.chapters) {
+      const newPredicate = { ...searchPredicate };
+      delete newPredicate.chapters;
+      setSearchPredicate(newPredicate);
+    }
   }
 
   function handleChapterSelection(selections: ComboOption[]) {
@@ -163,6 +179,7 @@ export default function SearchScreen() {
                   ariaLabelPrefix="District (Division)"
                   onClose={handleCourtSelection}
                   onPillSelection={handleCourtSelection}
+                  onUpdateSelection={handleCourtClear}
                   options={getOfficeList(officesList)}
                   required={false}
                   multiSelect={true}
@@ -180,6 +197,7 @@ export default function SearchScreen() {
                   ariaLabelPrefix="Chapter"
                   onClose={handleChapterSelection}
                   onPillSelection={handleChapterSelection}
+                  onUpdateSelection={handleChapterClear}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
