@@ -9,6 +9,7 @@ import {
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../testing/testing-constants';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 interface QueryParams {
@@ -45,6 +46,7 @@ export default class FakeAssignmentsCosmosClientHumble {
                   name: 'Test Attorney',
                   role: 'TrialAttorney',
                   assignedOn: '2024-03-05',
+                  changedBy: MockData.getCamsUserReference(),
                 };
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;

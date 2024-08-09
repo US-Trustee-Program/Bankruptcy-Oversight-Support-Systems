@@ -37,10 +37,6 @@ export interface Chapter15CaseDetailsResponseData extends ResponseData {
   };
 }
 
-export interface CaseAssignmentHistoryResponseData extends ResponseData {
-  body: CaseAssignmentHistory[];
-}
-
 export interface CaseAssociatedCasesResponseData extends ResponseData {
   body: EventCaseReference[];
 }

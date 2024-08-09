@@ -2,7 +2,6 @@ import { formatDate } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { orderStatusType } from '@/lib/utils/labels';
-import { useApi } from '@/lib/hooks/UseApi';
 import {
   CaseAssignmentHistory,
   CaseConsolidationHistory,
@@ -10,7 +9,7 @@ import {
   CaseTransferHistory,
 } from '@common/cams/history';
 import { useEffect, useState } from 'react';
-import { CaseAssignmentHistoryResponseData } from '@/lib/type-declarations/chapter-15';
+import Api2 from '@/lib/hooks/UseApi2';
 
 export interface CaseDetailAuditHistoryProps {
   caseId: string;
@@ -19,16 +18,15 @@ export interface CaseDetailAuditHistoryProps {
 export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProps) {
   const [caseHistory, setCaseHistory] = useState<CaseHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
-  const api = useApi();
+  const api = Api2;
 
-  async function fetchCaseAssignmentHistory() {
+  async function fetchCaseHistory() {
     setIsAuditHistoryLoading(true);
     api
-      .get(`/cases/${props.caseId}/history`, {})
-      .then((data) => {
-        const response = data as CaseAssignmentHistoryResponseData;
+      .getCaseHistory(props.caseId)
+      .then((response) => {
         if (response) {
-          setCaseHistory(response.body);
+          setCaseHistory(response.data);
           setIsAuditHistoryLoading(false);
         }
       })
@@ -58,6 +56,9 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
             })
             .join(', ')}
         </td>
+        <td data-testid={`changed-by-${idx}`}>
+          {history.changedBy && <>{history.changedBy.name}</>}
+        </td>
         <td data-testid={`change-date-${idx}`}>
           <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
         </td>
@@ -79,6 +80,9 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         <td data-testid={`new-order-${idx}`}>
           {history.after && orderStatusType.get(history.after.status)}
         </td>
+        <td data-testid={`changed-by-${idx}`}>
+          {history.changedBy && <>{history.changedBy.name}</>}
+        </td>
         <td data-testid={`change-date-${idx}`}>
           <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
         </td>
@@ -99,7 +103,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
   }
 
   useEffect(() => {
-    fetchCaseAssignmentHistory();
+    fetchCaseHistory();
   }, []);
 
   return (
@@ -129,6 +133,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
                     <th>Change</th>
                     <th>Previous</th>
                     <th>New</th>
+                    <th>Changed by</th>
                     <th>Date</th>
                   </tr>
                 </thead>
