@@ -19,6 +19,7 @@ import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { formatDate } from '@/lib/utils/datetime';
+import { deepEqual } from '@/lib/utils/objectEquality';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -30,8 +31,9 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
-  onStartSearching: () => void;
-  onEndSearching: () => void;
+  onStartSearching?: () => void;
+  onEndSearching?: () => void;
+  noResultsMessage?: string;
 };
 
 export function SearchResults(props: SearchResultsProps) {
@@ -51,6 +53,9 @@ export function SearchResults(props: SearchResultsProps) {
   const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
     ? searchResults?.meta
     : undefined;
+
+  const noResultsMessage =
+    props.noResultsMessage ?? 'Modify your search criteria to include more cases.';
 
   const api = useGenericApi();
 
@@ -83,14 +88,14 @@ export function SearchResults(props: SearchResultsProps) {
 
     trackSearchEvent(searchPredicate);
     setIsSearching(true);
-    onStartSearching();
+    if (onStartSearching) onStartSearching();
     api
       .get<CaseBasics[]>('/cases', searchPredicate)
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
         setIsSearching(false);
-        onEndSearching();
+        if (onEndSearching) onEndSearching();
       });
   }
 
@@ -99,7 +104,9 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   useEffect(() => {
-    setSearchPredicate(props.searchPredicate);
+    if (!deepEqual(props.searchPredicate, searchPredicate)) {
+      setSearchPredicate(props.searchPredicate);
+    }
   }, [props.searchPredicate]);
 
   useEffect(() => {
@@ -112,6 +119,7 @@ export function SearchResults(props: SearchResultsProps) {
         <div className="search-alert">
           <Alert
             id="search-error-alert"
+            className="measure-6"
             message={alertInfo.message}
             title={alertInfo.title}
             type={UswdsAlertStyle.Error}
@@ -125,7 +133,8 @@ export function SearchResults(props: SearchResultsProps) {
         <div className="search-alert">
           <Alert
             id="no-results-alert"
-            message="Modify your search criteria to include more cases."
+            className="measure-6"
+            message={noResultsMessage}
             title="No cases found"
             type={UswdsAlertStyle.Info}
             show={true}

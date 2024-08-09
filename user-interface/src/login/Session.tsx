@@ -2,10 +2,11 @@ import { PropsWithChildren, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { LocalStorage } from '@/lib/utils/local-storage';
-import { CamsSession, CamsUser } from '@common/cams/session';
 import Api2 from '@/lib/hooks/UseApi2';
 import { AccessDenied } from './AccessDenied';
 import { Interstitial } from './Interstitial';
+import { CamsSession } from '@common/cams/session';
+import { CamsUser } from '@common/cams/users';
 
 type SessionState = {
   isLoaded: boolean;
@@ -55,7 +56,7 @@ export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { use
 
 export function Session(props: SessionProps) {
   const { accessToken, provider, expires, issuer } = props;
-  const user = props.user ?? { name: '' };
+  const user = props.user ?? { id: '', name: '' };
   const navigate = useNavigate();
   const location = useLocation();
   const { state, actions } = useStateAndActions();

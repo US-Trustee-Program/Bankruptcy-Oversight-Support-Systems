@@ -1,4 +1,4 @@
-import CasesDxtrGateway from './cases.dxtr.gateway';
+import CasesDxtrGateway, { getCaseIdParts } from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
 import { CaseDetail } from '../../../../../../common/src/cams/cases';
@@ -11,6 +11,15 @@ import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 
 const dxtrDatabaseName = 'some-database-name';
+
+describe('getCaseIdParts', () => {
+  test('should deconstruct a case id into a division code and case number', () => {
+    const caseId = '000-11-22222';
+    const expected = { divisionCode: '000', caseNumber: '11-22222' };
+    const actual = getCaseIdParts(caseId);
+    expect(actual).toEqual(expected);
+  });
+});
 
 describe('Test DXTR Gateway', () => {
   let applicationContext;
@@ -622,11 +631,35 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('searchCases tests', () => {
+    const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
+    const testParty = MockData.getParty();
+    const caseSummaryQueryResult = {
+      success: true,
+      results: {
+        recordset: [testCase],
+      },
+      message: '',
+    };
+    const partyQueryResult = {
+      success: true,
+      results: {
+        recordset: [testParty],
+      },
+      message: '',
+    };
+
     beforeEach(() => {
+      querySpy
+        .mockResolvedValueOnce(caseSummaryQueryResult)
+        .mockResolvedValueOnce(partyQueryResult);
+    });
+
+    afterEach(() => {
       jest.resetAllMocks();
     });
 
     test('should return empty array', async () => {
+      jest.resetAllMocks();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: {
@@ -643,26 +676,6 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return array of cases for a given court division', async () => {
-      const testCase = MockData.getCaseSummary({ override: { caseId: '999-99-00000' } });
-      const testParty = MockData.getParty();
-      const caseSummaryQueryResult = {
-        success: true,
-        results: {
-          recordset: [testCase],
-        },
-        message: '',
-      };
-      const partyQueryResult = {
-        success: true,
-        results: {
-          recordset: [testParty],
-        },
-        message: '',
-      };
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
-
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         divisionCodes: ['999'],
       });
@@ -670,26 +683,6 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return array of cases for a given case number', async () => {
-      const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
-      const testParty = MockData.getParty();
-      const caseSummaryQueryResult = {
-        success: true,
-        results: {
-          recordset: [testCase],
-        },
-        message: '',
-      };
-      const partyQueryResult = {
-        success: true,
-        results: {
-          recordset: [testParty],
-        },
-        message: '',
-      };
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
-
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         caseNumber: '00-00000',
       });
@@ -697,7 +690,24 @@ describe('Test DXTR Gateway', () => {
       expect(actual).toEqual([testCase]);
     });
 
+    test('should return array of cases for a given list of caseIds', async () => {
+      const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
+        caseIds: ['999-00-00000', '999-11-22222'],
+      });
+
+      expect(actual).toEqual([testCase]);
+    });
+
+    test('should return array of cases for a given list of chapters', async () => {
+      const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
+        chapters: ['15'],
+      });
+
+      expect(actual).toEqual([testCase]);
+    });
+
     test('should return an error', async () => {
+      jest.resetAllMocks();
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
         success: false,

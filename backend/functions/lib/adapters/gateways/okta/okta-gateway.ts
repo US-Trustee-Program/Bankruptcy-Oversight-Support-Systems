@@ -1,9 +1,9 @@
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
 import { CamsJwt, OpenIdConnectGateway } from '../../types/authorization';
-import { CamsUser } from '../../../../../../common/src/cams/session';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
+import { CamsUser } from '../../../../../../common/src/cams/users';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
 
@@ -53,7 +53,9 @@ async function getUser(accessToken: string): Promise<CamsUser> {
 
     if (response.ok) {
       const oktaUser = (await response.json()) as OktaUserInfo;
+      // TODO: We need to decide on the claim we will map to CamsUser.id
       const camsUser: CamsUser = {
+        id: oktaUser.sub,
         name: oktaUser.name,
       };
 

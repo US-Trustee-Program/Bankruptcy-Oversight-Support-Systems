@@ -1,94 +1,89 @@
-// TODO: Fakerize this list of trial attorneys.
-export const ATTORNEYS = [
+import { CamsRole } from '../roles';
+import { AttorneyUser } from '../users';
+import MockUsers from './mock-user';
+import { MANHATTAN } from './offices.mock';
+
+export const MockAttorneys: Record<string, AttorneyUser> = {
+  Daisy: { id: '0001', name: 'Daisy', offices: [], roles: [CamsRole.TrialAttorney] },
+  Roger: { id: '0002', name: 'Roger', offices: [], roles: [CamsRole.TrialAttorney] },
+  Frank: { id: '0003', name: 'Frank', offices: [], roles: [CamsRole.TrialAttorney] },
+  MrJones: { id: '0004', name: 'Mr. Jones', offices: [], roles: [CamsRole.TrialAttorney] },
+  Diana: { id: '0005', name: 'Diana', offices: [], roles: [CamsRole.TrialAttorney] },
+  Joe: { id: '0006', name: 'Joe', offices: [], roles: [CamsRole.TrialAttorney] },
+  Carl: { id: '0007', name: 'Carl', offices: [], roles: [CamsRole.TrialAttorney] },
+  Brian: { id: '0008', name: 'Brian', offices: [], roles: [CamsRole.TrialAttorney] },
+};
+
+const manhattanAttorneys = MockUsers.filter(
+  (user) => user.user.offices[0] === MANHATTAN && user.user.roles[0] === CamsRole.TrialAttorney,
+).map((user) => user.user);
+
+export const ATTORNEYS: AttorneyUser[] = [
+  ...manhattanAttorneys,
   {
-    firstName: 'Linda',
-    middleName: 'A',
-    lastName: 'Riffkin',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY001',
+    name: 'Linda A Rifkin',
+    offices: [MANHATTAN],
+  },
+
+  {
+    id: 'ATY002',
+    name: 'Susan Arbeit',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Susan',
-    middleName: '',
-    lastName: 'Arbeit',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY003',
+    name: 'Mark Bruh',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Mark',
-    middleName: '',
-    lastName: 'Bruh',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY004',
+    name: 'Shara Cornell',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Shara',
-    middleName: '',
-    lastName: 'Cornell',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY005',
+    name: 'Brian S Masumoto',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Brian',
-    middleName: 'S',
-    lastName: 'Masumoto',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY006',
+    name: 'Andrea B Schwartz',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Andrea',
-    middleName: 'B',
-    lastName: 'Schwartz',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY007',
+    name: 'Paul K Schwartzenberg',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Paul',
-    middleName: 'K',
-    lastName: 'Schwartzberg',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY008',
+    name: 'Shannon Scott',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Shannon',
-    middleName: '',
-    lastName: 'Scott',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY009',
+    name: 'Tara Tiantian',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Tara',
-    middleName: '',
-    lastName: 'Tiantian',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY010',
+    name: 'Andy Velez-Rivera',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Andy',
-    middleName: '',
-    lastName: 'Velez-Rivera',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY011',
+    name: 'Daniel Rudewicz',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Daniel',
-    middleName: '',
-    lastName: 'Rudewicz',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY012',
+    name: 'Annie Wells',
+    offices: [MANHATTAN],
   },
   {
-    firstName: 'Annie',
-    middleName: '',
-    lastName: 'Wells',
-    generation: '',
-    office: 'Manhattan',
-  },
-  {
-    firstName: 'Greg',
-    middleName: 'M',
-    lastName: 'Zipes',
-    generation: '',
-    office: 'Manhattan',
+    id: 'ATY013',
+    name: 'Greg M Zipes',
+    offices: [MANHATTAN],
   },
 ];

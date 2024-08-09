@@ -1,4 +1,4 @@
-import { CamsUser } from '../../../../../common/src/cams/session';
+import { CamsUser } from '../../../../../common/src/cams/users';
 
 export type AuthorizationConfig = {
   provider: string | null;

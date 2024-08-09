@@ -1,16 +1,4 @@
-import { OfficeDetails } from './courts';
-
-export enum CamsRole {
-  SuperUser = 'SuperUser',
-  CaseAssignmentManager = 'CaseAssignmentManager',
-  TrialAttorney = 'TrialAttorney',
-}
-
-export type CamsUser = {
-  name: string;
-  offices?: OfficeDetails[];
-  roles?: CamsRole[];
-};
+import { CamsUser, CamsUserReference } from './users';
 
 export type CamsSession = {
   user: CamsUser;
@@ -19,3 +7,8 @@ export type CamsSession = {
   issuer: string;
   expires: number;
 };
+
+export function getCamsUserReference<T extends CamsUserReference>(user: T): CamsUserReference {
+  const { id, name } = user;
+  return { id, name };
+}

@@ -12,7 +12,7 @@ describe('App Router Tests', () => {
   test('should route /case-assignment to CaseAssignment', async () => {
     render(<App />, { wrapper: BrowserRouter });
 
-    await userEvent.click(screen.getByTestId('header-cases-link'));
+    await userEvent.click(screen.getByTestId('header-case-assignment-link'));
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });

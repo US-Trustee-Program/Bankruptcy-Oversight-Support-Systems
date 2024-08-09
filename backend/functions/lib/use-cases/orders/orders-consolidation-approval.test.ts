@@ -21,7 +21,7 @@ import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.reposi
 import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
-import { CaseAssignmentUseCase } from '../case.assignment';
+import { CaseAssignmentUseCase } from '../case-assignment';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -150,13 +150,7 @@ describe('Orders use case', () => {
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
-    let actual;
-    try {
-      actual = await useCase.approveConsolidation(mockContext, approval);
-    } catch (e) {
-      console.log(e as Error);
-    }
-
+    const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length + 1);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();

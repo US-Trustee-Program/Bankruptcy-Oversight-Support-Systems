@@ -9,7 +9,8 @@ export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
 }
 
 export function getCamsUser(oktaUser: UserClaims | null) {
-  return { name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
+  // TODO: We need to decide which claim we map to the CamsUser.id
+  return { id: oktaUser?.sub ?? 'UNKNOWN', name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
 }
 
 export async function refreshOktaToken(oktaAuth: OktaAuth) {

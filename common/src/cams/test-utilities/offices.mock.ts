@@ -3501,3 +3501,6 @@ export const OFFICES: OfficeDetails[] = [
     regionName: 'BOSTON',
   },
 ];
+
+export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
+export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
