@@ -1,6 +1,5 @@
 import { CaseAssignmentCosmosDbRepository } from './case.assignment.cosmosdb.repository';
 import { randomUUID } from 'crypto';
-import { CaseAssignmentRole } from '../types/case.assignment.role';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
@@ -8,6 +7,7 @@ import {
   NOT_FOUND_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 describe('Test case assignment cosmosdb repository tests', () => {
   const currentDate = new Date().toISOString();
@@ -30,7 +30,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseId,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
     const testCaseAttorneyAssignment2: CaseAssignment = {
@@ -38,7 +38,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId,
       userId: 'userId-perryMason',
       name: perryMason,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -56,10 +56,10 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignment2 = actualAssignments.find((assign) => assign.id === assignmentId2);
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
-    expect(assignment1.role).toEqual(CaseAssignmentRole.TrialAttorney);
+    expect(assignment1.role).toEqual(CamsRole.TrialAttorney);
     expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
-    expect(assignment2.role).toEqual(CaseAssignmentRole.TrialAttorney);
+    expect(assignment2.role).toEqual(CamsRole.TrialAttorney);
     expect(assignment2.name).toEqual(testCaseAttorneyAssignment2.name);
   });
 
@@ -71,7 +71,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseId,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -93,7 +93,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseId,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -104,7 +104,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
       userId: 'userId-benMatlock',
       name: benMatlock,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -121,7 +121,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdOne,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
     const testCaseAttorneyAssignment2: CaseAssignment = {
@@ -129,7 +129,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdTwo,
       userId: 'userId-perryMason',
       name: perryMason,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -144,7 +144,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignment2 = actualAssignmentsOne.find((assign) => assign.id === assignmentId2);
 
     expect(assignment1.caseId).toEqual(testCaseAttorneyAssignment1.caseId);
-    expect(assignment1.role).toEqual(CaseAssignmentRole.TrialAttorney);
+    expect(assignment1.role).toEqual(CamsRole.TrialAttorney);
     expect(assignment1.name).toEqual(testCaseAttorneyAssignment1.name);
     expect(assignment2).toBeFalsy();
 
@@ -156,7 +156,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     const assignmentTwo = actualAssignmentsTwo.find((assign) => assign.id === assignmentId2);
 
     expect(assignmentTwo.caseId).toEqual(testCaseAttorneyAssignment2.caseId);
-    expect(assignmentTwo.role).toEqual(CaseAssignmentRole.TrialAttorney);
+    expect(assignmentTwo.role).toEqual(CamsRole.TrialAttorney);
     expect(assignmentTwo.name).toEqual(testCaseAttorneyAssignment2.name);
     expect(assignmentOne).toBeFalsy();
   });
@@ -167,7 +167,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: THROW_PERMISSIONS_ERROR_CASE_ID,
       userId: 'userId-benMatlock',
       name: benMatlock,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -212,7 +212,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdOne,
       userId: 'userId-perryMason',
       name: perryMason,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
     const testCaseAttorneyAssignment2: CaseAssignment = {
@@ -220,7 +220,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdOne,
       userId: 'userId-benMatlock',
       name: benMatlock,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -230,7 +230,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdTwo,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
     const testCaseAttorneyAssignment4: CaseAssignment = {
@@ -238,7 +238,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdTwo,
       userId: 'userId-perryMason',
       name: perryMason,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -248,7 +248,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdThree,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
     const testCaseAttorneyAssignment6: CaseAssignment = {
@@ -256,7 +256,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseIdThree,
       userId: 'userId-benMatlock',
       name: benMatlock,
-      role: CaseAssignmentRole[trialAttorneyRole],
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -277,12 +277,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
         expect.objectContaining({
           caseId: caseIdOne,
           name: perryMason,
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
         }),
         expect.objectContaining({
           caseId: caseIdTwo,
           name: perryMason,
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
         }),
       ]),
     );
@@ -299,12 +299,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
         expect.objectContaining({
           caseId: caseIdTwo,
           name: clairHuxtable,
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
         }),
         expect.objectContaining({
           caseId: caseIdThree,
           name: clairHuxtable,
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
         }),
       ]),
     );
@@ -321,12 +321,12 @@ describe('Test case assignment cosmosdb repository tests', () => {
         expect.objectContaining({
           caseId: caseIdOne,
           name: benMatlock,
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
         }),
         expect.objectContaining({
           caseId: caseIdThree,
           name: benMatlock,
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
         }),
       ]),
     );
@@ -346,7 +346,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: caseId,
       userId: 'userId-clairHuxtable',
       name: clairHuxtable,
-      role: CaseAssignmentRole.TrialAttorney,
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 
@@ -362,7 +362,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       caseId: THROW_UNKNOWN_ERROR_CASE_ID,
       userId: 'userId-benMatlock',
       name: benMatlock,
-      role: CaseAssignmentRole.TrialAttorney,
+      role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
     };
 

@@ -6,8 +6,6 @@ import { ConsolidationOrder } from '@common/cams/orders';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 
-// TODO: Case History is now loaded in from a useEffect inside CaseDetailAuditHistory
-// we should mock the API call to fetch the case history rather than passing it as a parameter to the component
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
   const pendingTransferOrder = MockData.getTransferOrder({

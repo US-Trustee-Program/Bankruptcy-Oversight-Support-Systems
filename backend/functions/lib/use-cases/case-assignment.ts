@@ -1,7 +1,6 @@
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { CasesRepository } from './gateways.types';
 import {
   AttorneyAssignmentResponseInterface,
@@ -90,7 +89,7 @@ export class CaseAssignmentUseCase {
         caseId: caseId,
         userId: attorney.id,
         name: attorney.name,
-        role: CaseAssignmentRole[role],
+        role: CamsRole[role],
         assignedOn: currentDate,
       };
       listOfAssignments.push(assignment);

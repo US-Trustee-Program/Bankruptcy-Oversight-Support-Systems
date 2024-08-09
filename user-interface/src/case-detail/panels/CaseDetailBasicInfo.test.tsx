@@ -9,12 +9,13 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import Api from '@/lib/models/api';
 import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
+import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
 const NEW_CASE_ID = '222-24-00001';
-const TEST_TRIAL_ATTORNEY_1 = { id: '001', name: 'Brian Wilson' };
-const TEST_TRIAL_ATTORNEY_2 = { id: '002', name: 'Carl Wilson' };
+const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
+const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
 const TEST_JUDGE_NAME = 'Rick B Hart';
 const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({

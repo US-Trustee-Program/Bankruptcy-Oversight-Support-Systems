@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
-import { CaseAssignmentRole } from '../../adapters/types/case.assignment.role';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
 import {
@@ -10,6 +9,7 @@ import {
 } from '../../../../../common/src/cams/assignments';
 import { CamsResponse } from '../controller-types';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -88,7 +88,7 @@ export class CaseAssignmentController {
       badParams.push('role');
       errors = true;
     }
-    if (!(params.role in CaseAssignmentRole)) {
+    if (!(params.role in CamsRole)) {
       message += INVALID_ROLE_MESSAGE;
       errors = true;
     }

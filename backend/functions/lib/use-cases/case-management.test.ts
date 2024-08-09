@@ -1,5 +1,4 @@
 import CaseManagement, { getAction } from './case-management';
-import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { describe } from 'node:test';
@@ -25,7 +24,7 @@ const assignments: CaseAssignment[] = [
     caseId: '081-23-01176',
     userId: attorneyJaneSmith.id,
     name: attorneyJaneSmith.name,
-    role: CaseAssignmentRole.TrialAttorney,
+    role: CamsRole.TrialAttorney,
     assignedOn: currentDate,
   },
   {
@@ -34,7 +33,7 @@ const assignments: CaseAssignment[] = [
     caseId: '081-23-01176',
     userId: attorneyJoeNobel.id,
     name: attorneyJoeNobel.name,
-    role: CaseAssignmentRole.TrialAttorney,
+    role: CamsRole.TrialAttorney,
     assignedOn: currentDate,
   },
 ];
