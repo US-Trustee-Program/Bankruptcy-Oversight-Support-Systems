@@ -57,7 +57,7 @@ describe('offices gateway tests', () => {
       expect(offices).toEqual(OFFICES);
     });
 
-    test('should throw error when success is false', async () => {
+    test('should throw error when success is false calling getOffices', async () => {
       const mockResults: QueryResults = {
         success: false,
         results: {},
@@ -110,7 +110,7 @@ describe('offices gateway tests', () => {
       expect(offices).toEqual(MANHATTAN);
     });
 
-    test('should throw error when success is false', async () => {
+    test('should throw invalid parameter exception with invalid parameters', async () => {
       const gateway = new OfficesDxtrGateway();
       await expect(async () => {
         await gateway.getOfficeByCourtIdAndOfficeCode(applicationContext, '081', '1');
@@ -121,7 +121,7 @@ describe('offices gateway tests', () => {
       }).rejects.toThrow('Invalid court id or office code supplied');
     });
 
-    test('should throw CamsError when success is false', async () => {
+    test('should throw CamsError when success is false when calling getOfficeByCourtIdAndOfficeCode', async () => {
       const mockResults: QueryResults = {
         success: false,
         results: {},

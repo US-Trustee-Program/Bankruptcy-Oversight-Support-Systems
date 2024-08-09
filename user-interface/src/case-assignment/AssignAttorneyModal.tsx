@@ -11,6 +11,7 @@ import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
+import { deepEqual } from '@/lib/utils/objectEquality';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -103,12 +104,6 @@ function AssignAttorneyModalComponent(
     };
   });
 
-  function areArraysSame(ar1: AttorneyUser[], ar2: AttorneyUser[]): boolean {
-    const ar1ids = ar1.map((ar) => ar.id);
-    const ar2ids = ar2.map((ar) => ar.id);
-    return JSON.stringify(ar1ids.sort()) === JSON.stringify(ar2ids.sort());
-  }
-
   function attorneyIsInCheckList(attorney: AttorneyUser): boolean {
     const result = checkListValues.find((theAttorney) => theAttorney.id === attorney.id);
     return result !== undefined;
@@ -127,7 +122,7 @@ function AssignAttorneyModalComponent(
     const isTheSame =
       localCheckListValues &&
       !!bCase.assignments &&
-      areArraysSame(localCheckListValues, bCase.assignments);
+      deepEqual(localCheckListValues, bCase.assignments);
 
     modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 

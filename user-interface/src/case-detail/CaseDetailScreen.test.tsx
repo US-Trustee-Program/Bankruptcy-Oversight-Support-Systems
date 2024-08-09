@@ -7,11 +7,12 @@ import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
+import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 
 const caseId = '101-23-12345';
 
-const brianWilson = { id: '001', name: 'Brian Wilson' };
-const carlWilson = { id: '002', name: 'Carl Wilson' };
+const brianWilson = MockAttorneys.Brian;
+const carlWilson = MockAttorneys.Carl;
 
 const rickBHartName = 'Rick B Hart';
 
@@ -115,7 +116,6 @@ describe('Case Detail screen tests', () => {
             assigneeMap.set(name, role);
           }
         });
-        console.log(assigneeMap);
         expect(assigneeMap.get(`${brianWilson.name}`)).toEqual(trialAttorneyRole);
         expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyRole);
 

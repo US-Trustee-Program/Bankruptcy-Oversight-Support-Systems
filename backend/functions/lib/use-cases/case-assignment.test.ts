@@ -1,6 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentUseCase } from './case-assignment';
-import { CaseAssignmentRole } from '../adapters/types/case.assignment.role';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
@@ -55,13 +54,13 @@ describe('Case assignment tests', () => {
         {
           caseId: caseId,
           name: 'Joe',
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
           assignedOn: new Date().toISOString(),
         },
         {
           caseId: caseId,
           name: 'Jane',
-          role: CaseAssignmentRole.TrialAttorney,
+          role: CamsRole.TrialAttorney,
           assignedOn: new Date().toISOString(),
         },
       ];
@@ -80,7 +79,7 @@ describe('Case assignment tests', () => {
     const attorneyJaneSmith = { id: 'userId-Jane Smith', name: 'Jane Smith' };
     const attorneyJoeNobel = { id: 'userId-Joe Nobel', name: 'Joe Nobel' };
     const caseId = '081-23-01176';
-    const role = CaseAssignmentRole.TrialAttorney;
+    const role = CamsRole.TrialAttorney;
 
     test('should create new case assignments when none exist on the case', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);

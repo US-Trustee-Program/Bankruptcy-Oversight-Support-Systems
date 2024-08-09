@@ -631,11 +631,35 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('searchCases tests', () => {
+    const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
+    const testParty = MockData.getParty();
+    const caseSummaryQueryResult = {
+      success: true,
+      results: {
+        recordset: [testCase],
+      },
+      message: '',
+    };
+    const partyQueryResult = {
+      success: true,
+      results: {
+        recordset: [testParty],
+      },
+      message: '',
+    };
+
     beforeEach(() => {
+      querySpy
+        .mockResolvedValueOnce(caseSummaryQueryResult)
+        .mockResolvedValueOnce(partyQueryResult);
+    });
+
+    afterEach(() => {
       jest.resetAllMocks();
     });
 
     test('should return empty array', async () => {
+      jest.resetAllMocks();
       const mockTestCaseSummaryResponse = {
         success: true,
         results: {
@@ -652,26 +676,6 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return array of cases for a given court division', async () => {
-      const testCase = MockData.getCaseSummary({ override: { caseId: '999-99-00000' } });
-      const testParty = MockData.getParty();
-      const caseSummaryQueryResult = {
-        success: true,
-        results: {
-          recordset: [testCase],
-        },
-        message: '',
-      };
-      const partyQueryResult = {
-        success: true,
-        results: {
-          recordset: [testParty],
-        },
-        message: '',
-      };
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
-
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         divisionCodes: ['999'],
       });
@@ -679,26 +683,6 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return array of cases for a given case number', async () => {
-      const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
-      const testParty = MockData.getParty();
-      const caseSummaryQueryResult = {
-        success: true,
-        results: {
-          recordset: [testCase],
-        },
-        message: '',
-      };
-      const partyQueryResult = {
-        success: true,
-        results: {
-          recordset: [testParty],
-        },
-        message: '',
-      };
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
-
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         caseNumber: '00-00000',
       });
@@ -707,26 +691,6 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return array of cases for a given list of caseIds', async () => {
-      const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
-      const testParty = MockData.getParty();
-      const caseSummaryQueryResult = {
-        success: true,
-        results: {
-          recordset: [testCase],
-        },
-        message: '',
-      };
-      const partyQueryResult = {
-        success: true,
-        results: {
-          recordset: [testParty],
-        },
-        message: '',
-      };
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
-
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         caseIds: ['999-00-00000', '999-11-22222'],
       });
@@ -735,26 +699,6 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return array of cases for a given list of chapters', async () => {
-      const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
-      const testParty = MockData.getParty();
-      const caseSummaryQueryResult = {
-        success: true,
-        results: {
-          recordset: [testCase],
-        },
-        message: '',
-      };
-      const partyQueryResult = {
-        success: true,
-        results: {
-          recordset: [testParty],
-        },
-        message: '',
-      };
-      querySpy
-        .mockResolvedValueOnce(caseSummaryQueryResult)
-        .mockResolvedValueOnce(partyQueryResult);
-
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         chapters: ['15'],
       });
@@ -763,6 +707,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should return an error', async () => {
+      jest.resetAllMocks();
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
         success: false,
