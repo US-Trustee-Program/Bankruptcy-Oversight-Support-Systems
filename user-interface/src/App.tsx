@@ -51,7 +51,6 @@ function App() {
         <Header />
         <div className="cams-content">
           <Routes>
-            {/* <Route path="/" element={<Login />}></Route> */}
             <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
