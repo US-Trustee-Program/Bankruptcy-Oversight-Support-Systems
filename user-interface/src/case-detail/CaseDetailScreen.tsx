@@ -514,7 +514,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   )}
                 </div>
               </div>
-              <div className="grid-col-6">
+              <div className="grid-col-8">
                 <Suspense fallback={<LoadingSpinner />}>
                   <Routes>
                     <Route
@@ -561,7 +561,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 </Suspense>
                 <Outlet />
               </div>
-              <div className="grid-col-2"></div>
               <div id="right-gutter" className="grid-col-1"></div>
             </div>
           </>
