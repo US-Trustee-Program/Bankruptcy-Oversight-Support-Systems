@@ -6,4 +6,4 @@
 - [Contributing](contributing/README.md)
 - [Architecture](architecture/README.md)
 - [Troubleshooting](troubleshooting.md)
-- [Custom UI Components](ui-components/Combobox.md)
+- [Custom UI Components](ui-components/README.md)
