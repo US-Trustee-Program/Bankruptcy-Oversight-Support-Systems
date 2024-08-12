@@ -5,7 +5,6 @@ import { useAppInsights } from './lib/hooks/UseApplicationInsights';
 import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
-import Home from './home/Home';
 import CaseAssignment from './case-assignment/CaseAssignmentScreen';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
@@ -14,8 +13,8 @@ import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
-import './App.scss';
 import { MyCasesScreen } from './my-cases/MyCasesScreen';
+import './App.scss';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 
@@ -52,7 +51,7 @@ function App() {
         <Header />
         <div className="cams-content">
           <Routes>
-            <Route path="/" element={<Home />}></Route>
+            {/* <Route path="/" element={<Login />}></Route> */}
             <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/case-assignment" element={<CaseAssignment />}></Route>
