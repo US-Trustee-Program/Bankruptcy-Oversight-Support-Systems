@@ -1,3 +1,4 @@
+import './CaseDetailAuditHistory.scss';
 import { formatDate } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
