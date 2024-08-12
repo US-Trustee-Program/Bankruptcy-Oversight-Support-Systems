@@ -2,7 +2,7 @@
 
 ## SCSS Name Spacing
 
-SCSS file have a tendency to bleed across various components in the App if not properly name-spaced
+SCSS files have a tendency to bleed across various components in the App if not properly name-spaced
 to the coponent they are intended to modify. Don’t use element types, i.e. TABLE or UL or SPAN or
 worse DIV as the top level qualifier in a scss file. Start the scss file with a specific class name
 or id name that is assigned to the top level HTML element in the TSX of the component.
@@ -41,7 +41,7 @@ div.foo {
 }
 ```
 
-Using the bad SCSS file would then render all spans through out the app with underlined text. Using
+Using the bad SCSS file would then render all spans throughout the app with underlined text. Using
 the name-spaced good version of the file would render only the span in the foo component as
 underlined.
 
