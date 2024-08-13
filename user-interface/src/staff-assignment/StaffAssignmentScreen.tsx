@@ -9,7 +9,7 @@ import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
 import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { useEffect, useRef, useState } from 'react';
-import { SearchResults, SearchResultsRowProps, sortCaseList } from '@/search-results/SearchResults';
+import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from './StaffAssignmentHeader';
 import { StaffAssignmentRow } from './StaffAssignmentRow';
 import './StaffAssignmentScreen.scss';
@@ -19,7 +19,6 @@ import AssignAttorneyModal, {
 } from './modal/AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneysApi from '@/lib/models/attorneys-api';
-import { CaseBasics } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
@@ -35,18 +34,14 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
 }
 
 export const StaffAssignmentScreen = () => {
-  const TABLE_TRANSFER_TIMEOUT = 10;
-
   const screenTitle = 'Staff Assignment';
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
 
-  const [caseList, setCaseList] = useState<CaseBasics[]>([]);
   const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
 
-  // const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [assignmentAlert, setAssignmentAlert] = useState<{
     message: string;
     type: UswdsAlertStyle;
@@ -57,8 +52,6 @@ export const StaffAssignmentScreen = () => {
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
 
-  // We use the closure to pass optional parameters to the row which
-  // are only in context in the screen.
   function StaffAssignmentRowClosure(props: SearchResultsRowProps) {
     return StaffAssignmentRow({
       ...props,
@@ -105,23 +98,11 @@ export const StaffAssignmentScreen = () => {
         );
       }
 
-      bCase.assignments = selectedAttorneyList;
-
-      const updatedCaseList = caseList.filter((aCase) => {
-        return aCase.caseId !== bCase.caseId;
-      });
-      updatedCaseList.push(bCase);
-      updatedCaseList.sort(sortCaseList);
-      setCaseList(updatedCaseList);
-
       const alertMessage =
         messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
 
       setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
       assignmentAlertRef.current?.show();
-
-      //TODO: Revisit this TABLE_TRANSFER_TIMEOUT
-      setTimeout(() => {}, TABLE_TRANSFER_TIMEOUT * 1000);
 
       assignmentModalRef.current?.hide();
     }

@@ -1,4 +1,3 @@
-import './SearchResults.scss';
 import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { isResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
@@ -12,6 +11,7 @@ import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { deepEqual } from '@/lib/utils/objectEquality';
+import './SearchResults.scss';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -53,8 +53,6 @@ export type SearchResultsHeaderProps = {
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
   bCase: CaseBasics;
-  // TODO: Flesh out the options typing.
-  options?: object;
 };
 
 export type SearchResultsProps = {

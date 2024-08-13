@@ -6,10 +6,10 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { CaseBasics } from '@common/cams/cases';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { AssignAttorneyModalRef } from './modal/AssignAttorneyModal';
+import { CaseBasics } from '@common/cams/cases';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -20,37 +20,48 @@ export type StaffAssignmentRowProps = SearchResultsRowProps & {
   options: StaffAssignmentRowOptions;
 };
 
+function deepCopy(obj: object) {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { bCase, idx, options, ...otherProps } = props;
-  const { modalId, modalRef } = options;
+  const { modalId, modalRef } = options as StaffAssignmentRowOptions;
 
-  const [internalCase, setBCase] = useState<CaseBasics>({ ...bCase });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [bCaseCopy, setBCaseCopy] = useState<CaseBasics>(deepCopy(bCase));
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const api = useApi2();
 
   useEffect(() => {
+    if (isLoading) return;
     api
-      .getCaseAssignments(internalCase.caseId)
-      .then((response) =>
-        setBCase({
-          ...internalCase,
-          assignments: response.data.map((assignment) => {
-            return { id: assignment.userId, name: assignment.name };
-          }),
-        }),
-      )
+      .getCaseAssignments(bCase.caseId)
+      .then((response) => {
+        const assignments = response.data.map((assignment) => {
+          return { id: assignment.userId, name: assignment.name };
+        });
+        setBCaseCopy({ ...bCaseCopy, assignments });
+      })
       .catch((_reason) => {})
       .finally(() => {
         setIsLoading(false);
       });
   }, []);
 
-  let assignments;
+  let assignmentJsx;
   let actionButton;
 
-  if (internalCase.assignments && internalCase.assignments.length > 0) {
-    assignments = internalCase.assignments?.map((attorney, key: number) => (
+  const commonModalButtonProps = {
+    className: 'case-assignment-modal-toggle',
+    buttonIndex: `toggle-button-${idx}`,
+    toggleProps: { bCase: bCaseCopy },
+    modalId,
+    modalRef,
+  };
+
+  if (bCaseCopy.assignments && bCaseCopy.assignments.length > 0) {
+    assignmentJsx = bCaseCopy.assignments?.map((attorney, key: number) => (
       <span key={key}>
         {attorney.name}
         <br />
@@ -58,34 +69,18 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     ));
     actionButton = (
       <ToggleModalButton
+        {...commonModalButtonProps}
         uswdsStyle={UswdsButtonStyle.Outline}
-        className="case-assignment-modal-toggle"
-        buttonIndex={`toggle-button-${idx}`}
         toggleAction="open"
-        toggleProps={{
-          bCase: internalCase,
-        }}
-        modalId={`${modalId}`}
-        modalRef={modalRef}
         title="edit assignments"
       >
         Edit
       </ToggleModalButton>
     );
   } else {
-    assignments = <>(unassigned)</>;
+    assignmentJsx = <>(unassigned)</>;
     actionButton = (
-      <ToggleModalButton
-        className="case-assignment-modal-toggle"
-        buttonIndex={`toggle-button-${idx}`}
-        toggleAction="open"
-        toggleProps={{
-          bCase: internalCase,
-        }}
-        modalId={`${modalId}`}
-        modalRef={modalRef}
-        title="add assignments"
-      >
+      <ToggleModalButton {...commonModalButtonProps} toggleAction="open" title="add assignments">
         Assign
       </ToggleModalButton>
     );
@@ -112,9 +107,9 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
         )}
         {!isLoading && (
           <div className="table-flex-container">
-            <div className="attorney-list-container">{assignments}</div>
+            <div className="attorney-list-container">{assignmentJsx}</div>
             <div className="table-column-toolbar">
-              {Actions.contains(internalCase, Actions.ManageAssignments) && actionButton}
+              {Actions.contains(bCase, Actions.ManageAssignments) && actionButton}
             </div>
           </div>
         )}
