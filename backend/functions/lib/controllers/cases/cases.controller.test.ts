@@ -53,7 +53,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -70,7 +70,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
@@ -89,7 +89,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
@@ -108,7 +108,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
@@ -135,7 +135,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber, limit, offset } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -159,7 +159,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber, limit, offset } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expect.objectContaining({ meta: expectedMeta, isSuccess: true }));
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
@@ -178,7 +178,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -192,7 +192,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { divisionCodes: '081' } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -215,7 +215,7 @@ describe('cases controller test', () => {
       const camsHttpRequest = mockCamsHttpRequest({
         query: { divisionCodes: `${divisionCodeOne},${divisionCodeTwo}` },
       });
-      await controller.searchAllCases(camsHttpRequest);
+      await controller.searchCases(camsHttpRequest);
       expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected);
     });
 
@@ -226,7 +226,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockRejectedValue(error);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      await expect(controller.searchAllCases(camsHttpRequest)).rejects.toThrow(error);
+      await expect(controller.searchCases(camsHttpRequest)).rejects.toThrow(error);
     });
   });
 

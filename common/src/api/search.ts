@@ -1,3 +1,4 @@
+import { CamsUserReference } from '../cams/users';
 import { PaginationParameters } from './pagination';
 
 export const DEFAULT_SEARCH_LIMIT = 25;
@@ -19,6 +20,6 @@ export type CasesSearchPredicate = SearchPredicate & {
   caseNumber?: string;
   divisionCodes?: string[];
   chapters?: string[];
-  assignments?: string[];
+  assignments?: CamsUserReference[];
   caseIds?: string[];
 };

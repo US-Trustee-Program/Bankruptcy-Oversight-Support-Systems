@@ -1,10 +1,6 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
-import Modal from '../lib/components/uswds/modal/Modal';
-import Checkbox from '../lib/components/uswds/Checkbox';
 import { ResponseData } from '@/lib/type-declarations/api';
-import Api from '../lib/models/api';
-import { ModalRefType, SubmitCancelButtonGroupRef } from '../lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
@@ -12,6 +8,10 @@ import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { deepEqual } from '@/lib/utils/objectEquality';
+import { ModalRefType, SubmitCancelButtonGroupRef } from '@/lib/components/uswds/modal/modal-refs';
+import Api from '@/lib/models/api';
+import Modal from '@/lib/components/uswds/modal/Modal';
+import Checkbox from '@/lib/components/uswds/Checkbox';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;

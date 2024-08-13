@@ -1,9 +1,9 @@
 import { Table, TableBody, TableHeader, TableHeaderData } from '@/lib/components/uswds/Table';
-import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { AssignAttorneyCasesRow } from './AssignAttorneyCasesRow';
 import { CaseBasics } from '@common/cams/cases';
 import { ResourceActions } from '@common/cams/actions';
 import './AssignAttorneyCasesTable.scss';
+import { AssignAttorneyModalRef } from '@/my-cases/assign-attorney/AssignAttorneyModal';
 
 type AssignedCasesTableProps = {
   caseList: ResourceActions<CaseBasics>[];

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import AssignAttorneyModal, { AssignAttorneyModalRef, CallBackProps } from './AssignAttorneyModal';
 import Alert, { AlertRefType, UswdsAlertStyle } from '../lib/components/uswds/Alert';
 import AttorneysApi from '../lib/models/attorneys-api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -8,6 +7,10 @@ import { useGenericApi } from '@/lib/hooks/UseApi';
 import { AssignAttorneyCasesTable } from './AssignAttorneyCasesTable';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser } from '@common/cams/users';
+import AssignAttorneyModal, {
+  AssignAttorneyModalRef,
+  CallBackProps,
+} from '@/my-cases/assign-attorney/AssignAttorneyModal';
 
 const modalId = 'assign-attorney-modal';
 

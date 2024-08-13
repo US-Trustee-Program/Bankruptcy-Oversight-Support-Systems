@@ -9,7 +9,6 @@ import { useEffect, useState } from 'react';
 
 export enum NavState {
   DEFAULT,
-  CASE_ASSIGNMENT,
   CASE_DETAIL,
   DATA_VERIFICATION,
   MY_CASES,
@@ -19,10 +18,8 @@ export enum NavState {
 function mapNavState(path: string) {
   const cleanPath = path.replace(/^\//, '').split('/');
   switch (cleanPath[0]) {
-    case 'case-assignment':
-      return NavState.CASE_ASSIGNMENT;
     case 'case-detail':
-      return NavState.CASE_ASSIGNMENT;
+      return NavState.DEFAULT;
     case 'data-verification':
       return NavState.DATA_VERIFICATION;
     case 'my-cases':
@@ -87,18 +84,6 @@ export const Header = () => {
                   }}
                 >
                   My Cases
-                </NavLink>
-              </li>
-              <li className="usa-nav__primary-item">
-                <NavLink
-                  to="/case-assignment"
-                  data-testid="header-case-assignment-link"
-                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_ASSIGNMENT)}
-                  onClick={() => {
-                    return setActiveNav(NavState.CASE_ASSIGNMENT);
-                  }}
-                >
-                  Case Assignment
                 </NavLink>
               </li>
               {transferOrdersFlag && (
