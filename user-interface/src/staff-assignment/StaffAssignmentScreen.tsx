@@ -4,9 +4,11 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import LocalStorage from '@/lib/utils/local-storage';
-import { CasesSearchPredicate } from '@common/api/search';
-import { CamsRole } from '@common/cams/roles';
-import { getCamsUserReference } from '@common/cams/session';
+import {
+  CasesSearchPredicate,
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+} from '@common/api/search';
 import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { useEffect, useRef, useState } from 'react';
 import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
@@ -23,12 +25,10 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
     divisionCodes: user.offices?.map((office) => office.courtDivisionCode),
   };
-
-  if (user.roles?.includes(CamsRole.TrialAttorney)) {
-    predicate.assignments = [getCamsUserReference(user)];
-  }
 
   return predicate;
 }
