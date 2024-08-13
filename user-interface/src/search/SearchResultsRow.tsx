@@ -4,20 +4,20 @@ import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButto
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { AssignAttorneyModalRef } from './AssignAttorneyModal';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseBasics } from '@common/cams/cases';
 import Actions from '@common/cams/actions';
+import { AssignAttorneyModalRef } from '@/my-cases/assign-attorney/AssignAttorneyModal';
 
-export type AssignAttorneyCasesRowProps = TableRowProps & {
+export type SearchResultsRowProps = TableRowProps & {
   bCase: CaseBasics;
   idx: number;
   modalId: string;
   modalRef: React.RefObject<AssignAttorneyModalRef>;
 };
 
-export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
+export function SearchResultsRow(props: SearchResultsRowProps) {
   const { bCase, idx, modalId, modalRef, ...otherProps } = props;
 
   const [internalCase, setBCase] = useState<CaseBasics>(bCase);
@@ -47,10 +47,10 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
 
   if (internalCase.assignments && internalCase.assignments.length > 0) {
     assignments = internalCase.assignments?.map((attorney, key: number) => (
-      <div key={key}>
+      <span key={key}>
         {attorney.name}
         <br />
-      </div>
+      </span>
     ));
     actionButton = (
       <ToggleModalButton
@@ -90,6 +90,7 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
 
   return (
     <TableRow {...otherProps}>
+      {/*
       <TableRowData className="case-number">
         <span className="mobile-title">Case Number:</span>
         <CaseNumber caseId={internalCase.caseId} openLinkIn="same-window" />
@@ -110,6 +111,15 @@ export function AssignAttorneyCasesRow(props: AssignAttorneyCasesRowProps) {
         <span className="mobile-title">Filing Date:</span>
         {formatDate(internalCase.dateFiled)}
       </TableRowData>
+      */}
+      <TableRowData dataSortValue={bCase.caseId}>
+        <span className="no-wrap">
+          <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+        </span>
+      </TableRowData>
+      <TableRowData>{bCase.caseTitle}</TableRowData>
+      <TableRowData>{bCase.chapter}</TableRowData>
+      <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
         {isLoading && (

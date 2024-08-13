@@ -62,8 +62,8 @@ export default class CaseManagement {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
-        for (const userId of predicate.assignments) {
-          const caseAssignments = await this.assignmentGateway.findAssignmentsByAssignee(userId);
+        for (const user of predicate.assignments) {
+          const caseAssignments = await this.assignmentGateway.findAssignmentsByAssignee(user.id);
           caseAssignments.forEach((caseAssignment) => {
             caseIdSet.add(caseAssignment.caseId);
           });
