@@ -6,6 +6,7 @@ import * as dotenv from 'dotenv';
 import { isCamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { httpRequestToCamsHttpRequest } from '../azure/functions';
 
 dotenv.config();
 
@@ -22,15 +23,13 @@ const httpTrigger: AzureFunction = async function (
     request,
   );
   const attorneysController = new AttorneysController(applicationContext);
-  let officeId = '';
-
-  if (request.query.office_id) officeId = request.query.office_id;
-  else if (request.body && request.body.office_id) officeId = request.body.office_id;
 
   try {
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
-    const attorneysList = await attorneysController.getAttorneyList({ officeId });
+
+    const camsRequest = httpRequestToCamsHttpRequest(request);
+    const attorneysList = await attorneysController.getAttorneyList(camsRequest);
     functionContext.res = httpSuccess(attorneysList);
   } catch (originalError) {
     const error = isCamsError(originalError)
