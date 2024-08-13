@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { MyCasesScreen } from './MyCasesScreen';
+import { StaffAssignmentScreen } from './StaffAssignmentScreen';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseSummary } from '@common/cams/cases';
 import { ResponseBodySuccess } from '@common/api/response';
@@ -32,7 +32,7 @@ describe('MyCasesScreen', () => {
     };
     const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
 
-    render(<MyCasesScreen></MyCasesScreen>);
+    render(<StaffAssignmentScreen></StaffAssignmentScreen>);
 
     expect(SearchResults).toHaveBeenCalledWith(
       {

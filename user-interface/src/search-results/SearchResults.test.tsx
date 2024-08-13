@@ -6,6 +6,8 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
 import { buildResponseBodySuccess } from '@common/api/response';
+import { SearchResultsHeader } from '@/search/SearchResultsHeader';
+import { SearchResultsRow } from '@/search/SearchResultsRow';
 
 describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
@@ -33,6 +35,8 @@ describe('SearchResults component tests', () => {
       },
       onStartSearching: onStartSearchingSpy,
       onEndSearching: onEndSearchingSpy,
+      header: SearchResultsHeader,
+      row: SearchResultsRow,
     };
     render(
       <BrowserRouter>

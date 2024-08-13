@@ -1,25 +1,17 @@
 import './SearchResults.scss';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { isResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
-import { Table, TableBody, TableHeader, TableHeaderData } from '@/lib/components/uswds/Table';
+import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
-import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { deepEqual } from '@/lib/utils/objectEquality';
-import { AttorneyUser } from '@common/cams/users';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import AttorneysApi from '@/lib/models/attorneys-api';
-import AssignAttorneyModal, {
-  AssignAttorneyModalRef,
-  CallBackProps,
-} from '@/my-cases/assign-attorney/AssignAttorneyModal';
-import { SearchResultsRow } from './SearchResultsRow';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -27,14 +19,6 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
     return isIt || !!searchPredicate[key as keyof CasesSearchPredicate];
   }, false);
 }
-
-export type SearchResultsProps = {
-  id: string;
-  searchPredicate: CasesSearchPredicate;
-  onStartSearching?: () => void;
-  onEndSearching?: () => void;
-  noResultsMessage?: string;
-};
 
 function sortByDateFiled(a: CaseBasics, b: CaseBasics): number {
   if (a.dateFiled < b.dateFiled) {
@@ -62,14 +46,31 @@ export function sortCaseList(a: CaseBasics, b: CaseBasics) {
   return byDateFiled === 0 ? sortByCaseId(a, b) : byDateFiled;
 }
 
-export function SearchResults(props: SearchResultsProps) {
-  const TABLE_TRANSFER_TIMEOUT = 10;
+export type SearchResultsHeaderProps = {
+  id: string;
+};
 
+export type SearchResultsRowProps = TableRowProps & {
+  idx: number;
+  bCase: CaseBasics;
+  // TODO: Flesh out the options typing.
+  options?: object;
+};
+
+export type SearchResultsProps = {
+  id: string;
+  searchPredicate: CasesSearchPredicate;
+  onStartSearching?: () => void;
+  onEndSearching?: () => void;
+  noResultsMessage?: string;
+  header: (props: SearchResultsHeaderProps) => JSX.Element;
+  row: (props: SearchResultsRowProps) => JSX.Element;
+};
+
+export function SearchResults(props: SearchResultsProps) {
   const { id, onStartSearching, onEndSearching } = props;
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
-  const [caseList, setCaseList] = useState<CaseBasics[]>([]);
-  const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>(
     props.searchPredicate,
   );
@@ -79,16 +80,6 @@ export function SearchResults(props: SearchResultsProps) {
   const [searchResults, setSearchResults] = useState<ResponseBodySuccess<CaseBasics[]> | null>(
     null,
   );
-
-  const [assignmentAlert, setAssignmentAlert] = useState<{
-    message: string;
-    type: UswdsAlertStyle;
-    timeOut: number;
-  }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
-
-  const assignmentAlertRef = useRef<AlertRefType>(null);
-  const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
-  const assignmentModalId = 'assign-attorney-modal';
 
   const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
     ? searchResults?.meta
@@ -117,78 +108,6 @@ export function SearchResults(props: SearchResultsProps) {
       timeOut: 30,
     });
   }
-
-  function updateCase({
-    bCase,
-    selectedAttorneyList,
-    previouslySelectedList,
-    status,
-    apiResult,
-  }: CallBackProps) {
-    if (status === 'error') {
-      setAssignmentAlert({
-        message: (apiResult as Error).message,
-        type: UswdsAlertStyle.Error,
-        timeOut: 8,
-      });
-      assignmentAlertRef.current?.show();
-    } else if (bCase) {
-      const messageArr = [];
-      const addedAssignments = selectedAttorneyList.filter(
-        (el) => !previouslySelectedList.includes(el),
-      );
-      const removedAssignments = previouslySelectedList.filter(
-        (el) => !selectedAttorneyList.includes(el),
-      );
-
-      if (addedAssignments.length > 0) {
-        messageArr.push(
-          `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
-        );
-      }
-      if (removedAssignments.length > 0) {
-        messageArr.push(
-          `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
-        );
-      }
-
-      bCase.assignments = selectedAttorneyList;
-
-      const updatedCaseList = caseList.filter((aCase) => {
-        return aCase.caseId !== bCase.caseId;
-      });
-      updatedCaseList.push(bCase);
-      updatedCaseList.sort(sortCaseList);
-      setCaseList(updatedCaseList);
-
-      const alertMessage =
-        messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
-
-      setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
-      assignmentAlertRef.current?.show();
-
-      //TODO: Revisit this TABLE_TRANSFER_TIMEOUT
-      setTimeout(() => {}, TABLE_TRANSFER_TIMEOUT * 1000);
-
-      assignmentModalRef.current?.hide();
-    }
-  }
-
-  // TODO: Migrate get attorneys to api2
-  const fetchAttorneys = () => {
-    AttorneysApi.getAttorneys()
-      .then((attorneys) => {
-        setAttorneyList(attorneys);
-      })
-      .catch((reason) => {
-        setAssignmentAlert({
-          message: reason.message,
-          type: UswdsAlertStyle.Error,
-          timeOut: 0,
-        });
-        assignmentAlertRef.current?.show();
-      });
-  };
 
   function resetAlert() {
     setAlertInfo(null);
@@ -225,19 +144,11 @@ export function SearchResults(props: SearchResultsProps) {
     search();
   }, [searchPredicate]);
 
-  useEffect(() => {
-    fetchAttorneys();
-  }, []);
+  const Header = props.header;
+  const Row = props.row;
 
   return (
     <div className="search-results">
-      <Alert
-        message={assignmentAlert.message}
-        type={assignmentAlert.type}
-        role="status"
-        ref={assignmentAlertRef}
-        timeout={assignmentAlert.timeOut}
-      />
       {alertInfo && (
         <div className="search-alert">
           <Alert
@@ -270,26 +181,10 @@ export function SearchResults(props: SearchResultsProps) {
       {!isSearching && !emptyResponse && (
         <div>
           <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
-            <TableHeader id={id} className="case-headings">
-              <TableHeaderData className="grid-col-3">Case Number (Division)</TableHeaderData>
-              <TableHeaderData className="grid-col-3">Case Title</TableHeaderData>
-              <TableHeaderData className="grid-col-1">Chapter</TableHeaderData>
-              <TableHeaderData className="grid-col-1">Case Filed</TableHeaderData>
-              <TableHeaderData className="grid-col-4" scope="col">
-                Assigned Staff
-              </TableHeaderData>
-            </TableHeader>
+            <Header id={id} />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return (
-                  <SearchResultsRow
-                    bCase={bCase}
-                    idx={idx}
-                    modalId={assignmentModalId}
-                    modalRef={assignmentModalRef}
-                    key={idx}
-                  ></SearchResultsRow>
-                );
+                return <Row bCase={bCase} idx={idx} key={idx} />;
               })}
             </TableBody>
           </Table>
@@ -302,12 +197,6 @@ export function SearchResults(props: SearchResultsProps) {
           )}
         </div>
       )}
-      <AssignAttorneyModal
-        ref={assignmentModalRef}
-        attorneyList={attorneyList}
-        modalId={`${assignmentModalId}`}
-        callBack={updateCase}
-      ></AssignAttorneyModal>
     </div>
   );
 }

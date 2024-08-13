@@ -1,28 +1,16 @@
+import { useRef } from 'react';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import LocalStorage from '@/lib/utils/local-storage';
-import { SearchResults } from '@/search/SearchResults';
 import { CasesSearchPredicate } from '@common/api/search';
-import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
-import { CamsUser } from '@common/cams/users';
-import { useRef } from 'react';
+import { SearchResults } from '@/search-results/SearchResults';
+import { MyCasesResultsHeader } from './MyCasesResultsHeader';
+import { MyCasesResultsRow } from './MyCasesResultsRow';
 import './MyCasesScreen.scss';
-
-function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
-  const predicate: CasesSearchPredicate = {
-    divisionCodes: user.offices?.map((office) => office.courtDivisionCode),
-  };
-
-  if (user.roles?.includes(CamsRole.TrialAttorney)) {
-    predicate.assignments = [getCamsUserReference(user)];
-  }
-
-  return predicate;
-}
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -35,7 +23,9 @@ export const MyCasesScreen = () => {
     return <>Invalid user expectation</>;
   }
 
-  const searchPredicate = getPredicateByUserContext(session.user);
+  const searchPredicate: CasesSearchPredicate = {
+    assignments: [getCamsUserReference(session.user)],
+  };
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
@@ -66,6 +56,8 @@ export const MyCasesScreen = () => {
             id="search-results"
             searchPredicate={searchPredicate}
             noResultsMessage="No cases currently assigned."
+            header={MyCasesResultsHeader}
+            row={MyCasesResultsRow}
           ></SearchResults>
         </div>
         <div className="grid-col-1"></div>
