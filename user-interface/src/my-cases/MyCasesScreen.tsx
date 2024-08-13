@@ -1,4 +1,3 @@
-import './MyCasesScreen.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -7,7 +6,23 @@ import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButto
 import LocalStorage from '@/lib/utils/local-storage';
 import { SearchResults } from '@/search/SearchResults';
 import { CasesSearchPredicate } from '@common/api/search';
+import { CamsRole } from '@common/cams/roles';
+import { getCamsUserReference } from '@common/cams/session';
+import { CamsUser } from '@common/cams/users';
 import { useRef } from 'react';
+import './MyCasesScreen.scss';
+
+function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
+  const predicate: CasesSearchPredicate = {
+    divisionCodes: user.offices?.map((office) => office.courtDivisionCode),
+  };
+
+  if (user.roles?.includes(CamsRole.TrialAttorney)) {
+    predicate.assignments = [getCamsUserReference(user)];
+  }
+
+  return predicate;
+}
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -15,12 +30,14 @@ export const MyCasesScreen = () => {
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
-  const searchPredicate: CasesSearchPredicate = {
-    chapters: ['15'],
-    assignments: [session!.user.id],
-  };
 
-  const actionButtonGroup = {
+  if (!session || !session.user.offices) {
+    return <>Invalid user expectation</>;
+  }
+
+  const searchPredicate = getPredicateByUserContext(session.user);
+
+  const infoModalActionButtonGroup = {
     modalId: infoModalId,
     modalRef: infoModalRef as React.RefObject<ModalRefType>,
     cancelButton: {
@@ -65,7 +82,7 @@ export const MyCasesScreen = () => {
             you wish to view.
           </>
         }
-        actionButtonGroup={actionButtonGroup}
+        actionButtonGroup={infoModalActionButtonGroup}
       ></Modal>
     </div>
   );

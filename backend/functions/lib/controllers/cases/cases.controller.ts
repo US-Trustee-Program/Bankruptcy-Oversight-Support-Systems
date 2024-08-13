@@ -44,34 +44,15 @@ export class CasesController {
       chapters: chapters?.split(','),
     });
 
-    return this.searchCases(predicate, request.url);
+    return this.paginateSearchCases(predicate, request.url);
   }
 
-  public async searchAllCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
-    type CasesSearchQueryString = Omit<
-      CasesSearchPredicate,
-      'divisionCodes' | 'chapters' | 'assignments' | 'caseIds'
-    > & {
-      divisionCodes: string;
-      chapters: string;
-      assignments: string;
-      caseIds: string;
-    };
-
-    const queryString = request.query as unknown as CasesSearchQueryString;
-    const { divisionCodes, chapters, assignments, caseIds, ...otherProps } = queryString;
-    const predicate: CasesSearchPredicate = setPaginationDefaults({
-      ...otherProps,
-      divisionCodes: divisionCodes?.split(','),
-      chapters: chapters?.split(','),
-      assignments: assignments?.split(','),
-      caseIds: caseIds?.split(','),
-    });
-
-    return this.searchCases(predicate, request.url);
+  public async searchCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
+    const predicate = request.body as CasesSearchPredicate;
+    return this.paginateSearchCases(predicate, request.url);
   }
 
-  async searchCases(
+  async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
   ): Promise<ResponseBody<CaseBasics[]>> {

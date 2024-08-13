@@ -5,7 +5,6 @@ import { useAppInsights } from './lib/hooks/UseApplicationInsights';
 import { useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
-import CaseAssignment from './case-assignment/CaseAssignmentScreen';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
@@ -53,7 +52,6 @@ function App() {
           <Routes>
             <Route path="/search" element={<SearchScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-            <Route path="/case-assignment" element={<CaseAssignment />}></Route>
             <Route path="/my-cases" element={<MyCasesScreen />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
             {flags[TRANSFER_ORDERS_ENABLED] && (

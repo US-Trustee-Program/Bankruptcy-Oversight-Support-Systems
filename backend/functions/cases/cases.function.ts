@@ -41,7 +41,7 @@ const httpTrigger: AzureFunction = async function (
       });
     } else {
       const camsRequest = httpRequestToCamsHttpRequest(request);
-      responseBody = await casesController.searchAllCases(camsRequest);
+      responseBody = await casesController.searchCases(camsRequest);
     }
 
     functionContext.res = httpSuccess(responseBody);
