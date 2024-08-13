@@ -6,8 +6,13 @@ import { useGenericApi } from './UseApi';
 import { Order } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
+import { AttorneyUser } from '@common/cams/users';
 
 const api = useGenericApi;
+
+async function getAttorneys() {
+  return await api().get<AttorneyUser[]>('/attorneys');
+}
 
 async function getCaseSummary(caseId: string) {
   return api().get<CaseSummary>(`/cases/${caseId}/summary`);
@@ -38,6 +43,7 @@ async function getOrders() {
 }
 
 export const Api2 = {
+  getAttorneys,
   getCaseSummary,
   getCaseAssignments,
   getCaseAssociations,
