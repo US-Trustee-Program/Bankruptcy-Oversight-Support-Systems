@@ -1,5 +1,5 @@
+import { AttorneyListResponseData } from '@/staff-assignment/modal/AssignAttorneyModal';
 import Api from './api';
-import { AttorneyListResponseData } from '@/case-assignment/AssignAttorneyModal';
 import AttorneysMockApi from './attorneys-mock.api.cases';
 
 export default class AttorneysApi {

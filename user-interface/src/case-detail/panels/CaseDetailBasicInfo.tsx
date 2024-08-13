@@ -8,7 +8,7 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal, {
   AssignAttorneyModalRef,
   CallBackProps,
-} from '@/case-assignment/AssignAttorneyModal';
+} from '@/staff-assignment/modal/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';

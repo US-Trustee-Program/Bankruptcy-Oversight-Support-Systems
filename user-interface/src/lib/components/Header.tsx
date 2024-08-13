@@ -6,6 +6,8 @@ import useFeatureFlags, {
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
+import LocalStorage from '../utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
 
 export enum NavState {
   DEFAULT,
@@ -13,6 +15,7 @@ export enum NavState {
   DATA_VERIFICATION,
   MY_CASES,
   SEARCH,
+  STAFF_ASSIGNMENT,
 }
 
 function mapNavState(path: string) {
@@ -26,6 +29,8 @@ function mapNavState(path: string) {
       return NavState.MY_CASES;
     case 'search':
       return NavState.SEARCH;
+    case 'staff-assignment':
+      return NavState.STAFF_ASSIGNMENT;
     default:
       return NavState.DEFAULT;
   }
@@ -38,6 +43,7 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 export interface HeaderProps {}
 
 export const Header = () => {
+  const session = LocalStorage.getSession();
   const location = useLocation();
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
@@ -88,6 +94,24 @@ export const Header = () => {
                   My Cases
                 </NavLink>
               </li>
+
+              {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/staff-assignment"
+                    data-testid="header-staff-assignment-link"
+                    className={
+                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                    }
+                    onClick={() => {
+                      return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                    }}
+                  >
+                    Staff Assignment
+                  </NavLink>
+                </li>
+              )}
+
               {transferOrdersFlag && (
                 <li className="usa-nav__primary-item">
                   <NavLink
@@ -104,6 +128,7 @@ export const Header = () => {
                   </NavLink>
                 </li>
               )}
+
               {caseSearchFlag && (
                 <li className="usa-nav__primary-item">
                   <NavLink

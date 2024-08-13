@@ -13,6 +13,7 @@ import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeature
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import { MyCasesScreen } from './my-cases/MyCasesScreen';
+import { StaffAssignmentScreen } from './staff-assignment/StaffAssignmentScreen';
 import './App.scss';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
@@ -51,6 +52,7 @@ function App() {
         <div className="cams-content">
           <Routes>
             <Route path="/search" element={<SearchScreen />}></Route>
+            <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
             <Route path="/search/:caseId" element={<SearchScreen />}></Route>
             <Route path="/my-cases" element={<MyCasesScreen />}></Route>
             <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
