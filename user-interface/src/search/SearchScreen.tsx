@@ -10,10 +10,12 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
-import { isValidSearchPredicate, SearchResults } from '@/search/SearchResults';
 import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { isValidSearchPredicate, SearchResults } from '@/search-results/SearchResults';
+import { SearchResultsHeader } from './SearchResultsHeader';
+import { SearchResultsRow } from './SearchResultsRow';
 
 const DEFAULT_ALERT = {
   show: false,
@@ -232,6 +234,8 @@ export default function SearchScreen() {
               onEndSearching={() => {
                 disableSearchForm(false);
               }}
+              header={SearchResultsHeader}
+              row={SearchResultsRow}
             />
           )}
         </div>

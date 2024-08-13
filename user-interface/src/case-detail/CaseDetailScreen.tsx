@@ -26,7 +26,7 @@ import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
 import AttorneysApi from '@/lib/models/attorneys-api';
-import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
+import { CallBackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { AttorneyUser } from '@common/cams/users';
