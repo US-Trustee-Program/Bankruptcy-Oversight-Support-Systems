@@ -5,7 +5,11 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import LocalStorage from '@/lib/utils/local-storage';
-import { CasesSearchPredicate } from '@common/api/search';
+import {
+  CasesSearchPredicate,
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+} from '@common/api/search';
 import { getCamsUserReference } from '@common/cams/session';
 import { SearchResults } from '@/search-results/SearchResults';
 import { MyCasesResultsHeader } from './MyCasesResultsHeader';
@@ -24,6 +28,8 @@ export const MyCasesScreen = () => {
   }
 
   const searchPredicate: CasesSearchPredicate = {
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
     assignments: [getCamsUserReference(session.user)],
   };
 
