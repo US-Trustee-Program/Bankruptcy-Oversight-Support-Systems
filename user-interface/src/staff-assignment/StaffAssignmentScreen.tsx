@@ -19,10 +19,10 @@ import AssignAttorneyModal, {
   AssignAttorneyModalRef,
   CallBackProps,
 } from './modal/AssignAttorneyModal';
-import AttorneysApi from '@/lib/models/attorneys-api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -47,6 +47,8 @@ export const StaffAssignmentScreen = () => {
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
+
+  const api = useApi2();
 
   function StaffAssignmentRowClosure(props: SearchResultsRowProps) {
     return StaffAssignmentRow({
@@ -103,9 +105,10 @@ export const StaffAssignmentScreen = () => {
   }
 
   const fetchAttorneys = () => {
-    AttorneysApi.getAttorneys()
-      .then((attorneys) => {
-        setAttorneyList(attorneys);
+    api
+      .getAttorneys()
+      .then((response) => {
+        setAttorneyList(response.data);
       })
       .catch((reason) => {
         globalAlert?.show({

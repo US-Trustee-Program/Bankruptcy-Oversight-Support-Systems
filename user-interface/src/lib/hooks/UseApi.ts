@@ -48,7 +48,6 @@ export interface ApiClient {
   host: string;
   createPath(path: string, params: ObjectKeyVal): string;
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
-  list(path: string, options?: ObjectKeyVal): Promise<ResponseData>;
   get(
     path: string,
     options?: ObjectKeyVal,

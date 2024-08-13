@@ -25,11 +25,11 @@ import { useApi } from '@/lib/hooks/UseApi';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
-import AttorneysApi from '@/lib/models/attorneys-api';
 import { CallBackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { AttorneyUser } from '@common/cams/users';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -182,6 +182,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
   const api = useApi();
+  const api2 = useApi2();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
@@ -213,8 +214,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         setCaseBasicInfo(response.body?.caseDetails);
       })
       .then(() => {
-        AttorneysApi.getAttorneys().then((attorneys) => {
-          setAttorneysList(attorneys);
+        api2.getAttorneys().then((response) => {
+          setAttorneysList(response.data);
         });
         setIsLoading(false);
       });
