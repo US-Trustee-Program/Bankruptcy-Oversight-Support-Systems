@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from './lib/hooks/UseApplicationInsights';
-import { useState } from 'react';
+import { createContext, useRef, useState } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
@@ -15,8 +15,11 @@ import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import { MyCasesScreen } from './my-cases/MyCasesScreen';
 import { StaffAssignmentScreen } from './staff-assignment/StaffAssignmentScreen';
 import './App.scss';
+import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/GlobalAlert';
+import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
+export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
 
 function App() {
   const [appClasses, setAppClasses] = useState<string>('App');
@@ -24,6 +27,8 @@ function App() {
   const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();
+
+  const globalAlertRef = useRef<GlobalAlertRef>(null);
 
   function documentScroll(ev: React.UIEvent<HTMLElement>) {
     if ((ev.currentTarget as Element).scrollTop > 100) {
@@ -48,25 +53,28 @@ function App() {
         onScroll={documentScroll}
         data-testid="app-component-test-id"
       >
+        <GlobalAlert inline={false} type={UswdsAlertStyle.Info} ref={globalAlertRef} />
         <Header />
-        <div className="cams-content">
-          <Routes>
-            <Route path="/search" element={<SearchScreen />}></Route>
-            <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
-            <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-            <Route path="/my-cases" element={<MyCasesScreen />}></Route>
-            <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
-            {flags[TRANSFER_ORDERS_ENABLED] && (
-              <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
-            )}
-            <Route path="*" element={<NotFound />}></Route>
-          </Routes>
-          <ScrollToTopButton
-            className={scrollBtnClass}
-            target={bodyElement}
-            data-testid="scroll-to-top-button"
-          />
-        </div>
+        <GlobalAlertContext.Provider value={globalAlertRef}>
+          <div className="cams-content">
+            <Routes>
+              <Route path="/search" element={<SearchScreen />}></Route>
+              <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
+              <Route path="/search/:caseId" element={<SearchScreen />}></Route>
+              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
+              <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
+              {flags[TRANSFER_ORDERS_ENABLED] && (
+                <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
+              )}
+              <Route path="*" element={<NotFound />}></Route>
+            </Routes>
+            <ScrollToTopButton
+              className={scrollBtnClass}
+              target={bodyElement}
+              data-testid="scroll-to-top-button"
+            />
+          </div>
+        </GlobalAlertContext.Provider>
         <PrivacyActFooter></PrivacyActFooter>
       </div>
     </AppInsightsErrorBoundary>
