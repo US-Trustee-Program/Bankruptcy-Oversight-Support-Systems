@@ -19,9 +19,10 @@ import AssignAttorneyModal, {
   AssignAttorneyModalRef,
   CallBackProps,
 } from './modal/AssignAttorneyModal';
-import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import AttorneysApi from '@/lib/models/attorneys-api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -36,19 +37,14 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
 export const StaffAssignmentScreen = () => {
   const screenTitle = 'Staff Assignment';
 
+  const globalAlert = useGlobalAlert();
+
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
 
   const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
 
-  const [assignmentAlert, setAssignmentAlert] = useState<{
-    message: string;
-    type: UswdsAlertStyle;
-    timeOut: number;
-  }>({ message: '', type: UswdsAlertStyle.Success, timeOut: 8 });
-
-  const assignmentAlertRef = useRef<AlertRefType>(null);
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
 
@@ -72,12 +68,11 @@ export const StaffAssignmentScreen = () => {
     apiResult,
   }: CallBackProps) {
     if (status === 'error') {
-      setAssignmentAlert({
+      globalAlert?.show({
         message: (apiResult as Error).message,
         type: UswdsAlertStyle.Error,
-        timeOut: 8,
+        timeout: 8,
       });
-      assignmentAlertRef.current?.show();
     } else if (bCase) {
       const messageArr = [];
       const addedAssignments = selectedAttorneyList.filter(
@@ -101,8 +96,7 @@ export const StaffAssignmentScreen = () => {
       const alertMessage =
         messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
 
-      setAssignmentAlert({ message: alertMessage, type: UswdsAlertStyle.Success, timeOut: 8 });
-      assignmentAlertRef.current?.show();
+      globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
 
       assignmentModalRef.current?.hide();
     }
@@ -114,12 +108,11 @@ export const StaffAssignmentScreen = () => {
         setAttorneyList(attorneys);
       })
       .catch((reason) => {
-        setAssignmentAlert({
+        globalAlert?.show({
           message: reason.message,
           type: UswdsAlertStyle.Error,
-          timeOut: 0,
+          timeout: 0,
         });
-        assignmentAlertRef.current?.show();
       });
   };
 
@@ -152,13 +145,6 @@ export const StaffAssignmentScreen = () => {
               <IconLabel label={'Information'} icon={'info'}></IconLabel>
             </ToggleModalButton>
           </div>
-          <Alert
-            message={assignmentAlert.message}
-            type={assignmentAlert.type}
-            role="status"
-            ref={assignmentAlertRef}
-            timeout={assignmentAlert.timeOut}
-          />
           <SearchResults
             id="search-results"
             searchPredicate={searchPredicate}
