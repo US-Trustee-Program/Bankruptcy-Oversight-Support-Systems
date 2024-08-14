@@ -34,7 +34,6 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
 }
 
 export const StaffAssignmentScreen = () => {
-  console.log('staff assignment loading');
   const screenTitle = 'Staff Assignment';
 
   const globalAlert = useGlobalAlert();

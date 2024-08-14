@@ -23,28 +23,9 @@ export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> 
 
 function App() {
   const { reactPlugin } = useAppInsights();
-  const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();
 
   const globalAlertRef = useRef<GlobalAlertRef>(null);
-
-  /*
-  function documentScroll(ev: React.UIEvent<HTMLElement>) {
-    const scrollButton = document.querySelector('.scroll-to-top-button');
-    console.log(scrollButton);
-    if ((ev.currentTarget as Element).scrollTop > 100) {
-      ev.currentTarget.className = 'App header-scrolled-out';
-      //setAppClasses('App header-scrolled-out');
-      // setScrollBtnClass('show');
-      if (scrollButton) scrollButton.className = 'scroll-to-top-button show';
-    } else {
-      ev.currentTarget.className = 'App';
-      //setAppClasses('App');
-      // setScrollBtnClass('');
-      if (scrollButton) scrollButton.className = 'scroll-to-top-button';
-    }
-  }
-    */
 
   return (
     <AppInsightsErrorBoundary
@@ -69,7 +50,7 @@ function App() {
               )}
               <Route path="*" element={<NotFound />}></Route>
             </Routes>
-            <ScrollToTopButton target={bodyElement} data-testid="scroll-to-top-button" />
+            <ScrollToTopButton data-testid="scroll-to-top-button" />
           </div>
         </GlobalAlertContext.Provider>
         <PrivacyActFooter></PrivacyActFooter>

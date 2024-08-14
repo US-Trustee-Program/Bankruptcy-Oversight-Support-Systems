@@ -27,7 +27,7 @@ function deepCopy(obj: object) {
 export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { bCase, idx, options, ...otherProps } = props;
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
-  console.log(`loading row ${idx}`);
+  //console.log(`loading row ${idx}`);
 
   const [bCaseCopy, setBCaseCopy] = useState<CaseBasics>(deepCopy(bCase));
   const [isLoading, setIsLoading] = useState<boolean>(false);
