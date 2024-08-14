@@ -139,7 +139,14 @@ export const StaffAssignmentScreen = () => {
         modalId={infoModalId}
         className="staff-assignment-info"
         heading="Staff Assignment - Using This Page"
-        content={<>TODO: We need new copy for this....</>}
+        content={
+          <>
+            Staff Assignment allows you to assign staff members to unassigned cases. You can also
+            change any previously-made assignments. Use the filters to find the case you wish to
+            assign, and add or change the staff members assigned to that case. You can view details
+            about a case by clicking on its case number.
+          </>
+        }
         actionButtonGroup={infoModalActionButtonGroup}
       ></Modal>
       <AssignAttorneyModal
