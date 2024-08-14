@@ -51,10 +51,10 @@ export async function verifyAccessToken(
   const oktaJwtVerifier = new OktaJwtVerifier({ issuer });
   const oktaJwt: Jwt = await oktaJwtVerifier.verifyAccessToken(token, audience);
 
-  // DOJ Login Okta instances return a custom `groups` attribute on claims that does not
+  // DOJ Login Okta instances return a custom `AD_Groups` attribute on claims that does not
   // appear on standard Okta claims. This line checks to see if it exists and if not
   // appends an empty array for groups that will carry no permissions for the user.
-  const groups: string[] = oktaJwt.claims.groups ? (oktaJwt.claims.groups as string[]) : [];
+  const groups: string[] = oktaJwt.claims.AD_Groups ? (oktaJwt.claims.AD_Groups as string[]) : [];
 
   return {
     claims: { ...oktaJwt.claims, groups },
