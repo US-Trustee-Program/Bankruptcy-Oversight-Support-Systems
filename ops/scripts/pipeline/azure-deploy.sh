@@ -123,7 +123,7 @@ while [[ $# -gt 0 ]]; do
         ;;
     --deployDns)
         inputParams+=("${1}")
-        deploy_dns_param="deployWebapp=${2}"
+        deploy_dns_param="deployDns=${2}"
         deployment_parameters="${deployment_parameters} ${deploy_dns_param}"
         shift 2
         ;;
