@@ -9,8 +9,8 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { AttorneyUser, CamsUser } from '@common/cams/users';
-import { useEffect, useRef, useState } from 'react';
+import { CamsUser } from '@common/cams/users';
+import { useRef } from 'react';
 import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from './StaffAssignmentHeader';
 import { StaffAssignmentRow } from './StaffAssignmentRow';
@@ -22,7 +22,6 @@ import AssignAttorneyModal, {
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { useApi2 } from '@/lib/hooks/UseApi2';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -35,6 +34,7 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
 }
 
 export const StaffAssignmentScreen = () => {
+  console.log('staff assignment loading');
   const screenTitle = 'Staff Assignment';
 
   const globalAlert = useGlobalAlert();
@@ -43,12 +43,8 @@ export const StaffAssignmentScreen = () => {
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
 
-  const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
-
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
-
-  const api = useApi2();
 
   function StaffAssignmentRowClosure(props: SearchResultsRowProps) {
     return StaffAssignmentRow({
@@ -104,21 +100,6 @@ export const StaffAssignmentScreen = () => {
     }
   }
 
-  const fetchAttorneys = () => {
-    api
-      .getAttorneys()
-      .then((response) => {
-        setAttorneyList(response.data);
-      })
-      .catch((reason) => {
-        globalAlert?.show({
-          message: reason.message,
-          type: UswdsAlertStyle.Error,
-          timeout: 0,
-        });
-      });
-  };
-
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
     modalRef: infoModalRef as React.RefObject<ModalRefType>,
@@ -127,10 +108,6 @@ export const StaffAssignmentScreen = () => {
       uswdsStyle: UswdsButtonStyle.Default,
     },
   };
-
-  useEffect(() => {
-    fetchAttorneys();
-  }, []);
 
   return (
     <div className="my-cases case-list">
@@ -161,14 +138,13 @@ export const StaffAssignmentScreen = () => {
       <Modal
         ref={infoModalRef}
         modalId={infoModalId}
-        className="assign-attorney-modal"
-        heading="My Cases - Using This Page"
+        className="staff-assignment-info"
+        heading="Staff Assignment - Using This Page"
         content={<>TODO: We need new copy for this....</>}
         actionButtonGroup={infoModalActionButtonGroup}
       ></Modal>
       <AssignAttorneyModal
         ref={assignmentModalRef}
-        attorneyList={attorneyList}
         modalId={`${assignmentModalId}`}
         callBack={updateCase}
       ></AssignAttorneyModal>
