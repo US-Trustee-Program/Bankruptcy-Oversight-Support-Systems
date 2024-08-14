@@ -69,9 +69,9 @@ export function SearchResults(props: SearchResultsProps) {
   const { id, onStartSearching, onEndSearching } = props;
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>(
-    props.searchPredicate,
-  );
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
+    ...props.searchPredicate,
+  });
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
