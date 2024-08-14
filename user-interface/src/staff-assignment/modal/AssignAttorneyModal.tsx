@@ -1,9 +1,9 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, RefObject, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
@@ -12,6 +12,9 @@ import { ModalRefType, SubmitCancelButtonGroupRef } from '@/lib/components/uswds
 import Api from '@/lib/models/api';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Checkbox from '@/lib/components/uswds/Checkbox';
+import { useApi2 } from '@/lib/hooks/UseApi2';
+import { ResponseBodySuccess } from '@common/api/response';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
@@ -24,7 +27,6 @@ export interface AssignAttorneyModalRef {
 }
 
 export interface AssignAttorneyModalProps {
-  attorneyList: AttorneyUser[];
   modalId: string;
   callBack: (props: CallBackProps) => void;
   alertMessage?: AlertDetails;
@@ -61,6 +63,10 @@ function AssignAttorneyModalComponent(
   const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
   const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
+  const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
+
+  const api = useApi2();
+  const globalAlert = useGlobalAlert();
 
   const actionButtonGroup = {
     modalId: props.modalId,
@@ -104,6 +110,22 @@ function AssignAttorneyModalComponent(
     };
   });
 
+  const fetchAttorneys = async () => {
+    let attorneys;
+    console.log(`fetched attorneys`);
+
+    try {
+      attorneys = await api.getAttorneys();
+      setAttorneyList((attorneys as ResponseBodySuccess<AttorneyUser[]>).data);
+    } catch (e) {
+      globalAlert?.show({
+        message: (e as Error).message,
+        type: UswdsAlertStyle.Error,
+        timeout: 0,
+      });
+    }
+  };
+
   function attorneyIsInCheckList(attorney: AttorneyUser): boolean {
     const result = checkListValues.find((theAttorney) => theAttorney.id === attorney.id);
     return result !== undefined;
@@ -142,7 +164,7 @@ function AssignAttorneyModalComponent(
 
     // call callback from parent with IDs and names of attorneys, and case id.
     const ids = checkListValues.map((item) => item.id);
-    finalAttorneyList = props.attorneyList
+    finalAttorneyList = attorneyList
       .filter((attorney) => ids.includes(attorney.id))
       .map((attorney) => {
         return getCamsUserReference(attorney);
@@ -213,6 +235,10 @@ function AssignAttorneyModalComponent(
     }
   };
 
+  useEffect(() => {
+    fetchAttorneys();
+  }, []);
+
   return (
     <Modal
       ref={modalRef}
@@ -234,8 +260,8 @@ function AssignAttorneyModalComponent(
                 </tr>
               </thead>
               <tbody data-testid="case-load-table-body">
-                {props.attorneyList.length > 0 &&
-                  props.attorneyList.map((attorney: AttorneyUser, idx: number) => {
+                {attorneyList.length > 0 &&
+                  attorneyList.map((attorney: AttorneyUser, idx: number) => {
                     return (
                       <tr key={idx}>
                         <td className="assign-attorney-checkbox-column">

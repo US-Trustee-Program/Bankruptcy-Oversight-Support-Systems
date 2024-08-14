@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Header } from './lib/components/Header';
 import { AppInsightsErrorBoundary } from '@microsoft/applicationinsights-react-js';
 import { useAppInsights } from './lib/hooks/UseApplicationInsights';
-import { createContext, useRef, useState } from 'react';
+import { createContext, useRef } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
@@ -22,23 +22,29 @@ const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
 
 function App() {
-  const [appClasses, setAppClasses] = useState<string>('App');
   const { reactPlugin } = useAppInsights();
-  const [scrollBtnClass, setScrollBtnClass] = useState<string>('');
   const bodyElement = document.querySelector('.App');
   const flags = useFeatureFlags();
 
   const globalAlertRef = useRef<GlobalAlertRef>(null);
 
+  /*
   function documentScroll(ev: React.UIEvent<HTMLElement>) {
+    const scrollButton = document.querySelector('.scroll-to-top-button');
+    console.log(scrollButton);
     if ((ev.currentTarget as Element).scrollTop > 100) {
-      setAppClasses('App header-scrolled-out');
-      setScrollBtnClass('show');
+      ev.currentTarget.className = 'App header-scrolled-out';
+      //setAppClasses('App header-scrolled-out');
+      // setScrollBtnClass('show');
+      if (scrollButton) scrollButton.className = 'scroll-to-top-button show';
     } else {
-      setAppClasses('App');
-      setScrollBtnClass('');
+      ev.currentTarget.className = 'App';
+      //setAppClasses('App');
+      // setScrollBtnClass('');
+      if (scrollButton) scrollButton.className = 'scroll-to-top-button';
     }
   }
+    */
 
   return (
     <AppInsightsErrorBoundary
@@ -47,12 +53,7 @@ function App() {
       }}
       appInsights={reactPlugin}
     >
-      <div
-        id="app-root"
-        className={appClasses}
-        onScroll={documentScroll}
-        data-testid="app-component-test-id"
-      >
+      <div id="app-root" className="App" data-testid="app-component-test-id">
         <GlobalAlert inline={false} type={UswdsAlertStyle.Info} ref={globalAlertRef} />
         <Header />
         <GlobalAlertContext.Provider value={globalAlertRef}>
@@ -68,11 +69,7 @@ function App() {
               )}
               <Route path="*" element={<NotFound />}></Route>
             </Routes>
-            <ScrollToTopButton
-              className={scrollBtnClass}
-              target={bodyElement}
-              data-testid="scroll-to-top-button"
-            />
+            <ScrollToTopButton target={bodyElement} data-testid="scroll-to-top-button" />
           </div>
         </GlobalAlertContext.Provider>
         <PrivacyActFooter></PrivacyActFooter>

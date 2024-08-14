@@ -11,7 +11,7 @@ import { AttorneyUser } from '@common/cams/users';
 const api = useGenericApi;
 
 async function getAttorneys() {
-  return await api().get<AttorneyUser[]>('/attorneys');
+  return api().get<AttorneyUser[]>('/attorneys');
 }
 
 async function getCaseSummary(caseId: string) {
