@@ -424,7 +424,7 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   }
 }
 
-var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
+var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' =
   if (createSqlServerVnetRule) {
