@@ -23,12 +23,11 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 export interface CaseDetailBasicInfoProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
-  attorneyList: AttorneyUser[];
   onCaseAssignment: (props: CallBackProps) => void;
 }
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
-  const { caseDetail, showReopenDate, attorneyList, onCaseAssignment } = props;
+  const { caseDetail, showReopenDate, onCaseAssignment } = props;
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
 
@@ -390,7 +389,6 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
       </div>
       <AssignAttorneyModal
         ref={assignmentModalRef}
-        attorneyList={attorneyList}
         modalId={'assignmentModalId'}
         callBack={handleCaseAssignment}
         alertMessage={
