@@ -27,15 +27,15 @@ function deepCopy(obj: object) {
 export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { bCase, idx, options, ...otherProps } = props;
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
-  //console.log(`loading row ${idx}`);
+  if (idx === 0) console.log(`loading row ${idx}`);
 
   const [bCaseCopy, setBCaseCopy] = useState<CaseBasics>(deepCopy(bCase));
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const api = useApi2();
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!isLoading) return;
     api
       .getCaseAssignments(bCase.caseId)
       .then((response) => {
