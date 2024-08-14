@@ -194,7 +194,8 @@ module appInsights './lib/app-insights/app-insights.bicep' =
     }
   }
 
-module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = {
+module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
+if(createApplicationInsights) {
   name: '${functionName}-diagnostic-settings-module'
   params: {
     functionAppName: functionName
