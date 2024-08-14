@@ -112,7 +112,6 @@ function AssignAttorneyModalComponent(
 
   const fetchAttorneys = async () => {
     let attorneys;
-    console.log(`fetched attorneys`);
 
     try {
       attorneys = await api.getAttorneys();
