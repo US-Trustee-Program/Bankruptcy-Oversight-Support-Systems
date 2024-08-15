@@ -7,10 +7,10 @@ import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal, {
   AssignAttorneyModalRef,
-  CallBackProps,
+  CallbackProps,
 } from '@/staff-assignment/modal/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
@@ -23,7 +23,7 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 export interface CaseDetailBasicInfoProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
-  onCaseAssignment: (props: CallBackProps) => void;
+  onCaseAssignment: (props: CallbackProps) => void;
 }
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
@@ -35,10 +35,16 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
     return sortDatesReverse(a.orderDate, b.orderDate);
   }
 
-  function handleCaseAssignment(props: CallBackProps) {
+  function handleCaseAssignment(props: CallbackProps) {
     onCaseAssignment(props);
     assignmentModalRef.current?.hide();
   }
+
+  useEffect(() => {
+    if (assignmentModalRef.current && assignmentModalRef.current.setSubmitCallback) {
+      assignmentModalRef.current.setSubmitCallback(handleCaseAssignment);
+    }
+  }, [assignmentModalRef]);
 
   return (
     <>
@@ -390,7 +396,6 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
       <AssignAttorneyModal
         ref={assignmentModalRef}
         modalId={'assignmentModalId'}
-        callBack={handleCaseAssignment}
         alertMessage={
           isJointAdministrationChildCase(caseDetail.consolidation)
             ? {

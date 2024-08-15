@@ -8,8 +8,11 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
-import { AssignAttorneyModalRef } from './modal/AssignAttorneyModal';
+import { AssignAttorneyModalRef, CallbackProps } from './modal/AssignAttorneyModal';
 import { CaseBasics } from '@common/cams/cases';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -33,6 +36,45 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const api = useApi2();
+  const globalAlert = useGlobalAlert();
+
+  function updateCase(props: CallbackProps) {
+    const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
+
+    if (status === 'error') {
+      globalAlert?.show({
+        message: (apiResult as Error).message,
+        type: UswdsAlertStyle.Error,
+        timeout: 8,
+      });
+    } else if (bCase) {
+      const messageArr = [];
+      const addedAssignments = selectedAttorneyList.filter(
+        (el) => !previouslySelectedList.includes(el),
+      );
+      const removedAssignments = previouslySelectedList.filter(
+        (el) => !selectedAttorneyList.includes(el),
+      );
+
+      if (addedAssignments.length > 0) {
+        messageArr.push(
+          `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
+        );
+      }
+      if (removedAssignments.length > 0) {
+        messageArr.push(
+          `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
+        );
+      }
+
+      const alertMessage =
+        messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
+
+      globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
+
+      options.modalRef.current?.hide();
+    }
+  }
 
   useEffect(() => {
     if (!isLoading) return;
@@ -49,6 +91,12 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
         setIsLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (modalRef.current && modalRef.current.setSubmitCallback) {
+      modalRef.current.setSubmitCallback(updateCase);
+    }
+  }, [modalRef]);
 
   let assignmentJsx;
   let actionButton;
