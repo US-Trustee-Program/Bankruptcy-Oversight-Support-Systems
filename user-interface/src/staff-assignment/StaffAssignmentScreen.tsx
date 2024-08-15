@@ -49,48 +49,6 @@ export const StaffAssignmentScreen = () => {
   }
   const searchPredicate = getPredicateByUserContext(session.user);
 
-  //function updateCase({
-  //  bCase,
-  //  selectedAttorneyList,
-  //  previouslySelectedList,
-  //  status,
-  //  apiResult,
-  //}: CallBackProps) {
-  //  if (status === 'error') {
-  //    globalAlert?.show({
-  //      message: (apiResult as Error).message,
-  //      type: UswdsAlertStyle.Error,
-  //      timeout: 8,
-  //    });
-  //  } else if (bCase) {
-  //    const messageArr = [];
-  //    const addedAssignments = selectedAttorneyList.filter(
-  //      (el) => !previouslySelectedList.includes(el),
-  //    );
-  //    const removedAssignments = previouslySelectedList.filter(
-  //      (el) => !selectedAttorneyList.includes(el),
-  //    );
-
-  //    if (addedAssignments.length > 0) {
-  //      messageArr.push(
-  //        `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
-  //      );
-  //    }
-  //    if (removedAssignments.length > 0) {
-  //      messageArr.push(
-  //        `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
-  //      );
-  //    }
-
-  //    const alertMessage =
-  //      messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
-
-  //    globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
-
-  //    assignmentModalRef.current?.hide();
-  //  }
-  //}
-
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
     modalRef: infoModalRef as React.RefObject<ModalRefType>,

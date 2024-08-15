@@ -25,9 +25,9 @@ import { useApi } from '@/lib/hooks/UseApi';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
-import { CallBackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -309,7 +309,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
   }
 
-  function handleCaseAssignment(assignment: CallBackProps) {
+  function handleCaseAssignment(assignment: CallbackProps) {
     const updatedCaseBasicInfo: CaseDetail = {
       ...caseBasicInfo!,
       assignments: assignment.selectedAttorneyList,

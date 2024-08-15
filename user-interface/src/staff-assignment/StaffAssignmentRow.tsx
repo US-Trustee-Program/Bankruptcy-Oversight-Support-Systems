@@ -49,10 +49,10 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     } else if (bCase) {
       const messageArr = [];
       const addedAssignments = selectedAttorneyList.filter(
-        (el) => !previouslySelectedList.includes(el),
+        (staff) => !previouslySelectedList.find((staffObj) => staffObj.id === staff.id),
       );
       const removedAssignments = previouslySelectedList.filter(
-        (el) => !selectedAttorneyList.includes(el),
+        (staff) => !selectedAttorneyList.find((staffObj) => staffObj.id === staff.id),
       );
 
       if (addedAssignments.length > 0) {
