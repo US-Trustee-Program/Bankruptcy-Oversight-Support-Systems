@@ -189,7 +189,7 @@ while [[ $# -gt 0 ]]; do
         ;;
     --analyticsResourceGroupName)
         inputParams+=("${1}")
-        analytics_rg_param="analyticsWorkspaceId=${2}"
+        analytics_rg_param="analyticsResourceGroupName=${2}"
         deployment_parameters="${deployment_parameters} ${analytics_rg_param}"
         shift 2
         ;;
