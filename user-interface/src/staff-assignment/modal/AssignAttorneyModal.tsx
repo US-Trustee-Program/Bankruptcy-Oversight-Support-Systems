@@ -28,13 +28,13 @@ type CallbackFunction = (props: CallbackProps) => void;
 
 export interface ModalOpenProps {
   bCase: CaseBasics;
+  callback: CallbackFunction;
 }
 
 export interface AssignAttorneyModalRef {
   show: (showProps: ModalOpenProps | undefined) => void;
   hide: () => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
-  setSubmitCallback?: (callback: CallbackFunction) => void;
 }
 
 export interface AssignAttorneyModalProps {
@@ -93,6 +93,9 @@ function _AssignAttorneyModal(
           setCheckListValues([...showProps.bCase.assignments]);
           setPreviouslySelectedList([...showProps.bCase.assignments]);
         }
+        if (showProps.callback) {
+          submitCallbackRef.current = showProps.callback;
+        }
       }
     }
     if (modalRef.current?.show) {
@@ -110,9 +113,6 @@ function _AssignAttorneyModal(
     return {
       show,
       hide,
-      setSubmitCallback: (callback: CallbackFunction) => {
-        submitCallbackRef.current = callback;
-      },
     };
   });
 

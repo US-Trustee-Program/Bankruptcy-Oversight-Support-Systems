@@ -30,7 +30,6 @@ function deepCopy(obj: object) {
 export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { bCase, idx, options, ...otherProps } = props;
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
-  if (idx === 0) console.log(`loading row ${idx}`);
 
   const [bCaseCopy, setBCaseCopy] = useState<CaseBasics>(deepCopy(bCase));
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -38,7 +37,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
 
-  function updateCase(props: CallbackProps) {
+  function updateAssignmentsCallback(props: CallbackProps) {
     const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
 
     if (status === 'error') {
@@ -73,30 +72,36 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
 
       options.modalRef.current?.hide();
+      getCaseAssignments(true);
     }
   }
 
-  useEffect(() => {
-    if (!isLoading) return;
+  async function getCaseAssignments(forceReload: boolean = false) {
+    if (!isLoading && !forceReload) return;
     api
       .getCaseAssignments(bCase.caseId)
       .then((response) => {
         const assignments = response.data.map((assignment) => {
           return { id: assignment.userId, name: assignment.name };
         });
-        setBCaseCopy({ ...bCaseCopy, assignments });
+        const newBCaseCopy = { ...bCaseCopy, assignments };
+        setBCaseCopy(newBCaseCopy);
       })
-      .catch((_reason) => {})
+      .catch((_reason) => {
+        globalAlert?.show({
+          message: `Could not get staff assignments for case ${bCaseCopy.caseTitle}`,
+          type: UswdsAlertStyle.Error,
+          timeout: 8,
+        });
+      })
       .finally(() => {
         setIsLoading(false);
       });
-  }, []);
+  }
 
   useEffect(() => {
-    if (modalRef.current && modalRef.current.setSubmitCallback) {
-      modalRef.current.setSubmitCallback(updateCase);
-    }
-  }, [modalRef]);
+    getCaseAssignments();
+  }, []);
 
   let assignmentJsx;
   let actionButton;
@@ -104,7 +109,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const commonModalButtonProps = {
     className: 'case-assignment-modal-toggle',
     buttonIndex: `toggle-button-${idx}`,
-    toggleProps: { bCase: bCaseCopy },
+    toggleProps: { bCase: bCaseCopy, callback: updateAssignmentsCallback },
     modalId,
     modalRef,
   };
@@ -137,14 +142,14 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
   return (
     <TableRow {...otherProps} key={idx}>
-      <TableRowData dataSortValue={bCase.caseId}>
+      <TableRowData dataSortValue={bCaseCopy.caseId}>
         <span className="no-wrap">
-          <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+          <CaseNumber caseId={bCaseCopy.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
-      <TableRowData>{bCase.caseTitle}</TableRowData>
-      <TableRowData>{bCase.chapter}</TableRowData>
-      <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
+      <TableRowData>{bCaseCopy.caseTitle}</TableRowData>
+      <TableRowData>{bCaseCopy.chapter}</TableRowData>
+      <TableRowData>{formatDate(bCaseCopy.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
         {isLoading && (
@@ -158,7 +163,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
           <div className="table-flex-container">
             <div className="attorney-list-container">{assignmentJsx}</div>
             <div className="table-column-toolbar">
-              {Actions.contains(bCase, Actions.ManageAssignments) && actionButton}
+              {Actions.contains(bCaseCopy, Actions.ManageAssignments) && actionButton}
             </div>
           </div>
         )}
