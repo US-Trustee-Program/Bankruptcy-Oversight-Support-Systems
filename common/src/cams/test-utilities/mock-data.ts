@@ -30,6 +30,7 @@ import { WithPagination } from '../../api/pagination';
 import { Action, ResourceActions } from '../actions';
 import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
 import { CamsSession } from '../session';
+import { CamsJwtClaims } from '../jwt';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -465,15 +466,23 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   };
 }
 
-function getJwt(): string {
+function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
   const ONE_HOUR = 3600;
   const salt = Math.floor(Math.random() * 10);
 
+  const payload: CamsJwtClaims = {
+    iss: 'http://fake.issuer.com/oauth2/default',
+    sub: 'user@fake.com',
+    aud: 'fakeApi',
+    exp: SECONDS_SINCE_EPOCH + ONE_HOUR + salt,
+    groups: [],
+    ...claims,
+  };
+
   const header = '{"typ":"JWT","alg":"HS256"}';
-  const payload = `{"iss":"http://fake.issuer.com/oauth2/default","sub":"user@fake.com","aud":"fakeApi","exp":${SECONDS_SINCE_EPOCH + ONE_HOUR + salt}}`;
   const encodedHeader = Buffer.from(header, 'binary').toString('base64');
-  const encodedPayload = Buffer.from(payload, 'binary').toString('base64');
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'binary').toString('base64');
 
   // The prior implementation of the signature failed decoding by JWT.io and by the `jsonwebtoken` library.
   // This is a stop gap, valid signature, but not valid for the payload above.
