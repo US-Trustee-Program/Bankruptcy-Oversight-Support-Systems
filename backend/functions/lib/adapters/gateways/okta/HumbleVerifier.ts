@@ -1,6 +1,6 @@
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
 import OktaJwtVerifier = require('@okta/jwt-verifier');
-import { CamsJwt } from '../../types/authorization';
+import { CamsJwt } from '../../../../../../common/src/cams/jwt';
 
 type Algorithm =
   | 'HS256'

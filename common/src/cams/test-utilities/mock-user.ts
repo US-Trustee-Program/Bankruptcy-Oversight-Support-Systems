@@ -6,7 +6,9 @@ export type MockUser = {
   sub: string;
   label: string;
   user: CamsUser;
+  hide?: boolean;
 };
+
 export const SUPERUSER = {
   sub: 'user@fake.com',
   label: "Martha's Son - Super User",
@@ -16,6 +18,7 @@ export const SUPERUSER = {
     roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
     offices: [],
   },
+  hide: true,
 };
 
 export const MockUsers: MockUser[] = [

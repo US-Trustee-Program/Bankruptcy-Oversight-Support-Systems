@@ -1,4 +1,5 @@
 import { CamsUser } from '../../../../../common/src/cams/users';
+import { CamsJwt } from '../../../../../common/src/cams/jwt';
 
 export type AuthorizationConfig = {
   provider: string | null;
@@ -11,25 +12,3 @@ export interface OpenIdConnectGateway {
   verifyToken: (accessToken: string) => Promise<CamsJwt>;
   getUser: (accessToken: string) => Promise<CamsUser>;
 }
-
-export type CamsJwtHeader = {
-  typ: string;
-  [key: string]: unknown;
-};
-
-export type CamsJwtClaims = {
-  iss: string;
-  sub: string;
-  aud: string | string[];
-  exp: number;
-  nbf?: number;
-  iat?: number;
-  jti?: string;
-  groups: string[];
-  [key: string]: unknown;
-};
-
-export type CamsJwt = {
-  claims: CamsJwtClaims;
-  header: CamsJwtHeader;
-};

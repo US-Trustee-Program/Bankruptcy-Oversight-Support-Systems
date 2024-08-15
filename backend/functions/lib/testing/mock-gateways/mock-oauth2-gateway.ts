@@ -2,15 +2,11 @@ import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockUser, MockUsers } from '../../../../../common/src/cams/test-utilities/mock-user';
-import {
-  CamsJwt,
-  CamsJwtClaims,
-  CamsJwtHeader,
-  OpenIdConnectGateway,
-} from '../../adapters/types/authorization';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsUser } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../../common/src/cams/jwt';
+import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockUsers: MockUser[] = MockUsers;

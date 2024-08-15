@@ -1,9 +1,10 @@
 import { getAuthorizationConfig } from '../../../configs/authorization-configuration';
-import { CamsJwt, OpenIdConnectGateway } from '../../types/authorization';
+import { OpenIdConnectGateway } from '../../types/authorization';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
 import { CamsUser } from '../../../../../../common/src/cams/users';
+import { CamsJwt } from '../../../../../../common/src/cams/jwt';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
 
