@@ -39,6 +39,10 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
     if (!props.isLoading && appEl && camsHeader) {
       appEl.addEventListener('scroll', modifyHeader);
     }
+    return () => {
+      const appEl = document.querySelector('.App');
+      appEl?.removeEventListener('scroll', modifyHeader);
+    };
   }, [props.isLoading == false]);
 
   return (
@@ -49,7 +53,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <Link className="back-button" to="/case-assignment">
+                <Link className="back-button" to="/staff-assignment">
                   <Icon name="arrow_back"></Icon>
                   Back to Case List
                 </Link>
@@ -102,7 +106,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
-              <Link className="back-button" to="/case-assignment">
+              <Link className="back-button" to="/staff-assignment">
                 <Icon name="arrow_back"></Icon>
                 Back to Case List
               </Link>

@@ -4,7 +4,6 @@ export interface ModalRefType {
   show: (object) => void;
   hide: (object) => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
-  setSubmitCallback?: (props) => void;
 }
 
 export interface SubmitCancelButtonGroupRef {
