@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { isResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
@@ -143,7 +143,7 @@ export function SearchResults(props: SearchResultsProps) {
   }, [searchPredicate]);
 
   const Header = props.header;
-  const Row = memo(props.row);
+  const Row = props.row;
 
   return (
     <div className="search-results">
