@@ -15,13 +15,7 @@ import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchRes
 import { StaffAssignmentHeader } from './StaffAssignmentHeader';
 import { StaffAssignmentRow } from './StaffAssignmentRow';
 import './StaffAssignmentScreen.scss';
-import AssignAttorneyModal, {
-  AssignAttorneyModalRef,
-  CallBackProps,
-} from './modal/AssignAttorneyModal';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import AssignAttorneyModal, { AssignAttorneyModalRef } from './modal/AssignAttorneyModal';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -35,8 +29,6 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
 
 export const StaffAssignmentScreen = () => {
   const screenTitle = 'Staff Assignment';
-
-  const globalAlert = useGlobalAlert();
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -57,47 +49,47 @@ export const StaffAssignmentScreen = () => {
   }
   const searchPredicate = getPredicateByUserContext(session.user);
 
-  function updateCase({
-    bCase,
-    selectedAttorneyList,
-    previouslySelectedList,
-    status,
-    apiResult,
-  }: CallBackProps) {
-    if (status === 'error') {
-      globalAlert?.show({
-        message: (apiResult as Error).message,
-        type: UswdsAlertStyle.Error,
-        timeout: 8,
-      });
-    } else if (bCase) {
-      const messageArr = [];
-      const addedAssignments = selectedAttorneyList.filter(
-        (el) => !previouslySelectedList.includes(el),
-      );
-      const removedAssignments = previouslySelectedList.filter(
-        (el) => !selectedAttorneyList.includes(el),
-      );
+  //function updateCase({
+  //  bCase,
+  //  selectedAttorneyList,
+  //  previouslySelectedList,
+  //  status,
+  //  apiResult,
+  //}: CallBackProps) {
+  //  if (status === 'error') {
+  //    globalAlert?.show({
+  //      message: (apiResult as Error).message,
+  //      type: UswdsAlertStyle.Error,
+  //      timeout: 8,
+  //    });
+  //  } else if (bCase) {
+  //    const messageArr = [];
+  //    const addedAssignments = selectedAttorneyList.filter(
+  //      (el) => !previouslySelectedList.includes(el),
+  //    );
+  //    const removedAssignments = previouslySelectedList.filter(
+  //      (el) => !selectedAttorneyList.includes(el),
+  //    );
 
-      if (addedAssignments.length > 0) {
-        messageArr.push(
-          `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
-        );
-      }
-      if (removedAssignments.length > 0) {
-        messageArr.push(
-          `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
-        );
-      }
+  //    if (addedAssignments.length > 0) {
+  //      messageArr.push(
+  //        `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
+  //      );
+  //    }
+  //    if (removedAssignments.length > 0) {
+  //      messageArr.push(
+  //        `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
+  //      );
+  //    }
 
-      const alertMessage =
-        messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
+  //    const alertMessage =
+  //      messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
 
-      globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
+  //    globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
 
-      assignmentModalRef.current?.hide();
-    }
-  }
+  //    assignmentModalRef.current?.hide();
+  //  }
+  //}
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
@@ -152,7 +144,6 @@ export const StaffAssignmentScreen = () => {
       <AssignAttorneyModal
         ref={assignmentModalRef}
         modalId={`${assignmentModalId}`}
-        callBack={updateCase}
       ></AssignAttorneyModal>
     </div>
   );

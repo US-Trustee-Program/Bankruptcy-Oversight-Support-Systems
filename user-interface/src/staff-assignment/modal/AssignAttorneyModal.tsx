@@ -16,6 +16,16 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ResponseBodySuccess } from '@common/api/response';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
+export interface CallbackProps {
+  bCase: CaseBasics;
+  selectedAttorneyList: AttorneyUser[];
+  previouslySelectedList: AttorneyUser[];
+  status: 'success' | 'error';
+  apiResult: object;
+}
+
+type CallbackFunction = (props: CallbackProps) => void;
+
 export interface ModalOpenProps {
   bCase: CaseBasics;
 }
@@ -24,11 +34,11 @@ export interface AssignAttorneyModalRef {
   show: (showProps: ModalOpenProps | undefined) => void;
   hide: () => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
+  setSubmitCallback?: (callback: CallbackFunction) => void;
 }
 
 export interface AssignAttorneyModalProps {
   modalId: string;
-  callBack: (props: CallBackProps) => void;
   alertMessage?: AlertDetails;
 }
 
@@ -36,34 +46,27 @@ export interface AttorneyListResponseData extends ResponseData {
   attorneyList: Array<AttorneyUser>;
 }
 
-export interface CallBackProps {
-  bCase: CaseBasics;
-  selectedAttorneyList: AttorneyUser[];
-  previouslySelectedList: AttorneyUser[];
-  status: 'success' | 'error';
-  apiResult: object;
-}
-
-function AssignAttorneyModalComponent(
+function _AssignAttorneyModal(
   props: AssignAttorneyModalProps,
   ref: React.Ref<AssignAttorneyModalRef>,
 ) {
-  const [bCase, setBCase] = useState<CaseBasics | null>(null);
+  const submitCallbackRef = useRef<CallbackFunction | null>(null);
   const modalRef = useRef<ModalRefType>(null);
   const tableContainer = useRef<HTMLTableSectionElement | null>(null);
+
+  const [bCase, setBCase] = useState<CaseBasics | null>(null);
+  const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
+  const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
+  const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
+  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
+  const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
+
   const modalHeading = (
     <>
       Choose Trial Attorney to assign to: {bCase?.caseTitle},{' '}
       <span className="case-number">{getCaseNumber(bCase?.caseId)}</span>
     </>
   );
-
-  const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
-
-  const [checkListValues, setCheckListValues] = useState<CamsUserReference[]>([]);
-  const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
-  const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
-  const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
 
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -107,6 +110,9 @@ function AssignAttorneyModalComponent(
     return {
       show,
       hide,
+      setSubmitCallback: (callback: CallbackFunction) => {
+        submitCallbackRef.current = callback;
+      },
     };
   });
 
@@ -171,33 +177,39 @@ function AssignAttorneyModalComponent(
 
     // send attorney IDs to API
     setIsUpdatingAssignment(true);
-    await Api.post('/case-assignments', {
-      caseId: bCase?.caseId,
-      attorneyList: finalAttorneyList,
-      role: 'TrialAttorney',
-    })
-      .then((result) => {
-        props.callBack({
-          bCase,
-          selectedAttorneyList: finalAttorneyList,
-          previouslySelectedList,
-          status: 'success',
-          apiResult: result,
-        });
+
+    try {
+      const result = await Api.post('/case-assignments', {
+        caseId: bCase?.caseId,
+        attorneyList: finalAttorneyList,
+        role: 'TrialAttorney',
+      });
+      if (result) {
+        if (submitCallbackRef.current) {
+          submitCallbackRef.current({
+            bCase,
+            selectedAttorneyList: finalAttorneyList,
+            previouslySelectedList,
+            status: 'success',
+            apiResult: result,
+          });
+        }
         setCheckListValues([]);
         setIsUpdatingAssignment(false);
-      })
-      .catch((e: Error) => {
-        props.callBack({
+      }
+    } catch (e) {
+      if (submitCallbackRef.current) {
+        submitCallbackRef.current({
           bCase,
           selectedAttorneyList: finalAttorneyList,
           previouslySelectedList,
           status: 'error',
-          apiResult: e,
+          apiResult: e as Error,
         });
-        setCheckListValues([]);
-        setIsUpdatingAssignment(false);
-      });
+      }
+      setCheckListValues([]);
+      setIsUpdatingAssignment(false);
+    }
     thawBackground();
   }
 
@@ -293,6 +305,6 @@ function AssignAttorneyModalComponent(
   );
 }
 
-const AssignAttorneyModal = forwardRef(AssignAttorneyModalComponent);
+const AssignAttorneyModal = forwardRef(_AssignAttorneyModal);
 
 export default AssignAttorneyModal;
