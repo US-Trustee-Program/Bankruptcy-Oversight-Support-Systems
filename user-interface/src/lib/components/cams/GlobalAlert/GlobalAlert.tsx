@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Alert, { AlertProps, AlertRefType } from '../../uswds/Alert';
 import React from 'react';
 
+// TODO: instead of having to build props, have some convenience functions with predefined props for each alert type
 export type GlobalAlertRef = {
   show: (props: AlertProps) => void;
 };
