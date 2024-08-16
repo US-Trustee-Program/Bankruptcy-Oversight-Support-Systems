@@ -172,7 +172,8 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
       actionGroupResourceGroupName: actionGroupResourceGroupName
     }
   }
-module diagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep' = {
+module diagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep' =
+  if (createApplicationInsights) {
   name: '${webappName}-diagnostic-settings-module'
   params: {
     webappName: webappName

@@ -16,7 +16,7 @@ enable_debug=false
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-func-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName --settings=\"key1=value1 key2=value2\""
+        echo "USAGE: az-func-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName"
         exit 0
         ;;
 
@@ -45,11 +45,6 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --settings)
-        app_settings="${2}"
-        shift 2
-        ;;
-
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -62,6 +57,7 @@ rule_name="agent-${app_name:0:26}" # rule name has a 32 character limit
 function on_exit() {
     # always try to remove temporary access
     az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
+    az functionapp config access-restriction remove -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --scm-site true 1>/dev/null
 
 }
 trap on_exit EXIT
@@ -75,7 +71,7 @@ fi
 agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
 echo "Adding rule: ${rule_name} to webapp"
 az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --slot "${slot_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
-
+az functionapp config access-restriction add -g "${app_rg}" -n "${app_name}" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority 232 --scm-site true 1>/dev/null
 # Construct and execute deployment command
 cmd="az functionapp deployment source config-zip -g ${app_rg} -n ${app_name} --slot ${slot_name} --src ${artifact_path}"
 if [[ ${enable_debug} == 'true' ]]; then
@@ -85,9 +81,5 @@ echo "Deployment started"
 eval "${cmd}"
 echo "Deployment completed"
 
-# configure Application Settings
-if [[ -n ${app_settings} ]]; then
-    echo "Set Application Settings for ${app_name}"
-    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    eval "az functionapp config appsettings set -g '${app_rg}' -n '${app_name}' --slot '$slot_name' --settings ${app_settings} --query '[].name' --output tsv"
-fi
+# shellcheck disable=SC2086
+az webapp traffic-routing set --distribution ${slot_name}=0 --name "${app_name}" --resource-group "${app_rg}"

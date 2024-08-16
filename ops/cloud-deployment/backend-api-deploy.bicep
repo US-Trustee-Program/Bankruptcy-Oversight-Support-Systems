@@ -35,6 +35,8 @@ var planTypeToSkuMap = {
   }
 }
 
+param stackName string = 'ustp-cams'
+
 param functionName string
 
 param virtualNetworkResourceGroupName string
@@ -42,6 +44,7 @@ param virtualNetworkResourceGroupName string
 param functionSubnetId string
 
 param privateEndpointSubnetId string
+
 
 @description('Azure functions runtime environment')
 @allowed([
@@ -61,6 +64,9 @@ var linuxFxVersionMap = {
 param loginProviderConfig string
 
 param loginProvider string
+
+@description('Is ustp deployment')
+param isUstpDeployment bool
 
 @description('Azure functions version')
 param functionsVersion string = '~4'
@@ -82,6 +88,9 @@ param sqlServerIdentityResourceGroupName string = ''
 @description('Resource group name of the app config KeyVault')
 param kvAppConfigResourceGroupName string = ''
 
+@description('name of the app config KeyVault')
+param kvAppConfigName string = 'kv-${stackName}'
+
 param sqlServerName string = ''
 
 @description('Flag to enable Vercode access')
@@ -94,6 +103,12 @@ param idKeyvaultAppConfiguration string
 @description('Name of the managed identity with read/write access to CosmosDB')
 @secure()
 param cosmosIdentityName string
+
+param cosmosClientId string
+
+param cosmosAccountName string
+
+param cosmosDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -126,7 +141,6 @@ resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
   name: cosmosIdentityName
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
-
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -180,7 +194,8 @@ module appInsights './lib/app-insights/app-insights.bicep' =
     }
   }
 
-module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = {
+module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
+if(createApplicationInsights) {
   name: '${functionName}-diagnostic-settings-module'
   params: {
     functionAppName: functionName
@@ -280,10 +295,65 @@ var applicationSettings = concat(
       name: 'CAMS_LOGIN_PROVIDER'
       value: loginProvider
     }
+    {
+      name: 'STARTING_MONTH'
+      value: '-70'
+    }
+    {
+      name: 'COSMOS_ENDPOINT'
+      value: 'https://${cosmosAccountName}.documents.azure.us:443/'
+    }
+    {
+      name: 'COSMOS_DATABASE_NAME'
+      value: cosmosDatabaseName
+    }
+    {
+      name: 'COSMOS_MANAGED_IDENTITY'
+      value: cosmosClientId
+    }
+    {
+      name: 'INFO_SHA'
+      value: 'ProductionSlot'
+    }
+    {
+      name: 'WEBSITE_RUN_FROM_PACKAGE'
+      value: '1'
+    }
+    {
+      name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
+      value: false
+    }
+    {
+      name: 'MSSQL_HOST'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
+    }
+    {
+      name: 'MSSQL_DATABASE_DXTR'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
+    }
+    {
+      name: 'MSSQL_CLIENT_ID'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+    }
+    {
+      name: 'MSSQL_ENCRYPT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
+    }
+    {
+      name: 'MSSQL_TRUST_UNSIGNED_CERT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
+    }
+    {
+      name: 'FEATURE_FLAG_SDK_KEY'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
+    }
   ],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
-    : []
+    : [],
+  isUstpDeployment
+    ? [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }, { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }]
+    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
 )
 
 var ipSecurityRestrictionsRules = concat(
@@ -355,7 +425,7 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   }
 }
 
-var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName)
+var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' =
   if (createSqlServerVnetRule) {

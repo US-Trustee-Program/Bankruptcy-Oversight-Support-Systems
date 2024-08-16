@@ -39,32 +39,6 @@ while [[ $# -gt 0 ]]; do
         artifact_path="${2}"
         shift 2
         ;;
-
-    --kvName)
-        kv_name="${2}"
-        shift 2
-        ;;
-
-    --kvSettings)
-        kv_settings="${2}"
-        shift 2
-        ;;
-
-    --settings)
-        app_settings="${2}"
-        shift 2
-        ;;
-
-    --identities)
-        identities="${2}"
-        shift 2
-        ;;
-
-    --identitiesResourceGroup) # TODO : Should be refactor so that all identities do not have to belong to a single resource
-        id_rg="${2}"
-        shift 2
-        ;;
-
     *)
         exit 2 # error on unknown flag/switch
         ;;
@@ -97,36 +71,3 @@ fi
 echo "Deployment started"
 eval "${cmd}"
 echo "Deployment completed"
-
-if [[ -n ${identities} ]]; then
-    # configure User identities given a Managed Identity principal id and resource group
-    for identity in ${identities}; do
-        # get Azure resource id of managed identity by principalId
-        azResourceId=$(az identity list -g "${id_rg}" --query "[?principalId=='${identity}'].id" -o tsv)
-
-        if [[ -z "${azResourceId}" ]]; then
-            echo "Resource id not found. Invalid principalId."
-        else
-            echo "Assigning identity ${azResourceId/*\//} to ${app_name}"
-            # assign service with specified identity
-            az functionapp identity assign -g "${app_rg}" -n "${app_name}" --identities "${azResourceId}"
-        fi
-
-    done
-fi
-
-decorated_kv_settings=""
-# configure KeyVault Settings
-if [[ -n ${kv_settings} && -n ${kv_name} ]]; then
-    for skey in ${kv_settings}; do
-        # EXAMPLE :: SECRET_KEY=@Microsoft.KeyVault(VaultName=vault-name;SecretName=SECRET-KEY)
-        modifiedskey=$(echo "${skey}" | sed -r 's/[_]+/-/g')
-        decorated_kv_settings+="${skey}=@Microsoft.KeyVault(VaultName=${kv_name};SecretName=${modifiedskey}) "
-    done
-fi
-# configure Application Settings
-if [[ -n ${app_settings} ]]; then
-    echo "Set Application Settings for ${app_name}"
-    # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --settings
-    az functionapp config appsettings set -g "${app_rg}" -n "${app_name}" --settings ${app_settings} ${decorated_kv_settings} --query "[].name" --output tsv
-fi

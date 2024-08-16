@@ -12,6 +12,9 @@ on:
       azResourceGrpNetworkEncrypted:
         required: true
         type: string
+      cosmosClientId:
+        required: true
+        type: string
       stackName:
         required: true
         type: string
@@ -30,9 +33,6 @@ on:
       slotName:
         required: true
         type: string
-      slotDeploymentEnabled:
-        required: true
-        type: string
       deployBranch:
         required: true
         type: string
@@ -40,12 +40,6 @@ on:
         required: true
         type: string
     outputs:
-      cosmosDbClientId:
-        description: "CosmosDB Principal ID"
-        value: ${{ jobs.deploy-db.outputs.cosmosDbClientId }}
-      cosmosDbPrincipalId:
-        description: "CosmosDB Principal ID"
-        value: ${{ jobs.deploy-db.outputs.cosmosDbPrincipalId }}
       e2eCosmosDbExists:
         description: "Does E2E Cosmos DB Already Exists before deployment"
         value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
@@ -62,9 +56,9 @@ jobs:
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
       execVnetDeploy: ${{ inputs.execVnetDeploy }}
-      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
+      cosmosClientId: ${{ inputs.cosmosClientId }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-db:
@@ -83,7 +77,7 @@ jobs:
     name: Slot Resources
     uses: ./.github/workflows/sub-deploy-slot-resources.yml
     needs: [deploy-infra]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{ inputs.deployBicep =='true' }}
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       webAppName: ${{ inputs.webappName }}
       apiName: ${{ inputs.apiName }}
@@ -91,6 +85,5 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       slotName: ${{ inputs.slotName }}
-      slotDeploymentEnabled: ${{ inputs.slotDeploymentEnabled }}
       environmentHash: ${{ inputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret

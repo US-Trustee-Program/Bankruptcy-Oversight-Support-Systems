@@ -21,13 +21,13 @@ on:
       execVnetDeploy:
         required: true
         type: string
-      slotDeploymentEnabled:
-        required: true
-        type: string
       deployBranch:
         default: "false"
         type: string
       deployBicep:
+        required: true
+        type: string
+      cosmosClientId:
         required: true
         type: string
 
@@ -72,15 +72,19 @@ jobs:
         if: inputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
-            --show-what-if \
             --resource-group ${{ steps.rgApp.outputs.out }} \
             --file ./ops/cloud-deployment/main.bicep \
             --stackName ${{ inputs.stackName }} \
             --networkResourceGroupName ${{ steps.rgNetwork.outputs.out }} \
-            --vnetName ${{ vars.AZ_NETWORK_VNET_NAME }} \
+            --virtualNetworkName ${{ vars.AZ_NETWORK_VNET_NAME }} \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}  \
             --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
+            --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
+            --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --cosmosIdentityName ${{secrets.AZ_COSMOS_ID_NAME }}  \
+            --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
+            --cosmosAccountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+            --cosmosClientId ${{ inputs.cosmosClientId }} \
             --deployVnet ${{ inputs.execVnetDeploy }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
@@ -88,8 +92,10 @@ jobs:
             --deployAppInsights true \
             --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
-            --deployFunctions ${{ inputs.slotDeploymentEnabled == 'false' }} \
-            --deployWebapp ${{ inputs.slotDeploymentEnabled == 'false' }} \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
-            --environmentParameters 'sqlServerName=${{ secrets.AZ_SQL_SERVER_NAME }} sqlServerResourceGroupName=${{ secrets.AZURE_RG }} sqlServerIdentityName=${{ secrets.AZ_SQL_IDENTITY_NAME }} actionGroupName=${{ secrets.AZ_ACTION_GROUP_NAME }} oktaUrl=${{ vars.OKTA_URL }}'
+            --sqlServerName ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            --sqlServerResourceGroupName ${{ secrets.AZURE_RG }} \
+            --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
+            --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
+            --oktaUrl ${{ vars.OKTA_URL }}

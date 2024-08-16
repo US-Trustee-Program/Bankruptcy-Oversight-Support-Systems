@@ -2,7 +2,7 @@
 
 # Title:        az-slot-api-resource-deploy.sh
 # Description:  Helper script to provision Azure slot deployment resources for Azure functionapp api
-# Usage:        ./az-slot-api-resource-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n webappName
+# Usage:        ./az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --storageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash --isUstpDeployment
 #
 # Exitcodes
 # ==========
@@ -14,11 +14,11 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 sql_id_name=''
 is_ustp_deployment=false
-
+info_sha=''
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --storageAccName apiStorageAccountName"
+        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --storageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash"
         exit 0
         ;;
     --resourceGroup)
@@ -62,12 +62,12 @@ while [[ $# -gt 0 ]]; do
         storage_acc_name="${2}"
         shift 2
         ;;
-    --branchHashId)
-        branch_hash_id="${2}"
-        shift 2
-        ;;
     --databaseName)
         database_name="${2}"
+        shift 2
+        ;;
+    --infoSha)
+        info_sha="${2}"
         shift 2
         ;;
     --isUstpDeployment)
@@ -97,14 +97,16 @@ if [[  ${is_ustp_deployment} == true ]]; then
     echo "USTP Deployment..."
 else
     databaseName="$databaseName-e2e"
-    if [[ ${branch_hash_id} != 'DOES_NOT_EXIST' ]]; then
-        databaseName="$databaseName-$branch_hash_id"
+    if [[ ${info_sha} != 'DOES_NOT_EXIST' ]]; then
+        databaseName="$databaseName-$info_sha"
     fi
 fi
 
 echo "Database Name :${databaseName}"
 
-az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --slot-settings COSMOS_DATABASE_NAME="$databaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+commitSha=$(git rev-parse HEAD)
+
+az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
 
 
 echo "Setting CORS Allowed origins for the API..."
