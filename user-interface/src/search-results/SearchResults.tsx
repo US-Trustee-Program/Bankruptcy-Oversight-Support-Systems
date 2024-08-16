@@ -6,12 +6,12 @@ import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { deepEqual } from '@/lib/utils/objectEquality';
 import './SearchResults.scss';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -86,7 +86,7 @@ export function SearchResults(props: SearchResultsProps) {
   const noResultsMessage =
     props.noResultsMessage ?? 'Modify your search criteria to include more cases.';
 
-  const api = useGenericApi();
+  const api = useApi2();
 
   function handleSearchResults(response: ResponseBodySuccess<CaseBasics[]>) {
     if (isResponseBodySuccess(response)) {
@@ -119,7 +119,7 @@ export function SearchResults(props: SearchResultsProps) {
     setIsSearching(true);
     if (onStartSearching) onStartSearching();
     api
-      .post<CaseBasics[]>('/cases', searchPredicate)
+      .searchCases(searchPredicate)
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
