@@ -6,9 +6,6 @@ on:
       environment:
         required: true
         type: string
-      enableSlotDeployment:
-        required: true
-        type: string
       enableBicepDeployment:
         required: true
         type: string
@@ -31,21 +28,27 @@ on:
       azResourceGrpNetworkEncrypted:
         description: ""
         value: ${{ jobs.build-info.outputs.azResourceGrpNetworkEncrypted }}
+      cosmosClientId:
+        description: ""
+        value: ${{ jobs.build-info.outputs.cosmosClientId }}
+      cosmosPrincipalId:
+        description: ""
+        value: ${{ jobs.build-info.outputs.cosmosPrincipalId }}
       environmentHash:
         description: ""
         value: ${{ jobs.build-info.outputs.environmentHash }}
       slotName:
         description: ""
         value: ${{ jobs.build-info.outputs.slotName }}
-      slotDeploymentEnabled:
-        description: ""
-        value: ${{ jobs.build-info.outputs.slotDeploymentEnabled }}
       execVnetDeploy:
         description: ""
         value: ${{ jobs.build-info.outputs.execVnetDeploy }}
       deployBicep:
         description: ""
         value: ${{ jobs.build-info.outputs.deployBicep }}
+      initialDeployment:
+        description: ""
+        value: ${{ jobs.build-info.outputs.initialDeployment }}
       ghaEnvironment:
         description: ""
         value: ${{ inputs.environment }}
@@ -62,11 +65,13 @@ jobs:
       apiName: ${{ steps.build-info.outputs.apiName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
+      cosmosClientId: ${{ steps.get-cosmos-ids.outputs.cosmosClientId }}
+      cosmosPrincipalId: ${{ steps.get-cosmos-ids.outputs.cosmosPrincipalId }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
-      slotDeploymentEnabled: ${{ steps.build-info.outputs.slotDeploymentEnabled }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
+      initialDeployment: ${{ steps.check-initial-deployment.outputs.initialDeployment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -109,8 +114,6 @@ jobs:
           echo "Api Artifact: $apiName"
 
           # Deployment flags
-          echo "Full deployment is enabled: ${{ inputs.enableSlotDeployment == 'false' }}"
-          echo "Slot deployment is enabled: ${{ inputs.enableSlotDeployment != 'false' }}"
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
           execVnetDeploy=${{ inputs.deployVnet=='true' || 'false' }} # Set to true to attempt to create a new virtual network
           echo "Execute virtual network deployment: ${execVnetDeploy}"
@@ -122,7 +125,6 @@ jobs:
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
           echo "apiName=${apiName}" >> $GITHUB_OUTPUT
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-          echo "slotDeploymentEnabled=${{ inputs.enableSlotDeployment != 'false' }}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
@@ -145,6 +147,22 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ steps.rgApp.outputs.out }}
+
+      - name: Get Cosmos Client ID
+        id: get-cosmos-ids
+        run: |
+          cosmosClientId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
+          echo "cosmosClientId=${cosmosClientId}" >> $GITHUB_OUTPUT
+          cosmosPrincipalId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
+          echo "cosmosPrincipalId=${cosmosPrincipalId}" >> $GITHUB_OUTPUT
+          echo "CosmosClientId: ${cosmosClientId}"
+
+      - name: Check Initial Deployment
+        id: check-initial-deployment
+        run: |
+          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiName }})
+          echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
+          echo "Initial Deployment: ${initialDeployment}"
 
       - name: Check Bicep Deployment
         id: check-bicep

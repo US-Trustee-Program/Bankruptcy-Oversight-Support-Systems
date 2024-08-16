@@ -72,6 +72,10 @@ else
   echo "No Slot Provided"
 fi
 
+if [[ ${slot_name} == "initial" ]]; then
+  expected_git_sha="ProductionSlot"
+fi
+
 if [[ ${isLocalRun} == "true" ]]; then
   echo "Running against local"
   targetApiURL="http://localhost:7071/api/healthcheck"
@@ -86,7 +90,7 @@ webStatusCode=$("${webCmd[@]}")
 echo "Checking API endpoint: ${targetApiURL}"
 apiStatusCode=$("${apiCmd[@]}")
 
-if [[ -n "${expected_git_sha}" ]]; then
+if [[ "${expected_git_sha}" != '' ]]; then
   echo "Expect sha ${expected_git_sha}"
   retry=0
   currentGitSha=""
