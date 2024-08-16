@@ -1,5 +1,5 @@
 import { CaseAssignment } from '@common/cams/assignments';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { Consolidation } from '@common/cams/events';
 import { useGenericApi } from './UseApi';
@@ -7,6 +7,7 @@ import { Order } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser } from '@common/cams/users';
+import { CasesSearchPredicate } from '@common/api/search';
 
 const api = useGenericApi;
 
@@ -42,6 +43,10 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
+async function searchCases(predicate: CasesSearchPredicate) {
+  return api().post<CaseBasics[]>('/cases', predicate);
+}
+
 export const Api2 = {
   getAttorneys,
   getCaseSummary,
@@ -51,6 +56,7 @@ export const Api2 = {
   getMe,
   getOffices,
   getOrders,
+  searchCases,
 };
 
 // TODO: Deprecate this hook.

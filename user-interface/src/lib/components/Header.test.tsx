@@ -3,8 +3,13 @@ import React from 'react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { Header } from './Header';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import LocalStorage from '../utils/local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsRole } from '@common/cams/roles';
 
 describe('Header', () => {
+  const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
+  LocalStorage.setSession(MockData.getCamsSession({ user }));
   vi.spyOn(FeatureFlags, 'default').mockReturnValue({
     'transfer-orders-enabled': true,
     'case-search-enabled': true,
@@ -32,17 +37,16 @@ describe('Header', () => {
     renderWithoutProps();
     const mainTitle = await screen.findByText('U.S. Trustee Program');
     const subTitle = await screen.findByText('CAse Management System (CAMS)');
-    const caseAssignmentMenu = await screen.findByTestId('header-case-assignment-link');
+    const staffAssignmentMenu = await screen.findByTestId('header-staff-assignment-link');
 
     expect(mainTitle).toBeInTheDocument();
     expect(subTitle).toBeInTheDocument();
-    expect(caseAssignmentMenu).toBeInTheDocument();
+    expect(staffAssignmentMenu).toBeInTheDocument();
   });
 
   const highlightTestCases = [
     ['my cases', '/my-cases', 'header-my-cases-link'],
-    ['case assignment', '/case-assignment', 'header-case-assignment-link'],
-    ['case detail', '/case-detail', 'header-case-assignment-link'],
+    ['staff assignment', '/staff-assignment', 'header-staff-assignment-link'],
     ['data verification', '/data-verification', 'header-data-verification-link'],
     ['search', '/search', 'header-search-link'],
   ];
@@ -70,7 +74,7 @@ describe('Header', () => {
   });
 
   const linkTestIds = [
-    ['header-case-assignment-link'],
+    ['header-staff-assignment-link'],
     ['header-data-verification-link'],
     ['header-my-cases-link'],
     ['header-search-link'],

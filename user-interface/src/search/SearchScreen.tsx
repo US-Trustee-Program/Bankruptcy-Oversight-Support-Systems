@@ -10,20 +10,13 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { officeSorter } from '@/data-verification/DataVerificationScreen';
-import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { isValidSearchPredicate, SearchResults } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
-
-const DEFAULT_ALERT = {
-  show: false,
-  title: '',
-  message: '',
-  type: UswdsAlertStyle.Error,
-  timeout: 5,
-};
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export default function SearchScreen() {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
@@ -33,14 +26,13 @@ export default function SearchScreen() {
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
-  const [errorAlert, setErrorAlert] = useState<AlertProps>(DEFAULT_ALERT);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
-  const errorAlertRef = useRef<AlertRefType>(null);
 
   const api = useApi2();
+  const globalAlert = useGlobalAlert();
 
   function getChapters() {
     const chapterArray: ComboOption[] = [];
@@ -59,13 +51,7 @@ export default function SearchScreen() {
         setOfficesList(response.data.sort(officeSorter));
       })
       .catch(() => {
-        setErrorAlert({
-          ...DEFAULT_ALERT,
-          title: 'Error',
-          message: 'Cannot load office list',
-          show: true,
-        });
-        errorAlertRef.current?.show(false);
+        globalAlert?.error('Cannot load office list');
       });
   }
 
@@ -144,7 +130,6 @@ export default function SearchScreen() {
 
   return (
     <div className="search-screen" data-testid="search">
-      <Alert ref={errorAlertRef} inline={false} {...errorAlert}></Alert>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">

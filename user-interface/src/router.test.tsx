@@ -3,16 +3,26 @@ import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import App from './App';
 import { vi } from 'vitest';
+import LocalStorage from './lib/utils/local-storage';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsRole } from '@common/cams/roles';
 
 describe('App Router Tests', () => {
   beforeAll(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({
+        user: MockData.getCamsUser({
+          roles: [CamsRole.CaseAssignmentManager],
+        }),
+      }),
+    );
   });
 
-  test('should route /case-assignment to CaseAssignment', async () => {
+  test('should route /staff-assignment to CaseAssignment', async () => {
     render(<App />, { wrapper: BrowserRouter });
 
-    await userEvent.click(screen.getByTestId('header-case-assignment-link'));
+    await userEvent.click(screen.getByTestId('header-staff-assignment-link'));
 
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });

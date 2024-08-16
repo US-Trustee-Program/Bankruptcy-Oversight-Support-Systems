@@ -16,6 +16,8 @@ import { StaffAssignmentHeader } from './StaffAssignmentHeader';
 import { StaffAssignmentRow } from './StaffAssignmentRow';
 import './StaffAssignmentScreen.scss';
 import AssignAttorneyModal, { AssignAttorneyModalRef } from './modal/AssignAttorneyModal';
+import { CamsRole } from '@common/cams/roles';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -37,6 +39,8 @@ export const StaffAssignmentScreen = () => {
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
 
+  const globalAlert = useGlobalAlert();
+
   function StaffAssignmentRowClosure(props: SearchResultsRowProps) {
     return StaffAssignmentRow({
       ...props,
@@ -44,8 +48,12 @@ export const StaffAssignmentScreen = () => {
     });
   }
 
-  if (!session || !session.user.offices) {
-    return <>Invalid user expectation</>;
+  if (
+    !session ||
+    (!session?.user?.roles?.includes(CamsRole.CaseAssignmentManager) && !session.user.offices)
+  ) {
+    globalAlert?.error('Invalid Permissions');
+    return <></>;
   }
   const searchPredicate = getPredicateByUserContext(session.user);
 

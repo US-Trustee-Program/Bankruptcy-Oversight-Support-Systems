@@ -11,6 +11,9 @@ import { CaseBasics } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
+import Api2 from '@/lib/hooks/UseApi2';
+import { AttorneyUser } from '@common/cams/users';
+import { ResponseBodySuccess } from '@common/api/response';
 
 const offices = [MANHATTAN!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -28,14 +31,19 @@ const attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mo
 const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
+  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
+    meta: { isPaginated: false, self: 'self-url' },
+    isSuccess: true,
+    data: attorneyList,
+  };
+  vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+
   function renderWithProps(
     modalRef: React.RefObject<AssignAttorneyModalRef>,
     props: Partial<AssignAttorneyModalProps> = {},
   ) {
     const defaults: AssignAttorneyModalProps = {
-      attorneyList,
       modalId,
-      callBack: vi.fn(),
     };
 
     const propsToRender: AssignAttorneyModalProps = {
@@ -74,9 +82,12 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     bCase.assignments = [];
 
+    const callback = vi.fn();
     modalRef.current?.show({
       bCase,
+      callback,
     });
+
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
@@ -131,7 +142,9 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
+    const callback = vi.fn();
     modalRef.current?.show({
+      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -179,7 +192,9 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
+    const callback = vi.fn();
     modalRef.current?.show({
+      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -203,12 +218,13 @@ describe('Test Assign Attorney Modal Component', () => {
   test('should call callback with error information if API caseAssignments POST returns error', async () => {
     const error = new Error('API Rejection');
     vi.spyOn(Api, 'post').mockRejectedValue(error);
-    const callBack = vi.fn();
 
     const modalRef = React.createRef<AssignAttorneyModalRef>();
-    renderWithProps(modalRef, { callBack });
+    renderWithProps(modalRef, {});
 
+    const callback = vi.fn();
     modalRef.current?.show({
+      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -235,7 +251,7 @@ describe('Test Assign Attorney Modal Component', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(callBack).toHaveBeenCalledWith(
+      expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           apiResult: error,
           status: 'error',
