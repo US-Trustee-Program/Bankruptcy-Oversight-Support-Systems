@@ -9,43 +9,38 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { AssignAttorneyModalRef, CallbackProps } from './modal/AssignAttorneyModal';
-import { CaseBasics } from '@common/cams/cases';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { AttorneyUser } from '@common/cams/users';
+import { CaseBasics } from '@common/cams/cases';
 
-export type StaffAssignmentRowOptions = {
-  modalId: string;
+type State = {
+  assignments: AttorneyUser[];
+  isLoading: boolean;
+  bCase: CaseBasics;
   modalRef: React.RefObject<AssignAttorneyModalRef>;
 };
 
-export type StaffAssignmentRowProps = SearchResultsRowProps & {
-  options: StaffAssignmentRowOptions;
+type Actions = {
+  getCaseAssignments: () => void;
+  updateAssignmentsCallback: (props: CallbackProps) => void;
 };
 
-function deepCopy(obj: object) {
-  return JSON.parse(JSON.stringify(obj));
-}
-
-export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
-  const { bCase, idx, options, ...otherProps } = props;
-  const { modalId, modalRef } = options as StaffAssignmentRowOptions;
-
-  const [bCaseCopy, setBCaseCopy] = useState<CaseBasics>(deepCopy(bCase));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
+export function useStaffAssignmentRowActions(initialState: State): {
+  state: State;
+  actions: Actions;
+} {
   const api = useApi2();
   const globalAlert = useGlobalAlert();
+
+  const [state, setState] = useState<State>(initialState);
 
   function updateAssignmentsCallback(props: CallbackProps) {
     const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
 
     if (status === 'error') {
-      globalAlert?.show({
-        message: (apiResult as Error).message,
-        type: UswdsAlertStyle.Error,
-        timeout: 8,
-      });
+      globalAlert?.error((apiResult as Error).message);
     } else if (bCase) {
       const messageArr = [];
       const addedAssignments = selectedAttorneyList.filter(
@@ -65,105 +60,136 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
           `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
         );
       }
-
-      const alertMessage =
+      const message =
         messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
 
-      globalAlert?.show({ message: alertMessage, type: UswdsAlertStyle.Success, timeout: 8 });
-
-      options.modalRef.current?.hide();
-      getCaseAssignments(true);
+      globalAlert?.success(message);
+      state.modalRef.current?.hide();
+      getCaseAssignments();
     }
   }
 
-  async function getCaseAssignments(forceReload: boolean = false) {
-    if (!isLoading && !forceReload) return;
+  async function getCaseAssignments() {
     api
-      .getCaseAssignments(bCase.caseId)
+      .getCaseAssignments(state.bCase.caseId)
       .then((response) => {
         const assignments = response.data.map((assignment) => {
           return { id: assignment.userId, name: assignment.name };
         });
-        const newBCaseCopy = { ...bCaseCopy, assignments };
-        setBCaseCopy(newBCaseCopy);
+        setState({ ...state, assignments, isLoading: false });
+        state.assignments = assignments;
       })
       .catch((_reason) => {
         globalAlert?.show({
-          message: `Could not get staff assignments for case ${bCaseCopy.caseTitle}`,
+          message: `Could not get staff assignments for case ${state.bCase.caseTitle}`,
           type: UswdsAlertStyle.Error,
           timeout: 8,
         });
-      })
-      .finally(() => {
-        setIsLoading(false);
+        setState({ ...state, isLoading: false });
       });
   }
 
-  useEffect(() => {
-    getCaseAssignments();
-  }, []);
+  const actions = { updateAssignmentsCallback, getCaseAssignments };
 
-  let assignmentJsx;
-  let actionButton;
+  return { state, actions };
+}
 
-  const commonModalButtonProps = {
-    className: 'case-assignment-modal-toggle',
-    buttonIndex: `toggle-button-${idx}`,
-    toggleProps: { bCase: bCaseCopy, callback: updateAssignmentsCallback },
-    modalId,
+export type StaffAssignmentRowOptions = {
+  modalId: string;
+  modalRef: React.RefObject<AssignAttorneyModalRef>;
+};
+
+export type StaffAssignmentRowProps = SearchResultsRowProps & {
+  options: StaffAssignmentRowOptions;
+};
+
+export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
+  const { bCase, idx, options, ...otherProps } = props;
+  const { modalId, modalRef } = options as StaffAssignmentRowOptions;
+
+  const initialState: State = {
+    assignments: [],
+    isLoading: true,
+    bCase,
     modalRef,
   };
 
-  if (bCaseCopy.assignments && bCaseCopy.assignments.length > 0) {
-    assignmentJsx = bCaseCopy.assignments?.map((attorney, key: number) => (
-      <span key={key}>
-        {attorney.name}
-        <br />
-      </span>
-    ));
-    actionButton = (
-      <ToggleModalButton
-        {...commonModalButtonProps}
-        uswdsStyle={UswdsButtonStyle.Outline}
-        toggleAction="open"
-        title="edit assignments"
-      >
-        Edit
-      </ToggleModalButton>
-    );
-  } else {
-    assignmentJsx = <>(unassigned)</>;
-    actionButton = (
-      <ToggleModalButton {...commonModalButtonProps} toggleAction="open" title="add assignments">
-        Assign
-      </ToggleModalButton>
-    );
+  const { state, actions } = useStaffAssignmentRowActions(initialState);
+
+  useEffect(() => {
+    actions.getCaseAssignments();
+  }, []);
+
+  function buildActionButton(assignments: AttorneyUser[]) {
+    const commonModalButtonProps = {
+      className: 'case-assignment-modal-toggle',
+      buttonIndex: `toggle-button-${idx}`,
+      toggleProps: {
+        bCase: { ...bCase, assignments: state.assignments },
+        callback: actions.updateAssignmentsCallback,
+      },
+      modalId,
+      modalRef,
+    };
+
+    if (assignments.length > 0) {
+      return (
+        <ToggleModalButton
+          {...commonModalButtonProps}
+          uswdsStyle={UswdsButtonStyle.Outline}
+          toggleAction="open"
+          title="edit assignments"
+        >
+          Edit
+        </ToggleModalButton>
+      );
+    } else {
+      return (
+        <ToggleModalButton {...commonModalButtonProps} toggleAction="open" title="add assignments">
+          Assign
+        </ToggleModalButton>
+      );
+    }
+  }
+
+  function buildAssignmentList(assignments: AttorneyUser[]) {
+    if (assignments.length > 0) {
+      return state.assignments?.map((attorney, key: number) => (
+        <span key={key}>
+          {attorney.name}
+          <br />
+        </span>
+      ));
+    } else {
+      return <>(unassigned)</>;
+    }
   }
 
   return (
     <TableRow {...otherProps} key={idx}>
-      <TableRowData dataSortValue={bCaseCopy.caseId}>
+      <TableRowData dataSortValue={bCase.caseId}>
         <span className="no-wrap">
-          <CaseNumber caseId={bCaseCopy.caseId} /> ({bCase.courtDivisionName})
+          <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
-      <TableRowData>{bCaseCopy.caseTitle}</TableRowData>
-      <TableRowData>{bCaseCopy.chapter}</TableRowData>
-      <TableRowData>{formatDate(bCaseCopy.dateFiled)}</TableRowData>
+      <TableRowData>{bCase.caseTitle}</TableRowData>
+      <TableRowData>{bCase.chapter}</TableRowData>
+      <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
-        {isLoading && (
+        {state.isLoading && (
           <div className="table-flex-container">
             <div className="attorney-list-container">
               <LoadingSpinner caption="Loading..." />
             </div>
           </div>
         )}
-        {!isLoading && (
+        {!state.isLoading && (
           <div className="table-flex-container">
-            <div className="attorney-list-container">{assignmentJsx}</div>
+            <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
             <div className="table-column-toolbar">
-              {Actions.contains(bCaseCopy, Actions.ManageAssignments) && actionButton}
+              {Actions.contains(bCase, Actions.ManageAssignments) &&
+                buildActionButton(state.assignments)}
             </div>
           </div>
         )}
