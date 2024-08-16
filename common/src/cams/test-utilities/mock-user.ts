@@ -102,6 +102,7 @@ export const MockUsers: MockUser[] = [
       offices: [DELAWARE],
     },
   },
+  SUPERUSER,
 ];
 
 export default MockUsers;
