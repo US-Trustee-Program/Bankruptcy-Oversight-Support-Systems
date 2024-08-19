@@ -1,3 +1,7 @@
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
+import LocalStorage from '../utils/local-storage';
+
 async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
   const startTime = Date.now();
 
@@ -16,9 +20,15 @@ async function waitFor(condition: () => boolean, timeout = 5000, interval = 50):
   });
 }
 
+function setUserWithRoles(roles: CamsRole[]) {
+  const user = MockData.getCamsUser({ roles });
+  LocalStorage.setSession(MockData.getCamsSession({ user }));
+}
+
 export const urlRegex = /https?:\/\/.*\//;
 export const TestingUtilities = {
   waitFor,
+  setUserWithRoles,
 };
 
 export default TestingUtilities;

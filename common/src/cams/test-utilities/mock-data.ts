@@ -77,8 +77,8 @@ function getOffices() {
   return OFFICES;
 }
 
-function getOfficeByCourtIdAndOfficeCode(courtId: string, officeCode: string) {
-  return OFFICES.find((office) => office.courtId === courtId && office.officeCode === officeCode);
+function getOfficeByGroupDesignator(groupDesignator: string) {
+  return OFFICES.find((office) => office.groupDesignator === groupDesignator);
 }
 
 function randomOffice() {
@@ -498,7 +498,7 @@ export const MockData = {
   getCaseSummary,
   getCaseDetail,
   getOffices,
-  getOfficeByCourtIdAndOfficeCode,
+  getOfficeByGroupDesignator,
   getParty,
   getDocketEntry,
   getNonPaginatedResponseBodySuccess,
