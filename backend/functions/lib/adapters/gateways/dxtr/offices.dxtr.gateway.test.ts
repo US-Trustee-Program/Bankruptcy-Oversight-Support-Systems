@@ -75,7 +75,7 @@ describe('offices gateway tests', () => {
     });
   });
 
-  describe('getOfficeByCourtIdAndOfficeCode test', () => {
+  describe('getOfficeByGroupDesignator test', () => {
     let applicationContext: ApplicationContext;
     const querySpy = jest.spyOn(database, 'executeQuery');
 
@@ -102,26 +102,36 @@ describe('offices gateway tests', () => {
 
       const gateway = new OfficesDxtrGateway();
 
-      const offices = await gateway.getOfficeByCourtIdAndOfficeCode(
-        applicationContext,
-        '0081',
-        '1',
-      );
+      const offices = await gateway.getOfficeByGroupDesignator(applicationContext, 'NY');
       expect(offices).toEqual(MANHATTAN);
     });
 
     test('should throw invalid parameter exception with invalid parameters', async () => {
       const gateway = new OfficesDxtrGateway();
       await expect(async () => {
-        await gateway.getOfficeByCourtIdAndOfficeCode(applicationContext, '081', '1');
-      }).rejects.toThrow('Invalid court id or office code supplied');
-
-      await expect(async () => {
-        await gateway.getOfficeByCourtIdAndOfficeCode(applicationContext, '0081', '01');
-      }).rejects.toThrow('Invalid court id or office code supplied');
+        await gateway.getOfficeByGroupDesignator(applicationContext, '');
+      }).rejects.toThrow('Invalid group designator supplied');
     });
 
-    test('should throw CamsError when success is false when calling getOfficeByCourtIdAndOfficeCode', async () => {
+    test('should throw invalid parameter exception with invalid parameters', async () => {
+      const mockResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+      querySpy.mockImplementation(async () => {
+        return Promise.resolve(mockResults);
+      });
+
+      const gateway = new OfficesDxtrGateway();
+      await expect(async () => {
+        await gateway.getOfficeByGroupDesignator(applicationContext, 'ZZ');
+      }).rejects.toThrow('Office not found by query designator.');
+    });
+
+    test('should throw CamsError when success is false when calling getOfficeByGroupDesignator', async () => {
       const mockResults: QueryResults = {
         success: false,
         results: {},
@@ -134,7 +144,7 @@ describe('offices gateway tests', () => {
       const gateway = new OfficesDxtrGateway();
 
       await expect(async () => {
-        await gateway.getOfficeByCourtIdAndOfficeCode(applicationContext, '0081', '1');
+        await gateway.getOfficeByGroupDesignator(applicationContext, 'NY');
       }).rejects.toThrow('Some expected SQL error.');
     });
   });

@@ -43,26 +43,31 @@ function getRoles(groups: string[]): CamsRole[] {
   return groups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
 }
 
-async function getOffices(context: ApplicationContext, groups: string[]): Promise<OfficeDetails[]> {
+async function getOffices(
+  context: ApplicationContext,
+  idpGroups: string[],
+): Promise<OfficeDetails[]> {
   const officesMap = LocalStorageGateway.getOfficeMapping();
-  const officeDetailsKeys = groups
-    .filter((group) => officesMap.has(group))
-    .map((group) => {
-      return {
-        courtId: officesMap.get(group).courtId,
-        officeCode: officesMap.get(group).officeCode,
-      };
-    });
+  const dxtrGroupDesignators = idpGroups
+    .filter((idpGroup) => officesMap.has(idpGroup))
+    .reduce((groupDesignators, idpGroup) => {
+      officesMap.get(idpGroup).forEach((designator) => {
+        groupDesignators.add(designator);
+      });
+      return groupDesignators;
+    }, new Set<string>());
   const officesGateway = getOfficesGateway(context);
-  const officeDetailsArray = officeDetailsKeys.map((detail) => {
-    return officesGateway.getOfficeByCourtIdAndOfficeCode(
-      context,
-      detail.courtId,
-      detail.officeCode,
-    );
-  });
-  const returnStuff = Promise.all(officeDetailsArray);
-  return returnStuff;
+
+  const offices: OfficeDetails[] = [];
+  for (const designator of dxtrGroupDesignators) {
+    try {
+      const office = await officesGateway.getOfficeByGroupDesignator(context, designator);
+      offices.push(office);
+    } catch (error) {
+      context.logger.warn(MODULE_NAME, error.message, { designator });
+    }
+  }
+  return offices;
 }
 
 export class UserSessionGateway implements SessionGateway {
