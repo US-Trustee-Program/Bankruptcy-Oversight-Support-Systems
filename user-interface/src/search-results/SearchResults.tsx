@@ -20,7 +20,7 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
-function sortByDateFiled(a: CaseBasics, b: CaseBasics): number {
+export function sortByDateFiled(a: CaseBasics, b: CaseBasics): number {
   if (a.dateFiled < b.dateFiled) {
     return 1;
   } else if (a.dateFiled > b.dateFiled) {
@@ -30,7 +30,7 @@ function sortByDateFiled(a: CaseBasics, b: CaseBasics): number {
   }
 }
 
-function sortByCaseId(a: CaseBasics, b: CaseBasics): number {
+export function sortByCaseId(a: CaseBasics, b: CaseBasics): number {
   if (a.caseId < b.caseId) {
     return 1;
   } else if (a.caseId > b.caseId) {
