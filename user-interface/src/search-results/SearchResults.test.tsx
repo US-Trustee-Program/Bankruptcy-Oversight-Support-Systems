@@ -2,7 +2,13 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate } from '@common/api/search';
-import { SearchResults, SearchResultsProps, sortByCaseId, sortByDateFiled } from './SearchResults';
+import {
+  SearchResults,
+  SearchResultsProps,
+  sortByCaseId,
+  sortByDateFiled,
+  sortCaseList,
+} from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
 import { buildResponseBodyError, buildResponseBodySuccess } from '@common/api/response';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
@@ -155,31 +161,31 @@ describe('SearchResults component tests', () => {
   });
 });
 
-test('should sort objects properly by dateFiled', () => {
-  const unsortedDates = [
-    MockData.getCaseBasics({ override: { dateFiled: '2022-01-01' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2020-01-01' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2024-09-15' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
-  ];
-
-  const sortedDates = [
-    MockData.getCaseBasics({ override: { dateFiled: '2024-09-15' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2022-01-01' } }),
-    MockData.getCaseBasics({ override: { dateFiled: '2020-01-01' } }),
-  ];
-
-  const finalDates = unsortedDates.sort(sortByDateFiled);
-
-  for (let i = 0; i < finalDates.length; i++) {
-    expect(finalDates[i].dateFiled).toEqual(sortedDates[i].dateFiled);
-  }
-});
-
 describe('test sorting functions', () => {
+  test('should sort objects properly by dateFiled', () => {
+    const unsortedDates = [
+      MockData.getCaseBasics({ override: { dateFiled: '2022-01-01' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2020-01-01' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2024-09-15' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
+    ];
+
+    const sortedDates = [
+      MockData.getCaseBasics({ override: { dateFiled: '2024-09-15' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2022-04-01' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2022-01-01' } }),
+      MockData.getCaseBasics({ override: { dateFiled: '2020-01-01' } }),
+    ];
+
+    const finalDates = unsortedDates.sort(sortByDateFiled);
+
+    for (let i = 0; i < finalDates.length; i++) {
+      expect(finalDates[i].dateFiled).toEqual(sortedDates[i].dateFiled);
+    }
+  });
+
   test('should sort objects properly by caseId', () => {
     const unsortedDates = [
       MockData.getCaseBasics({ override: { caseId: '20-22011' } }),
@@ -200,6 +206,31 @@ describe('test sorting functions', () => {
     const finalDates = unsortedDates.sort(sortByCaseId);
 
     for (let i = 0; i < finalDates.length; i++) {
+      expect(finalDates[i].caseId).toEqual(sortedDates[i].caseId);
+    }
+  });
+
+  test('should sort first by dateFiled and then by caseId', () => {
+    const unsortedDates = [
+      MockData.getCaseBasics({ override: { caseId: '24-00001', dateFiled: '2022-01-01' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00002', dateFiled: '2020-01-01' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00003', dateFiled: '2022-04-01' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00004', dateFiled: '2024-09-15' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00005', dateFiled: '2022-04-01' } }),
+    ];
+
+    const sortedDates = [
+      MockData.getCaseBasics({ override: { caseId: '24-00004', dateFiled: '2024-09-15' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00005', dateFiled: '2022-04-01' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00003', dateFiled: '2022-04-01' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00001', dateFiled: '2022-01-01' } }),
+      MockData.getCaseBasics({ override: { caseId: '24-00002', dateFiled: '2020-01-01' } }),
+    ];
+
+    const finalDates = unsortedDates.sort(sortCaseList);
+
+    for (let i = 0; i < finalDates.length; i++) {
+      expect(finalDates[i].dateFiled).toEqual(sortedDates[i].dateFiled);
       expect(finalDates[i].caseId).toEqual(sortedDates[i].caseId);
     }
   });
