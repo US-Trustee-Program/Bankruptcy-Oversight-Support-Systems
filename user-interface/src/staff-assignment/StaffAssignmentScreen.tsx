@@ -26,6 +26,10 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
     divisionCodes: user.offices?.map((office) => office.courtDivisionCode),
   };
 
+  if (!predicate.divisionCodes) {
+    predicate.divisionCodes = [];
+  }
+
   return predicate;
 }
 
@@ -48,10 +52,7 @@ export const StaffAssignmentScreen = () => {
     });
   }
 
-  if (
-    !session ||
-    (!session?.user?.roles?.includes(CamsRole.CaseAssignmentManager) && !session.user.offices)
-  ) {
+  if (!session?.user?.roles?.includes(CamsRole.CaseAssignmentManager)) {
     globalAlert?.error('Invalid Permissions');
     return <></>;
   }
