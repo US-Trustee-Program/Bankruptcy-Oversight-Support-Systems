@@ -13,12 +13,10 @@ import { DefaultAzureCredential, ManagedIdentityCredential } from '@azure/identi
 import CosmosDatabaseHumble from './cosmos-database-humble';
 
 export default class CosmosClientHumble {
-  private cosmosClient: CosmosClient;
-  private clientContext: ClientContext;
+  private readonly cosmosClient: CosmosClient;
+  private readonly clientContext: ClientContext;
   private databases: Databases;
-  private options: CosmosClientOptions;
-  // private offers: Offers;
-  private endpointRefresher: NodeJS.Timeout;
+  private readonly options: CosmosClientOptions;
 
   constructor(config: ApplicationConfiguration) {
     this.options = {
@@ -37,7 +35,6 @@ export default class CosmosClientHumble {
     this.clientContext = new ClientContext(this.options, globalEndpointManager);
 
     this.databases = new Databases(this.cosmosClient, this.clientContext);
-    // this.offers = new Offers(this.cosmosClient, this.clientContext);
   }
 
   public database(id: string): CosmosDatabaseHumble {
@@ -54,25 +51,5 @@ export default class CosmosClientHumble {
       response.code,
       response.substatus,
     );
-  }
-
-  public dispose(): void {
-    clearTimeout(this.endpointRefresher);
-  }
-
-  private async backgroundRefreshEndpointList(
-    globalEndpointManager: GlobalEndpointManager,
-    refreshRate: number,
-  ) {
-    this.endpointRefresher = setInterval(() => {
-      try {
-        globalEndpointManager.refreshEndpointList();
-      } catch (e: unknown) {
-        // Failed to refresh endpoints
-      }
-    }, refreshRate);
-    if (this.endpointRefresher.unref && typeof this.endpointRefresher.unref === 'function') {
-      this.endpointRefresher.unref();
-    }
   }
 }

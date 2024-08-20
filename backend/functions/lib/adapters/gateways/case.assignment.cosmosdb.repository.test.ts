@@ -207,7 +207,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     let exceptionTriggered = false;
     try {
       await repository.findAssignmentsByCaseId(NOT_FOUND_ERROR_CASE_ID);
-    } catch (e) {
+    } catch {
       exceptionTriggered = true;
     }
     expect(exceptionTriggered).toBeTruthy();

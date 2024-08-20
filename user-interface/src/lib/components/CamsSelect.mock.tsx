@@ -30,7 +30,9 @@ export function MockCamsSelectComponent(props: CamsSelectProps, ref: React.Ref<S
 
   function handleOnClick(option: SingleSelectOption) {
     setInternalValue(option);
-    if (props.onChange) props.onChange && props.onChange(option);
+    if (props.onChange) {
+      props.onChange && props.onChange(option);
+    }
   }
 
   function clearValue() {
