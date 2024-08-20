@@ -3,7 +3,7 @@ import { forwardRef, RefObject, useEffect, useImperativeHandle, useRef, useState
 import { ResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
@@ -123,11 +123,7 @@ function _AssignAttorneyModal(
       attorneys = await api.getAttorneys();
       setAttorneyList((attorneys as ResponseBodySuccess<AttorneyUser[]>).data);
     } catch (e) {
-      globalAlert?.show({
-        message: (e as Error).message,
-        type: UswdsAlertStyle.Error,
-        timeout: 0,
-      });
+      globalAlert?.error((e as Error).message);
     }
   };
 

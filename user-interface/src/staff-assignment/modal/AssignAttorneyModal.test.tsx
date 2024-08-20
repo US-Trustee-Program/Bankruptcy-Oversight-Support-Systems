@@ -14,6 +14,7 @@ import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButto
 import Api2 from '@/lib/hooks/UseApi2';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBodySuccess } from '@common/api/response';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const offices = [MANHATTAN!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -36,7 +37,6 @@ describe('Test Assign Attorney Modal Component', () => {
     isSuccess: true,
     data: attorneyList,
   };
-  vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
 
   function renderWithProps(
     modalRef: React.RefObject<AssignAttorneyModalRef>,
@@ -68,6 +68,14 @@ describe('Test Assign Attorney Modal Component', () => {
       </React.StrictMode>,
     );
   }
+
+  beforeEach(() => {
+    vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
 
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
@@ -257,6 +265,19 @@ describe('Test Assign Attorney Modal Component', () => {
           status: 'error',
         }),
       );
+    });
+  });
+
+  test('should display error alert when call to getAttorneys throws an error', async () => {
+    const error = new Error('API Rejection');
+    vi.spyOn(Api2, 'getAttorneys').mockRejectedValue(error);
+    const alertSpy = testingUtilities.spyOnGlobalAlert();
+
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef, {});
+
+    await waitFor(() => {
+      expect(alertSpy.error).toHaveBeenCalled();
     });
   });
 });

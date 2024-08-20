@@ -14,12 +14,18 @@ import * as genericApiModule from '@/lib/hooks/UseApi';
 import { CamsUser } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { BrowserRouter } from 'react-router-dom';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
 
-  beforeAll(() => {
+  beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   test('should render an information modal', async () => {
@@ -78,5 +84,18 @@ describe('MyCasesScreen', () => {
       },
       {},
     );
+  });
+
+  test('should render "Invalid user expectation" if user has no offices', () => {
+    const user = testingUtilities.setUser({
+      offices: undefined,
+      roles: [CamsRole.CaseAssignmentManager],
+    });
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+
+    render(<MyCasesScreen></MyCasesScreen>);
+
+    const body = document.querySelector('body');
+    expect(body).toHaveTextContent('Invalid user expectation');
   });
 });
