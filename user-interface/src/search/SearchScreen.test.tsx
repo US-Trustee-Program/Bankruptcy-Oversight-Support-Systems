@@ -32,6 +32,7 @@ describe('search screen', () => {
       </BrowserRouter>,
     );
   }
+
   test('should render a list of cases by chapter number', async () => {
     const divisionSearchPredicate = {
       limit: 25,
@@ -103,6 +104,21 @@ describe('search screen', () => {
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
     );
+
+    // clear division selection
+    const pillButton = document.querySelector('#case-chapter-search .pill-clear-button');
+    expect(pillButton).toBeInTheDocument();
+
+    const pillBox = document.querySelector('#case-chapter-search-pill-box');
+    expect(pillBox).toBeInTheDocument();
+    expect(pillBox?.children.length).toBeGreaterThan(0);
+
+    fireEvent.click(pillButton!);
+
+    await waitFor(() => {
+      expect(pillBox?.children.length).toEqual(0);
+      expect(pillButton).not.toBeInTheDocument();
+    });
   });
 
   test('should render a list of cases by court division', async () => {
@@ -210,6 +226,21 @@ describe('search screen', () => {
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
     );
+
+    // clear division selection
+    const pillButton = document.querySelector('#court-selections-search .pill-clear-button');
+    expect(pillButton).toBeInTheDocument();
+
+    const pillBox = document.querySelector('#court-selections-search-pill-box');
+    expect(pillBox).toBeInTheDocument();
+    expect(pillBox?.children.length).toBeGreaterThan(0);
+
+    fireEvent.click(pillButton!);
+
+    await waitFor(() => {
+      expect(pillBox?.children.length).toEqual(0);
+      expect(pillButton).not.toBeInTheDocument();
+    });
   });
 
   test('should render a list of cases by case number', async () => {
