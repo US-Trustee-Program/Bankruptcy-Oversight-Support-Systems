@@ -10,7 +10,6 @@ import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { AssignAttorneyModalRef, CallbackProps } from './modal/AssignAttorneyModal';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { AttorneyUser } from '@common/cams/users';
 import { CaseBasics } from '@common/cams/cases';
@@ -80,11 +79,7 @@ export function useStaffAssignmentRowActions(initialState: State): {
         state.assignments = assignments;
       })
       .catch((_reason) => {
-        globalAlert?.show({
-          message: `Could not get staff assignments for case ${state.bCase.caseTitle}`,
-          type: UswdsAlertStyle.Error,
-          timeout: 8,
-        });
+        globalAlert?.error(`Could not get staff assignments for case ${state.bCase.caseTitle}`);
         setState({ ...state, isLoading: false });
       });
   }
