@@ -6,7 +6,7 @@ import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate } from '@common/api/search';
 import { buildResponseBodySuccess } from '@common/api/response';
 import Api2 from '@/lib/hooks/UseApi2';
-import { _GlobalAlert } from '../lib/components/cams/GlobalAlert/GlobalAlert';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('search screen', () => {
   let caseList: CaseSummary[];
@@ -350,37 +350,18 @@ describe('search screen', () => {
     });
   });
 
-  /*
-  TODO: Figure out how to spy on a component with a mocked interface and ensure that spy was called.
   test('should show an error alert if offices cannot be retrieved from API', async () => {
-    vi.spyOn(Api2, 'searchCases')
+    vi.spyOn(Api2, 'getOffices')
       .mockRejectedValueOnce({
         message: 'some error',
       })
       .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
-
-    const errorSpy = vi.fn();
-    vi.mock('../lib/components/cams/GlobalAlert/GlobalAlert', () => {
-      return {
-        __esModule: true,
-        default: () =>
-          forwardRef((_props: AlertProps, _ref: GlobalAlertRef) => {
-            return (_props: AlertProps, _ref: GlobalAlertRef) => ({
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
-              error: (message: string) => {
-                errorSpy(message);
-              },
-            });
-          }),
-      };
-    });
-    // const errorMessage = 'Cannot load office list';
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();
 
-    expect(errorSpy).toHaveBeenCalled();
-
-    // expect(errorSpy).toHaveBeenCalledWith(errorMessage);
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Cannot load office list');
+    });
   });
-  */
 });

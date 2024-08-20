@@ -14,6 +14,9 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { CaseBasics } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
+//import { GlobalAlertRef } from '@/lib/components/cams/GlobalAlert/GlobalAlert';
+//import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('StaffAssignmentRow tests', () => {
   const bCase: ResourceActions<CaseBasics> = {
@@ -145,7 +148,18 @@ describe('StaffAssignmentRow tests', () => {
     });
   });
 
-  // TODO: Test Api2.getCaseAssignments() reject
+  test('should show error alert when an error is thrown by api.getCaseAssignments', async () => {
+    vi.spyOn(Api2, 'getCaseAssignments').mockRejectedValue('some error');
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    renderWithProps();
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        expect.stringContaining('Could not get staff assignments for case '),
+      );
+    });
+  });
 
   // TODO: Test useStaffAssignmentRowActions.actions.getCaseAssignments()
 });
