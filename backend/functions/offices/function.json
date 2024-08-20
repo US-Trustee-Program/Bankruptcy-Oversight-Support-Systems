@@ -6,9 +6,7 @@
       "direction": "in",
       "name": "req",
       "route": "offices",
-      "methods": [
-        "get"
-      ]
+      "methods": ["get"]
     },
     {
       "type": "http",

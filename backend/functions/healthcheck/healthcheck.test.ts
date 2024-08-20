@@ -24,6 +24,7 @@ jest.mock('mssql', () => {
 });
 
 test('Healthcheck endpoint should return an ALIVE status', async () => {
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   const request = {

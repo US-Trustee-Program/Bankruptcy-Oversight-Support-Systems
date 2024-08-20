@@ -20,6 +20,7 @@ describe('Case Assignment Function Tests', () => {
       role: 'TrialAttorney',
     },
   });
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(

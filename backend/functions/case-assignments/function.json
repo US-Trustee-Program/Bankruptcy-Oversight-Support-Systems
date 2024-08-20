@@ -7,10 +7,7 @@
       "name": "req",
       "cardinality": "many",
       "route": "case-assignments/{id?}",
-      "methods": [
-        "get",
-        "post"
-      ]
+      "methods": ["get", "post"]
     },
     {
       "type": "http",
