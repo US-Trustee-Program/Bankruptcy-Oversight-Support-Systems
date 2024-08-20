@@ -47,7 +47,6 @@ function spyOnGlobalAlert() {
   return hookFunctions;
 }
 
-export const urlRegex = /https?:\/\/.*\//;
 export const TestingUtilities = {
   waitFor,
   setUser,
