@@ -13,6 +13,7 @@ describe('Case docket function', () => {
     method: 'GET',
   });
 
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('Should return case history for an existing case ID', async () => {

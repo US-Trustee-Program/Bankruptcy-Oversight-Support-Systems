@@ -6,6 +6,7 @@ import { createMockAzureFunctionRequest } from '../azure/functions';
 describe('Case docket function', () => {
   const caseId = NORMAL_CASE_ID;
   const request = createMockAzureFunctionRequest({ params: { caseId } });
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('Should return a docket consisting of a list of docket entries an existing case ID', async () => {

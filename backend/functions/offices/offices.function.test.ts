@@ -16,6 +16,7 @@ jest.mock('../lib/controllers/offices/offices.controller', () => {
 
 describe('offices Function tests', () => {
   const request = createMockAzureFunctionRequest();
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('should set successful response', async () => {

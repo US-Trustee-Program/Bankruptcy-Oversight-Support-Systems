@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 describe('Authorization config tests', () => {
   const originalEnv = process.env;
 

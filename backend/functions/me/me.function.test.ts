@@ -6,6 +6,7 @@ import { ForbiddenError } from '../lib/common-errors/forbidden-error';
 
 describe('me Function test', () => {
   const request = createMockAzureFunctionRequest();
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('should set successful response', async () => {

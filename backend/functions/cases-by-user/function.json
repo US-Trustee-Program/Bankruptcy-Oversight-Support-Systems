@@ -6,9 +6,7 @@
       "direction": "in",
       "name": "req",
       "route": "cases-by-user/",
-      "methods": [
-        "get"
-      ]
+      "methods": ["get"]
     },
     {
       "type": "http",

@@ -6,10 +6,7 @@
       "direction": "in",
       "name": "req",
       "route": "orders/{id?}",
-      "methods": [
-        "get",
-        "patch"
-      ]
+      "methods": ["get", "patch"]
     },
     {
       "type": "http",
