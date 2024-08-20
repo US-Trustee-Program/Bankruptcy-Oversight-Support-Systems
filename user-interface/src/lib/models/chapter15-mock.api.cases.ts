@@ -125,8 +125,10 @@ export default class Chapter15MockApi extends Api {
   ];
 
   // TODO: add handling of other uses of POST (e.g. case assignment creation)
-  public static async post(_path: string, _body: object, _options?: ObjectKeyVal) {
-    return Promise.reject(new Error());
+  public static async post(_path: string, body: object, _options?: ObjectKeyVal) {
+    if ('mock' in body && body.mock === 'success') {
+      return { message: 'success', count: 1, body: { good: 'data' } };
+    } else return Promise.reject(new Error());
   }
 
   public static async list(path: string, _options: ObjectKeyVal): Promise<ResponseData> {
