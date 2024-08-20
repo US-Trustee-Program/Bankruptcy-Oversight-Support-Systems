@@ -406,7 +406,7 @@ const consolidationUseCase = (
         try {
           const associatedResponse = await api2.getCaseAssociations(bCase.caseId);
           bCase.associations = associatedResponse.data;
-        } catch (reason) {
+        } catch {
           isDataEnhanced = false;
         }
       }
