@@ -1,4 +1,4 @@
-declare module BrowserExperimental {
+declare namespace BrowserExperimental {
   export interface WindowExperimental extends window {
     CSS: {
       highlights?: {

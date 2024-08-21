@@ -5,10 +5,8 @@
     "outDir": "dist",
     "sourceMap": true,
     "strict": false,
-    "resolveJsonModule": true,
+    "resolveJsonModule": true
   },
-  "references": [{ "path": "../../common"}],
-  "exclude": [
-    "node_modules"
-  ],
+  "references": [{ "path": "../../common" }],
+  "exclude": ["node_modules"]
 }

@@ -22,6 +22,7 @@ export function createMockAzureFunctionContext(env: Record<string, string> = {})
     ...env,
   };
 
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
   context.invocationId = randomUUID();
   return context;

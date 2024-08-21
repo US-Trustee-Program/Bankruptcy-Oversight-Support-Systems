@@ -410,7 +410,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 value={selections[0].value}
                 wrapText={wrapPills}
                 onClick={handleSingleSelectPillClick}
-                disabled={disabled}
+                disabled={comboboxDisabled}
               ></Pill>
             )}
             {!(multiSelect !== true && selections.length) && (

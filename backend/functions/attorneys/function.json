@@ -6,9 +6,7 @@
       "direction": "in",
       "name": "req",
       "route": "attorneys/{id:int?}",
-      "methods": [
-        "get"
-      ]
+      "methods": ["get"]
     },
     {
       "type": "http",

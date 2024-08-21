@@ -38,8 +38,6 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
-export interface HeaderProps {}
-
 export const Header = () => {
   const location = useLocation();
   const flags = useFeatureFlags();

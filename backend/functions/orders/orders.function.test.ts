@@ -21,6 +21,7 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 
 describe('Orders Function tests', () => {
   const request = createMockAzureFunctionRequest();
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   beforeEach(() => {

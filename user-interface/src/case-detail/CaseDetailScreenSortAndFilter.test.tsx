@@ -240,23 +240,24 @@ describe('Case Detail sort, search, and filter tests', () => {
 
     test('should return default limits if docket is empty', () => {
       const limits = findDocketLimits([]);
-      expect(limits.dateRange.start).toBeUndefined;
-      expect(limits.dateRange.end).toBeUndefined;
+      expect(limits.dateRange.start).toBeUndefined();
+      expect(limits.dateRange.end).toBeUndefined();
       expect(limits.documentRange.first).toEqual(0);
       expect(limits.documentRange.last).toEqual(0);
     });
 
     test('the document range should be 0 if the docket entries do not have a document number', () => {
+      const dateFiled = '2023-05-07';
       const limits = findDocketLimits([
         {
           sequenceNumber: 2,
-          dateFiled: '2023-05-07',
+          dateFiled,
           summaryText: 'Add Judge',
           fullText: 'Docket entry number 1.',
         },
       ]);
-      expect(limits.dateRange.start).toBeUndefined;
-      expect(limits.dateRange.end).toBeUndefined;
+      expect(limits.dateRange.start).toEqual(dateFiled);
+      expect(limits.dateRange.end).toEqual(dateFiled);
       expect(limits.documentRange.first).toEqual(0);
       expect(limits.documentRange.last).toEqual(0);
     });
