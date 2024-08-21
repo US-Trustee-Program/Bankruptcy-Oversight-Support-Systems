@@ -1,6 +1,6 @@
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import Actions from '@common/cams/actions';
-import { AssignAttorneyModalRef, CallbackProps } from '../modal/AssignAttorneyModal';
+import { CallbackProps } from '../modal/AssignAttorneyModal';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { AttorneyUser } from '@common/cams/users';
@@ -11,12 +11,11 @@ type State = {
   assignments: AttorneyUser[];
   isLoading: boolean;
   bCase: CaseBasics;
-  modalRef: React.RefObject<AssignAttorneyModalRef>;
 };
 
 type Actions = {
   getCaseAssignments: () => void;
-  updateAssignmentsCallback: (props: CallbackProps) => void;
+  updateAssignmentsCallback: (props: CallbackProps) => Promise<void>;
 };
 
 function useStateActions(initialState: State): {
@@ -28,7 +27,7 @@ function useStateActions(initialState: State): {
 
   const [state, setState] = useState<State>(initialState);
 
-  function updateAssignmentsCallback(props: CallbackProps) {
+  async function updateAssignmentsCallback(props: CallbackProps) {
     const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
 
     if (status === 'error') {
@@ -57,7 +56,6 @@ function useStateActions(initialState: State): {
 
       setState({ ...state, assignments: selectedAttorneyList });
       globalAlert?.success(message);
-      state.modalRef.current?.hide();
     }
   }
 

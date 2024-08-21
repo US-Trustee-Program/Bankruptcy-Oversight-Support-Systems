@@ -7,7 +7,7 @@ import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
-import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
+import { AssignAttorneyModalRef, CallbackProps } from '../modal/AssignAttorneyModal';
 import { AttorneyUser } from '@common/cams/users';
 import Internal from './StaffAssignmentRow.internal';
 
@@ -37,13 +37,19 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     actions.getCaseAssignments();
   }, []);
 
+  function handleCallback(props: CallbackProps) {
+    actions.updateAssignmentsCallback(props).then(() => {
+      modalRef.current?.hide();
+    });
+  }
+
   function buildActionButton(assignments: AttorneyUser[]) {
     const commonModalButtonProps = {
       className: 'case-assignment-modal-toggle',
       buttonIndex: `toggle-button-${idx}`,
       toggleProps: {
         bCase: { ...bCase, assignments: state.assignments },
-        callback: actions.updateAssignmentsCallback,
+        callback: handleCallback,
       },
       modalId,
       modalRef,
