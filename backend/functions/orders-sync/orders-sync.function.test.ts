@@ -24,6 +24,7 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('Orders Sync Function tests', () => {
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('Should call orders controller method syncOrders', async () => {

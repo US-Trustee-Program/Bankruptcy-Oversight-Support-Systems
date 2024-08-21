@@ -6,9 +6,7 @@
       "direction": "in",
       "name": "req",
       "route": "orders-sync",
-      "methods": [
-        "post"
-      ]
+      "methods": ["post"]
     },
     {
       "type": "http",

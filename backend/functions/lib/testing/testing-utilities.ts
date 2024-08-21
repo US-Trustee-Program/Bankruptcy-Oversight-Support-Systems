@@ -3,6 +3,7 @@ import ContextCreator from '../adapters/utils/application-context-creator';
 import { HttpRequest } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../../common/src/cams/session';
+/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 const functionContext = require('azure-function-context-mock');
 
 export async function createMockApplicationContext(

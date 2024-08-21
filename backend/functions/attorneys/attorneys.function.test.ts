@@ -14,6 +14,7 @@ describe('Attorneys Azure Function tests', () => {
       office_id: officeId,
     },
   });
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   beforeEach(async () => {

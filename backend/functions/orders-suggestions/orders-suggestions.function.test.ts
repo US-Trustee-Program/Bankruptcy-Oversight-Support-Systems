@@ -15,6 +15,7 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 });
 
 describe('Orders suggestions function tests', () => {
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('should return a list of suggested cases', async () => {

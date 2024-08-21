@@ -6,9 +6,7 @@
       "direction": "in",
       "name": "req",
       "route": "cases/{caseId?}/associated",
-      "methods": [
-        "get"
-      ]
+      "methods": ["get"]
     },
     {
       "type": "http",

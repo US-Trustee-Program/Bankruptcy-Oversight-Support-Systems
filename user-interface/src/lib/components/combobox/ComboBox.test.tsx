@@ -732,31 +732,31 @@ describe('test cams combobox', () => {
     const ref = React.createRef<ComboBoxRef>();
     renderWithProps({ multiSelect: false }, ref);
 
-    const pill = document.querySelector('.pill');
     const input = document.querySelector('.combo-box-input');
-    const expandButton = document.querySelector('.expand-button');
-
     expect(input).toBeInTheDocument();
 
     const listButtons = document.querySelectorAll('li button');
     fireEvent.click(listButtons![0]);
 
+    const pill = document.querySelector('.pill');
+    const expandButton = document.querySelector('.expand-button');
+
     expect(input).not.toBeInTheDocument();
     expect(expandButton).toBeEnabled();
-    expect(pill).toBeEnabled;
+    expect(pill).toBeEnabled();
 
     ref.current?.disable(true);
 
     await waitFor(() => {
       expect(expandButton).not.toBeEnabled();
-      expect(pill).not.toBeEnabled;
+      expect(pill).not.toBeEnabled();
     });
 
     ref.current?.disable(false);
 
     await waitFor(() => {
       expect(expandButton).toBeEnabled();
-      expect(pill).toBeEnabled;
+      expect(pill).toBeEnabled();
     });
   });
 
@@ -778,7 +778,7 @@ describe('test cams combobox', () => {
     expect(input).toBeEnabled();
     expect(expandButton).toBeEnabled();
     pills.forEach((pill) => {
-      expect(pill).toBeEnabled;
+      expect(pill).toBeEnabled();
     });
 
     ref.current?.disable(true);
@@ -788,7 +788,7 @@ describe('test cams combobox', () => {
       expect(input).not.toBeEnabled();
       expect(expandButton).not.toBeEnabled();
       pills.forEach((pill) => {
-        expect(pill).not.toBeEnabled;
+        expect(pill).not.toBeEnabled();
       });
     });
 
@@ -799,7 +799,7 @@ describe('test cams combobox', () => {
       expect(input).toBeEnabled();
       expect(expandButton).toBeEnabled();
       pills.forEach((pill) => {
-        expect(pill).toBeEnabled;
+        expect(pill).toBeEnabled();
       });
     });
   });

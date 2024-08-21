@@ -139,6 +139,7 @@ export type TableProps = PropsWithChildren &
     caption?: string;
   };
 
+/* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 export interface TableRef extends HTMLTableElement {}
 // TODO: How are we going to handle props for the div AND THE table?? And be able to support the forwardRef?
 export const TableComponent = (

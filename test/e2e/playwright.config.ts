@@ -4,6 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
+/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config();
 
 /**

@@ -1,5 +1,6 @@
 import { test as setup } from '@playwright/test';
 import { Page, expect } from '@playwright/test';
+/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
