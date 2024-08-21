@@ -44,9 +44,7 @@ describe('UseApi Hook', () => {
     const api = useGenericApi();
 
     const expectedResponse = {
-      data: {
-        good: 'data',
-      },
+      data: [],
       isSuccess: true,
       meta: {
         isPaginated: false,
@@ -54,8 +52,8 @@ describe('UseApi Hook', () => {
       },
     };
 
-    const actualResponse = await api.post('/some/path', { mock: 'success' });
-    expect(actualResponse).toEqual(expectedResponse);
+    const actualResponse = await api.post('/cases/', { caseNumber: '11-00000' });
+    expect(mapFromLegacyToResponseBody(actualResponse)).toEqual(expectedResponse);
   });
 });
 
