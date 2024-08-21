@@ -1,7 +1,7 @@
+import { useRef } from 'react';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentRow, StaffAssignmentRowOptions } from './StaffAssignmentRow';
-import AssignAttorneyModal, { AssignAttorneyModalRef } from './modal/AssignAttorneyModal';
-import { useRef } from 'react';
+import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/hooks/UseApi2';
 import { buildResponseBodySuccess } from '@common/api/response';
@@ -14,7 +14,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { CaseBasics } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('StaffAssignmentRow tests', () => {
   const bCase: ResourceActions<CaseBasics> = {
@@ -148,7 +148,7 @@ describe('StaffAssignmentRow tests', () => {
 
   test('should show error alert when an error is thrown by api.getCaseAssignments', async () => {
     vi.spyOn(Api2, 'getCaseAssignments').mockRejectedValue('some error');
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     renderWithProps();
 
@@ -159,5 +159,23 @@ describe('StaffAssignmentRow tests', () => {
     });
   });
 
-  // TODO: Test useStaffAssignmentRowActions.actions.getCaseAssignments()
+  test('should render a list of assigned attorneys', async () => {
+    const assignments = [MockData.getAttorneyAssignment()];
+    const assignmentsResponse = buildResponseBodySuccess<CaseAssignment[]>(assignments);
+    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentsResponse);
+
+    renderWithProps();
+
+    let staffList;
+    await waitFor(
+      () => {
+        staffList = document.querySelector('.attorney-list-container');
+        expect(staffList?.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
+    expect(staffList).toBeInTheDocument();
+    expect(screen.getByTestId('staff-name-0')).toBeInTheDocument();
+    expect(screen.getByTestId('staff-name-0')).toHaveTextContent(assignments[0].name);
+  });
 });

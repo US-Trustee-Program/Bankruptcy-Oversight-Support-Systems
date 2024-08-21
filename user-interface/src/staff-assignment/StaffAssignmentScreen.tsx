@@ -13,7 +13,7 @@ import { CamsUser } from '@common/cams/users';
 import { useRef } from 'react';
 import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from './StaffAssignmentHeader';
-import { StaffAssignmentRow } from './StaffAssignmentRow';
+import { StaffAssignmentRow } from './StaffAssignmentRow/StaffAssignmentRow';
 import './StaffAssignmentScreen.scss';
 import AssignAttorneyModal, { AssignAttorneyModalRef } from './modal/AssignAttorneyModal';
 import { CamsRole } from '@common/cams/roles';
