@@ -1,10 +1,12 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { waitFor } from '@testing-library/react';
 import Api2 from '@/lib/hooks/UseApi2';
 import { buildResponseBodySuccess } from '@common/api/response';
 import { CaseAssignment } from '@common/cams/assignments';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Internal from './StaffAssignmentRow.internal';
+
+// TODO: Find an alternative waitFor so we can stop using react testing library for non-React code.
+import { waitFor } from '@testing-library/react';
 
 describe('StaffAssignmentRowInternal', () => {
   const bCase = MockData.getCaseBasics();
@@ -36,13 +38,14 @@ describe('StaffAssignmentRowInternal', () => {
     vi.clearAllMocks();
   });
 
-  test('should get attorneys assigned to the case', async () => {
+  test.only('should get attorneys assigned to the case', async () => {
     const { state, actions } = Internal.useStateActions(initialState);
     actions.getCaseAssignments();
 
     await waitFor(() => {
       expect(apiGetCaseAssignments).toHaveBeenCalledWith(bCase.caseId);
       expect(state.assignments).toEqual(mappedCaseAssignments);
+      return true;
     });
   });
 
@@ -58,6 +61,7 @@ describe('StaffAssignmentRowInternal', () => {
       expect(globalAlert.error).toHaveBeenCalledWith(
         `Could not get staff assignments for case ${state.bCase.caseTitle}`,
       );
+      return true;
     });
   });
 
@@ -76,6 +80,7 @@ describe('StaffAssignmentRowInternal', () => {
     await waitFor(() => {
       expect(globalAlert.success).toHaveBeenCalled();
       expect(state.assignments).toEqual(endingAssigments);
+      return true;
     });
   });
 
