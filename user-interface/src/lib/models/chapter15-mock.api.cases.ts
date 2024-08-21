@@ -7,12 +7,12 @@ import {
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { ResponseBody, buildResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
 import Actions from '@common/cams/actions';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
+import { ResourceActions } from '../../../../common/dist/cams/actions';
 
-//TODO: Split out to route calls for Api and Api 2, this is causing conflicts in pa11y testing
 export default class Chapter15MockApi extends Api {
   static caseList = [
     {
@@ -125,37 +125,30 @@ export default class Chapter15MockApi extends Api {
   ];
 
   // TODO: add handling of other uses of POST (e.g. case assignment creation)
-  public static async post(path: string, _body: object, options: ObjectKeyVal) {
+  public static async post(path: string, body: object, _options: ObjectKeyVal) {
     if (path.match(/\/cases/)) {
-      const searchRequest = options as { caseNumber: string };
+      const searchRequest = body as { caseNumber: string };
+      const _actions = [Actions.ManageAssignments];
       const caseNumber = searchRequest ? searchRequest.caseNumber : '';
-      let response: ResponseBodySuccess<CaseBasics[]>;
+      const response: ResponseData<ResourceActions<CaseBasics>[]> = {
+        message: '',
+        count: 0,
+        body: [],
+      };
       if (caseNumber === '99-99999') {
         return Promise.reject(new Error('api error'));
       } else if (caseNumber === '00-00000') {
-        response = buildResponseBodySuccess<CaseBasics[]>(
-          [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })],
-          {
-            self: 'self-uri',
-          },
-        );
+        response.body = [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })];
       } else if (caseNumber === '11-00000') {
-        response = buildResponseBodySuccess<CaseBasics[]>([], {
-          self: 'self-uri',
-        });
+        response.body = [];
       } else {
-        response = buildResponseBodySuccess<CaseBasics[]>(
-          [
-            MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } }),
-            MockData.getCaseBasics({ override: { caseId: `070-${caseNumber}` } }),
-            MockData.getCaseBasics({ override: { caseId: `132-${caseNumber}` } }),
-            MockData.getCaseBasics({ override: { caseId: `3E1-${caseNumber}` } }),
-            MockData.getCaseBasics({ override: { caseId: `256-${caseNumber}` } }),
-          ],
-          {
-            self: 'self-uri',
-          },
-        );
+        response.body = [
+          { ...MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } }), _actions },
+          { ...MockData.getCaseBasics({ override: { caseId: `070-${caseNumber}` } }), _actions },
+          { ...MockData.getCaseBasics({ override: { caseId: `132-${caseNumber}` } }), _actions },
+          { ...MockData.getCaseBasics({ override: { caseId: `3E1-${caseNumber}` } }), _actions },
+          { ...MockData.getCaseBasics({ override: { caseId: `256-${caseNumber}` } }), _actions },
+        ];
       }
       return response;
     } else {
