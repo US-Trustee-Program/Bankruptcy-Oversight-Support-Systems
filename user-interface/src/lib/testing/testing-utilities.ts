@@ -83,7 +83,6 @@ function spyOnUseState() {
   return vi.spyOn(UseStateModule, 'useState').mockImplementation(useStateMock);
 }
 
-export const urlRegex = /https?:\/\/.*\//;
 export const TestingUtilities = {
   waitFor,
   setUser,
