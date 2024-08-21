@@ -6,7 +6,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Internal from './StaffAssignmentRow.internal';
 
-describe.only('StaffAssignmentRowInternal', () => {
+describe('StaffAssignmentRowInternal', () => {
   const bCase = MockData.getCaseBasics();
   const caseAssignments = [MockData.getAttorneyAssignment()];
   const mappedCaseAssignments = caseAssignments.map((assignment) => {
