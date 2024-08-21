@@ -69,7 +69,6 @@ function useStateActions(initialState: State): {
           return { id: assignment.userId, name: assignment.name };
         });
         setState({ ...state, assignments, isLoading: false });
-        state.assignments = assignments;
       })
       .catch((_reason) => {
         globalAlert?.error(`Could not get staff assignments for case ${state.bCase.caseTitle}`);
