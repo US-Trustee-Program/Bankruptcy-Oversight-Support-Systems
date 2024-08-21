@@ -1,93 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { useApi2 } from '@/lib/hooks/UseApi2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
-import { AssignAttorneyModalRef, CallbackProps } from './modal/AssignAttorneyModal';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { AssignAttorneyModalRef, CallbackProps } from '../modal/AssignAttorneyModal';
 import { AttorneyUser } from '@common/cams/users';
-import { CaseBasics } from '@common/cams/cases';
-
-type State = {
-  assignments: AttorneyUser[];
-  isLoading: boolean;
-  bCase: CaseBasics;
-  modalRef: React.RefObject<AssignAttorneyModalRef>;
-};
-
-type Actions = {
-  getCaseAssignments: () => void;
-  updateAssignmentsCallback: (props: CallbackProps) => void;
-};
-
-export function useStaffAssignmentRowActions(initialState: State): {
-  state: State;
-  actions: Actions;
-} {
-  const api = useApi2();
-  const globalAlert = useGlobalAlert();
-
-  const [state, setState] = useState<State>(initialState);
-
-  function updateAssignmentsCallback(props: CallbackProps) {
-    const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
-
-    if (status === 'error') {
-      globalAlert?.error((apiResult as Error).message);
-    } else if (bCase) {
-      const messageArr = [];
-      const addedAssignments = selectedAttorneyList.filter(
-        (staff) => !previouslySelectedList.find((staffObj) => staffObj.id === staff.id),
-      );
-      const removedAssignments = previouslySelectedList.filter(
-        (staff) => !selectedAttorneyList.find((staffObj) => staffObj.id === staff.id),
-      );
-
-      if (addedAssignments.length > 0) {
-        messageArr.push(
-          `${addedAssignments.map((attorney) => attorney.name).join(', ')} assigned to`,
-        );
-      }
-      if (removedAssignments.length > 0) {
-        messageArr.push(
-          `${removedAssignments.map((attorney) => attorney.name).join(', ')} unassigned from`,
-        );
-      }
-      const message =
-        messageArr.join(' case and ') + ` case ${getCaseNumber(bCase.caseId)} ${bCase.caseTitle}.`;
-
-      globalAlert?.success(message);
-      state.modalRef.current?.hide();
-      getCaseAssignments();
-    }
-  }
-
-  async function getCaseAssignments() {
-    api
-      .getCaseAssignments(state.bCase.caseId)
-      .then((response) => {
-        const assignments = response.data.map((assignment) => {
-          return { id: assignment.userId, name: assignment.name };
-        });
-        setState({ ...state, assignments, isLoading: false });
-        state.assignments = assignments;
-      })
-      .catch((_reason) => {
-        globalAlert?.error(`Could not get staff assignments for case ${state.bCase.caseTitle}`);
-        setState({ ...state, isLoading: false });
-      });
-  }
-
-  const actions = { updateAssignmentsCallback, getCaseAssignments };
-
-  return { state, actions };
-}
+import Internal from './StaffAssignmentRow.internal';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -102,18 +24,24 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { bCase, idx, options, ...otherProps } = props;
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
 
-  const initialState: State = {
+  const initialState = {
     assignments: [],
     isLoading: true,
     bCase,
     modalRef,
   };
 
-  const { state, actions } = useStaffAssignmentRowActions(initialState);
+  const { state, actions } = Internal.useStateActions(initialState);
 
   useEffect(() => {
     actions.getCaseAssignments();
   }, []);
+
+  function handleCallback(props: CallbackProps) {
+    actions.updateAssignmentsCallback(props).then(() => {
+      modalRef.current?.hide();
+    });
+  }
 
   function buildActionButton(assignments: AttorneyUser[]) {
     const commonModalButtonProps = {
@@ -121,7 +49,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       buttonIndex: `toggle-button-${idx}`,
       toggleProps: {
         bCase: { ...bCase, assignments: state.assignments },
-        callback: actions.updateAssignmentsCallback,
+        callback: handleCallback,
       },
       modalId,
       modalRef,
@@ -150,7 +78,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   function buildAssignmentList(assignments: AttorneyUser[]) {
     if (assignments.length > 0) {
       return state.assignments?.map((attorney, key: number) => (
-        <span key={key}>
+        <span key={key} data-testid={`staff-name-${key}`}>
           {attorney.name}
           <br />
         </span>

@@ -10,7 +10,7 @@ import { buildResponseBodySuccess, ResponseBodySuccess } from '@common/api/respo
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import * as genericApiModule from '@/lib/hooks/UseApi';
-import * as staffAssignmentRow from './StaffAssignmentRow';
+import * as staffAssignmentRow from '../row/StaffAssignmentRow';
 import Api2 from '@/lib/hooks/UseApi2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
