@@ -20,32 +20,6 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
-export function sortByDateFiled(a: CaseBasics, b: CaseBasics): number {
-  if (a.dateFiled < b.dateFiled) {
-    return 1;
-  } else if (a.dateFiled > b.dateFiled) {
-    return -1;
-  } else {
-    return 0;
-  }
-}
-
-export function sortByCaseId(a: CaseBasics, b: CaseBasics): number {
-  if (a.caseId < b.caseId) {
-    return 1;
-  } else if (a.caseId > b.caseId) {
-    return -1;
-  } else {
-    return 0;
-  }
-}
-
-export function sortCaseList(a: CaseBasics, b: CaseBasics) {
-  // Date filed take priority over case Id.
-  const byDateFiled = sortByDateFiled(a, b);
-  return byDateFiled === 0 ? sortByCaseId(a, b) : byDateFiled;
-}
-
 export type SearchResultsHeaderProps = {
   id: string;
 };

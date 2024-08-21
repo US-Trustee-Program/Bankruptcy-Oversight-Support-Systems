@@ -6,7 +6,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsSession } from '@common/cams/session';
-import { urlRegex } from '../../../../../common/src/cams/test-utilities/auxiliary';
+import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 

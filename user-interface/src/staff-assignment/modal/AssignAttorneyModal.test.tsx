@@ -32,6 +32,8 @@ const attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mo
 const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
+  let callback = vi.fn();
+
   const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
     meta: { isPaginated: false, self: 'self-url' },
     isSuccess: true,
@@ -71,6 +73,7 @@ describe('Test Assign Attorney Modal Component', () => {
 
   beforeEach(() => {
     vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+    callback = vi.fn();
   });
 
   afterEach(() => {
@@ -90,7 +93,6 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     bCase.assignments = [];
 
-    const callback = vi.fn();
     modalRef.current?.show({
       bCase,
       callback,
@@ -150,7 +152,6 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
-    const callback = vi.fn();
     modalRef.current?.show({
       callback,
       bCase: MockData.getCaseBasics({
@@ -200,7 +201,6 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
 
-    const callback = vi.fn();
     modalRef.current?.show({
       callback,
       bCase: MockData.getCaseBasics({
@@ -230,7 +230,6 @@ describe('Test Assign Attorney Modal Component', () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
 
-    const callback = vi.fn();
     modalRef.current?.show({
       callback,
       bCase: MockData.getCaseBasics({

@@ -16,7 +16,7 @@ import {
 } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
 import { MANHATTAN, OFFICES } from './offices.mock';
-import { ATTORNEYS } from './attorneys.mock';
+import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import {
   Consolidation,
@@ -410,7 +410,7 @@ function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
 }
 
 function getTrialAttorneys() {
-  return ATTORNEYS;
+  return TRIAL_ATTORNEYS;
 }
 
 function getConsolidationHistory(override: Partial<ConsolidationOrderSummary> = {}) {

@@ -18,7 +18,7 @@ export class AttorneysController {
   public async getAttorneyList(request: CamsHttpRequest): Promise<GetAttorneyListResponse> {
     this.applicationContext.logger.info(MODULE_NAME, 'Getting Attorneys list.');
     const attorneysList = new AttorneysList();
-    const attorneys = await attorneysList.getAttorneyList(this.applicationContext, request.query);
+    const attorneys = await attorneysList.getAttorneyList(this.applicationContext);
     return buildResponseBodySuccess<AttorneyUser[]>(attorneys, {
       isPaginated: false,
       self: request.url,

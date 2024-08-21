@@ -17,12 +17,9 @@ export default class AttorneysList {
     }
   }
 
-  async getAttorneyList(
-    applicationContext: ApplicationContext,
-    fields: { officeId?: string },
-  ): Promise<Array<AttorneyUser>> {
+  async getAttorneyList(applicationContext: ApplicationContext): Promise<Array<AttorneyUser>> {
     const assignmentsUseCase = new CaseAssignmentUseCase(applicationContext);
-    const attorneys = await this.gateway.getAttorneys(applicationContext, fields);
+    const attorneys = await this.gateway.getAttorneys(applicationContext);
 
     for (const atty of attorneys) {
       try {

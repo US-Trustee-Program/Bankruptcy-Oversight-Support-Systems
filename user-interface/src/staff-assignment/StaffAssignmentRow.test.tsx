@@ -6,7 +6,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/hooks/UseApi2';
 import { buildResponseBodySuccess } from '@common/api/response';
 import { CaseAssignment } from '@common/cams/assignments';
-import { ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
+import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
 import { AttorneyUser } from '@common/cams/users';
 import { BrowserRouter } from 'react-router-dom';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -14,8 +14,6 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { CaseBasics } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
-//import { GlobalAlertRef } from '@/lib/components/cams/GlobalAlert/GlobalAlert';
-//import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('StaffAssignmentRow tests', () => {
@@ -61,7 +59,7 @@ describe('StaffAssignmentRow tests', () => {
   }
 
   vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(
-    buildResponseBodySuccess<AttorneyUser[]>(ATTORNEYS),
+    buildResponseBodySuccess<AttorneyUser[]>(TRIAL_ATTORNEYS),
   );
 
   test('should render a row', async () => {

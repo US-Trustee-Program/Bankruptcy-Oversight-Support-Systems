@@ -13,7 +13,7 @@ import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { urlRegex } from '../../../../../common/src/cams/test-utilities/auxiliary';
+import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 

@@ -1,13 +1,15 @@
-.screen-heading {
-  display: block;
-  position: relative;
+.my-cases {
+  .screen-heading {
+    display: block;
+    position: relative;
 
-  h1 {
-    display: inline-block;
-    margin-right: 1rem;
-  }
-  .usa-button {
-    position: absolute;
-    margin-top: 1.5rem;
+    h1 {
+      display: inline-block;
+      margin-right: 1rem;
+    }
+    .usa-button {
+      position: absolute;
+      margin-top: 1.5rem;
+    }
   }
 }
