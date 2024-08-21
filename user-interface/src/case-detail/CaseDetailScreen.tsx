@@ -28,6 +28,7 @@ import { EventCaseReference } from '@common/cams/events';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -201,6 +202,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const facetPickerRef = useRef<ComboBoxRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
 
+  const globalAlert = useGlobalAlert();
+
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
     api
@@ -210,7 +213,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         setCaseBasicInfo(response.body?.caseDetails);
       })
       .catch((_error) => {
-        // TODO: handle this error. How to we propogate to the global alert??
+        globalAlert?.error(`Could not get case information.`);
       })
       .finally(() => {
         setIsLoading(false);

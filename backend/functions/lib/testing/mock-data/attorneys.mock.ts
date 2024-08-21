@@ -1,7 +1,7 @@
-import { ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
+import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
 
 const list = {
-  attorneyList: ATTORNEYS,
+  attorneyList: TRIAL_ATTORNEYS,
 };
 
 export { list };

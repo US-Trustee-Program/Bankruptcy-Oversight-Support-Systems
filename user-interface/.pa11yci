@@ -114,8 +114,7 @@
         "wait for element #info-modal-heading to be visible",
         "wait for element #info-modal-cancel-button to be visible",
         "click element #info-modal-cancel-button"
-      ],
-      "actions2": []
+      ]
     }
   ],
   "standard": "WCAG2AA"
