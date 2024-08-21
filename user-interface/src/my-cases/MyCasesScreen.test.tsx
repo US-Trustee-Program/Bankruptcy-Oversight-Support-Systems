@@ -29,13 +29,17 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render an information modal', async () => {
-    render(<MyCasesScreen></MyCasesScreen>);
+    render(
+      <BrowserRouter>
+        <MyCasesScreen></MyCasesScreen>
+      </BrowserRouter>,
+    );
 
-    const toggle = await screen.findByTestId('toggle-modal-button');
+    const toggle = screen.getByTestId('toggle-modal-button');
     expect(toggle).toBeInTheDocument();
     fireEvent.click(toggle!);
 
-    const modal = await screen.findByTestId('modal-content-info-modal');
+    const modal = screen.getByTestId('modal-content-info-modal');
     expect(modal).toBeInTheDocument();
   });
 
