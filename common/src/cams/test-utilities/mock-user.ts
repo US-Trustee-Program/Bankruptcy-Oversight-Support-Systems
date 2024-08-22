@@ -1,6 +1,11 @@
+import { OfficeDetails } from '../courts';
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
-import { BUFFALO, DELAWARE, MANHATTAN } from './offices.mock';
+import { BUFFALO, DELAWARE, MANHATTAN, WHITE_PLAINS } from './offices.mock';
+
+const REGION_02_GROUP_NY: OfficeDetails[] = [MANHATTAN, WHITE_PLAINS];
+const REGION_02_GROUP_BU: OfficeDetails[] = [BUFFALO];
+const REGION_03_GROUP_WL: OfficeDetails[] = [DELAWARE];
 
 export type MockUser = {
   sub: string;
@@ -29,7 +34,7 @@ export const MockUsers: MockUser[] = [
       id: 'manAtty0001',
       name: 'Jessica Pearson',
       roles: [CamsRole.TrialAttorney],
-      offices: [MANHATTAN],
+      offices: REGION_02_GROUP_NY,
     },
   },
   {
@@ -39,7 +44,7 @@ export const MockUsers: MockUser[] = [
       id: 'manAtty0002',
       name: 'Jack McCoy',
       roles: [CamsRole.TrialAttorney],
-      offices: [MANHATTAN],
+      offices: REGION_02_GROUP_NY,
     },
   },
   {
@@ -49,7 +54,7 @@ export const MockUsers: MockUser[] = [
       id: 'bufAtty0001',
       name: 'Saul Goodman',
       roles: [CamsRole.TrialAttorney],
-      offices: [BUFFALO],
+      offices: REGION_02_GROUP_BU,
     },
   },
   {
@@ -59,7 +64,7 @@ export const MockUsers: MockUser[] = [
       id: 'bufAtty0002',
       name: 'Rachel Zane',
       roles: [CamsRole.TrialAttorney],
-      offices: [BUFFALO],
+      offices: REGION_02_GROUP_BU,
     },
   },
   {
@@ -69,7 +74,7 @@ export const MockUsers: MockUser[] = [
       id: '==MOCKUSER=paralegal==',
       name: 'Bert',
       roles: [],
-      offices: [MANHATTAN],
+      offices: REGION_02_GROUP_NY,
     },
   },
   {
@@ -79,7 +84,7 @@ export const MockUsers: MockUser[] = [
       id: 'manAUST0001',
       name: 'Charlie',
       roles: [CamsRole.CaseAssignmentManager],
-      offices: [MANHATTAN],
+      offices: REGION_02_GROUP_NY,
     },
   },
   {
@@ -89,7 +94,7 @@ export const MockUsers: MockUser[] = [
       id: 'bufAUST0001',
       name: 'Daniel',
       roles: [CamsRole.CaseAssignmentManager],
-      offices: [BUFFALO],
+      offices: REGION_02_GROUP_BU,
     },
   },
   {
@@ -99,7 +104,7 @@ export const MockUsers: MockUser[] = [
       id: 'delAUST0001',
       name: 'Emma',
       roles: [CamsRole.CaseAssignmentManager],
-      offices: [DELAWARE],
+      offices: REGION_03_GROUP_WL,
     },
   },
   SUPERUSER,
