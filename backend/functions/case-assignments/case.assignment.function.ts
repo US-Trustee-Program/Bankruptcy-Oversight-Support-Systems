@@ -1,4 +1,4 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { isCamsError } from '../lib/common-errors/cams-error';
@@ -12,34 +12,42 @@ const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function handler(
   request: HttpRequest,
-): Promise<void> {
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+    invocationContext,
     request,
   );
   try {
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
-
+    let assignmentResponse: HttpResponseInit;
     if (request.method === 'POST') {
-      const listOfAttorneyNames = request.body.attorneyList;
-      const role = request.body.role;
-      await handlePostMethod(applicationContext, request.body.caseId, listOfAttorneyNames, role);
+      //We should be doing this in the controller
+      const requestBody = await request.json();
+      const listOfAttorneyNames = requestBody['attorneyList'];
+      const role = requestBody['role'];
+      const caseId = requestBody['caseId'];
+      assignmentResponse = await handlePostMethod(
+        applicationContext,
+        caseId,
+        listOfAttorneyNames,
+        role,
+      );
     } else {
-      await handleGetMethod(applicationContext, request.params['id']);
+      assignmentResponse = await handleGetMethod(applicationContext, request.params['id']);
     }
-    functionContext.res = applicationContext.res;
+    return assignmentResponse;
   } catch (originalError) {
     const error = isCamsError(originalError)
       ? originalError
       : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
-    functionContext.res = httpError(error);
+    return httpError(error);
   }
-};
+}
 
 async function handleGetMethod(applicationContext, caseId) {
   const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
@@ -49,7 +57,7 @@ async function handleGetMethod(applicationContext, caseId) {
   const trialAttorneyAssignmentResponse =
     await caseAssignmentController.getTrialAttorneyAssignments(caseId);
 
-  applicationContext.res = httpSuccess(trialAttorneyAssignmentResponse);
+  return httpSuccess(trialAttorneyAssignmentResponse);
 }
 
 async function handlePostMethod(
@@ -69,7 +77,14 @@ async function handlePostMethod(
       role,
     });
 
-  applicationContext.res = httpSuccess(trialAttorneyAssignmentResponse);
+  return httpSuccess(trialAttorneyAssignmentResponse);
 }
 
-export default httpTrigger;
+app.http('handler', {
+  methods: ['GET', 'POST'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'case-assignments/{id?}',
+});
+
+export default handler;

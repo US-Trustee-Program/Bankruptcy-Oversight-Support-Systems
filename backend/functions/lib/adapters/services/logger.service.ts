@@ -1,8 +1,7 @@
 import { CamsError } from '../../common-errors/cams-error';
-import { Context } from '@azure/functions';
 import { LoggerHelper } from '../types/basic';
 
-type LoggerProvider = Console['log'] | Context['log'];
+type LoggerProvider = Console['log'];
 type LogType = 'debug' | 'info' | 'warn' | 'error';
 
 const disallowedProperties = ['ssn', 'taxId'];

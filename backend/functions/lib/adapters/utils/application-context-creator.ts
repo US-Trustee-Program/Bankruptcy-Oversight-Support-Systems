@@ -1,4 +1,4 @@
-import { Context, HttpRequest } from '@azure/functions';
+import { InvocationContext, HttpRequest } from '@azure/functions';
 import { ApplicationContext } from '../types/basic';
 import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { getFeatureFlags } from './feature-flag';
@@ -7,28 +7,35 @@ import { getUserSessionGateway } from '../../factory';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { SessionGateway } from './session-gateway';
 import * as jwt from 'jsonwebtoken';
+import { httpRequestToCamsHttpRequest } from '../../../azure/functions';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
 async function applicationContextCreator(
-  functionContext: Context,
+  invocationContext: InvocationContext,
   request: HttpRequest,
 ): Promise<ApplicationContext> {
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
-  const logger = new LoggerImpl(functionContext.invocationId, functionContext.log);
+
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const logWrapper: Console['log'] = (...args: any[]) => {
+    invocationContext.log(args);
+  };
+
+  const logger = new LoggerImpl(invocationContext.invocationId, logWrapper);
 
   return {
-    ...functionContext,
     config,
     featureFlags,
     logger,
-    req: { ...functionContext.req, ...request },
+    invocationId: invocationContext.invocationId,
+    request: httpRequestToCamsHttpRequest(request),
   } satisfies ApplicationContext;
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {
-  const authorizationHeader = context.req.headers['authorization'];
+  const authorizationHeader = context.request?.headers['authorization'];
 
   if (!authorizationHeader) {
     throw new UnauthorizedError(MODULE_NAME, {

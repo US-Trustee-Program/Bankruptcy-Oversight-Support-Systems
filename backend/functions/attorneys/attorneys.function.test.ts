@@ -1,5 +1,4 @@
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import httpTrigger from './attorneys.function';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import { CamsError } from '../lib/common-errors/cams-error';
@@ -7,21 +6,26 @@ import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 import AttorneyList from '../lib/use-cases/attorneys';
+import handler from './attorneys.function';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { InvocationContext } from '@azure/functions';
 
 describe('Attorneys Azure Function tests', () => {
   const request = createMockAzureFunctionRequest();
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  let appContext: ApplicationContext;
+  const context = new InvocationContext();
 
   beforeEach(async () => {
     jest
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getCamsSession());
     jest.spyOn(AttorneyList.prototype, 'getAttorneyList').mockResolvedValue([]);
+    appContext = await createMockApplicationContext();
   });
 
   test('Should return an HTTP Error if getAttorneyList() throws an unexpected error', async () => {
-    const attorneysController = new AttorneysController(context);
+    const attorneysController = new AttorneysController(appContext);
     jest
       .spyOn(Object.getPrototypeOf(attorneysController), 'getAttorneyList')
       .mockImplementation(() => {
@@ -30,7 +34,7 @@ describe('Attorneys Azure Function tests', () => {
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
 
-    await httpTrigger(context, request);
+    await handler(request, context);
 
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
@@ -42,7 +46,7 @@ describe('Attorneys Azure Function tests', () => {
 
     const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
 
-    await httpTrigger(context, request);
+    await handler(request, context);
 
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(CamsError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
