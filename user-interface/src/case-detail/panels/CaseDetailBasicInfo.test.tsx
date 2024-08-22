@@ -8,8 +8,12 @@ import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Api from '@/lib/models/api';
 import Actions from '@common/cams/actions';
-import { AttorneyUser } from '@common/cams/users';
+import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
+import { CamsRole } from '@common/cams/roles';
+import LocalStorage from '@/lib/utils/local-storage';
+import { ResponseBodySuccess } from '@common/api/response';
+import Api2 from '@/lib/hooks/UseApi2';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -59,11 +63,17 @@ const CONSOLIDATE_FROM: Consolidation = {
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
 describe('Case detail basic information panel', () => {
+  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
+    meta: { isPaginated: false, self: 'self-url' },
+    isSuccess: true,
+    data: attorneyList,
+  };
+  vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+
   function renderWithProps(props?: Partial<CaseDetailBasicInfoProps>) {
     const defaultProps: CaseDetailBasicInfoProps = {
       caseDetail: BASE_TEST_CASE_DETAIL,
       showReopenDate: false,
-      attorneyList: attorneyList,
       onCaseAssignment: vi.fn(),
     };
 
@@ -83,8 +93,16 @@ describe('Case detail basic information panel', () => {
       expect(element?.textContent).toEqual(BASE_TEST_CASE_DETAIL.debtorAttorney?.office);
     });
 
-    test('should show edit button for trial attorney assignments and open modal with correct trial attorney info', () => {
+    test('should show edit button and open the staff assignment modal if the user is a case assignment manager', () => {
+      const user: CamsUser = MockData.getCamsUser({
+        roles: [CamsRole.CaseAssignmentManager],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+
       renderWithProps();
+      const modal = document.querySelector('.usa-modal-wrapper');
+      expect(modal).toBeInTheDocument();
+      expect(modal).not.toHaveClass('is-visible');
       const element = screen.getByTestId('toggle-modal-button');
       expect(element).toBeInTheDocument();
       expect(element).toBeVisible();
@@ -92,11 +110,7 @@ describe('Case detail basic information panel', () => {
       const attorneyModal = document.querySelector('.assign-attorney-modal');
       expect(attorneyModal).toBeInTheDocument();
       expect(attorneyModal).toBeVisible();
-
-      attorneyList.forEach((attorney, idx) => {
-        const attorneyLabel = screen.getByTestId(`checkbox-label-${idx}-checkbox`);
-        expect(attorneyLabel).toHaveTextContent(attorney.name);
-      });
+      expect(modal).toHaveClass('is-visible');
     });
 
     test('should not show edit button for trial attorney assignments', () => {

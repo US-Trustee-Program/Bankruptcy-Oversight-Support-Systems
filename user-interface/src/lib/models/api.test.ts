@@ -38,28 +38,6 @@ describe('Specific tests for the API model', () => {
     expect(Api.post('/some/path', {})).rejects.toThrow('mock post');
   });
 
-  test('should return 500 error message when "list" response is not ok and retuns 500', () => {
-    const mockHttpGet = vi.fn().mockImplementation(() => ({
-      json: () => Promise.resolve({ status: 500, message: 'mock list 500' }),
-      status: 500,
-      ok: false,
-    }));
-    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
-
-    expect(Api.list('/some/path', {})).rejects.toThrow('mock list 500');
-  });
-
-  test('should return 400 error message when "list" response is not ok and status is not 500', () => {
-    const mockHttpGet = vi.fn().mockImplementation(() => ({
-      json: () => Promise.resolve({ message: 'mock list 400' }),
-      status: 400,
-      ok: false,
-    }));
-    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
-
-    expect(Api.list('/some/path', {})).rejects.toThrow('400 Error - /some/path - mock list 400');
-  });
-
   test('should return 500 error message when "get" response is 500', () => {
     const mockHttpGet = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ status: 500, message: 'mock get 500' }),
@@ -123,25 +101,6 @@ describe('Specific tests for the API model', () => {
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
     expect(Api.post('/some/path', {})).resolves.toEqual(payload);
-  });
-
-  test('call to Get with a server error should reject with a 500', () => {
-    const mockHttpGet = vi.fn().mockImplementation(() => {
-      throw Error('bad request');
-    });
-    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
-
-    expect(Api.list('/some/path', {})).rejects.toThrow('500 Error - Server Error bad request');
-  });
-
-  test('call to Get with valid parameters should return with an OK', () => {
-    const mockHttpGet = vi.fn().mockImplementation(() => ({
-      json: () => 'mock get',
-      ok: true,
-    }));
-    vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
-
-    expect(Api.list('/some/path', {})).resolves.toBe('mock get');
   });
 
   test('should throw error when "patch" response is not ok', () => {

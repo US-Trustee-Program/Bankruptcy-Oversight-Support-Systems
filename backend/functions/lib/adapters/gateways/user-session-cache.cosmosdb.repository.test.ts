@@ -7,7 +7,7 @@ import {
 } from './user-session-cache.cosmosdb.repository';
 import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
-import { CamsJwtClaims } from '../types/authorization';
+import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 
 describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;

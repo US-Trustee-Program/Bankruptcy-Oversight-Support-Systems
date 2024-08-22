@@ -14,7 +14,7 @@ export default function Icon(props: IconProps) {
 
   return (
     <svg
-      className={`usa-icon ${props.className}`}
+      className={`usa-icon ${props.className ?? ''}`}
       aria-hidden="true"
       focusable={isFocusable}
       role="img"

@@ -1,28 +1,43 @@
+import { useEffect } from 'react';
 import './ScrollToTopButton.scss';
 import Button from './uswds/Button';
 import Icon from './uswds/Icon';
 
-export interface ScrollToTopButtonProps {
-  target: Element | null;
-  className?: string;
-}
-
-export default function ScrollToTopButton(props: ScrollToTopButtonProps) {
-  function scrollElement(el: Element | null) {
-    if (el) {
-      const appRoot = document.getElementById('app-root');
-      if (appRoot) {
-        appRoot.scrollTop = 0;
-        const scrollEvent = new CustomEvent('scroll');
-        appRoot.dispatchEvent(scrollEvent);
-      }
+export default function ScrollToTopButton() {
+  function documentScroll(ev: Event) {
+    const scrollButton = document.querySelector('.scroll-to-top-button');
+    if ((ev.currentTarget as Element).scrollTop > 100) {
+      (ev.target as HTMLElement).className = 'App header-scrolled-out';
+      if (scrollButton) scrollButton.classList.add('show');
+    } else {
+      (ev.target as HTMLElement).className = 'App';
+      if (scrollButton) scrollButton.classList.remove('show');
     }
   }
 
+  function scrollElement() {
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+      appRoot.scrollTop = 0;
+      const scrollEvent = new CustomEvent('scroll');
+      appRoot.dispatchEvent(scrollEvent);
+    }
+  }
+
+  useEffect(() => {
+    const appRoot = document.getElementById('app-root');
+    appRoot?.addEventListener('scroll', documentScroll);
+
+    return () => {
+      const appRoot = document.getElementById('app-root');
+      appRoot?.removeEventListener('scroll', documentScroll);
+    };
+  }, []);
+
   return (
     <Button
-      onClick={() => scrollElement(props.target)}
-      className={`scroll-to-top-button ${props.className}`}
+      onClick={() => scrollElement()}
+      className="scroll-to-top-button"
       title="scroll to top"
       aria-label="scroll to top of docket entry list"
     >

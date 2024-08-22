@@ -1,9 +1,8 @@
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import CaseDetailScreen, { docketSorterClosure } from './CaseDetailScreen';
+import CaseDetailScreen from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
@@ -785,32 +784,4 @@ describe('Case Detail screen tests', () => {
       expect(caseDocketLink).toHaveClass('usa-current');
     },
   );
-
-  describe('Docket entry sorter', () => {
-    const left: CaseDocketEntry = {
-      sequenceNumber: 0,
-      dateFiled: '',
-      summaryText: '',
-      fullText: '',
-    };
-
-    const right: CaseDocketEntry = {
-      sequenceNumber: 1,
-      dateFiled: '',
-      summaryText: '',
-      fullText: '',
-    };
-
-    test('should return the expected sort direction for Newest sort', () => {
-      const fn = docketSorterClosure('Newest');
-      const expectedValue = 1;
-      expect(fn(left, right)).toEqual(expectedValue);
-    });
-
-    test('should return the expected sort direction for Oldest sort', () => {
-      const fn = docketSorterClosure('Oldest');
-      const expectedValue = -1;
-      expect(fn(left, right)).toEqual(expectedValue);
-    });
-  });
 });

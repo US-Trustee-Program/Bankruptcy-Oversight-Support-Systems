@@ -52,27 +52,22 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     }
   }
 
-  async getOfficeByCourtIdAndOfficeCode(
+  async getOfficeByGroupDesignator(
     context: ApplicationContext,
-    courtId: string,
-    officeCode: string,
+    groupDesignator: string,
   ): Promise<OfficeDetails> {
     const input: DbTableFieldSpec[] = [];
 
-    if (courtId.length !== 4 || officeCode.length !== 1) {
-      throw new CamsError(MODULE_NAME, { message: 'Invalid court id or office code supplied' });
+    if (groupDesignator.length !== 2) {
+      throw new CamsError(MODULE_NAME, {
+        message: 'Invalid group designator supplied',
+      });
     }
 
     input.push({
       name: 'courtId',
       type: mssql.VarChar,
-      value: courtId,
-    });
-
-    input.push({
-      name: 'officeCode',
-      type: mssql.Char,
-      value: officeCode,
+      value: groupDesignator,
     });
 
     const query = `
@@ -91,9 +86,8 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     JOIN [dbo].[AO_GRP_DES] d on a.GRP_DES = d.GRP_DES
     JOIN [dbo].[AO_REGION] r on d.REGION_ID = r.REGION_ID
     WHERE
-      a.[COURT_ID] = @courtId
-      AND a.[OFFICE_CODE] = @officeCode
-    ORDER BY a.GRP_DES, a.OFFICE_CODE`;
+      a.[GRP_DES] = @groupDesignator
+    ORDER BY a.OFFICE_CODE`;
 
     const queryResult: QueryResults = await executeQuery(
       context,
@@ -103,7 +97,13 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     );
 
     if (queryResult.success) {
-      return (queryResult.results as mssql.IResult<OfficeDetails>).recordset[0];
+      const results = queryResult.results as mssql.IResult<OfficeDetails>;
+      if (results.recordset.length === 0) {
+        throw new CamsError(MODULE_NAME, {
+          message: 'Office not found by query designator.',
+        });
+      }
+      return results.recordset[0];
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }

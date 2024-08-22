@@ -41,10 +41,10 @@ enum IsVisible {
   Unset = -1,
 }
 
-export interface AlertRefType {
+export type AlertRefType = {
   show: (inline?: boolean) => void;
   hide: () => void;
-}
+};
 
 function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const [isVisible, setIsVisible] = useState<IsVisible>(

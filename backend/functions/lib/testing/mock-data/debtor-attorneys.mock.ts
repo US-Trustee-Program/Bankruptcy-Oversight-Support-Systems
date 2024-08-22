@@ -1,6 +1,6 @@
 import { DebtorAttorney } from '../../../../../common/src/cams/parties';
 
-export const ATTORNEYS = new Map<string, DebtorAttorney>([
+export const DEBTOR_ATTORNEYS = new Map<string, DebtorAttorney>([
   [
     '081-11-06541',
     {

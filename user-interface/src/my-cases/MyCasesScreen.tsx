@@ -1,13 +1,20 @@
-import './MyCasesScreen.scss';
+import { useRef } from 'react';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import LocalStorage from '@/lib/utils/local-storage';
-import { SearchResults } from '@/search/SearchResults';
-import { CasesSearchPredicate } from '@common/api/search';
-import { useRef } from 'react';
+import {
+  CasesSearchPredicate,
+  DEFAULT_SEARCH_LIMIT,
+  DEFAULT_SEARCH_OFFSET,
+} from '@common/api/search';
+import { getCamsUserReference } from '@common/cams/session';
+import { SearchResults } from '@/search-results/SearchResults';
+import { MyCasesResultsHeader } from './MyCasesResultsHeader';
+import { MyCasesResultsRow } from './MyCasesResultsRow';
+import './MyCasesScreen.scss';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -15,12 +22,18 @@ export const MyCasesScreen = () => {
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
+
+  if (!session || !session.user.offices) {
+    return <>Invalid user expectation</>;
+  }
+
   const searchPredicate: CasesSearchPredicate = {
-    chapters: ['15'],
-    assignments: [session!.user.id],
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
+    assignments: [getCamsUserReference(session.user)],
   };
 
-  const actionButtonGroup = {
+  const infoModalActionButtonGroup = {
     modalId: infoModalId,
     modalRef: infoModalRef as React.RefObject<ModalRefType>,
     cancelButton: {
@@ -49,6 +62,8 @@ export const MyCasesScreen = () => {
             id="search-results"
             searchPredicate={searchPredicate}
             noResultsMessage="No cases currently assigned."
+            header={MyCasesResultsHeader}
+            row={MyCasesResultsRow}
           ></SearchResults>
         </div>
         <div className="grid-col-1"></div>
@@ -65,7 +80,7 @@ export const MyCasesScreen = () => {
             you wish to view.
           </>
         }
-        actionButtonGroup={actionButtonGroup}
+        actionButtonGroup={infoModalActionButtonGroup}
       ></Modal>
     </div>
   );

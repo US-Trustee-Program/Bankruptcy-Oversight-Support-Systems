@@ -1,8 +1,8 @@
 import { AttorneyGatewayInterface } from './attorney.gateway.interface';
-import { AttorneyListDbResult } from '../adapters/types/attorneys';
 import { ApplicationContext } from '../adapters/types/basic';
 import { getAttorneyGateway } from '../factory';
 import { CaseAssignmentUseCase } from './case-assignment';
+import { AttorneyUser } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'ATTORNEYS-USE-CASE';
 
@@ -17,14 +17,11 @@ export default class AttorneysList {
     }
   }
 
-  async getAttorneyList(
-    applicationContext: ApplicationContext,
-    fields: { officeId?: string },
-  ): Promise<AttorneyListDbResult> {
+  async getAttorneyList(applicationContext: ApplicationContext): Promise<Array<AttorneyUser>> {
     const assignmentsUseCase = new CaseAssignmentUseCase(applicationContext);
-    const attorneys = await this.gateway.getAttorneys(applicationContext, fields);
+    const attorneys = await this.gateway.getAttorneys(applicationContext);
 
-    for (const atty of attorneys.body.attorneyList) {
+    for (const atty of attorneys) {
       try {
         atty.caseLoad = await assignmentsUseCase.getCaseLoad(atty.id);
       } catch (e) {

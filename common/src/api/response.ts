@@ -32,6 +32,17 @@ export function isResponseBodySuccess<T>(body: unknown): body is ResponseBodySuc
   return isResponseBody(body) && body.isSuccess === true && 'data' in body;
 }
 
+export function buildResponseBodyError<E extends Error = Error>(error: E) {
+  return {
+    meta: {
+      self: '',
+      isPaginated: false,
+    },
+    isSuccess: false,
+    error,
+  } as ResponseBodyError<E>;
+}
+
 export function buildResponseBodySuccess<T = unknown>(
   data: T,
   meta: Partial<ResponseMetaData> = {},

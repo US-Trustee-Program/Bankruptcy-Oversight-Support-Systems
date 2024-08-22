@@ -48,7 +48,6 @@ export interface ApiClient {
   host: string;
   createPath(path: string, params: ObjectKeyVal): string;
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
-  list(path: string, options?: ObjectKeyVal): Promise<ResponseData>;
   get(
     path: string,
     options?: ObjectKeyVal,
@@ -81,9 +80,10 @@ function isLegacyResponseData(response: unknown): response is { body: unknown } 
   return !!response && typeof response === 'object' && 'body' in response;
 }
 
-function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<T> {
+export function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<T> {
   if (isResponseBodySuccess<T>(response)) return response;
   if (isResponseBodyError(response)) {
+    // TODO: Need to map the error from the response body
     throw new Error('TBD Need to map the error from the response body');
   }
   if (isLegacyResponseData(response)) {
@@ -95,14 +95,24 @@ function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<
   throw new Error('Cannot map legacy response from API to new response model.');
 }
 
+export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
+  if (api.host.length > 0 && uriOrPath.startsWith(api.host)) {
+    uriOrPath = uriOrPath.replace(api.host, '');
+  }
+
+  const paramsIndex = uriOrPath.search(/\?.*=/);
+  if (paramsIndex >= 0) {
+    uriOrPath = uriOrPath.substring(0, paramsIndex);
+  }
+
+  return uriOrPath;
+}
+
 export function useGenericApi(): GenericApiClient {
   const api = useApi();
 
   function justThePath(uriOrPath: string): string {
-    if (uriOrPath.startsWith(api.host)) {
-      return uriOrPath.replace(api.host, '');
-    }
-    return uriOrPath;
+    return extractPathFromUri(uriOrPath, api);
   }
 
   return {

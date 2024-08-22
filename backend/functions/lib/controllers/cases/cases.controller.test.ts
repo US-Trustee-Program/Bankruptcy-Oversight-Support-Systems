@@ -13,9 +13,6 @@ import {
 } from '../../testing/mock-data/cams-http-request-helper';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 
-const limit = '25';
-const offset = '25';
-
 const caseId1 = '081-11-06541';
 
 const expectedDetailResult = {
@@ -45,126 +42,154 @@ describe('cases controller test', () => {
   });
 
   describe('searchAllCases', () => {
+    const limit = 50;
+    const offset = 0;
+
     test('should return an empty array for no matches', async () => {
       const expected = buildResponseBodySuccess<CaseBasics[]>([], {
         self: mockRequestUrl,
+        limit,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber: '00-00000', limit, offset },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
     test('should return a next link when result set is larger than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) + 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, limit + 1);
       const dataMinusHint = [...data];
       dataMinusHint.pop();
       const expected = buildResponseBodySuccess<CaseBasics[]>(dataMinusHint, {
         self: mockRequestUrl,
-        next: `${mockRequestUrl}?limit=${limit}&offset=${offset}`,
+        next: `${mockRequestUrl}?limit=${limit}&offset=${offset + limit}`,
+        limit,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
-        expect(actual.data).toHaveLength(parseInt(limit));
-        expect(actual.data).toEqual(data.slice(0, parseInt(limit)));
+        expect(actual.data).toHaveLength(limit);
+        expect(actual.data).toEqual(data.slice(0, limit));
       }
     });
 
     test('should not return a next link when result set matches limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit));
+      const data = MockData.buildArray(MockData.getCaseBasics, limit);
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
+        limit,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
-        expect(actual.data).toHaveLength(parseInt(limit));
-        expect(actual.data).toEqual(data.slice(0, parseInt(limit)));
+        expect(actual.data).toHaveLength(limit);
+        expect(actual.data).toEqual(data.slice(0, limit));
       }
     });
 
     test('should not return a next link when result set is smaller than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) - 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
+        limit,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
-        expect(actual.data).toHaveLength(parseInt(limit) - 1);
+        expect(actual.data).toHaveLength(limit - 1);
         expect(actual.data).toEqual(data);
       }
     });
 
     test('should return previous link but no next link when on the last set', async () => {
       const caseNumber = '00-00000';
-      const limit = '50';
-      const offset = '50';
+      const limit = 25;
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) - 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         isPaginated: true,
         count: data.length,
         self: mockRequestUrl,
         previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
-        limit: parseInt(limit),
+        limit,
         currentPage: 2,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber, limit, offset } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset: 25 },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
     test('should return next and previous links', async () => {
       const caseNumber = '00-00000';
-      const limit = '50';
-      const offset = '50';
       const nextOffset = '100';
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseBasics, parseInt(limit) + 1);
+      const data = MockData.buildArray(MockData.getCaseBasics, limit + 1);
       const expectedMeta = {
         isPaginated: true,
         count: data.length - 1,
         self: mockRequestUrl,
         next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
         previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
-        limit: parseInt(limit),
+        limit: limit,
         currentPage: 2,
       };
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber, limit, offset } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit: limit, offset: 50 },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expect.objectContaining({ meta: expectedMeta, isSuccess: true }));
       expect(isResponseBodySuccess(actual)).toBeTruthy();
       if (isResponseBodySuccess(actual)) {
-        expect(actual.data).toHaveLength(parseInt(limit));
-        expect(actual.data).toEqual(data.slice(0, parseInt(limit)));
+        expect(actual.data).toHaveLength(limit);
+        expect(actual.data).toEqual(data.slice(0, limit));
       }
     });
 
@@ -173,12 +198,17 @@ describe('cases controller test', () => {
       const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
+        limit,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -187,12 +217,17 @@ describe('cases controller test', () => {
       const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
       const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
         self: mockRequestUrl,
+        limit,
       });
 
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({ query: { divisionCodes: '081' } });
-      const actual = await controller.searchAllCases(camsHttpRequest);
+      const camsHttpRequest = mockCamsHttpRequest({
+        method: 'POST',
+        body: { divisionCodes: ['081'], limit, offset },
+      });
+
+      const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
     });
 
@@ -213,9 +248,10 @@ describe('cases controller test', () => {
         .mockResolvedValue(data);
 
       const camsHttpRequest = mockCamsHttpRequest({
-        query: { divisionCodes: `${divisionCodeOne},${divisionCodeTwo}` },
+        method: 'POST',
+        body: expected,
       });
-      await controller.searchAllCases(camsHttpRequest);
+      await controller.searchCases(camsHttpRequest);
       expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected);
     });
 
@@ -226,49 +262,7 @@ describe('cases controller test', () => {
       jest.spyOn(CaseManagement.prototype, 'searchCases').mockRejectedValue(error);
 
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber } });
-      await expect(controller.searchAllCases(camsHttpRequest)).rejects.toThrow(error);
-    });
-  });
-
-  describe('getCasesByUserSessionOffices', () => {
-    const offices = MockData.buildArray(MockData.randomOffice, 3);
-    const divisionCodes = offices.map((office) => office.courtDivisionCode);
-
-    beforeAll(async () => {
-      applicationContext.session = MockData.getCamsSession({
-        user: MockData.getCamsUser({ offices }),
-      });
-    });
-
-    test('should get cases for the users offices', async () => {
-      const camsHttpRequest = mockCamsHttpRequest();
-
-      const searchSpy = jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
-      await controller.getCasesByUserSessionOffices(camsHttpRequest);
-
-      const expected = {
-        divisionCodes,
-        limit: 25,
-        offset: 0,
-      };
-
-      expect(searchSpy).toHaveBeenCalledWith(expect.anything(), expected);
-    });
-
-    test('should get cases for the desired chapters', async () => {
-      const camsHttpRequest = mockCamsHttpRequest({ query: { chapters: '15,12' } });
-
-      const searchSpy = jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
-      await controller.getCasesByUserSessionOffices(camsHttpRequest);
-
-      const expected = {
-        divisionCodes,
-        chapters: ['15', '12'],
-        limit: 25,
-        offset: 0,
-      };
-
-      expect(searchSpy).toHaveBeenCalledWith(expect.anything(), expected);
+      await expect(controller.searchCases(camsHttpRequest)).rejects.toThrow(error);
     });
   });
 });

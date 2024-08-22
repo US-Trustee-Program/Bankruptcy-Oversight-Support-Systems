@@ -6,7 +6,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import * as sessionModule from '../../Session';
 import * as accessDeniedModule from '../../AccessDenied';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { urlRegex } from '@/lib/testing/testing-utilities';
+import { urlRegex } from '@common/cams/test-utilities/regex';
 
 const accessToken = MockData.getJwt();
 

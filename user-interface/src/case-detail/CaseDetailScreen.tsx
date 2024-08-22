@@ -25,11 +25,10 @@ import { useApi } from '@/lib/hooks/UseApi';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
-import AttorneysApi from '@/lib/models/attorneys-api';
-import { CallBackProps } from '@/case-assignment/AssignAttorneyModal';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { AttorneyUser } from '@common/cams/users';
+import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -197,12 +196,13 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
-  const [attorneysList, setAttorneysList] = useState<AttorneyUser[]>([]);
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
+
+  const globalAlert = useGlobalAlert();
 
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
@@ -212,10 +212,10 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         const response = data as Chapter15CaseDetailsResponseData;
         setCaseBasicInfo(response.body?.caseDetails);
       })
-      .then(() => {
-        AttorneysApi.getAttorneys().then((attorneys) => {
-          setAttorneysList(attorneys);
-        });
+      .catch((_error) => {
+        globalAlert?.error(`Could not get case information.`);
+      })
+      .finally(() => {
         setIsLoading(false);
       });
   }
@@ -312,7 +312,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
   }
 
-  function handleCaseAssignment(assignment: CallBackProps) {
+  function handleCaseAssignment(assignment: CallbackProps) {
     const updatedCaseBasicInfo: CaseDetail = {
       ...caseBasicInfo!,
       assignments: assignment.selectedAttorneyList,
@@ -526,7 +526,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                             caseBasicInfo?.reopenedDate,
                             caseBasicInfo?.closedDate,
                           )}
-                          attorneyList={attorneysList}
                           onCaseAssignment={handleCaseAssignment}
                         />
                       }

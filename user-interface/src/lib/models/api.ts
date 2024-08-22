@@ -82,29 +82,6 @@ export default class Api {
     }
   }
 
-  public static async list(path: string, options: ObjectKeyVal = {}): Promise<ResponseData> {
-    try {
-      await this.executeBeforeHooks();
-      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
-      const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
-      await this.executeAfterHooks(response);
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return data;
-      } else {
-        if (response.status >= 500) {
-          return Promise.reject(new Error(data.message));
-        }
-        return Promise.reject(new Error(`${response.status} Error - ${path} - ${data.message}`));
-      }
-    } catch (e) {
-      return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
-    }
-  }
-
   public static async get(
     path: string,
     options?: ObjectKeyVal,

@@ -20,11 +20,13 @@ export class MockOfficesGateway implements OfficesGatewayInterface {
     return Promise.resolve(MockData.getOffices());
   }
 
-  async getOfficeByCourtIdAndOfficeCode(
+  async getOfficeByGroupDesignator(
     _applicationContext: ApplicationContext,
-    courtId: string,
-    officeCode: string,
+    groupDesignator: string,
   ): Promise<OfficeDetails> {
-    return MockData.getOfficeByCourtIdAndOfficeCode(courtId, officeCode);
+    const office = MockData.getOfficeByGroupDesignator(groupDesignator);
+    if (!office)
+      throw new CamsError(MODULE_NAME, { message: 'Office not found by group designator.' });
+    return office;
   }
 }

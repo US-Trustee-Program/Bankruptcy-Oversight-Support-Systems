@@ -2,24 +2,16 @@ import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { isResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
-import {
-  Table,
-  TableBody,
-  TableHeader,
-  TableHeaderData,
-  TableRow,
-  TableRowData,
-} from '@/lib/components/uswds/Table';
-import { CaseNumber } from '@/lib/components/CaseNumber';
+import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { useGenericApi } from '@/lib/hooks/UseApi';
 import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
-import { formatDate } from '@/lib/utils/datetime';
 import { deepEqual } from '@/lib/utils/objectEquality';
+import './SearchResults.scss';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -28,28 +20,39 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
+export type SearchResultsHeaderProps = {
+  id: string;
+};
+
+export type SearchResultsRowProps = TableRowProps & {
+  idx: number;
+  bCase: CaseBasics;
+};
+
 export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   noResultsMessage?: string;
+  header: (props: SearchResultsHeaderProps) => JSX.Element;
+  row: (props: SearchResultsRowProps) => JSX.Element;
 };
 
 export function SearchResults(props: SearchResultsProps) {
   const { id, onStartSearching, onEndSearching } = props;
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
-
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>(
-    props.searchPredicate,
-  );
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
+    ...props.searchPredicate,
+  });
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBodySuccess<CaseBasics[]> | null>(
     null,
   );
+
   const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
     ? searchResults?.meta
     : undefined;
@@ -57,7 +60,7 @@ export function SearchResults(props: SearchResultsProps) {
   const noResultsMessage =
     props.noResultsMessage ?? 'Modify your search criteria to include more cases.';
 
-  const api = useGenericApi();
+  const api = useApi2();
 
   function handleSearchResults(response: ResponseBodySuccess<CaseBasics[]>) {
     if (isResponseBodySuccess(response)) {
@@ -90,7 +93,7 @@ export function SearchResults(props: SearchResultsProps) {
     setIsSearching(true);
     if (onStartSearching) onStartSearching();
     api
-      .get<CaseBasics[]>('/cases', searchPredicate)
+      .searchCases(searchPredicate)
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
@@ -113,8 +116,11 @@ export function SearchResults(props: SearchResultsProps) {
     search();
   }, [searchPredicate]);
 
+  const Header = props.header;
+  const Row = props.row;
+
   return (
-    <div>
+    <div className="search-results">
       {alertInfo && (
         <div className="search-alert">
           <Alert
@@ -147,26 +153,10 @@ export function SearchResults(props: SearchResultsProps) {
       {!isSearching && !emptyResponse && (
         <div>
           <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
-            <TableHeader id={id} className="case-headings">
-              <TableHeaderData className="grid-col-3">Case Number (Division)</TableHeaderData>
-              <TableHeaderData className="grid-col-6">Case Title</TableHeaderData>
-              <TableHeaderData className="grid-col-1">Chapter</TableHeaderData>
-              <TableHeaderData className="grid-col-2">Case Filed</TableHeaderData>
-            </TableHeader>
+            <Header id={id} />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return (
-                  <TableRow key={idx}>
-                    <TableRowData dataSortValue={bCase.caseId}>
-                      <span className="no-wrap">
-                        <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
-                      </span>
-                    </TableRowData>
-                    <TableRowData>{bCase.caseTitle}</TableRowData>
-                    <TableRowData>{bCase.chapter}</TableRowData>
-                    <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
-                  </TableRow>
-                );
+                return <Row bCase={bCase} idx={idx} key={idx} />;
               })}
             </TableBody>
           </Table>

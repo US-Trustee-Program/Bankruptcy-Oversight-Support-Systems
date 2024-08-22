@@ -1,10 +1,10 @@
-import { CamsJwtHeader } from '../../types/authorization';
 import * as Verifier from './HumbleVerifier';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import MockFetch from '../../../testing/mock-fetch';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import OktaGateway from './okta-gateway';
+import { CamsJwtHeader } from '../../../../../../common/src/cams/jwt';
 
 describe('Okta gateway tests', () => {
   let context: ApplicationContext;

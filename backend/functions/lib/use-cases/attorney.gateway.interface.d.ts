@@ -1,9 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { AttorneyListDbResult } from '../adapters/types/attorneys';
+import { AttorneyUser } from '../../../../common/src/cams/users';
 
 export interface AttorneyGatewayInterface {
-  getAttorneys(
-    applicationContext: ApplicationContext,
-    attorneyOptions: { officeId?: string },
-  ): Promise<AttorneyListDbResult>;
+  getAttorneys(applicationContext: ApplicationContext): Promise<Array<AttorneyUser>>;
 }

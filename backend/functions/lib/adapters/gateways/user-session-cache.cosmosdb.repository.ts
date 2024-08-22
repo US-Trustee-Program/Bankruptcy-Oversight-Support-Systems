@@ -3,8 +3,8 @@ import { ApplicationContext } from '../types/basic';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { UserSessionCacheRepository } from './user-session-cache.repository';
-import { CamsJwtClaims } from '../types/authorization';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_USER_SESSION_CACHE';
 const CONTAINER_NAME: string = 'user-session-cache';
