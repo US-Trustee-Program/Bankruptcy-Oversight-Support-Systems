@@ -7,12 +7,20 @@ import { courts } from '../courts';
 
 const DEFAULT_CHAPTER: Chapter = '15';
 
-export function getFakerLocale(): Faker {
-  const locales = [
-    { faker: fakerEN_US, countryCode: 'US', countryName: 'United States' },
-    { faker: fakerEN_GB, countryCode: 'UK', countryName: 'United Kingdom' },
-    { faker: fakerES_MX, countryCode: 'MX', countryName: 'Mexico' },
-  ];
+export function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
+  const arr = [];
+  for (let i = 0; i < size; i++) {
+    arr.push(fn());
+  }
+  return arr;
+}
+
+export function getFakerLocale(useForeignLocales: boolean = false): Faker {
+  const locales = [{ faker: fakerEN_US, countryCode: 'US', countryName: 'United States' }];
+  if (useForeignLocales) {
+    locales.push({ faker: fakerEN_GB, countryCode: 'UK', countryName: 'United Kingdom' });
+    locales.push({ faker: fakerES_MX, countryCode: 'MX', countryName: 'Mexico' });
+  }
   const { faker, countryCode, countryName } = locales[randomInt(locales.length)];
   faker.location.countryCode = () => {
     return countryCode;
@@ -24,15 +32,15 @@ export function getFakerLocale(): Faker {
 }
 
 export function generateFakeDxtrId() {
-  return '123456';
+  return '' + ('999999' + randomInt(99999)).slice(-6);
 }
 
-export function generateFakeCaseId() {
-  return '00-12345';
+function generateFakeCaseId() {
+  return '99-' + ('00000' + randomInt(99999)).slice(-5);
 }
 
 export interface CreateCaseOptions {
-  chapter?: Chapter;
+  chapters?: Chapter[];
   judges?: Array<Judge>;
   attorneys?: Array<DebtorAttorney>;
   isCompany?: boolean;
@@ -49,7 +57,10 @@ export function createCases(caseCount: number, options: CreateCaseOptions): Arra
 
 export function createCase(options: CreateCaseOptions = {}): BCase {
   // TODO: Make these options / externalize them.
-  const court = courts[0];
+  const chapter: Chapter = options.chapters
+    ? options.chapters[randomInt(options.chapters.length)]
+    : DEFAULT_CHAPTER;
+  const court = courts[randomInt(courts.length)];
   const county = court.county;
   const courtId = court.id;
   const group = court.group.id;
@@ -57,14 +68,13 @@ export function createCase(options: CreateCaseOptions = {}): BCase {
   const reopenCode = '1';
 
   const isCompany = options.isCompany === undefined ? randomTruth() : options.isCompany;
-  const debtor = createDebtor(isCompany, options.chapter || DEFAULT_CHAPTER);
+  const debtor = createDebtor(isCompany, chapter);
   const debtorAttorney = options.attorneys
     ? options.attorneys[randomInt(options.attorneys.length)]
     : createAttorney();
 
   const judge = options.judges ? options.judges[randomInt(options.judges.length)] : undefined;
 
-  const chapter = options.chapter || DEFAULT_CHAPTER;
   return {
     dxtrId: generateFakeDxtrId(),
     caseId: generateFakeCaseId(),
@@ -145,5 +155,13 @@ export function createAttorney(): DebtorAttorney {
     zip: faker.location.zipCode(),
     country: faker.location.country(),
     phone: faker.phone.number(),
+  };
+}
+
+export function createJudge() {
+  const faker = getFakerLocale();
+  return {
+    lastName: faker.person.lastName(),
+    firstName: faker.person.firstName(),
   };
 }
