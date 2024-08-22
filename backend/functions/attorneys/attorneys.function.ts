@@ -1,4 +1,4 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
@@ -14,10 +14,10 @@ initializeApplicationInsights();
 
 const MODULE_NAME = 'ATTORNEYS-FUNCTION';
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+async function handler(
   request: HttpRequest,
-): Promise<void> {
+  functionContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
     functionContext,
     request,
@@ -30,14 +30,21 @@ const httpTrigger: AzureFunction = async function (
 
     const camsRequest = httpRequestToCamsHttpRequest(request);
     const attorneysList = await attorneysController.getAttorneyList(camsRequest);
-    functionContext.res = httpSuccess(attorneysList);
+    return httpSuccess(attorneysList);
   } catch (originalError) {
     const error = isCamsError(originalError)
       ? originalError
       : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
-    functionContext.res = httpError(error);
+    return httpError(error);
   }
-};
+}
 
-export default httpTrigger;
+app.http('handler', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'attorneys',
+});
+
+export default handler;
