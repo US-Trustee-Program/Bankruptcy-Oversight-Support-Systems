@@ -38,7 +38,7 @@ describe('StaffAssignmentRowInternal', () => {
     vi.clearAllMocks();
   });
 
-  test.only('should get attorneys assigned to the case', async () => {
+  test('should get attorneys assigned to the case', async () => {
     const { state, actions } = Internal.useStateActions(initialState);
     actions.getCaseAssignments();
 
