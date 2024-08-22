@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import ContextCreator from '../adapters/utils/application-context-creator';
-import { HttpRequest } from '@azure/functions';
+import { HttpRequest, InvocationContext } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../../common/src/cams/session';
-/* eslint-disable-next-line @typescript-eslint/no-require-imports */
-const functionContext = require('azure-function-context-mock');
+
+const invocationContext = new InvocationContext();
 
 export async function createMockApplicationContext(
   env: Record<string, string> = {},
@@ -14,7 +14,7 @@ export async function createMockApplicationContext(
     MOCK_AUTH: 'true',
     ...env,
   };
-  return await ContextCreator.applicationContextCreator(functionContext, createMockRequest());
+  return await ContextCreator.applicationContextCreator(invocationContext, createMockRequest());
 }
 
 export async function createMockApplicationContextSession(
@@ -25,6 +25,7 @@ export async function createMockApplicationContextSession(
 
 export function createMockRequest(request: Partial<HttpRequest> = {}): HttpRequest {
   const { headers, ...other } = request;
+  // const request = new HttpRequest();
   return {
     method: 'GET',
     url: 'http://localhost:3000',
