@@ -1,10 +1,12 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import { app } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { SyncOrdersOptions } from '../lib/use-cases/orders/orders';
 
 dotenv.config();
 
@@ -19,23 +21,26 @@ initializeApplicationInsights();
  *
  * curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
  *
- * @param functionContext
+ * @param invocationContext
  * @param request
  */
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function ordersManualSync(
   request: HttpRequest,
-): Promise<void> {
-  const context = await ContextCreator.applicationContextCreator(functionContext, request);
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const context = await ContextCreator.applicationContextCreator(invocationContext, request);
 
   const ordersController = new OrdersController(context);
   try {
-    const results = await ordersController.syncOrders(context, request.body);
-    functionContext.res = httpSuccess(results);
+    const results = await ordersController.syncOrders(context, request.body as SyncOrdersOptions);
+    return { ...httpSuccess(results) };
   } catch (camsError) {
     context.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    return { ...httpError(camsError) };
   }
-};
-
-export default httpTrigger;
+}
+app.http('ordersManualSync', {
+  methods: ['POST'],
+  handler: ordersManualSync,
+});
+//export default httpTrigger;

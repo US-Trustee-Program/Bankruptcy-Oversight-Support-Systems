@@ -1,24 +1,25 @@
-import { ApiResponse } from '../types/http';
 import { CamsError } from '../../common-errors/cams-error';
+import { HttpResponseInit } from '@azure/functions';
 
 const commonHeaders = {
   'Content-Type': 'application/json',
   'Last-Modified': Date.toString(),
 };
 
-export function httpSuccess(body: object = {}): ApiResponse {
+export function httpSuccess(body: object = {}): HttpResponseInit {
   return {
     headers: commonHeaders,
-    statusCode: 200,
-    body,
+    status: 200,
+    jsonBody: body,
   };
 }
 
-export function httpError(error: CamsError): ApiResponse {
+export function httpError(error: CamsError): HttpResponseInit {
   return {
     headers: commonHeaders,
-    statusCode: error.status,
-    body: {
+    status: error.status,
+    body: error.message,
+    jsonBody: {
       success: false,
       message: error.message,
     },

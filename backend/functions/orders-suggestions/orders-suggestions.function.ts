@@ -1,4 +1,5 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import { app } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
@@ -10,20 +11,34 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function suggestedCases(
   request: HttpRequest,
-): Promise<void> {
-  const context = await ContextCreator.applicationContextCreator(functionContext, request);
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const context = await ContextCreator.applicationContextCreator(invocationContext, request);
   try {
     const ordersController = new OrdersController(context);
     const caseId = request.params['caseId'];
     const response = await ordersController.getSuggestedCases(context, caseId);
-    functionContext.res = httpSuccess(response);
+    //const success: HttpResponseInit = httpSuccess(response);
+    return {
+      ...httpSuccess(response),
+    };
   } catch (camsError) {
     context.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    invocationContext.error(
+      'Problem within order-suggestions functions',
+      camsError,
+      request.headers.get('x-ms-original-url'),
+    );
+    //const errorRes = httpError(camsError);
+    return {
+      ...httpError(camsError),
+    };
   }
-};
+}
 
-export default httpTrigger;
+app.http('suggestedCases', {
+  methods: ['GET'],
+  handler: suggestedCases,
+});
