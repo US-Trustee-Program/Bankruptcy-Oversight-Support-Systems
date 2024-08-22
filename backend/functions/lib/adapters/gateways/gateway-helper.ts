@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { QueryResults } from '../types/database';
 import { ApplicationContext } from '../types/basic';
 import { CamsError } from '../../common-errors/cams-error';
-import { ATTORNEYS } from '../../testing/mock-data/debtor-attorneys.mock';
+import { DEBTOR_ATTORNEYS } from '../../testing/mock-data/debtor-attorneys.mock';
 import { DEBTORS } from '../../testing/mock-data/debtors.mock';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-entries.mock';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
@@ -36,7 +36,7 @@ export class GatewayHelper {
   }
 
   getAllDebtorAttorneysMockExtract(): Map<string, DebtorAttorney> {
-    return ATTORNEYS;
+    return DEBTOR_ATTORNEYS;
   }
 }
 

@@ -57,7 +57,7 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
             return result;
           }
         },
-        searchAllCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
+        searchCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
           return buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
         },
       };
@@ -65,8 +65,9 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
   };
 });
 
-describe('Standard case list tests without class mocks', () => {
+describe('Standard case endpoint tests', () => {
   const request = createMockAzureFunctionRequest({
+    method: 'GET',
     query: {},
     params: {
       caseId: '',
@@ -118,8 +119,9 @@ describe('Standard case list tests without class mocks', () => {
     const caseNumber = '00-12345';
     const requestOverride = {
       ...request,
+      method: 'POST',
       params: {},
-      query: {
+      body: {
         caseNumber,
       },
     };

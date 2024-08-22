@@ -6,29 +6,31 @@ import useFeatureFlags, {
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
+import LocalStorage from '../utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
 
 export enum NavState {
   DEFAULT,
-  CASE_ASSIGNMENT,
   CASE_DETAIL,
   DATA_VERIFICATION,
   MY_CASES,
   SEARCH,
+  STAFF_ASSIGNMENT,
 }
 
 function mapNavState(path: string) {
   const cleanPath = path.replace(/^\//, '').split('/');
   switch (cleanPath[0]) {
-    case 'case-assignment':
-      return NavState.CASE_ASSIGNMENT;
     case 'case-detail':
-      return NavState.CASE_ASSIGNMENT;
+      return NavState.DEFAULT;
     case 'data-verification':
       return NavState.DATA_VERIFICATION;
     case 'my-cases':
       return NavState.MY_CASES;
     case 'search':
       return NavState.SEARCH;
+    case 'staff-assignment':
+      return NavState.STAFF_ASSIGNMENT;
     default:
       return NavState.DEFAULT;
   }
@@ -39,6 +41,7 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 }
 
 export const Header = () => {
+  const session = LocalStorage.getSession();
   const location = useLocation();
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
@@ -89,18 +92,24 @@ export const Header = () => {
                   My Cases
                 </NavLink>
               </li>
-              <li className="usa-nav__primary-item">
-                <NavLink
-                  to="/case-assignment"
-                  data-testid="header-case-assignment-link"
-                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_ASSIGNMENT)}
-                  onClick={() => {
-                    return setActiveNav(NavState.CASE_ASSIGNMENT);
-                  }}
-                >
-                  Case Assignment
-                </NavLink>
-              </li>
+
+              {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/staff-assignment"
+                    data-testid="header-staff-assignment-link"
+                    className={
+                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                    }
+                    onClick={() => {
+                      return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                    }}
+                  >
+                    Staff Assignment
+                  </NavLink>
+                </li>
+              )}
+
               {transferOrdersFlag && (
                 <li className="usa-nav__primary-item">
                   <NavLink
@@ -117,6 +126,7 @@ export const Header = () => {
                   </NavLink>
                 </li>
               )}
+
               {caseSearchFlag && (
                 <li className="usa-nav__primary-item">
                   <NavLink

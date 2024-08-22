@@ -1,11 +1,13 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
-import { buildResponseBodySuccess } from '@common/api/response';
+import { buildResponseBodyError, buildResponseBodySuccess } from '@common/api/response';
+import { SearchResultsHeader } from '@/search/SearchResultsHeader';
+import { SearchResultsRow } from '@/search/SearchResultsRow';
+import Api2 from '@/lib/hooks/UseApi2';
 
 describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
@@ -15,12 +17,11 @@ describe('SearchResults component tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = MockData.buildArray(MockData.getCaseSummary, 30);
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue(
-      buildResponseBodySuccess<CaseBasics[]>(caseList, {
-        next: 'next-link',
-        self: 'self-link',
-      }),
-    );
+    const expectedResponse = buildResponseBodySuccess<CaseBasics[]>(caseList, {
+      next: 'next-link',
+      self: 'self-link',
+    });
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue(expectedResponse);
   });
 
   function renderWithProps(props: Partial<SearchResultsProps> = {}) {
@@ -33,6 +34,8 @@ describe('SearchResults component tests', () => {
       },
       onStartSearching: onStartSearchingSpy,
       onEndSearching: onEndSearchingSpy,
+      header: SearchResultsHeader,
+      row: SearchResultsRow,
     };
     render(
       <BrowserRouter>
@@ -51,7 +54,7 @@ describe('SearchResults component tests', () => {
 
     renderWithProps({ searchPredicate });
 
-    let table = document.querySelector('#search-results > table');
+    let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
 
     await waitFor(() => {
@@ -60,7 +63,7 @@ describe('SearchResults component tests', () => {
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
+      table = document.querySelector('.search-results table');
       expect(table).toBeVisible();
     });
 
@@ -69,11 +72,7 @@ describe('SearchResults component tests', () => {
   });
 
   test('should show the no results alert when no results are available', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
-      message: '',
-      count: 0,
-      body: [],
-    });
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue(buildResponseBodySuccess([]));
 
     renderWithProps();
 
@@ -84,7 +83,7 @@ describe('SearchResults component tests', () => {
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('#search-results > table');
+      table = document.querySelector('.search-results table');
       expect(table).not.toBeInTheDocument();
       noResultsAlert = document.querySelector('#no-results-alert');
       expect(noResultsAlert).toBeInTheDocument();
@@ -93,13 +92,13 @@ describe('SearchResults component tests', () => {
   });
 
   test('should show the error alert when an error is encountered', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockRejectedValueOnce({
-      message: 'some error',
-    });
+    vi.spyOn(Api2, 'searchCases').mockRejectedValue(
+      buildResponseBodyError(new Error('some error')),
+    );
 
     renderWithProps();
 
-    let table = document.querySelector('#search-results > table');
+    let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
 
     let searchErrorAlert = document.querySelector('#search-error-alert');

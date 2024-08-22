@@ -1,7 +1,7 @@
 import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
 import { ApplicationContext } from './basic';
-import { AttorneyListDbResult } from './attorneys';
+import { AttorneyUser } from '../../../../../common/src/cams/users';
 
 export interface PersistenceGateway {
   createRecord(
@@ -39,7 +39,7 @@ export interface AttorneyPersistenceGateway {
   getAttorneyList(
     applicationContext: ApplicationContext,
     fields: ObjectKeyVal,
-  ): Promise<AttorneyListDbResult>;
+  ): Promise<AttorneyUser[]>;
 }
 
 export interface ChaptersPersistenceGateway {

@@ -1,12 +1,14 @@
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
-import { BUFFALO, MANHATTAN } from './offices.mock';
+import { BUFFALO, DELAWARE, MANHATTAN } from './offices.mock';
 
 export type MockUser = {
   sub: string;
   label: string;
   user: CamsUser;
+  hide?: boolean;
 };
+
 export const SUPERUSER = {
   sub: 'user@fake.com',
   label: "Martha's Son - Super User",
@@ -16,6 +18,7 @@ export const SUPERUSER = {
     roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
     offices: [],
   },
+  hide: true,
 };
 
 export const MockUsers: MockUser[] = [
@@ -70,13 +73,33 @@ export const MockUsers: MockUser[] = [
     },
   },
   {
-    sub: 'aust',
-    label: 'Charlie - Assistant US Trustee',
+    sub: 'charlie@fake.com',
+    label: 'Charlie - Assistant US Trustee (Manhattan)',
     user: {
-      id: '==MOCKUSER=aust==',
+      id: 'manAUST0001',
       name: 'Charlie',
       roles: [CamsRole.CaseAssignmentManager],
       offices: [MANHATTAN],
+    },
+  },
+  {
+    sub: 'daniel@fake.com',
+    label: 'Daniel - Assistant US Trustee (Buffalo)',
+    user: {
+      id: 'bufAUST0001',
+      name: 'Daniel',
+      roles: [CamsRole.CaseAssignmentManager],
+      offices: [BUFFALO],
+    },
+  },
+  {
+    sub: 'emma@fake.com',
+    label: 'Emma - Assistant US Trustee (Delaware)',
+    user: {
+      id: 'delAUST0001',
+      name: 'Emma',
+      roles: [CamsRole.CaseAssignmentManager],
+      offices: [DELAWARE],
     },
   },
   SUPERUSER,

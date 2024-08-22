@@ -3,10 +3,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 
 export interface OfficesGatewayInterface {
   getOfficeName(id: string): string;
-  getOfficeByCourtIdAndOfficeCode(
+
+  getOfficeByGroupDesignator(
     applicationContext: ApplicationContext,
-    courtId: string,
-    officeCode: string,
+    groupDesignator: string,
   ): Promise<OfficeDetails>;
+
   getOffices(applicationContext: ApplicationContext): Promise<OfficeDetails[]>;
 }

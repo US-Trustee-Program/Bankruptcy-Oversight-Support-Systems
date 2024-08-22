@@ -5,12 +5,16 @@ import AssignAttorneyModal, {
   AssignAttorneyModalRef,
 } from './AssignAttorneyModal';
 import React from 'react';
-import { ToggleModalButton } from '../lib/components/uswds/modal/ToggleModalButton';
 import Api from '@/lib/models/api';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
+import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
+import Api2 from '@/lib/hooks/UseApi2';
+import { AttorneyUser } from '@common/cams/users';
+import { ResponseBodySuccess } from '@common/api/response';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const offices = [MANHATTAN!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -28,14 +32,20 @@ const attorneyList = [susan, mark, shara, brian, joe, bob, frank, sally, may, mo
 const modalId = 'some-modal-id';
 
 describe('Test Assign Attorney Modal Component', () => {
+  let callback = vi.fn();
+
+  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
+    meta: { isPaginated: false, self: 'self-url' },
+    isSuccess: true,
+    data: attorneyList,
+  };
+
   function renderWithProps(
     modalRef: React.RefObject<AssignAttorneyModalRef>,
     props: Partial<AssignAttorneyModalProps> = {},
   ) {
     const defaults: AssignAttorneyModalProps = {
-      attorneyList,
       modalId,
-      callBack: vi.fn(),
     };
 
     const propsToRender: AssignAttorneyModalProps = {
@@ -61,6 +71,15 @@ describe('Test Assign Attorney Modal Component', () => {
     );
   }
 
+  beforeEach(() => {
+    vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+    callback = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('Should enable the submit button if changes are selected, otherwise disabled if no change.', async () => {
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
@@ -76,7 +95,9 @@ describe('Test Assign Attorney Modal Component', () => {
 
     modalRef.current?.show({
       bCase,
+      callback,
     });
+
     const button = screen.getByTestId('toggle-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
@@ -132,6 +153,7 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
+      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -180,6 +202,7 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
+      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -203,12 +226,12 @@ describe('Test Assign Attorney Modal Component', () => {
   test('should call callback with error information if API caseAssignments POST returns error', async () => {
     const error = new Error('API Rejection');
     vi.spyOn(Api, 'post').mockRejectedValue(error);
-    const callBack = vi.fn();
 
     const modalRef = React.createRef<AssignAttorneyModalRef>();
-    renderWithProps(modalRef, { callBack });
+    renderWithProps(modalRef, {});
 
     modalRef.current?.show({
+      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -235,12 +258,25 @@ describe('Test Assign Attorney Modal Component', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(callBack).toHaveBeenCalledWith(
+      expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
           apiResult: error,
           status: 'error',
         }),
       );
+    });
+  });
+
+  test('should display error alert when call to getAttorneys throws an error', async () => {
+    const error = new Error('API Rejection');
+    vi.spyOn(Api2, 'getAttorneys').mockRejectedValue(error);
+    const alertSpy = testingUtilities.spyOnGlobalAlert();
+
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef, {});
+
+    await waitFor(() => {
+      expect(alertSpy.error).toHaveBeenCalled();
     });
   });
 });

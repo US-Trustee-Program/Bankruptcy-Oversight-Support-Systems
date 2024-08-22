@@ -113,7 +113,7 @@ export function MockLogin(props: MockLoginProps) {
         heading={'Login'}
         content={
           <RadioGroup label="Choose a role:">
-            {MockUsers.map((role, idx) => {
+            {MockUsers.filter((role) => !role.hide).map((role, idx) => {
               return (
                 <Radio
                   key={`radio-role-${idx}`}

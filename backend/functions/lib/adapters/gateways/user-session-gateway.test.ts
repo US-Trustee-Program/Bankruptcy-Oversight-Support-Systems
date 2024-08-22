@@ -1,6 +1,5 @@
 import { ConflictError, isConflictError, UserSessionGateway } from './user-session-gateway';
 import OktaGateway from './okta/okta-gateway';
-import { CamsJwtHeader } from '../types/authorization';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
@@ -14,8 +13,9 @@ import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { urlRegex } from '../../../../../user-interface/src/lib/testing/testing-utilities';
+import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 
 describe('user-session.gateway test', () => {
   const jwt = MockData.getJwt();

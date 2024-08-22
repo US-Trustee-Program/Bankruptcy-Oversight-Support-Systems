@@ -309,12 +309,12 @@ describe('Case management tests', () => {
         .mockResolvedValue(assignments);
       const searchCases = jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(cases);
 
-      const actual = await useCase.searchCases(applicationContext, { assignments: [user.id] });
+      const actual = await useCase.searchCases(applicationContext, { assignments: [user] });
 
       expect(actual).toEqual(cases);
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
       expect(searchCases).toHaveBeenCalledWith(expect.any(Object), {
-        assignments: [user.id],
+        assignments: [user],
         caseIds,
       });
     });

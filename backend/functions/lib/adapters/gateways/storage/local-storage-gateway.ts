@@ -12,15 +12,16 @@ const ROLE_MAPPING =
 
 export const OFFICE_MAPPING_PATH = '/officemapping.csv';
 const OFFICE_MAPPING =
-  'ad_group_name,idp_group_name,dxtr_court_id,dxtr_office_code\n' +
-  'USTP_CAMS_Region_2_Office_Manhattan,USTP CAMS Region 2 Office Manhattan,0208,1\n' +
-  'USTP_CAMS_Region_2_Office_Brooklyn,USTP CAMS Region 2 Office Brooklyn,0207,1\n' +
-  'USTP_CAMS_Region_2_Office_Central_Islip,USTP CAMS Region 2 Office Central Islip,0207,8\n' +
-  'USTP_CAMS_Region_2_Office_Albany,USTP CAMS Region 2 Office Albany,0206,1\n' +
-  'USTP_CAMS_Region_2_Office_Utica,USTP CAMS Region 2 Office Utica,0206,6\n' +
-  'USTP_CAMS_Region_2_Office_Buffalo,USTP CAMS Region 2 Office Buffalo,0209,1\n' +
-  'USTP_CAMS_Region_2_Office_Rochester,USTP CAMS Region 2 Office Rochester,0209,2\n' +
-  'USTP_CAMS_Region_2_Office_New_Haven,USTP CAMS Region 2 Office New Haven,0205,3\n';
+  'ad_group_name,idp_group_name,group_designator\n' +
+  'USTP_CAMS_Region_2_Office_Manhattan,USTP CAMS Region 2 Office Manhattan,NY\n' +
+  'USTP_CAMS_Region_2_Office_Brooklyn,USTP CAMS Region 2 Office Brooklyn,BR\n' +
+  'USTP_CAMS_Region_2_Office_Central_Islip,USTP CAMS Region 2 Office Central Islip,LI\n' +
+  'USTP_CAMS_Region_2_Office_Albany,USTP CAMS Region 2 Office Albany,AL\n' +
+  'USTP_CAMS_Region_2_Office_Utica,USTP CAMS Region 2 Office Utica,UT\n' +
+  'USTP_CAMS_Region_2_Office_Buffalo,USTP CAMS Region 2 Office Buffalo,BU\n' +
+  'USTP_CAMS_Region_2_Office_Rochester,USTP CAMS Region 2 Office Rochester,RO\n' +
+  'USTP_CAMS_Region_2_Office_New_Haven,USTP CAMS Region 2 Office New Haven,NH\n' +
+  'USTP_CAMS_Region_18_Office_Seattle,USTP CAMS Region 18 Office Seattle,SE|AK\n';
 
 const storage = new Map<string, string>();
 storage.set(ROLE_MAPPING_PATH, ROLE_MAPPING);
@@ -33,25 +34,21 @@ function get(path: string): string | null {
   return storage.get(path);
 }
 
-export type DxtrOfficeKeys = {
-  courtId: string;
-  officeCode: string;
-};
+export type GroupDesignators = string[];
 
-function getOfficeMapping(): Map<string, DxtrOfficeKeys> {
+function getOfficeMapping(): Map<string, GroupDesignators> {
   if (!officeMapping) {
     const officeArray = OFFICE_MAPPING.split('\n');
-    officeMapping = officeArray.reduce((officeMap, officeString, idx) => {
-      if (idx === 0) return officeMap;
-      const officeInfo = officeString.split(',');
 
-      officeMap.set(officeInfo[1], {
-        courtId: officeInfo[2],
-        officeCode: officeInfo[3],
-      });
+    officeMapping = officeArray.reduce((officeMap, officeString, idx) => {
+      if (idx === 0 || officeString.length === 0) return officeMap;
+      const officeInfo = officeString.split(',');
+      const groupDesignators = officeInfo[2].split('|');
+
+      officeMap.set(officeInfo[1], groupDesignators);
 
       return officeMap;
-    }, new Map<string, DxtrOfficeKeys>());
+    }, new Map<string, GroupDesignators>());
   }
 
   return officeMapping;

@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/case-management';
 import { ResponseBody, ResponseMetaData } from '../../../../../common/src/api/response';
 import { CaseBasics } from '../../../../../common/src/cams/cases';
-import { CasesSearchPredicate, setPaginationDefaults } from '../../../../../common/src/api/search';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
 
 const _MODULE_NAME = 'CASES-CONTROLLER';
@@ -24,54 +24,12 @@ export class CasesController {
     return this.caseManagement.getCaseDetail(this.applicationContext, requestQueryFilters.caseId);
   }
 
-  public async getCasesByUserSessionOffices(
-    request: CamsHttpRequest,
-  ): Promise<ResponseBody<CaseBasics[]>> {
-    type CasesSearchQueryString = Omit<CasesSearchPredicate, 'chapters'> & {
-      chapters: string;
-    };
-
-    const queryString = request.query as unknown as CasesSearchQueryString;
-    const { chapters, ...otherProps } = queryString;
-
-    const divisionCodes = this.applicationContext.session.user.offices.map(
-      (office) => office.courtDivisionCode,
-    );
-
-    const predicate: CasesSearchPredicate = setPaginationDefaults({
-      ...otherProps,
-      divisionCodes,
-      chapters: chapters?.split(','),
-    });
-
-    return this.searchCases(predicate, request.url);
+  public async searchCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
+    const predicate = request.body as CasesSearchPredicate;
+    return this.paginateSearchCases(predicate, request.url);
   }
 
-  public async searchAllCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
-    type CasesSearchQueryString = Omit<
-      CasesSearchPredicate,
-      'divisionCodes' | 'chapters' | 'assignments' | 'caseIds'
-    > & {
-      divisionCodes: string;
-      chapters: string;
-      assignments: string;
-      caseIds: string;
-    };
-
-    const queryString = request.query as unknown as CasesSearchQueryString;
-    const { divisionCodes, chapters, assignments, caseIds, ...otherProps } = queryString;
-    const predicate: CasesSearchPredicate = setPaginationDefaults({
-      ...otherProps,
-      divisionCodes: divisionCodes?.split(','),
-      chapters: chapters?.split(','),
-      assignments: assignments?.split(','),
-      caseIds: caseIds?.split(','),
-    });
-
-    return this.searchCases(predicate, request.url);
-  }
-
-  async searchCases(
+  async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
   ): Promise<ResponseBody<CaseBasics[]>> {

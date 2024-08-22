@@ -7,8 +7,8 @@ import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal, {
   AssignAttorneyModalRef,
-  CallBackProps,
-} from '@/case-assignment/AssignAttorneyModal';
+  CallbackProps,
+} from '@/staff-assignment/modal/AssignAttorneyModal';
 import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -23,12 +23,11 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 export interface CaseDetailBasicInfoProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
-  attorneyList: AttorneyUser[];
-  onCaseAssignment: (props: CallBackProps) => void;
+  onCaseAssignment: (props: CallbackProps) => void;
 }
 
 export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
-  const { caseDetail, showReopenDate, attorneyList, onCaseAssignment } = props;
+  const { caseDetail, showReopenDate, onCaseAssignment } = props;
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
 
@@ -36,7 +35,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
     return sortDatesReverse(a.orderDate, b.orderDate);
   }
 
-  function handleCaseAssignment(props: CallBackProps) {
+  function handleCaseAssignment(props: CallbackProps) {
     onCaseAssignment(props);
     assignmentModalRef.current?.hide();
   }
@@ -90,7 +89,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
                     modalId={'assignmentModalId'}
                     toggleAction={'open'}
                     modalRef={assignmentModalRef}
-                    toggleProps={{ bCase: caseDetail }}
+                    toggleProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
                     ariaLabel="Edit assigned staff"
                     title="Open Staff Assignment window"
                   >
@@ -390,9 +389,7 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
       </div>
       <AssignAttorneyModal
         ref={assignmentModalRef}
-        attorneyList={attorneyList}
         modalId={'assignmentModalId'}
-        callBack={handleCaseAssignment}
         alertMessage={
           isJointAdministrationChildCase(caseDetail.consolidation)
             ? {
