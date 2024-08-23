@@ -13,8 +13,8 @@ import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-ca
 import { CamsResponse } from '../controller-types';
 import {
   ConsolidationOrder,
-  ConsolidationOrderActionApproval,
-  ConsolidationOrderActionRejection,
+  isConsolidationOrderApproval,
+  isConsolidationOrderRejection,
   Order,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
@@ -108,19 +108,21 @@ export class OrdersController {
 
   public async rejectConsolidation(
     context: ApplicationContext,
-    data: ConsolidationOrderActionRejection,
+    data: unknown,
   ): Promise<ManageConsolidationResponse> {
     try {
-      if (data.rejectedCases.length == 0) {
-        throw new BadRequestError('Missing rejected cases');
-      }
+      if (isConsolidationOrderRejection(data)) {
+        if (data.rejectedCases.length == 0) {
+          throw new BadRequestError('Missing rejected cases');
+        }
 
-      const orders = await this.useCase.rejectConsolidation(context, data);
-      const response: ManageConsolidationResponse = {
-        success: true,
-        body: orders,
-      };
-      return response;
+        const orders = await this.useCase.rejectConsolidation(context, data);
+        const response: ManageConsolidationResponse = {
+          success: true,
+          body: orders,
+        };
+        return response;
+      }
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
@@ -130,27 +132,29 @@ export class OrdersController {
 
   public async approveConsolidation(
     context: ApplicationContext,
-    data: ConsolidationOrderActionApproval,
+    data: unknown,
   ): Promise<ManageConsolidationResponse> {
     try {
-      if (!data.consolidationType) {
-        throw new BadRequestError('Missing consolidation type');
-      }
+      if (isConsolidationOrderApproval(data)) {
+        if (!data.consolidationType) {
+          throw new BadRequestError('Missing consolidation type');
+        }
 
-      if (data.approvedCases.length == 0) {
-        throw new BadRequestError('Missing approved cases');
-      }
+        if (data.approvedCases.length == 0) {
+          throw new BadRequestError('Missing approved cases');
+        }
 
-      if (!data.leadCase) {
-        throw new BadRequestError('Missing lead case');
-      }
+        if (!data.leadCase) {
+          throw new BadRequestError('Missing lead case');
+        }
 
-      const orders = await this.useCase.approveConsolidation(context, data);
-      const response: ManageConsolidationResponse = {
-        success: true,
-        body: orders,
-      };
-      return response;
+        const orders = await this.useCase.approveConsolidation(context, data);
+        const response: ManageConsolidationResponse = {
+          success: true,
+          body: orders,
+        };
+        return response;
+      }
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError

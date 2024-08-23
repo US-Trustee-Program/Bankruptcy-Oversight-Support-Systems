@@ -7,13 +7,35 @@ export type OrderType = 'transfer' | 'consolidation';
 export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = ConsolidationOrder & {
+  _camsType: 'ConsolidationOrderActionRejection';
   rejectedCases: Array<string>;
 };
 
+export function isConsolidationOrderRejection(
+  body: unknown,
+): body is ConsolidationOrderActionRejection {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    body['_camsType'] === 'ConsolidationOrderActionRejection'
+  );
+}
+
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
+  _camsType: 'ConsolidationOrderActionApproval';
   approvedCases: Array<string>;
   leadCase: CaseSummary;
 };
+
+export function isConsolidationOrderApproval(
+  body: unknown,
+): body is ConsolidationOrderActionApproval {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    body['_camsType'] === 'ConsolidationOrderActionApproval'
+  );
+}
 
 // TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
 export type TransferOrder = CaseSummary & {

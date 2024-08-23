@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
@@ -14,17 +14,17 @@ initializeApplicationInsights();
 
 const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION';
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
+  functionContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
     functionContext,
     request,
   );
   const consolidationsController = new OrdersController(applicationContext);
   const procedure = request.params.procedure;
-  const body = request.body;
+  const body = await request.json();
   let response;
 
   try {
@@ -40,14 +40,19 @@ const httpTrigger: AzureFunction = async function (
         message: `Could not perform ${procedure}.`,
       });
     }
-    functionContext.res = httpSuccess(response);
+    return httpSuccess(response);
   } catch (originalError) {
     const error = isCamsError(originalError)
       ? originalError
       : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
-    functionContext.res = httpError(error);
+    return httpError(error);
   }
-};
+}
 
-export default httpTrigger;
+app.http('consolidations', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'consolidations/{procedure}',
+});
