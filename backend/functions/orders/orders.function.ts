@@ -19,21 +19,23 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-async function handler(
-  functionContext: InvocationContext,
+export async function handler(
   request: HttpRequest,
+  functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
   const context = await ContextCreator.applicationContextCreator(functionContext, request);
-  let response;
+  let response: HttpResponseInit;
   try {
     context.session = await ContextCreator.getApplicationContextSession(context);
 
     if (request.method === 'GET') {
-      response = await getOrders(context);
+      const orderGet = await getOrders(context);
+      response = httpSuccess(orderGet);
     } else if (request.method === 'PATCH') {
-      response = await updateOrder(context);
+      const orderPatch = await updateOrder(context);
+      response = httpSuccess(orderPatch);
     }
-    return httpSuccess(response);
+    return response;
   } catch (camsError) {
     context.logger.camsError(camsError);
     return httpError(camsError);
@@ -49,8 +51,8 @@ async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse
 async function updateOrder(context: ApplicationContext): Promise<PatchOrderResponse> {
   const ordersController = new OrdersController(context);
   const data = context.request.body;
-  const id = context.request.params['id'];
-  if (id !== data.id) {
+  const id = context.request.params.id;
+  if (id !== data['id']) {
     const camsError = new BadRequestError(MODULE_NAME, {
       message: 'Cannot update order. ID of order does not match ID of request.',
     });
@@ -58,13 +60,16 @@ async function updateOrder(context: ApplicationContext): Promise<PatchOrderRespo
   }
   const orderType = data['orderType'];
   if (orderType === 'transfer') {
-    return ordersController.updateOrder(context, id, data as TransferOrderAction);
+    const orderUpdate = ordersController.updateOrder(context, id, data as TransferOrderAction);
+    return orderUpdate;
   }
 }
+
 app.http('handler', {
-  methods: ['GET', 'PATCH'],
+  methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
-  route: 'orders/{id?}',
+  route: 'case-assignments/{id?}',
 });
+
 export default handler;
