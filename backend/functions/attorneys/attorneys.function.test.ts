@@ -10,6 +10,8 @@ import handler from './attorneys.function';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { InvocationContext } from '@azure/functions';
+import { ResponseBodySuccess } from '../../../common/src/api/response';
+import { AttorneyUser } from '../../../common/src/cams/users';
 
 describe('Attorneys Azure Function tests', () => {
   const request = createMockAzureFunctionRequest();
@@ -50,5 +52,21 @@ describe('Attorneys Azure Function tests', () => {
 
     expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(CamsError));
     expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
+  });
+
+  test('should return success with a list of attorneys', async () => {
+    const attorneys = MockData.buildArray(MockData.getAttorneyUser, 4);
+    const mockResponse: ResponseBodySuccess<AttorneyUser[]> = {
+      meta: {
+        self: '',
+        isPaginated: false,
+      },
+      isSuccess: true,
+      data: attorneys,
+    };
+    jest.spyOn(AttorneysController.prototype, 'getAttorneyList').mockResolvedValue(mockResponse);
+
+    const response = await handler(request, context);
+    expect(response.jsonBody).toEqual(mockResponse);
   });
 });
