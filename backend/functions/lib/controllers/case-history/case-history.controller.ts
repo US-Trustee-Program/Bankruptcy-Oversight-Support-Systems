@@ -3,13 +3,10 @@ import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { ResponseBody } from '../../../../../common/src/api/response';
+import { buildResponseBodySuccess, ResponseBody } from '../../../../../common/src/api/response';
+import { CamsHttpRequest } from '../../adapters/types/http';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
-
-type GetCaseHistoryRequest = {
-  caseId: string;
-};
 
 export class CaseHistoryController {
   private readonly useCase: CaseHistoryUseCase;
@@ -20,18 +17,14 @@ export class CaseHistoryController {
 
   public async getCaseHistory(
     context: ApplicationContext,
-    request: GetCaseHistoryRequest,
+    request: CamsHttpRequest,
   ): Promise<ResponseBody<CaseHistory[]>> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(context, request.caseId);
-      return {
-        meta: {
-          isPaginated: false,
-          self: context.req.url,
-        },
-        isSuccess: true,
-        data: caseHistory,
-      };
+      const caseHistory = await this.useCase.getCaseHistory(context, request.params.caseId);
+      return buildResponseBodySuccess<CaseHistory[]>(caseHistory, {
+        isPaginated: false,
+        self: request.url,
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
