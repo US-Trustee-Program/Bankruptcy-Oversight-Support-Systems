@@ -1,4 +1,5 @@
-import httpTrigger, { checkResults } from './healthcheck.function';
+import { createMockAzureFunctionRequest } from '../azure/functions';
+import { checkResults, handler } from './healthcheck.function';
 
 const mockRequestFunc = jest.fn().mockImplementation(() => ({
   input: jest.fn(),
@@ -26,12 +27,9 @@ jest.mock('mssql', () => {
 test('Healthcheck endpoint should return an ALIVE status', async () => {
   /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
+  const request = createMockAzureFunctionRequest({ query: {} });
 
-  const request = {
-    query: {},
-  };
-
-  await httpTrigger(context, request);
+  await handler(request, context);
 
   expect(context.res.body).not.toBeNull(); // Check for any response.
 }, 10000);
