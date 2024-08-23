@@ -1,10 +1,11 @@
-import httpTrigger from '../offices/offices.function';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
+import { InvocationContext } from '@azure/functions';
+import handler from './offices.function';
 
 let getOffices;
 
@@ -20,8 +21,11 @@ jest.mock('../lib/controllers/offices/offices.controller', () => {
 
 describe('offices Function tests', () => {
   const request = createMockAzureFunctionRequest();
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+
+  const context = new InvocationContext({
+    logHandler: () => {},
+    invocationId: 'id',
+  });
 
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
     MockData.getCamsSession({
@@ -44,9 +48,9 @@ describe('offices Function tests', () => {
       body: [],
     };
 
-    await httpTrigger(context, request);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
   test('should set error response', async () => {
@@ -59,8 +63,8 @@ describe('offices Function tests', () => {
       message: 'Some expected CAMS error.',
     };
 
-    await httpTrigger(context, request);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 });
