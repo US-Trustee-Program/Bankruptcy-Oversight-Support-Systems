@@ -13,7 +13,7 @@ const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
 async function applicationContextCreator(
   invocationContext: InvocationContext,
-  request: HttpRequest,
+  request?: HttpRequest,
 ): Promise<ApplicationContext> {
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
@@ -24,13 +24,12 @@ async function applicationContextCreator(
   };
 
   const logger = new LoggerImpl(invocationContext.invocationId, logWrapper);
-
   return {
     config,
     featureFlags,
     logger,
     invocationId: invocationContext.invocationId,
-    request: httpRequestToCamsHttpRequest(request),
+    request: request ? httpRequestToCamsHttpRequest(request) : undefined,
   } satisfies ApplicationContext;
 }
 
