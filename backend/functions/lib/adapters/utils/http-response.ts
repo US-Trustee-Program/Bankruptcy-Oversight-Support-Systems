@@ -1,5 +1,6 @@
 import { HttpResponseInit } from '@azure/functions';
 import { CamsError } from '../../common-errors/cams-error';
+import { INTERNAL_SERVER_ERROR } from '../../common-errors/constants';
 
 const commonHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -53,10 +54,14 @@ export function httpSuccess<T extends object = undefined>(body?: T): HttpRespons
 //   };
 // }
 
-export function httpError(error: CamsError): HttpResponseInit {
+export function httpError(
+  error: CamsError,
+  status: number = INTERNAL_SERVER_ERROR,
+): HttpResponseInit {
   return {
     headers: commonHeaders,
-    status: error.status,
+    status: error.status ?? status,
+    body: error.message,
     jsonBody: {
       success: false,
       message: error.message,

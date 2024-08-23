@@ -1,37 +1,27 @@
 import * as dotenv from 'dotenv';
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import { AnyCondition, buildFunctionHandler } from '../azure/buildFunctionHandler';
+import { app } from '@azure/functions';
 
 dotenv.config();
 
-// const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
+const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-export default async function handler(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const caseSummaryController = new CaseSummaryController(applicationContext);
-  try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
-
-    const response = await caseSummaryController.getCaseSummary(applicationContext, {
-      caseId: request.params.caseId,
-    });
-    return httpSuccess(response);
-  } catch (error) {
-    return httpError(error);
-  }
-}
+const handler = buildFunctionHandler(MODULE_NAME, [
+  {
+    if: AnyCondition,
+    then: async (context) => {
+      const controller = new CaseSummaryController(context);
+      const response = await controller.getCaseSummary(context, {
+        caseId: context.request.params.caseId,
+      });
+      return response;
+    },
+  },
+]);
 
 app.http('case-summary', {
   methods: ['GET'],
