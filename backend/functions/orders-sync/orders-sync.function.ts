@@ -1,5 +1,5 @@
 // TODO: The original context was InvocationContext
-import { InvocationContext } from '@azure/functions';
+import { app, InvocationContext, Timer } from '@azure/functions';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
@@ -11,13 +11,21 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-export default async function timerTrigger(invocationContext: InvocationContext): Promise<void> {
-  const context = await ContextCreator.applicationContextCreator(invocationContext, undefined);
+export default async function timerTrigger(
+  myTimer: Timer,
+  context: InvocationContext,
+): Promise<void> {
+  const appContext = await ContextCreator.applicationContextCreator(context, undefined);
 
-  const ordersController = new OrdersController(context);
+  const ordersController = new OrdersController(appContext);
   try {
-    await ordersController.syncOrders(context);
+    await ordersController.syncOrders(appContext);
   } catch (camsError) {
-    context.logger.camsError(camsError);
+    appContext.logger.camsError(camsError);
+    myTimer.isPastDue;
   }
 }
+app.timer('timerTrigger', {
+  schedule: '0 */5 * * * *',
+  handler: timerTrigger,
+});
