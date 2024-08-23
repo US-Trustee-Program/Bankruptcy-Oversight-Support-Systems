@@ -99,112 +99,51 @@ describe('Case Assignment Function Tests', () => {
     expect(response.jsonBody.body.length).toEqual(1);
   });
 
-  test('returns bad request 400 when a caseId is not passed in the request', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '',
-        attorneyList: ['Bob', 'Denise'],
-        role: 'TrialAttorney',
-      },
-    };
+  const errorTestCases = [
+    ['caseId not present', '', 'TrialAttorney', 'Required parameter(s) caseId is/are absent.'],
+    ['invalid caseId format', '123', 'TrialAttorney', 'caseId must be formatted like 01-12345.'],
+    [
+      'role not present',
+      '001-90-90123',
+      '',
+      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
+    ],
+    [
+      'invalid role',
+      '001-90-90123',
+      'TrialDragon',
+      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
+    ],
+  ];
+  test.each(errorTestCases)(
+    'should return proper error response for %s',
+    async (_caseName: string, caseId: string, role: string, message: string) => {
+      const requestOverride = {
+        body: {
+          caseId,
+          attorneyList: ['Bob', 'Denise'],
+          role,
+        },
+      };
 
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
+      const request = createMockAzureFunctionRequest({
+        ...defaultRequestProps,
+        ...requestOverride,
+      });
 
-    const expectedResponse = {
-      message: 'Required parameter(s) caseId is/are absent.',
-      success: false,
-    };
+      const expectedResponse = {
+        message,
+        success: false,
+      };
 
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponse);
-    expect(response.status).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
-  test('returns bad request 400 when a caseId is invalid format', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '123',
-        attorneyList: ['Bob', 'Denise'],
-        role: 'TrialAttorney',
-      },
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const expectedResponse = { message: 'caseId must be formatted like 01-12345.', success: false };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponse);
-    expect(response.status).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
-  test('returns bad request 400 when a role is not passed in the request', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '001-90-90123',
-        attorneyList: ['John Doe'],
-        role: '',
-      },
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const expectedResponse = {
-      message:
-        'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
-      success: false,
-    };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponse);
-    expect(response.status).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
-  test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '001-90-90123',
-        attorneyList: ['John Doe'],
-        role: 'TrialDragon',
-      },
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const expectedResponse = {
-      message:
-        'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
-      success: false,
-    };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponse);
-    expect(response.status).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
+      const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
+      const response = await handler(request, context);
+      expect(response.jsonBody).toEqual(expectedResponse);
+      expect(response.status).toEqual(400);
+      expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
+      expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
+    },
+  );
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
     const appContext = await createMockApplicationContext();
