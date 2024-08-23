@@ -1,21 +1,22 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import * as dotenv from 'dotenv';
+import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
+import { isCamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
-dotenv.config();
+const MODULE_NAME = 'CASE-ASSOCIATED-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function handler(
   request: HttpRequest,
-): Promise<void> {
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+    invocationContext,
     request,
   );
   const controller = new CaseAssociatedController(applicationContext);
@@ -24,14 +25,18 @@ const httpTrigger: AzureFunction = async function (
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const responseBody = await controller.getAssociatedCases(applicationContext, {
-      caseId: applicationContext.req.params.caseId,
+    const response = await controller.getAssociatedCases(applicationContext, {
+      caseId: applicationContext.request.params.caseId,
     });
-    functionContext.res = httpSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
-  }
-};
 
-export default httpTrigger;
+    return httpSuccess(response);
+  } catch (originalError) {
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
+    applicationContext.logger.camsError(error);
+    return httpError(error);
+  }
+}
+
+export default handler;

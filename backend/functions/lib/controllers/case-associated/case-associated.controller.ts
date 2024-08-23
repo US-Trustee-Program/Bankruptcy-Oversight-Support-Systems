@@ -11,8 +11,6 @@ type GetCaseAssociatedRequest = {
   caseId: string;
 };
 
-type GetCaseAssociatedResponse = CamsResponse<Array<EventCaseReference>>;
-
 export class CaseAssociatedController {
   private readonly useCase: CaseAssociatedUseCase;
 
@@ -23,7 +21,7 @@ export class CaseAssociatedController {
   public async getAssociatedCases(
     context: ApplicationContext,
     request: GetCaseAssociatedRequest,
-  ): Promise<GetCaseAssociatedResponse> {
+  ): Promise<CamsResponse<Array<EventCaseReference>>> {
     try {
       const associatedCases = await this.useCase.getAssociatedCases(context, request.caseId);
       return {
