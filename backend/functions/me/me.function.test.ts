@@ -1,13 +1,17 @@
-import httpTrigger from '../me/me.function';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { ForbiddenError } from '../lib/common-errors/forbidden-error';
+import handler from '../me/me.function';
+import { InvocationContext } from '@azure/functions';
 
 describe('me Function test', () => {
+  const context = new InvocationContext({
+    logHandler: () => {},
+    invocationId: 'id',
+  });
+
   const request = createMockAzureFunctionRequest();
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
 
   test('should set successful response', async () => {
     const camsSession = MockData.getCamsSession();
@@ -18,9 +22,9 @@ describe('me Function test', () => {
       body: camsSession,
     };
 
-    await httpTrigger(context, request);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
   test('should handle an error response', async () => {
@@ -31,8 +35,8 @@ describe('me Function test', () => {
       message: error.message,
     };
 
-    await httpTrigger(context, request);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 });
