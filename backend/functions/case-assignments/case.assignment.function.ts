@@ -80,11 +80,9 @@ async function handlePostMethod(
   return httpSuccess(trialAttorneyAssignmentResponse);
 }
 
-app.http('handler', {
+app.http('case-assignments', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
   route: 'case-assignments/{id?}',
 });
-
-export default handler;

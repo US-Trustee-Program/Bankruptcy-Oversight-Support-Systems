@@ -14,7 +14,7 @@ initializeApplicationInsights();
 
 const MODULE_NAME = 'ATTORNEYS-FUNCTION';
 
-async function handler(
+export default async function handler(
   request: HttpRequest,
   functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -40,11 +40,9 @@ async function handler(
   }
 }
 
-app.http('handler', {
+app.http('attorneys', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
   route: 'attorneys',
 });
-
-export default handler;
