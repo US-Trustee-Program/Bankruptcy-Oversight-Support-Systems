@@ -1,9 +1,10 @@
-import httpTrigger from './orders.function';
+import { handler } from './orders.function';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
 
 let getOrders;
 let updateOrder;
@@ -37,7 +38,7 @@ describe('Orders Function tests', () => {
       success: true,
       body: mockOrders,
     };
-    await httpTrigger(context, request);
+    await handler(request, context);
     expect(context.res.body).toEqual(expectedResponseBody);
   });
 
@@ -49,8 +50,8 @@ describe('Orders Function tests', () => {
       .mockImplementation((_context: ApplicationContext, data: TransferOrderAction) => {
         return Promise.resolve({ success: true, body: data });
       });
-    const requestOverride = {
-      ...request,
+
+    const requestOverride: Partial<CamsHttpRequest> = {
       params: { id },
       body: {
         id,
@@ -59,11 +60,13 @@ describe('Orders Function tests', () => {
       method: 'PATCH',
     };
 
+    const orderRequest = createMockAzureFunctionRequest({ ...requestOverride });
     const expectedResponseBody = {
       success: true,
       body: id,
     };
-    await httpTrigger(context, requestOverride);
+
+    await handler(orderRequest, context);
     expect(context.res.body).toEqual(expectedResponseBody);
     expect(updateOrder).toHaveBeenCalled();
   });
@@ -76,7 +79,7 @@ describe('Orders Function tests', () => {
       success: false,
       message: 'Mocked error',
     };
-    await httpTrigger(context, request);
+    await handler(request, context);
     expect(context.res.body).toMatchObject(expectedErrorResponse);
   });
 
@@ -85,8 +88,7 @@ describe('Orders Function tests', () => {
     getOrders = jest.fn().mockImplementation(() => {
       throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
     });
-    const requestOverride = {
-      ...request,
+    const requestOverride: Partial<CamsHttpRequest> = {
       params: { id },
       body: {
         id,
@@ -94,6 +96,7 @@ describe('Orders Function tests', () => {
       },
       method: 'PATCH',
     };
+    const orderRequest = createMockAzureFunctionRequest({ ...requestOverride });
     updateOrder = jest
       .fn()
       .mockImplementation((_context: ApplicationContext, _data: TransferOrderAction) => {
@@ -103,26 +106,26 @@ describe('Orders Function tests', () => {
       success: false,
       message: 'Unknown error on update.',
     };
-    await httpTrigger(context, requestOverride);
+    await handler(orderRequest, context);
     expect(context.res.body).toMatchObject(expectedErrorResponse);
   });
 
   test('should return error bad request error when id in parameters does not match id in data', async () => {
     const paramId = '1';
     const dataId = '2';
-    const requestOverride = {
-      ...request,
+    const requestOverride: Partial<CamsHttpRequest> = {
       params: { id: paramId },
       body: {
         id: dataId,
       },
       method: 'PATCH',
     };
+    const orderRequest = createMockAzureFunctionRequest({ ...requestOverride });
     const expectedErrorResponse = {
       success: false,
       message: 'Cannot update order. ID of order does not match ID of request.',
     };
-    await httpTrigger(context, requestOverride);
+    await handler(orderRequest, context);
     expect(context.res.body).toMatchObject(expectedErrorResponse);
   });
 });
