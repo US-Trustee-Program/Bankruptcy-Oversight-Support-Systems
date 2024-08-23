@@ -1,6 +1,5 @@
 import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
-import { MockHumbleQuery } from '../lib/testing/mock.cosmos-client-humble';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { createMockAzureFunctionRequest } from '../azure/functions';
@@ -12,6 +11,9 @@ import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
 import { UnknownError } from '../lib/common-errors/unknown-error';
+import { buildResponseBodySuccess } from '../../../common/src/api/response';
+import { CaseHistory } from '../../../common/src/cams/history';
+import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 
 describe('Case History Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -38,10 +40,6 @@ describe('Case History Function Tests', () => {
   );
 
   test('Should return case history for an existing case ID', async () => {
-    jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValue({ resources: CASE_HISTORY });
-
     const caseId = NORMAL_CASE_ID;
     const requestOverride: Partial<CamsHttpRequest> = {
       params: {
@@ -52,6 +50,15 @@ describe('Case History Function Tests', () => {
       ...defaultRequestProps,
       ...requestOverride,
     });
+
+    const controllerResponse = buildResponseBodySuccess<CaseHistory[]>(CASE_HISTORY, {
+      isPaginated: false,
+      self: request.url,
+    });
+
+    jest
+      .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
+      .mockResolvedValue(controllerResponse);
 
     const expectedResponse = {
       isSuccess: true,
@@ -65,7 +72,7 @@ describe('Case History Function Tests', () => {
 
   test('Should return an error response for a non-existent case ID', async () => {
     jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
+      .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
       .mockRejectedValue(new NotFoundError('test-module'));
 
     const requestOverride = {
