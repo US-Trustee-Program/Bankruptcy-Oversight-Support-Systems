@@ -1,8 +1,6 @@
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
 import LocalStorage from '@/lib/utils/local-storage';
 import {
   CasesSearchPredicate,
@@ -18,6 +16,7 @@ import './StaffAssignmentScreen.scss';
 import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { CamsRole } from '@common/cams/roles';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -68,20 +67,13 @@ export const StaffAssignmentScreen = () => {
   };
 
   return (
-    <div className="my-cases case-list">
+    <main className="my-cases case-list">
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
-            <ToggleModalButton
-              toggleAction={'open'}
-              modalId={''}
-              modalRef={infoModalRef}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-            >
-              <IconLabel label={'Information'} icon={'info'}></IconLabel>
-            </ToggleModalButton>
+            <ScreenInfoButton infoModalRef={infoModalRef} />
           </div>
           <SearchResults
             id="search-results"
@@ -112,6 +104,6 @@ export const StaffAssignmentScreen = () => {
         ref={assignmentModalRef}
         modalId={`${assignmentModalId}`}
       ></AssignAttorneyModal>
-    </div>
+    </main>
   );
 };
