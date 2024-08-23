@@ -26,6 +26,6 @@ export default async function timerTrigger(
   }
 }
 app.timer('timerTrigger', {
-  schedule: '0 */5 * * * *',
+  schedule: '0 30 9 * * *',
   handler: timerTrigger,
 });
