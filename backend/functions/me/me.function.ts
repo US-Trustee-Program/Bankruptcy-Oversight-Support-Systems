@@ -2,7 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 
-async function handler(
+export async function handler(
   request: HttpRequest,
   functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
