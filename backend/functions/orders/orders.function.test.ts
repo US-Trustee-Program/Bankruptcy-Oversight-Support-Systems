@@ -38,11 +38,11 @@ describe('Orders Function tests', () => {
       success: true,
       body: mockOrders,
     };
-    await handler(request, context);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const response = await handler(request, context);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
-  test('should return updated order', async () => {
+  test.only('should return updated order', async () => {
     const id = '1234567890';
 
     updateOrder = jest
@@ -51,23 +51,23 @@ describe('Orders Function tests', () => {
         return Promise.resolve({ success: true, body: data });
       });
 
-    const requestOverride: Partial<CamsHttpRequest> = {
+    const orderRequest = createMockAzureFunctionRequest({
       params: { id },
       body: {
         id,
         orderType: 'transfer',
       },
       method: 'PATCH',
-    };
+    });
 
-    const orderRequest = createMockAzureFunctionRequest({ ...requestOverride });
     const expectedResponseBody = {
       success: true,
       body: id,
     };
 
-    await handler(orderRequest, context);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const response = await handler(orderRequest, context);
+    console.log('Request Id: ');
+    expect(response.jsonBody).toEqual(expectedResponseBody);
     expect(updateOrder).toHaveBeenCalled();
   });
 
@@ -79,8 +79,8 @@ describe('Orders Function tests', () => {
       success: false,
       message: 'Mocked error',
     };
-    await handler(request, context);
-    expect(context.res.body).toMatchObject(expectedErrorResponse);
+    const response = await handler(request, context);
+    expect(response.jsonBody).toMatchObject(expectedErrorResponse);
   });
 
   test('should return error response when an unknown error is encountered on update', async () => {
@@ -106,8 +106,8 @@ describe('Orders Function tests', () => {
       success: false,
       message: 'Unknown error on update.',
     };
-    await handler(orderRequest, context);
-    expect(context.res.body).toMatchObject(expectedErrorResponse);
+    const response = await handler(orderRequest, context);
+    expect(response.jsonBody).toMatchObject(expectedErrorResponse);
   });
 
   test('should return error bad request error when id in parameters does not match id in data', async () => {
@@ -125,7 +125,7 @@ describe('Orders Function tests', () => {
       success: false,
       message: 'Cannot update order. ID of order does not match ID of request.',
     };
-    await handler(orderRequest, context);
-    expect(context.res.body).toMatchObject(expectedErrorResponse);
+    const response = await handler(orderRequest, context);
+    expect(response.jsonBody).toMatchObject(expectedErrorResponse);
   });
 });

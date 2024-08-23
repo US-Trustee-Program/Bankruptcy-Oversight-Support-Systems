@@ -32,7 +32,9 @@ export async function handler(
       const orderGet = await getOrders(context);
       response = httpSuccess(orderGet);
     } else if (request.method === 'PATCH') {
-      const orderPatch = await updateOrder(context);
+      //TODO: Json Mapping with these requestBody objects
+      const requestBody = await request.json();
+      const orderPatch = await updateOrder(context, requestBody);
       response = httpSuccess(orderPatch);
     }
     return response;
@@ -48,28 +50,32 @@ async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse
   return responseBody;
 }
 
-async function updateOrder(context: ApplicationContext): Promise<PatchOrderResponse> {
+async function updateOrder(context: ApplicationContext, requestBody): Promise<PatchOrderResponse> {
   const ordersController = new OrdersController(context);
-  const data = context.request.body;
-  const id = context.request.params.id;
-  if (id !== data['id']) {
+  const id = context.request.params['id'];
+  const orderId = requestBody['id'];
+  const orderType = requestBody['orderType'];
+  if (id !== orderId) {
     const camsError = new BadRequestError(MODULE_NAME, {
       message: 'Cannot update order. ID of order does not match ID of request.',
     });
     throw camsError;
   }
-  const orderType = data['orderType'];
   if (orderType === 'transfer') {
-    const orderUpdate = ordersController.updateOrder(context, id, data as TransferOrderAction);
+    const orderUpdate = ordersController.updateOrder(
+      context,
+      id,
+      requestBody as TransferOrderAction,
+    );
     return orderUpdate;
   }
 }
 
 app.http('handler', {
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'PATCH'],
   authLevel: 'anonymous',
   handler,
-  route: 'case-assignments/{id?}',
+  route: 'orders/{id?}',
 });
 
 export default handler;
