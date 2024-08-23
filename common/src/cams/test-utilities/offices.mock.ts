@@ -3503,5 +3503,6 @@ export const OFFICES: OfficeDetails[] = [
 ];
 
 export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
+export const WHITE_PLAINS = OFFICES.find((office) => office.courtDivisionCode === '087');
 export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
 export const DELAWARE = OFFICES.find((office) => office.courtDivisionCode === '111');

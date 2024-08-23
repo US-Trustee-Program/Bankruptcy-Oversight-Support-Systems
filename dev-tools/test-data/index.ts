@@ -17,10 +17,14 @@ import { CaseDetail } from './cases';
 import { concatenateCityStateZipCountry, concatenateName } from './utility';
 import { TxCode } from './types';
 
-import { createChapter15Cases } from './fixtures/chapter15Cases';
-import { createNoJudgeAssignedCases } from './fixtures/noJudgeAssignedCases';
-import { CreateCaseOptions, createAttorney } from './fixtures/lib/common';
-import { createReopenedCases } from './fixtures/reopenedCases';
+// import { createChapter15Cases } from './fixtures/chapter15Cases';
+import {
+  CreateCaseOptions,
+  buildArray,
+  createAttorney,
+  createCases,
+  createJudge,
+} from './fixtures/lib/common';
 
 const validFormats = ['json', 'sql'];
 const format = process.argv[2];
@@ -30,22 +34,24 @@ if (!format || !validFormats.includes(format.toLowerCase())) {
   process.exit(-1);
 }
 
+const numberOfCasesToCreate = process.argv[3] ? parseInt(process.argv[3]) : 20;
+
 // Common set of judges and attorneys to assign to cases.
-const judges: Array<Judge> = [
-  {
-    firstName: 'Meyer',
-    lastName: 'Steven',
-  },
-];
-const attorneys: Array<DebtorAttorney> = [createAttorney(), createAttorney(), createAttorney()];
-const commonOptions: CreateCaseOptions = { judges, attorneys };
+const judges: Array<Judge> = buildArray(createJudge, 10);
+const attorneys: Array<DebtorAttorney> = buildArray(createAttorney, 50);
+const commonOptions: CreateCaseOptions = {
+  judges,
+  attorneys,
+  chapters: ['11', '11', '12', '12', '11', '11', '12', '12', '15'],
+};
 
 // Create a set of cases using the fixtures.
 const bCases: Array<BCase> = [];
 bCases.push(
-  ...createChapter15Cases(20, commonOptions),
-  ...createNoJudgeAssignedCases(commonOptions),
-  ...createReopenedCases(commonOptions),
+  // ...createChapter15Cases(numberOfCasesToCreate, commonOptions),
+  // ...createNoJudgeAssignedCases(commonOptions),
+  // ...createReopenedCases(commonOptions),
+  ...createCases(numberOfCasesToCreate, commonOptions),
 );
 
 // Output the cases in the specified format.
