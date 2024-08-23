@@ -1,20 +1,31 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const context = await ContextCreator.applicationContextCreator(functionContext, request);
+  functionContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    functionContext,
+    request,
+  );
   try {
-    context.session = await ContextCreator.getApplicationContextSession(context);
-    const response = { success: true, body: context.session };
-    functionContext.res = httpSuccess(response);
+    applicationContext.session =
+      await ContextCreator.getApplicationContextSession(applicationContext);
+    const response = { success: true, body: applicationContext.session };
+    return httpSuccess(response);
   } catch (camsError) {
-    context.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    applicationContext.logger.camsError(camsError);
+    return httpError(camsError);
   }
-};
+}
 
-export default httpTrigger;
+app.http('handler', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'me',
+});
+
+export default handler;
