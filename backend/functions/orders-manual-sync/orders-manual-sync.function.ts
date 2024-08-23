@@ -39,8 +39,10 @@ export async function handler(
     return { ...httpError(camsError) };
   }
 }
-app.http('ordersManualSync', {
+app.http('handler', {
   methods: ['POST'],
   handler,
+  route: 'orders-sync',
 });
-//export default httpTrigger;
+
+export default handler;
