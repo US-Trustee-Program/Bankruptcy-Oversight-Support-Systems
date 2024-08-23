@@ -2,22 +2,19 @@ import { Court } from '../domain/court';
 import { OfficeDetails } from '../../../common/src/cams/courts';
 import { OFFICES } from '../../../common/src/cams/test-utilities/offices.mock';
 
-// export const courts: Array<Court> = [
-//   {
-//     county: 'NEW YORK-NY',
-//     id: '0208',
-//     group: {
-//       id: 'NY',
-//       region: {
-//         id: '02',
-//         name: 'NEW YORK',
-//       },
-//     },
-//     div: '081',
-//   },
-// ];
-
 export const courts: Array<Court> = [
+  {
+    county: 'NEW YORK-NY',
+    id: '0208',
+    group: {
+      id: 'NY',
+      region: {
+        id: '02',
+        name: 'NEW YORK',
+      },
+    },
+    div: '081',
+  },
   {
     county: 'WHITE PLAINS',
     id: '0208',
@@ -54,18 +51,18 @@ export const courts: Array<Court> = [
     },
     div: '091',
   },
-  // {
-  //   county: 'WILMINGTON',
-  //   id: '0311',
-  //   group: {
-  //     id: 'WL',
-  //     region: {
-  //       id: '03',
-  //       name: 'PHILADELPHIA',
-  //     },
-  //   },
-  //   div: '111',
-  // },
+  {
+    county: 'WILMINGTON',
+    id: '0311',
+    group: {
+      id: 'WL',
+      region: {
+        id: '03',
+        name: 'PHILADELPHIA',
+      },
+    },
+    div: '111',
+  },
 ];
 
 function generateCourtsFromCommon(offices: Array<OfficeDetails>): Array<Court> {
