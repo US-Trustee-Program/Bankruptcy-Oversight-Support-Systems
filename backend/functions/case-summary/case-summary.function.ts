@@ -1,11 +1,13 @@
 import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { UnknownError } from '../lib/common-errors/unknown-error';
 import { isCamsError } from '../lib/common-errors/cams-error';
+
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
 
