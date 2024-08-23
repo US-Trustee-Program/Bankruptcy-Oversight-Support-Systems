@@ -1,36 +1,48 @@
-import httpTrigger from './case-docket.function';
+import httpTrigger, { handler } from './case-docket.function';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 import { createMockAzureFunctionRequest } from '../azure/functions';
+import { InvocationContext } from '@azure/functions';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
 
 describe('Case docket function', () => {
   const caseId = NORMAL_CASE_ID;
-  const request = createMockAzureFunctionRequest({ params: { caseId } });
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+
+  const defaultRequestProps: Partial<CamsHttpRequest> = {
+    params: { caseId: caseId },
+  };
+
+  const context = new InvocationContext({
+    logHandler: () => {},
+    invocationId: 'id',
+  });
 
   test('Should return a docket consisting of a list of docket entries an existing case ID', async () => {
+    const request = createMockAzureFunctionRequest(defaultRequestProps);
     const expectedResponseBody = {
       success: true,
       body: DXTR_CASE_DOCKET_ENTRIES,
     };
-    await httpTrigger(context, request);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const response = await handler(request, context);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
   test('Should return an error response for a non-existent case ID', async () => {
     const bogusCaseId = NOT_FOUND_ERROR_CASE_ID;
     const requestOverride = {
-      ...request,
       params: {
         caseId: bogusCaseId,
       },
     };
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
     const expectedErrorResponse = {
       success: false,
       message: 'Not found',
     };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedErrorResponse);
+    const response = await httpTrigger(request, context);
+    expect(response.jsonBody).toEqual(expectedErrorResponse);
   });
 });
