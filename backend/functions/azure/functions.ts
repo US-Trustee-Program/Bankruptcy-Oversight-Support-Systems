@@ -43,7 +43,7 @@ export function createMockAzureFunctionRequest(
 ): HttpRequest {
   const { headers, method, body, ...other } = request;
   const requestInit = {
-    method: (method as CamsHttpMethod) ?? 'GET',
+    method: method ?? 'GET',
     url: 'http://localhost:3000',
     body: { string: JSON.stringify(body) },
     headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
