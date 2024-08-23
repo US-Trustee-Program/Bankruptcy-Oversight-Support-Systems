@@ -1,21 +1,22 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import * as dotenv from 'dotenv';
+import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { UnknownError } from '../lib/common-errors/unknown-error';
+import { isCamsError } from '../lib/common-errors/cams-error';
 
-dotenv.config();
+const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function handler(
   request: HttpRequest,
-): Promise<void> {
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+    invocationContext,
     request,
   );
   const caseSummaryController = new CaseSummaryController(applicationContext);
@@ -23,14 +24,17 @@ const httpTrigger: AzureFunction = async function (
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const responseBody = await caseSummaryController.getCaseSummary(applicationContext, {
+    const response = await caseSummaryController.getCaseSummary(applicationContext, {
       caseId: request.params.caseId,
     });
-    functionContext.res = httpSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    return httpSuccess(response);
+  } catch (originalError) {
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
+    applicationContext.logger.camsError(error);
+    return httpError(error);
   }
-};
+}
 
-export default httpTrigger;
+export default handler;
