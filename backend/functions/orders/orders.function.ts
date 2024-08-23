@@ -1,4 +1,4 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
@@ -19,10 +19,10 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+async function handler(
+  functionContext: InvocationContext,
   request: HttpRequest,
-): Promise<void> {
+): Promise<HttpResponseInit> {
   const context = await ContextCreator.applicationContextCreator(functionContext, request);
   let response;
   try {
@@ -33,12 +33,12 @@ const httpTrigger: AzureFunction = async function (
     } else if (request.method === 'PATCH') {
       response = await updateOrder(context);
     }
-    functionContext.res = httpSuccess(response);
+    return httpSuccess(response);
   } catch (camsError) {
     context.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    return httpError(camsError);
   }
-};
+}
 
 async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
   const ordersController = new OrdersController(context);
@@ -48,18 +48,23 @@ async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse
 
 async function updateOrder(context: ApplicationContext): Promise<PatchOrderResponse> {
   const ordersController = new OrdersController(context);
-  const data = context.req.body;
-  const id = context.req.params['id'];
+  const data = context.request.body;
+  const id = context.request.params['id'];
   if (id !== data.id) {
     const camsError = new BadRequestError(MODULE_NAME, {
       message: 'Cannot update order. ID of order does not match ID of request.',
     });
     throw camsError;
   }
-  const orderType = data.orderType;
+  const orderType = data['orderType'];
   if (orderType === 'transfer') {
     return ordersController.updateOrder(context, id, data as TransferOrderAction);
   }
 }
-
-export default httpTrigger;
+app.http('handler', {
+  methods: ['GET', 'PATCH'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'orders/{id?}',
+});
+export default handler;
