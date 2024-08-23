@@ -42,7 +42,7 @@ describe('Orders Function tests', () => {
     expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
-  test.only('should return updated order', async () => {
+  test('should return updated order', async () => {
     const id = '1234567890';
 
     updateOrder = jest
