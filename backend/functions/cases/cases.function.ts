@@ -1,5 +1,4 @@
-import * as dotenv from 'dotenv';
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
@@ -11,18 +10,19 @@ import { CaseBasics } from '../../../common/src/cams/cases';
 import { ResponseBody } from '../../../common/src/api/response';
 import { httpRequestToCamsHttpRequest } from '../azure/functions';
 
+import * as dotenv from 'dotenv';
 dotenv.config();
+
+const MODULE_NAME = 'CASES-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'CASES-FUNCTION';
-
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function handler(
   request: HttpRequest,
-): Promise<void> {
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+    invocationContext,
     request,
   );
   const casesController = new CasesController(applicationContext);
@@ -33,25 +33,25 @@ const httpTrigger: AzureFunction = async function (
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    let responseBody: CaseDetailsDbResult | SearchResults;
+    let response: CaseDetailsDbResult | SearchResults;
 
     if (request.method === 'GET' && request.params.caseId) {
-      responseBody = await casesController.getCaseDetails({
+      response = await casesController.getCaseDetails({
         caseId: request.params.caseId,
       });
     } else {
       const camsRequest = httpRequestToCamsHttpRequest(request);
-      responseBody = await casesController.searchCases(camsRequest);
+      response = await casesController.searchCases(camsRequest);
     }
 
-    functionContext.res = httpSuccess(responseBody);
+    return httpSuccess(response);
   } catch (originalError) {
     const error = isCamsError(originalError)
       ? originalError
       : new UnknownError(MODULE_NAME, { originalError });
     applicationContext.logger.camsError(error);
-    functionContext.res = httpError(error);
+    return httpError(error);
   }
-};
+}
 
-export default httpTrigger;
+export default handler;

@@ -1,61 +1,30 @@
+import { InvocationContext } from '@azure/functions';
 import { buildResponseBodySuccess, ResponseBodySuccess } from '../../../common/src/api/response';
 import { CaseBasics } from '../../../common/src/cams/cases';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
-import httpTrigger from './cases.function';
+import handler from './cases.function';
+import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
+import { CamsRole } from '../../../common/src/cams/roles';
 
 const searchCasesResults = [MockData.getCaseBasics(), MockData.getCaseBasics()];
+
+const caseDetails = MockData.getCaseDetail();
+const caseDetailsResponse = {
+  message: '',
+  success: true,
+  body: {
+    caseDetails: { ...caseDetails, _actions: [] },
+  },
+};
 
 jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
   return {
     CasesController: jest.fn().mockImplementation(() => {
       return {
         getCaseDetails: () => {
-          return {
-            message: '',
-            success: true,
-            body: {
-              caseDetails: {
-                caseId: '111-11-1111',
-                caseTitle: '',
-                dateFiled: '',
-                dateClosed: '',
-              },
-            },
-          };
-        },
-        getCaseList: (params: { caseChapter: string }) => {
-          if (params.caseChapter === '15') {
-            return {
-              success: true,
-              message: '',
-              count: 2,
-              body: {
-                caseList: [
-                  {
-                    caseId: '081-11-06541',
-                    caseTitle: 'Crawford, Turner and Garrett',
-                    dateFiled: '2011-05-20',
-                  },
-                  {
-                    caseId: '081-14-03544',
-                    caseTitle: 'Ali-Cruz',
-                    dateFiled: '2014-04-23',
-                  },
-                ],
-              },
-            };
-          } else {
-            const result = {
-              success: false,
-              message: 'Invalid Chapter value provided',
-              count: 0,
-              body: {
-                caseList: [],
-              },
-            };
-            return result;
-          }
+          return caseDetailsResponse;
         },
         searchCases: (_params: { caseNumber: string }): ResponseBodySuccess<CaseBasics[]> => {
           return buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
@@ -66,16 +35,23 @@ jest.mock('../lib/controllers/cases/cases.controller.ts', () => {
 });
 
 describe('Standard case endpoint tests', () => {
-  const request = createMockAzureFunctionRequest({
-    method: 'GET',
-    query: {},
-    params: {
-      caseId: '',
-    },
-  });
+  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getCamsSession({
+      user: {
+        id: 'userId-Bob Jones',
+        name: 'Bob Jones',
+        offices: [MANHATTAN],
+        roles: [CamsRole.TrialAttorney],
+      },
+    }),
+  );
+
   const originalEnv = process.env;
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+
+  const context = new InvocationContext({
+    logHandler: () => {},
+    invocationId: 'id',
+  });
 
   beforeAll(() => {
     process.env = {
@@ -89,47 +65,30 @@ describe('Standard case endpoint tests', () => {
   });
 
   test('Should return 1 case when called with a caseId', async () => {
-    const caseId = '081-11-06541';
-    const requestOverride = {
-      ...request,
+    const request = createMockAzureFunctionRequest({
+      method: 'GET',
       params: {
-        caseId,
+        caseId: caseDetails.caseId,
       },
-    };
+    });
 
-    const expectedResponseBody = {
-      success: true,
-      message: '',
-      body: {
-        caseDetails: {
-          caseId: '111-11-1111',
-          caseTitle: '',
-          dateFiled: '',
-          dateClosed: '',
-        },
-      },
-    };
-
-    await httpTrigger(context, requestOverride);
-
-    expect(expectedResponseBody).toEqual(context.res.body);
+    const response = await handler(request, context);
+    expect(response.jsonBody).toEqual(caseDetailsResponse);
   });
 
   test('should perform search', async () => {
-    const caseNumber = '00-12345';
-    const requestOverride = {
-      ...request,
-      method: 'POST',
-      params: {},
-      body: {
-        caseNumber,
-      },
+    const body = {
+      caseNumber: '00-12345',
     };
+    const request = createMockAzureFunctionRequest({
+      method: 'POST',
+      body,
+    });
 
     const expectedResponseBody = buildResponseBodySuccess<CaseBasics[]>(searchCasesResults);
 
-    await httpTrigger(context, requestOverride);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 });
