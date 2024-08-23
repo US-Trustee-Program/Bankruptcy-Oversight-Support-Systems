@@ -2,8 +2,8 @@
 
 ## Generate SQL
 
-```sh
-npm run test-data: [sql | json]
+```
+npm run test-data:{sql | json} [number of cases to create]
 ```
 
 SQL statements are written to `data/test-data.sql` when `test-data:sql` is run.
