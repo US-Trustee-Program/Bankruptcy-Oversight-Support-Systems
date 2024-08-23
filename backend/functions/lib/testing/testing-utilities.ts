@@ -3,6 +3,7 @@ import ContextCreator from '../adapters/utils/application-context-creator';
 import { HttpRequest, InvocationContext } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../../common/src/cams/session';
+import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 
 const invocationContext = new InvocationContext();
 
@@ -23,21 +24,14 @@ export async function createMockApplicationContextSession(
   return MockData.getCamsSession(override);
 }
 
-export function createMockRequest(request: Partial<HttpRequest> = {}): HttpRequest {
-  const { headers, ...other } = request;
-  // const request = new HttpRequest();
-  return {
-    method: 'GET',
+export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
+  const { headers, method, body, ...other } = request;
+  const requestInit = {
+    method: (method as CamsHttpMethod) ?? 'GET',
     url: 'http://localhost:3000',
-    headers: {
-      authorization: 'Bearer ' + MockData.getJwt(),
-      ...headers,
-    },
-    query: {},
-    params: {},
-    user: null,
-    get: jest.fn(),
-    parseFormBody: jest.fn(),
+    body: { string: JSON.stringify(body) },
+    headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
     ...other,
   };
+  return new HttpRequest(requestInit);
 }

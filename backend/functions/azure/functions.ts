@@ -33,34 +33,13 @@ export function createMockAzureFunctionContext(
 export function createMockAzureFunctionRequest(
   request: Partial<CamsHttpRequest> = {},
 ): HttpRequest {
-  const { headers: _headers, method, body, ...other } = request;
+  const { headers, method, body, ...other } = request;
   const requestInit = {
     method: (method as CamsHttpMethod) ?? 'GET',
     url: 'http://localhost:3000',
     body: { string: JSON.stringify(body) },
+    headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
     ...other,
   };
-  const requestInst = new HttpRequest(requestInit);
-  requestInst.headers.set('authorization', 'Bearer ' + MockData.getJwt());
-  // TODO: I don't think headers is an iterable object so this probably won't work
-  // headers.forEach((header) => {
-  //   const parts = header.split(':');
-  //   requestInst.headers.set(parts[0], parts[1]);
-  // });
-
-  return requestInst;
-  // return {
-  //   method: 'GET',
-  //   url: 'http://localhost:3000',
-  //   headers: {
-  //     authorization: 'Bearer ' + MockData.getJwt(),
-  //     ...headers,
-  //   },
-  //   query: {},
-  //   params: {},
-  //   user: null,
-  //   get: jest.fn(),
-  //   parseFormBody: jest.fn(),
-  //   ...other,
-  // };
+  return new HttpRequest(requestInit);
 }
