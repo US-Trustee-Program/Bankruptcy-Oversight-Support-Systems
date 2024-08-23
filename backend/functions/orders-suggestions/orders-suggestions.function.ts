@@ -1,44 +1,41 @@
 import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import { app } from '@azure/functions';
-import * as dotenv from 'dotenv';
-
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { isCamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
+import * as dotenv from 'dotenv';
 dotenv.config();
 
 initializeApplicationInsights();
 
-export async function suggestedCases(
+const MODULE_NAME = 'ORDER-SUGGESTIONS-FUNCTION' as const;
+
+export async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator(invocationContext, request);
+  const applicationContext = await ContextCreator.applicationContextCreator(
+    invocationContext,
+    request,
+  );
+  const controller = new OrdersController(applicationContext);
   try {
-    const ordersController = new OrdersController(context);
+    applicationContext.session =
+      await ContextCreator.getApplicationContextSession(applicationContext);
+
     const caseId = request.params['caseId'];
-    const response = await ordersController.getSuggestedCases(context, caseId);
-    //const success: HttpResponseInit = httpSuccess(response);
-    return {
-      ...httpSuccess(response),
-    };
-  } catch (camsError) {
-    context.logger.camsError(camsError);
-    invocationContext.error(
-      'Problem within order-suggestions functions',
-      camsError,
-      request.headers.get('x-ms-original-url'),
-    );
-    //const errorRes = httpError(camsError);
-    return {
-      ...httpError(camsError),
-    };
+    const response = await controller.getSuggestedCases(applicationContext, caseId);
+    return httpSuccess(response);
+  } catch (originalError) {
+    const error = isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError });
+    applicationContext.logger.camsError(error);
+    return httpError(error);
   }
 }
 
-app.http('suggestedCases', {
-  methods: ['GET'],
-  handler: suggestedCases,
-});
+export default handler;
