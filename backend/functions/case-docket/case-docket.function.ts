@@ -1,4 +1,4 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
@@ -10,12 +10,12 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function handler(
   request: HttpRequest,
-): Promise<void> {
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+    invocationContext,
     request,
   );
   const caseDocketController = new CaseDocketController(applicationContext);
@@ -26,11 +26,18 @@ const httpTrigger: AzureFunction = async function (
     const responseBody = await caseDocketController.getCaseDocket(applicationContext, {
       caseId: request.params.caseId,
     });
-    functionContext.res = httpSuccess(responseBody);
+    return httpSuccess(responseBody);
   } catch (camsError) {
     applicationContext.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    return httpError(camsError);
   }
-};
+}
 
-export default httpTrigger;
+app.http('handler', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'cases/{caseId?}/docket',
+});
+
+export default handler;
