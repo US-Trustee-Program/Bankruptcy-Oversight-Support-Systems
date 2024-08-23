@@ -4,16 +4,16 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
 import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/functions';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export async function handler(
   request: HttpRequest,
-): Promise<void> {
+  functionContext: InvocationContext,
+): Promise<HttpResponseInit> {
   const applicationContext = await ContextCreator.applicationContextCreator(
     functionContext,
     request,
@@ -50,7 +50,7 @@ const httpTrigger: AzureFunction = async function (
   };
 
   // Add boolean flag for any other checks here
-  functionContext.res = checkResults(
+  return checkResults(
     checkCosmosDbWrite,
     checkCosmosDbRead,
     checkCosmosDbDelete,
@@ -63,7 +63,7 @@ const httpTrigger: AzureFunction = async function (
           status: INTERNAL_SERVER_ERROR,
         }),
       );
-};
+}
 
 export function checkResults(...results: boolean[]) {
   for (const i in results) {
@@ -74,4 +74,10 @@ export function checkResults(...results: boolean[]) {
   return true;
 }
 
-export default httpTrigger;
+app.http('handler', {
+  methods: ['GET'],
+  handler,
+});
+//There is "entryPoint": "default" set within functions.json for this, might want to see why that is
+
+export default handler;
