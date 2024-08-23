@@ -24,7 +24,7 @@ initializeApplicationInsights();
  * @param invocationContext
  * @param request
  */
-export async function ordersManualSync(
+export async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -41,6 +41,6 @@ export async function ordersManualSync(
 }
 app.http('ordersManualSync', {
   methods: ['POST'],
-  handler: ordersManualSync,
+  handler,
 });
 //export default httpTrigger;
