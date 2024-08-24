@@ -3,7 +3,7 @@ import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelBut
 import useGlobalKeyDown from '@/lib/hooks/UseGlobalKeyDown';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
-import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
+import { ModalRefType, SubmitCancelButtonGroupRef, ToggleModalButtonRef } from './modal-refs';
 
 export interface ModalProps {
   modalId: string;
@@ -19,12 +19,15 @@ export interface ModalProps {
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
+  const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
-  const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
   const [keyboardAccessible, setKeyboardAccessible] = useState<number>(-1);
-  const closeIcon = `/assets/styles/img/sprite.svg#close`;
+  const [toggleModalButtonRef, setToggleModalButtonRef] =
+    useState<React.RefObject<ToggleModalButtonRef> | null>(null);
+
   const modalShellRef = useRef<HTMLInputElement | null>(null);
+  const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
 
   let wrapperData = {};
   if (props.openerId) {
@@ -56,6 +59,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     if (props.onClose) {
       props.onClose();
     }
+    toggleModalButtonRef?.current?.focus();
     hide();
     setKeyboardAccessible(100000);
   }
@@ -108,9 +112,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }
 
-  function showModal() {
+  function showModal(options: object) {
     if (props.onOpen) {
       props.onOpen();
+    }
+    if (options && 'toggleModalButtonRef' in options) {
+      const toggleRef = options.toggleModalButtonRef as React.RefObject<ToggleModalButtonRef>;
+      setToggleModalButtonRef(toggleRef);
     }
     show();
   }

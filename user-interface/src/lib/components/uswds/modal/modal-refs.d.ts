@@ -11,5 +11,6 @@ export interface SubmitCancelButtonGroupRef {
 }
 
 export interface ToggleModalButtonRef {
+  focus: () => void;
   disableButton: (state: boolean) => void;
 }

@@ -1,6 +1,6 @@
 import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonState, UswdsButtonStyle } from '../Button';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, ToggleModalButtonRef } from './modal-refs';
 
 export interface ModalToggleButtonProps {
@@ -42,6 +42,8 @@ function ToggleModalButtonComponent(
   let classes = BUTTON_BASE_CLASS;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
 
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
   if (toggleAction === 'open') {
     dataProp['data-open-modal'] = 'true';
   } else {
@@ -58,18 +60,22 @@ function ToggleModalButtonComponent(
   }
 
   function handleOnClick(e: React.MouseEvent<HTMLButtonElement>) {
+    const modalToggleProps = { ...toggleProps, toggleModalButtonRef: ref };
     if (onClick) {
       onClick(e);
     }
     if (toggleAction === 'open') {
-      modalRef.current?.show(toggleProps);
+      modalRef.current?.show(modalToggleProps);
     } else {
-      modalRef.current?.hide(toggleProps);
+      modalRef.current?.hide(modalToggleProps);
     }
   }
 
   useImperativeHandle(ref, () => ({
     disableButton,
+    focus: () => {
+      buttonRef?.current?.focus();
+    },
   }));
 
   return (
@@ -83,6 +89,7 @@ function ToggleModalButtonComponent(
       aria-disabled={isDisabled}
       disabled={isDisabled}
       title={title}
+      ref={buttonRef}
       {...dataProp}
     >
       {children}
