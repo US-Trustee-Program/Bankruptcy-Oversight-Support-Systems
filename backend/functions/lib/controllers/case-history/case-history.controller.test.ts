@@ -8,6 +8,8 @@ import {
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { CamsHttpRequest } from '../../adapters/types/http';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 
 describe('Test case-history controller', () => {
   let applicationContext;
@@ -19,8 +21,11 @@ describe('Test case-history controller', () => {
   test('should return a case history when getCaseHistory is called', async () => {
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockResolvedValue(CASE_HISTORY);
     const caseId = NORMAL_CASE_ID;
+    const request: CamsHttpRequest = mockCamsHttpRequest({
+      params: { caseId },
+    });
     const controller = new CaseHistoryController(applicationContext);
-    const result = await controller.getCaseHistory(applicationContext, { caseId });
+    const result = await controller.getCaseHistory(applicationContext, request);
     expect(result.isSuccess).toBeTruthy();
     expect(result['data']).toEqual(CASE_HISTORY);
   });
@@ -30,8 +35,11 @@ describe('Test case-history controller', () => {
       .spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory')
       .mockRejectedValue(new NotFoundError('TEST'));
     const caseId = NOT_FOUND_ERROR_CASE_ID;
+    const request: CamsHttpRequest = mockCamsHttpRequest({
+      params: { caseId },
+    });
     const controller = new CaseHistoryController(applicationContext);
-    await expect(controller.getCaseHistory(applicationContext, { caseId })).rejects.toThrow(
+    await expect(controller.getCaseHistory(applicationContext, request)).rejects.toThrow(
       'Not found',
     );
   });
@@ -39,11 +47,14 @@ describe('Test case-history controller', () => {
   test('should wrap unexpected errors with CamsError', async () => {
     const expectedMessage = 'Unknown error';
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
+    const request: CamsHttpRequest = mockCamsHttpRequest({
+      params: { caseId },
+    });
     const controller = new CaseHistoryController(applicationContext);
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
-    await expect(controller.getCaseHistory(applicationContext, { caseId })).rejects.toThrow(
+    await expect(controller.getCaseHistory(applicationContext, request)).rejects.toThrow(
       expectedMessage,
     );
   });
