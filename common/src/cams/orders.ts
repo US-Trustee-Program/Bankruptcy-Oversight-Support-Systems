@@ -7,7 +7,6 @@ export type OrderType = 'transfer' | 'consolidation';
 export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = ConsolidationOrder & {
-  _camsType: 'ConsolidationOrderActionRejection';
   rejectedCases: Array<string>;
 };
 
@@ -17,12 +16,20 @@ export function isConsolidationOrderRejection(
   return (
     typeof body === 'object' &&
     body !== null &&
-    body['_camsType'] === 'ConsolidationOrderActionRejection'
+    'rejectedCases' in body &&
+    'consolidationId' in body &&
+    'consolidationType' in body &&
+    'orderType' in body &&
+    'orderDate' in body &&
+    'status' in body &&
+    'courtName' in body &&
+    'courtDivisionCode' in body &&
+    'jobId' in body &&
+    'childCases' in body
   );
 }
 
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
-  _camsType: 'ConsolidationOrderActionApproval';
   approvedCases: Array<string>;
   leadCase: CaseSummary;
 };
@@ -33,7 +40,17 @@ export function isConsolidationOrderApproval(
   return (
     typeof body === 'object' &&
     body !== null &&
-    body['_camsType'] === 'ConsolidationOrderActionApproval'
+    'approvedCases' in body &&
+    'leadCase' in body &&
+    'consolidationId' in body &&
+    'consolidationType' in body &&
+    'orderType' in body &&
+    'orderDate' in body &&
+    'status' in body &&
+    'courtName' in body &&
+    'courtDivisionCode' in body &&
+    'jobId' in body &&
+    'childCases' in body
   );
 }
 
