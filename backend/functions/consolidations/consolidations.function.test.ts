@@ -73,7 +73,7 @@ describe('Consolidations Function tests', () => {
     };
 
     const response = await handler(request, context);
-    expect(response.jsonBody.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
   test('should approve consolidation when procedure == "Approve"', async () => {
@@ -96,7 +96,7 @@ describe('Consolidations Function tests', () => {
 
     const response = await handler(request, context);
 
-    expect(response.jsonBody.body).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
   test('should throw a BadRequestError on invalid procedure request', async () => {
@@ -111,8 +111,8 @@ describe('Consolidations Function tests', () => {
     });
 
     const response = await handler(request, context);
-    expect(response.jsonBody.statusCode).toEqual(400);
-    expect(response.jsonBody.body.success).toBeFalsy();
+    expect(response.status).toEqual(400);
+    expect(response.jsonBody.success).toBeFalsy();
   });
 
   test('should throw an UnknownError on bad request', async () => {
@@ -128,7 +128,7 @@ describe('Consolidations Function tests', () => {
     });
 
     const response = await handler(request, context);
-    expect(response.jsonBody.statusCode).toEqual(500);
-    expect(response.jsonBody.body.success).toBeFalsy();
+    expect(response.status).toEqual(500);
+    expect(response.jsonBody.success).toBeFalsy();
   });
 });
