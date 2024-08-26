@@ -28,7 +28,7 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const camsRequest = httpRequestToCamsHttpRequest(request);
+    const camsRequest = await httpRequestToCamsHttpRequest(request);
     const attorneysList = await attorneysController.getAttorneyList(camsRequest);
     return httpSuccess(attorneysList);
   } catch (originalError) {
