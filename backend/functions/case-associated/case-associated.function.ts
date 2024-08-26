@@ -1,4 +1,4 @@
-import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
@@ -13,7 +13,7 @@ const MODULE_NAME = 'CASE-ASSOCIATED-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -41,4 +41,9 @@ export async function handler(
   }
 }
 
-export default handler;
+app.http('case-associated', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'cases/{id?}/associated',
+});

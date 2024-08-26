@@ -42,9 +42,9 @@ export default async function handler(
   }
 }
 
-app.http('handler', {
+app.http('case-history', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'case-history/{id?}',
+  route: 'cases/{id?/history',
 });

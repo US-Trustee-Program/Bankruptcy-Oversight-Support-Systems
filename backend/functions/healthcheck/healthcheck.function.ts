@@ -10,7 +10,7 @@ import HealthcheckInfo from './healthcheck.info';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -74,10 +74,8 @@ export function checkResults(...results: boolean[]) {
   return true;
 }
 
-app.http('handler', {
+app.http('healthcheck', {
   methods: ['GET'],
   handler,
 });
 //There is "entryPoint": "default" set within functions.json for this, might want to see why that is
-
-export default handler;
