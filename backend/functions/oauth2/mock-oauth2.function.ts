@@ -3,7 +3,7 @@ import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -20,11 +20,9 @@ export async function handler(
   }
 }
 
-app.http('handler', {
+app.http('oauth2', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler,
   route: 'oauth2/default',
 });
-
-export default handler;

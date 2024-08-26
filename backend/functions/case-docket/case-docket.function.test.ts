@@ -1,4 +1,4 @@
-import httpTrigger, { handler } from './case-docket.function';
+import handler from './case-docket.function';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 import { createMockAzureFunctionRequest } from '../azure/functions';
@@ -42,7 +42,7 @@ describe('Case docket function', () => {
       success: false,
       message: 'Not found',
     };
-    const response = await httpTrigger(request, context);
+    const response = await handler(request, context);
     expect(response.jsonBody).toEqual(expectedErrorResponse);
   });
 });

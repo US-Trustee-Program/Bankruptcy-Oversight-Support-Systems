@@ -4,7 +4,7 @@ import { OfficesController } from '../lib/controllers/offices/offices.controller
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { httpRequestToCamsHttpRequest } from '../azure/functions';
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -27,11 +27,9 @@ export async function handler(
   }
 }
 
-app.http('handler', {
+app.http('offices', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
   route: 'offices',
 });
-
-export default handler;
