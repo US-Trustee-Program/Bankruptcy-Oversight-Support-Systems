@@ -1,11 +1,7 @@
-import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import { InvocationContext, HttpRequest } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
-import { CamsHttpResponse, httpError } from '../lib/adapters/utils/http-response';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
-import { ApplicationContext } from '../lib/adapters/types/basic';
 
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   if (!it) return {};
@@ -53,28 +49,29 @@ export function createMockAzureFunctionRequest(
   return new HttpRequest(requestInit);
 }
 
-export function toAzureSuccess(response: CamsHttpResponse<object>): HttpResponseInit {
-  return {
-    headers: response.headers,
-    status: response.statusCode,
-    jsonBody: response.body,
-  };
-}
+// export function toAzureSuccess(response: object): HttpResponseInit {
+//   const camsResponse = httpSuccess(response);
+//   return {
+//     headers: camsResponse.headers,
+//     status: camsResponse.statusCode,
+//     jsonBody: camsResponse.body,
+//   };
+// }
 
-export function toAzureError(
-  context: ApplicationContext,
-  moduleName: string,
-  originalError: Error,
-): HttpResponseInit {
-  const error = isCamsError(originalError)
-    ? originalError
-    : new UnknownError(moduleName, { originalError });
-  context.logger.camsError(error);
+// export function toAzureError(
+//   context: ApplicationContext,
+//   moduleName: string,
+//   originalError: Error,
+// ): HttpResponseInit {
+//   const error = isCamsError(originalError)
+//     ? originalError
+//     : new UnknownError(moduleName, { originalError });
+//   context.logger.camsError(error);
 
-  const response = httpError(error);
-  return {
-    headers: response.headers,
-    status: response.statusCode,
-    jsonBody: response.body,
-  };
-}
+//   const response = httpError(error);
+//   return {
+//     headers: response.headers,
+//     status: response.statusCode,
+//     jsonBody: response.body,
+//   };
+// }

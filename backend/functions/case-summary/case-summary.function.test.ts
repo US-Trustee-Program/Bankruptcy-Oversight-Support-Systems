@@ -38,7 +38,7 @@ describe('Case summary function', () => {
   test('Should return case summary for an existing case ID', async () => {
     const caseDetail: CaseDetail = MockData.getCaseDetail();
 
-    const expectedResponseBody: CamsResponse<CaseDetail> = {
+    const expectedResponse: CamsResponse<CaseDetail> = {
       success: true,
       body: caseDetail,
     };
@@ -50,10 +50,10 @@ describe('Case summary function', () => {
     };
     jest
       .spyOn(CaseSummaryController.prototype, 'getCaseSummary')
-      .mockResolvedValue(expectedResponseBody);
+      .mockResolvedValue(expectedResponse);
 
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(expectedResponse);
   });
 
   test('Should return an error response for', async () => {
