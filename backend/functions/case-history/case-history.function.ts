@@ -46,5 +46,5 @@ app.http('case-history', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'cases/{id?/history',
+  route: 'cases/{id?}/history',
 });
