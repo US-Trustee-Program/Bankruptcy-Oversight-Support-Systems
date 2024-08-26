@@ -27,7 +27,7 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const camsRequest = httpRequestToCamsHttpRequest(request);
+    const camsRequest = await httpRequestToCamsHttpRequest(request);
     const responseBody = await caseHistoryController.getCaseHistory(
       applicationContext,
       camsRequest,

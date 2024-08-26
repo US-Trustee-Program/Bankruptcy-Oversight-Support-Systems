@@ -17,7 +17,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   if (context.config.authConfig.provider !== 'mock') {
     throw new ForbiddenError(MODULE_NAME, { message: 'Not in mock mode...' });
   }
-  const requestedSubject = context.request.body as Pick<MockUser, 'sub'>;
+  const requestedSubject = (await context.request.body) as Pick<MockUser, 'sub'>;
   const validMockRole = mockUsers.find((role) => role.sub === requestedSubject.sub);
 
   const ONE_DAY = 60 * 60 * 24;
