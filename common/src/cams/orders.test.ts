@@ -4,8 +4,8 @@ import {
   getCaseSummaryFromConsolidationOrderCase,
   getCaseSummaryFromTransferOrder,
   isConsolidationOrder,
-  isConsolidationOrderActionApproval,
-  isConsolidationOrderActionRejection,
+  isConsolidationOrderApproval,
+  isConsolidationOrderRejection,
   isTransferOrder,
 } from './orders';
 import { MockData } from './test-utilities/mock-data';
@@ -30,7 +30,7 @@ describe('orders model tests', () => {
     }) as ConsolidationOrderActionRejection;
     mockOrderAction.rejectedCases = [];
     mockOrderAction.reason = 'rejection reason';
-    expect(isConsolidationOrderActionRejection(mockOrderAction)).toBeTruthy();
+    expect(isConsolidationOrderRejection(mockOrderAction)).toBeTruthy();
   });
 
   test('should properly identify consolidation approvals', () => {
@@ -39,7 +39,7 @@ describe('orders model tests', () => {
     }) as ConsolidationOrderActionApproval;
     mockOrderAction.approvedCases = [];
     mockOrderAction.leadCase = MockData.getCaseSummary();
-    expect(isConsolidationOrderActionApproval(mockOrderAction)).toBeTruthy();
+    expect(isConsolidationOrderApproval(mockOrderAction)).toBeTruthy();
   });
 
   test('should properly identify consolidation history', () => {
