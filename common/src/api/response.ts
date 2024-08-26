@@ -35,7 +35,7 @@ export function isResponseBodySuccess<T>(body: unknown): body is ResponseBodySuc
 export function buildResponseBodyError<E extends Error = Error>(error: E) {
   return {
     meta: {
-      self: '',
+      self: 'self-link',
       isPaginated: false,
     },
     isSuccess: false,
