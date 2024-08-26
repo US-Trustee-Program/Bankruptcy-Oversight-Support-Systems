@@ -88,6 +88,7 @@ export const Header = () => {
                   onClick={() => {
                     return setActiveNav(NavState.MY_CASES);
                   }}
+                  title="view a list of cases assigned to your account"
                 >
                   My Cases
                 </NavLink>
@@ -104,6 +105,7 @@ export const Header = () => {
                     onClick={() => {
                       return setActiveNav(NavState.STAFF_ASSIGNMENT);
                     }}
+                    title="view or edit staff assignments for cases"
                   >
                     Staff Assignment
                   </NavLink>
@@ -121,6 +123,7 @@ export const Header = () => {
                     onClick={() => {
                       return setActiveNav(NavState.DATA_VERIFICATION);
                     }}
+                    title="view status of, approve, or reject case events"
                   >
                     Data Verification
                   </NavLink>
@@ -136,6 +139,7 @@ export const Header = () => {
                     onClick={() => {
                       return setActiveNav(NavState.SEARCH);
                     }}
+                    title="search for cases"
                   >
                     Case Search
                   </NavLink>
