@@ -30,6 +30,7 @@ import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -365,7 +366,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   });
 
   return (
-    <div className="case-detail" data-testid="case-detail">
+    <MainContent className="case-detail" data-testid="case-detail">
       <DocumentTitle name="Case Detail" />
       {isLoading && (
         <>
@@ -557,6 +558,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
           </div>
         </>
       )}
-    </div>
+    </MainContent>
   );
 }

@@ -18,6 +18,7 @@ import { CamsRole } from '@common/cams/roles';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -68,7 +69,7 @@ export const StaffAssignmentScreen = () => {
   };
 
   return (
-    <main className="staff-assignment case-list">
+    <MainContent className="staff-assignment case-list">
       <DocumentTitle name="Staff Assignment" />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
@@ -106,6 +107,6 @@ export const StaffAssignmentScreen = () => {
         ref={assignmentModalRef}
         modalId={`${assignmentModalId}`}
       ></AssignAttorneyModal>
-    </main>
+    </MainContent>
   );
 };

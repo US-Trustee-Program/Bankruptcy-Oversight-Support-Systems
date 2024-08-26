@@ -21,6 +21,7 @@ import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeature
 import { sortDates } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -138,7 +139,7 @@ export default function DataVerificationScreen() {
   }, []);
 
   return (
-    <div data-testid="data-verification-screen" className="data-verification-screen">
+    <MainContent data-testid="data-verification-screen" className="data-verification-screen">
       <DocumentTitle name="Data Verification" />
       <Alert
         id="data-verification-alert"
@@ -257,7 +258,7 @@ export default function DataVerificationScreen() {
         </div>
         <div className="grid-col-1"></div>
       </div>
-    </div>
+    </MainContent>
   );
 }
 
