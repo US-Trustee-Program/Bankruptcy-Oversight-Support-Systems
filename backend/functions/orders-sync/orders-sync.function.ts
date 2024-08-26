@@ -25,7 +25,7 @@ export default async function timerTrigger(
     myTimer.isPastDue;
   }
 }
-app.timer('timerTrigger', {
+app.timer('orders-sync', {
   schedule: '0 30 9 * * *',
   handler: timerTrigger,
 });

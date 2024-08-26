@@ -1,4 +1,4 @@
-import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import { InvocationContext, HttpRequest, HttpResponseInit, app } from '@azure/functions';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
@@ -13,7 +13,7 @@ initializeApplicationInsights();
 
 const MODULE_NAME = 'ORDER-SUGGESTIONS-FUNCTION' as const;
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -38,4 +38,9 @@ export async function handler(
   }
 }
 
-export default handler;
+app.http('orders-suggestions', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'orders-suggestions/{caseId?}',
+});

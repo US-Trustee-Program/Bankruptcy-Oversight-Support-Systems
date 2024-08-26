@@ -44,5 +44,5 @@ app.http('attorneys', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'attorneys',
+  route: 'attorneys/{id:int?}',
 });

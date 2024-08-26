@@ -1,4 +1,4 @@
-import httpTrigger from './orders-suggestions.function';
+import handler from './orders-suggestions.function';
 import { CASE_SUMMARIES } from '../lib/testing/mock-data/case-summaries.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { InvocationContext } from '@azure/functions';
@@ -31,7 +31,7 @@ describe('Orders suggestions function tests', () => {
       success: true,
       body: CASE_SUMMARIES,
     };
-    const response = await httpTrigger(request, context);
+    const response = await handler(request, context);
     expect(response.jsonBody).toEqual(expectedResponseBody);
     expect(response.status).toEqual(200);
   });
@@ -50,7 +50,7 @@ describe('Orders suggestions function tests', () => {
       success: false,
       message,
     };
-    const response = await httpTrigger(request, context);
+    const response = await handler(request, context);
     expect(response.jsonBody).toMatchObject(expectedErrorResponse);
     expect(response.status).toEqual(500);
   });

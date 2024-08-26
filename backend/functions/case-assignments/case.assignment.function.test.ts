@@ -1,4 +1,4 @@
-import { handler } from './case.assignment.function';
+import handler from './case.assignment.function';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';

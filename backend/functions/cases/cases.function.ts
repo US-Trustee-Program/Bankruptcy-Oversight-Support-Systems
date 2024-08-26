@@ -1,4 +1,4 @@
-import { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../lib/adapters/utils/application-context-creator';
@@ -17,7 +17,7 @@ const MODULE_NAME = 'CASES-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -54,4 +54,9 @@ export async function handler(
   }
 }
 
-export default handler;
+app.http('cases', {
+  methods: ['GET', 'POST'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'cases/{caseId?}',
+});

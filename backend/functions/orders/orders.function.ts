@@ -19,7 +19,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -71,11 +71,9 @@ async function updateOrder(context: ApplicationContext, requestBody): Promise<Pa
   }
 }
 
-app.http('handler', {
+app.http('orders', {
   methods: ['GET', 'PATCH'],
   authLevel: 'anonymous',
   handler,
   route: 'orders/{id?}',
 });
-
-export default handler;

@@ -24,7 +24,7 @@ initializeApplicationInsights();
  * @param invocationContext
  * @param request
  */
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -39,10 +39,8 @@ export async function handler(
     return { ...httpError(camsError) };
   }
 }
-app.http('handler', {
+app.http('order-manual-sync', {
   methods: ['POST'],
   handler,
   route: 'orders-sync',
 });
-
-export default handler;

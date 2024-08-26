@@ -1,5 +1,5 @@
 import { createMockAzureFunctionRequest } from '../azure/functions';
-import { checkResults, handler } from './healthcheck.function';
+import handler, { checkResults } from './healthcheck.function';
 
 const mockRequestFunc = jest.fn().mockImplementation(() => ({
   input: jest.fn(),

@@ -10,7 +10,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
@@ -33,11 +33,9 @@ export async function handler(
   }
 }
 
-app.http('handler', {
+app.http('case-docket', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
   route: 'cases/{caseId?}/docket',
 });
-
-export default handler;

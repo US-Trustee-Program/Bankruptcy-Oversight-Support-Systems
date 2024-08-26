@@ -12,7 +12,7 @@ const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
 initializeApplicationInsights();
 
-export async function handler(
+export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {

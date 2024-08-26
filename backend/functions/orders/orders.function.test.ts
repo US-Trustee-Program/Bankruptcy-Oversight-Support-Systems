@@ -1,4 +1,4 @@
-import { handler } from './orders.function';
+import handler from './orders.function';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
