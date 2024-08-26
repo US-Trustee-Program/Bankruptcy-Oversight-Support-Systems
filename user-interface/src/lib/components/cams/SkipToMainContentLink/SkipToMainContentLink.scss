@@ -1,0 +1,20 @@
+.cams-banner a.skip-to-main-content-link {
+  text-decoration: underline;
+}
+.skip-to-main-content-link {
+  position: absolute;
+  top: 0.5rem;
+  left: -9999px;
+  height: 0;
+  z-index: 100;
+  padding: 0.5rem;
+  background-color: white;
+  color: black;
+  font-size: 1rem;
+  opacity: 0;
+}
+.skip-to-main-content-link:focus {
+  left: 0.5rem;
+  opacity: 1;
+  height: auto;
+}

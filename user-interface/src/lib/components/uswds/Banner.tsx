@@ -2,6 +2,7 @@ import { LOGOUT_PATH } from '@/login/login-library';
 import Icon from './Icon';
 import './Banner.scss';
 import { LocalStorage } from '@/lib/utils/local-storage';
+import { SkipToMainContentLink } from '../cams/SkipToMainContentLink/SkipToMainContentLink';
 
 export const Banner = () => {
   const launchDarklyEnvironment = import.meta.env['CAMS_LAUNCH_DARKLY_ENV'];
@@ -16,6 +17,7 @@ export const Banner = () => {
       className="usa-banner cams-banner"
       aria-label="Official website of the United States government"
     >
+      <SkipToMainContentLink>Skip to main content</SkipToMainContentLink>
       <header className={envHeaderClassName} data-testid="banner-header">
         <div className="usa-banner__inner header-container">
           <div className="header-flag-container">

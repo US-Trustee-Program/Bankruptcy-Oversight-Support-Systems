@@ -15,6 +15,7 @@ import { MyCasesResultsRow } from './MyCasesResultsRow';
 import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -43,7 +44,7 @@ export const MyCasesScreen = () => {
   };
 
   return (
-    <div className="my-cases case-list">
+    <MainContent className="my-cases case-list">
       <DocumentTitle name="My Cases" />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
@@ -76,6 +77,6 @@ export const MyCasesScreen = () => {
         }
         actionButtonGroup={infoModalActionButtonGroup}
       ></Modal>
-    </div>
+    </MainContent>
   );
 };
