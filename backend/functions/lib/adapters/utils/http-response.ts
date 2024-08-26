@@ -1,3 +1,4 @@
+import { HttpResponseInit } from '@azure/functions';
 import { CamsError } from '../../common-errors/cams-error';
 
 const commonHeaders: Record<string, string> = {
@@ -10,27 +11,47 @@ export type CamsErrorBody = {
   message: string;
 };
 
-export type CamsHttpResponse<T> = {
-  headers: Record<string, string>;
-  statusCode: number;
-  body: T;
+export type CamsHttpResponse<T extends object = undefined> = {
+  headers?: Record<string, string>;
+  statusCode?: number;
+  body?: T;
 };
 
-export function httpSuccess<T extends object = undefined>(
-  params: { body?: T; statusCode?: number } = { statusCode: 204 },
-): CamsHttpResponse<T> {
+// export function httpSuccess<T extends object = undefined>(
+//   response: CamsHttpResponse<T> = { statusCode: 204 },
+// ): CamsHttpResponse<T> {
+//   return {
+//     headers: { ...commonHeaders, ...response.headers },
+//     statusCode: response.statusCode ?? 200,
+//     body: response.body,
+//   };
+// }
+
+export function httpSuccess<T extends object = undefined>(body: T): HttpResponseInit {
+  const response: CamsHttpResponse<T> = { headers: {}, body, statusCode: body ? 200 : 204 };
   return {
-    headers: commonHeaders,
-    statusCode: params.statusCode ?? 200,
-    body: params.body,
+    headers: { ...commonHeaders, ...response.headers },
+    status: response.statusCode ?? 200,
+    jsonBody: response.body,
   };
 }
 
-export function httpError(error: CamsError): CamsHttpResponse<CamsErrorBody> {
+// export function httpError(error: CamsError): CamsHttpResponse<CamsErrorBody> {
+//   return {
+//     headers: commonHeaders,
+//     statusCode: error.status,
+//     body: {
+//       success: false,
+//       message: error.message,
+//     },
+//   };
+// }
+
+export function httpError(error: CamsError): HttpResponseInit {
   return {
     headers: commonHeaders,
-    statusCode: error.status,
-    body: {
+    status: error.status,
+    jsonBody: {
       success: false,
       message: error.message,
     },
