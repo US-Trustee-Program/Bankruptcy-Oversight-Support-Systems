@@ -35,19 +35,23 @@ export const Banner = () => {
             )}
           </div>
 
-          <div className="login-info">
-            {session?.user && (
-              <>
-                <span className="user-icon">
-                  <Icon name="person"></Icon>
-                </span>
-                <span className="user-name">{session.user.name} </span>
-                <span className="logout-link">
-                  <a href={LOGOUT_PATH}>logout</a>
-                </span>
-              </>
-            )}
-          </div>
+          <nav className="cams-banner-nav">
+            <div className="login-info">
+              {session?.user && (
+                <>
+                  <span className="user-info">
+                    <span className="user-icon">
+                      <Icon name="person"></Icon>
+                    </span>
+                    <span className="user-name">{session.user.name} </span>
+                  </span>
+                  <span className="logout-link">
+                    <a href={LOGOUT_PATH}>logout</a>
+                  </span>
+                </>
+              )}
+            </div>
+          </nav>
         </div>
       </header>
     </section>

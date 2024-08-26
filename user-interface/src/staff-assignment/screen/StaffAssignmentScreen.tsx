@@ -17,6 +17,7 @@ import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAtto
 import { CamsRole } from '@common/cams/roles';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -67,13 +68,14 @@ export const StaffAssignmentScreen = () => {
   };
 
   return (
-    <main className="my-cases case-list">
+    <main className="staff-assignment case-list">
+      <DocumentTitle name="Staff Assignment" />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
-            <ScreenInfoButton infoModalRef={infoModalRef} />
+            <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </div>
           <SearchResults
             id="search-results"

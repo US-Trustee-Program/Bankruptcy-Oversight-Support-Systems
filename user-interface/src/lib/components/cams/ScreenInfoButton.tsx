@@ -6,6 +6,7 @@ import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButto
 
 type ScreenInfoButtonProps = {
   infoModalRef: React.RefObject<ModalRefType>;
+  modalId: string;
 };
 
 export default function ScreenInfoButton(props: ScreenInfoButtonProps) {
@@ -14,7 +15,7 @@ export default function ScreenInfoButton(props: ScreenInfoButtonProps) {
   return (
     <ToggleModalButton
       toggleAction={'open'}
-      modalId={''}
+      modalId={props.modalId}
       modalRef={props.infoModalRef}
       ref={toggleModalButtonRef}
       uswdsStyle={UswdsButtonStyle.Unstyled}

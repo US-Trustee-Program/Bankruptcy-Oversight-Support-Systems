@@ -14,6 +14,7 @@ import { MyCasesResultsHeader } from './MyCasesResultsHeader';
 import { MyCasesResultsRow } from './MyCasesResultsRow';
 import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -43,12 +44,13 @@ export const MyCasesScreen = () => {
 
   return (
     <div className="my-cases case-list">
+      <DocumentTitle name="My Cases" />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <div className="screen-heading">
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
-            <ScreenInfoButton infoModalRef={infoModalRef} />
+            <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </div>
           <SearchResults
             id="search-results"

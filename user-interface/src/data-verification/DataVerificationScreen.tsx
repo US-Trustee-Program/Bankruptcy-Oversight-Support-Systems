@@ -20,6 +20,7 @@ import { OfficeDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { sortDates } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -138,6 +139,7 @@ export default function DataVerificationScreen() {
 
   return (
     <div data-testid="data-verification-screen" className="data-verification-screen">
+      <DocumentTitle name="Data Verification" />
       <Alert
         id="data-verification-alert"
         message={reviewOrderAlert.message}
