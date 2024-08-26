@@ -1,7 +1,9 @@
 import {
+  buildResponseBodyError,
   buildResponseBodySuccess,
   isResponseBodyError,
   isResponseBodySuccess,
+  ResponseBodyError,
   ResponseBodySuccess,
   ResponseMetaData,
 } from './response';
@@ -149,15 +151,29 @@ describe('Helper function buildResponseBodySuccess', () => {
     const expected: ResponseBodySuccess<TestType> = {
       meta: {
         isPaginated: false,
-        self: 'foo-link',
+        self: 'self-link',
       },
       isSuccess: true,
       data,
     };
     const meta: Partial<ResponseMetaData> = {
-      self: 'foo-link',
+      self: 'self-link',
     };
     const actual = buildResponseBodySuccess<TestType>(data, meta);
+    expect(actual).toEqual(expected);
+  });
+
+  test('should return a ResponseBodyError type', () => {
+    const error = new Error('TestError');
+    const expected: ResponseBodyError = {
+      meta: {
+        isPaginated: false,
+        self: 'self-link',
+      },
+      isSuccess: false,
+      error,
+    };
+    const actual = buildResponseBodyError(error);
     expect(actual).toEqual(expected);
   });
 });

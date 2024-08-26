@@ -10,7 +10,7 @@ export type ConsolidationOrderActionRejection = ConsolidationOrder & {
   rejectedCases: Array<string>;
 };
 
-export function isConsolidationOrderRejection(
+export function isConsolidationOrderActionRejection(
   body: unknown,
 ): body is ConsolidationOrderActionRejection {
   return (
@@ -34,7 +34,7 @@ export type ConsolidationOrderActionApproval = ConsolidationOrder & {
   leadCase: CaseSummary;
 };
 
-export function isConsolidationOrderApproval(
+export function isConsolidationOrderActionApproval(
   body: unknown,
 ): body is ConsolidationOrderActionApproval {
   return (

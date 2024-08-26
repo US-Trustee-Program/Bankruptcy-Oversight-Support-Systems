@@ -1,7 +1,11 @@
 import {
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
   getCaseSummaryFromConsolidationOrderCase,
   getCaseSummaryFromTransferOrder,
   isConsolidationOrder,
+  isConsolidationOrderActionApproval,
+  isConsolidationOrderActionRejection,
   isTransferOrder,
 } from './orders';
 import { MockData } from './test-utilities/mock-data';
@@ -10,19 +14,37 @@ import { isConsolidationHistory } from './history';
 describe('orders model tests', () => {
   test('should properly identify transfers', () => {
     const mockOrder = MockData.getTransferOrder();
-    expect(isTransferOrder(mockOrder)).toEqual(true);
-    expect(isConsolidationOrder(mockOrder)).toEqual(false);
+    expect(isTransferOrder(mockOrder)).toBeTruthy();
+    expect(isConsolidationOrder(mockOrder)).toBeFalsy();
   });
 
   test('should properly identify consolidations', () => {
     const mockOrder = MockData.getConsolidationOrder();
-    expect(isTransferOrder(mockOrder)).toEqual(false);
-    expect(isConsolidationOrder(mockOrder)).toEqual(true);
+    expect(isTransferOrder(mockOrder)).toBeFalsy();
+    expect(isConsolidationOrder(mockOrder)).toBeTruthy();
+  });
+
+  test('should properly identify consolidation rejections', () => {
+    const mockOrderAction = MockData.getConsolidationOrder({
+      override: { status: 'rejected' },
+    }) as ConsolidationOrderActionRejection;
+    mockOrderAction.rejectedCases = [];
+    mockOrderAction.reason = 'rejection reason';
+    expect(isConsolidationOrderActionRejection(mockOrderAction)).toBeTruthy();
+  });
+
+  test('should properly identify consolidation approvals', () => {
+    const mockOrderAction = MockData.getConsolidationOrder({
+      override: { status: 'approved' },
+    }) as ConsolidationOrderActionApproval;
+    mockOrderAction.approvedCases = [];
+    mockOrderAction.leadCase = MockData.getCaseSummary();
+    expect(isConsolidationOrderActionApproval(mockOrderAction)).toBeTruthy();
   });
 
   test('should properly identify consolidation history', () => {
     const mockHistory = MockData.getConsolidationHistory();
-    expect(isConsolidationHistory(mockHistory)).toEqual(true);
+    expect(isConsolidationHistory(mockHistory)).toBeTruthy();
   });
 
   describe('temporary mapper function tests', () => {
