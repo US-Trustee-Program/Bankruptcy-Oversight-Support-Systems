@@ -40,7 +40,7 @@ export default async function handler(
         caseId: request.params.caseId,
       });
     } else {
-      const camsRequest = httpRequestToCamsHttpRequest(request);
+      const camsRequest = await httpRequestToCamsHttpRequest(request);
       response = await casesController.searchCases(camsRequest);
     }
 

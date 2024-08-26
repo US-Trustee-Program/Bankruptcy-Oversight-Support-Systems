@@ -3,7 +3,7 @@ import { CamsError } from '../../common-errors/cams-error';
 
 const commonHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
-  'Last-Modified': Date.toString(),
+  'Last-Modified': Date.now().toString(),
 };
 
 export type CamsErrorBody = {
@@ -29,11 +29,12 @@ export type CamsHttpResponse<T extends object = undefined> = {
 
 export function httpSuccess<T extends object = undefined>(body: T): HttpResponseInit {
   const response: CamsHttpResponse<T> = { headers: {}, body, statusCode: body ? 200 : 204 };
-  return {
+  const init: HttpResponseInit = {
     headers: { ...commonHeaders, ...response.headers },
     status: response.statusCode ?? 200,
-    jsonBody: response.body,
+    body: JSON.stringify(response.body),
   };
+  return init;
 }
 
 // export function httpError(error: CamsError): CamsHttpResponse<CamsErrorBody> {

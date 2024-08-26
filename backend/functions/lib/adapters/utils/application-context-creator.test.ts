@@ -64,7 +64,7 @@ describe('Application Context Creator', () => {
     });
 
     test('should call user session gateway lookup', async () => {
-      const request = httpRequestToCamsHttpRequest(createMockAzureFunctionRequest());
+      const request = await httpRequestToCamsHttpRequest(createMockAzureFunctionRequest());
       const mockContext = await createMockApplicationContext();
       mockContext.request = request;
       const lookupSpy = jest

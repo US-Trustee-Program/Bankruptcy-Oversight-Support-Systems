@@ -29,7 +29,7 @@ async function applicationContextCreator(
     featureFlags,
     logger,
     invocationId: invocationContext.invocationId,
-    request: request ? httpRequestToCamsHttpRequest(request) : undefined,
+    request: request ? await httpRequestToCamsHttpRequest(request) : undefined,
   } satisfies ApplicationContext;
 }
 
