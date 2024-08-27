@@ -9,7 +9,7 @@ import AssignAttorneyModal, {
   AssignAttorneyModalRef,
   CallbackProps,
 } from '@/staff-assignment/modal/AssignAttorneyModal';
-import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
@@ -84,17 +84,16 @@ export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
               Assigned Staff{' '}
               {Actions.contains(caseDetail, Actions.ManageAssignments) &&
                 caseDetail.chapter === '15' && (
-                  <ToggleModalButton
+                  <OpenModalButton
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     modalId={'assignmentModalId'}
-                    toggleAction={'open'}
                     modalRef={assignmentModalRef}
-                    toggleProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
+                    openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
                     ariaLabel="Edit assigned staff"
                     title="Open Staff Assignment window"
                   >
                     <IconLabel icon="edit" label="Edit" />
-                  </ToggleModalButton>
+                  </OpenModalButton>
                 )}
             </h3>
             <div className="assigned-staff-list">

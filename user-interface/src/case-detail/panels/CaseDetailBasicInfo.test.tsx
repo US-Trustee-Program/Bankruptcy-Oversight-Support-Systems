@@ -103,7 +103,7 @@ describe('Case detail basic information panel', () => {
       const modal = document.querySelector('.usa-modal-wrapper');
       expect(modal).toBeInTheDocument();
       expect(modal).not.toHaveClass('is-visible');
-      const element = screen.getByTestId('toggle-modal-button');
+      const element = screen.getByTestId('open-modal-button');
       expect(element).toBeInTheDocument();
       expect(element).toBeVisible();
       fireEvent.click(element);
@@ -124,7 +124,7 @@ describe('Case detail basic information panel', () => {
         },
       });
       renderWithProps({ caseDetail: caseDetailNoActions });
-      const element = screen.queryByTestId('toggle-modal-button');
+      const element = screen.queryByTestId('open-modal-button');
       expect(element).not.toBeInTheDocument();
     });
   });
@@ -160,7 +160,7 @@ describe('Case detail basic information panel', () => {
         onCaseAssignment,
       });
 
-      const assignedStaffEditButton = screen.getByTestId('toggle-modal-button');
+      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
       fireEvent.click(assignedStaffEditButton);
 
       const modal = screen.getByTestId(`modal-${assignmentModalId}`);
@@ -263,7 +263,7 @@ describe('Case detail basic information panel', () => {
         onCaseAssignment,
       });
 
-      const assignedStaffEditButton = screen.getByTestId('toggle-modal-button');
+      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
       fireEvent.click(assignedStaffEditButton);
 
       const modal = screen.getByTestId(`modal-${assignmentModalId}`);

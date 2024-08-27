@@ -10,7 +10,7 @@ export interface SubmitCancelButtonGroupRef {
   disableSubmitButton: (state: boolean) => void;
 }
 
-export interface ToggleModalButtonRef {
+export interface OpenModalButtonRef {
   focus: () => void;
   disableButton: (state: boolean) => void;
 }
