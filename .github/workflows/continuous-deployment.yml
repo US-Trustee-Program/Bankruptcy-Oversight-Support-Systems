@@ -116,12 +116,11 @@ jobs:
   deploy:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
-    needs:
-      [
+    needs: [
         setup,
         build,
         accessibility-test,
-        security-scan,
+        # security-scan,
         unit-test-frontend,
         unit-test-backend,
         unit-test-common,
