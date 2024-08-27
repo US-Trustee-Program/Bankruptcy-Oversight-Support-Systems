@@ -97,11 +97,6 @@ jobs:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
 
-  # security-scan:
-  #   name: Security
-  #   uses: ./.github/workflows/sub-security-scan.yml
-  #   secrets: inherit # pragma: allowlist secret
-
   build:
     name: Build
     needs: [setup]
