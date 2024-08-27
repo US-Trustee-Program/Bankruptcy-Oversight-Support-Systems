@@ -35,7 +35,7 @@ describe('MyCasesScreen', () => {
       </BrowserRouter>,
     );
 
-    const toggle = screen.getByTestId('toggle-modal-button');
+    const toggle = screen.getByTestId('open-modal-button');
     expect(toggle).toBeInTheDocument();
     fireEvent.click(toggle!);
 
@@ -75,7 +75,7 @@ describe('MyCasesScreen', () => {
     );
 
     await waitFor(() => {
-      const button = screen.getByTestId('toggle-modal-button');
+      const button = screen.getByTestId('open-modal-button');
       expect(button).toBeInTheDocument();
     });
     expect(SearchResults).toHaveBeenCalledWith(
