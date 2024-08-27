@@ -29,3 +29,5 @@ app.http('case-summary', {
   handler,
   route: 'cases/{caseId?}/summary',
 });
+
+export default handler;
