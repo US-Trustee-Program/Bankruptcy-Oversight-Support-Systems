@@ -28,13 +28,12 @@ export default async function handler(
   try {
     context.session = await ContextCreator.getApplicationContextSession(context);
 
-    if (request.method === 'GET') {
+    if (context.request.method === 'GET') {
       const orderGet = await getOrders(context);
       response = httpSuccess(orderGet);
-    } else if (request.method === 'PATCH') {
+    } else if (context.request.method === 'PATCH') {
       //TODO: Json Mapping with these requestBody objects
-      const requestBody = await request.json();
-      const orderPatch = await updateOrder(context, requestBody);
+      const orderPatch = await updateOrder(context, context.request.body);
       response = httpSuccess(orderPatch);
     }
     return response;

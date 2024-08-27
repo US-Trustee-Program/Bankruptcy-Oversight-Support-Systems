@@ -3,7 +3,7 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest } from '../azure/functions';
+import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from '../azure/functions';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 
 let getOrders;
@@ -21,9 +21,10 @@ jest.mock('../lib/controllers/orders/orders.controller', () => {
 });
 
 describe('Orders Function tests', () => {
-  const request = createMockAzureFunctionRequest();
+  const request = createMockAzureFunctionRequest({});
+
   /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  const context = createMockAzureFunctionContext();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,7 +67,7 @@ describe('Orders Function tests', () => {
     };
 
     const response = await handler(orderRequest, context);
-    console.log('Request Id: ');
+
     expect(response.jsonBody).toEqual(expectedResponseBody);
     expect(updateOrder).toHaveBeenCalled();
   });
@@ -79,6 +80,7 @@ describe('Orders Function tests', () => {
       success: false,
       message: 'Mocked error',
     };
+
     const response = await handler(request, context);
     expect(response.jsonBody).toMatchObject(expectedErrorResponse);
   });
@@ -96,7 +98,7 @@ describe('Orders Function tests', () => {
       },
       method: 'PATCH',
     };
-    const orderRequest = createMockAzureFunctionRequest({ ...requestOverride });
+    const orderRequest = createMockAzureFunctionRequest(requestOverride);
     updateOrder = jest
       .fn()
       .mockImplementation((_context: ApplicationContext, _data: TransferOrderAction) => {
@@ -126,6 +128,7 @@ describe('Orders Function tests', () => {
       message: 'Cannot update order. ID of order does not match ID of request.',
     };
     const response = await handler(orderRequest, context);
+    console.log(response.jsonBody);
     expect(response.jsonBody).toMatchObject(expectedErrorResponse);
   });
 });

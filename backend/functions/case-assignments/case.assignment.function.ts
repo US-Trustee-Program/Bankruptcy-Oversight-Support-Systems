@@ -26,10 +26,9 @@ export default async function handler(
     let assignmentResponse: HttpResponseInit;
     if (request.method === 'POST') {
       //We should be doing this in the controller
-      const requestBody = await request.json();
-      const listOfAttorneyNames = requestBody['attorneyList'];
-      const role = requestBody['role'];
-      const caseId = requestBody['caseId'];
+      const listOfAttorneyNames = applicationContext.request.body['attorneyList'];
+      const role = applicationContext.request.body['role'];
+      const caseId = applicationContext.request.body['caseId'];
       assignmentResponse = await handlePostMethod(
         applicationContext,
         caseId,

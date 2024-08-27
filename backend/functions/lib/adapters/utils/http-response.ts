@@ -27,13 +27,18 @@ export type CamsHttpResponse<T extends object = undefined> = {
 //   };
 // }
 
-export function httpSuccess<T extends object = undefined>(body: T): HttpResponseInit {
-  const response: CamsHttpResponse<T> = { headers: {}, body, statusCode: body ? 200 : 204 };
+export function httpSuccess<T extends object = undefined>(body?: T): HttpResponseInit {
+  const response: CamsHttpResponse<T> = {
+    headers: {},
+    body: body ?? undefined,
+    statusCode: body ? 200 : 204,
+  };
   const init: HttpResponseInit = {
     headers: { ...commonHeaders, ...response.headers },
-    status: response.statusCode ?? 200,
-    body: JSON.stringify(response.body),
+    status: response.statusCode,
   };
+  if (response.body) init.jsonBody = response.body;
+
   return init;
 }
 
