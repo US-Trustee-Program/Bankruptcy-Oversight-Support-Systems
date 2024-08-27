@@ -22,7 +22,7 @@ describe('Application Context Creator', () => {
       expect(context.config instanceof ApplicationConfiguration).toBeTruthy();
       expect(context.featureFlags instanceof Object).toBeTruthy();
       expect(featureFlagsSpy).toHaveBeenCalled();
-      expect(context.request).toEqual(httpRequestToCamsHttpRequest(request));
+      expect(context.request).toEqual(await httpRequestToCamsHttpRequest(request));
     });
   });
 
@@ -30,6 +30,13 @@ describe('Application Context Creator', () => {
     let context: ApplicationContext;
     beforeEach(async () => {
       context = await createMockApplicationContext();
+    });
+
+    test('should throw an UnauthorizedError if there is no request', async () => {
+      delete context.request;
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Authorization header missing.',
+      );
     });
 
     test('should throw an UnauthorizedError if authorization header is missing', async () => {

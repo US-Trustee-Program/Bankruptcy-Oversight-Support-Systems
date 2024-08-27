@@ -23,8 +23,7 @@ export default async function handler(
     request,
   );
   const consolidationsController = new OrdersController(applicationContext);
-  const procedure = request.params.procedure;
-  const body = await request.json();
+  const procedure = applicationContext.request.params.procedure;
   let response;
 
   try {
@@ -32,9 +31,15 @@ export default async function handler(
       await ContextCreator.getApplicationContextSession(applicationContext);
 
     if (procedure === 'reject') {
-      response = await consolidationsController.rejectConsolidation(applicationContext, body);
+      response = await consolidationsController.rejectConsolidation(
+        applicationContext,
+        applicationContext.request.body,
+      );
     } else if (procedure === 'approve') {
-      response = await consolidationsController.approveConsolidation(applicationContext, body);
+      response = await consolidationsController.approveConsolidation(
+        applicationContext,
+        applicationContext.request.body,
+      );
     } else {
       throw new BadRequestError(MODULE_NAME, {
         message: `Could not perform ${procedure}.`,
