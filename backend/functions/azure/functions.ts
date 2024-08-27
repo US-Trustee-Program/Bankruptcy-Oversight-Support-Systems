@@ -11,10 +11,7 @@ function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   }, {} as CamsDict);
 }
 
-export async function httpRequestToCamsHttpRequest(
-  request?: HttpRequest,
-): Promise<CamsHttpRequest> {
-  if (!request) throw new Error('Cannot map undefined request object.');
+export async function httpRequestToCamsHttpRequest(request: HttpRequest): Promise<CamsHttpRequest> {
   return {
     method: request.method as CamsHttpMethod,
     url: request.url,
@@ -22,7 +19,7 @@ export async function httpRequestToCamsHttpRequest(
     query: azureToCamsDict(request.query),
     params: request.params,
     // TODO: If this is a string we can POST. If it is a stream the GETs work. <table throw>
-    body: request.body ? request.json() : undefined,
+    body: request.body ? await request.json() : undefined,
   };
 }
 
@@ -41,11 +38,14 @@ export function createMockAzureFunctionContext(
 export function createMockAzureFunctionRequest(
   request: Partial<CamsHttpRequest> = {},
 ): HttpRequest {
+  console.log('Actual Request:    ', request);
   const { headers, method, body, ...other } = request;
+  const requestBody = body ? JSON.stringify(body) : '';
+
   const requestInit = {
     method: method ?? 'GET',
     url: 'http://localhost:3000',
-    body: { string: JSON.stringify(body) },
+    body: { string: requestBody },
     headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
     ...other,
   };

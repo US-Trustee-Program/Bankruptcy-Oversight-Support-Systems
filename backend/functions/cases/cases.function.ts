@@ -8,7 +8,6 @@ import { CaseDetailsDbResult } from '../lib/adapters/types/cases';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseBasics } from '../../../common/src/cams/cases';
 import { ResponseBody } from '../../../common/src/api/response';
-import { httpRequestToCamsHttpRequest } from '../azure/functions';
 
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -35,13 +34,12 @@ export default async function handler(
 
     let response: CaseDetailsDbResult | SearchResults;
 
-    if (request.method === 'GET' && request.params.caseId) {
+    if (request.method === 'GET' && applicationContext.request.params.caseId) {
       response = await casesController.getCaseDetails({
-        caseId: request.params.caseId,
+        caseId: applicationContext.request.params.caseId,
       });
     } else {
-      const camsRequest = await httpRequestToCamsHttpRequest(request);
-      response = await casesController.searchCases(camsRequest);
+      response = await casesController.searchCases(applicationContext.request);
     }
 
     return httpSuccess(response);
