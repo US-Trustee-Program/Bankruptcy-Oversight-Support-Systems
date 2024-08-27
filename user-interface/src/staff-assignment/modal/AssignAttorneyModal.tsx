@@ -260,7 +260,7 @@ function _AssignAttorneyModal(
             <label className="attorney-name">Attorney Name</label>
           </div>
           <div className="usa-table-container--scrollable" ref={tableContainer}>
-            <table className="attorney-list" role="presentation">
+            <table className="attorney-list">
               <thead>
                 <tr>
                   <th>Attorney Name</th>
