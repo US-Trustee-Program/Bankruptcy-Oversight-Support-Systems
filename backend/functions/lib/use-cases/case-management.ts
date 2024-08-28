@@ -1,5 +1,4 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseDetailsDbResult } from '../adapters/types/cases';
 import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
 import {
   getAssignmentRepository,
@@ -99,7 +98,7 @@ export default class CaseManagement {
   public async getCaseDetail(
     applicationContext: ApplicationContext,
     caseId: string,
-  ): Promise<CaseDetailsDbResult> {
+  ): Promise<ResourceActions<CaseDetail>> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
     caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
     caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
@@ -107,13 +106,7 @@ export default class CaseManagement {
     caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
     const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
-    return {
-      success: true,
-      message: '',
-      body: {
-        caseDetails: { ...caseDetails, _actions },
-      },
-    };
+    return { ...caseDetails, _actions };
   }
 
   public async getCaseSummary(

@@ -9,7 +9,7 @@ describe('Test case-docket use case', () => {
     const gateway = new MockCaseDocketGateway();
     const caseId = NORMAL_CASE_ID;
     const useCase = new CaseDocketUseCase(gateway);
-    const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    const mockContext = await createMockApplicationContext();
     const result = await useCase.getCaseDocket(mockContext, caseId);
     expect(result).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });

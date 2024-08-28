@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
-import { buildResponseBodyError, buildResponseBodySuccess } from '@common/api/response';
+import { buildResponseBodyError, buildResponseBody } from '@common/api/response';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
 import { SearchResultsRow } from '@/search/SearchResultsRow';
 import Api2 from '@/lib/hooks/UseApi2';
@@ -17,7 +17,7 @@ describe('SearchResults component tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = MockData.buildArray(MockData.getCaseSummary, 30);
-    const expectedResponse = buildResponseBodySuccess<CaseBasics[]>(caseList, {
+    const expectedResponse = buildResponseBody<CaseBasics[]>(caseList, {
       next: 'next-link',
       self: 'self-link',
     });
@@ -72,7 +72,7 @@ describe('SearchResults component tests', () => {
   });
 
   test('should show the no results alert when no results are available', async () => {
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue(buildResponseBodySuccess([]));
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue(buildResponseBody([]));
 
     renderWithProps();
 

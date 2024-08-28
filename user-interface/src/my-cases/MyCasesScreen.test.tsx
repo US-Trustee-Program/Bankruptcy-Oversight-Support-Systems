@@ -6,7 +6,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { CaseSummary } from '@common/cams/cases';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
@@ -44,7 +44,7 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render a list of cases assigned to a user', async () => {
-    const expectedResponse: ResponseBodySuccess<CaseSummary[]> = {
+    const expectedResponse: ResponseBody<CaseSummary[]> = {
       meta: {
         self: 'a-uri',
         isPaginated: true,

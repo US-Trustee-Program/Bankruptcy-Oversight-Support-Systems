@@ -8,10 +8,6 @@ import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
 
-type GetCaseDocketRequest = {
-  caseId: string;
-};
-
 export class CaseDocketController {
   private readonly useCase: CaseDocketUseCase;
 
@@ -21,12 +17,16 @@ export class CaseDocketController {
 
   public async getCaseDocket(
     context: ApplicationContext,
-    request: GetCaseDocketRequest,
   ): Promise<CamsHttpResponseInit<CaseDocket>> {
     try {
-      const caseDocket = await this.useCase.getCaseDocket(context, request.caseId);
+      const caseDocket = await this.useCase.getCaseDocket(context, context.request.params.caseId);
       return {
-        body: caseDocket,
+        body: {
+          meta: {
+            self: context.request.url,
+          },
+          data: caseDocket,
+        },
       };
     } catch (originalError) {
       throw isCamsError(originalError)

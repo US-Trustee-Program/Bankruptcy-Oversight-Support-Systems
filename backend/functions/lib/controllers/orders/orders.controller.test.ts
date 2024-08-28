@@ -53,7 +53,7 @@ describe('orders controller tests', () => {
   let applicationContext: ApplicationContext;
 
   beforeAll(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should get orders', async () => {

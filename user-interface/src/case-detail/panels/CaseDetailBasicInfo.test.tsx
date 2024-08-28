@@ -12,7 +12,7 @@ import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/hooks/UseApi2';
 
 const TEST_CASE_ID = '101-23-12345';
@@ -63,7 +63,7 @@ const CONSOLIDATE_FROM: Consolidation = {
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
 describe('Case detail basic information panel', () => {
-  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
+  const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { isPaginated: false, self: 'self-url' },
     isSuccess: true,
     data: attorneyList,

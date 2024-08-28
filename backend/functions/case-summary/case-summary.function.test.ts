@@ -7,7 +7,6 @@ import handler from './case-summary.function';
 import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
-import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { buildTestResponseSuccess, createMockAzureFunctionRequest } from '../azure/testing-helpers';
 
 describe('Case summary function', () => {
@@ -35,18 +34,18 @@ describe('Case summary function', () => {
   });
 
   test('Should return case summary for an existing case ID', async () => {
-    const caseDetail: CaseDetail = MockData.getCaseDetail();
-    const body = caseDetail;
-
-    const { azureHttpResponse } = buildTestResponseSuccess(body);
+    const data: CaseDetail = MockData.getCaseDetail();
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseDetail>({ data });
 
     const request = {
       ...baseRequest,
       params: {
-        caseId: caseDetail.caseId,
+        caseId: data.caseId,
       },
     };
-    jest.spyOn(CaseSummaryController.prototype, 'getCaseSummary').mockResolvedValue({ body });
+    jest
+      .spyOn(CaseSummaryController.prototype, 'getCaseSummary')
+      .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     console.log('REsponse:    ', response);
@@ -54,7 +53,6 @@ describe('Case summary function', () => {
   });
 
   test('Should return an error response for', async () => {
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     const error = new NotFoundError('CASE-MANAGEMENT-USE-CASE', {
       message: 'Case summary not found for case ID.',
     });
@@ -72,6 +70,5 @@ describe('Case summary function', () => {
     const response = await handler(request, context);
     expect(response.status).toEqual(404);
     expect(response.jsonBody).toEqual(expectedErrorResponse);
-    expect(httpErrorSpy).toHaveBeenCalledWith(error);
   });
 });

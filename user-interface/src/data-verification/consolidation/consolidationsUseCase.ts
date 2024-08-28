@@ -17,7 +17,7 @@ import { ConfirmActionResults } from './ConsolidationOrderModal';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseAssignment } from '@common/cams/assignments';
 import { Consolidation } from '@common/cams/events';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
 type PreviousLeadConsolidationFacts = {
@@ -39,7 +39,7 @@ export interface ConsolidationsUseCase {
 
   handleApproveButtonClick(): void;
   handleCaseAssociationResponse(
-    response: ResponseBodySuccess<Consolidation[]>,
+    response: ResponseBody<Consolidation[]>,
     currentLeadCaseId: string,
   ): Consolidation[];
   handleClearInputs(): void;
@@ -75,7 +75,7 @@ const consolidationUseCase = (
   }
 
   function handleCaseAssociationResponse(
-    response: ResponseBodySuccess<Consolidation[]>,
+    response: ResponseBody<Consolidation[]>,
     currentLeadCaseId: string,
   ) {
     const associations = response.data;

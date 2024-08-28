@@ -1,6 +1,5 @@
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
-import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import handler from './case-associated.function';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
@@ -38,10 +37,10 @@ describe('Case summary function', () => {
 
   test('Should return associated cases response.', async () => {
     const body = [];
-    const { azureHttpResponse } = buildTestResponseSuccess(body);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<>(body);
     jest
       .spyOn(CaseAssociatedController.prototype, 'getAssociatedCases')
-      .mockResolvedValue({ body });
+      .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     expect(response.status).toEqual(200);
@@ -49,7 +48,6 @@ describe('Case summary function', () => {
   });
 
   test('Should return an error response', async () => {
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     const error = new NotFoundError('CASE-ASSOCIATED-USE-CASE', {
       message: 'Case summary not found for case ID.',
     });
@@ -60,6 +58,5 @@ describe('Case summary function', () => {
     const response = await handler(request, context);
     expect(response.status).toEqual(azureHttpResponse.status);
     expect(response.jsonBody).toEqual(azureHttpResponse.jsonBody);
-    expect(httpErrorSpy).toHaveBeenCalledWith(error);
   });
 });

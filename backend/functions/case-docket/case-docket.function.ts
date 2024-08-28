@@ -25,9 +25,7 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const responseBody = await caseDocketController.getCaseDocket(applicationContext, {
-      caseId: request.params.caseId,
-    });
+    const responseBody = await caseDocketController.getCaseDocket(applicationContext);
     return toAzureSuccess(responseBody);
   } catch (camsError) {
     applicationContext.logger.camsError(camsError);

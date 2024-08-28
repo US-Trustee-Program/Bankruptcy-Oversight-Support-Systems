@@ -7,7 +7,7 @@ import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.
 describe('Test case-history use case', () => {
   test('should return a case history when getCaseHistory is called', async () => {
     jest.spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory').mockResolvedValue(CASE_HISTORY);
-    const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    const mockContext = await createMockApplicationContext();
     const caseId = NORMAL_CASE_ID;
     const useCase = new CaseHistoryUseCase(mockContext);
     const result = await useCase.getCaseHistory(mockContext, caseId);

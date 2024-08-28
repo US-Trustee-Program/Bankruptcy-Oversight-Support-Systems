@@ -5,6 +5,7 @@ import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 import { toAzureError, toAzureSuccess } from './functions';
 import { ApplicationContext } from '../lib/adapters/types/basic';
+import { ResponseBody } from '../../../common/src/api/response';
 
 export function createMockAzureFunctionContext(
   env: Record<string, string> = {},
@@ -35,7 +36,7 @@ export function createMockAzureFunctionRequest(
 }
 
 export function buildTestResponseSuccess<T extends object = undefined>(
-  body: T = undefined,
+  body: ResponseBody<T> = undefined,
   options: { headers?: Record<string, string>; statusCode?: number } = {},
 ) {
   const camsHttpResponse = httpSuccess<T>({ body, ...options });

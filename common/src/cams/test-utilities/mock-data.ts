@@ -25,12 +25,12 @@ import {
   ConsolidationTo,
 } from '../events';
 import { CaseAssignment } from '../assignments';
-import { ResponseBodySuccess } from '../../api/response';
-import { WithPagination } from '../../api/pagination';
+import { ResponseBody } from '../../api/response';
 import { Action, ResourceActions } from '../actions';
 import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
+import { Pagination } from '../../api/pagination';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -197,16 +197,11 @@ function getCaseDetail(
  *  is correct if we do that.
  * @param self String optional The URI for the resource being mocked
  */
-function getNonPaginatedResponseBodySuccess<T>(
-  data: T,
-  self: string = 'some-url',
-): ResponseBodySuccess<T> {
+function getNonPaginatedResponseBody<T>(data: T, self: string = 'some-url'): ResponseBody<T> {
   return {
     meta: {
       self,
-      isPaginated: false,
     },
-    isSuccess: true,
     data,
   };
 }
@@ -229,23 +224,23 @@ function getNonPaginatedResponseBodySuccess<T>(
  *  }
  * @param self String optional The URI for the resource being mocked
  */
-function getPaginatedResponseBodySuccess<T>(
+function getPaginatedResponseBody<T>(
   data: T,
-  options: Options<WithPagination> = { override: {} },
+  options: Options<Pagination> = { override: {} },
   self: string = 'some-url',
-): ResponseBodySuccess<T> {
+): ResponseBody<T> {
   const { override } = options;
   return {
     meta: {
       self,
-      isPaginated: true,
+    },
+    pagination: {
       count: override.count ?? 5,
       previous: override.previous ?? undefined,
       next: override.next ?? undefined,
       limit: override.limit ?? 25,
       currentPage: override.currentPage ?? 1,
     },
-    isSuccess: true,
     data,
   };
 }
@@ -501,8 +496,8 @@ export const MockData = {
   getOfficesByGroupDesignator,
   getParty,
   getDocketEntry,
-  getNonPaginatedResponseBodySuccess,
-  getPaginatedResponseBodySuccess,
+  getNonPaginatedResponseBody,
+  getPaginatedResponseBody,
   getTransferOrder,
   getDebtorAttorney,
   getConsolidation,

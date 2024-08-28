@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsError } from '../../common-errors/cams-error';
-import { buildResponseBodySuccess } from '../../../../../common/src/api/response';
+import { buildResponseBody } from '../../../../../common/src/api/response';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import {
   mockCamsHttpRequest,
@@ -26,7 +26,7 @@ describe('offices controller tests', () => {
   let applicationContext: ApplicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should return successful response', async () => {
@@ -35,7 +35,7 @@ describe('offices controller tests', () => {
     });
 
     const expected = {
-      body: buildResponseBodySuccess<OfficeDetails[]>(OFFICES, {
+      body: buildResponseBody<OfficeDetails[]>(OFFICES, {
         isPaginated: false,
         self: mockRequestUrl,
       }),

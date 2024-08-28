@@ -32,7 +32,7 @@ describe('Factory functions', () => {
       DATABASE_MOCK: 'false',
       COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
     });
-    mockDbContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    mockDbContext = await createMockApplicationContext();
   });
 
   test('getAttorneyGateway', async () => {

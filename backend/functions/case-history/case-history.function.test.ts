@@ -1,7 +1,6 @@
 import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
-import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import handler from './case-history.function';
@@ -9,11 +8,13 @@ import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
-import { UnknownError } from '../lib/common-errors/unknown-error';
-import { buildResponseBodySuccess } from '../../../common/src/api/response';
-import { CaseHistory } from '../../../common/src/cams/history';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
-import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CaseHistory } from '../../../common/src/cams/history';
 
 describe('Case History Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -51,32 +52,23 @@ describe('Case History Function Tests', () => {
       ...requestOverride,
     });
 
-    const result = buildResponseBodySuccess<CaseHistory[]>(CASE_HISTORY, {
-      isPaginated: false,
-      self: request.url,
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseHistory[]>({
+      meta: {
+        self: request.url,
+      },
+      data: CASE_HISTORY,
     });
-    const controllerResponse = {
-      body: result,
-    };
-
     jest
       .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
-      .mockResolvedValue(controllerResponse);
-
-    const expectedResponse = {
-      isSuccess: true,
-      meta: expect.any(Object),
-      data: CASE_HISTORY,
-    };
+      .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponse);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should return an error response for a non-existent case ID', async () => {
-    jest
-      .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
-      .mockRejectedValue(new NotFoundError('test-module'));
+    const error = new NotFoundError('test-module');
+    jest.spyOn(CaseHistoryController.prototype, 'getCaseHistory').mockRejectedValue(error);
 
     const requestOverride = {
       params: {
@@ -89,16 +81,10 @@ describe('Case History Function Tests', () => {
       ...requestOverride,
     });
 
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Not found',
-    };
+    const { azureHttpResponse } = buildTestResponseError(error);
 
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedErrorResponse);
+    expect(response).toEqual(azureHttpResponse);
     expect(response.status).toEqual(404);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(NotFoundError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
   });
 });

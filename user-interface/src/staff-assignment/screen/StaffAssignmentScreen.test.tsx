@@ -6,7 +6,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { CaseSummary } from '@common/cams/cases';
-import { buildResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
+import { buildResponseBody } from '@common/api/response';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import * as genericApiModule from '@/lib/hooks/UseApi';
@@ -22,10 +22,10 @@ describe('StaffAssignmentScreen', () => {
     testingUtilities.spyOnGlobalAlert();
 
     vi.spyOn(Api2, 'searchCases').mockResolvedValue(
-      buildResponseBodySuccess(MockData.buildArray(MockData.getCaseBasics, 3)),
+      buildResponseBody(MockData.buildArray(MockData.getCaseBasics, 3)),
     );
 
-    const expectedResponse: ResponseBodySuccess<CaseSummary[]> = {
+    const expectedResponse: ResponseBody<CaseSummary[]> = {
       meta: { self: 'a-uri', isPaginated: true, count: 3, limit: 50, currentPage: 1 },
       isSuccess: true,
       data: MockData.buildArray(() => {

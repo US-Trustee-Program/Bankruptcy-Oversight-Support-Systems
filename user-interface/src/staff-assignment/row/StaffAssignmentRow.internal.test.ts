@@ -1,6 +1,6 @@
 import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/hooks/UseApi2';
-import { buildResponseBodySuccess } from '@common/api/response';
+import { buildResponseBody } from '@common/api/response';
 import { CaseAssignment } from '@common/cams/assignments';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Internal from './StaffAssignmentRow.internal';
@@ -32,7 +32,7 @@ describe('StaffAssignmentRowInternal', () => {
 
   const apiGetCaseAssignments = vi
     .spyOn(Api2, 'getCaseAssignments')
-    .mockResolvedValue(buildResponseBodySuccess<CaseAssignment[]>(caseAssignments));
+    .mockResolvedValue(buildResponseBody<CaseAssignment[]>(caseAssignments));
 
   beforeEach(() => {
     vi.clearAllMocks();

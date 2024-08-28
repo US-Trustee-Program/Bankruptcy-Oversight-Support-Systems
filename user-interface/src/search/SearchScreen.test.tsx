@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate } from '@common/api/search';
-import { buildResponseBodySuccess } from '@common/api/response';
+import { buildResponseBody } from '@common/api/response';
 import Api2 from '@/lib/hooks/UseApi2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
@@ -18,7 +18,7 @@ describe('search screen', () => {
     caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
     searchCasesSpy = vi
       .spyOn(Api2, 'searchCases')
-      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
+      .mockResolvedValue(buildResponseBody<CaseBasics[]>(caseList));
   });
 
   afterEach(() => {
@@ -342,7 +342,7 @@ describe('search screen', () => {
   test('should show the no results alert when no results are available', async () => {
     renderWithoutProps();
 
-    vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(buildResponseBodySuccess<CaseBasics[]>([]));
+    vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(buildResponseBody<CaseBasics[]>([]));
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 
@@ -382,7 +382,7 @@ describe('search screen', () => {
       .mockRejectedValueOnce({
         message: 'some error',
       })
-      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
+      .mockResolvedValue(buildResponseBody<CaseBasics[]>(caseList));
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 
@@ -417,7 +417,7 @@ describe('search screen', () => {
       .mockRejectedValueOnce({
         message: 'some error',
       })
-      .mockResolvedValue(buildResponseBodySuccess<CaseBasics[]>(caseList));
+      .mockResolvedValue(buildResponseBody<CaseBasics[]>(caseList));
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();

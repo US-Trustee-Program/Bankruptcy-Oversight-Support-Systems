@@ -1,6 +1,6 @@
 import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import { commonHeaders, httpSuccess } from '../lib/adapters/utils/http-response';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { getCamsError } from '../lib/common-errors/error-utilities';
 
@@ -42,10 +42,9 @@ export function toAzureError(
   const error = getCamsError(originalError, moduleName);
   context.logger.camsError(error);
 
-  const camsResponse = httpError(error);
   return {
-    headers: camsResponse.headers,
-    status: camsResponse.statusCode,
-    jsonBody: camsResponse.body,
+    headers: commonHeaders,
+    status: error.status,
+    jsonBody: error.message,
   };
 }

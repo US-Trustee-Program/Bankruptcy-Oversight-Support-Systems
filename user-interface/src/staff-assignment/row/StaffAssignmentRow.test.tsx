@@ -4,7 +4,6 @@ import { StaffAssignmentRow, StaffAssignmentRowOptions } from './StaffAssignment
 import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/hooks/UseApi2';
-import { buildResponseBodySuccess } from '@common/api/response';
 import { CaseAssignment } from '@common/cams/assignments';
 import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
 import { AttorneyUser } from '@common/cams/users';
@@ -59,14 +58,14 @@ describe('StaffAssignmentRow tests', () => {
   }
 
   vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(
-    buildResponseBodySuccess<AttorneyUser[]>(TRIAL_ATTORNEYS),
+    buildResponseBody<AttorneyUser[]>(TRIAL_ATTORNEYS),
   );
 
   test('should render a row', async () => {
     const assignedAttorney = MockData.getAttorneyAssignment();
     const caseAssignmentSpy = vi
       .spyOn(Api2, 'getCaseAssignments')
-      .mockResolvedValue(buildResponseBodySuccess<CaseAssignment[]>([assignedAttorney]));
+      .mockResolvedValue(buildResponseBody<CaseAssignment[]>([assignedAttorney]));
 
     renderWithProps();
 
@@ -86,9 +85,7 @@ describe('StaffAssignmentRow tests', () => {
   });
 
   test('should show "unassigned" if there is not an assigned attorney', async () => {
-    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(
-      buildResponseBodySuccess<CaseAssignment[]>([]),
-    );
+    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(buildResponseBody<CaseAssignment[]>([]));
 
     renderWithProps();
 
@@ -107,7 +104,7 @@ describe('StaffAssignmentRow tests', () => {
   test('should show assigned attorney names for assigned attorneys', async () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 2);
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(
-      buildResponseBodySuccess<CaseAssignment[]>(assignments),
+      buildResponseBody<CaseAssignment[]>(assignments),
     );
 
     renderWithProps();
@@ -129,7 +126,7 @@ describe('StaffAssignmentRow tests', () => {
   test('should not show assign/edit button', async () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 2);
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(
-      buildResponseBodySuccess<CaseAssignment[]>(assignments),
+      buildResponseBody<CaseAssignment[]>(assignments),
     );
 
     const myCase = { ...bCase, _actions: [] };
@@ -161,7 +158,7 @@ describe('StaffAssignmentRow tests', () => {
 
   test('should render a list of assigned attorneys', async () => {
     const assignments = [MockData.getAttorneyAssignment()];
-    const assignmentsResponse = buildResponseBodySuccess<CaseAssignment[]>(assignments);
+    const assignmentsResponse = buildResponseBody<CaseAssignment[]>(assignments);
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentsResponse);
 
     renderWithProps();
