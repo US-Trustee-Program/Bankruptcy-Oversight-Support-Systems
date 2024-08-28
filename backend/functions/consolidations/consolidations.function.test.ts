@@ -2,7 +2,7 @@ import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest, createMockAzureFunctionContext } from '../azure/functions';
 import handler from './consolidations.function';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
 

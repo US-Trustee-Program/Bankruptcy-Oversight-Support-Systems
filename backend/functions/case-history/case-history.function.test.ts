@@ -6,7 +6,7 @@ import { createMockAzureFunctionRequest } from '../azure/functions';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import handler from './case-history.function';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';

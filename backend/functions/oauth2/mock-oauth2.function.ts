@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
 
 export default async function handler(

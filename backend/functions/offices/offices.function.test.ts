@@ -1,6 +1,6 @@
 import { CamsError } from '../lib/common-errors/cams-error';
 import { createMockAzureFunctionRequest } from '../azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';

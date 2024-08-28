@@ -1,12 +1,9 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import * as dotenv from 'dotenv';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { httpRequestToCamsHttpRequest } from '../azure/functions';
+import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
+import ContextCreator from '../azure/application-context-creator';
 
 dotenv.config();
 
@@ -28,15 +25,11 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const camsRequest = await httpRequestToCamsHttpRequest(request);
+    const camsRequest = await azureToCamsHttpRequest(request);
     const attorneysList = await attorneysController.getAttorneyList(camsRequest);
-    return httpSuccess(attorneysList);
-  } catch (originalError) {
-    const error = isCamsError(originalError)
-      ? originalError
-      : new UnknownError(MODULE_NAME, { originalError });
-    applicationContext.logger.camsError(error);
-    return httpError(error);
+    return toAzureSuccess(attorneysList);
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

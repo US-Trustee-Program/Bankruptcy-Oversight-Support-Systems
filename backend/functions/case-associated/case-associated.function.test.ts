@@ -5,7 +5,7 @@ import { CaseAssociatedController } from '../lib/controllers/case-associated/cas
 import { CamsResponse } from '../lib/controllers/controller-types';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import handler from './case-associated.function';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';

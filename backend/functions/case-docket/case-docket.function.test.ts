@@ -19,12 +19,8 @@ describe('Case docket function', () => {
 
   test('Should return a docket consisting of a list of docket entries an existing case ID', async () => {
     const request = createMockAzureFunctionRequest(defaultRequestProps);
-    const expectedResponseBody = {
-      success: true,
-      body: DXTR_CASE_DOCKET_ENTRIES,
-    };
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });
 
   test('Should return an error response for a non-existent case ID', async () => {

@@ -1,14 +1,16 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as dotenv from 'dotenv';
 
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
 initializeApplicationInsights();
+
+const MODULE_NAME = 'CASE-DOCKET-FUNCTION' as const;
 
 export default async function handler(
   request: HttpRequest,
@@ -26,10 +28,10 @@ export default async function handler(
     const responseBody = await caseDocketController.getCaseDocket(applicationContext, {
       caseId: request.params.caseId,
     });
-    return httpSuccess(responseBody);
+    return toAzureSuccess(responseBody);
   } catch (camsError) {
     applicationContext.logger.camsError(camsError);
-    return httpError(camsError);
+    return toAzureError(applicationContext, MODULE_NAME, camsError);
   }
 }
 

@@ -3,21 +3,16 @@ import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsError } from '../../common-errors/cams-error';
-import {
-  AttorneyAssignmentResponseInterface,
-  CaseAssignment,
-} from '../../../../../common/src/cams/assignments';
-import { CamsResponse } from '../controller-types';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsHttpResponse } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
   'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345.';
-
-type GetTrialAttorneyAssignmentsResponse = CamsResponse<Array<CaseAssignment>>;
 
 export class CaseAssignmentController {
   private readonly applicationContext: ApplicationContext;
@@ -28,12 +23,11 @@ export class CaseAssignmentController {
 
   public async getTrialAttorneyAssignments(
     caseId: string,
-  ): Promise<GetTrialAttorneyAssignmentsResponse> {
+  ): Promise<CamsHttpResponse<CaseAssignment[]>> {
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
       return {
-        success: true,
         body: assignments,
       };
     } catch (exception) {
@@ -49,8 +43,8 @@ export class CaseAssignmentController {
     caseId: string;
     listOfAttorneyNames: CamsUserReference[];
     role: string;
-  }): Promise<AttorneyAssignmentResponseInterface> {
-    this.validateRequestParameters(params);
+  }): Promise<CamsHttpResponse<string[]>> {
+    this.validateRequestParameters(params.caseId, params.role);
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       const response = await assignmentUseCase.createTrialAttorneyAssignments(
@@ -59,7 +53,9 @@ export class CaseAssignmentController {
         params.listOfAttorneyNames,
         params.role,
       );
-      return response;
+      return {
+        body: response,
+      };
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
@@ -69,26 +65,22 @@ export class CaseAssignmentController {
     }
   }
 
-  private validateRequestParameters(params: {
-    caseId: string;
-    listOfAttorneyNames: CamsUserReference[];
-    role: string;
-  }) {
+  private validateRequestParameters(caseId: string, role: string) {
     const badParams = [];
     let errors = false;
     let message = '';
-    if (!params.caseId) {
+    if (!caseId) {
       badParams.push('caseId');
       errors = true;
-    } else if (!params.caseId.match(VALID_CASEID_PATTERN)) {
+    } else if (!caseId.match(VALID_CASEID_PATTERN)) {
       message += INVALID_CASEID_MESSAGE;
       errors = true;
     }
-    if (!params.role) {
+    if (!role) {
       badParams.push('role');
       errors = true;
     }
-    if (!(params.role in CamsRole)) {
+    if (!(role in CamsRole)) {
       message += INVALID_ROLE_MESSAGE;
       errors = true;
     }

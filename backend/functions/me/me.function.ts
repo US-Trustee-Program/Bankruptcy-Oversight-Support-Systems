@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import ContextCreator from '../azure/application-context-creator';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
+
+const MODULE_NAME = 'ME-FUNCTION';
 
 export async function handler(
   request: HttpRequest,
@@ -14,10 +16,9 @@ export async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
     const response = { success: true, body: applicationContext.session };
-    return httpSuccess(response);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    return httpError(camsError);
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

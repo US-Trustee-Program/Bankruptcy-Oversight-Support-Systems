@@ -1,12 +1,10 @@
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CamsUserReference } from '../../../common/src/cams/users';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
@@ -39,12 +37,8 @@ export default async function handler(
       assignmentResponse = await handleGetMethod(applicationContext, request.params['id']);
     }
     return assignmentResponse;
-  } catch (originalError) {
-    const error = isCamsError(originalError)
-      ? originalError
-      : new UnknownError(MODULE_NAME, { originalError });
-    applicationContext.logger.camsError(error);
-    return httpError(error);
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 
@@ -56,7 +50,7 @@ async function handleGetMethod(applicationContext, caseId) {
   const trialAttorneyAssignmentResponse =
     await caseAssignmentController.getTrialAttorneyAssignments(caseId);
 
-  return httpSuccess(trialAttorneyAssignmentResponse);
+  return toAzureSuccess(trialAttorneyAssignmentResponse);
 }
 
 async function handlePostMethod(
@@ -76,7 +70,7 @@ async function handlePostMethod(
       role,
     });
 
-  return httpSuccess(trialAttorneyAssignmentResponse);
+  return toAzureSuccess(trialAttorneyAssignmentResponse);
 }
 
 app.http('case-assignments', {

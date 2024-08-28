@@ -6,7 +6,7 @@ import { NotFoundError } from '../lib/common-errors/not-found-error';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { CamsResponse } from '../lib/controllers/controller-types';
 import handler from './case-summary.function';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';

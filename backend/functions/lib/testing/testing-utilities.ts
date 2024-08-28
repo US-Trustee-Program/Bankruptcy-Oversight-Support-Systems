@@ -1,9 +1,9 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import ContextCreator from '../adapters/utils/application-context-creator';
 import { HttpRequest, InvocationContext } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
+import ContextCreator from '../../azure/application-context-creator';
 
 const invocationContext = new InvocationContext();
 

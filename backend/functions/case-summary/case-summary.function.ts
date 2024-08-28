@@ -1,13 +1,13 @@
 import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
-// const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
+const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
 
 initializeApplicationInsights();
 
@@ -27,9 +27,9 @@ export default async function handler(
     const response = await caseSummaryController.getCaseSummary(applicationContext, {
       caseId: request.params.caseId,
     });
-    return httpSuccess(response);
+    return toAzureSuccess(response);
   } catch (error) {
-    return httpError(error);
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

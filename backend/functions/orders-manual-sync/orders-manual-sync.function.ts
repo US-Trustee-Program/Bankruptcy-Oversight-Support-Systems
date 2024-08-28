@@ -1,16 +1,16 @@
-import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import { app } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersOptions } from '../lib/use-cases/orders/orders';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
 initializeApplicationInsights();
+
+const MODULE_NAME = 'ORDERS-MANUAL-SYNC-FUNCTION' as const;
 
 /**
  * Used to invoke the orders sync process between DXTR and CAMS CosmosDB from an accessable HTTP endpoint.
@@ -33,10 +33,9 @@ export default async function handler(
   const ordersController = new OrdersController(context);
   try {
     const results = await ordersController.syncOrders(context, request.body as SyncOrdersOptions);
-    return { ...httpSuccess(results) };
-  } catch (camsError) {
-    context.logger.camsError(camsError);
-    return { ...httpError(camsError) };
+    return toAzureSuccess(results);
+  } catch (error) {
+    return toAzureError(context, MODULE_NAME, error);
   }
 }
 app.http('order-manual-sync', {

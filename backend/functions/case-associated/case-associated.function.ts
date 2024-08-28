@@ -1,12 +1,10 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
 
 import * as dotenv from 'dotenv';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 dotenv.config();
 
 const MODULE_NAME = 'CASE-ASSOCIATED-FUNCTION' as const;
@@ -31,13 +29,9 @@ export default async function handler(
       caseId: applicationContext.request.params.caseId,
     });
 
-    return httpSuccess(response);
-  } catch (originalError) {
-    const error = isCamsError(originalError)
-      ? originalError
-      : new UnknownError(MODULE_NAME, { originalError });
-    applicationContext.logger.camsError(error);
-    return httpError(error);
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

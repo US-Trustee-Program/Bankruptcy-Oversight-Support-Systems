@@ -4,7 +4,7 @@ import { CaseBasics } from '../../../common/src/cams/cases';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 import handler from './cases.function';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
 
@@ -12,8 +12,6 @@ const searchCasesResults = [MockData.getCaseBasics(), MockData.getCaseBasics()];
 
 const caseDetails = MockData.getCaseDetail();
 const caseDetailsResponse = {
-  message: '',
-  success: true,
   body: {
     caseDetails: { ...caseDetails, _actions: [] },
   },
@@ -73,7 +71,7 @@ describe('Standard case endpoint tests', () => {
     });
 
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(caseDetailsResponse);
+    expect(response.jsonBody).toEqual(caseDetailsResponse.body);
   });
 
   test('should perform search', async () => {
