@@ -9,7 +9,7 @@ import { ConsolidationOrderCase } from '@common/cams/orders';
 import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import Api2 from '@/lib/hooks/UseApi2';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import { Consolidation } from '@common/cams/events';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CaseSummary } from '@common/cams/cases';
@@ -256,12 +256,13 @@ describe('Consolidation UseCase tests', () => {
     const setLeadCaseIdSpy = vi.spyOn(store, 'setLeadCaseId');
 
     const caseSummary = MockData.getCaseSummary();
-    const summaryResponse: ResponseBodySuccess<CaseSummary> =
-      MockData.getNonPaginatedResponseBodySuccess<CaseSummary>(caseSummary);
+    const summaryResponse: ResponseBody<CaseSummary> =
+      MockData.getNonPaginatedResponseBody<CaseSummary>(caseSummary);
     const getCaseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(summaryResponse);
 
-    const associationsResponse: ResponseBodySuccess<Consolidation[]> =
-      MockData.getPaginatedResponseBodySuccess<Consolidation[]>([]);
+    const associationsResponse: ResponseBody<Consolidation[]> = MockData.getPaginatedResponseBody<
+      Consolidation[]
+    >([]);
     const getCaseAssociationsSpy = vi
       .spyOn(Api2, 'getCaseAssociations')
       .mockResolvedValue(associationsResponse);
@@ -350,8 +351,8 @@ describe('Consolidation UseCase tests', () => {
       MockData.getConsolidation({ override: { caseId, documentType } }),
       MockData.getConsolidation(),
     ];
-    const response: ResponseBodySuccess<Consolidation[]> =
-      MockData.getNonPaginatedResponseBodySuccess<Consolidation[]>(data);
+    const response: ResponseBody<Consolidation[]> =
+      MockData.getNonPaginatedResponseBody<Consolidation[]>(data);
 
     store.setConsolidationType(data[0].consolidationType);
     expect(() => useCase.handleCaseAssociationResponse(response, caseId)).toThrow(Error);
@@ -370,8 +371,8 @@ describe('Consolidation UseCase tests', () => {
         }),
       3,
     );
-    const response: ResponseBodySuccess<Consolidation[]> =
-      MockData.getNonPaginatedResponseBodySuccess<Consolidation[]>(data);
+    const response: ResponseBody<Consolidation[]> =
+      MockData.getNonPaginatedResponseBody<Consolidation[]>(data);
 
     store.setConsolidationType(data[0].consolidationType);
     const associations = useCase.handleCaseAssociationResponse(response, caseId);
@@ -393,8 +394,8 @@ describe('Consolidation UseCase tests', () => {
         }),
       3,
     );
-    const response: ResponseBodySuccess<Consolidation[]> =
-      MockData.getNonPaginatedResponseBodySuccess<Consolidation[]>(data);
+    const response: ResponseBody<Consolidation[]> =
+      MockData.getNonPaginatedResponseBody<Consolidation[]>(data);
 
     store.setConsolidationType('administrative');
     expect(() => useCase.handleCaseAssociationResponse(response, caseId)).toThrow(Error);
@@ -408,10 +409,10 @@ describe('Consolidation UseCase tests', () => {
   test.each(params)(
     'should display alert when case summary can not be retrieved',
     async (params) => {
-      const associationResponse: ResponseBodySuccess<Consolidation[]> =
-        MockData.getNonPaginatedResponseBodySuccess<Consolidation[]>([]);
-      const assignmentResponse: ResponseBodySuccess<CaseAssignment[]> =
-        MockData.getNonPaginatedResponseBodySuccess<CaseAssignment[]>([]);
+      const associationResponse: ResponseBody<Consolidation[]> =
+        MockData.getNonPaginatedResponseBody<Consolidation[]>([]);
+      const assignmentResponse: ResponseBody<CaseAssignment[]> =
+        MockData.getNonPaginatedResponseBody<CaseAssignment[]>([]);
 
       vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue({ message: params.message });
       vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue(associationResponse);
@@ -433,10 +434,10 @@ describe('Consolidation UseCase tests', () => {
   );
 
   test('should display alert when case associations cannot be retrieved', async () => {
-    const caseSummaryResponse: ResponseBodySuccess<CaseSummary> =
-      MockData.getNonPaginatedResponseBodySuccess<CaseSummary>(MockData.getCaseSummary());
-    const assignmentsResponse: ResponseBodySuccess<CaseAssignment[]> =
-      MockData.getNonPaginatedResponseBodySuccess<CaseAssignment[]>([]);
+    const caseSummaryResponse: ResponseBody<CaseSummary> =
+      MockData.getNonPaginatedResponseBody<CaseSummary>(MockData.getCaseSummary());
+    const assignmentsResponse: ResponseBody<CaseAssignment[]> =
+      MockData.getNonPaginatedResponseBody<CaseAssignment[]>([]);
 
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(caseSummaryResponse);
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentsResponse);
@@ -459,10 +460,11 @@ describe('Consolidation UseCase tests', () => {
   });
 
   test('should display alert when case assignments cannot be retrieved', async () => {
-    const associationResponse: ResponseBodySuccess<Consolidation[]> =
-      MockData.getNonPaginatedResponseBodySuccess<Consolidation[]>([]);
-    const caseSummaryResponse: ResponseBodySuccess<CaseSummary> =
-      MockData.getNonPaginatedResponseBodySuccess<CaseSummary>(MockData.getCaseSummary());
+    const associationResponse: ResponseBody<Consolidation[]> = MockData.getNonPaginatedResponseBody<
+      Consolidation[]
+    >([]);
+    const caseSummaryResponse: ResponseBody<CaseSummary> =
+      MockData.getNonPaginatedResponseBody<CaseSummary>(MockData.getCaseSummary());
 
     vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(caseSummaryResponse);
     vi.spyOn(Api2, 'getCaseAssociations').mockResolvedValue(associationResponse);

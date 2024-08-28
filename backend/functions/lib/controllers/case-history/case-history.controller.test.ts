@@ -15,7 +15,7 @@ describe('Test case-history controller', () => {
   let applicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should return a case history when getCaseHistory is called', async () => {

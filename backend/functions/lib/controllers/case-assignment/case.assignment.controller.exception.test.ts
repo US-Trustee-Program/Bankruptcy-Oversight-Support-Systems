@@ -21,7 +21,7 @@ describe('test case assignment controller using mocked use case', () => {
   let applicationContext: ApplicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should throw an UnknownError when an error that is not a CamsError is caught', async () => {

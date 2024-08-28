@@ -12,7 +12,7 @@ import {
 } from '../azure/testing-helpers';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
 import { OfficeDetails } from '../../../common/src/cams/courts';
-import { ResponseBodySuccess } from '../../../common/src/api/response';
+import { ResponseBody } from '../../../common/src/api/response';
 
 describe('offices Function tests', () => {
   let request;
@@ -40,7 +40,7 @@ describe('offices Function tests', () => {
   );
 
   test('should set successful response', async () => {
-    const bodySuccess: ResponseBodySuccess<OfficeDetails[]> = {
+    const bodySuccess: ResponseBody<OfficeDetails[]> = {
       meta: {
         self: '',
         isPaginated: false,
@@ -50,7 +50,7 @@ describe('offices Function tests', () => {
     };
 
     const { camsHttpResponse, azureHttpResponse } =
-      buildTestResponseSuccess<ResponseBodySuccess<OfficeDetails[]>>(bodySuccess);
+      buildTestResponseSuccess<ResponseBody<OfficeDetails[]>>(bodySuccess);
 
     jest.spyOn(OfficesController.prototype, 'getOffices').mockResolvedValue(camsHttpResponse);
 

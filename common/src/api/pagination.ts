@@ -5,21 +5,10 @@ export type PaginationParameters = {
   offset?: number;
 };
 
-export type NoPagination = {
-  isPaginated: false;
-};
-
-export type WithPagination = {
-  isPaginated: true;
+export type Pagination = {
   count: number;
   previous?: UriString;
   next?: UriString;
   limit: number;
   currentPage: number;
 };
-
-export type Pagination = WithPagination | NoPagination;
-
-export function isPaginated(meta: unknown): meta is WithPagination {
-  return typeof meta === 'object' && 'isPaginated' in meta && meta.isPaginated === true;
-}

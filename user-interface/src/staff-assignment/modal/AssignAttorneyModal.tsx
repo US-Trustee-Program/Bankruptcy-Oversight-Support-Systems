@@ -17,7 +17,7 @@ import Api from '@/lib/models/api';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Checkbox from '@/lib/components/uswds/Checkbox';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export interface CallbackProps {
@@ -129,7 +129,7 @@ function _AssignAttorneyModal(
 
     try {
       attorneys = await api.getAttorneys();
-      setAttorneyList((attorneys as ResponseBodySuccess<AttorneyUser[]>).data);
+      setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
     } catch (e) {
       globalAlert?.error((e as Error).message);
     }

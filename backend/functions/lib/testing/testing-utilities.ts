@@ -8,14 +8,20 @@ import ContextCreator from '../../azure/application-context-creator';
 const invocationContext = new InvocationContext();
 
 export async function createMockApplicationContext(
-  env: Record<string, string> = {},
+  args: {
+    env?: Record<string, string>;
+    request?: Partial<CamsHttpRequest>;
+  } = {},
 ): Promise<ApplicationContext> {
   process.env = {
     DATABASE_MOCK: 'true',
     MOCK_AUTH: 'true',
-    ...env,
+    ...args.env,
   };
-  return await ContextCreator.applicationContextCreator(invocationContext, createMockRequest());
+  return await ContextCreator.applicationContextCreator(
+    invocationContext,
+    createMockRequest(args.request),
+  );
 }
 
 export async function createMockApplicationContextSession(

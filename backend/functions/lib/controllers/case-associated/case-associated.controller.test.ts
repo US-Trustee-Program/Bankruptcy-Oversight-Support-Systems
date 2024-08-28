@@ -13,7 +13,7 @@ describe('Test case-history controller', () => {
   let applicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should return associated cases when getAssociatedCases is called', async () => {

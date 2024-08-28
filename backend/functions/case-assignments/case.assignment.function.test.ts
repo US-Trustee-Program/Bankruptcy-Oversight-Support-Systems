@@ -1,17 +1,14 @@
 import handler from './case.assignment.function';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
-import * as httpResponseModule from '../lib/adapters/utils/http-response';
-import { AssignmentError } from '../lib/use-cases/assignment.exception';
-import { UnknownError } from '../lib/common-errors/unknown-error';
 import ContextCreator from '../azure/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest } from '../azure/functions';
 import { CamsRole } from '../../../common/src/cams/roles';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
 
 describe('Case Assignment Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -89,12 +86,9 @@ describe('Case Assignment Function Tests', () => {
         success: false,
       };
 
-      const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
       const response = await handler(request, context);
       expect(response.jsonBody).toEqual(expectedResponse);
       expect(response.status).toEqual(400);
-      expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-      expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
     },
   );
 
@@ -120,13 +114,10 @@ describe('Case Assignment Function Tests', () => {
       ...requestOverride,
     });
 
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
     const response = await handler(request, context);
 
-    expect(httpErrorSpy).toHaveBeenCalled();
     expect(response.status).toEqual(500);
     expect(response.jsonBody.message).toEqual('Unknown error');
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {

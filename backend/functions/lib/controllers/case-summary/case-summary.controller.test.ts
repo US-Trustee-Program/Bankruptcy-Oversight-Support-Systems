@@ -9,7 +9,7 @@ describe('Test case-summary controller', () => {
   let controller;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
     controller = new CaseSummaryController(applicationContext);
   });
 

@@ -3,11 +3,11 @@ import MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import {
-  buildResponseBodySuccess,
+  buildResponseBody,
   isResponseBodyError,
-  isResponseBodySuccess,
+  isResponseBody,
   ResponseBody,
-  ResponseBodySuccess,
+  ResponseBody,
 } from '@common/api/response';
 import { LocalStorage } from '../utils/local-storage';
 
@@ -58,17 +58,9 @@ export interface ApiClient {
 }
 
 export interface GenericApiClient {
-  get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBodySuccess<T>>;
-  post<T = object>(
-    path: string,
-    body: object,
-    options?: ObjectKeyVal,
-  ): Promise<ResponseBodySuccess<T>>;
-  put<T = object>(
-    path: string,
-    body: object,
-    options?: ObjectKeyVal,
-  ): Promise<ResponseBodySuccess<T>>;
+  get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  post<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  put<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 }
 
 //This allows us to use generics and avoid typing using the "as" keyword to specify return types throughout the rest of the application
@@ -80,14 +72,14 @@ function isLegacyResponseData(response: unknown): response is { body: unknown } 
   return !!response && typeof response === 'object' && 'body' in response;
 }
 
-export function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBodySuccess<T> {
-  if (isResponseBodySuccess<T>(response)) return response;
+export function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBody<T> {
+  if (isResponseBody<T>(response)) return response;
   if (isResponseBodyError(response)) {
     // TODO: Need to map the error from the response body
     throw new Error('TBD Need to map the error from the response body');
   }
   if (isLegacyResponseData(response)) {
-    return buildResponseBodySuccess<T>(response.body as T, {
+    return buildResponseBody<T>(response.body as T, {
       isPaginated: false,
       self: '',
     });
@@ -116,7 +108,7 @@ export function useGenericApi(): GenericApiClient {
   }
 
   return {
-    async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBodySuccess<T>> {
+    async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
       const body = await api.get(justThePath(path), options);
       return mapFromLegacyToResponseBody(body);
     },
@@ -124,7 +116,7 @@ export function useGenericApi(): GenericApiClient {
       path: string,
       body: object,
       options?: ObjectKeyVal,
-    ): Promise<ResponseBodySuccess<T>> {
+    ): Promise<ResponseBody<T>> {
       const responseBody = await api.post(justThePath(path), body, options);
       return mapFromLegacyToResponseBody(responseBody);
     },
@@ -132,7 +124,7 @@ export function useGenericApi(): GenericApiClient {
       path: string,
       body: object,
       options?: ObjectKeyVal,
-    ): Promise<ResponseBodySuccess<T>> {
+    ): Promise<ResponseBody<T>> {
       const responseBody = await api.put(justThePath(path), body, options);
       return mapFromLegacyToResponseBody(responseBody);
     },

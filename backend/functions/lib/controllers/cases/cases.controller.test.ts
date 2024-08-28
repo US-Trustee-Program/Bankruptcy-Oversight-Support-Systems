@@ -2,10 +2,7 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/case-management';
 import { CasesController } from './cases.controller';
-import {
-  buildResponseBodySuccess,
-  isResponseBodySuccess,
-} from '../../../../../common/src/api/response';
+import { buildResponseBody, isResponseBody } from '../../../../../common/src/api/response';
 import { CaseBasics } from '../../../../../common/src/cams/cases';
 import {
   mockCamsHttpRequest,
@@ -46,7 +43,7 @@ describe('cases controller test', () => {
     const offset = 0;
 
     test('should return an empty array for no matches', async () => {
-      const expected = buildResponseBodySuccess<CaseBasics[]>([], {
+      const expected = buildResponseBody<CaseBasics[]>([], {
         self: mockRequestUrl,
         limit,
       });
@@ -67,7 +64,7 @@ describe('cases controller test', () => {
       const data = MockData.buildArray(MockData.getCaseBasics, limit + 1);
       const dataMinusHint = [...data];
       dataMinusHint.pop();
-      const expected = buildResponseBodySuccess<CaseBasics[]>(dataMinusHint, {
+      const expected = buildResponseBody<CaseBasics[]>(dataMinusHint, {
         self: mockRequestUrl,
         next: `${mockRequestUrl}?limit=${limit}&offset=${offset + limit}`,
         limit,
@@ -82,8 +79,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(isResponseBodySuccess(actual)).toBeTruthy();
-      if (isResponseBodySuccess(actual)) {
+      expect(isResponseBody(actual)).toBeTruthy();
+      if (isResponseBody(actual)) {
         expect(actual.data).toHaveLength(limit);
         expect(actual.data).toEqual(data.slice(0, limit));
       }
@@ -92,7 +89,7 @@ describe('cases controller test', () => {
     test('should not return a next link when result set matches limit', async () => {
       const caseNumber = '00-00000';
       const data = MockData.buildArray(MockData.getCaseBasics, limit);
-      const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
+      const expected = buildResponseBody<CaseBasics[]>(data, {
         self: mockRequestUrl,
         limit,
       });
@@ -106,8 +103,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(isResponseBodySuccess(actual)).toBeTruthy();
-      if (isResponseBodySuccess(actual)) {
+      expect(isResponseBody(actual)).toBeTruthy();
+      if (isResponseBody(actual)) {
         expect(actual.data).toHaveLength(limit);
         expect(actual.data).toEqual(data.slice(0, limit));
       }
@@ -116,7 +113,7 @@ describe('cases controller test', () => {
     test('should not return a next link when result set is smaller than limit', async () => {
       const caseNumber = '00-00000';
       const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
-      const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
+      const expected = buildResponseBody<CaseBasics[]>(data, {
         self: mockRequestUrl,
         limit,
       });
@@ -130,8 +127,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(isResponseBodySuccess(actual)).toBeTruthy();
-      if (isResponseBodySuccess(actual)) {
+      expect(isResponseBody(actual)).toBeTruthy();
+      if (isResponseBody(actual)) {
         expect(actual.data).toHaveLength(limit - 1);
         expect(actual.data).toEqual(data);
       }
@@ -142,7 +139,7 @@ describe('cases controller test', () => {
       const limit = 25;
       const previousOffset = '0';
       const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
-      const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
+      const expected = buildResponseBody<CaseBasics[]>(data, {
         isPaginated: true,
         count: data.length,
         self: mockRequestUrl,
@@ -186,8 +183,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expect.objectContaining({ meta: expectedMeta, isSuccess: true }));
-      expect(isResponseBodySuccess(actual)).toBeTruthy();
-      if (isResponseBodySuccess(actual)) {
+      expect(isResponseBody(actual)).toBeTruthy();
+      if (isResponseBody(actual)) {
         expect(actual.data).toHaveLength(limit);
         expect(actual.data).toEqual(data.slice(0, limit));
       }
@@ -196,7 +193,7 @@ describe('cases controller test', () => {
     test('should return search results for a caseNumber', async () => {
       const caseNumber = '00-00000';
       const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
-      const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
+      const expected = buildResponseBody<CaseBasics[]>(data, {
         self: mockRequestUrl,
         limit,
       });
@@ -215,7 +212,7 @@ describe('cases controller test', () => {
     test('should return search results for a divisionCode', async () => {
       const caseNumber = '00-00000';
       const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
-      const expected = buildResponseBodySuccess<CaseBasics[]>(data, {
+      const expected = buildResponseBody<CaseBasics[]>(data, {
         self: mockRequestUrl,
         limit,
       });

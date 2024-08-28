@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { isResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
+import { isResponseBody } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
@@ -49,9 +49,7 @@ export function SearchResults(props: SearchResultsProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
-  const [searchResults, setSearchResults] = useState<ResponseBodySuccess<CaseBasics[]> | null>(
-    null,
-  );
+  const [searchResults, setSearchResults] = useState<ResponseBody<CaseBasics[]> | null>(null);
 
   const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
     ? searchResults?.meta
@@ -62,8 +60,8 @@ export function SearchResults(props: SearchResultsProps) {
 
   const api = useApi2();
 
-  function handleSearchResults(response: ResponseBodySuccess<CaseBasics[]>) {
-    if (isResponseBodySuccess(response)) {
+  function handleSearchResults(response: ResponseBody<CaseBasics[]>) {
+    if (isResponseBody(response)) {
       setSearchResults(response);
       setEmptyResponse(response.data.length === 0);
     }

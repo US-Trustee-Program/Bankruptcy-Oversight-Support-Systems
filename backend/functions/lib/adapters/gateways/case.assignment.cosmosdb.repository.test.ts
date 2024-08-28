@@ -18,7 +18,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
   let repository: CaseAssignmentCosmosDbRepository;
 
   beforeEach(async () => {
-    const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    const applicationContext = await createMockApplicationContext();
     repository = new CaseAssignmentCosmosDbRepository(applicationContext);
   });
 

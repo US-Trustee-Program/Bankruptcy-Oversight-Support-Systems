@@ -34,7 +34,7 @@ describe('Runtime State Repo', () => {
   let repo: CasesCosmosDbRepository;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    context = await createMockApplicationContext();
     repo = new CasesCosmosDbRepository(context);
     jest.clearAllMocks();
   });
@@ -100,7 +100,7 @@ describe('Test case history cosmosdb repository tests', () => {
   let repo: CasesCosmosDbRepository;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    context = await createMockApplicationContext();
     repo = new CasesCosmosDbRepository(context);
     jest.clearAllMocks();
   });

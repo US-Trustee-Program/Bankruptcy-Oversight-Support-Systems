@@ -20,7 +20,7 @@ describe('orders controller exception tests', () => {
   let applicationContext: ApplicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should wrap unexpected errors with CamsError', async () => {

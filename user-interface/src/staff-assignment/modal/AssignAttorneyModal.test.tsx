@@ -13,7 +13,7 @@ import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import Api2 from '@/lib/hooks/UseApi2';
 import { AttorneyUser } from '@common/cams/users';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import testingUtilities from '@/lib/testing/testing-utilities';
 
 const offices = [MANHATTAN!];
@@ -34,7 +34,7 @@ const modalId = 'some-modal-id';
 describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
 
-  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
+  const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { isPaginated: false, self: 'self-url' },
     isSuccess: true,
     data: attorneyList,
