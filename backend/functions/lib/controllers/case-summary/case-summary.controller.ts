@@ -3,7 +3,7 @@ import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
 import CaseManagement from '../../use-cases/case-management';
-import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
 
@@ -21,7 +21,7 @@ export class CaseSummaryController {
   public async getCaseSummary(
     context: ApplicationContext,
     request: GetCaseSummaryRequest,
-  ): Promise<CamsHttpResponse<CaseDetail>> {
+  ): Promise<CamsHttpResponseInit<CaseDetail>> {
     try {
       const caseSummary = await this.useCase.getCaseSummary(context, request.caseId);
       return {

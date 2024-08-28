@@ -143,10 +143,9 @@ describe('Orders use case', () => {
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
 
-    const mockCreateAssignment = jest.spyOn(
-      CaseAssignmentUseCase.prototype,
-      'createTrialAttorneyAssignments',
-    );
+    const mockCreateAssignment = jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockResolvedValue(['']);
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
