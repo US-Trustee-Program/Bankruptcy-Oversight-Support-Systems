@@ -26,7 +26,7 @@ export default async function handler(
 
     const caseId = request.params['caseId'];
     const body = await controller.getSuggestedCases(applicationContext, caseId);
-    return toAzureSuccess({ body });
+    return toAzureSuccess(body);
   } catch (error) {
     return toAzureError(applicationContext, MODULE_NAME, error);
   }
