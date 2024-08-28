@@ -60,14 +60,14 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
         <OpenModalButton
           {...commonModalButtonProps}
           uswdsStyle={UswdsButtonStyle.Outline}
-          title="edit assignments"
+          title="Edit Staff Assignments"
         >
           Edit
         </OpenModalButton>
       );
     } else {
       return (
-        <OpenModalButton {...commonModalButtonProps} title="add assignments">
+        <OpenModalButton {...commonModalButtonProps} title="Add Staff Assignments">
           Assign
         </OpenModalButton>
       );
