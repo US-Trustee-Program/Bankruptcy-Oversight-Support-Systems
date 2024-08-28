@@ -1,7 +1,5 @@
-import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
-import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { randomUUID } from 'node:crypto';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { isCamsError } from '../lib/common-errors/cams-error';
@@ -26,35 +24,7 @@ export async function azureToCamsHttpRequest(request: HttpRequest): Promise<Cams
   };
 }
 
-export function createMockAzureFunctionContext(
-  env: Record<string, string> = {},
-): InvocationContext {
-  process.env = {
-    DATABASE_MOCK: 'true',
-    MOCK_AUTH: 'true',
-    ...env,
-  };
-
-  return new InvocationContext({ invocationId: randomUUID() });
-}
-
-export function createMockAzureFunctionRequest(
-  request: Partial<CamsHttpRequest> = {},
-): HttpRequest {
-  const { headers, method, body, ...other } = request;
-  const requestBody = body ? JSON.stringify(body) : '';
-
-  const requestInit = {
-    method: method ?? 'GET',
-    url: 'http://localhost:3000',
-    body: { string: requestBody },
-    headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
-    ...other,
-  };
-  return new HttpRequest(requestInit);
-}
-
-export function toAzureSuccess(response: object): HttpResponseInit {
+export function toAzureSuccess(response: object = undefined): HttpResponseInit {
   const camsResponse = httpSuccess(response);
   const init: HttpResponseInit = {
     headers: camsResponse.headers,

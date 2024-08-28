@@ -1,8 +1,5 @@
-import { EventCaseReference } from '../../../common/src/cams/events';
-import { createMockAzureFunctionRequest } from '../azure/functions';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
-import { CamsResponse } from '../lib/controllers/controller-types';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import handler from './case-associated.function';
 import ContextCreator from '../azure/application-context-creator';
@@ -10,6 +7,11 @@ import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
 import { InvocationContext } from '@azure/functions';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
 
 describe('Case summary function', () => {
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
@@ -35,17 +37,15 @@ describe('Case summary function', () => {
   });
 
   test('Should return associated cases response.', async () => {
-    const expectedResponseBody: CamsResponse<Array<EventCaseReference>> = {
-      success: true,
-      body: [],
-    };
+    const body = [];
+    const { azureHttpResponse } = buildTestResponseSuccess(body);
     jest
       .spyOn(CaseAssociatedController.prototype, 'getAssociatedCases')
-      .mockResolvedValue(expectedResponseBody);
+      .mockResolvedValue({ body });
 
     const response = await handler(request, context);
     expect(response.status).toEqual(200);
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should return an error response', async () => {
@@ -54,13 +54,12 @@ describe('Case summary function', () => {
       message: 'Case summary not found for case ID.',
     });
     jest.spyOn(CaseAssociatedController.prototype, 'getAssociatedCases').mockRejectedValue(error);
-    const expectedErrorResponse = {
-      success: false,
-      message: error.message,
-    };
+
+    const { azureHttpResponse } = buildTestResponseError(error);
+
     const response = await handler(request, context);
-    expect(response.status).toEqual(404);
-    expect(response.jsonBody).toEqual(expectedErrorResponse);
+    expect(response.status).toEqual(azureHttpResponse.status);
+    expect(response.jsonBody).toEqual(azureHttpResponse.jsonBody);
     expect(httpErrorSpy).toHaveBeenCalledWith(error);
   });
 });

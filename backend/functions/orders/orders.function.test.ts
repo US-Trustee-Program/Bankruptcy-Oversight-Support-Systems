@@ -1,24 +1,15 @@
 import handler from './orders.function';
 import { CamsError } from '../lib/common-errors/cams-error';
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import { TransferOrderAction } from '../../../common/src/cams/orders';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from '../azure/functions';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
-
-let getOrders;
-let updateOrder;
-
-jest.mock('../lib/controllers/orders/orders.controller', () => {
-  return {
-    OrdersController: jest.fn().mockImplementation(() => {
-      return {
-        getOrders,
-        updateOrder,
-      };
-    }),
-  };
-});
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { Order } from '../../../common/src/cams/orders';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
 
 describe('Orders Function tests', () => {
   const request = createMockAzureFunctionRequest({});
@@ -32,25 +23,23 @@ describe('Orders Function tests', () => {
 
   test('should return a list of orders', async () => {
     const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
-    getOrders = jest.fn().mockImplementation(() => {
-      return Promise.resolve({ success: true, body: mockOrders });
-    });
-    const expectedResponseBody = {
-      success: true,
-      body: mockOrders,
-    };
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<Order[]>(mockOrders);
+
+    jest.spyOn(OrdersController.prototype, 'getOrders').mockResolvedValue(camsHttpResponse);
+
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should return updated order', async () => {
     const id = '1234567890';
 
-    updateOrder = jest
-      .fn()
-      .mockImplementation((_context: ApplicationContext, data: TransferOrderAction) => {
-        return Promise.resolve({ success: true, body: data });
-      });
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess();
+
+    const updateOrder = jest
+      .spyOn(OrdersController.prototype, 'updateOrder')
+      .mockResolvedValue(camsHttpResponse);
 
     const orderRequest = createMockAzureFunctionRequest({
       params: { id },
@@ -61,35 +50,30 @@ describe('Orders Function tests', () => {
       method: 'PATCH',
     });
 
-    const expectedResponseBody = {
-      success: true,
-      body: id,
-    };
-
     const response = await handler(orderRequest, context);
 
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+    expect(response).toEqual(azureHttpResponse);
     expect(updateOrder).toHaveBeenCalled();
   });
 
   test('should return error response when error is encountered on get list', async () => {
-    getOrders = jest.fn().mockImplementation(() => {
-      throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
-    });
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Mocked error',
-    };
+    const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
+    const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
+
+    jest.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
 
     const response = await handler(request, context);
-    expect(response.jsonBody).toMatchObject(expectedErrorResponse);
+    expect(response).toMatchObject(azureHttpResponse);
+    expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
   });
 
   test('should return error response when an unknown error is encountered on update', async () => {
+    const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
+    const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
+
+    jest.spyOn(OrdersController.prototype, 'updateOrder').mockRejectedValue(error);
+
     const id = '1234567890';
-    getOrders = jest.fn().mockImplementation(() => {
-      throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
-    });
     const requestOverride: Partial<CamsHttpRequest> = {
       params: { id },
       body: {
@@ -99,21 +83,14 @@ describe('Orders Function tests', () => {
       method: 'PATCH',
     };
     const orderRequest = createMockAzureFunctionRequest(requestOverride);
-    updateOrder = jest
-      .fn()
-      .mockImplementation((_context: ApplicationContext, _data: TransferOrderAction) => {
-        throw new CamsError('ORDERS-FUNCTION-TEST', { message: 'Unknown error on update.' });
-      });
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Unknown error on update.',
-    };
     const response = await handler(orderRequest, context);
-    expect(response.jsonBody).toMatchObject(expectedErrorResponse);
+    expect(response).toMatchObject(azureHttpResponse);
+    expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
   });
 
   test('should return error bad request error when id in parameters does not match id in data', async () => {
     const paramId = '1';
+
     const dataId = '2';
     const requestOverride: Partial<CamsHttpRequest> = {
       params: { id: paramId },

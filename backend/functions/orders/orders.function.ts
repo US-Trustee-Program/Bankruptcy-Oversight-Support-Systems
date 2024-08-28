@@ -3,15 +3,12 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import {
-  OrdersController,
-  GetOrdersResponse,
-  PatchOrderResponse,
-} from '../lib/controllers/orders/orders.controller';
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
-import { TransferOrderAction } from '../../../common/src/cams/orders';
+import { Order, TransferOrderAction } from '../../../common/src/cams/orders';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { CamsHttpResponse } from '../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 
@@ -33,8 +30,8 @@ export default async function handler(
       response = toAzureSuccess(orderGet);
     } else if (context.request.method === 'PATCH') {
       //TODO: Json Mapping with these requestBody objects
-      const orderPatch = await updateOrder(context, context.request.body);
-      response = toAzureSuccess(orderPatch);
+      await updateOrder(context, context.request.body);
+      response = toAzureSuccess();
     }
     return response;
   } catch (camsError) {
@@ -42,13 +39,13 @@ export default async function handler(
   }
 }
 
-async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
+async function getOrders(context: ApplicationContext): Promise<CamsHttpResponse<Order[]>> {
   const ordersController = new OrdersController(context);
   const responseBody = await ordersController.getOrders(context);
   return responseBody;
 }
 
-async function updateOrder(context: ApplicationContext, requestBody): Promise<PatchOrderResponse> {
+async function updateOrder(context: ApplicationContext, requestBody): Promise<void> {
   const ordersController = new OrdersController(context);
   const id = context.request.params['id'];
   const orderId = requestBody['id'];
@@ -60,12 +57,7 @@ async function updateOrder(context: ApplicationContext, requestBody): Promise<Pa
     throw camsError;
   }
   if (orderType === 'transfer') {
-    const orderUpdate = ordersController.updateOrder(
-      context,
-      id,
-      requestBody as TransferOrderAction,
-    );
-    return orderUpdate;
+    await ordersController.updateOrder(context, id, requestBody as TransferOrderAction);
   }
 }
 

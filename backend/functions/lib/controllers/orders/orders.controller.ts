@@ -20,6 +20,7 @@ import {
 } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsHttpResponse } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -42,11 +43,10 @@ export class OrdersController {
     );
   }
 
-  public async getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
+  public async getOrders(context: ApplicationContext): Promise<CamsHttpResponse<Order[]>> {
     try {
       const orders = await this.useCase.getOrders(context);
       return {
-        success: true,
         body: orders,
       };
     } catch (originalError) {
@@ -59,11 +59,10 @@ export class OrdersController {
   public async getSuggestedCases(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<GetSuggestedCasesResponse> {
+  ): Promise<CamsHttpResponse<CaseSummary[]>> {
     try {
       const suggestedCases = await this.useCase.getSuggestedCases(context, caseId);
       return {
-        success: true,
         body: suggestedCases,
       };
     } catch (originalError) {
@@ -77,14 +76,11 @@ export class OrdersController {
     context: ApplicationContext,
     id: string,
     data: TransferOrderAction,
-  ): Promise<PatchOrderResponse> {
+  ): Promise<CamsHttpResponse> {
     // TODO: Need to sanitize id and data.
     try {
-      const result = await this.useCase.updateTransferOrder(context, id, data);
-      return {
-        success: true,
-        body: result,
-      };
+      await this.useCase.updateTransferOrder(context, id, data);
+      return;
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
