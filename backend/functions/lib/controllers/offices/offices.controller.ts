@@ -8,7 +8,7 @@ import {
   buildResponseBodySuccess,
 } from '../../../../../common/src/api/response';
 import { CamsHttpRequest } from '../../adapters/types/http';
-import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 
@@ -23,7 +23,7 @@ export class OfficesController {
 
   public async getOffices(
     request: CamsHttpRequest,
-  ): Promise<CamsHttpResponse<ResponseBodySuccess<OfficeDetails[]>>> {
+  ): Promise<CamsHttpResponseInit<ResponseBodySuccess<OfficeDetails[]>>> {
     try {
       const offices = await this.useCase.getOffices(this.applicationContext);
       const result = buildResponseBodySuccess<OfficeDetails[]>(offices, {

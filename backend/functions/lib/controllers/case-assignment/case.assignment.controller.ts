@@ -6,7 +6,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -23,7 +23,7 @@ export class CaseAssignmentController {
 
   public async getTrialAttorneyAssignments(
     caseId: string,
-  ): Promise<CamsHttpResponse<CaseAssignment[]>> {
+  ): Promise<CamsHttpResponseInit<CaseAssignment[]>> {
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
@@ -43,7 +43,7 @@ export class CaseAssignmentController {
     caseId: string;
     listOfAttorneyNames: CamsUserReference[];
     role: string;
-  }): Promise<CamsHttpResponse<string[]>> {
+  }): Promise<CamsHttpResponseInit<string[]>> {
     this.validateRequestParameters(params.caseId, params.role);
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);

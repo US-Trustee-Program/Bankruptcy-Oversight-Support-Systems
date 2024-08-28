@@ -20,7 +20,7 @@ import {
 } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
@@ -44,7 +44,7 @@ export class OrdersController {
     );
   }
 
-  public async getOrders(context: ApplicationContext): Promise<CamsHttpResponse<Order[]>> {
+  public async getOrders(context: ApplicationContext): Promise<CamsHttpResponseInit<Order[]>> {
     try {
       const orders = await this.useCase.getOrders(context);
       return {
@@ -60,7 +60,7 @@ export class OrdersController {
   public async getSuggestedCases(
     context: ApplicationContext,
     caseId: string,
-  ): Promise<CamsHttpResponse<CaseSummary[]>> {
+  ): Promise<CamsHttpResponseInit<CaseSummary[]>> {
     try {
       const suggestedCases = await this.useCase.getSuggestedCases(context, caseId);
       return {
@@ -77,7 +77,7 @@ export class OrdersController {
     context: ApplicationContext,
     id: string,
     data: TransferOrderAction,
-  ): Promise<CamsHttpResponse> {
+  ): Promise<CamsHttpResponseInit> {
     // TODO: Need to sanitize id and data.
     try {
       await this.useCase.updateTransferOrder(context, id, data);
@@ -106,7 +106,7 @@ export class OrdersController {
   public async rejectConsolidation(
     context: ApplicationContext,
     data: unknown,
-  ): Promise<CamsHttpResponse<ConsolidationOrder[]>> {
+  ): Promise<CamsHttpResponseInit<ConsolidationOrder[]>> {
     try {
       if (isConsolidationOrderRejection(data)) {
         if (data.rejectedCases.length == 0) {
@@ -129,7 +129,7 @@ export class OrdersController {
   public async approveConsolidation(
     context: ApplicationContext,
     data: unknown,
-  ): Promise<CamsHttpResponse<ConsolidationOrder[]>> {
+  ): Promise<CamsHttpResponseInit<ConsolidationOrder[]>> {
     try {
       if (isConsolidationOrderApproval(data)) {
         if (!data.consolidationType) {

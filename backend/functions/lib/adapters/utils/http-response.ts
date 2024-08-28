@@ -1,5 +1,6 @@
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { ResponseBody } from '../../../../../common/src/api/response';
 
 export const commonHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
@@ -11,15 +12,15 @@ export type CamsErrorBody = {
   message: string;
 };
 
-export type CamsHttpResponse<T extends object = undefined> = {
+export type CamsHttpResponseInit<T extends object = undefined> = {
   headers?: Record<string, string>;
   statusCode?: number;
-  body?: T;
+  body?: T | ResponseBody<T>;
 };
 
 export function httpSuccess<T extends object = undefined>(
-  response: CamsHttpResponse<T> = {},
-): CamsHttpResponse<T> {
+  response: CamsHttpResponseInit<T> = {},
+): CamsHttpResponseInit<T> {
   return {
     headers: { ...commonHeaders, ...response.headers },
     statusCode: response.statusCode ?? (response.body ? 200 : 204),
@@ -30,7 +31,7 @@ export function httpSuccess<T extends object = undefined>(
 export function httpError(
   originalError: Error,
   moduleName: string = 'FIX-THIS-MAPPING-OR-YOU-WILL-GET-A-STRONGLY-WORDED-REBUKE',
-): CamsHttpResponse<CamsErrorBody> {
+): CamsHttpResponseInit<CamsErrorBody> {
   const error = isCamsError(originalError)
     ? originalError
     : new UnknownError(moduleName, { originalError });

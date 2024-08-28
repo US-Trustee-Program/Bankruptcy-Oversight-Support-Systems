@@ -8,7 +8,7 @@ import { BadRequestError } from '../lib/common-errors/bad-request';
 import { Order, TransferOrderAction } from '../../../common/src/cams/orders';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
-import { CamsHttpResponse } from '../lib/adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 
@@ -39,7 +39,7 @@ export default async function handler(
   }
 }
 
-async function getOrders(context: ApplicationContext): Promise<CamsHttpResponse<Order[]>> {
+async function getOrders(context: ApplicationContext): Promise<CamsHttpResponseInit<Order[]>> {
   const ordersController = new OrdersController(context);
   const responseBody = await ordersController.getOrders(context);
   return responseBody;

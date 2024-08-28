@@ -1,9 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { buildResponseBodySuccess, ResponseBody } from '../../../../../common/src/api/response';
+import { buildResponseBodySuccess } from '../../../../../common/src/api/response';
 import { CamsHttpRequest } from '../../adapters/types/http';
-import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
@@ -18,7 +18,7 @@ export class CaseHistoryController {
   public async getCaseHistory(
     context: ApplicationContext,
     request: CamsHttpRequest,
-  ): Promise<CamsHttpResponse<ResponseBody<CaseHistory[]>>> {
+  ): Promise<CamsHttpResponseInit<CaseHistory[]>> {
     try {
       const caseHistory = await this.useCase.getCaseHistory(context, request.params.caseId);
       // TODO: figure out how CamsHttpResponse and ResponseBody are related

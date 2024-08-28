@@ -4,7 +4,7 @@ import { getCaseDocketUseCase } from '../../factory';
 import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
 
@@ -22,7 +22,7 @@ export class CaseDocketController {
   public async getCaseDocket(
     context: ApplicationContext,
     request: GetCaseDocketRequest,
-  ): Promise<CamsHttpResponse<CaseDocket>> {
+  ): Promise<CamsHttpResponseInit<CaseDocket>> {
     try {
       const caseDocket = await this.useCase.getCaseDocket(context, request.caseId);
       return {
