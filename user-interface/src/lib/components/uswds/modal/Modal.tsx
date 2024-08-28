@@ -1,13 +1,11 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
-import useGlobalKeyDown from '@/lib/hooks/UseGlobalKeyDown';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
-import { ModalRefType, SubmitCancelButtonGroupRef } from './modal-refs';
+import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
 
 export interface ModalProps {
   modalId: string;
-  openerId?: string;
   className?: string;
   heading: React.ReactNode;
   content: React.ReactNode;
@@ -19,19 +17,15 @@ export interface ModalProps {
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
+  const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
-  const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
   const [keyboardAccessible, setKeyboardAccessible] = useState<number>(-1);
-  const closeIcon = `/assets/styles/img/sprite.svg#close`;
-  const modalShellRef = useRef<HTMLInputElement | null>(null);
+  const [openModalButtonRef, setOpenModalButtonRef] =
+    useState<React.RefObject<OpenModalButtonRef> | null>(null);
 
-  let wrapperData = {};
-  if (props.openerId) {
-    wrapperData = {
-      'data-opener': props.openerId,
-    };
-  }
+  const modalShellRef = useRef<HTMLInputElement | null>(null);
+  const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
 
   if (props.forceAction) {
     data['data-force-action'] = true;
@@ -45,8 +39,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   };
 
-  useGlobalKeyDown(handleKeyDown, { forceAction: !!props.forceAction });
-
   const close = (ev: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
     closeModal();
     ev.preventDefault();
@@ -56,8 +48,11 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     if (props.onClose) {
       props.onClose();
     }
+
     hide();
     setKeyboardAccessible(100000);
+
+    openModalButtonRef?.current?.focus();
   }
 
   const handleTab = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -108,9 +103,13 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }
 
-  function showModal() {
+  function showModal(options: object) {
     if (props.onOpen) {
       props.onOpen();
+    }
+    if (options && 'openModalButtonRef' in options) {
+      const openRef = options.openModalButtonRef as React.RefObject<OpenModalButtonRef>;
+      setOpenModalButtonRef(openRef);
     }
     show();
   }
@@ -128,6 +127,20 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }, [isVisible]);
 
+  useEffect(() => {
+    if (isVisible) {
+      const keyDownEventHandler = (ev: KeyboardEvent) => {
+        handleKeyDown(ev);
+      };
+
+      document.addEventListener('keydown', keyDownEventHandler);
+
+      return () => {
+        document.removeEventListener('keydown', keyDownEventHandler);
+      };
+    }
+  }, [isVisible]);
+
   return (
     <div
       className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
@@ -136,7 +149,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       data-testid={`modal-${props.modalId}`}
       aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
-      {...wrapperData}
     >
       <div
         className="usa-modal-overlay"
@@ -189,7 +201,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                   cancelButton={
                     props.actionButtonGroup.cancelButton
                       ? {
-                          label: props.actionButtonGroup.cancelButton?.label ?? '',
+                          label: props.actionButtonGroup.cancelButton.label,
                           onClick: cancelBtnClick,
                           className: props.actionButtonGroup.cancelButton?.className ?? '',
                           uswdsStyle:

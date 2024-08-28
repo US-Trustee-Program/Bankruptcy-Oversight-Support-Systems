@@ -100,7 +100,7 @@ describe('StaffAssignmentRow tests', () => {
       expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
       expect(button).toHaveTextContent('Assign');
       expect(button).toHaveAttribute('title', 'add assignments');
-      expect(button).toHaveAttribute('data-open-modal', 'true');
+      expect(button).toHaveAttribute('data-testid', 'open-modal-button-0');
     });
   });
 
@@ -121,7 +121,7 @@ describe('StaffAssignmentRow tests', () => {
         expect(button).toHaveClass(UswdsButtonStyle.Outline);
         expect(button).toHaveTextContent('Edit');
         expect(button).toHaveAttribute('title', 'edit assignments');
-        expect(button).toHaveAttribute('data-open-modal', 'true');
+        expect(button).toHaveAttribute('data-testid', 'open-modal-button-0');
       });
     });
   });

@@ -10,7 +10,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
-import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import Api2 from '@/lib/hooks/UseApi2';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBodySuccess } from '@common/api/response';
@@ -57,13 +57,9 @@ describe('Test Assign Attorney Modal Component', () => {
       <React.StrictMode>
         <BrowserRouter>
           <>
-            <ToggleModalButton
-              toggleAction={'open'}
-              modalId={propsToRender.modalId}
-              modalRef={modalRef}
-            >
+            <OpenModalButton modalId={propsToRender.modalId} modalRef={modalRef}>
               Open Modal
-            </ToggleModalButton>
+            </OpenModalButton>
             <AssignAttorneyModal {...propsToRender} ref={modalRef}></AssignAttorneyModal>
           </>
         </BrowserRouter>
@@ -98,7 +94,7 @@ describe('Test Assign Attorney Modal Component', () => {
       callback,
     });
 
-    const button = screen.getByTestId('toggle-modal-button');
+    const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
 
@@ -162,7 +158,7 @@ describe('Test Assign Attorney Modal Component', () => {
         },
       }),
     });
-    const button = screen.getByTestId('toggle-modal-button');
+    const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);

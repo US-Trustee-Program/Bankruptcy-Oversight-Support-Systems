@@ -17,6 +17,8 @@ import { isValidSearchPredicate, SearchResults } from '@/search-results/SearchRe
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
 export default function SearchScreen() {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
@@ -129,7 +131,8 @@ export default function SearchScreen() {
   }, []);
 
   return (
-    <div className="search-screen" data-testid="search">
+    <MainContent className="search-screen" data-testid="search">
+      <DocumentTitle name="Case Search" />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
@@ -226,6 +229,6 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-1"></div>
       </div>
-    </div>
+    </MainContent>
   );
 }
