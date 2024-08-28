@@ -4,7 +4,7 @@ import './PaginationButton.scss';
 
 export const BUTTON_BASE_CLASS = 'usa-pagination__button';
 
-export type PaginationButtonProps = JSX.IntrinsicElements['a'] & {
+export type PaginationButtonProps = JSX.IntrinsicElements['button'] & {
   id: string;
   children?: React.ReactNode;
   isCurrent?: boolean;
@@ -25,10 +25,12 @@ export function PaginationButton({
   if (isPrevious) {
     classes.push('usa-pagination__link');
     classes.push('usa-pagination__previous-page');
+    classes.push('usa-button--unstyled');
     ariaLabel = 'Previous page';
   } else if (isNext) {
     classes.push('usa-pagination__link');
     classes.push('usa-pagination__next-page');
+    classes.push('usa-button--unstyled');
     ariaLabel = 'Next page';
   } else {
     classes.push(BUTTON_BASE_CLASS);
@@ -37,13 +39,13 @@ export function PaginationButton({
   }
 
   return (
-    <a
-      href={undefined}
+    <button
       className={classes.join(' ')}
       onClick={onClick}
       data-testid={`pagination-button-${id}`}
       aria-label={ariaLabel}
       aria-current={isCurrent ? 'page' : undefined}
+      tabIndex={0}
     >
       {isPrevious && (
         <>
@@ -58,6 +60,6 @@ export function PaginationButton({
           <Icon name={'navigate_next'}></Icon>
         </>
       )}
-    </a>
+    </button>
   );
 }

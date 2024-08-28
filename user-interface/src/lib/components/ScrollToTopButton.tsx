@@ -39,7 +39,7 @@ export default function ScrollToTopButton() {
       onClick={() => scrollElement()}
       className="scroll-to-top-button"
       title="scroll to top"
-      aria-label="scroll to top of docket entry list"
+      aria-label="scroll to top of the screen contents"
     >
       <Icon name="arrow_upward"></Icon>
     </Button>

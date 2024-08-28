@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
-import { ToggleModalButton } from '@/lib/components/uswds/modal/ToggleModalButton';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -46,8 +46,8 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   function buildActionButton(assignments: AttorneyUser[]) {
     const commonModalButtonProps = {
       className: 'case-assignment-modal-toggle',
-      buttonIndex: `toggle-button-${idx}`,
-      toggleProps: {
+      buttonIndex: `${idx}`,
+      openProps: {
         bCase: { ...bCase, assignments: state.assignments },
         callback: handleCallback,
       },
@@ -57,20 +57,19 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
     if (assignments.length > 0) {
       return (
-        <ToggleModalButton
+        <OpenModalButton
           {...commonModalButtonProps}
           uswdsStyle={UswdsButtonStyle.Outline}
-          toggleAction="open"
           title="edit assignments"
         >
           Edit
-        </ToggleModalButton>
+        </OpenModalButton>
       );
     } else {
       return (
-        <ToggleModalButton {...commonModalButtonProps} toggleAction="open" title="add assignments">
+        <OpenModalButton {...commonModalButtonProps} title="add assignments">
           Assign
-        </ToggleModalButton>
+        </OpenModalButton>
       );
     }
   }

@@ -87,6 +87,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
       className={`usa-alert-container ${containerClasses}`}
       data-testid={`alert-container${props.id ? '-' + props.id : ''}`}
       id={props.id}
+      role="alert"
     >
       <div
         className={`${classes} ${

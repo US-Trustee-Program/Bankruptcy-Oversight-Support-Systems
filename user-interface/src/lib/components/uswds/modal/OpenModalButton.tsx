@@ -1,55 +1,43 @@
-import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonState, UswdsButtonStyle } from '../Button';
-import { ObjectKeyVal } from '@/lib/type-declarations/basic';
-import { forwardRef, useImperativeHandle, useState } from 'react';
-import { ModalRefType, ToggleModalButtonRef } from './modal-refs';
+import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonStyle } from '../Button';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 
-export interface ModalToggleButtonProps {
+export interface ModalOpenButtonProps {
   children: React.ReactNode;
   buttonIndex?: string;
   uswdsStyle?: UswdsButtonStyle;
-  buttonState?: UswdsButtonState;
   disabled?: boolean;
-  toggleAction: 'open' | 'close';
-  toggleProps?: object;
+  openProps?: object;
   modalId: string;
   modalRef: React.RefObject<ModalRefType>;
   title?: string;
   ariaLabel?: string;
 }
 
-function ToggleModalButtonComponent(
+function OpenModalButtonComponent(
   {
     children,
     buttonIndex,
     uswdsStyle,
-    buttonState,
     disabled,
-    toggleAction,
-    toggleProps,
+    openProps,
     modalId,
     onClick,
     className,
     modalRef,
     title,
     ariaLabel,
-  }: ModalToggleButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
-  ref: React.Ref<ToggleModalButtonRef>,
+  }: ModalOpenButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
+  ref: React.Ref<OpenModalButtonRef>,
 ) {
-  const dataProp: ObjectKeyVal = {};
-
   const dataTestidSuffix = buttonIndex ? `-${buttonIndex}` : '';
 
   let classes = BUTTON_BASE_CLASS;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);
 
-  if (toggleAction === 'open') {
-    dataProp['data-open-modal'] = 'true';
-  } else {
-    dataProp['data-close-modal'] = 'true';
-  }
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   if (uswdsStyle) classes += ' ' + uswdsStyle;
-  if (buttonState) classes += ' ' + buttonState;
   if (className) classes += ' ' + className;
   classes = classes.trim();
 
@@ -58,18 +46,18 @@ function ToggleModalButtonComponent(
   }
 
   function handleOnClick(e: React.MouseEvent<HTMLButtonElement>) {
+    const modalOpenProps = { ...openProps, openModalButtonRef: ref };
     if (onClick) {
       onClick(e);
     }
-    if (toggleAction === 'open') {
-      modalRef.current?.show(toggleProps);
-    } else {
-      modalRef.current?.hide(toggleProps);
-    }
+    modalRef.current?.show(modalOpenProps);
   }
 
   useImperativeHandle(ref, () => ({
     disableButton,
+    focus: () => {
+      buttonRef?.current?.focus();
+    },
   }));
 
   return (
@@ -78,18 +66,18 @@ function ToggleModalButtonComponent(
       aria-controls={modalId}
       className={classes}
       onClick={handleOnClick}
-      data-testid={`toggle-modal-button${dataTestidSuffix}`}
+      data-testid={`open-modal-button${dataTestidSuffix}`}
       aria-label={ariaLabel}
       aria-disabled={isDisabled}
       disabled={isDisabled}
       title={title}
-      {...dataProp}
+      ref={buttonRef}
     >
       {children}
     </button>
   );
 }
 
-const ToggleModalButton = forwardRef(ToggleModalButtonComponent);
+const OpenModalButton = forwardRef(OpenModalButtonComponent);
 
-export { ToggleModalButton };
+export { OpenModalButton };
