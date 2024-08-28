@@ -18,7 +18,7 @@ describe('Test case-summary controller', () => {
 
     jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(caseDetail);
     const response = await controller.getCaseSummary(applicationContext, caseDetail.caseId);
-    expect(response).toEqual({ success: true, body: caseDetail });
+    expect(response).toEqual({ body: caseDetail });
   });
 
   test('should throw NotFound error if case summary is not found', async () => {
