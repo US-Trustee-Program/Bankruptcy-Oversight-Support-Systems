@@ -1,28 +1,14 @@
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest, createMockAzureFunctionContext } from '../azure/functions';
 import handler from './consolidations.function';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
-
-const rejectConsolidation = jest
-  .fn()
-  .mockRejectedValue('Set up the desired behavior for your test.');
-const approveConsolidation = jest
-  .fn()
-  .mockRejectedValue('Set up the desired behavior for your test.');
-
-jest.mock('../lib/controllers/orders/orders.controller', () => {
-  return {
-    OrdersController: jest.fn().mockImplementation(() => {
-      return {
-        rejectConsolidation,
-        approveConsolidation,
-      };
-    }),
-  };
-});
+import {
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
 
 describe('Consolidations Function tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -52,7 +38,9 @@ describe('Consolidations Function tests', () => {
 
   test('should reject consolidation when procedure == "reject"', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
-    rejectConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
+    jest
+      .spyOn(OrdersController.prototype, 'rejectConsolidation')
+      .mockResolvedValue({ body: [mockConsolidationOrder] });
     const requestOverride = {
       params: {
         procedure: 'reject',
@@ -67,22 +55,18 @@ describe('Consolidations Function tests', () => {
       ...requestOverride,
     });
 
-    const expectedResponseBody = {
-      success: true,
-      body: [mockConsolidationOrder],
-    };
+    const expectedResponseBody = [mockConsolidationOrder];
 
     const response = await handler(request, context);
     expect(response.jsonBody).toEqual(expectedResponseBody);
   });
 
   test('should approve consolidation when procedure == "Approve"', async () => {
-    const mockConsolidationOrder = [MockData.getConsolidationOrder()];
-    approveConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
-    const expectedResponseBody = {
-      success: true,
-      body: [mockConsolidationOrder],
-    };
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+    jest
+      .spyOn(OrdersController.prototype, 'approveConsolidation')
+      .mockResolvedValue({ body: [mockConsolidationOrder] });
+    const expectedResponseBody = [mockConsolidationOrder];
     const requestOverride = {
       params: {
         procedure: 'approve',
@@ -116,7 +100,9 @@ describe('Consolidations Function tests', () => {
   });
 
   test('should throw an UnknownError on bad request', async () => {
-    approveConsolidation.mockRejectedValue('consolidation-test');
+    jest
+      .spyOn(OrdersController.prototype, 'approveConsolidation')
+      .mockRejectedValue('consolidation-test');
     const requestOverride = {
       params: {
         procedure: 'approve',

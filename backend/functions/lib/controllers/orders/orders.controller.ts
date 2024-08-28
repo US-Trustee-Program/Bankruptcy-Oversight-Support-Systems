@@ -21,6 +21,7 @@ import {
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponse } from '../../adapters/utils/http-response';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -105,7 +106,7 @@ export class OrdersController {
   public async rejectConsolidation(
     context: ApplicationContext,
     data: unknown,
-  ): Promise<ManageConsolidationResponse> {
+  ): Promise<CamsHttpResponse<ConsolidationOrder[]>> {
     try {
       if (isConsolidationOrderRejection(data)) {
         if (data.rejectedCases.length == 0) {
@@ -113,8 +114,7 @@ export class OrdersController {
         }
 
         const orders = await this.useCase.rejectConsolidation(context, data);
-        const response: ManageConsolidationResponse = {
-          success: true,
+        const response = {
           body: orders,
         };
         return response;
@@ -129,7 +129,7 @@ export class OrdersController {
   public async approveConsolidation(
     context: ApplicationContext,
     data: unknown,
-  ): Promise<ManageConsolidationResponse> {
+  ): Promise<CamsHttpResponse<ConsolidationOrder[]>> {
     try {
       if (isConsolidationOrderApproval(data)) {
         if (!data.consolidationType) {
@@ -145,16 +145,13 @@ export class OrdersController {
         }
 
         const orders = await this.useCase.approveConsolidation(context, data);
-        const response: ManageConsolidationResponse = {
-          success: true,
+        const response = {
           body: orders,
         };
         return response;
       }
     } catch (originalError) {
-      throw isCamsError(originalError)
-        ? originalError
-        : new UnknownError(MODULE_NAME, { originalError });
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 }

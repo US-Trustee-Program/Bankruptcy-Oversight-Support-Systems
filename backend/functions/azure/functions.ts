@@ -2,8 +2,7 @@ import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
 import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
+import { getCamsError } from '../lib/common-errors/error-utilities';
 
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   if (!it) return {};
@@ -40,9 +39,7 @@ export function toAzureError(
   moduleName: string,
   originalError: Error,
 ): HttpResponseInit {
-  const error = isCamsError(originalError)
-    ? originalError
-    : new UnknownError(moduleName, { originalError });
+  const error = getCamsError(originalError, moduleName);
   context.logger.camsError(error);
 
   const camsResponse = httpError(error);
