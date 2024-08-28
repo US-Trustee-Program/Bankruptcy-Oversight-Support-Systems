@@ -1,9 +1,9 @@
 import handler from './case-docket.function';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
-import { createMockAzureFunctionRequest } from '../azure/functions';
 import { InvocationContext } from '@azure/functions';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
+import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
 
 describe('Case docket function', () => {
   const caseId = NORMAL_CASE_ID;
