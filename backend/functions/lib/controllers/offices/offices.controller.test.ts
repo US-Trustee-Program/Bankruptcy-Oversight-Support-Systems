@@ -34,10 +34,12 @@ describe('offices controller tests', () => {
       return Promise.resolve(OFFICES);
     });
 
-    const expected = buildResponseBodySuccess<OfficeDetails[]>(OFFICES, {
-      isPaginated: false,
-      self: mockRequestUrl,
-    });
+    const expected = {
+      body: buildResponseBodySuccess<OfficeDetails[]>(OFFICES, {
+        isPaginated: false,
+        self: mockRequestUrl,
+      }),
+    };
 
     const controller = new OfficesController(applicationContext);
     const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
