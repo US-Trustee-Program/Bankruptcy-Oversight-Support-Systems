@@ -5,6 +5,7 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import { buildResponseBodySuccess, ResponseBody } from '../../../../../common/src/api/response';
 import { CamsHttpRequest } from '../../adapters/types/http';
+import { CamsHttpResponse } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
 
@@ -18,13 +19,17 @@ export class CaseHistoryController {
   public async getCaseHistory(
     context: ApplicationContext,
     request: CamsHttpRequest,
-  ): Promise<ResponseBody<CaseHistory[]>> {
+  ): Promise<CamsHttpResponse<ResponseBody<CaseHistory[]>>> {
     try {
       const caseHistory = await this.useCase.getCaseHistory(context, request.params.caseId);
-      return buildResponseBodySuccess<CaseHistory[]>(caseHistory, {
+      // TODO: figure out how CamsHttpResponse and ResponseBody are related
+      const result = buildResponseBodySuccess<CaseHistory[]>(caseHistory, {
         isPaginated: false,
         self: request.url,
       });
+      return {
+        body: result,
+      };
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
