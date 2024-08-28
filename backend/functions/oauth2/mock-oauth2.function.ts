@@ -1,7 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
 import ContextCreator from '../azure/application-context-creator';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
+
+const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION' as const;
 
 export default async function handler(
   request: HttpRequest,
@@ -13,10 +15,10 @@ export default async function handler(
   );
   try {
     const token = await mockAuthentication(applicationContext);
-    return httpSuccess({ token });
+    return toAzureSuccess({ token });
   } catch (camsError) {
     applicationContext.logger.camsError(camsError);
-    return httpError(camsError);
+    return toAzureError(applicationContext, MODULE_NAME, camsError);
   }
 }
 
