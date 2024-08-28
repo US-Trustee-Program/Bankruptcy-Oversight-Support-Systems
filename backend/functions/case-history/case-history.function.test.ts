@@ -2,7 +2,6 @@ import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
-import { createMockAzureFunctionRequest } from '../azure/functions';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import handler from './case-history.function';
@@ -14,6 +13,7 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 import { buildResponseBodySuccess } from '../../../common/src/api/response';
 import { CaseHistory } from '../../../common/src/cams/history';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
+import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
 
 describe('Case History Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -51,10 +51,13 @@ describe('Case History Function Tests', () => {
       ...requestOverride,
     });
 
-    const controllerResponse = buildResponseBodySuccess<CaseHistory[]>(CASE_HISTORY, {
+    const result = buildResponseBodySuccess<CaseHistory[]>(CASE_HISTORY, {
       isPaginated: false,
       self: request.url,
     });
+    const controllerResponse = {
+      body: result,
+    };
 
     jest
       .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
