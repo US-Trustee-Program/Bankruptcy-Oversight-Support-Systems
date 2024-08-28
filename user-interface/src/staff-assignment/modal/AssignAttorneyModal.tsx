@@ -8,7 +8,11 @@ import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { deepEqual } from '@/lib/utils/objectEquality';
-import { ModalRefType, SubmitCancelButtonGroupRef } from '@/lib/components/uswds/modal/modal-refs';
+import {
+  ModalRefType,
+  OpenModalButtonRef,
+  SubmitCancelButtonGroupRef,
+} from '@/lib/components/uswds/modal/modal-refs';
 import Api from '@/lib/models/api';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Checkbox from '@/lib/components/uswds/Checkbox';
@@ -29,6 +33,7 @@ type CallbackFunction = (props: CallbackProps) => void;
 export interface ModalOpenProps {
   bCase: CaseBasics;
   callback: CallbackFunction;
+  openModalButtonRef?: React.Ref<OpenModalButtonRef>;
 }
 
 export interface AssignAttorneyModalRef {
@@ -99,7 +104,10 @@ function _AssignAttorneyModal(
       }
     }
     if (modalRef.current?.show) {
-      modalRef.current?.show({});
+      const showOptions = {
+        openModalButtonRef: showProps?.openModalButtonRef ?? undefined,
+      };
+      modalRef.current?.show(showOptions);
     }
   }
 
