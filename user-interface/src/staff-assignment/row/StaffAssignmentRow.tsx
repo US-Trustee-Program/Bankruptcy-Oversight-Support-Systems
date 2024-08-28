@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -10,6 +10,7 @@ import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { AssignAttorneyModalRef, CallbackProps } from '../modal/AssignAttorneyModal';
 import { AttorneyUser } from '@common/cams/users';
 import Internal from './StaffAssignmentRow.internal';
+import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -31,6 +32,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     modalRef,
   };
 
+  const openAssignmentsModalButtonRef = useRef<OpenModalButtonRef>(null);
   const { state, actions } = Internal.useStateActions(initialState);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       },
       modalId,
       modalRef,
+      ref: openAssignmentsModalButtonRef,
     };
 
     if (assignments.length > 0) {
