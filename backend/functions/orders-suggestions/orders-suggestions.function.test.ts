@@ -1,57 +1,49 @@
 import handler from './orders-suggestions.function';
-import { CASE_SUMMARIES } from '../lib/testing/mock-data/case-summaries.mock';
 import { CamsError } from '../lib/common-errors/cams-error';
-import { InvocationContext } from '@azure/functions';
-import { createMockAzureFunctionRequest } from '../azure/functions';
-
-let getSuggestedCases;
-
-jest.mock('../lib/controllers/orders/orders.controller', () => {
-  return {
-    OrdersController: jest.fn().mockImplementation(() => {
-      return {
-        getSuggestedCases,
-      };
-    }),
-  };
-});
+import {
+  buildTestResponseSuccess,
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
+import { CaseSummary } from '../../../common/src/cams/cases';
+import { buildTestResponseError } from '../azure/testing-helpers';
 
 describe('Orders suggestions function tests', () => {
-  const context = new InvocationContext({
-    logHandler: () => {},
-    invocationId: 'id',
+  const context = createMockAzureFunctionContext();
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
   test('should return a list of suggested cases', async () => {
-    getSuggestedCases = jest.fn().mockResolvedValue({ success: true, body: CASE_SUMMARIES });
+    const summaries = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+    const { camsHttpResponse, azureHttpResponse } =
+      buildTestResponseSuccess<CaseSummary[]>(summaries);
+
+    const getSuggestedCasesSpy = jest
+      .spyOn(OrdersController.prototype, 'getSuggestedCases')
+      .mockResolvedValue(camsHttpResponse);
     const request = createMockAzureFunctionRequest({
       method: 'GET',
     });
-    const expectedResponseBody = {
-      success: true,
-      body: CASE_SUMMARIES,
-    };
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponseBody);
-    expect(response.status).toEqual(200);
+    console.log('Response:   ', response);
+    expect(getSuggestedCasesSpy).toHaveBeenCalled();
+    expect(response).toMatchObject(azureHttpResponse);
   });
 
   test('should return error response when error is encountered', async () => {
-    const id = '1234567890';
-    const message = 'Mocked Error';
-    getSuggestedCases = jest
-      .fn()
-      .mockRejectedValue(new CamsError('MOCK_ORDERS_CONTROLLER', { message }));
+    const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked Error' });
+    const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
+    jest.spyOn(OrdersController.prototype, 'getSuggestedCases').mockRejectedValue(error);
+
     const request = createMockAzureFunctionRequest({
       method: 'GET',
-      params: { id },
     });
-    const expectedErrorResponse = {
-      success: false,
-      message,
-    };
+    console.log('Azure Http Response:    ', azureHttpResponse);
     const response = await handler(request, context);
-    expect(response.jsonBody).toMatchObject(expectedErrorResponse);
-    expect(response.status).toEqual(500);
+    expect(response).toMatchObject(azureHttpResponse);
+    expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
   });
 });
