@@ -1,7 +1,11 @@
-import { InvocationContext, HttpRequest } from '@azure/functions';
+import { InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
+import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { isCamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   if (!it) return {};
@@ -11,14 +15,13 @@ function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   }, {} as CamsDict);
 }
 
-export async function httpRequestToCamsHttpRequest(request: HttpRequest): Promise<CamsHttpRequest> {
+export async function azureToCamsHttpRequest(request: HttpRequest): Promise<CamsHttpRequest> {
   return {
     method: request.method as CamsHttpMethod,
     url: request.url,
     headers: azureToCamsDict(request.headers),
     query: azureToCamsDict(request.query),
     params: request.params,
-    // TODO: If this is a string we can POST. If it is a stream the GETs work. <table throw>
     body: request.body ? await request.json() : undefined,
   };
 }
@@ -38,7 +41,6 @@ export function createMockAzureFunctionContext(
 export function createMockAzureFunctionRequest(
   request: Partial<CamsHttpRequest> = {},
 ): HttpRequest {
-  console.log('Actual Request:    ', request);
   const { headers, method, body, ...other } = request;
   const requestBody = body ? JSON.stringify(body) : '';
 
@@ -52,29 +54,31 @@ export function createMockAzureFunctionRequest(
   return new HttpRequest(requestInit);
 }
 
-// export function toAzureSuccess(response: object): HttpResponseInit {
-//   const camsResponse = httpSuccess(response);
-//   return {
-//     headers: camsResponse.headers,
-//     status: camsResponse.statusCode,
-//     jsonBody: camsResponse.body,
-//   };
-// }
+export function toAzureSuccess(response: object): HttpResponseInit {
+  const camsResponse = httpSuccess(response);
+  const init: HttpResponseInit = {
+    headers: camsResponse.headers,
+    status: camsResponse.statusCode,
+  };
+  if (camsResponse.body) init.jsonBody = camsResponse.body;
 
-// export function toAzureError(
-//   context: ApplicationContext,
-//   moduleName: string,
-//   originalError: Error,
-// ): HttpResponseInit {
-//   const error = isCamsError(originalError)
-//     ? originalError
-//     : new UnknownError(moduleName, { originalError });
-//   context.logger.camsError(error);
+  return init;
+}
 
-//   const response = httpError(error);
-//   return {
-//     headers: response.headers,
-//     status: response.statusCode,
-//     jsonBody: response.body,
-//   };
-// }
+export function toAzureError(
+  context: ApplicationContext,
+  moduleName: string,
+  originalError: Error,
+): HttpResponseInit {
+  const error = isCamsError(originalError)
+    ? originalError
+    : new UnknownError(moduleName, { originalError });
+  context.logger.camsError(error);
+
+  const camsResponse = httpError(error);
+  return {
+    headers: camsResponse.headers,
+    status: camsResponse.statusCode,
+    jsonBody: camsResponse.body,
+  };
+}

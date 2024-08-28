@@ -1,5 +1,5 @@
 import { createMockAzureFunctionRequest } from '../azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { ForbiddenError } from '../lib/common-errors/forbidden-error';
 import handler from '../me/me.function';
@@ -17,14 +17,9 @@ describe('me Function test', () => {
     const camsSession = MockData.getCamsSession();
     jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(camsSession);
 
-    const expectedResponseBody = {
-      success: true,
-      body: camsSession,
-    };
-
     const response = await handler(request, context);
 
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+    expect(response.jsonBody).toEqual(camsSession);
   });
 
   test('should handle an error response', async () => {

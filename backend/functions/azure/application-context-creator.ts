@@ -1,13 +1,13 @@
-import { InvocationContext, HttpRequest } from '@azure/functions';
-import { ApplicationContext } from '../types/basic';
-import { ApplicationConfiguration } from '../../configs/application-configuration';
-import { getFeatureFlags } from './feature-flag';
-import { LoggerImpl } from '../services/logger.service';
-import { getUserSessionGateway } from '../../factory';
-import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { SessionGateway } from './session-gateway';
 import * as jwt from 'jsonwebtoken';
-import { httpRequestToCamsHttpRequest } from '../../../azure/functions';
+import { InvocationContext, HttpRequest } from '@azure/functions';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { ApplicationConfiguration } from '../lib/configs/application-configuration';
+import { getFeatureFlags } from '../lib/adapters/utils/feature-flag';
+import { LoggerImpl } from '../lib/adapters/services/logger.service';
+import { azureToCamsHttpRequest } from './functions';
+import { UnauthorizedError } from '../lib/common-errors/unauthorized-error';
+import { getUserSessionGateway } from '../lib/factory';
+import { SessionGateway } from '../lib/adapters/utils/session-gateway';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -29,7 +29,7 @@ async function applicationContextCreator(
     featureFlags,
     logger,
     invocationId: invocationContext.invocationId,
-    request: request ? await httpRequestToCamsHttpRequest(request) : undefined,
+    request: request ? await azureToCamsHttpRequest(request) : undefined,
   } satisfies ApplicationContext;
 }
 

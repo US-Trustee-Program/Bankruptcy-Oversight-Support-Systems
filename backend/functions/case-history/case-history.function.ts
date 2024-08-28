@@ -1,12 +1,9 @@
 import * as dotenv from 'dotenv';
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
-import { httpRequestToCamsHttpRequest } from '../azure/functions';
+import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'CASE-HISTORY-FUNCTION' as const;
 
@@ -27,18 +24,14 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const camsRequest = await httpRequestToCamsHttpRequest(request);
+    const camsRequest = await azureToCamsHttpRequest(request);
     const responseBody = await caseHistoryController.getCaseHistory(
       applicationContext,
       camsRequest,
     );
-    return httpSuccess(responseBody);
-  } catch (originalError) {
-    const error = isCamsError(originalError)
-      ? originalError
-      : new UnknownError(MODULE_NAME, { originalError });
-    applicationContext.logger.camsError(error);
-    return httpError(error);
+    return toAzureSuccess(responseBody);
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

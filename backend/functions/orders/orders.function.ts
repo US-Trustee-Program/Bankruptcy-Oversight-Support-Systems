@@ -1,8 +1,7 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as dotenv from 'dotenv';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import {
   OrdersController,
@@ -12,6 +11,7 @@ import {
 import { BadRequestError } from '../lib/common-errors/bad-request';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
 import { ApplicationContext } from '../lib/adapters/types/basic';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 
@@ -30,16 +30,15 @@ export default async function handler(
 
     if (context.request.method === 'GET') {
       const orderGet = await getOrders(context);
-      response = httpSuccess(orderGet);
+      response = toAzureSuccess(orderGet);
     } else if (context.request.method === 'PATCH') {
       //TODO: Json Mapping with these requestBody objects
       const orderPatch = await updateOrder(context, context.request.body);
-      response = httpSuccess(orderPatch);
+      response = toAzureSuccess(orderPatch);
     }
     return response;
   } catch (camsError) {
-    context.logger.camsError(camsError);
-    return httpError(camsError);
+    return toAzureError(context, MODULE_NAME, camsError);
   }
 }
 

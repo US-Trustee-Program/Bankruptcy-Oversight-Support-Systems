@@ -1,6 +1,6 @@
 // TODO: The original context was InvocationContext
 import { app, InvocationContext, Timer } from '@azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 

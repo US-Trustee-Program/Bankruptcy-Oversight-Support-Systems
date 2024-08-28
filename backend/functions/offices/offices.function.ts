@@ -1,8 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import { httpRequestToCamsHttpRequest } from '../azure/functions';
+import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
+
+const MODULE_NAME = 'OFFICES_FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
@@ -18,12 +19,11 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const camsRequest = await httpRequestToCamsHttpRequest(request);
+    const camsRequest = await azureToCamsHttpRequest(request);
     const responseBody = await officesController.getOffices(camsRequest);
-    return httpSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    return httpError(camsError);
+    return toAzureSuccess(responseBody);
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

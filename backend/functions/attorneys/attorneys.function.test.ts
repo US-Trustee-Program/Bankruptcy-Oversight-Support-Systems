@@ -2,7 +2,6 @@ import { UnknownError } from '../lib/common-errors/unknown-error';
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
 import { CamsError } from '../lib/common-errors/cams-error';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
 import AttorneyList from '../lib/use-cases/attorneys';
@@ -12,6 +11,7 @@ import { ApplicationContext } from '../lib/adapters/types/basic';
 import { InvocationContext } from '@azure/functions';
 import { ResponseBodySuccess } from '../../../common/src/api/response';
 import { AttorneyUser } from '../../../common/src/cams/users';
+import ContextCreator from '../azure/application-context-creator';
 
 describe('Attorneys Azure Function tests', () => {
   const request = createMockAzureFunctionRequest();

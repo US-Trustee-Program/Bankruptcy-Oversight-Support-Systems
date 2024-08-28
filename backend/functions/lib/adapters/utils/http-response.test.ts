@@ -7,15 +7,15 @@ describe('Tests out http responses', () => {
     const expectedBody = { testObject: 'testValue' };
     const actualResult = httpSuccess({ body: expectedBody });
 
-    expect(actualResult.status).toEqual(200);
-    expect(actualResult.jsonBody.body).toEqual(expectedBody);
+    expect(actualResult.statusCode).toEqual(200);
+    expect(actualResult.body).toEqual(expectedBody);
     expect(actualResult.headers).toHaveProperty('Content-Type', 'application/json');
     expect(actualResult.headers).toHaveProperty('Last-Modified');
   });
 
   test('should return no content response', async () => {
     const actual = httpSuccess();
-    expect(actual.status).toEqual(204);
+    expect(actual.statusCode).toEqual(204);
     expect(actual.body).toBeUndefined();
   });
 
@@ -25,8 +25,8 @@ describe('Tests out http responses', () => {
     const expectedBody = { message: camsError.message, success: false };
     const actualResult = httpError(camsError);
 
-    expect(actualResult.status).toEqual(camsError.status);
-    expect(actualResult.jsonBody).toEqual(expectedBody);
+    expect(actualResult.statusCode).toEqual(camsError.status);
+    expect(actualResult.body).toEqual(expectedBody);
     expect(actualResult.headers).toHaveProperty('Content-Type', 'application/json');
     expect(actualResult.headers).toHaveProperty('Last-Modified');
   });

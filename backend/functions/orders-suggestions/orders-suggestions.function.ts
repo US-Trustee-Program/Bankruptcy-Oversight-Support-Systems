@@ -1,12 +1,10 @@
 import { InvocationContext, HttpRequest, HttpResponseInit, app } from '@azure/functions';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
 
 import * as dotenv from 'dotenv';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 dotenv.config();
 
 initializeApplicationInsights();
@@ -27,14 +25,10 @@ export default async function handler(
       await ContextCreator.getApplicationContextSession(applicationContext);
 
     const caseId = request.params['caseId'];
-    const response = await controller.getSuggestedCases(applicationContext, caseId);
-    return httpSuccess(response);
-  } catch (originalError) {
-    const error = isCamsError(originalError)
-      ? originalError
-      : new UnknownError(MODULE_NAME, { originalError });
-    applicationContext.logger.camsError(error);
-    return httpError(error);
+    const body = await controller.getSuggestedCases(applicationContext, caseId);
+    return toAzureSuccess({ body });
+  } catch (error) {
+    return toAzureError(applicationContext, MODULE_NAME, error);
   }
 }
 

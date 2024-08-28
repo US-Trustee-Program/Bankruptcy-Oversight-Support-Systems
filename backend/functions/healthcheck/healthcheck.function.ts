@@ -1,5 +1,4 @@
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import ContextCreator from '../azure/application-context-creator';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
 import HealthcheckCosmosDb from './healthcheck.db.cosmos';
@@ -7,6 +6,7 @@ import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/functions';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
@@ -56,8 +56,10 @@ export default async function handler(
     checkCosmosDbDelete,
     checkSqlDbReadAccess,
   )
-    ? httpSuccess(Object.assign({ status: 'OK' }, respBody))
-    : httpError(
+    ? toAzureSuccess(Object.assign({ status: 'OK' }, respBody))
+    : toAzureError(
+        applicationContext,
+        MODULE_NAME,
         new CamsError(MODULE_NAME, {
           message: JSON.stringify(respBody),
           status: INTERNAL_SERVER_ERROR,

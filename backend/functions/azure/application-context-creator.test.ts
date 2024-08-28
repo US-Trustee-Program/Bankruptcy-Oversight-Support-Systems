@@ -1,15 +1,15 @@
-import { MockUserSessionGateway } from '../../testing/mock-gateways/mock-user-session-gateway';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../types/basic';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
+import { ApplicationConfiguration } from '../lib/configs/application-configuration';
+import { MockUserSessionGateway } from '../lib/testing/mock-gateways/mock-user-session-gateway';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
 import {
+  azureToCamsHttpRequest,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
-  httpRequestToCamsHttpRequest,
-} from '../../../azure/functions';
-import { ApplicationConfiguration } from '../../configs/application-configuration';
-import * as FeatureFlags from './feature-flag';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+} from './functions';
 
 describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {
@@ -22,7 +22,7 @@ describe('Application Context Creator', () => {
       expect(context.config instanceof ApplicationConfiguration).toBeTruthy();
       expect(context.featureFlags instanceof Object).toBeTruthy();
       expect(featureFlagsSpy).toHaveBeenCalled();
-      expect(context.request).toEqual(await httpRequestToCamsHttpRequest(request));
+      expect(context.request).toEqual(await azureToCamsHttpRequest(request));
     });
   });
 
@@ -71,7 +71,7 @@ describe('Application Context Creator', () => {
     });
 
     test('should call user session gateway lookup', async () => {
-      const request = await httpRequestToCamsHttpRequest(createMockAzureFunctionRequest());
+      const request = await azureToCamsHttpRequest(createMockAzureFunctionRequest());
       const mockContext = await createMockApplicationContext();
       mockContext.request = request;
       const lookupSpy = jest

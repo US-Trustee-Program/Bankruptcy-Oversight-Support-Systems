@@ -21,3 +21,9 @@ export async function getFeatureFlags(config: ApplicationConfiguration): Promise
   client.close();
   return state.allValues();
 }
+
+const FeatureFlagsBackend = {
+  getFeatureFlags,
+};
+
+export default FeatureFlagsBackend;

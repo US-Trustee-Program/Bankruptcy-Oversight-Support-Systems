@@ -50,9 +50,6 @@ describe('Case Assignment Creation Tests', () => {
     expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
     expect(assignmentResponse).toEqual(
       expect.objectContaining({
-        success: true,
-        message: 'Trial attorney assignments created.',
-        count: listOfAttorneyNames.length,
         body: expect.any(Array<string>),
       }),
     );
@@ -73,9 +70,6 @@ describe('Case Assignment Creation Tests', () => {
     expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
     expect(assignmentResponse).toEqual(
       expect.objectContaining({
-        success: true,
-        message: 'Trial attorney assignments created.',
-        count: listOfAttorneyNames.length,
         body: expect.any(Array<string>),
       }),
     );
@@ -97,9 +91,6 @@ describe('Case Assignment Creation Tests', () => {
     expect(assignmentResponse.body.length).toBe(expectedNumberOfAssignees);
     expect(assignmentResponse).toEqual(
       expect.objectContaining({
-        success: true,
-        message: 'Trial attorney assignments created.',
-        count: expectedNumberOfAssignees,
         body: expect.any(Array<string>),
       }),
     );
@@ -109,7 +100,6 @@ describe('Case Assignment Creation Tests', () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
     const assignmentResponse = {
       body: assignments,
-      success: true,
     };
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
@@ -138,12 +128,6 @@ describe('Case Assignment Creation Tests', () => {
       listOfAttorneyNames: [],
       role: trialAttorneyRole,
     };
-    const rejectedAssignmentResponse = {
-      success: false,
-      message: 'User does not have appropriate access to create assignments.',
-      count: 0,
-      body: [],
-    };
     const mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession();
 
@@ -152,15 +136,15 @@ describe('Case Assignment Creation Tests', () => {
       .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
 
     const assignmentController = new CaseAssignmentController(mockContext);
-    const assignmentResponse =
-      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-    expect(assignmentResponse).toEqual(rejectedAssignmentResponse);
+    await expect(
+      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+    ).rejects.toThrow('User does not have appropriate access to create assignments.');
   });
 
   test('should throw any other errors on findAssignmentsByCaseId', async () => {
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockRejectedValue(new Error('An error'));
+      .mockRejectedValue(new Error());
     const assignmentController = new CaseAssignmentController(applicationContext);
 
     await expect(assignmentController.getTrialAttorneyAssignments('081-18-12345')).rejects.toThrow(

@@ -3,7 +3,7 @@ import { CaseAssignmentController } from '../lib/controllers/case-assignment/cas
 import * as httpResponseModule from '../lib/adapters/utils/http-response';
 import { AssignmentError } from '../lib/use-cases/assignment.exception';
 import { UnknownError } from '../lib/common-errors/unknown-error';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { createMockAzureFunctionRequest } from '../azure/functions';
@@ -40,63 +40,16 @@ describe('Case Assignment Function Tests', () => {
   );
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
+    const expectedData = ['id-1', 'id-2'];
+    jest
+      .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+      .mockResolvedValue({
+        body: expectedData,
+      });
+
     const request = createMockAzureFunctionRequest(defaultRequestProps);
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 1,
-    };
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expect.objectContaining(expectedResponse));
-    expect(response.jsonBody.body.length).toEqual(1);
-  });
-
-  test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '081-67-89123',
-        attorneyList: ['John', 'Rachel'],
-        role: 'TrialAttorney',
-      },
-    };
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 2,
-    };
-
-    const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expect.objectContaining(expectedResponse));
-    expect(response.jsonBody.body.length).toEqual(2);
-  });
-
-  test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
-    const requestOverride = {
-      body: {
-        caseId: '081-67-89123',
-        attorneyList: ['Jane', 'Jane'],
-        role: 'TrialAttorney',
-      },
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 1,
-    };
-
-    const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expect.objectContaining(expectedResponse));
-    expect(response.jsonBody.body.length).toEqual(1);
+    expect(response.jsonBody).toEqual(expectedData);
   });
 
   const errorTestCases = [
