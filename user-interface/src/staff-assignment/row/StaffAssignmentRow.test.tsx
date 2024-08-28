@@ -99,7 +99,7 @@ describe('StaffAssignmentRow tests', () => {
       const button = cols?.[4].querySelector('button');
       expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
       expect(button).toHaveTextContent('Assign');
-      expect(button).toHaveAttribute('title', 'add assignments');
+      expect(button).toHaveAttribute('title', 'Add Staff Assignments');
       expect(button).toHaveAttribute('data-testid', 'open-modal-button-0');
     });
   });
@@ -120,7 +120,7 @@ describe('StaffAssignmentRow tests', () => {
         const button = cols?.[4].querySelector('button');
         expect(button).toHaveClass(UswdsButtonStyle.Outline);
         expect(button).toHaveTextContent('Edit');
-        expect(button).toHaveAttribute('title', 'edit assignments');
+        expect(button).toHaveAttribute('title', 'Edit Staff Assignments');
         expect(button).toHaveAttribute('data-testid', 'open-modal-button-0');
       });
     });
