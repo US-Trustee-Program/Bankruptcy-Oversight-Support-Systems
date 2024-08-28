@@ -14,15 +14,16 @@ describe('Test case-docket controller', () => {
     const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const controller = new CaseDocketController(mockContext);
     const result = await controller.getCaseDocket(mockContext, { caseId });
-    expect(result.success).toBeTruthy();
     expect(result['body']).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });
+
   test('should throw a NotFoundError when a docket is not found', async () => {
     const caseId = NOT_FOUND_ERROR_CASE_ID;
     const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
     const controller = new CaseDocketController(mockContext);
     await expect(controller.getCaseDocket(mockContext, { caseId })).rejects.toThrow('Not found');
   });
+
   test('should wrap unexpected errors with CamsError', async () => {
     const expectedMessage = 'Unknown error';
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;

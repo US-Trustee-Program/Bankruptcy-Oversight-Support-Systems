@@ -4,15 +4,13 @@ import { getCaseDocketUseCase } from '../../factory';
 import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CamsResponse } from '../controller-types';
+import { CamsHttpResponse } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
 
 type GetCaseDocketRequest = {
   caseId: string;
 };
-
-type GetCaseDocketResponse = CamsResponse<CaseDocket>;
 
 export class CaseDocketController {
   private readonly useCase: CaseDocketUseCase;
@@ -24,11 +22,10 @@ export class CaseDocketController {
   public async getCaseDocket(
     context: ApplicationContext,
     request: GetCaseDocketRequest,
-  ): Promise<GetCaseDocketResponse> {
+  ): Promise<CamsHttpResponse<CaseDocket>> {
     try {
       const caseDocket = await this.useCase.getCaseDocket(context, request.caseId);
       return {
-        success: true,
         body: caseDocket,
       };
     } catch (originalError) {
