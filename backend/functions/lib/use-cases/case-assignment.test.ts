@@ -42,7 +42,9 @@ describe('Case assignment tests', () => {
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext({
-      STARTING_MONTH: '-6',
+      env: {
+        STARTING_MONTH: '-6',
+      },
     });
     applicationContext.session = await createMockApplicationContextSession({ user });
   });
