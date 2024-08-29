@@ -12,11 +12,13 @@ const MODULE_NAME = 'HEALTHCHECK';
 
 export default async function handler(
   request: HttpRequest,
-  functionContext: InvocationContext,
+  invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+  const logger = ContextCreator.getLogger(invocationContext);
+  const applicationContext = await ContextCreator.getApplicationContext(
+    invocationContext,
     request,
+    logger,
   );
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
   const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);

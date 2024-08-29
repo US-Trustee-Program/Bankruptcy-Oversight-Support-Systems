@@ -24,10 +24,22 @@ async function applicationContextCreator(
   request?: HttpRequest,
   logger?: LoggerImpl,
 ): Promise<ApplicationContext> {
+  const context = await getApplicationContext(invocationContext, request, logger);
+
+  context.session = await getApplicationContextSession(context);
+
+  return context;
+}
+
+async function getApplicationContext(
+  invocationContext: InvocationContext,
+  request?: HttpRequest,
+  logger?: LoggerImpl,
+): Promise<ApplicationContext> {
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
 
-  const context = {
+  return {
     config,
     featureFlags,
     logger: logger ?? getLogger(invocationContext),
@@ -35,10 +47,6 @@ async function applicationContextCreator(
     request: request ? await azureToCamsHttpRequest(request) : undefined,
     session: undefined,
   } satisfies ApplicationContext;
-
-  context.session = await getApplicationContextSession(context);
-
-  return context;
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {
@@ -79,6 +87,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
 
 const ContextCreator = {
   applicationContextCreator,
+  getApplicationContext,
   getApplicationContextSession,
   getLogger,
 };
