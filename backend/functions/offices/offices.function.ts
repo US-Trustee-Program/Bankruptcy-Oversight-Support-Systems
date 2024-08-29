@@ -9,13 +9,14 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const officesController = new OfficesController(applicationContext);
-
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+      logger,
+    );
+    const officesController = new OfficesController(applicationContext);
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
@@ -23,7 +24,7 @@ export default async function handler(
     const responseBody = await officesController.getOffices(camsRequest);
     return toAzureSuccess(responseBody);
   } catch (error) {
-    return toAzureError(applicationContext, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 

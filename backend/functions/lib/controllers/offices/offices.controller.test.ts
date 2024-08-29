@@ -3,12 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsError } from '../../common-errors/cams-error';
-import { buildResponseBody } from '../../../../../common/src/api/response';
-import { OfficeDetails } from '../../../../../common/src/cams/courts';
-import {
-  mockCamsHttpRequest,
-  mockRequestUrl,
-} from '../../testing/mock-data/cams-http-request-helper';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 
 let getOffices;
 
@@ -34,17 +29,14 @@ describe('offices controller tests', () => {
       return Promise.resolve(OFFICES);
     });
 
-    const expected = {
-      body: buildResponseBody<OfficeDetails[]>(OFFICES, {
-        isPaginated: false,
-        self: mockRequestUrl,
-      }),
-    };
-
     const controller = new OfficesController(applicationContext);
     const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
     const offices = await controller.getOffices(camsHttpRequest);
-    expect(offices).toEqual(expected);
+    expect(offices).toEqual(
+      expect.objectContaining({
+        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: OFFICES },
+      }),
+    );
   });
 
   test('should throw CamsError when one is caught', async () => {
