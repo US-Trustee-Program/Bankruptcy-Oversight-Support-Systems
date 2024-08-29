@@ -15,7 +15,6 @@ export async function createMockApplicationContext(
 ): Promise<ApplicationContext> {
   process.env = {
     DATABASE_MOCK: 'true',
-    MOCK_AUTH: 'true',
     ...args.env,
   };
   return await ContextCreator.applicationContextCreator(
