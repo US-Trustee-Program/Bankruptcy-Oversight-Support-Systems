@@ -41,7 +41,7 @@ describe('cases controller test', () => {
     const offset = 0;
 
     test('should return an empty array for no matches', async () => {
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -72,7 +72,7 @@ describe('cases controller test', () => {
       const dataMinusHint = [...data];
       dataMinusHint.pop();
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -101,7 +101,7 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const data = MockData.buildArray(MockData.getCaseBasics, limit);
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -132,7 +132,7 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -165,7 +165,7 @@ describe('cases controller test', () => {
       const previousOffset = '0';
       const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -199,7 +199,7 @@ describe('cases controller test', () => {
       const dataMinusHint = [...data];
       dataMinusHint.pop();
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -232,7 +232,7 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
@@ -261,7 +261,7 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics[]>> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
           body: {
             meta: { self: mockRequestUrl },
