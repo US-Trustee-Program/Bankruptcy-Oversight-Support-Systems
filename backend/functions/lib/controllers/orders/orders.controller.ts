@@ -85,7 +85,17 @@ export class OrdersController {
   ): Promise<CamsHttpResponseInit> {
     // TODO: Need to sanitize id and data.
     try {
-      await this.useCase.updateTransferOrder(context, id, data);
+      const bodyId = data['id'];
+      const orderType = data['orderType'];
+      if (id !== bodyId) {
+        const camsError = new BadRequestError(MODULE_NAME, {
+          message: 'Cannot update order. ID of order does not match ID of request.',
+        });
+        throw camsError;
+      }
+      if (orderType === 'transfer') {
+        await this.useCase.updateTransferOrder(context, id, data);
+      }
       return {
         statusCode: HttpStatusCodes.NO_CONTENT,
       };
