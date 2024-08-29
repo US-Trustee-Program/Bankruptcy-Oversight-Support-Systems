@@ -28,7 +28,9 @@ export class CaseAssignmentController {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
       return {
-        body: assignments,
+        body: {
+          data: assignments,
+        },
       };
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
@@ -54,7 +56,9 @@ export class CaseAssignmentController {
         params.role,
       );
       return {
-        body: response,
+        body: {
+          data: response,
+        },
       };
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
