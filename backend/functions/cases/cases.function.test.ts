@@ -72,7 +72,7 @@ describe('Cases function', () => {
         caseNumber: '00-12345',
       },
     });
-    const expects = buildTestResponseSuccess<ResourceActions<CaseBasics[]>>({
+    const expects = buildTestResponseSuccess<ResourceActions<CaseBasics>[]>({
       data: [MockData.getCaseBasics(), MockData.getCaseBasics()],
     });
     const { camsHttpResponse, azureHttpResponse } = expects;

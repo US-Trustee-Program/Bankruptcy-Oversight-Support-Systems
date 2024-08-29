@@ -34,13 +34,13 @@ export class CasesController {
   public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
     const body = await this.paginateSearchCases(predicate, request.url);
-    return httpSuccess<ResourceActions<CaseBasics[]>>({ body });
+    return httpSuccess<ResourceActions<CaseBasics>[]>({ body });
   }
 
   async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
-  ): Promise<ResponseBody<ResourceActions<CaseBasics[]>>> {
+  ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
     const cases = await this.caseManagement.searchCases(this.applicationContext, predicate);
 
     const pagination: Pagination = {
