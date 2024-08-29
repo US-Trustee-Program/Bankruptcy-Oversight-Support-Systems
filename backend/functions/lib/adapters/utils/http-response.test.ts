@@ -1,12 +1,24 @@
-import { httpSuccess } from './http-response';
+import { CamsHttpResponseInit, httpSuccess } from './http-response';
+
+type TestType = {
+  testString: string;
+};
 
 describe('Tests out http responses', () => {
   test('Should return properly formatted http success response', async () => {
-    const expectedBody = { testObject: 'testValue' };
-    const actualResult = httpSuccess({ body: expectedBody });
+    // const expectedBody = { body: { data: { testObject: 'testValue' } };
+    const data = {
+      testString: 'testValue',
+    };
+    const input: CamsHttpResponseInit<TestType> = {
+      body: {
+        data,
+      },
+    };
+    const actualResult = httpSuccess(input);
 
     expect(actualResult.statusCode).toEqual(200);
-    expect(actualResult.body).toEqual(expectedBody);
+    expect(actualResult.body).toEqual({ data });
     expect(actualResult.headers).toHaveProperty('Content-Type', 'application/json');
     expect(actualResult.headers).toHaveProperty('Last-Modified');
   });
