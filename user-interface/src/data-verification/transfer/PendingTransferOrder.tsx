@@ -1,8 +1,12 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { CaseSummary } from '@common/cams/cases';
-import { OrderStatus, TransferOrder, TransferOrderAction } from '@common/cams/orders';
+import {
+  FlexibleTransferOrderAction,
+  OrderStatus,
+  TransferOrder,
+  TransferOrderAction,
+} from '@common/cams/orders';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { useApi } from '@/lib/hooks/UseApi';
 import {
   TransferConfirmationModal,
   TransferConfirmationModalImperative,
@@ -12,6 +16,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { OfficeDetails } from '@common/cams/courts';
 import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 import './PendingTransferOrder.scss';
 
 export type PendingTransferOrderImperative = {
@@ -23,10 +28,6 @@ export type PendingTransferOrderProps = {
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   // TODO: This is a lot of prop drilling. Maybe add a custom hook???
   officesList: Array<OfficeDetails>;
-};
-
-export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: Partial<CaseSummary>;
 };
 
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
@@ -51,7 +52,7 @@ function _PendingTransferOrder(
   const approveButtonRef = useRef<ButtonRef>(null);
   const suggestedCasesRef = useRef<SuggestedTransferCasesImperative>(null);
 
-  const api = useApi();
+  const api = useApi2();
 
   function confirmOrderApproval(): void {
     orderTransfer.status = 'approved';
@@ -62,7 +63,7 @@ function _PendingTransferOrder(
     } as TransferOrder;
 
     api
-      .patch(`/orders/${orderTransfer.id}`, orderTransfer)
+      .patchTransferOrder(orderTransfer)
       .then(() => {
         props.onOrderUpdate(
           {
@@ -91,7 +92,7 @@ function _PendingTransferOrder(
     };
 
     api
-      .patch(`/orders/${order.id}`, rejection)
+      .patchTransferOrder(rejection)
       .then((_foo) => {
         props.onOrderUpdate(
           {

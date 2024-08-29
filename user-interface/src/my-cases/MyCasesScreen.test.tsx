@@ -5,17 +5,15 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { CaseSummary } from '@common/cams/cases';
-import { ResponseBody } from '@common/api/response';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
-import * as genericApiModule from '@/lib/hooks/UseApi';
 import { CamsUser } from '@common/cams/users';
 import { getCamsUserReference } from '@common/cams/session';
 import { BrowserRouter } from 'react-router-dom';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
+import Api2 from '@/lib/hooks/UseApi2';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
@@ -44,21 +42,8 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render a list of cases assigned to a user', async () => {
-    const expectedResponse: ResponseBody<CaseSummary[]> = {
-      meta: {
-        self: 'a-uri',
-      },
-      pagination: {
-        count: 3,
-        limit: DEFAULT_SEARCH_LIMIT,
-        currentPage: 1,
-      },
-      data: MockData.buildArray(MockData.getCaseSummary, 3),
-    };
-    vi.spyOn(genericApiModule, 'useGenericApi').mockReturnValue({
-      get: vi.fn().mockResolvedValue(expectedResponse),
-      post: vi.fn().mockResolvedValue(expectedResponse),
-      put: vi.fn(),
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: MockData.buildArray(MockData.getCaseBasics, 3),
     });
 
     const expectedPredicate: CasesSearchPredicate = {
