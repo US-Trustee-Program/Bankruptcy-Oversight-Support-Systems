@@ -15,7 +15,11 @@ export async function handler(
   try {
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
-    const response = { success: true, body: applicationContext.session };
+    const response = {
+      body: {
+        data: applicationContext.session,
+      },
+    };
     return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(applicationContext, MODULE_NAME, error);
