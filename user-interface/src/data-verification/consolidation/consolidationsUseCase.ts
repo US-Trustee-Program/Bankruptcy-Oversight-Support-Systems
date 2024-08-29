@@ -9,7 +9,6 @@ import { ConsolidationStore } from '@/data-verification/consolidation/consolidat
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { getCurrentLeadCaseId } from './consolidationOrderAccordionUtils';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { CamsSelectOptionList, SearchableSelectOption } from '@/lib/components/CamsSelect';
@@ -206,7 +205,7 @@ const consolidationUseCase = (
   }
 
   function approveConsolidation(action: ConfirmActionResults) {
-    const genericApi = useGenericApi();
+    const api = useApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
 
@@ -222,8 +221,8 @@ const consolidationUseCase = (
       };
 
       store.setIsProcessing(true);
-      genericApi
-        .put<ConsolidationOrder[]>('/consolidations/approve', data)
+      api
+        .putConsolidationOrderApproval(data)
         .then((response) => {
           const newOrders = response.data;
           const approvedOrder = newOrders.find((o) => o.status === 'approved')!;
@@ -252,7 +251,7 @@ const consolidationUseCase = (
   }
 
   function rejectConsolidation(action: ConfirmActionResults) {
-    const genericApi = useGenericApi();
+    const api = useApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
     if (action.status === 'rejected') {
@@ -263,8 +262,8 @@ const consolidationUseCase = (
       };
 
       store.setIsProcessing(true);
-      genericApi
-        .put<ConsolidationOrder[]>('/consolidations/reject', data)
+      api
+        .putConsolidationOrderRejection(data)
         .then((response) => {
           const newOrders = response.data;
           store.setIsProcessing(false);

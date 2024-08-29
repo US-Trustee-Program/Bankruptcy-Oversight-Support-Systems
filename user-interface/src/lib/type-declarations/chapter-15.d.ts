@@ -1,6 +1,8 @@
 import { ResponseData } from './api';
 import { EventCaseReference } from '@common/cams/events';
 
+// TODO: See if dependents on each of these interfaces remain in the UI codebase.
+
 export interface CaseDocketSummaryFacet {
   text: string;
   count: number;

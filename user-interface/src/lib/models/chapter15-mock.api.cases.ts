@@ -156,6 +156,7 @@ export default class Chapter15MockApi extends Api {
     }
   }
 
+  // TODO: This needs to be refactored to only return ResponseBody shaped responses.
   public static async get(
     path: string,
   ): Promise<

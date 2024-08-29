@@ -195,3 +195,7 @@ export type RawOrderSync = {
   transfers: TransferOrder[];
   maxTxId: string;
 };
+
+export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
+  newCase?: Partial<CaseSummary>;
+};
