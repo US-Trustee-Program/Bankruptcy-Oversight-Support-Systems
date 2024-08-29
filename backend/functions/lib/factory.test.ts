@@ -29,8 +29,10 @@ describe('Factory functions', () => {
 
   beforeAll(async () => {
     dbContext = await createMockApplicationContext({
-      DATABASE_MOCK: 'false',
-      COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
+      env: {
+        DATABASE_MOCK: 'false',
+        COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
+      },
     });
     mockDbContext = await createMockApplicationContext();
   });
