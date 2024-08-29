@@ -10,7 +10,6 @@ import {
   getRuntimeStateRepository,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
-import { CamsResponse } from '../controller-types';
 import {
   ConsolidationOrder,
   isConsolidationOrderApproval,
@@ -22,13 +21,13 @@ import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
-export type GetOrdersResponse = CamsResponse<Array<Order>>;
-export type GetSuggestedCasesResponse = CamsResponse<Array<CaseSummary>>;
-export type PatchOrderResponse = CamsResponse<string>;
-export type ManageConsolidationResponse = CamsResponse<ConsolidationOrder[]>;
+export type GetOrdersResponse = CamsHttpResponseInit<Order[]>;
+export type GetSuggestedCasesResponse = CamsHttpResponseInit<CaseSummary[]>;
+export type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
 
 export class OrdersController {
   private readonly useCase: OrdersUseCase;
@@ -46,9 +45,9 @@ export class OrdersController {
 
   public async getOrders(context: ApplicationContext): Promise<CamsHttpResponseInit<Order[]>> {
     try {
-      const orders = await this.useCase.getOrders(context);
+      const data = await this.useCase.getOrders(context);
       return {
-        body: orders,
+        body: { data },
       };
     } catch (originalError) {
       throw isCamsError(originalError)
@@ -62,9 +61,9 @@ export class OrdersController {
     caseId: string,
   ): Promise<CamsHttpResponseInit<CaseSummary[]>> {
     try {
-      const suggestedCases = await this.useCase.getSuggestedCases(context, caseId);
+      const data = await this.useCase.getSuggestedCases(context, caseId);
       return {
-        body: suggestedCases,
+        body: { data },
       };
     } catch (originalError) {
       throw isCamsError(originalError)
@@ -81,7 +80,9 @@ export class OrdersController {
     // TODO: Need to sanitize id and data.
     try {
       await this.useCase.updateTransferOrder(context, id, data);
-      return;
+      return {
+        statusCode: HttpStatusCodes.NO_CONTENT,
+      };
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
@@ -105,17 +106,17 @@ export class OrdersController {
 
   public async rejectConsolidation(
     context: ApplicationContext,
-    data: unknown,
+    order: unknown,
   ): Promise<CamsHttpResponseInit<ConsolidationOrder[]>> {
     try {
-      if (isConsolidationOrderRejection(data)) {
-        if (data.rejectedCases.length == 0) {
+      if (isConsolidationOrderRejection(order)) {
+        if (order.rejectedCases.length == 0) {
           throw new BadRequestError('Missing rejected cases');
         }
 
-        const orders = await this.useCase.rejectConsolidation(context, data);
+        const data = await this.useCase.rejectConsolidation(context, order);
         const response = {
-          body: orders,
+          body: { data },
         };
         return response;
       }
@@ -128,25 +129,25 @@ export class OrdersController {
 
   public async approveConsolidation(
     context: ApplicationContext,
-    data: unknown,
+    order: unknown,
   ): Promise<CamsHttpResponseInit<ConsolidationOrder[]>> {
     try {
-      if (isConsolidationOrderApproval(data)) {
-        if (!data.consolidationType) {
+      if (isConsolidationOrderApproval(order)) {
+        if (!order.consolidationType) {
           throw new BadRequestError('Missing consolidation type');
         }
 
-        if (data.approvedCases.length == 0) {
+        if (order.approvedCases.length == 0) {
           throw new BadRequestError('Missing approved cases');
         }
 
-        if (!data.leadCase) {
+        if (!order.leadCase) {
           throw new BadRequestError('Missing lead case');
         }
 
-        const orders = await this.useCase.approveConsolidation(context, data);
+        const data = await this.useCase.approveConsolidation(context, order);
         const response = {
-          body: orders,
+          body: { data },
         };
         return response;
       }

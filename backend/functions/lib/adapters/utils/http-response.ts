@@ -1,3 +1,4 @@
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { ResponseBody } from '../../../../../common/src/api/response';
 
 export const commonHeaders: Record<string, string> = {
@@ -16,7 +17,8 @@ export function httpSuccess<T extends object = undefined>(
 ): CamsHttpResponseInit<T> {
   return {
     headers: { ...commonHeaders, ...response.headers },
-    statusCode: response.statusCode ?? (response.body ? 200 : 204),
+    statusCode:
+      response.statusCode ?? (response.body ? HttpStatusCodes.OK : HttpStatusCodes.NO_CONTENT),
     body: response.body,
   };
 }
