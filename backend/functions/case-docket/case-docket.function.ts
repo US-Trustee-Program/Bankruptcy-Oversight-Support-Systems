@@ -1,6 +1,5 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
@@ -16,20 +15,21 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const caseDocketController = new CaseDocketController(applicationContext);
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+      logger,
+    );
+    const caseDocketController = new CaseDocketController(applicationContext);
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
     const responseBody = await caseDocketController.getCaseDocket(applicationContext);
     return toAzureSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    return toAzureError(applicationContext, MODULE_NAME, camsError);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
