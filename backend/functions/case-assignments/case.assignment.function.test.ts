@@ -8,7 +8,13 @@ import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock'
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
-import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
 
 describe('Case Assignment Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -20,33 +26,38 @@ describe('Case Assignment Function Tests', () => {
     },
   };
 
-  const context = new InvocationContext({
-    logHandler: () => {},
-    invocationId: 'id',
+  let context;
+
+  beforeEach(() => {
+    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getCamsSession({
+        user: {
+          id: 'userId-Bob Jones',
+          name: 'Bob Jones',
+          offices: [MANHATTAN],
+          roles: [CamsRole.CaseAssignmentManager],
+        },
+      }),
+    );
+    context = new InvocationContext({
+      logHandler: () => {},
+      invocationId: 'id',
+    });
   });
-
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.CaseAssignmentManager],
-      },
-    }),
-  );
-
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
-    const expectedData = ['id-1', 'id-2'];
+    const expectedData = { data: ['id-1', 'id-2'] };
+    const { camsHttpResponse, azureHttpResponse } =
+      buildTestResponseSuccess<string[]>(expectedData);
     jest
       .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
-      .mockResolvedValue({
-        body: expectedData,
-      });
+      .mockResolvedValue(camsHttpResponse);
 
     const request = createMockAzureFunctionRequest(defaultRequestProps);
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedData);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   const errorTestCases = [
@@ -75,31 +86,28 @@ describe('Case Assignment Function Tests', () => {
           role,
         },
       };
-
+      const error = new CamsError('MOCK_CASE_ASSIGNMENT_MODULE', { message });
       const request = createMockAzureFunctionRequest({
         ...defaultRequestProps,
         ...requestOverride,
       });
-
-      const expectedResponse = {
-        message,
-        success: false,
-      };
+      const { azureHttpResponse } = buildTestResponseError(error);
+      jest
+        .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+        .mockRejectedValue(error);
 
       const response = await handler(request, context);
-      expect(response.jsonBody).toEqual(expectedResponse);
-      expect(response.status).toEqual(400);
+      console.log('Response:   ', response);
+      expect(response).toEqual(azureHttpResponse);
     },
   );
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
-    const appContext = await createMockApplicationContext();
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
+    const error = new UnknownError('MOCK_CASE_ASSIGNMENT_MODULE');
+    const { azureHttpResponse } = buildTestResponseError(error);
     jest
-      .spyOn(Object.getPrototypeOf(assignmentController), 'createTrialAttorneyAssignments')
-      .mockImplementation(() => {
-        throw new Error();
-      });
+      .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+      .mockRejectedValue(error);
 
     const requestOverride = {
       body: {
@@ -115,9 +123,7 @@ describe('Case Assignment Function Tests', () => {
     });
 
     const response = await handler(request, context);
-
-    expect(response.status).toEqual(500);
-    expect(response.jsonBody.message).toEqual('Unknown error');
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {

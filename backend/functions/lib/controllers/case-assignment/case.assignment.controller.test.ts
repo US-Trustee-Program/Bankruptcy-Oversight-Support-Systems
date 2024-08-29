@@ -47,10 +47,12 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
+    expect(assignmentResponse.body.data.length).toBe(listOfAttorneyNames.length);
     expect(assignmentResponse).toEqual(
       expect.objectContaining({
-        body: expect.any(Array<string>),
+        body: {
+          data: expect.any(Array<string>),
+        },
       }),
     );
   });
@@ -67,10 +69,12 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
+    expect(assignmentResponse.body.data.length).toBe(listOfAttorneyNames.length);
     expect(assignmentResponse).toEqual(
       expect.objectContaining({
-        body: expect.any(Array<string>),
+        body: {
+          data: expect.any(Array<string>),
+        },
       }),
     );
   });
@@ -88,10 +92,12 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(expectedNumberOfAssignees);
+    expect(assignmentResponse.body.data.length).toBe(expectedNumberOfAssignees);
     expect(assignmentResponse).toEqual(
       expect.objectContaining({
-        body: expect.any(Array<string>),
+        body: {
+          data: expect.any(Array<string>),
+        },
       }),
     );
   });
@@ -99,7 +105,9 @@ describe('Case Assignment Creation Tests', () => {
   test('should fetch a list of assignments when a GET request is called', async () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
     const assignmentResponse = {
-      body: assignments,
+      body: {
+        data: assignments,
+      },
     };
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
