@@ -250,3 +250,26 @@ describe('orders controller tests', () => {
     ).rejects.toThrow(CamsError);
   });
 });
+
+describe('orders controller exception tests', () => {
+  let applicationContext: ApplicationContext;
+
+  beforeEach(async () => {
+    applicationContext = await createMockApplicationContext();
+  });
+
+  test('should wrap unexpected errors with CamsError', async () => {
+    const error = new Error('GenericError');
+    const camsError = new UnknownError('TEST-MODULE', { originalError: error });
+    jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(error);
+    const controller = new OrdersController(applicationContext);
+    await expect(controller.getOrders(applicationContext)).rejects.toThrow(camsError);
+  });
+
+  test('should throw CamsError when caught', async () => {
+    const error = new CamsError('TEST-MODULE');
+    jest.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
+    const controller = new OrdersController(applicationContext);
+    await expect(controller.getOrders(applicationContext)).rejects.toThrow(error);
+  });
+});
