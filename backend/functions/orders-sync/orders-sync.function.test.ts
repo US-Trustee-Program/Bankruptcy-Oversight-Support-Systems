@@ -4,7 +4,7 @@ import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';
 import timerTrigger from './orders-sync.function';
 import { Timer } from '@azure/functions';
-import { createMockAzureFunctionContext } from '../azure/functions';
+import { createMockAzureFunctionContext } from '../azure/testing-helpers';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
