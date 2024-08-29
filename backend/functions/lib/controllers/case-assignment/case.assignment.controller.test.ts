@@ -1,5 +1,8 @@
 import { CaseAssignmentController } from './case.assignment.controller';
-import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
+import {
+  THROW_PERMISSIONS_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../../testing/testing-constants';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { CamsError } from '../../common-errors/cams-error';
@@ -11,6 +14,7 @@ import {
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -158,5 +162,23 @@ describe('Case Assignment Creation Tests', () => {
     await expect(assignmentController.getTrialAttorneyAssignments('081-18-12345')).rejects.toThrow(
       'Unknown error',
     );
+  });
+
+  test('should throw an UnknownError when an error that is not a CamsError is caught', async () => {
+    const error = new UnknownError('TEST-MODULE');
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockRejectedValue(error);
+    const testCaseAssignment = {
+      caseId: THROW_UNKNOWN_ERROR_CASE_ID,
+      listOfAttorneyNames: [],
+      role: CamsRole.TrialAttorney,
+    };
+
+    const assignmentController = new CaseAssignmentController(applicationContext);
+
+    await expect(
+      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+    ).rejects.toThrow(error);
   });
 });
