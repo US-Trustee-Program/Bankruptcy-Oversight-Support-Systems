@@ -3,6 +3,7 @@ import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types
 import { commonHeaders, httpSuccess } from '../lib/adapters/utils/http-response';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { getCamsError } from '../lib/common-errors/error-utilities';
+import { LoggerImpl } from '../lib/adapters/services/logger.service';
 
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   if (!it) return {};
@@ -35,13 +36,13 @@ export function toAzureSuccess(response: object = undefined): HttpResponseInit {
 }
 
 export function toAzureError(
-  context: ApplicationContext,
+  maybeLogger: ApplicationContext | LoggerImpl,
   moduleName: string,
   originalError: Error,
 ): HttpResponseInit {
   const error = getCamsError(originalError, moduleName);
-  context.logger.camsError(error);
-
+  const logger = maybeLogger instanceof LoggerImpl ? maybeLogger : maybeLogger.logger;
+  logger.camsError(error);
   return {
     headers: commonHeaders,
     status: error.status,
