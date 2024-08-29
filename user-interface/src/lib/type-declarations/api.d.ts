@@ -1,3 +1,4 @@
+// TODO:  All of These are probably unused interfaces now
 export interface SimpleResponseData<T = object> {
   success: boolean;
   body: T;
