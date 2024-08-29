@@ -25,7 +25,7 @@ export class CaseSummaryController {
     try {
       const caseSummary = await this.useCase.getCaseSummary(context, request.caseId);
       return {
-        body: caseSummary,
+        body: { data: caseSummary },
       };
     } catch (originalError) {
       throw isCamsError(originalError)

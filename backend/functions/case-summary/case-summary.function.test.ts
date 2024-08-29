@@ -7,7 +7,12 @@ import handler from './case-summary.function';
 import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
-import { buildTestResponseSuccess, createMockAzureFunctionRequest } from '../azure/testing-helpers';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
 
 describe('Case summary function', () => {
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
@@ -21,12 +26,12 @@ describe('Case summary function', () => {
     }),
   );
 
-  const baseRequest = createMockAzureFunctionRequest({
+  const baseRequest: Partial<CamsHttpRequest> = {
     method: 'GET',
     params: {
       caseId: '',
     },
-  });
+  };
 
   const context = new InvocationContext({
     logHandler: () => {},
@@ -37,18 +42,18 @@ describe('Case summary function', () => {
     const data: CaseDetail = MockData.getCaseDetail();
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseDetail>({ data });
 
-    const request = {
+    const requestObject: Partial<CamsHttpRequest> = {
       ...baseRequest,
       params: {
         caseId: data.caseId,
       },
     };
+    const request = createMockAzureFunctionRequest(requestObject);
     jest
       .spyOn(CaseSummaryController.prototype, 'getCaseSummary')
       .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
-    console.log('REsponse:    ', response);
     expect(response).toEqual(azureHttpResponse);
   });
 
@@ -57,18 +62,17 @@ describe('Case summary function', () => {
       message: 'Case summary not found for case ID.',
     });
     jest.spyOn(CaseSummaryController.prototype, 'getCaseSummary').mockRejectedValue(error);
-    const request = {
+    const { azureHttpResponse } = buildTestResponseError(error);
+
+    const requestObject: Partial<CamsHttpRequest> = {
       ...baseRequest,
       params: {
         caseId: '000-00-00000',
       },
     };
-    const expectedErrorResponse = {
-      success: false,
-      message: error.message,
-    };
+    const request = createMockAzureFunctionRequest(requestObject);
     const response = await handler(request, context);
     expect(response.status).toEqual(404);
-    expect(response.jsonBody).toEqual(expectedErrorResponse);
+    expect(response).toEqual(azureHttpResponse);
   });
 });
