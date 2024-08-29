@@ -24,13 +24,18 @@ async function applicationContextCreator(
   };
 
   const logger = new LoggerImpl(invocationContext.invocationId, logWrapper);
-  return {
+  const context = {
     config,
     featureFlags,
     logger,
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest(request) : undefined,
+    session: undefined,
   } satisfies ApplicationContext;
+
+  context.session = await getApplicationContextSession(context);
+
+  return context;
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {
