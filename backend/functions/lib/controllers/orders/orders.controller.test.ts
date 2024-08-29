@@ -53,10 +53,12 @@ describe('orders controller tests', () => {
   };
   let applicationContext: ApplicationContext;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
   });
-
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
   test('should get orders', async () => {
     const mockRead = jest
       .spyOn(MockHumbleQuery.prototype, 'fetchAll')
@@ -65,6 +67,7 @@ describe('orders controller tests', () => {
       })
       .mockResolvedValueOnce({ resources: mockConsolidationOrder });
 
+    applicationContext.request = mockCamsHttpRequest();
     const controller = new OrdersController(applicationContext);
     const result = await controller.getOrders(applicationContext);
     expect(result.body.data).toEqual(mockOrders);
@@ -75,10 +78,10 @@ describe('orders controller tests', () => {
     const updateOrderSpy = jest
       .spyOn(OrdersUseCase.prototype, 'updateTransferOrder')
       .mockResolvedValue(id);
+    applicationContext.request = mockCamsHttpRequest();
     const expectedResult: CamsHttpResponseInit = {
       statusCode: HttpStatusCodes.NO_CONTENT,
     };
-
     const controller = new OrdersController(applicationContext);
     const result = await controller.updateOrder(applicationContext, id, orderTransfer);
     expect(result).toEqual(expectedResult);
