@@ -21,9 +21,6 @@ import MockApi from '../models/chapter15-mock.api.cases';
 import LocalStorage from '../utils/local-storage';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 
-// TODO: Deprecate use of the useApi hook.
-// import { ApiClient } from './UseApi';
-
 // interface ApiClient {
 //   headers: Record<string, string>;
 //   host: string;
@@ -55,13 +52,6 @@ function useApi(): ApiClient {
   api.headers['Authorization'] = `Bearer ${session?.accessToken}`;
   return api;
 }
-
-// export function useApi(): ApiClient {
-//   const api = context ?? legacyConfiguration();
-//   const session = LocalStorage.getSession();
-//   api.headers['Authorization'] = `Bearer ${session?.accessToken}`;
-//   return api;
-// }
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
