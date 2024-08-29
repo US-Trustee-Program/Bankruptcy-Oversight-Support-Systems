@@ -7,18 +7,19 @@ const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION' as const;
 
 export default async function handler(
   request: HttpRequest,
-  functionContext: InvocationContext,
+  invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
-    request,
-  );
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+      logger,
+    );
     const token = await mockAuthentication(applicationContext);
     return toAzureSuccess({ token });
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    return toAzureError(applicationContext, MODULE_NAME, camsError);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
