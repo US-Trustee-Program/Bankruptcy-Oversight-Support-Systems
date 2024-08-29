@@ -22,6 +22,7 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { CamsHttpRequest } from '../../adapters/types/http';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -58,12 +59,17 @@ export class OrdersController {
 
   public async getSuggestedCases(
     context: ApplicationContext,
-    caseId: string,
+    request: CamsHttpRequest,
   ): Promise<CamsHttpResponseInit<CaseSummary[]>> {
     try {
-      const data = await this.useCase.getSuggestedCases(context, caseId);
+      const data = await this.useCase.getSuggestedCases(context, request.params.caseId);
       return {
-        body: { data },
+        body: {
+          meta: {
+            self: request.url,
+          },
+          data,
+        },
       };
     } catch (originalError) {
       throw isCamsError(originalError)

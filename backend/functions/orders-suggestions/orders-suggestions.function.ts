@@ -4,7 +4,7 @@ import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 
 import * as dotenv from 'dotenv';
-import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
 dotenv.config();
 
 initializeApplicationInsights();
@@ -24,8 +24,8 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const caseId = request.params['caseId'];
-    const body = await controller.getSuggestedCases(applicationContext, caseId);
+    const camsRequest = await azureToCamsHttpRequest(request);
+    const body = await controller.getSuggestedCases(applicationContext, camsRequest);
     return toAzureSuccess(body);
   } catch (error) {
     return toAzureError(applicationContext, MODULE_NAME, error);
