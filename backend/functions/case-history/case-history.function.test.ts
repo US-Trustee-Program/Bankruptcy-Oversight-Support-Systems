@@ -23,22 +23,20 @@ describe('Case History Function Tests', () => {
       caseId: '',
     },
   };
-
-  const context = new InvocationContext({
-    logHandler: () => {},
-    invocationId: 'id',
+  let context;
+  beforeEach(() => {
+    context = new InvocationContext();
+    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getCamsSession({
+        user: {
+          id: 'userId-Bob Jones',
+          name: 'Bob Jones',
+          offices: [MANHATTAN],
+          roles: [CamsRole.CaseAssignmentManager],
+        },
+      }),
+    );
   });
-
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.CaseAssignmentManager],
-      },
-    }),
-  );
 
   test('Should return case history for an existing case ID', async () => {
     const caseId = NORMAL_CASE_ID;
@@ -85,6 +83,5 @@ describe('Case History Function Tests', () => {
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
-    expect(response.status).toEqual(404);
   });
 });
