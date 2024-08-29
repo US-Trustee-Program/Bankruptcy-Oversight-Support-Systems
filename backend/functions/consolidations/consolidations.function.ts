@@ -10,31 +10,30 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION';
+const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION' as const;
 
 export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const consolidationsController = new OrdersController(applicationContext);
-  const procedure = applicationContext.request.params.procedure;
-  let response;
+  const logger = ContextCreator.getLogger(invocationContext);
 
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+    );
+    const controller = new OrdersController(applicationContext);
+    const procedure = applicationContext.request.params.procedure;
+    let response;
 
     if (procedure === 'reject') {
-      response = await consolidationsController.rejectConsolidation(
+      response = await controller.rejectConsolidation(
         applicationContext,
         applicationContext.request.body,
       );
     } else if (procedure === 'approve') {
-      response = await consolidationsController.approveConsolidation(
+      response = await controller.approveConsolidation(
         applicationContext,
         applicationContext.request.body,
       );
@@ -45,7 +44,7 @@ export default async function handler(
     }
     return toAzureSuccess(response);
   } catch (error) {
-    return toAzureError(applicationContext, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 

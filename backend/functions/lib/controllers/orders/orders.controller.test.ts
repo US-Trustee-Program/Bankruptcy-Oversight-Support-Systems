@@ -15,8 +15,9 @@ import {
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { sortDates } from '../../../../../common/src/date-helper';
 import { ManageConsolidationResponse, OrdersController } from './orders.controller';
-import { CamsResponse } from '../controller-types';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
+import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -66,8 +67,7 @@ describe('orders controller tests', () => {
 
     const controller = new OrdersController(applicationContext);
     const result = await controller.getOrders(applicationContext);
-    expect(result.success).toBeTruthy();
-    expect(result['body']).toEqual(mockOrders);
+    expect(result.body.data).toEqual(mockOrders);
     expect(mockRead).toHaveBeenCalled();
   });
 
@@ -75,9 +75,8 @@ describe('orders controller tests', () => {
     const updateOrderSpy = jest
       .spyOn(OrdersUseCase.prototype, 'updateTransferOrder')
       .mockResolvedValue(id);
-    const expectedResult = {
-      success: true,
-      body: id,
+    const expectedResult: CamsHttpResponseInit = {
+      statusCode: HttpStatusCodes.NO_CONTENT,
     };
 
     const controller = new OrdersController(applicationContext);
@@ -98,9 +97,8 @@ describe('orders controller tests', () => {
 
   test('should get suggested cases', async () => {
     const suggestedCases = [CASE_SUMMARIES[0]];
-    const suggestedCasesResponse: CamsResponse<CaseDetail[]> = {
-      body: suggestedCases,
-      success: true,
+    const suggestedCasesResponse: CamsHttpResponseInit<CaseDetail[]> = {
+      body: { data: suggestedCases },
     };
 
     const getSuggestedCasesSpy = jest
@@ -158,8 +156,7 @@ describe('orders controller tests', () => {
       leadCase: undefined,
     };
     const expectedResult: ManageConsolidationResponse = {
-      success: true,
-      body: [mockConsolidationOrder],
+      body: { data: [mockConsolidationOrder] },
     };
     jest
       .spyOn(OrdersUseCase.prototype, 'rejectConsolidation')
@@ -171,7 +168,6 @@ describe('orders controller tests', () => {
       mockConsolidationOrderActionRejection,
     );
     expect(actualResult).toEqual(expectedResult);
-    expect(actualResult.success).toBeTruthy();
   });
   test('should call reject consolidation and handle error', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
@@ -203,10 +199,8 @@ describe('orders controller tests', () => {
       mockConsolidationOrderActionApproval,
     );
 
-    expect(actualResult.success).toBeTruthy();
     const expectedResult: ManageConsolidationResponse = {
-      success: true,
-      body: [mockConsolidationOrder],
+      body: { data: [mockConsolidationOrder] },
     };
     expect(actualResult).toEqual(expectedResult);
   });

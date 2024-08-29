@@ -5,10 +5,14 @@ import ContextCreator from '../azure/application-context-creator';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
 import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { ConsolidationOrder } from '../../../common/src/cams/orders';
+import { BadRequestError } from '../lib/common-errors/bad-request';
 
 describe('Consolidations Function tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -38,10 +42,8 @@ describe('Consolidations Function tests', () => {
 
   test('should reject consolidation when procedure == "reject"', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
-    jest
-      .spyOn(OrdersController.prototype, 'rejectConsolidation')
-      .mockResolvedValue({ body: [mockConsolidationOrder] });
-    const requestOverride = {
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'reject',
       },
@@ -50,71 +52,77 @@ describe('Consolidations Function tests', () => {
         rejectedCases: [mockConsolidationOrder.childCases[0]],
       },
     };
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
+    const request = createMockAzureFunctionRequest(requestProps);
 
-    const expectedResponseBody = [mockConsolidationOrder];
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
+      data: [mockConsolidationOrder],
+    });
+    jest
+      .spyOn(OrdersController.prototype, 'rejectConsolidation')
+      .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should approve consolidation when procedure == "Approve"', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
-    jest
-      .spyOn(OrdersController.prototype, 'approveConsolidation')
-      .mockResolvedValue({ body: [mockConsolidationOrder] });
-    const expectedResponseBody = [mockConsolidationOrder];
-    const requestOverride = {
+
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'approve',
       },
     };
+    const request = createMockAzureFunctionRequest(requestProps);
 
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
+      data: [mockConsolidationOrder],
     });
+
+    jest
+      .spyOn(OrdersController.prototype, 'approveConsolidation')
+      .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
-    expect(response.jsonBody).toEqual(expectedResponseBody);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should throw a BadRequestError on invalid procedure request', async () => {
-    const requestOverride = {
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'unsupported',
       },
     };
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
+    const request = createMockAzureFunctionRequest(requestProps);
+
+    const error = new BadRequestError('TEST-MODULE', {
+      message: `Could not perform ${requestProps.params.procedure}.`,
     });
+    const { azureHttpResponse } = buildTestResponseError(error);
 
     const response = await handler(request, context);
-    expect(response.status).toEqual(400);
-    expect(response.jsonBody.success).toBeFalsy();
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should throw an UnknownError on bad request', async () => {
-    jest
-      .spyOn(OrdersController.prototype, 'approveConsolidation')
-      .mockRejectedValue('consolidation-test');
-    const requestOverride = {
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'approve',
       },
     };
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
+    const request = createMockAzureFunctionRequest(requestProps);
+
+    const error = new Error('consolidation-test');
+    const { azureHttpResponse } = buildTestResponseError(error);
+    jest.spyOn(OrdersController.prototype, 'approveConsolidation').mockRejectedValue(error);
 
     const response = await handler(request, context);
-    expect(response.status).toEqual(500);
-    expect(response.jsonBody.success).toBeFalsy();
+    expect(response).toEqual(azureHttpResponse);
   });
 });
