@@ -11,6 +11,7 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
+import { EventCaseReference } from '../../../common/src/cams/events';
 
 describe('Case summary function', () => {
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
@@ -36,14 +37,14 @@ describe('Case summary function', () => {
   });
 
   test('Should return associated cases response.', async () => {
-    const body = [];
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<>(body);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<EventCaseReference[]>({
+      data: [],
+    });
     jest
       .spyOn(CaseAssociatedController.prototype, 'getAssociatedCases')
       .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
-    expect(response.status).toEqual(200);
     expect(response).toEqual(azureHttpResponse);
   });
 

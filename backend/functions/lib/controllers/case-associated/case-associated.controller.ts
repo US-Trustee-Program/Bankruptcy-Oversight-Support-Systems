@@ -21,11 +21,11 @@ export class CaseAssociatedController {
   public async getAssociatedCases(
     context: ApplicationContext,
     request: GetCaseAssociatedRequest,
-  ): Promise<CamsHttpResponseInit<Array<EventCaseReference>>> {
+  ): Promise<CamsHttpResponseInit<EventCaseReference[]>> {
     try {
       const associatedCases = await this.useCase.getAssociatedCases(context, request.caseId);
       return {
-        body: associatedCases,
+        body: { data: associatedCases },
       };
     } catch (originalError) {
       throw isCamsError(originalError)
