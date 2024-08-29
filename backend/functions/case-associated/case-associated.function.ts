@@ -20,6 +20,7 @@ export default async function handler(
     const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
       request,
+      logger,
     );
     const controller = new CaseAssociatedController(applicationContext);
 
