@@ -1,10 +1,9 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseBasics, CaseSummary } from '@common/cams/cases';
+import { CaseSummary } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { CasesSearchPredicate } from '@common/api/search';
+import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
-import { buildResponseBodyError, buildResponseBody } from '@common/api/response';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
 import { SearchResultsRow } from '@/search/SearchResultsRow';
 import Api2 from '@/lib/hooks/UseApi2';
@@ -17,11 +16,18 @@ describe('SearchResults component tests', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = MockData.buildArray(MockData.getCaseSummary, 30);
-    const expectedResponse = buildResponseBody<CaseBasics[]>(caseList, {
-      next: 'next-link',
-      self: 'self-link',
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: {
+        self: 'self-link',
+      },
+      pagination: {
+        currentPage: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: caseList.length,
+        next: 'next-link',
+      },
+      data: caseList,
     });
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue(expectedResponse);
   });
 
   function renderWithProps(props: Partial<SearchResultsProps> = {}) {
@@ -72,7 +78,17 @@ describe('SearchResults component tests', () => {
   });
 
   test('should show the no results alert when no results are available', async () => {
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue(buildResponseBody([]));
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: {
+        self: 'self-link',
+      },
+      pagination: {
+        currentPage: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: 0,
+      },
+      data: [],
+    });
 
     renderWithProps();
 
@@ -92,9 +108,9 @@ describe('SearchResults component tests', () => {
   });
 
   test('should show the error alert when an error is encountered', async () => {
-    vi.spyOn(Api2, 'searchCases').mockRejectedValue(
-      buildResponseBodyError(new Error('some error')),
-    );
+    vi.spyOn(Api2, 'searchCases').mockRejectedValue({
+      error: { message: 'SomeError' },
+    });
 
     renderWithProps();
 

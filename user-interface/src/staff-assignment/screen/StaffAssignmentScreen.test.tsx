@@ -6,7 +6,6 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { CaseSummary } from '@common/cams/cases';
-import { buildResponseBody } from '@common/api/response';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import * as genericApiModule from '@/lib/hooks/UseApi';
@@ -15,19 +14,20 @@ import Api2 from '@/lib/hooks/UseApi2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
+import { ResponseBody } from '@common/api/response';
 
 describe('StaffAssignmentScreen', () => {
   test('should render a list of cases assigned to a case assignment manager', async () => {
     const user = testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
     testingUtilities.spyOnGlobalAlert();
 
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue(
-      buildResponseBody(MockData.buildArray(MockData.getCaseBasics, 3)),
-    );
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: MockData.buildArray(MockData.getCaseBasics, 3),
+    });
 
     const expectedResponse: ResponseBody<CaseSummary[]> = {
-      meta: { self: 'a-uri', isPaginated: true, count: 3, limit: 50, currentPage: 1 },
-      isSuccess: true,
+      meta: { self: 'a-uri' },
+      pagination: { count: 3, limit: 50, currentPage: 1 },
       data: MockData.buildArray(() => {
         return MockData.getCaseSummary({ entityType: 'person', override: { assignments: [] } });
       }, 3),
