@@ -1,10 +1,10 @@
+import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
-
-import * as dotenv from 'dotenv';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
+
 dotenv.config();
 
 const MODULE_NAME = 'CASE-ASSOCIATED-FUNCTION' as const;
@@ -15,15 +15,13 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const controller = new CaseAssociatedController(applicationContext);
-
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+    );
+    const controller = new CaseAssociatedController(applicationContext);
 
     const response = await controller.getAssociatedCases(applicationContext, {
       caseId: applicationContext.request.params.caseId,
@@ -31,7 +29,7 @@ export default async function handler(
 
     return toAzureSuccess(response);
   } catch (error) {
-    return toAzureError(applicationContext, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
