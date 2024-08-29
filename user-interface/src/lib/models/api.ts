@@ -1,11 +1,6 @@
 import { httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
-import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import config from '../../configuration/apiConfiguration';
-import {
-  Chapter15CaseDetailsResponseData,
-  Chapter15CaseSummaryResponseData,
-} from '@/lib/type-declarations/chapter-15';
 import { ResponseBody } from '@common/api/response';
 
 const beforeHooks: (() => Promise<void>)[] = [];
@@ -61,7 +56,7 @@ export default class Api {
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseData> {
+  ): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
@@ -82,15 +77,7 @@ export default class Api {
     }
   }
 
-  public static async get(
-    path: string,
-    options?: ObjectKeyVal,
-  ): Promise<
-    | Chapter15CaseSummaryResponseData
-    | Chapter15CaseDetailsResponseData
-    | SimpleResponseData
-    | ResponseBody
-  > {
+  public static async get(path: string, options?: ObjectKeyVal): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
@@ -117,7 +104,7 @@ export default class Api {
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseData> {
+  ): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
@@ -141,7 +128,7 @@ export default class Api {
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseData> {
+  ): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);

@@ -1,9 +1,5 @@
 import { ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
-import {
-  Chapter15CaseDetailsResponseData,
-  Chapter15CaseSummaryResponseData,
-} from '../type-declarations/chapter-15';
 import Api from './api';
 import { ObjectKeyVal } from '@/lib/type-declarations/basic';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -130,19 +126,17 @@ export default class Chapter15MockApi extends Api {
       const searchRequest = body as { caseNumber: string };
       const _actions = [Actions.ManageAssignments];
       const caseNumber = searchRequest ? searchRequest.caseNumber : '';
-      const response: ResponseData<ResourceActions<CaseBasics>[]> = {
-        message: '',
-        count: 0,
-        body: [],
+      const response: ResponseBody<ResourceActions<CaseBasics>[]> = {
+        data: [],
       };
       if (caseNumber === '99-99999') {
         return Promise.reject(new Error('api error'));
       } else if (caseNumber === '00-00000') {
-        response.body = [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })];
+        response.data = [MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } })];
       } else if (caseNumber === '11-00000') {
-        response.body = [];
+        response.data = [];
       } else {
-        response.body = [
+        response.data = [
           { ...MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } }), _actions },
           { ...MockData.getCaseBasics({ override: { caseId: `070-${caseNumber}` } }), _actions },
           { ...MockData.getCaseBasics({ override: { caseId: `132-${caseNumber}` } }), _actions },
@@ -157,14 +151,7 @@ export default class Chapter15MockApi extends Api {
   }
 
   // TODO: This needs to be refactored to only return ResponseBody shaped responses.
-  public static async get(
-    path: string,
-  ): Promise<
-    | Chapter15CaseSummaryResponseData
-    | Chapter15CaseDetailsResponseData
-    | SimpleResponseData
-    | ResponseBody
-  > {
+  public static async get(path: string): Promise<ResponseBody> {
     let response: ResponseData | SimpleResponseData | ResponseBody;
     if (path.match(/\/cases\/123-12-12345\/docket/)) {
       return Promise.reject(new Error());
@@ -172,103 +159,71 @@ export default class Chapter15MockApi extends Api {
       return Promise.reject({ message: 'Case summary not found for the case ID.' });
     } else if (path.match(/\/cases\/999-99-00001\/associated/)) {
       response = {
-        message: '',
-        count: 1,
-        body: this.consolidation,
+        data: this.consolidation,
       };
     } else if (path.match(/\/cases\/999-99-00001\/docket/)) {
       response = {
-        message: '',
-        count: 1,
-        body: [],
+        data: [],
       };
     } else if (path.match(/\/cases\/999-99-00001/)) {
       response = {
-        message: '',
-        count: 1,
-        body: {
-          caseDetails: {
-            ...this.consolidationLeadCase,
-            consolidation: this.consolidation,
-          },
+        data: {
+          ...this.consolidationLeadCase,
+          consolidation: this.consolidation,
         },
       };
     } else if (path.match(/\/cases\/[A-Z\d-]+\/docket/)) {
       response = {
-        message: '',
-        count: 1,
-        body: Chapter15MockApi.caseDocketEntries,
+        data: Chapter15MockApi.caseDocketEntries,
       };
     } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
       response = {
-        message: '',
-        count: 1,
-        body: Chapter15MockApi.caseDetails,
+        data: Chapter15MockApi.caseDetails,
       };
     } else if (path.match(/\/cases\/[A-Z\d-]+\/associated/)) {
       response = {
-        message: '',
-        count: 1,
-        body: [],
+        data: [],
       };
     } else if (path.match(/\/cases\/[A-Z\d-]+/)) {
       response = {
-        message: '',
-        count: 1,
-        body: {
-          caseDetails: Chapter15MockApi.caseDetails,
-        },
+        data: Chapter15MockApi.caseDetails,
       };
     } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
       response = {
-        success: true,
-        body: [Chapter15MockApi.caseDetails],
+        data: [Chapter15MockApi.caseDetails],
       };
-      return Promise.resolve(response as SimpleResponseData);
+      return Promise.resolve(response);
     } else if (path.match(/\/orders/)) {
       response = {
-        message: '',
-        count: 1,
-        body: Chapter15MockApi.orders,
+        data: Chapter15MockApi.orders,
       };
     } else if (path.match(/\/offices/)) {
       response = {
-        message: '',
-        count: 1,
-        body: Chapter15MockApi.offices,
+        data: Chapter15MockApi.offices,
       };
     } else if (path.match(/\/me/)) {
       response = {
-        success: true,
-        body: MockData.getCamsSession({ user: SUPERUSER.user }),
+        data: MockData.getCamsSession({ user: SUPERUSER.user }),
       };
     } else {
       response = {
-        message: 'not found',
-        count: 0,
-        body: {
-          caseDetails: {},
-        },
+        data: {},
       };
     }
 
-    return Promise.resolve(response as Chapter15CaseDetailsResponseData);
+    return Promise.resolve(response);
   }
 
-  public static async patch(_path: string, body: object, _options?: ObjectKeyVal) {
+  public static async patch(_path: string, data: object, _options?: ObjectKeyVal) {
     const response = {
-      message: '',
-      count: 1,
-      body,
+      data,
     };
     return Promise.resolve(response);
   }
 
-  public static async put(_path: string, body: object, _options?: ObjectKeyVal) {
+  public static async put(_path: string, data: object, _options?: ObjectKeyVal) {
     const response = {
-      message: '',
-      count: 1,
-      body,
+      data,
     };
     return Promise.resolve(response);
   }
