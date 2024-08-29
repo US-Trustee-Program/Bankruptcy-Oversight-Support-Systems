@@ -3,7 +3,7 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';
 import handler from './orders-manual-sync.function';
-import { createMockAzureFunctionRequest } from '../azure/functions';
+import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
 
 const syncResponse: SyncOrdersStatus = {
   options: {

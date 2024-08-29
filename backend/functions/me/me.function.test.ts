@@ -1,4 +1,4 @@
-import { createMockAzureFunctionRequest } from '../azure/functions';
+import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { ForbiddenError } from '../lib/common-errors/forbidden-error';
