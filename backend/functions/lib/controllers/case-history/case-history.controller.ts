@@ -1,7 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { CamsHttpRequest } from '../../adapters/types/http';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 
@@ -16,14 +15,13 @@ export class CaseHistoryController {
 
   public async getCaseHistory(
     context: ApplicationContext,
-    request: CamsHttpRequest,
   ): Promise<CamsHttpResponseInit<CaseHistory[]>> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(context, request.params.caseId);
+      const caseHistory = await this.useCase.getCaseHistory(context, context.request.params.caseId);
       return {
         body: {
           meta: {
-            self: request.url,
+            self: context.request.url,
           },
           data: caseHistory,
         },

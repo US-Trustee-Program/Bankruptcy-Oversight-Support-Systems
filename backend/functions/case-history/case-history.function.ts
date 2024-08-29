@@ -3,7 +3,7 @@ import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'CASE-HISTORY-FUNCTION' as const;
 
@@ -24,11 +24,7 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const camsRequest = await azureToCamsHttpRequest(request);
-    const responseBody = await caseHistoryController.getCaseHistory(
-      applicationContext,
-      camsRequest,
-    );
+    const responseBody = await caseHistoryController.getCaseHistory(applicationContext);
     return toAzureSuccess(responseBody);
   } catch (error) {
     return toAzureError(applicationContext, MODULE_NAME, error);
