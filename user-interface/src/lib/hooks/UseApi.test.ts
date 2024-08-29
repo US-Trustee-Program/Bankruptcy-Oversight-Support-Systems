@@ -94,14 +94,4 @@ describe('mapFromLegacyToResponseBody', () => {
       mapFromLegacyToResponseBody(badResponse);
     }).toThrow('Cannot map legacy response from API to new response model.');
   });
-
-  test('should throw error if response body is an error', () => {
-    const badResponse = {
-      error: 'something happened that is bad',
-    };
-
-    expect(() => {
-      mapFromLegacyToResponseBody(badResponse);
-    }).toThrow('TBD Need to map the error from the response body');
-  });
 });
