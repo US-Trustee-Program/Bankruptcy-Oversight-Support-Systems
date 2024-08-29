@@ -1,24 +1,22 @@
 import * as Verifier from './HumbleVerifier';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import MockFetch from '../../../testing/mock-fetch';
-import { ApplicationContext } from '../../types/basic';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import OktaGateway from './okta-gateway';
 import { CamsJwtHeader } from '../../../../../../common/src/cams/jwt';
+import * as AuthorizationConfiguration from '../../../configs/authorization-configuration';
+import { AuthorizationConfig } from '../../types/authorization';
 
 describe('Okta gateway tests', () => {
-  let context: ApplicationContext;
   const gateway = OktaGateway;
 
-  beforeEach(async () => {
-    context = await createMockApplicationContext({
-      AUTH_ISSUER: undefined,
-      MOCK_AUTH: undefined,
-    });
-    context.config.authConfig.provider = null;
-    context.config.authConfig.issuer = null;
-    context.config.authConfig.audience = null;
-    context.config.authConfig.userInfoUri = null;
+  beforeEach(() => {
+    const authConfig: AuthorizationConfig = {
+      issuer: 'something',
+      provider: 'okta',
+      audience: 'something',
+      userInfoUri: 'something',
+    };
+    jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
   });
 
   afterEach(() => {
@@ -26,20 +24,35 @@ describe('Okta gateway tests', () => {
   });
 
   test('Should receive invalid provider error', async () => {
-    context.config.authConfig.provider = 'mock';
+    const authConfig: AuthorizationConfig = {
+      issuer: 'something',
+      provider: 'mock',
+      audience: 'something',
+      userInfoUri: 'something',
+    };
+    jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
     await expect(gateway.verifyToken('test')).rejects.toThrow('Invalid provider.');
   });
 
   test('Should receive invalid issuer error', async () => {
-    context.config.authConfig.issuer = null;
-    context.config.authConfig.provider = 'okta';
+    const authConfig: AuthorizationConfig = {
+      issuer: null,
+      provider: 'okta',
+      audience: 'something',
+      userInfoUri: 'something',
+    };
+    jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
     await expect(gateway.verifyToken('test')).rejects.toThrow('Issuer not provided.');
   });
 
   test('Should receive invalid audience error', async () => {
-    context.config.authConfig.audience = null;
-    context.config.authConfig.provider = 'okta';
-    context.config.authConfig.issuer = 'https://fake.okta.com/';
+    const authConfig: AuthorizationConfig = {
+      issuer: 'something',
+      provider: 'okta',
+      audience: null,
+      userInfoUri: 'something',
+    };
+    jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
     await expect(gateway.verifyToken('test')).rejects.toThrow('Audience not provided.');
   });
 
@@ -66,9 +79,6 @@ describe('Okta gateway tests', () => {
       isNotBefore: jest.fn(),
     };
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
-    context.config.authConfig.provider = 'okta';
-    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
-    context.config.authConfig.audience = 'api://default';
     const actual = await gateway.verifyToken(token);
     expect(actual).toEqual(jwt);
   });
@@ -76,9 +86,6 @@ describe('Okta gateway tests', () => {
   test('Should throw UnauthorizedError if not given valid input ', async () => {
     const token = 'testToken';
     jest.spyOn(Verifier, 'verifyAccessToken').mockRejectedValue(new Error('Test error'));
-    context.config.authConfig.provider = 'okta';
-    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
-    context.config.authConfig.audience = 'api://default';
     await expect(gateway.verifyToken(token)).rejects.toThrow('Unauthorized');
   });
 
