@@ -11,23 +11,26 @@ import { SessionGateway } from '../lib/adapters/utils/session-gateway';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
-async function applicationContextCreator(
-  invocationContext: InvocationContext,
-  request?: HttpRequest,
-): Promise<ApplicationContext> {
-  const config = new ApplicationConfiguration();
-  const featureFlags = await getFeatureFlags(config);
-
+function getLogger(invocationContext: InvocationContext) {
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   const logWrapper: Console['log'] = (...args: any[]) => {
     invocationContext.log(args);
   };
+  return new LoggerImpl(invocationContext.invocationId, logWrapper);
+}
 
-  const logger = new LoggerImpl(invocationContext.invocationId, logWrapper);
+async function applicationContextCreator(
+  invocationContext: InvocationContext,
+  request?: HttpRequest,
+  logger?: LoggerImpl,
+): Promise<ApplicationContext> {
+  const config = new ApplicationConfiguration();
+  const featureFlags = await getFeatureFlags(config);
+
   const context = {
     config,
     featureFlags,
-    logger,
+    logger: logger ?? getLogger(invocationContext),
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest(request) : undefined,
     session: undefined,
@@ -77,6 +80,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
 const ContextCreator = {
   applicationContextCreator,
   getApplicationContextSession,
+  getLogger,
 };
 
 export default ContextCreator;
