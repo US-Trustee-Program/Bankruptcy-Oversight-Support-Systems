@@ -18,7 +18,9 @@ jest.mock('@launchdarkly/node-server-sdk', () => {
 
 describe('Tests for feature flags', () => {
   test('Should test a known feature flag with known set value', async () => {
-    const context = await createMockApplicationContext({ FEATURE_FLAG_SDK_KEY: 'fake-key' });
+    const context = await createMockApplicationContext({
+      env: { FEATURE_FLAG_SDK_KEY: 'fake-key' },
+    });
 
     const flags = await getFeatureFlags(context.config);
     expect(flags['chapter-twelve-enabled']).toEqual(true);
