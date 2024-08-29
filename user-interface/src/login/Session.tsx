@@ -26,14 +26,9 @@ export function useStateAndActions() {
     const newState = { ...state };
     Api2.getMe()
       .then((response) => {
-        if (response.isSuccess) {
-          const session = response.data;
-          LocalStorage.setSession(session);
-          newState.isLoaded = true;
-        } else {
-          newState.isError = true;
-          newState.errorMessage = 'Unable to retrieve user session.';
-        }
+        const session = response.data;
+        LocalStorage.setSession(session);
+        newState.isLoaded = true;
       })
       .catch((error) => {
         newState.isError = true;

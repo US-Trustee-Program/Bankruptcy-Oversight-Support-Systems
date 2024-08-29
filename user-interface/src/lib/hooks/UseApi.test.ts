@@ -45,11 +45,6 @@ describe('UseApi Hook', () => {
 
     const expectedResponse = {
       data: [],
-      isSuccess: true,
-      meta: {
-        isPaginated: false,
-        self: '',
-      },
     };
 
     const actualResponse = await api.post('/cases/', { caseNumber: '11-00000' });
@@ -86,11 +81,6 @@ describe('mapFromLegacyToResponseBody', () => {
       data: {
         good: 'data',
       },
-      isSuccess: true,
-      meta: {
-        isPaginated: false,
-        self: '',
-      },
     };
 
     const actualResponse = mapFromLegacyToResponseBody(goodResponse);
@@ -107,7 +97,6 @@ describe('mapFromLegacyToResponseBody', () => {
 
   test('should throw error if response body is an error', () => {
     const badResponse = {
-      isSuccess: false,
       error: 'something happened that is bad',
     };
 

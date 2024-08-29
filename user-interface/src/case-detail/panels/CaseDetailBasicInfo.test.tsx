@@ -64,8 +64,7 @@ const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUse
 
 describe('Case detail basic information panel', () => {
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
-    meta: { isPaginated: false, self: 'self-url' },
-    isSuccess: true,
+    meta: { self: 'self-url' },
     data: attorneyList,
   };
   vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
