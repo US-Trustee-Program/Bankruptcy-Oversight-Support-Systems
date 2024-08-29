@@ -15,15 +15,14 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const casesController = new CasesController(applicationContext);
-
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+      logger,
+    );
+    const casesController = new CasesController(applicationContext);
 
     if (request.method === 'GET' && applicationContext.request.params.caseId) {
       const response = await casesController.getCaseDetails({
@@ -35,7 +34,7 @@ export default async function handler(
       return toAzureSuccess(response);
     }
   } catch (error) {
-    return toAzureError(applicationContext, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 
