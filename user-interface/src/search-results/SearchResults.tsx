@@ -158,7 +158,7 @@ export function SearchResults(props: SearchResultsProps) {
           </Table>
           {pagination && (
             <Pagination<CasesSearchPredicate>
-              paginationMeta={pagination}
+              paginationValues={pagination}
               searchPredicate={searchPredicate}
               retrievePage={handlePagination}
             />

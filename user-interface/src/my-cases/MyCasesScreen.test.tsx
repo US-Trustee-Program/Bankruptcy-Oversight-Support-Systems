@@ -47,12 +47,12 @@ describe('MyCasesScreen', () => {
     const expectedResponse: ResponseBody<CaseSummary[]> = {
       meta: {
         self: 'a-uri',
-        isPaginated: true,
+      },
+      pagination: {
         count: 3,
         limit: DEFAULT_SEARCH_LIMIT,
         currentPage: 1,
       },
-      isSuccess: true,
       data: MockData.buildArray(MockData.getCaseSummary, 3),
     };
     vi.spyOn(genericApiModule, 'useGenericApi').mockReturnValue({

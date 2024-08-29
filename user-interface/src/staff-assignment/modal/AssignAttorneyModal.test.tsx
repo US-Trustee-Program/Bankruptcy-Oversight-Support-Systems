@@ -35,8 +35,7 @@ describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
 
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
-    meta: { isPaginated: false, self: 'self-url' },
-    isSuccess: true,
+    meta: { self: 'self-url' },
     data: attorneyList,
   };
 
