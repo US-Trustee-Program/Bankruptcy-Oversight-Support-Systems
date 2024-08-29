@@ -1,14 +1,8 @@
+import { ResponseBody } from '@common/api/response';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 import { ObjectKeyVal } from '../type-declarations/basic';
-import {
-  buildResponseBody,
-  isResponseBodyError,
-  isResponseBody,
-  ResponseBody,
-  ResponseBody,
-} from '@common/api/response';
 import { LocalStorage } from '../utils/local-storage';
 
 let context: ApiClient;
@@ -72,17 +66,16 @@ function isLegacyResponseData(response: unknown): response is { body: unknown } 
   return !!response && typeof response === 'object' && 'body' in response;
 }
 
+function isResponseBody<T>(response: unknown): response is ResponseBody<T> {
+  return !!response && typeof response === 'object' && 'data' in response;
+}
+
 export function mapFromLegacyToResponseBody<T>(response: unknown): ResponseBody<T> {
   if (isResponseBody<T>(response)) return response;
-  if (isResponseBodyError(response)) {
-    // TODO: Need to map the error from the response body
-    throw new Error('TBD Need to map the error from the response body');
-  }
   if (isLegacyResponseData(response)) {
-    return buildResponseBody<T>(response.body as T, {
-      isPaginated: false,
-      self: '',
-    });
+    return {
+      data: response.body as T,
+    };
   }
   throw new Error('Cannot map legacy response from API to new response model.');
 }

@@ -1,24 +1,40 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseBasics, CaseSummary } from '@common/cams/cases';
+import { CaseBasics } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
-import { CasesSearchPredicate } from '@common/api/search';
-import { buildResponseBody } from '@common/api/response';
+import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import Api2 from '@/lib/hooks/UseApi2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
+import { ResponseBody } from '@common/api/response';
 
 describe('search screen', () => {
-  let caseList: CaseSummary[];
+  const caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+  const searchResponseBody: ResponseBody<CaseBasics[]> = {
+    meta: { self: 'self-url' },
+    pagination: {
+      count: caseList.length,
+      currentPage: 1,
+      limit: DEFAULT_SEARCH_LIMIT,
+    },
+    data: [],
+  };
+  const emptySearchResponseBody: ResponseBody<CaseBasics[]> = {
+    meta: { self: 'self-url' },
+    pagination: {
+      count: 0,
+      currentPage: 0,
+      limit: DEFAULT_SEARCH_LIMIT,
+    },
+    data: [],
+  };
+
   let searchCasesSpy: MockInstance;
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
-    caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    searchCasesSpy = vi
-      .spyOn(Api2, 'searchCases')
-      .mockResolvedValue(buildResponseBody<CaseBasics[]>(caseList));
+    searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
   });
 
   afterEach(() => {
@@ -342,7 +358,7 @@ describe('search screen', () => {
   test('should show the no results alert when no results are available', async () => {
     renderWithoutProps();
 
-    vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(buildResponseBody<CaseBasics[]>([]));
+    vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(emptySearchResponseBody);
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 
@@ -382,7 +398,7 @@ describe('search screen', () => {
       .mockRejectedValueOnce({
         message: 'some error',
       })
-      .mockResolvedValue(buildResponseBody<CaseBasics[]>(caseList));
+      .mockResolvedValue(searchResponseBody);
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
 
@@ -417,7 +433,7 @@ describe('search screen', () => {
       .mockRejectedValueOnce({
         message: 'some error',
       })
-      .mockResolvedValue(buildResponseBody<CaseBasics[]>(caseList));
+      .mockResolvedValue(emptySearchResponseBody);
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
     renderWithoutProps();

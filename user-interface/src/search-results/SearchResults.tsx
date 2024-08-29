@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { isResponseBody } from '@common/api/response';
 import { CaseBasics } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { isPaginated, WithPagination } from '@common/api/pagination';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
 import { deepEqual } from '@/lib/utils/objectEquality';
-import './SearchResults.scss';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { ResponseBody } from '@common/api/response';
+import './SearchResults.scss';
+import { Pagination as PaginationModel } from '@common/api/pagination';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -51,8 +51,8 @@ export function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<CaseBasics[]> | null>(null);
 
-  const pagination: WithPagination | undefined = isPaginated(searchResults?.meta)
-    ? searchResults?.meta
+  const pagination: PaginationModel | undefined = searchResults?.pagination
+    ? searchResults?.pagination
     : undefined;
 
   const noResultsMessage =
@@ -61,10 +61,8 @@ export function SearchResults(props: SearchResultsProps) {
   const api = useApi2();
 
   function handleSearchResults(response: ResponseBody<CaseBasics[]>) {
-    if (isResponseBody(response)) {
-      setSearchResults(response);
-      setEmptyResponse(response.data.length === 0);
-    }
+    setSearchResults(response);
+    setEmptyResponse(response.data.length === 0);
   }
 
   function handleSearchError() {
