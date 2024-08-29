@@ -15,9 +15,9 @@ import {
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { sortDates } from '../../../../../common/src/date-helper';
 import { ManageConsolidationResponse, OrdersController } from './orders.controller';
-import { CaseDetail } from '../../../../../common/src/cams/cases';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -97,18 +97,21 @@ describe('orders controller tests', () => {
 
   test('should get suggested cases', async () => {
     const suggestedCases = [CASE_SUMMARIES[0]];
-    const suggestedCasesResponse: CamsHttpResponseInit<CaseDetail[]> = {
-      body: { data: suggestedCases },
-    };
 
     const getSuggestedCasesSpy = jest
       .spyOn(OrdersUseCase.prototype, 'getSuggestedCases')
       .mockResolvedValue(suggestedCases);
 
     const controller = new OrdersController(applicationContext);
-    const response = await controller.getSuggestedCases(applicationContext, 'mockId');
-    expect(getSuggestedCasesSpy).toHaveBeenCalledWith(applicationContext, 'mockId');
-    expect(response).toEqual(suggestedCasesResponse);
+    const caseId = 'mockId';
+    const request = mockCamsHttpRequest({ params: { caseId } });
+    const response = await controller.getSuggestedCases(applicationContext, request);
+    expect(getSuggestedCasesSpy).toHaveBeenCalledWith(applicationContext, caseId);
+    expect(response).toEqual(
+      expect.objectContaining({
+        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: suggestedCases },
+      }),
+    );
   });
 
   test('should rethrow CamsError if CamsError is encountered', async () => {
@@ -124,12 +127,13 @@ describe('orders controller tests', () => {
       camsError,
     );
     await expect(controller.syncOrders(applicationContext)).rejects.toThrow(camsError);
-    await expect(controller.getSuggestedCases(applicationContext, 'mockId')).rejects.toThrow(
+    const request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
+    await expect(controller.getSuggestedCases(applicationContext, request)).rejects.toThrow(
       camsError,
     );
   });
 
-  test('should throw UnknownError if any other error is ecountered', async () => {
+  test('should throw UnknownError if any other error is encountered', async () => {
     const originalError = new Error('Test');
     const unknownError = new UnknownError('TEST', { originalError });
     jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(originalError);
@@ -143,7 +147,8 @@ describe('orders controller tests', () => {
       unknownError,
     );
     await expect(controller.syncOrders(applicationContext)).rejects.toThrow(unknownError);
-    await expect(controller.getSuggestedCases(applicationContext, 'mockId')).rejects.toThrow(
+    const request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
+    await expect(controller.getSuggestedCases(applicationContext, request)).rejects.toThrow(
       unknownError,
     );
   });

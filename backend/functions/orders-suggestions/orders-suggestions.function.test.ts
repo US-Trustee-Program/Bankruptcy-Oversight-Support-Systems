@@ -18,8 +18,9 @@ describe('Orders suggestions function tests', () => {
 
   test('should return a list of suggested cases', async () => {
     const summaries = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    const { camsHttpResponse, azureHttpResponse } =
-      buildTestResponseSuccess<CaseSummary[]>(summaries);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseSummary[]>({
+      data: summaries,
+    });
 
     const getSuggestedCasesSpy = jest
       .spyOn(OrdersController.prototype, 'getSuggestedCases')
