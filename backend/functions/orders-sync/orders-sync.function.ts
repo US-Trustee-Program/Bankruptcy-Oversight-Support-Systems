@@ -5,23 +5,26 @@ import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 
 import * as dotenv from 'dotenv';
+import { toAzureError } from '../azure/functions';
 
 // TODO: We need to look into upgrading this to use v4 of Azure Functions
 dotenv.config();
 
 initializeApplicationInsights();
 
+const MODULE_NAME = 'ORDERS-SYNC-FUNCTION' as const;
+
 export default async function timerTrigger(
   myTimer: Timer,
-  context: InvocationContext,
+  invocationContext: InvocationContext,
 ): Promise<void> {
-  const appContext = await ContextCreator.applicationContextCreator(context, undefined);
-
-  const ordersController = new OrdersController(appContext);
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
+    const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
+    const ordersController = new OrdersController(appContext);
     await ordersController.syncOrders(appContext);
-  } catch (camsError) {
-    appContext.logger.camsError(camsError);
+  } catch (error) {
+    toAzureError(logger, MODULE_NAME, error);
     myTimer.isPastDue;
   }
 }

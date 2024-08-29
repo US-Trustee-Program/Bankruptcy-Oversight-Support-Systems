@@ -19,23 +19,25 @@ function getLogger(invocationContext: InvocationContext) {
   return new LoggerImpl(invocationContext.invocationId, logWrapper);
 }
 
+// TODO: consider switching to an object since the logger and request arguments are
 async function applicationContextCreator(
   invocationContext: InvocationContext,
   request?: HttpRequest,
   logger?: LoggerImpl,
 ): Promise<ApplicationContext> {
-  const context = await getApplicationContext(invocationContext, request, logger);
+  const context = await getApplicationContext({ invocationContext, logger, request });
 
   context.session = await getApplicationContextSession(context);
 
   return context;
 }
 
-async function getApplicationContext(
-  invocationContext: InvocationContext,
-  request?: HttpRequest,
-  logger?: LoggerImpl,
-): Promise<ApplicationContext> {
+async function getApplicationContext(args: {
+  invocationContext: InvocationContext;
+  logger?: LoggerImpl;
+  request?: HttpRequest;
+}): Promise<ApplicationContext> {
+  const { invocationContext, logger, request } = args;
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
 

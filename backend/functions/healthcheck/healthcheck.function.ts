@@ -15,11 +15,11 @@ export default async function handler(
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
   const logger = ContextCreator.getLogger(invocationContext);
-  const applicationContext = await ContextCreator.getApplicationContext(
+  const applicationContext = await ContextCreator.getApplicationContext({
     invocationContext,
-    request,
     logger,
-  );
+    request,
+  });
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
   const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);
 
