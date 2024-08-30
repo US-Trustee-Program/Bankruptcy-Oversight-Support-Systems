@@ -145,7 +145,7 @@ describe('Orders use case', () => {
 
     const mockCreateAssignment = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
-      .mockResolvedValue(['']);
+      .mockResolvedValue();
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 

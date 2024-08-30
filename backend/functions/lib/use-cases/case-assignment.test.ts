@@ -94,7 +94,7 @@ describe('Case assignment tests', () => {
       findAssignmentsByCaseId.mockResolvedValue([]);
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
         assignments,
@@ -117,7 +117,6 @@ describe('Case assignment tests', () => {
 
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(createAssignment.mock.calls[1][0]).toEqual(expect.objectContaining(assignmentTwo));
-      expect(response).toEqual(expect.arrayContaining([expect.any(String), expect.any(String)]));
     });
 
     test('should add new case assignments on a case with existing assignments', async () => {
@@ -146,7 +145,7 @@ describe('Case assignment tests', () => {
 
       findAssignmentsByCaseId.mockResolvedValue([assignmentOne]);
 
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
         assignments,
@@ -155,8 +154,6 @@ describe('Case assignment tests', () => {
 
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentTwo));
       expect(createAssignment).toHaveBeenCalledTimes(1);
-
-      expect(response).toEqual(expect.arrayContaining([expect.any(String)]));
     });
 
     test('should remove assignments', async () => {
@@ -179,7 +176,7 @@ describe('Case assignment tests', () => {
 
       findAssignmentsByCaseId.mockResolvedValue([assignmentOne]);
 
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
         assignments,
@@ -188,8 +185,6 @@ describe('Case assignment tests', () => {
 
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
-
-      expect(response).toEqual([]);
     });
 
     test('should not do anything if user does not have the CaseAssignmentManager role', async () => {
