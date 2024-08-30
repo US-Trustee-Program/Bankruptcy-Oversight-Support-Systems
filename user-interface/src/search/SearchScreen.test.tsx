@@ -18,7 +18,7 @@ describe('search screen', () => {
       currentPage: 1,
       limit: DEFAULT_SEARCH_LIMIT,
     },
-    data: [],
+    data: caseList,
   };
   const emptySearchResponseBody: ResponseBody<CaseBasics[]> = {
     meta: { self: 'self-url' },
