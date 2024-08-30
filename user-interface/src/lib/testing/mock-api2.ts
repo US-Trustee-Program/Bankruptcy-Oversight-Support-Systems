@@ -82,11 +82,11 @@ const orders = [
   }),
 ];
 
-async function post<_T = unknown>(
+async function post<T = unknown>(
   path: string,
   body: object,
   _options: ObjectKeyVal,
-): Promise<ResponseBody<unknown>> {
+): Promise<ResponseBody<T>> {
   if (path.match(/\/cases/)) {
     const searchRequest = body as CasesSearchPredicate;
     const _actions = [Actions.ManageAssignments];
@@ -109,7 +109,7 @@ async function post<_T = unknown>(
         { ...MockData.getCaseBasics({ override: { caseId: `256-${caseNumber}` } }), _actions },
       ];
     }
-    return response;
+    return response as ResponseBody<ResourceActions<T>>;
   } else {
     return Promise.reject(new Error());
   }
@@ -177,57 +177,57 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   return Promise.resolve(response as ResponseBody<T>);
 }
 
-async function patch<_T = unknown>(
+async function patch<T = unknown>(
   _path: string,
   data: object,
   _options?: ObjectKeyVal,
-): Promise<ResponseBody> {
+): Promise<ResponseBody<T>> {
   const response = {
     data,
   };
-  return Promise.resolve(response);
+  return Promise.resolve(response as ResponseBody<T>);
 }
 
-async function put<_T = unknown>(
+async function put<T = unknown>(
   _path: string,
   data: object,
   _options?: ObjectKeyVal,
-): Promise<ResponseBody> {
+): Promise<ResponseBody<T>> {
   const response = {
     data,
   };
-  return Promise.resolve(response);
+  return Promise.resolve(response as ResponseBody<T>);
 }
 
-async function getAttorneys() {
+async function getAttorneys(): Promise<ResponseBody<AttorneyUser[]>> {
   return get<AttorneyUser[]>('/attorneys');
 }
 
-async function getCaseDetail(caseId: string) {
+async function getCaseDetail(caseId: string): Promise<ResponseBody<CaseDetail>> {
   return get<CaseDetail>(`/cases/${caseId}`);
 }
 
-async function getCaseDocket(caseId: string) {
+async function getCaseDocket(caseId: string): Promise<ResponseBody<CaseDocket>> {
   return get<CaseDocket>(`/cases/${caseId}/docket`);
 }
 
-async function getCaseSummary(caseId: string) {
+async function getCaseSummary(caseId: string): Promise<ResponseBody<CaseSummary>> {
   return get<CaseSummary>(`/cases/${caseId}/summary`);
 }
 
-async function getCaseAssignments(caseId: string) {
+async function getCaseAssignments(caseId: string): Promise<ResponseBody<CaseAssignment[]>> {
   return get<CaseAssignment[]>(`/case-assignments/${caseId}`);
 }
 
-async function getCaseAssociations(caseId: string) {
+async function getCaseAssociations(caseId: string): Promise<ResponseBody<Consolidation[]>> {
   return get<Consolidation[]>(`/cases/${caseId}/associated`);
 }
 
-async function getCaseHistory(caseId: string) {
+async function getCaseHistory(caseId: string): Promise<ResponseBody<CaseHistory[]>> {
   return get<CaseHistory[]>(`/cases/${caseId}/history`);
 }
 
-async function getMe() {
+async function getMe(): Promise<ResponseBody<CamsSession>> {
   return get<CamsSession>(`/me`);
 }
 
@@ -235,27 +235,33 @@ async function getOffices(): Promise<ResponseBody<OfficeDetails[]>> {
   return get<OfficeDetails[]>(`/offices`);
 }
 
-async function getOrders() {
+async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
-async function getOrderSuggestions(caseId: string) {
+async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSummary[]>> {
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
 
-async function patchTransferOrder(data: FlexibleTransferOrderAction) {
+async function patchTransferOrder(
+  data: FlexibleTransferOrderAction,
+): Promise<ResponseBody<TransferOrder>> {
   return patch<TransferOrder>(`/orders/${data.id}`, data);
 }
 
-async function putConsolidationOrderApproval(data: ConsolidationOrderActionApproval) {
+async function putConsolidationOrderApproval(
+  data: ConsolidationOrderActionApproval,
+): Promise<ResponseBody<ConsolidationOrder[]>> {
   return put<ConsolidationOrder[]>('/consolidations/approve', data);
 }
 
-async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
+async function putConsolidationOrderRejection(
+  data: ConsolidationOrderActionRejection,
+): Promise<ResponseBody<ConsolidationOrder[]>> {
   return put<ConsolidationOrder[]>('/consolidations/reject', data);
 }
 
-async function searchCases(predicate: CasesSearchPredicate) {
+async function searchCases(predicate: CasesSearchPredicate): Promise<ResponseBody<CaseBasics[]>> {
   return post<CaseBasics[]>('/cases', predicate, {});
 }
 
