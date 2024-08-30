@@ -115,7 +115,7 @@ async function post<_T = unknown>(
   }
 }
 
-async function get<_T = unknown>(path: string): Promise<ResponseBody> {
+async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   let response: ResponseBody<unknown>;
   if (path.match(/\/cases\/123-12-12345\/docket/)) {
     return Promise.reject(new Error());
@@ -156,7 +156,6 @@ async function get<_T = unknown>(path: string): Promise<ResponseBody> {
     response = {
       data: [caseDetails],
     };
-    return Promise.resolve(response);
   } else if (path.match(/\/orders/)) {
     response = {
       data: orders,
@@ -175,7 +174,7 @@ async function get<_T = unknown>(path: string): Promise<ResponseBody> {
     };
   }
 
-  return Promise.resolve(response);
+  return Promise.resolve(response as ResponseBody<T>);
 }
 
 async function patch<_T = unknown>(
@@ -232,7 +231,7 @@ async function getMe() {
   return get<CamsSession>(`/me`);
 }
 
-async function getOffices() {
+async function getOffices(): Promise<ResponseBody<OfficeDetails[]>> {
   return get<OfficeDetails[]>(`/offices`);
 }
 
