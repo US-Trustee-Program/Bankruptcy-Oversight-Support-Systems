@@ -19,30 +19,15 @@ import { ResponseBody } from '@common/api/response';
 import Api from '../models/api';
 import MockApi from '../models/chapter15-mock.api.cases';
 import LocalStorage from '../utils/local-storage';
-import { ResponseData, SimpleResponseData } from '../type-declarations/api';
 
-// interface ApiClient {
-//   headers: Record<string, string>;
-//   host: string;
-//   createPath(path: string, params: ObjectKeyVal): string;
-//   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
-//   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
-//   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
-//   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
-//   getQueryStringsToPassthrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
-// }
-
-export interface ApiClient {
+interface ApiClient {
   headers: Record<string, string>;
   host: string;
   createPath(path: string, params: ObjectKeyVal): string;
-  post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
-  get(
-    path: string,
-    options?: ObjectKeyVal,
-  ): Promise<ResponseData | SimpleResponseData | ResponseBody>;
-  patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
-  put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseData>;
+  post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
+  get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
+  patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
+  put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
   getQueryStringsToPassthrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
 }
 
