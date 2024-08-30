@@ -64,13 +64,13 @@ async function handlePostMethod(
     applicationContext,
   );
 
-  await caseAssignmentController.createTrialAttorneyAssignments({
+  const result = await caseAssignmentController.createTrialAttorneyAssignments({
     caseId,
     listOfAttorneyNames,
     role,
   });
 
-  return toAzureSuccess();
+  return toAzureSuccess(result);
 }
 
 app.http('case-assignments', {

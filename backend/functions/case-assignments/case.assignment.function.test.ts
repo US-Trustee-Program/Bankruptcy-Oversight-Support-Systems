@@ -15,6 +15,7 @@ import {
 } from '../azure/testing-helpers';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { UnknownError } from '../lib/common-errors/unknown-error';
+import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Case Assignment Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -48,9 +49,9 @@ describe('Case Assignment Function Tests', () => {
     jest.clearAllMocks();
   });
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
-    const expectedData = { data: ['id-1', 'id-2'] };
-    const { camsHttpResponse, azureHttpResponse } =
-      buildTestResponseSuccess<string[]>(expectedData);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
+      statusCode: HttpStatusCodes.CREATED,
+    });
     jest
       .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
       .mockResolvedValue(camsHttpResponse);
