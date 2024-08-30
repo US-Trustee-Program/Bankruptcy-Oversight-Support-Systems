@@ -503,10 +503,12 @@ describe('Consolidation UseCase tests', () => {
     let putSpy;
     if (success) {
       putSpy = vi
-        .spyOn(Chapter15MockApi, 'put')
-        .mockResolvedValue({ message: '', count: 1, body: consolidationOrders });
+        .spyOn(Api2, 'putConsolidationOrderApproval')
+        .mockResolvedValue({ data: consolidationOrders });
     } else {
-      putSpy = vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue('some server error');
+      putSpy = vi
+        .spyOn(Api2, 'putConsolidationOrderApproval')
+        .mockRejectedValue('some server error');
     }
     const expectedSuccessfulAlert = {
       message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${
@@ -550,10 +552,12 @@ describe('Consolidation UseCase tests', () => {
     let putSpy;
     if (success) {
       putSpy = vi
-        .spyOn(Chapter15MockApi, 'put')
-        .mockResolvedValue({ message: '', count: 1, body: consolidationOrders });
+        .spyOn(Api2, 'putConsolidationOrderRejection')
+        .mockResolvedValue({ data: consolidationOrders });
     } else {
-      putSpy = vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue('some server error');
+      putSpy = vi
+        .spyOn(Api2, 'putConsolidationOrderRejection')
+        .mockRejectedValue('some server error');
     }
     const expectedSuccessfulAlert = {
       message: `Rejection of consolidation order was successful.`,
