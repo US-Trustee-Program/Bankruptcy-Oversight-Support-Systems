@@ -2,13 +2,12 @@ import {
   fetchLeadCaseAttorneys,
   getCurrentLeadCaseId,
 } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
-import { SimpleResponseData } from '@/lib/type-declarations/api';
 import { CaseAssignment } from '@common/cams/assignments';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ConsolidationOrder } from '@common/cams/orders';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import Api2 from '@/lib/hooks/UseApi2';
 
 describe('consolidationOrderAccordion presenter tests', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -43,14 +42,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
 
   test('should return empty array when no attorneys are found', async () => {
     const order: ConsolidationOrder = MockData.getConsolidationOrder();
-    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string) => {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 1,
-        body: [],
-      } as SimpleResponseData<CaseAssignment[]>);
-    });
+    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: [] });
 
     const attorneys = await fetchLeadCaseAttorneys(order.childCases[0].caseId);
     expect(attorneys).toEqual([]);
@@ -63,14 +55,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
       3,
     );
     const attorneyArray = mockAttorneys.map((assignment) => assignment.name);
-    vi.spyOn(Chapter15MockApi, 'get').mockImplementation((_path: string) => {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 1,
-        body: mockAttorneys,
-      } as SimpleResponseData<CaseAssignment[]>);
-    });
+    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: mockAttorneys });
 
     const attorneys = await fetchLeadCaseAttorneys(order.childCases[0].caseId);
     expect(attorneys).toEqual(attorneyArray);
