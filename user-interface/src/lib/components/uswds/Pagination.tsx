@@ -9,11 +9,11 @@ export type PaginationProps<P extends SearchPredicate> = {
 };
 
 export function Pagination<P extends SearchPredicate>({
-  paginationValues: paginationMeta,
+  paginationValues,
   searchPredicate,
   retrievePage,
 }: PaginationProps<P>) {
-  const { previous, next, currentPage } = paginationMeta;
+  const { previous, next, currentPage } = paginationValues;
 
   return (
     <nav aria-label="Pagination" className="usa-pagination">
