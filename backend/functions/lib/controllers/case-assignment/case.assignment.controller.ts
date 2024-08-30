@@ -45,21 +45,17 @@ export class CaseAssignmentController {
     caseId: string;
     listOfAttorneyNames: CamsUserReference[];
     role: string;
-  }): Promise<CamsHttpResponseInit<string[]>> {
+  }): Promise<CamsHttpResponseInit> {
     this.validateRequestParameters(params.caseId, params.role);
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
         params.caseId,
         params.listOfAttorneyNames,
         params.role,
       );
-      return {
-        body: {
-          data: response,
-        },
-      };
+      return {};
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {

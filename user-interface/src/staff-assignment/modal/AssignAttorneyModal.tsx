@@ -13,12 +13,12 @@ import {
   OpenModalButtonRef,
   SubmitCancelButtonGroupRef,
 } from '@/lib/components/uswds/modal/modal-refs';
-import Api from '@/lib/models/api';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Checkbox from '@/lib/components/uswds/Checkbox';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ResponseBody } from '@common/api/response';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { CamsRole } from '@common/cams/roles';
 
 export interface CallbackProps {
   bCase: CaseBasics;
@@ -183,10 +183,10 @@ function _AssignAttorneyModal(
     setIsUpdatingAssignment(true);
 
     try {
-      const result = await Api.post('/case-assignments', {
+      const result = await api.postStaffAssignments({
         caseId: bCase?.caseId,
         attorneyList: finalAttorneyList,
-        role: 'TrialAttorney',
+        role: CamsRole.TrialAttorney,
       });
       if (result) {
         if (submitCallbackRef.current) {

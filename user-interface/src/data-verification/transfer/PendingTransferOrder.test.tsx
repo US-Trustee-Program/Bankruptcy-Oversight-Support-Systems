@@ -231,10 +231,12 @@ describe('PendingTransferOrder component', () => {
 
     test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
       const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockResolvedValue({
-        data: {
-          dateFiled: order.dateFiled,
-          debtor: order.debtor,
-        },
+        data: MockData.getTransferOrder({
+          override: {
+            dateFiled: order.dateFiled,
+            debtor: order.debtor,
+          },
+        }),
       });
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
@@ -287,10 +289,12 @@ describe('PendingTransferOrder component', () => {
 
     test('should properly reject when API returns a successful response and a reason is supplied', async () => {
       const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockResolvedValue({
-        data: {
-          dateFiled: order.dateFiled,
-          debtor: order.debtor,
-        },
+        data: MockData.getTransferOrder({
+          override: {
+            dateFiled: order.dateFiled,
+            debtor: order.debtor,
+          },
+        }),
       });
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)

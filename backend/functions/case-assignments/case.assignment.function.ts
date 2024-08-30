@@ -5,6 +5,7 @@ import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CamsUserReference } from '../../../common/src/cams/users';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { CamsRole } from '../../../common/src/cams/roles';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
 
@@ -57,20 +58,19 @@ async function handlePostMethod(
   applicationContext: ApplicationContext,
   caseId: string,
   listOfAttorneyNames: CamsUserReference[],
-  role,
+  role: CamsRole.TrialAttorney,
 ) {
   const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
     applicationContext,
   );
 
-  const trialAttorneyAssignmentResponse =
-    await caseAssignmentController.createTrialAttorneyAssignments({
-      caseId,
-      listOfAttorneyNames,
-      role,
-    });
+  await caseAssignmentController.createTrialAttorneyAssignments({
+    caseId,
+    listOfAttorneyNames,
+    role,
+  });
 
-  return toAzureSuccess(trialAttorneyAssignmentResponse);
+  return toAzureSuccess();
 }
 
 app.http('case-assignments', {

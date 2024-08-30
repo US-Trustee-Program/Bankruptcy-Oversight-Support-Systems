@@ -10,7 +10,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
+// import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
@@ -42,47 +42,47 @@ function openAccordion(orderId: string) {
   fireEvent.click(header);
 }
 
-// type ConsolidationArray = (ConsolidationTo | ConsolidationFrom)[];
+/*type ConsolidationArray = (ConsolidationTo | ConsolidationFrom)[];
 
-// function setupApiGetMock(options: { bCase?: CaseSummary; associations?: ConsolidationArray } = {}) {
-//   // Assigned attorneys and associated cases.
-//   vi.spyOn(Chapter15MockApi, 'get').mockImplementation((path: string) => {
-//     if (path.includes('/case-assignments/')) {
-//       return Promise.resolve({
-//         success: true,
-//         message: '',
-//         count: 1,
-//         body: [MockData.getAttorneyAssignment()],
-//       } as SimpleResponseData<CaseAssignment[]>);
-//     } else if (path.match(/\/cases\/\d\d\d-99-99999\/associated/)) {
-//       return Promise.reject({ message: '404 Case associations not found for the case ID.' });
-//     } else if (path.includes('/associated')) {
-//       return Promise.resolve({
-//         success: true,
-//         message: '',
-//         count: 0,
-//         body: options.associations ?? [],
-//       } as SimpleResponseData<Consolidation[]>);
-//     } else if (path.match(/\/cases\/\d\d\d-00-00000\/summary/i)) {
-//       return Promise.reject({ message: 'Some strange error were not expecting' });
-//     } else if (path.match(/\/cases\/\d\d\d-11-11111\/summary/i)) {
-//       return Promise.reject({ message: '404 Case summary not found for the case ID.' });
-//     } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
-//       return Promise.resolve({
-//         success: true,
-//         message: '',
-//         count: 1,
-//         body: options.bCase ?? {},
-//       } as SimpleResponseData<CaseSummary>);
-//     }
-//     return Promise.resolve({
-//       success: false,
-//       body: {},
-//     });
-//   });
-// }
+function setupApiGetMock(options: { bCase?: CaseSummary; associations?: ConsolidationArray } = {}) {
+  // Assigned attorneys and associated cases.
+  vi.spyOn(Chapter15MockApi, 'get').mockImplementation((path: string) => {
+    if (path.includes('/case-assignments/')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 1,
+        body: [MockData.getAttorneyAssignment()],
+      } as SimpleResponseData<CaseAssignment[]>);
+    } else if (path.match(/\/cases\/\d\d\d-99-99999\/associated/)) {
+      return Promise.reject({ message: '404 Case associations not found for the case ID.' });
+    } else if (path.includes('/associated')) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 0,
+        body: options.associations ?? [],
+      } as SimpleResponseData<Consolidation[]>);
+    } else if (path.match(/\/cases\/\d\d\d-00-00000\/summary/i)) {
+      return Promise.reject({ message: 'Some strange error were not expecting' });
+    } else if (path.match(/\/cases\/\d\d\d-11-11111\/summary/i)) {
+      return Promise.reject({ message: '404 Case summary not found for the case ID.' });
+    } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
+      return Promise.resolve({
+        success: true,
+        message: '',
+        count: 1,
+        body: options.bCase ?? {},
+      } as SimpleResponseData<CaseSummary>);
+    }
+    return Promise.resolve({
+      success: false,
+      body: {},
+    });
+  });
+}*/
 
-describe.skip('ConsolidationOrderAccordion tests', () => {
+describe('ConsolidationOrderAccordion tests', () => {
   const order: ConsolidationOrder = MockData.getConsolidationOrder({
     override: { courtDivisionCode: '081' },
   });
@@ -271,7 +271,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should correctly enable/disable buttons when selecting consolidated cases and lead case from order case list table', async () => {
+  test.skip('should correctly enable/disable buttons when selecting consolidated cases and lead case from order case list table', async () => {
     renderWithProps();
     openAccordion(order.id!);
     // setupApiGetMock({ bCase: order.childCases[0] });
@@ -340,10 +340,9 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
-    vi.spyOn(Chapter15MockApi, 'get').mockReset();
   });
 
-  test('should correctly enable/disable buttons based on selections in "case not listed" form', async () => {
+  test.skip('should correctly enable/disable buttons based on selections in "case not listed" form', async () => {
     renderWithProps();
     openAccordion(order.id!);
     // setupApiGetMock({ bCase: order.childCases[0] });
@@ -415,10 +414,9 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
       expect(rejectButton).toBeEnabled();
       expect(leadCaseForm).not.toBeInTheDocument();
     });
-    vi.spyOn(Chapter15MockApi, 'get').mockReset();
   });
 
-  test('should show alert when no lead case can be found in search field, and case table when search finds a matching value', async () => {
+  test.skip('should show alert when no lead case can be found in search field, and case table when search finds a matching value', async () => {
     renderWithProps();
     openAccordion(order.id!);
     // setupApiGetMock({ bCase: order.childCases[0] });
@@ -458,10 +456,9 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
       expect(findValidCaseNumberAlert(order.id!)).not.toBeInTheDocument();
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
-    vi.spyOn(Chapter15MockApi, 'get').mockReset();
   });
 
-  test('should show alert when no lead case can be found in search field, and error returned was not a 404', async () => {
+  test.skip('should show alert when no lead case can be found in search field, and error returned was not a 404', async () => {
     renderWithProps();
     openAccordion(order.id!);
     // setupApiGetMock({ bCase: order.childCases[0] });
@@ -479,7 +476,6 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
       expect(alert).toHaveTextContent('Cannot verify lead case number.');
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
-    vi.spyOn(Chapter15MockApi, 'get').mockReset();
   });
 
   test('should show alert when lookup of associated cases fails', async () => {
@@ -504,10 +500,9 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
       );
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
-    vi.spyOn(Chapter15MockApi, 'get').mockReset();
   });
 
-  test('should open approval modal when approve button is clicked', async () => {
+  test.skip('should open approval modal when approve button is clicked', async () => {
     renderWithProps();
     openAccordion(order.id!);
 
@@ -569,10 +564,8 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
       reason: 'Test.',
     };
 
-    vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
-      message: '',
-      count: 1,
-      body: [expectedOrderRejected],
+    vi.spyOn(Api2, 'putConsolidationOrderRejection').mockResolvedValue({
+      data: [expectedOrderRejected],
     });
 
     const rejectButton = document.querySelector(
@@ -628,7 +621,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     const errorMessage = 'Some random error';
     const alertMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
-    vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
+    vi.spyOn(Api2, 'putConsolidationOrderRejection').mockRejectedValue(new Error(errorMessage));
 
     const rejectButton = document.querySelector(
       `#accordion-reject-button-${order.id}`,
@@ -673,24 +666,22 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should call orderUpdate for approval', async () => {
-    renderWithProps();
-    openAccordion(order.id!);
-
+  test.skip('should call orderUpdate for approval', async () => {
     const leadCase = order.childCases[0];
     const expectedOrderApproved: ConsolidationOrder = {
       ...order,
       leadCase,
       status: 'approved',
     };
-
-    // setupApiGetMock();
-
-    vi.spyOn(Chapter15MockApi, 'put').mockResolvedValue({
-      message: '',
-      count: 1,
-      body: [expectedOrderApproved],
+    vi.spyOn(Api2, 'putConsolidationOrderApproval').mockResolvedValue({
+      data: [expectedOrderApproved],
     });
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: MockData.buildArray(MockData.getCaseBasics, 5),
+    });
+
+    renderWithProps();
+    openAccordion(order.id!);
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
@@ -738,7 +729,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should handle api exception for approval', async () => {
+  test.skip('should handle api exception for approval', async () => {
     renderWithProps();
     openAccordion(order.id!);
 
@@ -747,7 +738,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     const errorMessage = 'Some random error';
     const alertMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
-    vi.spyOn(Chapter15MockApi, 'put').mockRejectedValue(new Error(errorMessage));
+    vi.spyOn(Api2, 'putConsolidationOrderApproval').mockRejectedValue(new Error(errorMessage));
 
     const approveButton = document.querySelector(`#accordion-approve-button-${order.id}`);
     expect(approveButton).not.toBeEnabled();
@@ -796,7 +787,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should clear checkboxes and disable approve button when cancel is clicked', async () => {
+  test.skip('should clear checkboxes and disable approve button when cancel is clicked', async () => {
     renderWithProps();
     openAccordion(order.id!);
 
@@ -836,7 +827,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should clear checkboxes and disable approve button when accordion is collapsed', async () => {
+  test.skip('should clear checkboxes and disable approve button when accordion is collapsed', async () => {
     renderWithProps();
     openAccordion(order.id!);
 
@@ -873,7 +864,7 @@ describe.skip('ConsolidationOrderAccordion tests', () => {
     });
   });
 
-  test('should select all checkboxes and enable approve button when Include All button is clicked and consolidation type and lead case are set', async () => {
+  test.skip('should select all checkboxes and enable approve button when Include All button is clicked and consolidation type and lead case are set', async () => {
     renderWithProps();
     openAccordion(order.id!);
     // setupApiGetMock();

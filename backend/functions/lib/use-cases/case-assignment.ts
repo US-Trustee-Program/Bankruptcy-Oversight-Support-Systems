@@ -27,7 +27,7 @@ export class CaseAssignmentUseCase {
     newAssignments: CamsUserReference[],
     role: string,
     options: { processRoles?: CamsRole[] } = {},
-  ): Promise<string[]> {
+  ): Promise<void> {
     const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
     if (!userAndProcessRoles.includes(CamsRole.CaseAssignmentManager)) {
       throw new AssignmentError(MODULE_NAME, {
@@ -42,7 +42,7 @@ export class CaseAssignmentUseCase {
         message: 'User does not have appropriate access to create assignments for this office.',
       });
     }
-    const assignmentIds = await this.assignTrialAttorneys(context, caseId, newAssignments, role);
+    await this.assignTrialAttorneys(context, caseId, newAssignments, role);
 
     // Reassign all child cases if this is a joint administration lead case.
     const consolidationReferences = await this.casesRepository.getConsolidation(context, caseId);
@@ -56,8 +56,6 @@ export class CaseAssignmentUseCase {
     for (const childCaseId of childCaseIds) {
       await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
     }
-
-    return assignmentIds;
   }
 
   private async assignTrialAttorneys(
