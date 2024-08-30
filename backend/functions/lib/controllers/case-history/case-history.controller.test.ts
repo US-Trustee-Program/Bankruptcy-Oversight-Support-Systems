@@ -26,7 +26,7 @@ describe('Test case-history controller', () => {
     });
     applicationContext.request = request;
     const controller = new CaseHistoryController(applicationContext);
-    const result = await controller.getCaseHistory(applicationContext);
+    const result = await controller.getCaseHistory(applicationContext, request);
     expect(result.body['data']).toEqual(CASE_HISTORY);
   });
 
@@ -40,7 +40,9 @@ describe('Test case-history controller', () => {
     });
     applicationContext.request = request;
     const controller = new CaseHistoryController(applicationContext);
-    await expect(controller.getCaseHistory(applicationContext)).rejects.toThrow('Not found');
+    await expect(controller.getCaseHistory(applicationContext, request)).rejects.toThrow(
+      'Not found',
+    );
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
@@ -54,6 +56,8 @@ describe('Test case-history controller', () => {
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
-    await expect(controller.getCaseHistory(applicationContext)).rejects.toThrow(expectedMessage);
+    await expect(controller.getCaseHistory(applicationContext, request)).rejects.toThrow(
+      expectedMessage,
+    );
   });
 });
