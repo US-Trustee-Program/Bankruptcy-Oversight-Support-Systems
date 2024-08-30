@@ -4,7 +4,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { ConsolidationOrder } from '@common/cams/orders';
 import MockData from '@common/cams/test-utilities/mock-data';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
+import Api2 from '@/lib/hooks/UseApi2';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
@@ -109,10 +109,8 @@ describe('audit history tests', () => {
   ];
 
   test('should display loading indicator if loading', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: 'test message',
-      count: 0,
-      body: [],
+    vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({
+      data: [],
     });
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
@@ -122,10 +120,8 @@ describe('audit history tests', () => {
   });
 
   test('should display no assignments message if no history exists', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: 'test message',
-      count: 0,
-      body: [],
+    vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({
+      data: [],
     });
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
@@ -138,10 +134,8 @@ describe('audit history tests', () => {
   });
 
   test('should display assignment history when history exists', async () => {
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: 'test message',
-      count: 0,
-      body: caseHistory,
+    vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({
+      data: caseHistory,
     });
 
     const expectedPrevious = assignmentBefore.map((n) => n.name).join(', ');
@@ -179,10 +173,8 @@ describe('audit history tests', () => {
         after: [],
       },
     ];
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: 'test message',
-      count: 0,
-      body: caseHistory,
+    vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({
+      data: caseHistory,
     });
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
@@ -217,10 +209,8 @@ describe('audit history tests', () => {
         after: pendingTransferOrder,
       },
     ];
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValue({
-      message: 'test message',
-      count: 0,
-      body: caseHistory,
+    vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({
+      data: caseHistory,
     });
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
