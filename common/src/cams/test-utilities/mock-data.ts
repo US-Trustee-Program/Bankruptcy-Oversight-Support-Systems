@@ -11,6 +11,7 @@ import {
   ConsolidationOrder,
   ConsolidationOrderCase,
   ConsolidationType,
+  Order,
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
@@ -31,6 +32,7 @@ import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
+import { sortDates } from '../../date-helper';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -287,6 +289,23 @@ function getConsolidationOrder(
   return { ...consolidationOrder, ...override };
 }
 
+function getSortedOrders(count: number = 10): Order[] {
+  let transferCount = count;
+  let consolidationCount = 0;
+
+  if (count > 1) {
+    transferCount = Math.floor(count / 2);
+    consolidationCount = count - transferCount;
+  }
+
+  const orderList = [
+    ...buildArray(MockData.getTransferOrder, transferCount),
+    ...buildArray(MockData.getConsolidationOrder, consolidationCount),
+  ].sort((a, b) => sortDates(a.orderDate, b.orderDate));
+
+  return orderList;
+}
+
 function getRawConsolidationOrder(
   options: Options<RawConsolidationOrder> = { override: {} },
 ): RawConsolidationOrder {
@@ -498,10 +517,11 @@ export const MockData = {
   getDocketEntry,
   getNonPaginatedResponseBody,
   getPaginatedResponseBody,
-  getTransferOrder,
   getDebtorAttorney,
   getConsolidation,
   getConsolidationOrder,
+  getTransferOrder,
+  getSortedOrders,
   getConsolidatedOrderCase,
   getConsolidationReference,
   getRawConsolidationOrder,
