@@ -69,7 +69,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage },
       searchPredicate,
     };
     renderWithProps(props);
@@ -88,7 +88,7 @@ describe('Pagination tests', () => {
   test('should call retrievePage correctly for previous button', () => {
     const searchPredicate = { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit };
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage: 2 },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage: 2 },
       searchPredicate,
     };
     renderWithProps(props);
@@ -111,7 +111,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage },
       searchPredicate,
     };
     renderWithProps(props);
@@ -134,7 +134,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage },
       searchPredicate,
     };
     renderWithProps(props);
@@ -157,7 +157,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage },
       searchPredicate,
     };
     renderWithProps(props);
@@ -189,7 +189,7 @@ describe('Pagination tests', () => {
 
   test('should render previous, page 1, page 2, page 3, ellipses, and next', () => {
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage: 2 },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage: 2 },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit },
     };
     renderWithProps(props);
@@ -210,7 +210,7 @@ describe('Pagination tests', () => {
 
   test('should render previous, page 1, page 2, page 3, page 4, ellipses, and next', () => {
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage: 3 },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage: 3 },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit * 2 },
     };
     renderWithProps(props);
@@ -233,7 +233,7 @@ describe('Pagination tests', () => {
 
   test('should render previous, page 1, page 2, page 3, page 4, page 5, ellipses, and next', () => {
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage: 4 },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage: 4 },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit * 3 },
     };
     renderWithProps(props);
@@ -258,7 +258,7 @@ describe('Pagination tests', () => {
 
   test('should render previous, page 1, ellipses, page 4, page 5, page 6, ellipses, and next', () => {
     const props = {
-      paginationMeta: { ...defaultPagination, previous: 'previous-link', currentPage: 5 },
+      paginationValues: { ...defaultPagination, previous: 'previous-link', currentPage: 5 },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit * 4 },
     };
     renderWithProps(props);
@@ -285,7 +285,7 @@ describe('Pagination tests', () => {
 
   test('should not render final ellipses or next buttons if we have no next', () => {
     const props = {
-      paginationMeta: {
+      paginationValues: {
         ...defaultPagination,
         previous: 'previous-link',
         next: undefined,
