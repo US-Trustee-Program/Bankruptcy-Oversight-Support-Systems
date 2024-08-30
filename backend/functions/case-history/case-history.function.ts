@@ -3,7 +3,7 @@ import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'CASE-HISTORY-FUNCTION' as const;
 
@@ -15,19 +15,23 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    invocationContext,
-    request,
-  );
-  const caseHistoryController = new CaseHistoryController(applicationContext);
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      request,
+      logger,
+    );
+    const camsRequest = await azureToCamsHttpRequest(request);
+    const caseHistoryController = new CaseHistoryController(applicationContext);
 
-    const responseBody = await caseHistoryController.getCaseHistory(applicationContext);
+    const responseBody = await caseHistoryController.getCaseHistory(
+      applicationContext,
+      camsRequest,
+    );
     return toAzureSuccess(responseBody);
   } catch (error) {
-    return toAzureError(applicationContext, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 

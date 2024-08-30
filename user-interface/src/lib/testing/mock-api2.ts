@@ -6,7 +6,7 @@ import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/
 import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { AttorneyUser } from '@common/cams/users';
-import { CaseAssignment } from '@common/cams/assignments';
+import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { CamsSession } from '@common/cams/session';
 import { OfficeDetails } from '@common/cams/courts';
@@ -265,6 +265,10 @@ async function searchCases(predicate: CasesSearchPredicate): Promise<ResponseBod
   return post<CaseBasics[]>('/cases', predicate, {});
 }
 
+async function postStaffAssignments(action: StaffAssignmentAction): Promise<ResponseBody> {
+  return post('/case-assignments', action, {});
+}
+
 export const MockApi2 = {
   getAttorneys,
   getCaseDetail,
@@ -278,6 +282,7 @@ export const MockApi2 = {
   getOrders,
   getOrderSuggestions,
   patchTransferOrder,
+  postStaffAssignments,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
   searchCases,

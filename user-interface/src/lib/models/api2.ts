@@ -1,4 +1,4 @@
-import { CaseAssignment } from '@common/cams/assignments';
+import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { Consolidation } from '@common/cams/events';
@@ -168,6 +168,10 @@ async function searchCases(predicate: CasesSearchPredicate) {
   return api().post<CaseBasics[]>('/cases', predicate);
 }
 
+async function postStaffAssignments(action: StaffAssignmentAction): Promise<ResponseBody> {
+  return api().post('/case-assignments', action);
+}
+
 export const _Api2 = {
   getAttorneys,
   getCaseDetail,
@@ -181,6 +185,7 @@ export const _Api2 = {
   getOrders,
   getOrderSuggestions,
   patchTransferOrder,
+  postStaffAssignments,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
   searchCases,

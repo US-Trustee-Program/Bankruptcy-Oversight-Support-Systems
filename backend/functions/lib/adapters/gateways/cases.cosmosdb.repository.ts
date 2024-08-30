@@ -87,11 +87,12 @@ export class CasesCosmosDbRepository implements CasesRepository {
 
   async createConsolidationFrom(
     context: ApplicationContext,
-    consoldiationOut: ConsolidationFrom,
+    consolidationOut: ConsolidationFrom,
   ): Promise<ConsolidationFrom> {
-    return this.create<ConsolidationFrom>(context, consoldiationOut);
+    return this.create<ConsolidationFrom>(context, consolidationOut);
   }
-  async getCaseHistory(context: ApplicationContext, caseId: string): Promise<Array<CaseHistory>> {
+
+  async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
     const query =
       'SELECT * FROM c WHERE c.documentType LIKE "AUDIT_%" AND c.caseId = @caseId ORDER BY c.occurredAtTimestamp DESC';
     const querySpec = {
@@ -104,6 +105,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
       ],
     };
     const response = await this.queryData<CaseHistory>(context, querySpec);
+    console.log('Case history repo:', caseId, query, response);
     return response;
   }
 
