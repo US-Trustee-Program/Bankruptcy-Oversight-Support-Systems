@@ -121,7 +121,11 @@ export default class Chapter15MockApi extends Api {
   ];
 
   // TODO: add handling of other uses of POST (e.g. case assignment creation)
-  public static async post(path: string, body: object, _options: ObjectKeyVal) {
+  public static async post(
+    path: string,
+    body: object,
+    _options: ObjectKeyVal,
+  ): Promise<ResponseBody> {
     if (path.match(/\/cases/)) {
       const searchRequest = body as { caseNumber: string };
       const _actions = [Actions.ManageAssignments];
@@ -214,14 +218,22 @@ export default class Chapter15MockApi extends Api {
     return Promise.resolve(response);
   }
 
-  public static async patch(_path: string, data: object, _options?: ObjectKeyVal) {
+  public static async patch(
+    _path: string,
+    data: object,
+    _options?: ObjectKeyVal,
+  ): Promise<ResponseBody> {
     const response = {
       data,
     };
     return Promise.resolve(response);
   }
 
-  public static async put(_path: string, data: object, _options?: ObjectKeyVal) {
+  public static async put(
+    _path: string,
+    data: object,
+    _options?: ObjectKeyVal,
+  ): Promise<ResponseBody> {
     const response = {
       data,
     };
