@@ -10,30 +10,16 @@ import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
-import { CaseSummary } from '@common/cams/cases';
-
-import Api from '@/lib/models/chapter15-mock.api.cases';
+import Api2 from '@/lib/models/api2';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
 const suggestedCases = [toCaseSummary, MockData.getCaseSummary()];
 
-async function mockGetCaseSummary(): Promise<SimpleResponseData<CaseSummary>> {
-  return Promise.resolve({ success: true, body: fromCaseSummary });
-}
-
-async function mockGetCaseSummaryForToCase(): Promise<SimpleResponseData<CaseSummary>> {
-  return Promise.resolve({ success: true, body: toCaseSummary });
-}
-
-async function mockGetTransferredCaseSuggestions(): Promise<ResponseData<CaseSummary[]>> {
-  return Promise.resolve({ message: 'ok', count: suggestedCases.length, body: suggestedCases });
-}
-
-async function mockGetTransferredCaseSuggestionsEmpty(): Promise<ResponseData<CaseSummary[]>> {
-  return Promise.resolve({ message: 'ok', count: 0, body: [] });
-}
+const mockGetCaseSummary = { data: fromCaseSummary };
+const mockGetCaseSummaryForToCase = { data: toCaseSummary };
+const mockGetTransferredCaseSuggestions = { data: suggestedCases };
+const mockGetTransferredCaseSuggestionsEmpty = { data: [] };
 
 const regionMap = new Map();
 regionMap.set('02', 'NEW YORK');
@@ -103,9 +89,10 @@ describe('PendingTransferOrder component', () => {
     beforeEach(async () => {
       vi.stubEnv('CAMS_PA11Y', 'true');
       order = MockData.getTransferOrder();
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestions);
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValueOnce(mockGetCaseSummary);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestions,
+      );
     });
 
     afterEach(() => {
@@ -232,9 +219,10 @@ describe('PendingTransferOrder component', () => {
     beforeEach(async () => {
       vi.stubEnv('CAMS_PA11Y', 'true');
       order = MockData.getTransferOrder();
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty);
+      vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(mockGetCaseSummary);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
     });
 
     afterEach(() => {
@@ -242,18 +230,18 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
-      const patchSpy = vi.spyOn(Api, 'patch').mockResolvedValue({
-        message: 'Approved',
-        count: 1,
-        body: {
+      const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockResolvedValue({
+        data: {
           dateFiled: order.dateFiled,
           debtor: order.debtor,
         },
       });
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       const { onOrderUpdate } = renderWithProps();
 
@@ -294,22 +282,23 @@ describe('PendingTransferOrder component', () => {
         status: 'approved',
       };
 
-      expect(patchSpy).toHaveBeenCalledWith(`/orders/${order.id}`, expectedInput);
+      expect(patchSpy).toHaveBeenCalledWith(expectedInput);
     });
 
     test('should properly reject when API returns a successful response and a reason is supplied', async () => {
-      const patchSpy = vi.spyOn(Api, 'patch').mockResolvedValue({
-        message: 'Rejected',
-        count: 1,
-        body: {
+      const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockResolvedValue({
+        data: {
           dateFiled: order.dateFiled,
           debtor: order.debtor,
         },
       });
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
+
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       const { onOrderUpdate } = renderWithProps();
       await waitForCaseEntryForm();
@@ -368,15 +357,17 @@ describe('PendingTransferOrder component', () => {
           status: 'rejected',
         };
 
-        expect(patchSpy).toHaveBeenCalledWith(`/orders/${order.id}`, expectedInput);
+        expect(patchSpy).toHaveBeenCalledWith(expectedInput);
       });
     });
 
     test('should properly clear rejection reason when modal is closed without submitting rejection', async () => {
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       renderWithProps();
       await waitForCaseEntryForm();
@@ -437,11 +428,13 @@ describe('PendingTransferOrder component', () => {
 
     test('should throw error during Approval when API returns an error', async () => {
       const errorMessage = 'Some random error';
-      vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'patchTransferOrder').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       const { onOrderUpdate } = renderWithProps();
 
@@ -480,11 +473,14 @@ describe('PendingTransferOrder component', () => {
 
     test('should throw error during Rejection when API returns an error', async () => {
       const errorMessage = 'Some random error';
-      vi.spyOn(Api, 'patch').mockRejectedValue(new Error(errorMessage));
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'patchTransferOrder').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       const { onOrderUpdate } = renderWithProps();
 
@@ -522,10 +518,12 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should leave input fields and data in place when closing the modal without approving', async () => {
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       renderWithProps();
       await waitForCaseEntryForm();
@@ -575,11 +573,12 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should clear radio, remove form, and disable submission button when the Cancel button is clicked', async () => {
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestions)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValue(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestions,
+      );
 
       renderWithProps();
       await waitFor(() => {
@@ -623,11 +622,12 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should clear input values and disable submission button when the Cancel button is clicked', async () => {
-      vi.spyOn(Api, 'get')
-        .mockImplementationOnce(mockGetCaseSummary)
-        .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmpty)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase)
-        .mockImplementationOnce(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getCaseSummary')
+        .mockResolvedValueOnce(mockGetCaseSummary)
+        .mockResolvedValue(mockGetCaseSummaryForToCase);
+      vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
+        mockGetTransferredCaseSuggestionsEmpty,
+      );
 
       renderWithProps();
       await waitForCaseEntryForm();
