@@ -6,7 +6,8 @@ import { CamsError } from '../../common-errors/cams-error';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -55,7 +56,9 @@ export class CaseAssignmentController {
         params.listOfAttorneyNames,
         params.role,
       );
-      return {};
+      return httpSuccess({
+        statusCode: HttpStatusCodes.CREATED,
+      });
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {

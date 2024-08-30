@@ -15,6 +15,7 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { UnknownError } from '../../common-errors/unknown-error';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -51,14 +52,8 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.data.length).toBe(listOfAttorneyNames.length);
-    expect(assignmentResponse).toEqual(
-      expect.objectContaining({
-        body: {
-          data: expect.any(Array<string>),
-        },
-      }),
-    );
+    expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
+    expect(assignmentResponse.body).toBeUndefined();
   });
 
   test('should assign all attorneys in the list', async () => {
@@ -73,14 +68,8 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.data.length).toBe(listOfAttorneyNames.length);
-    expect(assignmentResponse).toEqual(
-      expect.objectContaining({
-        body: {
-          data: expect.any(Array<string>),
-        },
-      }),
-    );
+    expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
+    expect(assignmentResponse.body).toBeUndefined();
   });
 
   test('should create only one assignment per attorney', async () => {
@@ -91,19 +80,12 @@ describe('Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    const expectedNumberOfAssignees = Array.from(new Set(listOfAttorneys)).length;
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.data.length).toBe(expectedNumberOfAssignees);
-    expect(assignmentResponse).toEqual(
-      expect.objectContaining({
-        body: {
-          data: expect.any(Array<string>),
-        },
-      }),
-    );
+    expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
+    expect(assignmentResponse.body).toBeUndefined();
   });
 
   test('should fetch a list of assignments when a GET request is called', async () => {
