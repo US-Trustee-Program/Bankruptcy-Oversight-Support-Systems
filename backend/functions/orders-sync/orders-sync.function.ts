@@ -15,7 +15,7 @@ initializeApplicationInsights();
 const MODULE_NAME = 'ORDERS-SYNC-FUNCTION' as const;
 
 export default async function timerTrigger(
-  myTimer: Timer,
+  _myTimer: Timer,
   invocationContext: InvocationContext,
 ): Promise<void> {
   const logger = ContextCreator.getLogger(invocationContext);
@@ -25,7 +25,6 @@ export default async function timerTrigger(
     await ordersController.syncOrders(appContext);
   } catch (error) {
     toAzureError(logger, MODULE_NAME, error);
-    myTimer.isPastDue;
   }
 }
 app.timer('orders-sync', {
