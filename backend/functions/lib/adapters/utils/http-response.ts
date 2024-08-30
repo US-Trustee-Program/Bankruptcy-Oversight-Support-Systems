@@ -15,10 +15,11 @@ export type CamsHttpResponseInit<T extends object = undefined> = {
 export function httpSuccess<T extends object = undefined>(
   response: CamsHttpResponseInit<T> = {},
 ): CamsHttpResponseInit<T> {
-  return {
+  const camsResponse: CamsHttpResponseInit<T> = {
     headers: { ...commonHeaders, ...response.headers },
     statusCode:
       response.statusCode ?? (response.body ? HttpStatusCodes.OK : HttpStatusCodes.NO_CONTENT),
-    body: response.body,
   };
+  if (response.body) camsResponse.body = response.body;
+  return camsResponse;
 }
