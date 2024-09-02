@@ -10,7 +10,6 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-// import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
@@ -41,46 +40,6 @@ function openAccordion(orderId: string) {
   const header: HTMLElement = screen.getByTestId(`accordion-heading-${orderId}`);
   fireEvent.click(header);
 }
-
-/*type ConsolidationArray = (ConsolidationTo | ConsolidationFrom)[];
-
-function setupApiGetMock(options: { bCase?: CaseSummary; associations?: ConsolidationArray } = {}) {
-  // Assigned attorneys and associated cases.
-  vi.spyOn(Chapter15MockApi, 'get').mockImplementation((path: string) => {
-    if (path.includes('/case-assignments/')) {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 1,
-        body: [MockData.getAttorneyAssignment()],
-      } as SimpleResponseData<CaseAssignment[]>);
-    } else if (path.match(/\/cases\/\d\d\d-99-99999\/associated/)) {
-      return Promise.reject({ message: '404 Case associations not found for the case ID.' });
-    } else if (path.includes('/associated')) {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 0,
-        body: options.associations ?? [],
-      } as SimpleResponseData<Consolidation[]>);
-    } else if (path.match(/\/cases\/\d\d\d-00-00000\/summary/i)) {
-      return Promise.reject({ message: 'Some strange error were not expecting' });
-    } else if (path.match(/\/cases\/\d\d\d-11-11111\/summary/i)) {
-      return Promise.reject({ message: '404 Case summary not found for the case ID.' });
-    } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
-      return Promise.resolve({
-        success: true,
-        message: '',
-        count: 1,
-        body: options.bCase ?? {},
-      } as SimpleResponseData<CaseSummary>);
-    }
-    return Promise.resolve({
-      success: false,
-      body: {},
-    });
-  });
-}*/
 
 describe('ConsolidationOrderAccordion tests', () => {
   const order: ConsolidationOrder = MockData.getConsolidationOrder({
