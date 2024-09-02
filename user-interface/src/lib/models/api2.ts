@@ -38,7 +38,7 @@ interface GenericApiClient {
   put<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 }
 
-function extractPathFromUri(uriOrPath: string, api: ApiClient) {
+export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
   if (api.host.length > 0 && uriOrPath.startsWith(api.host)) {
     uriOrPath = uriOrPath.replace(api.host, '');
   }
@@ -60,7 +60,7 @@ function castToResponseBody<T>(response: unknown): ResponseBody<T> {
   throw new Error('Cannot map legacy response from API to new response model.');
 }
 
-function addAuthHeaderToApi(): ApiClient {
+export function addAuthHeaderToApi(): ApiClient {
   const api = Api;
   const session = LocalStorage.getSession();
   api.headers['Authorization'] = `Bearer ${session?.accessToken}`;
@@ -68,7 +68,7 @@ function addAuthHeaderToApi(): ApiClient {
 }
 
 // TODO: This should absorb `user-interface/src/lib/models/api.ts`
-function useGenericApi(): GenericApiClient {
+export function useGenericApi(): GenericApiClient {
   const api = addAuthHeaderToApi();
 
   function justThePath(uriOrPath: string): string {
