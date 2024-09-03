@@ -10,7 +10,7 @@ import {
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { CamsHttpResponseInit, commonHeaders } from '../lib/adapters/utils/http-response';
+import { commonHeaders } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Orders Function tests', () => {
@@ -37,11 +37,14 @@ describe('Orders Function tests', () => {
   test('should return proper response when successfully updating an order', async () => {
     const id = '1234567890';
 
-    const { azureHttpResponse } = buildTestResponseSuccess<CamsHttpResponseInit>();
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
+      headers: commonHeaders,
+      statusCode: HttpStatusCodes.NO_CONTENT,
+    });
 
     const updateOrder = jest
       .spyOn(OrdersController.prototype, 'updateOrder')
-      .mockResolvedValue({ headers: commonHeaders, statusCode: HttpStatusCodes.NO_CONTENT });
+      .mockResolvedValue(camsHttpResponse);
 
     const orderRequest = createMockAzureFunctionRequest({
       params: { id },

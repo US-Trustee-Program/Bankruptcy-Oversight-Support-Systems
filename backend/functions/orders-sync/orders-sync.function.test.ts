@@ -4,7 +4,7 @@ import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { SyncOrdersStatus } from '../lib/use-cases/orders/orders';
 import timerTrigger from './orders-sync.function';
 import { Timer } from '@azure/functions';
-import { createMockAzureFunctionContext } from '../azure/testing-helpers';
+import { buildTestResponseSuccess, createMockAzureFunctionContext } from '../azure/testing-helpers';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -39,10 +39,12 @@ describe('Orders Sync Function tests', () => {
       lastUpdated: '',
     },
   };
+
   test('Should call orders controller method syncOrders', async () => {
+    const { camsHttpResponse } = buildTestResponseSuccess<SyncOrdersStatus>({ data: syncResponse });
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')
-      .mockResolvedValue(syncResponse);
+      .mockResolvedValue(camsHttpResponse);
     await timerTrigger(timer, context);
     expect(syncOrders).toHaveBeenCalled();
   });
