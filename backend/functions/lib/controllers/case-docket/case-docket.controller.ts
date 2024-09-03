@@ -19,7 +19,7 @@ export class CaseDocketController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseDocket>> {
     try {
-      const caseDocket = await this.useCase.getCaseDocket(context, context.request.params.caseId);
+      const caseDocket = await this.useCase.getCaseDocket(context);
       return httpSuccess({
         body: {
           meta: {

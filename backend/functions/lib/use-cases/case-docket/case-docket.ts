@@ -9,7 +9,8 @@ export class CaseDocketUseCase {
     this.gateway = gateway;
   }
 
-  public async getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket> {
+  public async getCaseDocket(context: ApplicationContext): Promise<CaseDocket> {
+    const caseId = context.request.params.caseId;
     return this.gateway.getCaseDocket(context, caseId);
   }
 }
