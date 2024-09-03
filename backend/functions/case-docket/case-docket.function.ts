@@ -26,8 +26,8 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const responseBody = await caseDocketController.getCaseDocket(applicationContext);
-    return toAzureSuccess(responseBody);
+    const response = await caseDocketController.getCaseDocket(applicationContext);
+    return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
