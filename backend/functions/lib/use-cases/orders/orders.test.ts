@@ -86,7 +86,8 @@ describe('Orders use case', () => {
   test('should return list of suggested cases for an order', async () => {
     const suggestedCases = [CASE_SUMMARIES[0]];
     const gateway = jest.spyOn(casesGateway, 'getSuggestedCases').mockResolvedValue(suggestedCases);
-    const result = await useCase.getSuggestedCases(mockContext, CASE_ID);
+    mockContext.request.params.caseId = CASE_ID;
+    const result = await useCase.getSuggestedCases(mockContext);
     expect(result).toEqual(suggestedCases);
     expect(gateway).toHaveBeenCalled();
   });

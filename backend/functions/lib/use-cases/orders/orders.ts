@@ -89,10 +89,8 @@ export class OrdersUseCase {
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
   }
 
-  public async getSuggestedCases(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<CaseSummary>> {
+  public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
+    const caseId = context.request.params.caseId;
     return this.casesGateway.getSuggestedCases(context, caseId);
   }
 

@@ -113,10 +113,9 @@ describe('orders controller tests', () => {
       .mockResolvedValue(suggestedCases);
 
     const controller = new OrdersController(applicationContext);
-    const caseId = 'mockId';
-    applicationContext.request = mockCamsHttpRequest({ params: { caseId } });
+    applicationContext.request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
     const response = await controller.getSuggestedCases(applicationContext);
-    expect(getSuggestedCasesSpy).toHaveBeenCalledWith(applicationContext, caseId);
+    expect(getSuggestedCasesSpy).toHaveBeenCalledWith(applicationContext);
     expect(response).toEqual(
       expect.objectContaining({
         body: { meta: expect.objectContaining({ self: expect.any(String) }), data: suggestedCases },
