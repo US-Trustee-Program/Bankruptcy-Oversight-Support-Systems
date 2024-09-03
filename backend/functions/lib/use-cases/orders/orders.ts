@@ -100,7 +100,7 @@ export class OrdersUseCase {
     context: ApplicationContext,
     id: string,
     data: TransferOrderAction,
-  ): Promise<string> {
+  ): Promise<void> {
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     let order: Order;
@@ -136,8 +136,6 @@ export class OrdersUseCase {
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
-
-    return id;
   }
 
   public async syncOrders(

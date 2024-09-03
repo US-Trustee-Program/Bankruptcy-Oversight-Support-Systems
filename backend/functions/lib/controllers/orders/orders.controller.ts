@@ -22,12 +22,13 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
-import { CamsHttpRequest } from '../../adapters/types/http';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
 export type GetOrdersResponse = CamsHttpResponseInit<Order[]>;
 export type GetSuggestedCasesResponse = CamsHttpResponseInit<CaseSummary[]>;
+export type UpdateOrderResponse = CamsHttpResponseInit;
+export type SyncOrdersResponse = CamsHttpResponseInit<SyncOrdersStatus>;
 export type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
 
 export class OrdersController {
@@ -44,12 +45,12 @@ export class OrdersController {
     );
   }
 
-  public async getOrders(context: ApplicationContext): Promise<CamsHttpResponseInit<Order[]>> {
+  public async getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
     try {
       const data = await this.useCase.getOrders(context);
-      return {
+      return httpSuccess<Order[]>({
         body: { data },
-      };
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
@@ -57,20 +58,17 @@ export class OrdersController {
     }
   }
 
-  public async getSuggestedCases(
-    context: ApplicationContext,
-    request: CamsHttpRequest,
-  ): Promise<CamsHttpResponseInit<CaseSummary[]>> {
+  public async getSuggestedCases(context: ApplicationContext): Promise<GetSuggestedCasesResponse> {
     try {
-      const data = await this.useCase.getSuggestedCases(context, request.params.caseId);
-      return {
+      const data = await this.useCase.getSuggestedCases(context, context.request.params.caseId);
+      return httpSuccess<CaseSummary[]>({
         body: {
           meta: {
-            self: request.url,
+            self: context.request.url,
           },
           data,
         },
-      };
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
@@ -82,23 +80,22 @@ export class OrdersController {
     context: ApplicationContext,
     id: string,
     data: TransferOrderAction,
-  ): Promise<CamsHttpResponseInit> {
+  ): Promise<UpdateOrderResponse> {
     // TODO: Need to sanitize id and data.
     try {
       const bodyId = data['id'];
       const orderType = data['orderType'];
       if (id !== bodyId) {
-        const camsError = new BadRequestError(MODULE_NAME, {
+        throw new BadRequestError(MODULE_NAME, {
           message: 'Cannot update order. ID of order does not match ID of request.',
         });
-        throw camsError;
       }
       if (orderType === 'transfer') {
         await this.useCase.updateTransferOrder(context, id, data);
       }
-      return {
+      return httpSuccess({
         statusCode: HttpStatusCodes.NO_CONTENT,
-      };
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
@@ -109,11 +106,12 @@ export class OrdersController {
   public async syncOrders(
     context: ApplicationContext,
     options?: SyncOrdersOptions,
-  ): Promise<CamsHttpResponseInit<SyncOrdersStatus>> {
+  ): Promise<SyncOrdersResponse> {
     try {
-      const result = await this.useCase.syncOrders(context, options);
-      const success = httpSuccess({ body: { data: result } });
-      return success;
+      const data = await this.useCase.syncOrders(context, options);
+      return httpSuccess<SyncOrdersStatus>({
+        body: { data },
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
@@ -123,19 +121,17 @@ export class OrdersController {
 
   public async rejectConsolidation(
     context: ApplicationContext,
-    order: unknown,
-  ): Promise<CamsHttpResponseInit<ConsolidationOrder[]>> {
+  ): Promise<ManageConsolidationResponse> {
     try {
-      if (isConsolidationOrderRejection(order)) {
-        if (order.rejectedCases.length == 0) {
+      if (isConsolidationOrderRejection(context.request.body)) {
+        if (context.request.body.rejectedCases.length == 0) {
           throw new BadRequestError('Missing rejected cases');
         }
 
-        const data = await this.useCase.rejectConsolidation(context, order);
-        const response = {
+        const data = await this.useCase.rejectConsolidation(context, context.request.body);
+        return httpSuccess<ConsolidationOrder[]>({
           body: { data },
-        };
-        return response;
+        });
       }
     } catch (originalError) {
       throw isCamsError(originalError)
@@ -146,27 +142,25 @@ export class OrdersController {
 
   public async approveConsolidation(
     context: ApplicationContext,
-    order: unknown,
-  ): Promise<CamsHttpResponseInit<ConsolidationOrder[]>> {
+  ): Promise<ManageConsolidationResponse> {
     try {
-      if (isConsolidationOrderApproval(order)) {
-        if (!order.consolidationType) {
+      if (isConsolidationOrderApproval(context.request.body)) {
+        if (!context.request.body.consolidationType) {
           throw new BadRequestError('Missing consolidation type');
         }
 
-        if (order.approvedCases.length == 0) {
+        if (context.request.body.approvedCases.length == 0) {
           throw new BadRequestError('Missing approved cases');
         }
 
-        if (!order.leadCase) {
+        if (!context.request.body.leadCase) {
           throw new BadRequestError('Missing lead case');
         }
 
-        const data = await this.useCase.approveConsolidation(context, order);
-        const response = {
+        const data = await this.useCase.approveConsolidation(context, context.request.body);
+        return httpSuccess<ConsolidationOrder[]>({
           body: { data },
-        };
-        return response;
+        });
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
