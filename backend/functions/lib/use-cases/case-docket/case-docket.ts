@@ -1,6 +1,6 @@
 import { CaseDocketGateway } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseDocket } from './case-docket.model';
+import { CaseDocket } from '../../../../../common/src/cams/cases';
 
 export class CaseDocketUseCase {
   private readonly gateway: CaseDocketGateway;

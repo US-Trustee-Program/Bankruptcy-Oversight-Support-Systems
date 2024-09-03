@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
 import { getCaseDocketUseCase } from '../../factory';
-import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import { CaseDocket } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
 

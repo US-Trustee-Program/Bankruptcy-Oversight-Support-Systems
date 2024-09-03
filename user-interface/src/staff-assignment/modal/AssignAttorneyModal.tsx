@@ -1,6 +1,5 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, RefObject, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
@@ -45,10 +44,6 @@ export interface AssignAttorneyModalRef {
 export interface AssignAttorneyModalProps {
   modalId: string;
   alertMessage?: AlertDetails;
-}
-
-export interface AttorneyListResponseData extends ResponseData {
-  attorneyList: Array<AttorneyUser>;
 }
 
 function _AssignAttorneyModal(

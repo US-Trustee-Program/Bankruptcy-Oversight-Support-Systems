@@ -11,7 +11,7 @@ import {
   TransferOrder,
 } from '../../../../../../common/src/cams/orders';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
-import { CaseDocketEntry } from '../../../use-cases/case-docket/case-docket.model';
+import { CaseDocketEntry } from '../../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 

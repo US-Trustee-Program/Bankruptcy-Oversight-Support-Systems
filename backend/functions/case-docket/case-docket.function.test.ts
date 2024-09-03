@@ -8,9 +8,9 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { CaseDocket } from '../lib/use-cases/case-docket/case-docket.model';
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
+import { CaseDocket } from '../../../common/src/cams/cases';
 
 describe('Case docket function', () => {
   const context = new InvocationContext({

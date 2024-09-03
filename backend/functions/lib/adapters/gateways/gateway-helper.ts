@@ -6,8 +6,7 @@ import { DEBTOR_ATTORNEYS } from '../../testing/mock-data/debtor-attorneys.mock'
 import { DEBTORS } from '../../testing/mock-data/debtors.mock';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-entries.mock';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
-import { CaseDocketEntry } from '../../use-cases/case-docket/case-docket.model';
-import { CaseDetail } from '../../../../../common/src/cams/cases';
+import { CaseDetail, CaseDocketEntry } from '../../../../../common/src/cams/cases';
 import { DebtorAttorney, Party } from '../../../../../common/src/cams/parties';
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 

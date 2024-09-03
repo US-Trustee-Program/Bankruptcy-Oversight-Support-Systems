@@ -3,14 +3,11 @@ import * as mssql from 'mssql';
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { decomposeCaseId } from './dxtr.gateway.helper';
-import {
-  CaseDocket,
-  CaseDocketEntryDocument,
-} from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { CaseDocket, CaseDocketEntryDocument } from '../../../../../../common/src/cams/cases';
 
 const MODULENAME = 'CASE-DOCKET-DXTR-GATEWAY';
 

@@ -10,10 +10,9 @@ import { OrderStatus, TransferOrder } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
 import Api2 from '@/lib/hooks/UseApi2';
 
 const testOffices: OfficeDetails[] = [
