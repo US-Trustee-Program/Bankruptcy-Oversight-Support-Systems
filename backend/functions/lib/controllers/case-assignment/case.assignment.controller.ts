@@ -28,11 +28,12 @@ export class CaseAssignmentController {
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
-      return {
+      const success = httpSuccess({
         body: {
           data: assignments,
         },
-      };
+      });
+      return success;
     } catch (exception) {
       this.applicationContext.logger.error(MODULE_NAME, exception.message);
       if (exception instanceof CamsError) {
