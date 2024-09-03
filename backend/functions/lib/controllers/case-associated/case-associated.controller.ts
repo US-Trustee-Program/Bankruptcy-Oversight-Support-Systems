@@ -7,10 +7,6 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 
 const MODULE_NAME = 'CASE-ASSOCIATED-CONTROLLER';
 
-type GetCaseAssociatedRequest = {
-  caseId: string;
-};
-
 export class CaseAssociatedController {
   private readonly useCase: CaseAssociatedUseCase;
 
@@ -20,10 +16,9 @@ export class CaseAssociatedController {
 
   public async getAssociatedCases(
     context: ApplicationContext,
-    request: GetCaseAssociatedRequest,
   ): Promise<CamsHttpResponseInit<EventCaseReference[]>> {
     try {
-      const associatedCases = await this.useCase.getAssociatedCases(context, request.caseId);
+      const associatedCases = await this.useCase.getAssociatedCases(context);
       return httpSuccess({
         body: { data: associatedCases },
       });
