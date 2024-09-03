@@ -7,6 +7,7 @@ import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/fu
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { httpSuccess } from '../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
@@ -58,7 +59,13 @@ export default async function handler(
     checkCosmosDbDelete,
     checkSqlDbReadAccess,
   )
-    ? toAzureSuccess(Object.assign({ status: 'OK' }, respBody))
+    ? toAzureSuccess(
+        httpSuccess({
+          body: {
+            data: Object.assign({ status: 'OK' }, respBody),
+          },
+        }),
+      )
     : toAzureError(
         applicationContext,
         MODULE_NAME,
