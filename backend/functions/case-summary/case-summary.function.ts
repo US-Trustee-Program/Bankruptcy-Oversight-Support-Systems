@@ -3,7 +3,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
@@ -23,8 +23,7 @@ export default async function handler(
       logger,
     );
     const caseSummaryController = new CaseSummaryController(applicationContext);
-    const camsRequest = await azureToCamsHttpRequest(request);
-    const response = await caseSummaryController.getCaseSummary(applicationContext, camsRequest);
+    const response = await caseSummaryController.getCaseSummary(applicationContext);
     return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
