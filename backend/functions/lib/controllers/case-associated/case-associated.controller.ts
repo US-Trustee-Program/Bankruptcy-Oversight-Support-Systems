@@ -3,7 +3,7 @@ import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { EventCaseReference } from '../../../../../common/src/cams/events';
 import { CaseAssociatedUseCase } from '../../use-cases/case-associated/case-associated';
-import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'CASE-ASSOCIATED-CONTROLLER';
 
@@ -24,9 +24,9 @@ export class CaseAssociatedController {
   ): Promise<CamsHttpResponseInit<EventCaseReference[]>> {
     try {
       const associatedCases = await this.useCase.getAssociatedCases(context, request.caseId);
-      return {
+      return httpSuccess({
         body: { data: associatedCases },
-      };
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
