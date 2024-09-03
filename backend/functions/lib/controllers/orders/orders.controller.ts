@@ -19,7 +19,7 @@ import {
 } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsHttpRequest } from '../../adapters/types/http';
@@ -109,10 +109,11 @@ export class OrdersController {
   public async syncOrders(
     context: ApplicationContext,
     options?: SyncOrdersOptions,
-  ): Promise<SyncOrdersStatus> {
+  ): Promise<CamsHttpResponseInit<SyncOrdersStatus>> {
     try {
       const result = await this.useCase.syncOrders(context, options);
-      return result;
+      const success = httpSuccess({ body: { data: result } });
+      return success;
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError
