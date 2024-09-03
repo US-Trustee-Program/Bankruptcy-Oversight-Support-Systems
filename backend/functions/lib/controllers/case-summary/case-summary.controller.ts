@@ -1,8 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
 import CaseManagement from '../../use-cases/case-management';
-import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
-import { CamsHttpRequest } from '../../adapters/types/http';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
@@ -16,18 +15,18 @@ export class CaseSummaryController {
 
   public async getCaseSummary(
     context: ApplicationContext,
-    request: CamsHttpRequest,
   ): Promise<CamsHttpResponseInit<CaseDetail>> {
     try {
-      const caseSummary = await this.useCase.getCaseSummary(context, request.params.caseId);
-      return {
+      const caseSummary = await this.useCase.getCaseSummary(context, context.request.params.caseId);
+      const success = httpSuccess({
         body: {
           meta: {
-            self: request.url,
+            self: context.request.url,
           },
           data: caseSummary,
         },
-      };
+      });
+      return success;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
