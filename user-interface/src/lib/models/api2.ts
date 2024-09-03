@@ -51,15 +51,6 @@ export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
   return uriOrPath;
 }
 
-function isResponseBody<T>(response: unknown): response is ResponseBody<T> {
-  return !!response && typeof response === 'object' && 'data' in response;
-}
-
-function castToResponseBody<T>(response: unknown): ResponseBody<T> {
-  if (isResponseBody<T>(response)) return response;
-  throw new Error('Cannot map legacy response from API to new response model.');
-}
-
 export function addAuthHeaderToApi(): ApiClient {
   const api = Api;
   const session = LocalStorage.getSession();
@@ -78,7 +69,7 @@ export function useGenericApi(): GenericApiClient {
   return {
     async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
       const body = await api.get(justThePath(path), options);
-      return castToResponseBody(body);
+      return body as ResponseBody<T>;
     },
     async patch<T = object>(
       path: string,
@@ -86,7 +77,7 @@ export function useGenericApi(): GenericApiClient {
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
       const responseBody = await api.patch(justThePath(path), body, options);
-      return castToResponseBody(responseBody);
+      return responseBody as ResponseBody<T>;
     },
     async post<T = object>(
       path: string,
@@ -94,7 +85,7 @@ export function useGenericApi(): GenericApiClient {
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
       const responseBody = await api.post(justThePath(path), body, options);
-      return castToResponseBody(responseBody);
+      return responseBody as ResponseBody<T>;
     },
     async put<T = object>(
       path: string,
@@ -102,7 +93,7 @@ export function useGenericApi(): GenericApiClient {
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
       const responseBody = await api.put(justThePath(path), body, options);
-      return castToResponseBody(responseBody);
+      return responseBody as ResponseBody<T>;
     },
   };
 }
