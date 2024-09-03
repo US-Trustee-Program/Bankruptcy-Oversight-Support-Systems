@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { httpSuccess } from '../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION' as const;
 
@@ -17,9 +18,11 @@ export default async function handler(
       request,
     });
     const token = await mockAuthentication(applicationContext);
-    return toAzureSuccess({
-      body: { data: { value: token } },
-    });
+    return toAzureSuccess(
+      httpSuccess({
+        body: { data: { value: token } },
+      }),
+    );
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
