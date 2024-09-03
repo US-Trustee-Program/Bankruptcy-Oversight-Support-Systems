@@ -10,7 +10,8 @@ describe('Test case-docket use case', () => {
     const caseId = NORMAL_CASE_ID;
     const useCase = new CaseDocketUseCase(gateway);
     const mockContext = await createMockApplicationContext();
-    const result = await useCase.getCaseDocket(mockContext, caseId);
+    mockContext.request.params.caseId = caseId;
+    const result = await useCase.getCaseDocket(mockContext);
     expect(result).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });
 });
