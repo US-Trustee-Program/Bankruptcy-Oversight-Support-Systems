@@ -16,6 +16,7 @@ import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { UnknownError } from '../../common-errors/unknown-error';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { buildTestResponseSuccess } from '../../../azure/testing-helpers';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -90,18 +91,14 @@ describe('Case Assignment Creation Tests', () => {
 
   test('should fetch a list of assignments when a GET request is called', async () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
-    const assignmentResponse = {
-      body: {
-        data: assignments,
-      },
-    };
+    const { camsHttpResponse } = buildTestResponseSuccess({ data: assignments });
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
       .mockResolvedValue(assignments);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const result = await assignmentController.getTrialAttorneyAssignments('081-18-12345');
-    expect(result).toEqual(assignmentResponse);
+    expect(result).toEqual(camsHttpResponse);
   });
 
   test('should rethrow CAMS errors on findAssignmentsByCaseId', async () => {
