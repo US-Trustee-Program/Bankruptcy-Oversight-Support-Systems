@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import AttorneysList from '../../use-cases/attorneys';
 import { AttorneyUser } from '../../../../../common/src/cams/users';
-import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 
 const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
 
@@ -11,11 +11,8 @@ async function getAttorneyList(
   context.logger.info(MODULE_NAME, 'Getting Attorneys list.');
   const attorneysList = new AttorneysList();
   const data = await attorneysList.getAttorneyList(context);
-  return {
-    body: {
-      data,
-    },
-  };
+  const success = httpSuccess({ body: { data } });
+  return success;
 }
 
 export const AttorneysController = {

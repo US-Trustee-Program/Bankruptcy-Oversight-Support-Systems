@@ -1,6 +1,6 @@
 import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
-import { commonHeaders, httpSuccess } from '../lib/adapters/utils/http-response';
+import { CamsHttpResponseInit, commonHeaders } from '../lib/adapters/utils/http-response';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { getCamsError } from '../lib/common-errors/error-utilities';
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
@@ -24,13 +24,14 @@ export async function azureToCamsHttpRequest(request: HttpRequest): Promise<Cams
   };
 }
 
-export function toAzureSuccess(response: object = undefined): HttpResponseInit {
-  const camsResponse = httpSuccess(response);
+export function toAzureSuccess<T extends object = undefined>(
+  response: CamsHttpResponseInit<T> = {},
+): HttpResponseInit {
   const init: HttpResponseInit = {
-    headers: camsResponse.headers,
-    status: camsResponse.statusCode,
+    headers: response.headers,
+    status: response.statusCode,
   };
-  if (camsResponse.body) init.jsonBody = camsResponse.body;
+  if (response.body) init.jsonBody = response.body;
 
   return init;
 }
