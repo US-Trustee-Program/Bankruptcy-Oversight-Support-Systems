@@ -1,9 +1,9 @@
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { CaseDocket } from '../../../use-cases/case-docket/case-docket.model';
 import { ApplicationContext } from '../../types/basic';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { GatewayHelper } from '../gateway-helper';
 import { NORMAL_CASE_ID } from '../../../testing/testing-constants';
+import { CaseDocket } from '../../../../../../common/src/cams/cases';
 
 const MODULENAME = 'CASE-DOCKET-MOCK-GATEWAY';
 

@@ -2,10 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { CaseDocketEntry, CaseDocketSummaryFacet } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import './CaseDetailCourtDocket.scss';
+import { CaseDocketEntry } from '@common/cams/cases';
+
+type CaseDocketSummaryFacet = {
+  text: string;
+  count: number;
+};
 
 export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
 
