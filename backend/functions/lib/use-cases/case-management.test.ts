@@ -3,7 +3,6 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { describe } from 'node:test';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseDetail } from '../../../../common/src/cams/cases';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import {
   createMockApplicationContext,
@@ -239,21 +238,14 @@ describe('Case management tests', () => {
   });
 
   describe('Case summary tests', () => {
-    test('should return summary with office name', async () => {
+    test('should return summary', async () => {
       const caseSummary = MockData.getCaseSummary({ override: { caseId: '000-00-00000' } });
-      const officeName = 'OfficeName';
 
       const context = await createMockApplicationContext();
       jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
-      jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
-
-      const expected: CaseDetail = {
-        ...caseSummary,
-        officeName,
-      };
 
       const actual = await useCase.getCaseSummary(context, '000-00-00000');
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual(caseSummary);
     });
   });
 

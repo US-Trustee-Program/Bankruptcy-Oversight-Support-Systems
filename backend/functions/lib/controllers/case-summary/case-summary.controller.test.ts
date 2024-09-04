@@ -1,9 +1,9 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CaseSummaryController } from './case-summary.controller';
 import CaseManagement from '../../use-cases/case-management';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { CaseSummaryController } from './case-summary.controller';
 
 describe('Test case-summary controller', () => {
   let applicationContext;

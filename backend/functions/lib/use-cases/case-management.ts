@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
 import {
   getAssignmentRepository,
   getCasesGateway,
@@ -112,9 +112,8 @@ export default class CaseManagement {
   public async getCaseSummary(
     applicationContext: ApplicationContext,
     caseId: string,
-  ): Promise<CaseDetail> {
+  ): Promise<CaseSummary> {
     const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-    caseSummary.officeName = this.officesGateway.getOfficeName(caseSummary.courtDivisionCode);
     return caseSummary;
   }
 
