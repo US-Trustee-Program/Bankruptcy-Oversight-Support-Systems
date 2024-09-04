@@ -8,7 +8,6 @@ import {
 } from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
-import { ConsolidationOrder } from '../../../common/src/cams/orders';
 
 dotenv.config();
 
@@ -41,7 +40,7 @@ export default async function handler(
         message: `Could not perform ${procedure}.`,
       });
     }
-    return toAzureSuccess<ConsolidationOrder[]>(response);
+    return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
