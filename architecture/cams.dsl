@@ -31,7 +31,8 @@ workspace {
                 ordersSync = component "Sync" "Creates events in CAMS based on orders to transfer transactions in DXTR"
                 consolidations = component "Consolidations" "Consolidation Orders API"
                 associatedCases = component "Associated Cases" "Associated Cases API"
-
+                me = component "Me" "User Info API"
+                contextCreator = component "Context Creator" "API Application Context Manager"
             }
             dxtrsql = container "DXTR DB" "DXTR SQL Database"
             cosmos = container "Cosmos DB" "NoSQL Database" {
@@ -40,6 +41,7 @@ workspace {
                 ordersCosmosContainer = component "Orders Container" "Stores case events"
                 consolidationsCosmosContainer = component "Consolidations Container" "Stores consolidation orders"
                 runtimeStateCosmosContainer = component "Runtime State Container" "Stores tracking information for automation"
+                sessionCacheCosmosContainer = component "Session Cache" "Stores active sessions"
             }
         }
 
@@ -72,6 +74,7 @@ workspace {
         webapp -> ordersSuggestions "Reads case summaries for data verification"
         webapp -> consolidations "Reads and writes consolidation order data"
         webapp -> associatedCases "Reads associated orders from consolidation"
+        webapp -> me "Reads the authenticated user's session"
 
         nodeapi -> cosmos "Reads and writes case assignments, orders, cases, etc."
 
@@ -106,6 +109,10 @@ workspace {
         ordersSync -> casesCosmosContainer "Writes case audit logs"
         ordersSync -> ordersCosmosContainer "Writes case events"
         ordersSync -> runtimeStateCosmosContainer "Reads and writes index for tracking last export"
+
+        me -> sessionCacheCosmosContainer "Reads authenticated user's session from the session cache"
+
+        contextCreator -> sessionCacheCosmosContainer "Reads and writes authenticated user's session from/to the session cache"
     }
 
     views {

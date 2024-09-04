@@ -1,13 +1,13 @@
-import { MockUserSessionGateway } from '../../testing/mock-gateways/mock-user-session-gateway';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../types/basic';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
+import { ApplicationConfiguration } from '../lib/configs/application-configuration';
+import { MockUserSessionGateway } from '../lib/testing/mock-gateways/mock-user-session-gateway';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
-import {
-  createMockAzureFunctionContext,
-  createMockAzureFunctionRequest,
-} from '../../../azure/functions';
-import { ApplicationConfiguration } from '../../configs/application-configuration';
-import * as FeatureFlags from './feature-flag';
+import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
+import { azureToCamsHttpRequest } from './functions';
+import { LoggerImpl } from '../lib/adapters/services/logger.service';
 
 describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {
@@ -15,12 +15,17 @@ describe('Application Context Creator', () => {
       const functionContext = createMockAzureFunctionContext();
       const featureFlagsSpy = jest.spyOn(FeatureFlags, 'getFeatureFlags');
       const request = createMockAzureFunctionRequest();
-      const context = await ContextCreator.applicationContextCreator(functionContext, request);
+      const logger = new LoggerImpl('');
+      const context = await ContextCreator.applicationContextCreator(
+        functionContext,
+        logger,
+        request,
+      );
       expect(context.logger instanceof Object && 'camsError' in context.logger).toBeTruthy();
       expect(context.config instanceof ApplicationConfiguration).toBeTruthy();
       expect(context.featureFlags instanceof Object).toBeTruthy();
       expect(featureFlagsSpy).toHaveBeenCalled();
-      expect(context.req).toEqual(request);
+      expect(context.request).toEqual(await azureToCamsHttpRequest(request));
     });
   });
 
@@ -30,15 +35,22 @@ describe('Application Context Creator', () => {
       context = await createMockApplicationContext();
     });
 
+    test('should throw an UnauthorizedError if there is no request', async () => {
+      delete context.request;
+      await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
+        'Authorization header missing.',
+      );
+    });
+
     test('should throw an UnauthorizedError if authorization header is missing', async () => {
-      delete context.req.headers.authorization;
+      delete context.request.headers.authorization;
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Authorization header missing.',
       );
     });
 
     test('should throw an UnauthorizedError if authorization header is not a bearer token', async () => {
-      context.req.headers.authorization = 'shouldthrowError';
+      context.request.headers.authorization = 'shouldthrowError';
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Bearer token not found in authorization header',
@@ -46,7 +58,7 @@ describe('Application Context Creator', () => {
     });
 
     test('should throw an UnauthorizedError if authorization header contains Bearer but no token', async () => {
-      context.req.headers.authorization = 'Bearer ';
+      context.request.headers.authorization = 'Bearer ';
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Bearer token not found in authorization header',
@@ -54,7 +66,7 @@ describe('Application Context Creator', () => {
     });
 
     test('should throw an UnauthorizedError if authorization header contains Bearer with malformed token', async () => {
-      context.req.headers.authorization = 'Bearer some-text-that-is-not-possibly-a-valid-jwt';
+      context.request.headers.authorization = 'Bearer some-text-that-is-not-possibly-a-valid-jwt';
 
       await expect(ContextCreator.getApplicationContextSession(context)).rejects.toThrow(
         'Malformed Bearer token in authorization header',
@@ -62,8 +74,13 @@ describe('Application Context Creator', () => {
     });
 
     test('should call user session gateway lookup', async () => {
-      const lookupSpy = jest.spyOn(MockUserSessionGateway.prototype, 'lookup');
-      await ContextCreator.getApplicationContextSession(context);
+      const request = await azureToCamsHttpRequest(createMockAzureFunctionRequest());
+      const mockContext = await createMockApplicationContext();
+      mockContext.request = request;
+      const lookupSpy = jest
+        .spyOn(MockUserSessionGateway.prototype, 'lookup')
+        .mockResolvedValue(MockData.getCamsSession());
+      await ContextCreator.getApplicationContextSession(mockContext);
       expect(lookupSpy).toHaveBeenCalled();
     });
   });

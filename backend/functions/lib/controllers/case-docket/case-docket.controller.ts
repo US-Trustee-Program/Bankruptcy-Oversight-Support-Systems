@@ -1,18 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
 import { getCaseDocketUseCase } from '../../factory';
-import { CaseDocket } from '../../use-cases/case-docket/case-docket.model';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { CamsResponse } from '../controller-types';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import { CaseDocket } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
-
-type GetCaseDocketRequest = {
-  caseId: string;
-};
-
-type GetCaseDocketResponse = CamsResponse<CaseDocket>;
 
 export class CaseDocketController {
   private readonly useCase: CaseDocketUseCase;
@@ -23,14 +17,17 @@ export class CaseDocketController {
 
   public async getCaseDocket(
     context: ApplicationContext,
-    request: GetCaseDocketRequest,
-  ): Promise<GetCaseDocketResponse> {
+  ): Promise<CamsHttpResponseInit<CaseDocket>> {
     try {
-      const caseDocket = await this.useCase.getCaseDocket(context, request.caseId);
-      return {
-        success: true,
-        body: caseDocket,
-      };
+      const caseDocket = await this.useCase.getCaseDocket(context);
+      return httpSuccess({
+        body: {
+          meta: {
+            self: context.request.url,
+          },
+          data: caseDocket,
+        },
+      });
     } catch (originalError) {
       throw isCamsError(originalError)
         ? originalError

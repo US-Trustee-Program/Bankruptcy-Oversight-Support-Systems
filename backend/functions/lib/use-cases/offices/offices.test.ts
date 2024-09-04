@@ -7,7 +7,7 @@ describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should return offices', async () => {

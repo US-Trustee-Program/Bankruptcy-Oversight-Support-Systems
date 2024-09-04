@@ -19,7 +19,7 @@ describe('Test generic cosmosdb repository', () => {
   let cosmosCrudRepo: DocumentRepository<TestType>;
 
   beforeEach(async () => {
-    mockDbContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    mockDbContext = await createMockApplicationContext();
     cosmosCrudRepo = getCosmosDbCrudRepository(mockDbContext, 'cases', moduleName);
   });
 

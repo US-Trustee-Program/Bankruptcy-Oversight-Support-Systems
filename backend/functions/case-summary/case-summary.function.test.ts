@@ -1,41 +1,60 @@
+import { InvocationContext } from '@azure/functions';
 import { CaseDetail } from '../../../common/src/cams/cases';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest } from '../azure/functions';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
+import handler from './case-summary.function';
+import ContextCreator from '../azure/application-context-creator';
+import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
+import { CamsRole } from '../../../common/src/cams/roles';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
-import { CamsResponse } from '../lib/controllers/controller-types';
-import httpTrigger from './case-summary.function';
 
 describe('Case summary function', () => {
-  const request = createMockAzureFunctionRequest({
+  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getCamsSession({
+      user: {
+        id: 'userId-Bob Jones',
+        name: 'Bob Jones',
+        offices: [MANHATTAN],
+        roles: [CamsRole.TrialAttorney],
+      },
+    }),
+  );
+
+  const baseRequest: Partial<CamsHttpRequest> = {
     method: 'GET',
     params: {
       caseId: '',
     },
+  };
+
+  const context = new InvocationContext({
+    logHandler: () => {},
+    invocationId: 'id',
   });
 
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
-
   test('Should return case summary for an existing case ID', async () => {
-    const caseDetail: CaseDetail = MockData.getCaseDetail();
+    const data: CaseDetail = MockData.getCaseDetail();
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseDetail>({ data });
 
-    const expectedResponseBody: CamsResponse<CaseDetail> = {
-      success: true,
-      body: caseDetail,
-    };
-    const requestOverride = {
-      ...request,
+    const requestObject: Partial<CamsHttpRequest> = {
+      ...baseRequest,
       params: {
-        caseId: '000-00-00000',
+        caseId: data.caseId,
       },
     };
+    const request = createMockAzureFunctionRequest(requestObject);
     jest
       .spyOn(CaseSummaryController.prototype, 'getCaseSummary')
-      .mockResolvedValue(expectedResponseBody);
+      .mockResolvedValue(camsHttpResponse);
 
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should return an error response for', async () => {
@@ -43,17 +62,17 @@ describe('Case summary function', () => {
       message: 'Case summary not found for case ID.',
     });
     jest.spyOn(CaseSummaryController.prototype, 'getCaseSummary').mockRejectedValue(error);
-    const requestOverride = {
-      ...request,
+    const { azureHttpResponse } = buildTestResponseError(error);
+
+    const requestObject: Partial<CamsHttpRequest> = {
+      ...baseRequest,
       params: {
         caseId: '000-00-00000',
       },
     };
-    const expectedErrorResponse = {
-      success: false,
-      message: error.message,
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedErrorResponse);
+    const request = createMockAzureFunctionRequest(requestObject);
+    const response = await handler(request, context);
+    expect(response.status).toEqual(404);
+    expect(response).toEqual(azureHttpResponse);
   });
 });

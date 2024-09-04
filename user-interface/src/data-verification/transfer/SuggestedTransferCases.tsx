@@ -1,5 +1,4 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { useGenericApi } from '@/lib/hooks/UseApi';
 import { CaseSummary } from '@common/cams/cases';
 import { OfficeDetails } from '@common/cams/courts';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -11,6 +10,7 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 export type SuggestedTransferCasesImperative = {
   cancel: () => void;
@@ -53,14 +53,14 @@ function _SuggestedTransferCases(
   const caseNumberRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
 
-  const api = useGenericApi();
+  const api = useApi2();
 
   async function validateCaseNumber(caseId: string) {
     if (loadingCaseSummary) return false;
     setLoadingCaseSummary(true);
     disableEntryForm(true);
     await api
-      .get<CaseSummary>(`/cases/${caseId}/summary`)
+      .getCaseSummary(caseId)
       .then((response) => {
         const caseSummary = response.data;
         props.onCaseSelection(caseSummary);
@@ -120,7 +120,7 @@ function _SuggestedTransferCases(
   function getTransferredCaseSuggestions(caseId: string) {
     setLoadingSuggestions(true);
     api
-      .get<CaseSummary[]>(`/orders-suggestions/${caseId}/`)
+      .getOrderSuggestions(caseId)
       .then((response) => {
         const newSuggestedCases = response.data;
         setLoadingSuggestions(false);

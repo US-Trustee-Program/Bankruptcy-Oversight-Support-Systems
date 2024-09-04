@@ -1,20 +1,30 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import ContextCreator from '../adapters/utils/application-context-creator';
-import { HttpRequest } from '@azure/functions';
+import { HttpRequest, InvocationContext } from '@azure/functions';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../../common/src/cams/session';
-/* eslint-disable-next-line @typescript-eslint/no-require-imports */
-const functionContext = require('azure-function-context-mock');
+import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
+import ContextCreator from '../../azure/application-context-creator';
+import { LoggerImpl } from '../adapters/services/logger.service';
+
+const invocationContext = new InvocationContext();
 
 export async function createMockApplicationContext(
-  env: Record<string, string> = {},
+  args: {
+    env?: Record<string, string>;
+    request?: Partial<CamsHttpRequest>;
+  } = {},
 ): Promise<ApplicationContext> {
   process.env = {
     DATABASE_MOCK: 'true',
-    MOCK_AUTH: 'true',
-    ...env,
+    ...args.env,
   };
-  return await ContextCreator.applicationContextCreator(functionContext, createMockRequest());
+
+  const logger = new LoggerImpl('invocation-id');
+  return await ContextCreator.applicationContextCreator(
+    invocationContext,
+    logger,
+    createMockRequest(args.request),
+  );
 }
 
 export async function createMockApplicationContextSession(
@@ -23,20 +33,14 @@ export async function createMockApplicationContextSession(
   return MockData.getCamsSession(override);
 }
 
-export function createMockRequest(request: Partial<HttpRequest> = {}): HttpRequest {
-  const { headers, ...other } = request;
-  return {
-    method: 'GET',
+export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
+  const { headers, method, body, ...other } = request;
+  const requestInit = {
+    method: (method as CamsHttpMethod) ?? 'GET',
     url: 'http://localhost:3000',
-    headers: {
-      authorization: 'Bearer ' + MockData.getJwt(),
-      ...headers,
-    },
-    query: {},
-    params: {},
-    user: null,
-    get: jest.fn(),
-    parseFormBody: jest.fn(),
+    body: { string: JSON.stringify(body) },
+    headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
     ...other,
   };
+  return new HttpRequest(requestInit);
 }

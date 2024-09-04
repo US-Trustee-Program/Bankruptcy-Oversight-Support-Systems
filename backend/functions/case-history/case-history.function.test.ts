@@ -1,59 +1,88 @@
 import { CASE_HISTORY } from '../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
-import httpTrigger from './case-history.function';
-import { MockHumbleQuery } from '../lib/testing/mock.cosmos-client-humble';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
-import { createMockAzureFunctionRequest } from '../azure/functions';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
+import { InvocationContext } from '@azure/functions';
+import handler from './case-history.function';
+import ContextCreator from '../azure/application-context-creator';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
+import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
+import { CamsRole } from '../../../common/src/cams/roles';
+import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CaseHistory } from '../../../common/src/cams/history';
 
-describe('Case docket function', () => {
-  const request = createMockAzureFunctionRequest({
+describe('Case History Function Tests', () => {
+  const defaultRequestProps: Partial<CamsHttpRequest> = {
+    method: 'GET',
     params: {
       caseId: '',
     },
-    method: 'GET',
+  };
+  let context;
+
+  beforeEach(() => {
+    context = new InvocationContext();
+    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getCamsSession({
+        user: {
+          id: 'userId-Bob Jones',
+          name: 'Bob Jones',
+          offices: [MANHATTAN],
+          roles: [CamsRole.CaseAssignmentManager],
+        },
+      }),
+    );
   });
 
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
-
   test('Should return case history for an existing case ID', async () => {
-    jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValue({ resources: CASE_HISTORY });
-
     const caseId = NORMAL_CASE_ID;
-    const requestOverride = {
-      ...request,
+    const requestOverride: Partial<CamsHttpRequest> = {
       params: {
         caseId,
       },
     };
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
 
-    const expectedResponseBody = {
-      isSuccess: true,
-      meta: expect.any(Object),
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseHistory[]>({
+      meta: {
+        self: request.url,
+      },
       data: CASE_HISTORY,
-    };
+    });
+    jest
+      .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
+      .mockResolvedValue(camsHttpResponse);
 
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should return an error response for a non-existent case ID', async () => {
-    jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockRejectedValue(new NotFoundError('test-module'));
+    const error = new NotFoundError('test-module');
+    jest.spyOn(CaseHistoryController.prototype, 'getCaseHistory').mockRejectedValue(error);
+
     const requestOverride = {
-      ...request,
       params: {
         caseId: NOT_FOUND_ERROR_CASE_ID,
       },
     };
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Not found',
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedErrorResponse);
+
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
+
+    const { azureHttpResponse } = buildTestResponseError(error);
+
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 });

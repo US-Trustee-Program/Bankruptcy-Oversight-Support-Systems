@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
-import { CaseDocketEntryDocument } from '../type-declarations/chapter-15';
 import DocketEntryDocumentList, {
   fileSizeDescription,
   generateDocketFilenameDisplay,
 } from './DocketEntryDocumentList';
+import { CaseDocketEntryDocument } from '@common/cams/cases';
 
 const document: CaseDocketEntryDocument = {
   fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',

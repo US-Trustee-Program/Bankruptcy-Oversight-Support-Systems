@@ -1,36 +1,43 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
+
+const MODULE_NAME = 'CASE-HISTORY-FUNCTION';
 
 dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
-    request,
-  );
-  const caseHistoryController = new CaseHistoryController(applicationContext);
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      logger,
+      request,
+    );
+    const camsRequest = await azureToCamsHttpRequest(request);
+    const caseHistoryController = new CaseHistoryController(applicationContext);
 
-    const responseBody = await caseHistoryController.getCaseHistory(applicationContext, {
-      caseId: request.params.caseId,
-    });
-    functionContext.res = httpSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    const responseBody = await caseHistoryController.getCaseHistory(
+      applicationContext,
+      camsRequest,
+    );
+    return toAzureSuccess(responseBody);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
   }
-};
+}
 
-export default httpTrigger;
+app.http('case-history', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'cases/{id?}/history',
+});

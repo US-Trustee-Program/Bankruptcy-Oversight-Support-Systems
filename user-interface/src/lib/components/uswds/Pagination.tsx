@@ -1,19 +1,19 @@
-import { WithPagination } from '@common/api/pagination';
+import { Pagination as PaginationModel } from '@common/api/pagination';
 import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET, SearchPredicate } from '@common/api/search';
 import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 
 export type PaginationProps<P extends SearchPredicate> = {
-  paginationMeta: WithPagination;
+  paginationValues: PaginationModel;
   searchPredicate: P;
   retrievePage: (searchPredicate: P) => void;
 };
 
 export function Pagination<P extends SearchPredicate>({
-  paginationMeta,
+  paginationValues,
   searchPredicate,
   retrievePage,
 }: PaginationProps<P>) {
-  const { previous, next, currentPage } = paginationMeta;
+  const { previous, next, currentPage } = paginationValues;
 
   return (
     <nav aria-label="Pagination" className="usa-pagination">

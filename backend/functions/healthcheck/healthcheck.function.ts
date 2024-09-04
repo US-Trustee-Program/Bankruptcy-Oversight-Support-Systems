@@ -1,23 +1,26 @@
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import ContextCreator from '../azure/application-context-creator';
 import { CamsError } from '../lib/common-errors/cams-error';
 import { INTERNAL_SERVER_ERROR } from '../lib/common-errors/constants';
 import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
+import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/functions';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
+import { httpSuccess } from '../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const applicationContext = await ContextCreator.getApplicationContext({
+    invocationContext,
+    logger,
     request,
-  );
+  });
   const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
   const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);
 
@@ -50,20 +53,28 @@ const httpTrigger: AzureFunction = async function (
   };
 
   // Add boolean flag for any other checks here
-  functionContext.res = checkResults(
+  return checkResults(
     checkCosmosDbWrite,
     checkCosmosDbRead,
     checkCosmosDbDelete,
     checkSqlDbReadAccess,
   )
-    ? httpSuccess(Object.assign({ status: 'OK' }, respBody))
-    : httpError(
+    ? toAzureSuccess(
+        httpSuccess({
+          body: {
+            data: Object.assign({ status: 'OK' }, respBody),
+          },
+        }),
+      )
+    : toAzureError(
+        applicationContext,
+        MODULE_NAME,
         new CamsError(MODULE_NAME, {
           message: JSON.stringify(respBody),
           status: INTERNAL_SERVER_ERROR,
         }),
       );
-};
+}
 
 export function checkResults(...results: boolean[]) {
   for (const i in results) {
@@ -74,4 +85,8 @@ export function checkResults(...results: boolean[]) {
   return true;
 }
 
-export default httpTrigger;
+app.http('healthcheck', {
+  methods: ['GET'],
+  handler,
+});
+//There is "entryPoint": "default" set within functions.json for this, might want to see why that is

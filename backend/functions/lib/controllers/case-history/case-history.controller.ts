@@ -1,15 +1,11 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
-import { isCamsError } from '../../common-errors/cams-error';
-import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { ResponseBody } from '../../../../../common/src/api/response';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsHttpRequest } from '../../adapters/types/http';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
-
-type GetCaseHistoryRequest = {
-  caseId: string;
-};
 
 export class CaseHistoryController {
   private readonly useCase: CaseHistoryUseCase;
@@ -20,22 +16,21 @@ export class CaseHistoryController {
 
   public async getCaseHistory(
     context: ApplicationContext,
-    request: GetCaseHistoryRequest,
-  ): Promise<ResponseBody<CaseHistory[]>> {
+    request: CamsHttpRequest,
+  ): Promise<CamsHttpResponseInit<CaseHistory[]>> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(context, request.caseId);
-      return {
-        meta: {
-          isPaginated: false,
-          self: context.req.url,
+      const caseHistory = await this.useCase.getCaseHistory(context, request.params.id);
+      const success = httpSuccess({
+        body: {
+          meta: {
+            self: context.request.url,
+          },
+          data: caseHistory,
         },
-        isSuccess: true,
-        data: caseHistory,
-      };
+      });
+      return success;
     } catch (originalError) {
-      throw isCamsError(originalError)
-        ? originalError
-        : new UnknownError(MODULE_NAME, { originalError });
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 }

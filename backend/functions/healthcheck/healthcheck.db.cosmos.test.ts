@@ -8,7 +8,7 @@ describe('healthcheck db tests', () => {
   let healthcheckRepository;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    context = await createMockApplicationContext();
     healthcheckRepository = new HealthcheckCosmosDb(context);
     jest.clearAllMocks();
   });

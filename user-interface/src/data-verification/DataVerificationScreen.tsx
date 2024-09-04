@@ -22,6 +22,7 @@ import { sortDates } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import { ResponseBody } from '@common/api/response';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -54,7 +55,7 @@ export default function DataVerificationScreen() {
     api
       .getOrders()
       .then((response) => {
-        setOrderList(response.data);
+        setOrderList((response as ResponseBody<Order[]>).data);
         setIsOrderListLoading(false);
       })
       .catch(() => {
@@ -67,9 +68,10 @@ export default function DataVerificationScreen() {
     api
       .getOffices()
       .then((response) => {
-        setOfficesList(response.data.sort(officeSorter));
+        const officeList = (response as ResponseBody<OfficeDetails[]>).data;
+        setOfficesList(officeList.sort(officeSorter));
         setRegionsMap(
-          response.data.reduce((regionsMap, office) => {
+          officeList.reduce((regionsMap, office) => {
             if (!regionsMap.has(office.regionId)) {
               regionsMap.set(office.regionId, office.regionName);
             }

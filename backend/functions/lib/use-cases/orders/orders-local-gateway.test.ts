@@ -124,7 +124,7 @@ describe('orders use case tests', () => {
   let casesGateway;
 
   beforeEach(async () => {
-    mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    mockContext = await createMockApplicationContext();
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);

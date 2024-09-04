@@ -11,7 +11,7 @@ describe('MockLogin', () => {
       (_input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
         return Promise.resolve({
           ok: true,
-          json: vi.fn().mockResolvedValue({ token: MockData.getJwt() }),
+          json: vi.fn().mockResolvedValue({ data: { value: MockData.getJwt() } }),
         } as unknown as Response);
       },
     );

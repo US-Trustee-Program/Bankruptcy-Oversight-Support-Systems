@@ -1,5 +1,8 @@
 import { CaseAssignmentController } from './case.assignment.controller';
-import { THROW_PERMISSIONS_ERROR_CASE_ID } from '../../testing/testing-constants';
+import {
+  THROW_PERMISSIONS_ERROR_CASE_ID,
+  THROW_UNKNOWN_ERROR_CASE_ID,
+} from '../../testing/testing-constants';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { CamsError } from '../../common-errors/cams-error';
@@ -11,6 +14,9 @@ import {
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { UnknownError } from '../../common-errors/unknown-error';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { httpSuccess } from '../../adapters/utils/http-response';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -47,15 +53,8 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
-    expect(assignmentResponse).toEqual(
-      expect.objectContaining({
-        success: true,
-        message: 'Trial attorney assignments created.',
-        count: listOfAttorneyNames.length,
-        body: expect.any(Array<string>),
-      }),
-    );
+    expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
+    expect(assignmentResponse.body).toBeUndefined();
   });
 
   test('should assign all attorneys in the list', async () => {
@@ -70,15 +69,8 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(listOfAttorneyNames.length);
-    expect(assignmentResponse).toEqual(
-      expect.objectContaining({
-        success: true,
-        message: 'Trial attorney assignments created.',
-        count: listOfAttorneyNames.length,
-        body: expect.any(Array<string>),
-      }),
-    );
+    expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
+    expect(assignmentResponse.body).toBeUndefined();
   });
 
   test('should create only one assignment per attorney', async () => {
@@ -89,35 +81,24 @@ describe('Case Assignment Creation Tests', () => {
       role: trialAttorneyRole,
     };
 
-    const expectedNumberOfAssignees = Array.from(new Set(listOfAttorneys)).length;
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
       await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
 
-    expect(assignmentResponse.body.length).toBe(expectedNumberOfAssignees);
-    expect(assignmentResponse).toEqual(
-      expect.objectContaining({
-        success: true,
-        message: 'Trial attorney assignments created.',
-        count: expectedNumberOfAssignees,
-        body: expect.any(Array<string>),
-      }),
-    );
+    expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
+    expect(assignmentResponse.body).toBeUndefined();
   });
 
   test('should fetch a list of assignments when a GET request is called', async () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
-    const assignmentResponse = {
-      body: assignments,
-      success: true,
-    };
+    const camsHttpResponse = httpSuccess({ body: { data: assignments } });
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
       .mockResolvedValue(assignments);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const result = await assignmentController.getTrialAttorneyAssignments('081-18-12345');
-    expect(result).toEqual(assignmentResponse);
+    expect(result).toEqual(camsHttpResponse);
   });
 
   test('should rethrow CAMS errors on findAssignmentsByCaseId', async () => {
@@ -138,12 +119,6 @@ describe('Case Assignment Creation Tests', () => {
       listOfAttorneyNames: [],
       role: trialAttorneyRole,
     };
-    const rejectedAssignmentResponse = {
-      success: false,
-      message: 'User does not have appropriate access to create assignments.',
-      count: 0,
-      body: [],
-    };
     const mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession();
 
@@ -152,19 +127,37 @@ describe('Case Assignment Creation Tests', () => {
       .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
 
     const assignmentController = new CaseAssignmentController(mockContext);
-    const assignmentResponse =
-      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
-    expect(assignmentResponse).toEqual(rejectedAssignmentResponse);
+    await expect(
+      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+    ).rejects.toThrow('User does not have appropriate access to create assignments.');
   });
 
   test('should throw any other errors on findAssignmentsByCaseId', async () => {
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockRejectedValue(new Error('An error'));
+      .mockRejectedValue(new Error());
     const assignmentController = new CaseAssignmentController(applicationContext);
 
     await expect(assignmentController.getTrialAttorneyAssignments('081-18-12345')).rejects.toThrow(
       'Unknown error',
     );
+  });
+
+  test('should throw an UnknownError when an error that is not a CamsError is caught', async () => {
+    const error = new UnknownError('TEST-MODULE');
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockRejectedValue(error);
+    const testCaseAssignment = {
+      caseId: THROW_UNKNOWN_ERROR_CASE_ID,
+      listOfAttorneyNames: [],
+      role: CamsRole.TrialAttorney,
+    };
+
+    const assignmentController = new CaseAssignmentController(applicationContext);
+
+    await expect(
+      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+    ).rejects.toThrow(error);
   });
 });

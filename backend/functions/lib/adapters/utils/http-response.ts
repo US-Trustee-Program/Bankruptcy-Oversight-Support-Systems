@@ -1,26 +1,25 @@
-import { ApiResponse } from '../types/http';
-import { CamsError } from '../../common-errors/cams-error';
+import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { ResponseBody } from '../../../../../common/src/api/response';
 
-const commonHeaders = {
+export const commonHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
-  'Last-Modified': Date.toString(),
+  'Last-Modified': Date.now().toString(),
 };
 
-export function httpSuccess(body: object = {}): ApiResponse {
-  return {
-    headers: commonHeaders,
-    statusCode: 200,
-    body,
-  };
-}
+export type CamsHttpResponseInit<T extends object = undefined> = {
+  headers?: Record<string, string>;
+  statusCode?: number;
+  body?: ResponseBody<T>;
+};
 
-export function httpError(error: CamsError): ApiResponse {
-  return {
-    headers: commonHeaders,
-    statusCode: error.status,
-    body: {
-      success: false,
-      message: error.message,
-    },
+export function httpSuccess<T extends object = undefined>(
+  response: CamsHttpResponseInit<T> = {},
+): CamsHttpResponseInit<T> {
+  const camsResponse: CamsHttpResponseInit<T> = {
+    headers: { ...commonHeaders, ...response.headers },
+    statusCode:
+      response.statusCode ?? (response.body ? HttpStatusCodes.OK : HttpStatusCodes.NO_CONTENT),
   };
+  if (response.body) camsResponse.body = response.body;
+  return camsResponse;
 }

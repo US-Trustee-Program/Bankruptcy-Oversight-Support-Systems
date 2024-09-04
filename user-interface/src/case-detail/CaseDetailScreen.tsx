@@ -1,12 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
-import {
-  CaseDocket,
-  CaseDocketEntry,
-  Chapter15CaseDetailsResponseData,
-  Chapter15CaseDocketResponseData,
-  CaseAssociatedCasesResponseData,
-} from '@/lib/type-declarations/chapter-15';
 import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
@@ -20,8 +13,7 @@ import {
   InputRef,
 } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
-import { CaseDetail } from '@common/cams/cases';
-import { useApi } from '@/lib/hooks/UseApi';
+import { CaseDetail, CaseDocket, CaseDocketEntry } from '@common/cams/cases';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
@@ -31,6 +23,7 @@ import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
@@ -182,7 +175,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
-  const api = useApi();
+  const api = useApi2();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
@@ -209,10 +202,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   async function fetchCaseBasicInfo() {
     setIsLoading(true);
     api
-      .get(`/cases/${caseId}`, {})
-      .then((data) => {
-        const response = data as Chapter15CaseDetailsResponseData;
-        setCaseBasicInfo(response.body?.caseDetails);
+      .getCaseDetail(caseId!)
+      .then((response) => {
+        setCaseBasicInfo(response.data);
       })
       .catch((_error) => {
         globalAlert?.error(`Could not get case information.`);
@@ -225,15 +217,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   async function fetchCaseDocketEntries() {
     setIsDocketLoading(true);
     api
-      .get(`/cases/${caseId}/docket`, {})
-      .then((data) => {
-        const response = data as Chapter15CaseDocketResponseData;
-        setCaseDocketEntries(response.body);
-        const facets = response.body.reduce<CaseDocketSummaryFacets>(
+      .getCaseDocket(caseId!)
+      .then((response) => {
+        setCaseDocketEntries(response.data);
+        const facets = response.data.reduce<CaseDocketSummaryFacets>(
           summaryTextFacetReducer,
           new Map(),
         );
-        const limits = findDocketLimits(response.body);
+        const limits = findDocketLimits(response.data);
         setDocumentRange(limits.documentRange);
         setDateRangeBounds(limits.dateRange);
         setCaseDocketSummaryFacets(facets);
@@ -248,11 +239,10 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   async function fetchAssociatedCases() {
     setIsAssociatedCasesLoading(true);
     api
-      .get(`/cases/${caseId}/associated`, {})
-      .then((data) => {
-        const response = data as CaseAssociatedCasesResponseData;
+      .getCaseAssociations(caseId!)
+      .then((response) => {
         if (response) {
-          setAssociatedCases(response.body);
+          setAssociatedCases(response.data);
           setIsAssociatedCasesLoading(false);
         }
       })

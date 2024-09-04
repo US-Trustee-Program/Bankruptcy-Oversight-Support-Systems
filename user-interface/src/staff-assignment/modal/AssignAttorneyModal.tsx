@@ -1,6 +1,5 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, RefObject, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { ResponseData } from '@/lib/type-declarations/api';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
@@ -13,12 +12,12 @@ import {
   OpenModalButtonRef,
   SubmitCancelButtonGroupRef,
 } from '@/lib/components/uswds/modal/modal-refs';
-import Api from '@/lib/models/api';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import Checkbox from '@/lib/components/uswds/Checkbox';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { CamsRole } from '@common/cams/roles';
 
 export interface CallbackProps {
   bCase: CaseBasics;
@@ -45,10 +44,6 @@ export interface AssignAttorneyModalRef {
 export interface AssignAttorneyModalProps {
   modalId: string;
   alertMessage?: AlertDetails;
-}
-
-export interface AttorneyListResponseData extends ResponseData {
-  attorneyList: Array<AttorneyUser>;
 }
 
 function _AssignAttorneyModal(
@@ -129,7 +124,7 @@ function _AssignAttorneyModal(
 
     try {
       attorneys = await api.getAttorneys();
-      setAttorneyList((attorneys as ResponseBodySuccess<AttorneyUser[]>).data);
+      setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
     } catch (e) {
       globalAlert?.error((e as Error).message);
     }
@@ -183,10 +178,10 @@ function _AssignAttorneyModal(
     setIsUpdatingAssignment(true);
 
     try {
-      const result = await Api.post('/case-assignments', {
+      const result = await api.postStaffAssignments({
         caseId: bCase?.caseId,
         attorneyList: finalAttorneyList,
-        role: 'TrialAttorney',
+        role: CamsRole.TrialAttorney,
       });
       if (result) {
         if (submitCallbackRef.current) {

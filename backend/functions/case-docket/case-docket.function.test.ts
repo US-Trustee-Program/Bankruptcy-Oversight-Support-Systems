@@ -1,36 +1,48 @@
-import httpTrigger from './case-docket.function';
+import handler from './case-docket.function';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
-import { createMockAzureFunctionRequest } from '../azure/functions';
+import { InvocationContext } from '@azure/functions';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
+import { NotFoundError } from '../lib/common-errors/not-found-error';
+import { CaseDocket } from '../../../common/src/cams/cases';
 
 describe('Case docket function', () => {
-  const caseId = NORMAL_CASE_ID;
-  const request = createMockAzureFunctionRequest({ params: { caseId } });
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  const context = new InvocationContext({
+    logHandler: () => {},
+    invocationId: 'id',
+  });
 
   test('Should return a docket consisting of a list of docket entries an existing case ID', async () => {
-    const expectedResponseBody = {
-      success: true,
-      body: DXTR_CASE_DOCKET_ENTRIES,
+    const requestProps: Partial<CamsHttpRequest> = {
+      params: { caseId: NORMAL_CASE_ID },
     };
-    await httpTrigger(context, request);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const request = createMockAzureFunctionRequest(requestProps);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseDocket>({
+      data: DXTR_CASE_DOCKET_ENTRIES,
+    });
+    jest.spyOn(CaseDocketController.prototype, 'getCaseDocket').mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should return an error response for a non-existent case ID', async () => {
-    const bogusCaseId = NOT_FOUND_ERROR_CASE_ID;
-    const requestOverride = {
-      ...request,
-      params: {
-        caseId: bogusCaseId,
-      },
+    const requestProps: Partial<CamsHttpRequest> = {
+      params: { caseId: NOT_FOUND_ERROR_CASE_ID },
     };
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Not found',
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedErrorResponse);
+    const request = createMockAzureFunctionRequest(requestProps);
+    const error = new NotFoundError('TEST-MODULE');
+    const { azureHttpResponse } = buildTestResponseError(error);
+    jest.spyOn(CaseDocketController.prototype, 'getCaseDocket').mockRejectedValue(error);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 });

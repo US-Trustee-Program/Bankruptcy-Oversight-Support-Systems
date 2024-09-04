@@ -1,12 +1,7 @@
 import { ConflictError, isConflictError, UserSessionGateway } from './user-session-gateway';
-import OktaGateway from './okta/okta-gateway';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import {
-  MockHumbleItem,
-  MockHumbleItems,
-  MockHumbleQuery,
-} from '../../testing/mock.cosmos-client-humble';
+import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
@@ -16,6 +11,8 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
+import { UserSessionCacheCosmosDbRepository } from './user-session-cache.cosmosdb.repository';
+import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 
 describe('user-session.gateway test', () => {
   const jwt = MockData.getJwt();
@@ -28,13 +25,13 @@ describe('user-session.gateway test', () => {
     groups: [],
   };
   const provider = 'okta';
-  const mockName = 'Mock User';
+  const mockUser = MockData.getCamsUser();
   const expectedSession = MockData.getCamsSession({
-    user: { id: `userId-${mockName}`, name: mockName, offices: [], roles: [] },
+    user: mockUser,
     accessToken: jwt,
     provider,
   });
-  const mockGetValue: CamsSession = {
+  const mockCamsSession: CamsSession = {
     user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
     accessToken: jwt,
     provider,
@@ -47,28 +44,19 @@ describe('user-session.gateway test', () => {
   beforeEach(async () => {
     gateway = new UserSessionGateway();
     context = await createMockApplicationContext({
-      AUTH_ISSUER: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
+      env: { CAMS_LOGIN_PROVIDER: 'mock', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
-
-    context.config.authConfig.provider = 'okta';
-    context.config.authConfig.issuer = 'https://fake.okta.com/oauth2/default';
-    context.config.authConfig.audience = 'api://default';
 
     const jwtHeader = {
       alg: 'RS256',
       typ: undefined,
       kid: '',
     };
-    jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue({
+    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue({
       claims,
       header: jwtHeader as CamsJwtHeader,
     });
-    jest
-      .spyOn(OktaGateway, 'getUser')
-      .mockResolvedValue({ id: `userId-${mockName}`, name: mockName });
-    jest.spyOn(MockHumbleItem.prototype, 'read').mockResolvedValue({
-      resource: mockGetValue,
-    });
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue(mockUser);
   });
 
   afterEach(() => {
@@ -76,12 +64,10 @@ describe('user-session.gateway test', () => {
   });
 
   test('should return valid session and add to cache when cache miss is encountered', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create').mockResolvedValue({
-      resource: mockGetValue,
-    });
+    jest.spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get').mockResolvedValue(null);
+    const createSpy = jest
+      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'put')
+      .mockResolvedValue(mockCamsSession);
     const session = await gateway.lookup(context, jwt, provider);
     expect(session).toEqual({
       ...expectedSession,
@@ -92,10 +78,12 @@ describe('user-session.gateway test', () => {
   });
 
   test('should return valid session on cache hit', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [expectedSession],
-    });
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
+    jest
+      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get')
+      .mockResolvedValue(expectedSession);
+    const createSpy = jest
+      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'put')
+      .mockRejectedValue('We should not call this function.');
     const session = await gateway.lookup(context, jwt, provider);
     expect(session).toEqual({
       ...expectedSession,
@@ -110,7 +98,7 @@ describe('user-session.gateway test', () => {
       resources: [],
     });
     jest
-      .spyOn(OktaGateway, 'verifyToken')
+      .spyOn(MockOpenIdConnectGateway, 'verifyToken')
       .mockRejectedValue(new UnauthorizedError('TEST_USER_SESSION_GATEWAY'));
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow();
@@ -121,7 +109,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
-    jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue(null);
+    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue(null);
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
   });
 
@@ -129,7 +117,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
-    jest.spyOn(OktaGateway, 'verifyToken').mockResolvedValue(undefined);
+    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue(undefined);
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
   });
 
@@ -148,18 +136,14 @@ describe('user-session.gateway test', () => {
       activityId: 'activity',
     };
     jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValueOnce({
-        resources: [],
-      })
-      .mockResolvedValue({
-        resources: [expectedSession],
-      });
-    jest.spyOn(OktaGateway, 'verifyToken').mockRejectedValue(conflictError);
+      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get')
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue(mockCamsSession);
+    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockRejectedValue(conflictError);
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     const session = await gateway.lookup(context, jwt, provider);
     expect(session).toEqual({
-      ...expectedSession,
+      ...mockCamsSession,
       expires: expect.any(Number),
       issuer: expect.stringMatching(urlRegex),
     });
@@ -187,7 +171,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
-    jest.spyOn(OktaGateway, 'verifyToken').mockRejectedValue(new Error('Test error'));
+    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockRejectedValue(new Error('Test error'));
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
     await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
     expect(createSpy).not.toHaveBeenCalled();
@@ -202,16 +186,12 @@ describe('user-session.gateway test', () => {
   });
 
   test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
-      resources: [],
-    });
-
     jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
       put: jest.fn(),
       get: jest.fn().mockResolvedValue(null),
     });
 
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(OktaGateway);
+    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(MockOpenIdConnectGateway);
 
     const localContext = { ...context, featureFlags: { ...context.featureFlags } };
     localContext.featureFlags['restrict-case-assignment'] = false;

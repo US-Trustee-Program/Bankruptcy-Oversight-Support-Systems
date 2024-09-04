@@ -75,8 +75,8 @@ async function getOffices(
 
 export class UserSessionGateway implements SessionGateway {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
-    const caseRepository = getUserSessionCacheRepository(context);
-    const cached = await caseRepository.get(context, token);
+    const sessionCacheRepository = getUserSessionCacheRepository(context);
+    const cached = await sessionCacheRepository.get(context, token);
 
     if (cached) {
       return cached;
@@ -115,12 +115,12 @@ export class UserSessionGateway implements SessionGateway {
         issuer: jwt.claims.iss,
       };
 
-      await caseRepository.put(context, session);
+      await sessionCacheRepository.put(context, session);
 
       return session;
     } catch (originalError) {
       if (isConflictError(originalError)) {
-        return await caseRepository.get(context, token);
+        return await sessionCacheRepository.get(context, token);
       }
 
       if (isCamsError(originalError)) {

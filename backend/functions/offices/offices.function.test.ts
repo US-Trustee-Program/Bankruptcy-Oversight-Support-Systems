@@ -1,27 +1,31 @@
-import httpTrigger from '../offices/offices.function';
 import { CamsError } from '../lib/common-errors/cams-error';
-import { createMockAzureFunctionRequest } from '../azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
+import { BUFFALO, DELAWARE, MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../common/src/cams/roles';
-
-let getOffices;
-
-jest.mock('../lib/controllers/offices/offices.controller', () => {
-  return {
-    OfficesController: jest.fn().mockImplementation(() => {
-      return {
-        getOffices,
-      };
-    }),
-  };
-});
+import handler from './offices.function';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { OfficesController } from '../lib/controllers/offices/offices.controller';
+import { OfficeDetails } from '../../../common/src/cams/courts';
 
 describe('offices Function tests', () => {
-  const request = createMockAzureFunctionRequest();
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  let request;
+  let context;
+  const testOffices = [MANHATTAN, DELAWARE, BUFFALO];
+
+  beforeEach(() => {
+    request = createMockAzureFunctionRequest();
+    context = createMockAzureFunctionContext();
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
     MockData.getCamsSession({
@@ -35,32 +39,30 @@ describe('offices Function tests', () => {
   );
 
   test('should set successful response', async () => {
-    getOffices = jest.fn().mockImplementation(() => {
-      return Promise.resolve({ success: true, body: [] });
+    const bodySuccess: OfficeDetails[] = testOffices;
+
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<OfficeDetails[]>({
+      data: bodySuccess,
     });
 
-    const expectedResponseBody = {
-      success: true,
-      body: [],
-    };
+    jest.spyOn(OfficesController.prototype, 'getOffices').mockResolvedValue(camsHttpResponse);
 
-    await httpTrigger(context, request);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should set error response', async () => {
-    getOffices = jest.fn().mockImplementation(() => {
-      throw new CamsError('MOCK_OFFICES_CONTROLLER', { message: 'Some expected CAMS error.' });
+    const error = new CamsError('MOCK_OFFICES_CONTROLLER', {
+      message: 'Some expected CAMS error.',
     });
 
-    const expectedResponseBody = {
-      success: false,
-      message: 'Some expected CAMS error.',
-    };
+    const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
+    jest.spyOn(OfficesController.prototype, 'getOffices').mockRejectedValue(error);
 
-    await httpTrigger(context, request);
+    const response = await handler(request, context);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    expect(response).toMatchObject(azureHttpResponse);
+    expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
   });
 });

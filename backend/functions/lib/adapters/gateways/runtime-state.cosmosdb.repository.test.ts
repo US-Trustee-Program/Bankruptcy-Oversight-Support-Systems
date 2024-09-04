@@ -22,7 +22,7 @@ describe('Runtime State Repo', () => {
   let repo: RuntimeStateCosmosDbRepository;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    context = await createMockApplicationContext();
     repo = new RuntimeStateCosmosDbRepository(context);
     jest.clearAllMocks();
   });
