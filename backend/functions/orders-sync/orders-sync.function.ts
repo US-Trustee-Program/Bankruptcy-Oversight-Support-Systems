@@ -27,6 +27,7 @@ export default async function timerTrigger(
     toAzureError(logger, MODULE_NAME, error);
   }
 }
+
 app.timer('orders-sync', {
   schedule: '0 30 9 * * *',
   handler: timerTrigger,

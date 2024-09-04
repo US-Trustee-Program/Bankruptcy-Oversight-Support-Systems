@@ -45,9 +45,11 @@ describe('Case Assignment Function Tests', () => {
       invocationId: 'id',
     });
   });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
+
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
       statusCode: HttpStatusCodes.CREATED,

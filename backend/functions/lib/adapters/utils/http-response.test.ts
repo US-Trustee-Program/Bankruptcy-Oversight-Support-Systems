@@ -6,7 +6,6 @@ type TestType = {
 
 describe('Tests out http responses', () => {
   test('Should return properly formatted http success response', async () => {
-    // const expectedBody = { body: { data: { testObject: 'testValue' } };
     const data = {
       testString: 'testValue',
     };

@@ -24,6 +24,7 @@ describe('Case History Function Tests', () => {
     },
   };
   let context;
+
   beforeEach(() => {
     context = new InvocationContext();
     jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
