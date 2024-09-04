@@ -7,6 +7,7 @@ import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
 import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 import { azureToCamsHttpRequest } from './functions';
+import { LoggerImpl } from '../lib/adapters/services/logger.service';
 
 describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {
@@ -14,7 +15,12 @@ describe('Application Context Creator', () => {
       const functionContext = createMockAzureFunctionContext();
       const featureFlagsSpy = jest.spyOn(FeatureFlags, 'getFeatureFlags');
       const request = createMockAzureFunctionRequest();
-      const context = await ContextCreator.applicationContextCreator(functionContext, request);
+      const logger = new LoggerImpl('');
+      const context = await ContextCreator.applicationContextCreator(
+        functionContext,
+        logger,
+        request,
+      );
       expect(context.logger instanceof Object && 'camsError' in context.logger).toBeTruthy();
       expect(context.config instanceof ApplicationConfiguration).toBeTruthy();
       expect(context.featureFlags instanceof Object).toBeTruthy();
