@@ -61,8 +61,11 @@ async function getOffices(
   const offices: OfficeDetails[] = [];
   for (const designator of dxtrGroupDesignators) {
     try {
-      const office = await officesGateway.getOfficeByGroupDesignator(context, designator);
-      offices.push(office);
+      const officesPerDesignator = await officesGateway.getOfficesByGroupDesignator(
+        context,
+        designator,
+      );
+      officesPerDesignator.forEach((office) => offices.push(office));
     } catch (error) {
       context.logger.warn(MODULE_NAME, error.message, { designator });
     }
