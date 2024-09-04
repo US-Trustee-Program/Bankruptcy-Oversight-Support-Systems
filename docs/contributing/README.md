@@ -86,7 +86,7 @@ nvm use v18.17
 
 ### Automatically use a specified Node version
 
-The `nvm use` command can be automatically called when changing into a the root directory of a Node app.
+The `nvm use` command can be automatically called when changing into the root directory of a Node app.
 
 See: https://github.com/nvm-sh/nvm#deeper-shell-integration
 
@@ -97,3 +97,15 @@ Update the `.nvmrc` file when the version of Node in use for a given Node app is
 ```sh
 node -v > .nvmrc
 ```
+
+## Azure CLI
+
+To accomplish many operations-related tasks from your local machine, and to gain access to some resources while running the backend, you will need to install the Azure CLI. Follow the process you prefer for your operating system as outlined in [their documentation](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli).
+
+To ensure that you can connect using the Azure Gov tenant, you will need to run the following command:
+
+```shell
+az cloud set --name AzureUSGovernment
+```
+
+After that is complete, running `az login` will open a browser tab to log you in to your Azure account.
