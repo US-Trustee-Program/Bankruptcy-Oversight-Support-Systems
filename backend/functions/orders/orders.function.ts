@@ -3,7 +3,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
-import { Order, TransferOrderAction } from '../../../common/src/cams/orders';
+import { TransferOrderAction } from '../../../common/src/cams/orders';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
@@ -27,7 +27,7 @@ export default async function handler(
     const orderController = new OrdersController(context);
     if (context.request.method === 'GET') {
       const orderGet = await orderController.getOrders(context);
-      response = toAzureSuccess<Order[]>(orderGet);
+      response = toAzureSuccess(orderGet);
     } else if (context.request.method === 'PATCH') {
       //TODO: Json Mapping with these requestBody objects
       const id = context.request.params['id'];
