@@ -58,9 +58,7 @@ export class OrdersController {
     }
   }
 
-  public async getSuggestedCases(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<CaseSummary[]>> {
+  public async getSuggestedCases(context: ApplicationContext): Promise<GetSuggestedCasesResponse> {
     try {
       const data = await this.useCase.getSuggestedCases(context);
       return httpSuccess({
