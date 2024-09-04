@@ -102,14 +102,14 @@ describe('offices gateway tests', () => {
 
       const gateway = new OfficesDxtrGateway();
 
-      const offices = await gateway.getOfficeByGroupDesignator(applicationContext, 'NY');
-      expect(offices).toEqual(MANHATTAN);
+      const offices = await gateway.getOfficesByGroupDesignator(applicationContext, 'NY');
+      expect(offices).toEqual([MANHATTAN]);
     });
 
     test('should throw invalid parameter exception with invalid parameters', async () => {
       const gateway = new OfficesDxtrGateway();
       await expect(async () => {
-        await gateway.getOfficeByGroupDesignator(applicationContext, '');
+        await gateway.getOfficesByGroupDesignator(applicationContext, '');
       }).rejects.toThrow('Invalid group designator supplied');
     });
 
@@ -127,7 +127,7 @@ describe('offices gateway tests', () => {
 
       const gateway = new OfficesDxtrGateway();
       await expect(async () => {
-        await gateway.getOfficeByGroupDesignator(applicationContext, 'ZZ');
+        await gateway.getOfficesByGroupDesignator(applicationContext, 'ZZ');
       }).rejects.toThrow('Office not found by query designator.');
     });
 
@@ -144,7 +144,7 @@ describe('offices gateway tests', () => {
       const gateway = new OfficesDxtrGateway();
 
       await expect(async () => {
-        await gateway.getOfficeByGroupDesignator(applicationContext, 'NY');
+        await gateway.getOfficesByGroupDesignator(applicationContext, 'NY');
       }).rejects.toThrow('Some expected SQL error.');
     });
   });

@@ -4,10 +4,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 export interface OfficesGatewayInterface {
   getOfficeName(id: string): string;
 
-  getOfficeByGroupDesignator(
+  getOfficesByGroupDesignator(
     applicationContext: ApplicationContext,
     groupDesignator: string,
-  ): Promise<OfficeDetails>;
+  ): Promise<OfficeDetails[]>;
 
   getOffices(applicationContext: ApplicationContext): Promise<OfficeDetails[]>;
 }
