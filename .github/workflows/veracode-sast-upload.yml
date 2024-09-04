@@ -1,0 +1,29 @@
+name: Veracode Static Analysis Scan
+
+concurrency: ${{ github.ref }}-${{ github.workflow }}
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  sast-upload-and-scan:
+    name: SAST Upload and Scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Package source code for scan
+        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
+
+      - name: Veracode Upload And Scan
+        uses: veracode/veracode-uploadandscan-action@0.2.7
+        with:
+          appname: "CAMS"
+          createprofile: false
+          filepath: "cams.zip"
+          vid: "${{ secrets.VERACODE_API_ID }}"
+          vkey: "${{ secrets.VERACODE_API_KEY }}"
+          criticality: "Medium"
