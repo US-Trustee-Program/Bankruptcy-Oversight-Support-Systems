@@ -52,10 +52,10 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     }
   }
 
-  async getOfficeByGroupDesignator(
+  async getOfficesByGroupDesignator(
     context: ApplicationContext,
     groupDesignator: string,
-  ): Promise<OfficeDetails> {
+  ): Promise<OfficeDetails[]> {
     const input: DbTableFieldSpec[] = [];
 
     if (groupDesignator.length !== 2) {
@@ -103,7 +103,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
           message: 'Office not found by query designator.',
         });
       }
-      return results.recordset[0];
+      return results.recordset;
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
