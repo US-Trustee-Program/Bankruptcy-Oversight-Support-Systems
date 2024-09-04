@@ -100,7 +100,6 @@ describe('Case Assignment Function Tests', () => {
         .mockRejectedValue(error);
 
       const response = await handler(request, context);
-      console.log('Response:   ', response);
       expect(response).toEqual(azureHttpResponse);
     },
   );
