@@ -19,8 +19,8 @@ export default async function handler(
   try {
     const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
-      request,
       logger,
+      request,
     );
     const camsRequest = await azureToCamsHttpRequest(request);
     const caseHistoryController = new CaseHistoryController(applicationContext);

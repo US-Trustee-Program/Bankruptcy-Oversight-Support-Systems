@@ -22,8 +22,8 @@ function getLogger(invocationContext: InvocationContext) {
 // TODO: consider switching to an object since the logger and request arguments are
 async function applicationContextCreator(
   invocationContext: InvocationContext,
+  logger: LoggerImpl,
   request?: HttpRequest,
-  logger?: LoggerImpl,
 ): Promise<ApplicationContext> {
   const context = await getApplicationContext({ invocationContext, logger, request });
 
@@ -34,7 +34,7 @@ async function applicationContextCreator(
 
 async function getApplicationContext(args: {
   invocationContext: InvocationContext;
-  logger?: LoggerImpl;
+  logger: LoggerImpl;
   request?: HttpRequest;
 }): Promise<ApplicationContext> {
   const { invocationContext, logger, request } = args;
@@ -44,7 +44,7 @@ async function getApplicationContext(args: {
   return {
     config,
     featureFlags,
-    logger: logger ?? getLogger(invocationContext),
+    logger,
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest(request) : undefined,
     session: undefined,

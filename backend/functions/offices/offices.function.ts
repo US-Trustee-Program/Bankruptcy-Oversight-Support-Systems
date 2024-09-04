@@ -13,8 +13,8 @@ export default async function handler(
   try {
     const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
-      request,
       logger,
+      request,
     );
     const officesController = new OfficesController(applicationContext);
     applicationContext.session =

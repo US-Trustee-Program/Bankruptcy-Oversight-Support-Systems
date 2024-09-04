@@ -9,13 +9,13 @@ export async function handler(
   request: HttpRequest,
   functionContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
-    request,
-  );
+  const logger = ContextCreator.getLogger(functionContext);
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      functionContext,
+      logger,
+      request,
+    );
     const response = httpSuccess({
       body: {
         data: applicationContext.session,
@@ -23,7 +23,7 @@ export async function handler(
     });
     return toAzureSuccess(response);
   } catch (error) {
-    return toAzureError(applicationContext, MODULE_NAME, error);
+    return toAzureError(logger, MODULE_NAME, error);
   }
 }
 

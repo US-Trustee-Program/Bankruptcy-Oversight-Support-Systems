@@ -4,6 +4,7 @@ import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../azure/application-context-creator';
+import { LoggerImpl } from '../adapters/services/logger.service';
 
 const invocationContext = new InvocationContext();
 
@@ -17,8 +18,11 @@ export async function createMockApplicationContext(
     DATABASE_MOCK: 'true',
     ...args.env,
   };
+
+  const logger = new LoggerImpl('invocation-id');
   return await ContextCreator.applicationContextCreator(
     invocationContext,
+    logger,
     createMockRequest(args.request),
   );
 }

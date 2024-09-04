@@ -25,6 +25,7 @@ export default async function handler(
   try {
     const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
+      logger,
       request,
     );
     const controller = new OrdersController(applicationContext);

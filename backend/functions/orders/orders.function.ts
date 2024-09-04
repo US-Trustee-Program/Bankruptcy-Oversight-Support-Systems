@@ -19,8 +19,11 @@ export default async function handler(
   const logger = ContextCreator.getLogger(invocationContext);
   let response: HttpResponseInit;
   try {
-    const context = await ContextCreator.applicationContextCreator(invocationContext, request);
-    context.session = await ContextCreator.getApplicationContextSession(context);
+    const context = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      logger,
+      request,
+    );
     const orderController = new OrdersController(context);
     if (context.request.method === 'GET') {
       const orderGet = await orderController.getOrders(context);
