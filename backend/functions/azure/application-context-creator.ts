@@ -19,7 +19,6 @@ function getLogger(invocationContext: InvocationContext) {
   return new LoggerImpl(invocationContext.invocationId, logWrapper);
 }
 
-// TODO: consider switching to an object since the logger and request arguments are
 async function applicationContextCreator(
   invocationContext: InvocationContext,
   logger: LoggerImpl,
