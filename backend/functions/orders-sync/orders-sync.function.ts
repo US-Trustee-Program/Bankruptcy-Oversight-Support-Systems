@@ -1,11 +1,10 @@
-// TODO: The original context was InvocationContext
 import { app, InvocationContext, Timer } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { toAzureError } from '../azure/functions';
 
 import * as dotenv from 'dotenv';
-import { toAzureError } from '../azure/functions';
 
 // TODO: We need to look into upgrading this to use v4 of Azure Functions
 dotenv.config();
