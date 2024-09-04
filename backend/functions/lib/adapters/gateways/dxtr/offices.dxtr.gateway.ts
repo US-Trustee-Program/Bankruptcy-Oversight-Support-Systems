@@ -65,7 +65,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     }
 
     input.push({
-      name: 'courtId',
+      name: 'groupDesignator',
       type: mssql.VarChar,
       value: groupDesignator,
     });
