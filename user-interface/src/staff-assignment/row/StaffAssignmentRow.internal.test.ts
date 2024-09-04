@@ -1,5 +1,5 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Internal from './StaffAssignmentRow.internal';
 

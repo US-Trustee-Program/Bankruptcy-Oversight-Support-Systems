@@ -8,7 +8,7 @@ import {
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
 import * as staffAssignmentRow from '../row/StaffAssignmentRow';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';

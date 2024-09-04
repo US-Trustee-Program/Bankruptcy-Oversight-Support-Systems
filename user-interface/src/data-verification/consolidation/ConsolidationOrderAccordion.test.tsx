@@ -14,7 +14,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 vi.mock('../../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
 

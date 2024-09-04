@@ -12,7 +12,7 @@ import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';

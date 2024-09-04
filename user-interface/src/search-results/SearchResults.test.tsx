@@ -6,7 +6,7 @@ import { SearchResults, SearchResultsProps } from './SearchResults';
 import { BrowserRouter } from 'react-router-dom';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
 import { SearchResultsRow } from '@/search/SearchResultsRow';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 describe('SearchResults component tests', () => {
   let caseList: CaseSummary[];
