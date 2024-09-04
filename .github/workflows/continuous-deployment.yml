@@ -97,6 +97,11 @@ jobs:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
 
+  security-scan:
+    name: Security
+    uses: ./.github/workflows/sub-security-scan.yml
+    secrets: inherit # pragma: allowlist secret
+
   build:
     name: Build
     needs: [setup]
@@ -116,11 +121,12 @@ jobs:
   deploy:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
-    needs: [
+    needs:
+      [
         setup,
         build,
         accessibility-test,
-        # security-scan,
+        security-scan,
         unit-test-frontend,
         unit-test-backend,
         unit-test-common,
