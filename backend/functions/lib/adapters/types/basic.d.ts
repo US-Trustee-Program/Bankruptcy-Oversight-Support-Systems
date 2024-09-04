@@ -11,14 +11,6 @@ export interface LoggerHelper {
   camsError: (error: CamsError) => void;
 }
 
-// // TODO: By extending Context from Azure Functions we have allowed Azure to invade this codebase.
-// export interface ApplicationContext extends InvocationContext {
-//   config: ApplicationConfiguration;
-//   featureFlags: FeatureFlagSet;
-//   logger: LoggerHelper;
-//   session?: CamsSession;
-// }
-
 export interface ApplicationContext {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
