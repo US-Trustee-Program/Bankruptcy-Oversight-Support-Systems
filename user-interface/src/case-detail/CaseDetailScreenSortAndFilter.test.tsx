@@ -5,11 +5,11 @@ import CaseDetailScreen, {
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
-import { CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import ReactRouter from 'react-router';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { CaseDocket } from '@common/cams/cases';
 
 const testCaseDocketEntries: CaseDocket = [
   {

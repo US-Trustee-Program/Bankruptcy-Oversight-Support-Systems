@@ -1,28 +1,21 @@
-import httpTrigger from './orders.function';
+import handler from './orders.function';
 import { CamsError } from '../lib/common-errors/cams-error';
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import { TransferOrderAction } from '../../../common/src/cams/orders';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest } from '../azure/functions';
-
-let getOrders;
-let updateOrder;
-
-jest.mock('../lib/controllers/orders/orders.controller', () => {
-  return {
-    OrdersController: jest.fn().mockImplementation(() => {
-      return {
-        getOrders,
-        updateOrder,
-      };
-    }),
-  };
-});
+import { CamsHttpRequest } from '../lib/adapters/types/http';
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { Order } from '../../../common/src/cams/orders';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { commonHeaders } from '../lib/adapters/utils/http-response';
+import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Orders Function tests', () => {
   const request = createMockAzureFunctionRequest();
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  const context = createMockAzureFunctionContext();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -30,63 +23,63 @@ describe('Orders Function tests', () => {
 
   test('should return a list of orders', async () => {
     const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
-    getOrders = jest.fn().mockImplementation(() => {
-      return Promise.resolve({ success: true, body: mockOrders });
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<Order[]>({
+      data: mockOrders,
     });
-    const expectedResponseBody = {
-      success: true,
-      body: mockOrders,
-    };
-    await httpTrigger(context, request);
-    expect(context.res.body).toEqual(expectedResponseBody);
+
+    jest.spyOn(OrdersController.prototype, 'getOrders').mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
-  test('should return updated order', async () => {
+  test('should return proper response when successfully updating an order', async () => {
     const id = '1234567890';
 
-    updateOrder = jest
-      .fn()
-      .mockImplementation((_context: ApplicationContext, data: TransferOrderAction) => {
-        return Promise.resolve({ success: true, body: data });
-      });
-    const requestOverride = {
-      ...request,
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
+      headers: commonHeaders,
+      statusCode: HttpStatusCodes.NO_CONTENT,
+    });
+
+    const updateOrder = jest
+      .spyOn(OrdersController.prototype, 'updateOrder')
+      .mockResolvedValue(camsHttpResponse);
+
+    const orderRequest = createMockAzureFunctionRequest({
       params: { id },
       body: {
         id,
         orderType: 'transfer',
       },
       method: 'PATCH',
-    };
+    });
 
-    const expectedResponseBody = {
-      success: true,
-      body: id,
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const response = await handler(orderRequest, context);
+
     expect(updateOrder).toHaveBeenCalled();
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should return error response when error is encountered on get list', async () => {
-    getOrders = jest.fn().mockImplementation(() => {
-      throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
-    });
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Mocked error',
-    };
-    await httpTrigger(context, request);
-    expect(context.res.body).toMatchObject(expectedErrorResponse);
+    const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
+    const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
+
+    jest.spyOn(OrdersController.prototype, 'getOrders').mockRejectedValue(error);
+
+    const response = await handler(request, context);
+    expect(response).toMatchObject(azureHttpResponse);
+    expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
   });
 
   test('should return error response when an unknown error is encountered on update', async () => {
+    const error = new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
+    const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
+
+    jest.spyOn(OrdersController.prototype, 'updateOrder').mockRejectedValue(error);
+
     const id = '1234567890';
-    getOrders = jest.fn().mockImplementation(() => {
-      throw new CamsError('MOCK_ORDERS_CONTROLLER', { message: 'Mocked error' });
-    });
-    const requestOverride = {
-      ...request,
+    const requestOverride: Partial<CamsHttpRequest> = {
       params: { id },
       body: {
         id,
@@ -94,35 +87,9 @@ describe('Orders Function tests', () => {
       },
       method: 'PATCH',
     };
-    updateOrder = jest
-      .fn()
-      .mockImplementation((_context: ApplicationContext, _data: TransferOrderAction) => {
-        throw new CamsError('ORDERS-FUNCTION-TEST', { message: 'Unknown error on update.' });
-      });
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Unknown error on update.',
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toMatchObject(expectedErrorResponse);
-  });
-
-  test('should return error bad request error when id in parameters does not match id in data', async () => {
-    const paramId = '1';
-    const dataId = '2';
-    const requestOverride = {
-      ...request,
-      params: { id: paramId },
-      body: {
-        id: dataId,
-      },
-      method: 'PATCH',
-    };
-    const expectedErrorResponse = {
-      success: false,
-      message: 'Cannot update order. ID of order does not match ID of request.',
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toMatchObject(expectedErrorResponse);
+    const orderRequest = createMockAzureFunctionRequest(requestOverride);
+    const response = await handler(orderRequest, context);
+    expect(response).toMatchObject(azureHttpResponse);
+    expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
   });
 });

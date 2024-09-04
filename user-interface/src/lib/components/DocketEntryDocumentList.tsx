@@ -1,4 +1,4 @@
-import { CaseDocketEntryDocument } from '../type-declarations/chapter-15';
+import { CaseDocketEntryDocument } from '@common/cams/cases';
 import Icon from './uswds/Icon';
 
 export function fileSizeDescription(fileSize: number): string {

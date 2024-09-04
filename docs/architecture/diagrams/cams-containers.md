@@ -19,10 +19,10 @@ graph TB
 
       12("<div style='font-weight: bold'>API</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>An Azure Functions App<br />(Node.js)</div>")
       style 12 fill:#438dd5,stroke:#2e6295,color:#ffffff
-      26("<div style='font-weight: bold'>DXTR DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>DXTR SQL Database</div>")
-      style 26 fill:#438dd5,stroke:#2e6295,color:#ffffff
-      27("<div style='font-weight: bold'>Cosmos DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>NoSQL Database</div>")
-      style 27 fill:#438dd5,stroke:#2e6295,color:#ffffff
+      28("<div style='font-weight: bold'>DXTR DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>DXTR SQL Database</div>")
+      style 28 fill:#438dd5,stroke:#2e6295,color:#ffffff
+      29("<div style='font-weight: bold'>Cosmos DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>NoSQL Database</div>")
+      style 29 fill:#438dd5,stroke:#2e6295,color:#ffffff
       5("<div style='font-weight: bold'>Okta</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>SSO Provider for CAMS</div>")
       style 5 fill:#438dd5,stroke:#2e6295,color:#ffffff
       8("<div style='font-weight: bold'>Webapp</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>The user interface for CAMS</div>")
@@ -37,7 +37,7 @@ graph TB
     12-. "<div>registers refresh token for<br />30 minute timeout and<br />validates token</div><div style='font-size: 70%'></div>" .->5
     5-. "<div>refresh token validation</div><div style='font-size: 70%'></div>" .->12
     8-. "<div>Reads and writes case data<br />and assignments</div><div style='font-size: 70%'></div>" .->12
-    12-. "<div>Reads and writes case<br />assignments, orders, cases,<br />etc.</div><div style='font-size: 70%'></div>" .->27
-    12-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->26
+    12-. "<div>Reads and writes case<br />assignments, orders, cases,<br />etc.</div><div style='font-size: 70%'></div>" .->29
+    12-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->28
   end
 ```

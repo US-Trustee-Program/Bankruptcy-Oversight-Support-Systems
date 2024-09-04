@@ -89,10 +89,8 @@ export class OrdersUseCase {
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
   }
 
-  public async getSuggestedCases(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<CaseSummary>> {
+  public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
+    const caseId = context.request.params.caseId;
     return this.casesGateway.getSuggestedCases(context, caseId);
   }
 
@@ -100,7 +98,7 @@ export class OrdersUseCase {
     context: ApplicationContext,
     id: string,
     data: TransferOrderAction,
-  ): Promise<string> {
+  ): Promise<void> {
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     let order: Order;
@@ -136,8 +134,6 @@ export class OrdersUseCase {
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
-
-    return id;
   }
 
   public async syncOrders(

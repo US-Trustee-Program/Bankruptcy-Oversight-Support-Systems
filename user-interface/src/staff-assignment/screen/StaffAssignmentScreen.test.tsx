@@ -5,13 +5,10 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { CaseSummary } from '@common/cams/cases';
-import { buildResponseBodySuccess, ResponseBodySuccess } from '@common/api/response';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
-import * as genericApiModule from '@/lib/hooks/UseApi';
 import * as staffAssignmentRow from '../row/StaffAssignmentRow';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
@@ -21,22 +18,8 @@ describe('StaffAssignmentScreen', () => {
     const user = testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
     testingUtilities.spyOnGlobalAlert();
 
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue(
-      buildResponseBodySuccess(MockData.buildArray(MockData.getCaseBasics, 3)),
-    );
-
-    const expectedResponse: ResponseBodySuccess<CaseSummary[]> = {
-      meta: { self: 'a-uri', isPaginated: true, count: 3, limit: 50, currentPage: 1 },
-      isSuccess: true,
-      data: MockData.buildArray(() => {
-        return MockData.getCaseSummary({ entityType: 'person', override: { assignments: [] } });
-      }, 3),
-    };
-
-    vi.spyOn(genericApiModule, 'useGenericApi').mockReturnValue({
-      get: vi.fn().mockResolvedValue(expectedResponse),
-      post: vi.fn().mockResolvedValue(expectedResponse),
-      put: vi.fn(),
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: MockData.buildArray(MockData.getCaseBasics, 3),
     });
 
     const expectedPredicate: CasesSearchPredicate = {

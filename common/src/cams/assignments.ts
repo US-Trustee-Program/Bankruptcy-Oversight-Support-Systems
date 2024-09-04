@@ -1,4 +1,5 @@
 import { CamsUserReference } from './users';
+import { CamsRole } from './roles';
 
 export type CaseAssignment = {
   id?: string;
@@ -12,9 +13,8 @@ export type CaseAssignment = {
   changedBy: CamsUserReference;
 };
 
-export type AttorneyAssignmentResponseInterface = {
-  success: boolean;
-  message: string;
-  count: number;
-  body: string[] | CaseAssignment[];
+export type StaffAssignmentAction = {
+  caseId: string;
+  attorneyList: CamsUserReference[];
+  role: CamsRole.TrialAttorney;
 };

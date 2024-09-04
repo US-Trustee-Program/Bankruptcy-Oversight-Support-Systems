@@ -15,7 +15,7 @@ describe('User session cache Cosmos repository tests', () => {
   const expected = MockData.getCamsSession();
 
   beforeEach(async () => {
-    context = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    context = await createMockApplicationContext();
     repo = new UserSessionCacheCosmosDbRepository(context);
     jest.clearAllMocks();
   });

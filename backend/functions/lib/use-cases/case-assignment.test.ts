@@ -42,7 +42,9 @@ describe('Case assignment tests', () => {
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext({
-      STARTING_MONTH: '-6',
+      env: {
+        STARTING_MONTH: '-6',
+      },
     });
     applicationContext.session = await createMockApplicationContextSession({ user });
   });
@@ -92,7 +94,7 @@ describe('Case assignment tests', () => {
       findAssignmentsByCaseId.mockResolvedValue([]);
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
         assignments,
@@ -115,12 +117,6 @@ describe('Case assignment tests', () => {
 
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(createAssignment.mock.calls[1][0]).toEqual(expect.objectContaining(assignmentTwo));
-      expect(response).toEqual(
-        expect.objectContaining({
-          count: 2,
-          body: expect.arrayContaining([expect.any(String), expect.any(String)]),
-        }),
-      );
     });
 
     test('should add new case assignments on a case with existing assignments', async () => {
@@ -149,7 +145,7 @@ describe('Case assignment tests', () => {
 
       findAssignmentsByCaseId.mockResolvedValue([assignmentOne]);
 
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
         assignments,
@@ -158,13 +154,6 @@ describe('Case assignment tests', () => {
 
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentTwo));
       expect(createAssignment).toHaveBeenCalledTimes(1);
-
-      expect(response).toEqual(
-        expect.objectContaining({
-          count: 1,
-          body: expect.arrayContaining([expect.any(String)]),
-        }),
-      );
     });
 
     test('should remove assignments', async () => {
@@ -187,7 +176,7 @@ describe('Case assignment tests', () => {
 
       findAssignmentsByCaseId.mockResolvedValue([assignmentOne]);
 
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
+      await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
         caseId,
         assignments,
@@ -196,13 +185,6 @@ describe('Case assignment tests', () => {
 
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
-
-      expect(response).toEqual(
-        expect.objectContaining({
-          count: 0,
-          body: [],
-        }),
-      );
     });
 
     test('should not do anything if user does not have the CaseAssignmentManager role', async () => {
@@ -212,20 +194,16 @@ describe('Case assignment tests', () => {
       findAssignmentsByCaseId.mockResolvedValue([]);
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
-        applicationContext,
-        caseId,
-        assignments,
-        role.toString(),
-      );
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          applicationContext,
+          caseId,
+          assignments,
+          role.toString(),
+        ),
+      ).rejects.toThrow('User does not have appropriate access to create assignments.');
 
       expect(createAssignment).not.toHaveBeenCalled();
-      expect(response).toEqual({
-        success: false,
-        message: 'User does not have appropriate access to create assignments.',
-        count: 0,
-        body: [],
-      });
     });
 
     test('should not do anything if user does have the CaseAssignmentManager role but not for the correct division', async () => {
@@ -237,20 +215,18 @@ describe('Case assignment tests', () => {
       findAssignmentsByCaseId.mockResolvedValue([]);
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
-      const response = await assignmentUseCase.createTrialAttorneyAssignments(
-        applicationContext,
-        caseId,
-        assignments,
-        role.toString(),
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          applicationContext,
+          caseId,
+          assignments,
+          role.toString(),
+        ),
+      ).rejects.toThrow(
+        'User does not have appropriate access to create assignments for this office.',
       );
 
       expect(createAssignment).not.toHaveBeenCalled();
-      expect(response).toEqual({
-        success: false,
-        message: 'User does not have appropriate access to create assignments for this office.',
-        count: 0,
-        body: [],
-      });
     });
   });
 });

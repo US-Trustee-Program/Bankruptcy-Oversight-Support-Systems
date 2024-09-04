@@ -10,10 +10,49 @@ export type ConsolidationOrderActionRejection = ConsolidationOrder & {
   rejectedCases: Array<string>;
 };
 
+export function isConsolidationOrderRejection(
+  body: unknown,
+): body is ConsolidationOrderActionRejection {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'rejectedCases' in body &&
+    'consolidationId' in body &&
+    'consolidationType' in body &&
+    'orderType' in body &&
+    'orderDate' in body &&
+    'status' in body &&
+    'courtName' in body &&
+    'courtDivisionCode' in body &&
+    'jobId' in body &&
+    'childCases' in body
+  );
+}
+
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
   approvedCases: Array<string>;
   leadCase: CaseSummary;
 };
+
+export function isConsolidationOrderApproval(
+  body: unknown,
+): body is ConsolidationOrderActionApproval {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'approvedCases' in body &&
+    'leadCase' in body &&
+    'consolidationId' in body &&
+    'consolidationType' in body &&
+    'orderType' in body &&
+    'orderDate' in body &&
+    'status' in body &&
+    'courtName' in body &&
+    'courtDivisionCode' in body &&
+    'jobId' in body &&
+    'childCases' in body
+  );
+}
 
 // TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
 export type TransferOrder = CaseSummary & {
@@ -155,4 +194,8 @@ export type RawOrderSync = {
   consolidations: RawConsolidationOrder[];
   transfers: TransferOrder[];
   maxTxId: string;
+};
+
+export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
+  newCase?: Partial<CaseSummary>;
 };

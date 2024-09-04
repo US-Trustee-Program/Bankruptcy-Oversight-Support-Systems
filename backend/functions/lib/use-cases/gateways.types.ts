@@ -1,4 +1,3 @@
-import { CaseDocket } from './case-docket/case-docket.model';
 import { ApplicationContext } from '../adapters/types/basic';
 import {
   ConsolidationOrder,
@@ -13,6 +12,7 @@ import {
   TransferTo,
 } from '../../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
+import { CaseDocket } from '../../../../common/src/cams/cases';
 
 export interface RepositoryResource {
   id?: string;

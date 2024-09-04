@@ -1,7 +1,7 @@
 import { ApplicationConfiguration } from '../../configs/application-configuration';
-import { Context } from '@azure/functions';
 import { CamsError } from '../../common-errors/cams-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
+import { CamsHttpRequest } from './http';
 
 export interface LoggerHelper {
   debug: (moduleName: string, message: string, data?: unknown) => void;
@@ -11,12 +11,13 @@ export interface LoggerHelper {
   camsError: (error: CamsError) => void;
 }
 
-// TODO: By extending Context from Azure Functions we have allowed Azure to invade this codebase.
-export interface ApplicationContext extends Context {
+export interface ApplicationContext {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
   logger: LoggerHelper;
   session?: CamsSession;
+  invocationId: string;
+  request?: CamsHttpRequest;
 }
 
 export interface ObjectKeyVal {

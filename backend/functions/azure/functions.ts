@@ -1,47 +1,52 @@
-import { Context, HttpRequest } from '@azure/functions';
-import { CamsHttpRequest } from '../lib/adapters/types/http';
-import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { randomUUID } from 'node:crypto';
+import { HttpRequest, HttpResponseInit } from '@azure/functions';
+import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
+import { CamsHttpResponseInit, commonHeaders } from '../lib/adapters/utils/http-response';
+import { ApplicationContext } from '../lib/adapters/types/basic';
+import { getCamsError } from '../lib/common-errors/error-utilities';
+import { LoggerImpl } from '../lib/adapters/services/logger.service';
 
-export function httpRequestToCamsHttpRequest(request?: HttpRequest): CamsHttpRequest {
-  if (!request) throw new Error('Cannot map undefined request object.');
+function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
+  if (!it) return {};
+  return Array.from(it).reduce((acc, record) => {
+    acc[record[0]] = record[1];
+    return acc;
+  }, {} as CamsDict);
+}
+
+export async function azureToCamsHttpRequest(request: HttpRequest): Promise<CamsHttpRequest> {
   return {
-    method: request.method,
+    method: request.method as CamsHttpMethod,
     url: request.url,
-    headers: request.headers,
-    query: request.query,
+    headers: azureToCamsDict(request.headers),
+    query: azureToCamsDict(request.query),
     params: request.params,
-    body: request.body,
+    body: request.body ? await request.json() : undefined,
   };
 }
 
-export function createMockAzureFunctionContext(env: Record<string, string> = {}): Context {
-  process.env = {
-    DATABASE_MOCK: 'true',
-    MOCK_AUTH: 'true',
-    ...env,
+export function toAzureSuccess<T extends object = undefined>(
+  response: CamsHttpResponseInit<T> = {},
+): HttpResponseInit {
+  const init: HttpResponseInit = {
+    headers: response.headers,
+    status: response.statusCode,
   };
+  if (response.body) init.jsonBody = response.body;
 
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
-  context.invocationId = randomUUID();
-  return context;
+  return init;
 }
 
-export function createMockAzureFunctionRequest(request: Partial<HttpRequest> = {}): HttpRequest {
-  const { headers, ...other } = request;
+export function toAzureError(
+  maybeLogger: ApplicationContext | LoggerImpl,
+  moduleName: string,
+  originalError: Error,
+): HttpResponseInit {
+  const error = getCamsError(originalError, moduleName);
+  const logger = maybeLogger instanceof LoggerImpl ? maybeLogger : maybeLogger.logger;
+  logger.camsError(error);
   return {
-    method: 'GET',
-    url: 'http://localhost:3000',
-    headers: {
-      authorization: 'Bearer ' + MockData.getJwt(),
-      ...headers,
-    },
-    query: {},
-    params: {},
-    user: null,
-    get: jest.fn(),
-    parseFormBody: jest.fn(),
-    ...other,
+    headers: commonHeaders,
+    status: error.status,
+    jsonBody: error.message,
   };
 }

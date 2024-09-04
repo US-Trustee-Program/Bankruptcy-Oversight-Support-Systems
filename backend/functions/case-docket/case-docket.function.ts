@@ -1,36 +1,41 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
 import { initializeApplicationInsights } from '../azure/app-insights';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+const MODULE_NAME = 'CASE-DOCKET-FUNCTION';
+
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
-    request,
-  );
-  const caseDocketController = new CaseDocketController(applicationContext);
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      logger,
+      request,
+    );
+    const caseDocketController = new CaseDocketController(applicationContext);
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const responseBody = await caseDocketController.getCaseDocket(applicationContext, {
-      caseId: request.params.caseId,
-    });
-    functionContext.res = httpSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    const response = await caseDocketController.getCaseDocket(applicationContext);
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
   }
-};
+}
 
-export default httpTrigger;
+app.http('case-docket', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'cases/{caseId?}/docket',
+});

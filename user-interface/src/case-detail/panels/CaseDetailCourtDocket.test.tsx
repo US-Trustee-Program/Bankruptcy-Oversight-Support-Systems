@@ -1,9 +1,9 @@
 import { BrowserRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
 import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
-import { CaseDocket } from '@/lib/type-declarations/chapter-15';
 import { formatDate } from '@/lib/utils/datetime';
 import * as highlightModule from '@/lib/utils/highlight-api';
+import { CaseDocket } from '@common/cams/cases';
 
 describe('court docket panel tests', () => {
   const docketEntries: CaseDocket = [

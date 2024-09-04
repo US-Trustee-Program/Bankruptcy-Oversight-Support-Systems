@@ -3,7 +3,6 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
 import { describe } from 'node:test';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseDetail } from '../../../../common/src/cams/cases';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import {
   createMockApplicationContext,
@@ -72,8 +71,9 @@ describe('Case management tests', () => {
 
   beforeAll(async () => {
     applicationContext = await createMockApplicationContext({
-      STARTING_MONTH: '-6',
-      DATABASE_MOCK: 'true',
+      env: {
+        STARTING_MONTH: '-6',
+      },
     });
     applicationContext.session = await createMockApplicationContextSession({ user });
     useCase = new CaseManagement(applicationContext);
@@ -128,8 +128,9 @@ describe('Case management tests', () => {
         roles: [],
       };
       const applicationContext = await createMockApplicationContext({
-        STARTING_MONTH: '-6',
-        DATABASE_MOCK: 'true',
+        env: {
+          STARTING_MONTH: '-6',
+        },
       });
       applicationContext.session = await createMockApplicationContextSession({ user });
 
@@ -154,8 +155,9 @@ describe('Case management tests', () => {
         roles: [CamsRole.CaseAssignmentManager],
       };
       const applicationContext = await createMockApplicationContext({
-        STARTING_MONTH: '-6',
-        DATABASE_MOCK: 'true',
+        env: {
+          STARTING_MONTH: '-6',
+        },
       });
       applicationContext.session = await createMockApplicationContextSession({ user });
 
@@ -194,10 +196,10 @@ describe('Case management tests', () => {
 
       const actualCaseDetail = await chapterCaseList.getCaseDetail(applicationContext, caseId);
 
-      expect(actualCaseDetail.body.caseDetails.caseId).toEqual(caseId);
-      expect(actualCaseDetail.body.caseDetails.dateFiled).toEqual(dateFiled);
-      expect(actualCaseDetail.body.caseDetails.closedDate).toEqual(closedDate);
-      expect(actualCaseDetail.body.caseDetails.assignments).toEqual(assignments);
+      expect(actualCaseDetail.caseId).toEqual(caseId);
+      expect(actualCaseDetail.dateFiled).toEqual(dateFiled);
+      expect(actualCaseDetail.closedDate).toEqual(closedDate);
+      expect(actualCaseDetail.assignments).toEqual(assignments);
     });
 
     test('should include case assignment action if the user has case assignment role', async () => {
@@ -219,13 +221,7 @@ describe('Case management tests', () => {
         },
       ];
 
-      // TODO: This is gross. The response wrapper should be added by the controller, not the use case.
-      // I Agree.  This is gross.
-      const expected = {
-        body: { caseDetails: { ...bCase, officeName, _actions } },
-        message: '',
-        success: true,
-      };
+      const expected = { ...bCase, officeName, _actions };
 
       jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
       const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
@@ -242,21 +238,14 @@ describe('Case management tests', () => {
   });
 
   describe('Case summary tests', () => {
-    test('should return summary with office name', async () => {
+    test('should return summary', async () => {
       const caseSummary = MockData.getCaseSummary({ override: { caseId: '000-00-00000' } });
-      const officeName = 'OfficeName';
 
       const context = await createMockApplicationContext();
       jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockResolvedValue(caseSummary);
-      jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
-
-      const expected: CaseDetail = {
-        ...caseSummary,
-        officeName,
-      };
 
       const actual = await useCase.getCaseSummary(context, '000-00-00000');
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual(caseSummary);
     });
   });
 

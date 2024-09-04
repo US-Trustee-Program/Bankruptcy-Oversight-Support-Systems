@@ -56,10 +56,10 @@ export function useStateAndActions() {
       body: JSON.stringify({ sub: state.selectedRole.sub }),
     });
     const payload = await response.json();
-    if (!payload) return;
+    if (!payload.data.value) return;
 
     newState.session = {
-      accessToken: payload.token,
+      accessToken: payload.data.value,
       user: state.selectedRole.user,
       provider: 'mock',
       issuer,

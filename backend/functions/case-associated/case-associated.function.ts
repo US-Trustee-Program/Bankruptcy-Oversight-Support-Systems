@@ -1,37 +1,40 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
+const MODULE_NAME = 'CASE-ASSOCIATED-FUNCTION';
+
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
-    request,
-  );
-  const controller = new CaseAssociatedController(applicationContext);
-
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      logger,
+      request,
+    );
+    const controller = new CaseAssociatedController(applicationContext);
 
-    const responseBody = await controller.getAssociatedCases(applicationContext, {
-      caseId: applicationContext.req.params.caseId,
-    });
-    functionContext.res = httpSuccess(responseBody);
-  } catch (camsError) {
-    applicationContext.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
+    const response = await controller.getAssociatedCases(applicationContext);
+
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
   }
-};
+}
 
-export default httpTrigger;
+app.http('case-associated', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'cases/{id?}/associated',
+});

@@ -146,7 +146,7 @@ describe('DxtrOrdersGateway', () => {
     const querySpy = jest.spyOn(database, 'executeQuery');
 
     beforeEach(async () => {
-      applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      applicationContext = await createMockApplicationContext();
       querySpy.mockImplementation(jest.fn());
     });
 
@@ -172,7 +172,7 @@ describe('DxtrOrdersGateway', () => {
     });
 
     test('should return a list of orders', async () => {
-      const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      const applicationContext = await createMockApplicationContext();
       const querySpy = jest.spyOn(database, 'executeQuery');
 
       const consolidtionOrdersResults = buildSuccessfulQueryResult(dxtrConsolidationOrders);
@@ -252,7 +252,7 @@ describe('DxtrOrdersGateway', () => {
     });
 
     test('should handle thrown errors from _getOrders', async () => {
-      const applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      const applicationContext = await createMockApplicationContext();
       const querySpy = jest.spyOn(database, 'executeQuery');
 
       const expectedErrorMessage = 'some warning from the orders query';

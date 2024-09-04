@@ -1,9 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/case-management';
-import { ResponseBody, ResponseMetaData } from '../../../../../common/src/api/response';
-import { CaseBasics } from '../../../../../common/src/cams/cases';
+import { ResponseBody } from '../../../../../common/src/api/response';
+import { CaseBasics, CaseDetail } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
+import { Pagination } from '../../../../../common/src/api/pagination';
+import { httpSuccess } from '../../adapters/utils/http-response';
+import { ResourceActions } from '../../../../../common/src/cams/actions';
 
 const _MODULE_NAME = 'CASES-CONTROLLER';
 
@@ -21,24 +24,27 @@ export class CasesController {
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
-    return this.caseManagement.getCaseDetail(this.applicationContext, requestQueryFilters.caseId);
+    const data = await this.caseManagement.getCaseDetail(
+      this.applicationContext,
+      requestQueryFilters.caseId,
+    );
+    return httpSuccess<ResourceActions<CaseDetail>>({ body: { data } });
   }
 
-  public async searchCases(request: CamsHttpRequest): Promise<ResponseBody<CaseBasics[]>> {
+  public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
-    return this.paginateSearchCases(predicate, request.url);
+    const body = await this.paginateSearchCases(predicate, request.url);
+    return httpSuccess<ResourceActions<CaseBasics>[]>({ body });
   }
 
   async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
-  ): Promise<ResponseBody<CaseBasics[]>> {
+  ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
     const cases = await this.caseManagement.searchCases(this.applicationContext, predicate);
 
-    const meta: ResponseMetaData = {
-      isPaginated: true,
+    const pagination: Pagination = {
       count: cases.length,
-      self: url,
       limit: predicate.limit,
       currentPage: getCurrentPage(cases.length, predicate),
     };
@@ -46,19 +52,21 @@ export class CasesController {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
-      meta.next = next.href;
+      pagination.next = next.href;
       cases.pop();
-      meta.count = cases.length;
+      pagination.count = cases.length;
     }
     if (predicate.offset > 0) {
       const previous = new URL(url);
       previous.searchParams.set('limit', predicate.limit.toString());
       previous.searchParams.set('offset', (predicate.offset - predicate.limit).toString());
-      meta.previous = previous.href;
+      pagination.previous = previous.href;
     }
     return {
-      meta,
-      isSuccess: true,
+      meta: {
+        self: url,
+      },
+      pagination,
       data: cases,
     };
   }

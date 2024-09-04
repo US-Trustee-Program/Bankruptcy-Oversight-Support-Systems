@@ -16,10 +16,8 @@ export class CaseAssociatedUseCase {
     this.casesRepository = getCasesRepository(applicationContext);
   }
 
-  public async getAssociatedCases(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<EventCaseReference[]> {
+  public async getAssociatedCases(context: ApplicationContext): Promise<EventCaseReference[]> {
+    const caseId = context.request.params.caseId;
     const consolidation = await this.casesRepository.getConsolidation(context, caseId);
     if (!consolidation.length) return [];
 

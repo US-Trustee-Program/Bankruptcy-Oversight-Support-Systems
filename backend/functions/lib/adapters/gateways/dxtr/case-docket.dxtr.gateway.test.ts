@@ -36,7 +36,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockEntryResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      const mockContext = await createMockApplicationContext();
       await gateway.getCaseDocket(mockContext, NORMAL_CASE_ID);
       expect(querySpy).toHaveBeenCalledWith(
         expect.anything(),
@@ -73,7 +73,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockEntryResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      const mockContext = await createMockApplicationContext();
       const mockCaseId = NORMAL_CASE_ID;
       const response = await gateway.getCaseDocket(mockContext, mockCaseId);
       expect(response).toEqual(expected);
@@ -91,7 +91,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      const mockContext = await createMockApplicationContext();
       const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow('Not found');
     });
@@ -109,7 +109,7 @@ describe('Test case docket DXTR Gateway', () => {
         return Promise.resolve(mockResults);
       });
       const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
-      const mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      const mockContext = await createMockApplicationContext();
       const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
       await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(expectedMessage);
 

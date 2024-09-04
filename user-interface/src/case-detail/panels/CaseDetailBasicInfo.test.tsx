@@ -6,14 +6,13 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { Consolidation, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import Api from '@/lib/models/api';
 import Actions from '@common/cams/actions';
 import { AttorneyUser, CamsUser } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import { ResponseBodySuccess } from '@common/api/response';
-import Api2 from '@/lib/hooks/UseApi2';
+import { ResponseBody } from '@common/api/response';
+import Api2 from '@/lib/models/api2';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -63,9 +62,8 @@ const CONSOLIDATE_FROM: Consolidation = {
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
 describe('Case detail basic information panel', () => {
-  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
-    meta: { isPaginated: false, self: 'self-url' },
-    isSuccess: true,
+  const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
+    meta: { self: 'self-url' },
     data: attorneyList,
   };
   vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
@@ -147,11 +145,9 @@ describe('Case detail basic information panel', () => {
 
     test('should call handleCaseAssignment callback when callback provided', async () => {
       const apiResult = {
-        message: 'post mock',
-        count: 0,
-        body: {},
+        data: undefined,
       };
-      vi.spyOn(Api, 'post').mockResolvedValue(apiResult);
+      vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue(apiResult);
 
       const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL };
       const onCaseAssignment = vi.fn();

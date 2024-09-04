@@ -1,12 +1,13 @@
 import * as dotenv from 'dotenv';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import ContextCreator from '../azure/application-context-creator';
+import {
+  ManageConsolidationResponse,
+  OrdersController,
+} from '../lib/controllers/orders/orders.controller';
 import { BadRequestError } from '../lib/common-errors/bad-request';
-import { isCamsError } from '../lib/common-errors/cams-error';
-import { UnknownError } from '../lib/common-errors/unknown-error';
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
@@ -14,40 +15,40 @@ initializeApplicationInsights();
 
 const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION';
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const applicationContext = await ContextCreator.applicationContextCreator(
-    functionContext,
-    request,
-  );
-  const consolidationsController = new OrdersController(applicationContext);
-  const procedure = request.params.procedure;
-  const body = request.body;
-  let response;
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
 
   try {
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+    const applicationContext = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      logger,
+      request,
+    );
+    const controller = new OrdersController(applicationContext);
+    const procedure = applicationContext.request.params.procedure;
+    let response: ManageConsolidationResponse;
 
     if (procedure === 'reject') {
-      response = await consolidationsController.rejectConsolidation(applicationContext, body);
+      response = await controller.rejectConsolidation(applicationContext);
     } else if (procedure === 'approve') {
-      response = await consolidationsController.approveConsolidation(applicationContext, body);
+      response = await controller.approveConsolidation(applicationContext);
     } else {
       throw new BadRequestError(MODULE_NAME, {
         message: `Could not perform ${procedure}.`,
       });
     }
-    functionContext.res = httpSuccess(response);
-  } catch (originalError) {
-    const error = isCamsError(originalError)
-      ? originalError
-      : new UnknownError(MODULE_NAME, { originalError });
-    applicationContext.logger.camsError(error);
-    functionContext.res = httpError(error);
+    return toAzureSuccess(response);
+  } catch (error) {
+    return toAzureError(logger, MODULE_NAME, error);
   }
-};
+}
 
-export default httpTrigger;
+app.http('consolidations', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'consolidations/{procedure}',
+});

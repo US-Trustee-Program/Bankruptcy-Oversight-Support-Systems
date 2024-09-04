@@ -2,15 +2,13 @@ import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CasesRepository } from './gateways.types';
-import {
-  AttorneyAssignmentResponseInterface,
-  CaseAssignment,
-} from '../../../../common/src/cams/assignments';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { AssignmentError } from './assignment.exception';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -29,28 +27,22 @@ export class CaseAssignmentUseCase {
     newAssignments: CamsUserReference[],
     role: string,
     options: { processRoles?: CamsRole[] } = {},
-  ): Promise<AttorneyAssignmentResponseInterface> {
+  ): Promise<void> {
     const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
     if (!userAndProcessRoles.includes(CamsRole.CaseAssignmentManager)) {
-      return {
-        success: false,
+      throw new AssignmentError(MODULE_NAME, {
         message: 'User does not have appropriate access to create assignments.',
-        count: 0,
-        body: [],
-      };
+      });
     }
     const caseManagement = new CaseManagement(context);
     const bCase = await caseManagement.getCaseSummary(context, caseId);
     const offices = context.session.user.offices.map((office) => office.courtDivisionCode);
     if (!offices.includes(bCase.courtDivisionCode)) {
-      return {
-        success: false,
+      throw new AssignmentError(MODULE_NAME, {
         message: 'User does not have appropriate access to create assignments for this office.',
-        count: 0,
-        body: [],
-      };
+      });
     }
-    const assignmentIds = await this.assignTrialAttorneys(context, caseId, newAssignments, role);
+    await this.assignTrialAttorneys(context, caseId, newAssignments, role);
 
     // Reassign all child cases if this is a joint administration lead case.
     const consolidationReferences = await this.casesRepository.getConsolidation(context, caseId);
@@ -64,13 +56,6 @@ export class CaseAssignmentUseCase {
     for (const childCaseId of childCaseIds) {
       await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
     }
-
-    return {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: assignmentIds.length,
-      body: assignmentIds,
-    };
   }
 
   private async assignTrialAttorneys(

@@ -1,191 +1,117 @@
-import httpTrigger from './case.assignment.function';
+import handler from './case.assignment.function';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
-import * as httpResponseModule from '../lib/adapters/utils/http-response';
-import { AssignmentError } from '../lib/use-cases/assignment.exception';
-import { UnknownError } from '../lib/common-errors/unknown-error';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import ContextCreator from '../azure/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest } from '../azure/functions';
 import { CamsRole } from '../../../common/src/cams/roles';
 import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
+import { InvocationContext } from '@azure/functions';
+import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { CamsError } from '../lib/common-errors/cams-error';
+import { UnknownError } from '../lib/common-errors/unknown-error';
+import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Case Assignment Function Tests', () => {
-  const request = createMockAzureFunctionRequest({
+  const defaultRequestProps: Partial<CamsHttpRequest> = {
     method: 'POST',
-    query: {},
     body: {
       caseId: '081-67-89123',
       attorneyList: ['Bob Bob'],
       role: 'TrialAttorney',
     },
-  });
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  };
 
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.CaseAssignmentManager],
-      },
-    }),
-  );
+  let context;
+
+  beforeEach(() => {
+    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+      MockData.getCamsSession({
+        user: {
+          id: 'userId-Bob Jones',
+          name: 'Bob Jones',
+          offices: [MANHATTAN],
+          roles: [CamsRole.CaseAssignmentManager],
+        },
+      }),
+    );
+    context = new InvocationContext({
+      logHandler: () => {},
+      invocationId: 'id',
+    });
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 1,
-    };
-    await httpTrigger(context, request);
-    expect(context.res.body).toEqual(expect.objectContaining(expectedResponse));
-    expect(context.res.body.body.length).toEqual(1);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
+      statusCode: HttpStatusCodes.CREATED,
+    });
+    jest
+      .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+      .mockResolvedValue(camsHttpResponse);
+
+    const request = createMockAzureFunctionRequest(defaultRequestProps);
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 
-  test('returns response with multiple assignment Ids , when requested to create assignments for multiple trial attorneys on a case', async () => {
-    const requestOverride = {
-      ...request,
-      body: {
-        caseId: '081-67-89123',
-        attorneyList: ['John', 'Rachel'],
-        role: 'TrialAttorney',
-      },
-    };
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 2,
-    };
+  const errorTestCases = [
+    ['caseId not present', '', 'TrialAttorney', 'Required parameter(s) caseId is/are absent.'],
+    ['invalid caseId format', '123', 'TrialAttorney', 'caseId must be formatted like 01-12345.'],
+    [
+      'role not present',
+      '001-90-90123',
+      '',
+      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
+    ],
+    [
+      'invalid role',
+      '001-90-90123',
+      'TrialDragon',
+      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
+    ],
+  ];
+  test.each(errorTestCases)(
+    'should return proper error response for %s',
+    async (_caseName: string, caseId: string, role: string, message: string) => {
+      const requestOverride = {
+        body: {
+          caseId,
+          attorneyList: ['Bob', 'Denise'],
+          role,
+        },
+      };
+      const error = new CamsError('MOCK_CASE_ASSIGNMENT_MODULE', { message });
+      const request = createMockAzureFunctionRequest({
+        ...defaultRequestProps,
+        ...requestOverride,
+      });
+      const { azureHttpResponse } = buildTestResponseError(error);
+      jest
+        .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+        .mockRejectedValue(error);
 
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expect.objectContaining(expectedResponse));
-    expect(context.res.body.body.length).toEqual(2);
-  });
-
-  test('handle any duplicate attorneys passed in the request, not create duplicate assignments', async () => {
-    const requestOverride = {
-      ...request,
-      body: {
-        caseId: '081-67-89123',
-        attorneyList: ['Jane', 'Jane'],
-        role: 'TrialAttorney',
-      },
-    };
-
-    const expectedResponse = {
-      success: true,
-      message: 'Trial attorney assignments created.',
-      count: 1,
-    };
-
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expect.objectContaining(expectedResponse));
-    expect(context.res.body.body.length).toEqual(1);
-  });
-
-  test('returns bad request 400 when a caseId is not passed in the request', async () => {
-    const requestOverride = {
-      ...request,
-      body: {
-        caseId: '',
-        attorneyList: ['Bob', 'Denise'],
-        role: 'TrialAttorney',
-      },
-    };
-
-    const expectedResponse = {
-      message: 'Required parameter(s) caseId is/are absent.',
-      success: false,
-    };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponse);
-    expect(context.res.statusCode).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
-  test('returns bad request 400 when a caseId is invalid format', async () => {
-    const requestOverride = {
-      ...request,
-      body: {
-        caseId: '123',
-        attorneyList: ['Bob', 'Denise'],
-        role: 'TrialAttorney',
-      },
-    };
-    const expectedResponse = { message: 'caseId must be formatted like 01-12345.', success: false };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponse);
-    expect(context.res.statusCode).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
-  test('returns bad request 400 when a role is not passed in the request', async () => {
-    const requestOverride = {
-      ...request,
-      body: {
-        caseId: '001-90-90123',
-        attorneyList: ['John Doe'],
-        role: '',
-      },
-    };
-
-    const expectedResponse = {
-      message:
-        'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment. Required parameter(s) role is/are absent.',
-      success: false,
-    };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponse);
-    expect(context.res.statusCode).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
-
-  test('returns bad request 400 when a role of TrialAttorney is not passed in the request', async () => {
-    const requestOverride = {
-      ...request,
-      body: {
-        caseId: '001-90-90123',
-        attorneyList: ['John Doe'],
-        role: 'TrialDragon',
-      },
-    };
-
-    const expectedResponse = {
-      message:
-        'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
-      success: false,
-    };
-
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponse);
-    expect(context.res.statusCode).toEqual(400);
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(AssignmentError));
-    expect(httpErrorSpy).not.toHaveBeenCalledWith(expect.any(UnknownError));
-  });
+      const response = await handler(request, context);
+      expect(response).toEqual(azureHttpResponse);
+    },
+  );
 
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+    const error = new UnknownError('MOCK_CASE_ASSIGNMENT_MODULE');
+    const { azureHttpResponse } = buildTestResponseError(error);
     jest
-      .spyOn(Object.getPrototypeOf(assignmentController), 'createTrialAttorneyAssignments')
-      .mockImplementation(() => {
-        throw new Error();
-      });
+      .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+      .mockRejectedValue(error);
 
     const requestOverride = {
-      ...request,
       body: {
         caseId: '001-67-89123',
         attorneyList: ['John Doe'],
@@ -193,36 +119,40 @@ describe('Case Assignment Function Tests', () => {
       },
     };
 
-    const httpErrorSpy = jest.spyOn(httpResponseModule, 'httpError');
-    await httpTrigger(context, requestOverride);
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
 
-    expect(httpErrorSpy).toHaveBeenCalled();
-    expect(context.res.statusCode).toEqual(500);
-    expect(context.res.body.message).toEqual('Unknown error');
-    expect(httpErrorSpy).toHaveBeenCalledWith(expect.any(UnknownError));
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
     const caseId = '001-67-89012';
     const requestOverride = {
-      ...request,
       body: { caseId: caseId, attorneyList: ['Jane Doe'], role: 'TrialAttorney' },
     };
 
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
+
+    const appContext = await createMockApplicationContext();
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
     const createAssignmentRequestSpy = jest.spyOn(
       Object.getPrototypeOf(assignmentController),
       'createTrialAttorneyAssignments',
     );
-    await httpTrigger(context, requestOverride);
+    await handler(request, context);
 
     expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
   });
 
   test('Should return a list of assignments when valid caseId is supplied for GET request', async () => {
     const caseId = '001-67-89012';
-    const requestOverride = {
-      ...request,
+    const requestOverride: Partial<CamsHttpRequest> = {
       method: 'GET',
       params: {
         id: caseId,
@@ -230,14 +160,20 @@ describe('Case Assignment Function Tests', () => {
       body: undefined,
     };
 
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
+
     const assignments: CaseAssignment[] = MockData.buildArray(MockData.getAttorneyAssignment, 3);
 
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(context);
+    const appContext = await createMockApplicationContext();
+    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
 
     const getAssignmentRequestSpy = jest
       .spyOn(Object.getPrototypeOf(assignmentController), 'getTrialAttorneyAssignments')
       .mockReturnValue(assignments);
-    await httpTrigger(context, requestOverride);
+    await handler(request, context);
 
     expect(getAssignmentRequestSpy).toHaveBeenCalledWith(caseId);
     expect(getAssignmentRequestSpy).toHaveReturnedWith(assignments);

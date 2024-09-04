@@ -10,15 +10,10 @@ import { OrderStatus, TransferOrder } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-
-// Because tests set CAMS_PA11Y = true
-import Api from '@/lib/models/chapter15-mock.api.cases';
-
-import { ResponseData, SimpleResponseData } from '@/lib/type-declarations/api';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import { CaseDocketEntry } from '@/lib/type-declarations/chapter-15';
+import Api2 from '@/lib/models/api2';
 
 const testOffices: OfficeDetails[] = [
   {
@@ -59,44 +54,11 @@ const testOffices: OfficeDetails[] = [
   },
 ];
 
-const sleep = (delay: number) => {
-  return new Promise((resolve) => {
-    return setTimeout(resolve, delay);
-  });
-};
-
 const fromCaseSummary = MockData.getCaseSummary();
 const suggestedCases = MockData.buildArray(MockData.getCaseSummary, 2);
-
-async function mockGetCaseSummary(): Promise<SimpleResponseData<CaseSummary>> {
-  return Promise.resolve({ success: true, body: fromCaseSummary });
-}
-
-async function mockGetCaseSummaryNotFound(): Promise<
-  ResponseData | SimpleResponseData<CaseSummary>
-> {
-  throw new Error('Case summary not found for case ID.');
-}
-
-async function mockGetTransferredCaseSuggestionsFull(): Promise<ResponseData<CaseSummary[]>> {
-  return Promise.resolve({ message: 'ok', count: suggestedCases.length, body: suggestedCases });
-}
-
-async function mockGetTransferredCaseSuggestionsEmptyWithDelay(): Promise<
-  ResponseData<CaseSummary[]>
-> {
-  await sleep(200);
-  return mockGetTransferredCaseSuggestionsEmpty();
-}
-
-async function mockGetTransferredCaseSuggestionsEmpty(): Promise<ResponseData<CaseSummary[]>> {
-  return Promise.resolve({ message: 'ok', count: 0, body: [] });
-}
+const caseSummaryError = new Error('Case summary not found for case ID.');
 
 const mockErrorMessage = 'Some mock error';
-async function mockGetTransferredCaseSuggestionsError(): Promise<ResponseData<CaseSummary[]>> {
-  throw new Error(mockErrorMessage);
-}
 
 async function waitForLoadToComplete(orderId: string) {
   const testId = `loading-spinner-${orderId}-suggestions`;
@@ -199,9 +161,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should display descriptive instructions when loading suggestions and hide it if suggestedCases returns 0 results', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsEmptyWithDelay)
-      .mockImplementationOnce(mockGetCaseSummary);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
 
@@ -215,9 +176,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should display case table if we get more than 0 suggested cases', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummary);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
 
@@ -234,7 +194,7 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should call onAlert if an error results from fetching case suggestions', async () => {
-    vi.spyOn(Api, 'get').mockImplementationOnce(mockGetTransferredCaseSuggestionsError);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockRejectedValue(new Error(mockErrorMessage));
     const { onAlert } = renderWithProps();
 
     await waitForLoadToComplete(order.id);
@@ -248,9 +208,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should call onCaseSelection if a selection is made', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummary);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     const { onCaseSelection } = renderWithProps();
 
@@ -266,9 +225,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should display validation error alert if an invalid case number is entered into input', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(caseSummaryError);
 
     renderWithProps();
 
@@ -282,9 +240,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should display table result if a valid case number has been entered into the form', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummary);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     renderWithProps();
 
@@ -297,9 +254,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('ref.cancel should reset all form fields, validation states, case summary and order transfer details', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummary);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: fromCaseSummary });
 
     const { ref } = renderWithProps();
 
@@ -322,9 +278,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should properly handle deselecting court', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(caseSummaryError);
 
     renderWithProps();
 
@@ -345,9 +300,8 @@ describe('SuggestedTransferCases component', () => {
   });
 
   test('should properly handle removing case number', async () => {
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(caseSummaryError);
 
     renderWithProps();
 
@@ -371,9 +325,8 @@ describe('SuggestedTransferCases component', () => {
 
   test('should handle no suggested case number in docket text', async () => {
     order = MockData.getTransferOrder({ override: { docketSuggestedCaseNumber: undefined } });
-    vi.spyOn(Api, 'get')
-      .mockImplementationOnce(mockGetTransferredCaseSuggestionsFull)
-      .mockImplementationOnce(mockGetCaseSummaryNotFound);
+    vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValue({ data: suggestedCases });
+    vi.spyOn(Api2, 'getCaseSummary').mockRejectedValue(caseSummaryError);
 
     renderWithProps({ order });
 

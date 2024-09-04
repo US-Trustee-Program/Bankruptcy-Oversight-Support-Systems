@@ -38,7 +38,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
     repository = new OrdersCosmosDbRepository(applicationContext);
   });
 

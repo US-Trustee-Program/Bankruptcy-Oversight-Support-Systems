@@ -5,16 +5,15 @@ import AssignAttorneyModal, {
   AssignAttorneyModalRef,
 } from './AssignAttorneyModal';
 import React from 'react';
-import Api from '@/lib/models/api';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
 import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
-import Api2 from '@/lib/hooks/UseApi2';
 import { AttorneyUser } from '@common/cams/users';
-import { ResponseBodySuccess } from '@common/api/response';
+import { ResponseBody } from '@common/api/response';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import Api2 from '@/lib/models/api2';
 
 const offices = [MANHATTAN!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -34,9 +33,8 @@ const modalId = 'some-modal-id';
 describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
 
-  const attorneyListResponse: ResponseBodySuccess<AttorneyUser[]> = {
-    meta: { isPaginated: false, self: 'self-url' },
-    isSuccess: true,
+  const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
+    meta: { self: 'self-url' },
     data: attorneyList,
   };
 
@@ -138,12 +136,8 @@ describe('Test Assign Attorney Modal Component', () => {
   });
 
   test('Should call POST with list of attorneys when assign button is clicked.', async () => {
-    const postSpy = vi.spyOn(Api, 'post').mockImplementation((_path, _body) => {
-      return Promise.resolve({
-        message: 'post mock',
-        count: 0,
-        body: {},
-      });
+    const postSpy = vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({
+      data: undefined,
     });
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef);
@@ -179,7 +173,6 @@ describe('Test Assign Attorney Modal Component', () => {
 
     await waitFor(() => {
       expect(postSpy).toHaveBeenCalledWith(
-        '/case-assignments',
         expect.objectContaining({
           attorneyList: expect.arrayContaining([
             getCamsUserReference(mark),
@@ -221,7 +214,7 @@ describe('Test Assign Attorney Modal Component', () => {
 
   test('should call callback with error information if API caseAssignments POST returns error', async () => {
     const error = new Error('API Rejection');
-    vi.spyOn(Api, 'post').mockRejectedValue(error);
+    vi.spyOn(Api2, 'postStaffAssignments').mockRejectedValue(error);
 
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});

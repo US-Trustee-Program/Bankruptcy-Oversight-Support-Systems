@@ -1,5 +1,4 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -8,15 +7,11 @@ import {
   TransferOrder,
   ConsolidationOrder,
   isConsolidationOrder,
-  Order,
 } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { ResponseData } from '@/lib/type-declarations/api';
-
-interface OrderResponseData extends ResponseData<Order> {
-  body: Array<Order>;
-}
+import Api2 from '@/lib/models/api2';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('Review Orders screen', () => {
   beforeEach(async () => {
@@ -133,47 +128,6 @@ describe('Review Orders screen', () => {
     expect(actualOffices).toEqual<OfficeDetails[]>(expectedOffices);
   });
 
-  test('should render a list of orders', async () => {
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    const orders = ordersResponse.body;
-
-    render(
-      <BrowserRouter>
-        <DataVerificationScreen />
-      </BrowserRouter>,
-    );
-
-    const ordersScreen = screen.getByTestId('data-verification-screen');
-    expect(ordersScreen).toBeInTheDocument();
-
-    let accordionGroup;
-    await waitFor(() => {
-      accordionGroup = screen.getByTestId('accordion-group');
-      expect(accordionGroup).toBeInTheDocument();
-    });
-
-    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
-    const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
-    fireEvent.click(approvedOrderFilter);
-    fireEvent.click(rejectedOrderFilter);
-
-    for (const order of orders) {
-      await waitFor(async () => {
-        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
-        expect(heading).toBeInTheDocument();
-        expect(heading).toBeVisible();
-        expect(heading?.textContent).toContain(order.courtName);
-        expect(heading?.textContent).toContain(formatDate(order.orderDate));
-      });
-    }
-
-    const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
-    expect(transfersFilter).toBeInTheDocument();
-
-    const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
-    expect(consolidationsFilter).toBeInTheDocument();
-  });
-
   test('should toggle filter button', async () => {
     render(
       <BrowserRouter>
@@ -208,9 +162,55 @@ describe('Review Orders screen', () => {
     });
   });
 
+  test('should render a list of orders', async () => {
+    const ordersResponse = {
+      data: MockData.getSortedOrders(15),
+    };
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    const ordersScreen = screen.getByTestId('data-verification-screen');
+    expect(ordersScreen).toBeInTheDocument();
+
+    let accordionGroup;
+    await waitFor(() => {
+      accordionGroup = screen.getByTestId('accordion-group');
+      expect(accordionGroup).toBeInTheDocument();
+    });
+
+    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
+    const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
+    fireEvent.click(approvedOrderFilter);
+    fireEvent.click(rejectedOrderFilter);
+
+    for (const order of ordersResponse.data) {
+      await waitFor(async () => {
+        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).toBeInTheDocument();
+        expect(heading).toBeVisible();
+        expect(heading?.textContent).toContain(order.courtName);
+        expect(heading?.textContent).toContain(formatDate(order.orderDate));
+      });
+    }
+
+    const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
+    expect(transfersFilter).toBeInTheDocument();
+
+    const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
+    expect(consolidationsFilter).toBeInTheDocument();
+  });
+
   test('should not show consolidation orders when consolidation feature flag is false', async () => {
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    const orders = ordersResponse.body;
+    const ordersResponse = {
+      data: MockData.getSortedOrders(15),
+    };
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+    const orders = ordersResponse.data;
     const transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
     const consolidationOrders = orders.filter((order) =>
       isConsolidationOrder(order),
@@ -257,7 +257,7 @@ describe('Review Orders screen', () => {
   });
 
   test('should not render a list if an API error is encountered', async () => {
-    const mock = vitest.spyOn(Chapter15MockApi, 'get');
+    const mock = vi.spyOn(Api2, 'getOrders');
     mock.mockRejectedValue({});
 
     render(
@@ -280,8 +280,11 @@ describe('Review Orders screen', () => {
       'consolidations-enabled': true,
     };
     vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-    const ordersResponse = (await Chapter15MockApi.get('/orders')) as unknown as OrderResponseData;
-    const orders = ordersResponse.body;
+    const ordersResponse = {
+      data: MockData.getSortedOrders(15),
+    };
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+    const orders = ordersResponse.data;
     const transferOrders = orders.filter((order) => isTransferOrder(order)) as TransferOrder[];
     const consolidationOrders = orders.filter((order) =>
       isConsolidationOrder(order),

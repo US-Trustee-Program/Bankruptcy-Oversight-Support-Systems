@@ -1,35 +1,40 @@
-import httpTrigger from './consolidations.function';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { createMockAzureFunctionRequest, createMockAzureFunctionContext } from '../azure/functions';
-
-const rejectConsolidation = jest
-  .fn()
-  .mockRejectedValue('Set up the desired behavior for your test.');
-const approveConsolidation = jest
-  .fn()
-  .mockRejectedValue('Set up the desired behavior for your test.');
-
-jest.mock('../lib/controllers/orders/orders.controller', () => {
-  return {
-    OrdersController: jest.fn().mockImplementation(() => {
-      return {
-        rejectConsolidation,
-        approveConsolidation,
-      };
-    }),
-  };
-});
+import handler from './consolidations.function';
+import { CamsHttpRequest } from '../lib/adapters/types/http';
+import ContextCreator from '../azure/application-context-creator';
+import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
+import { CamsRole } from '../../../common/src/cams/roles';
+import {
+  buildTestResponseError,
+  buildTestResponseSuccess,
+  createMockAzureFunctionContext,
+  createMockAzureFunctionRequest,
+} from '../azure/testing-helpers';
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { ConsolidationOrder } from '../../../common/src/cams/orders';
+import { BadRequestError } from '../lib/common-errors/bad-request';
 
 describe('Consolidations Function tests', () => {
-  const request = createMockAzureFunctionRequest({
+  const defaultRequestProps: Partial<CamsHttpRequest> = {
     params: {
       procedure: '',
     },
     method: 'PUT',
     body: {},
-  });
+  };
 
   const context = createMockAzureFunctionContext();
+
+  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
+    MockData.getCamsSession({
+      user: {
+        id: 'userId-Bob Jones',
+        name: 'Bob Jones',
+        offices: [MANHATTAN],
+        roles: [CamsRole.CaseAssignmentManager],
+      },
+    }),
+  );
 
   afterEach(() => {
     jest.clearAllMocks();
@@ -37,9 +42,8 @@ describe('Consolidations Function tests', () => {
 
   test('should reject consolidation when procedure == "reject"', async () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
-    rejectConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
-    const requestOverride = {
-      ...request,
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'reject',
       },
@@ -48,55 +52,77 @@ describe('Consolidations Function tests', () => {
         rejectedCases: [mockConsolidationOrder.childCases[0]],
       },
     };
+    const request = createMockAzureFunctionRequest(requestProps);
 
-    const expectedResponseBody = {
-      success: true,
-      body: [mockConsolidationOrder],
-    };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
+      data: [mockConsolidationOrder],
+    });
+    jest
+      .spyOn(OrdersController.prototype, 'rejectConsolidation')
+      .mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should approve consolidation when procedure == "Approve"', async () => {
-    const mockConsolidationOrder = [MockData.getConsolidationOrder()];
-    approveConsolidation.mockResolvedValue({ success: true, body: [mockConsolidationOrder] });
-    const expectedResponseBody = {
-      success: true,
-      body: [mockConsolidationOrder],
-    };
-    const requestOverride = {
-      ...request,
+    const mockConsolidationOrder = MockData.getConsolidationOrder();
+
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'approve',
       },
     };
-    await httpTrigger(context, requestOverride);
+    const request = createMockAzureFunctionRequest(requestProps);
 
-    expect(context.res.body).toEqual(expectedResponseBody);
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
+      data: [mockConsolidationOrder],
+    });
+
+    jest
+      .spyOn(OrdersController.prototype, 'approveConsolidation')
+      .mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should throw a BadRequestError on invalid procedure request', async () => {
-    const requestOverride = {
-      ...request,
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'unsupported',
       },
     };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.statusCode).toEqual(400);
-    expect(context.res.body.success).toBeFalsy();
+    const request = createMockAzureFunctionRequest(requestProps);
+
+    const error = new BadRequestError('TEST-MODULE', {
+      message: `Could not perform ${requestProps.params.procedure}.`,
+    });
+    const { azureHttpResponse } = buildTestResponseError(error);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
   });
 
   test('should throw an UnknownError on bad request', async () => {
-    approveConsolidation.mockRejectedValue('consolidation-test');
-    const requestOverride = {
-      ...request,
+    const requestProps = {
+      ...defaultRequestProps,
       params: {
         procedure: 'approve',
       },
     };
-    await httpTrigger(context, requestOverride);
-    expect(context.res.statusCode).toEqual(500);
-    expect(context.res.body.success).toBeFalsy();
+    const request = createMockAzureFunctionRequest(requestProps);
+
+    const error = new Error('consolidation-test');
+    const { azureHttpResponse } = buildTestResponseError(error);
+    jest.spyOn(OrdersController.prototype, 'approveConsolidation').mockRejectedValue(error);
+
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 });

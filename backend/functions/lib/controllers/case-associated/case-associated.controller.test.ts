@@ -13,7 +13,7 @@ describe('Test case-history controller', () => {
   let applicationContext;
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    applicationContext = await createMockApplicationContext();
   });
 
   test('should return associated cases when getAssociatedCases is called', async () => {
@@ -25,10 +25,10 @@ describe('Test case-history controller', () => {
       .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
       .mockResolvedValue(associatedCases);
     const caseId = NORMAL_CASE_ID;
+    applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController(applicationContext);
-    const result = await controller.getAssociatedCases(applicationContext, { caseId });
-    expect(result.success).toBeTruthy();
-    expect(result['body']).toEqual(associatedCases);
+    const result = await controller.getAssociatedCases(applicationContext);
+    expect(result.body.data).toEqual(associatedCases);
   });
 
   test('should throw a NotFoundError when a history is not found', async () => {
@@ -36,22 +36,22 @@ describe('Test case-history controller', () => {
       .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
       .mockRejectedValue(new NotFoundError('TEST'));
     const caseId = NOT_FOUND_ERROR_CASE_ID;
+    applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController(applicationContext);
-    await expect(controller.getAssociatedCases(applicationContext, { caseId })).rejects.toThrow(
-      'Not found',
-    );
+    await expect(controller.getAssociatedCases(applicationContext)).rejects.toThrow('Not found');
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
     const expectedMessage = 'Unknown error';
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
+    applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController(applicationContext);
     jest
       .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
       .mockImplementation(async () => {
         throw Error(expectedMessage);
       });
-    await expect(controller.getAssociatedCases(applicationContext, { caseId })).rejects.toThrow(
+    await expect(controller.getAssociatedCases(applicationContext)).rejects.toThrow(
       expectedMessage,
     );
   });

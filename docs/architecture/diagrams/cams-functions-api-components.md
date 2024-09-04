@@ -9,10 +9,10 @@ graph TB
 
     8("<div style='font-weight: bold'>Webapp</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>The user interface for CAMS</div>")
     style 8 fill:#438dd5,stroke:#2e6295,color:#ffffff
-    26("<div style='font-weight: bold'>DXTR DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>DXTR SQL Database</div>")
-    style 26 fill:#438dd5,stroke:#2e6295,color:#ffffff
-    27("<div style='font-weight: bold'>Cosmos DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>NoSQL Database</div>")
-    style 27 fill:#438dd5,stroke:#2e6295,color:#ffffff
+    28("<div style='font-weight: bold'>DXTR DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>DXTR SQL Database</div>")
+    style 28 fill:#438dd5,stroke:#2e6295,color:#ffffff
+    29("<div style='font-weight: bold'>Cosmos DB</div><div style='font-size: 70%; margin-top: 0px'>[Container]</div><div style='font-size: 80%; margin-top:10px'>NoSQL Database</div>")
+    style 29 fill:#438dd5,stroke:#2e6295,color:#ffffff
 
     subgraph 12 [API]
       style 12 fill:#ffffff,stroke:#2e6295,color:#2e6295
@@ -43,8 +43,15 @@ graph TB
       style 24 fill:#85bbf0,stroke:#5d82a8,color:#000000
       25("<div style='font-weight: bold'>Associated Cases</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>Associated Cases API</div>")
       style 25 fill:#85bbf0,stroke:#5d82a8,color:#000000
+      26("<div style='font-weight: bold'>Me</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>User Info API</div>")
+      style 26 fill:#85bbf0,stroke:#5d82a8,color:#000000
+      27("<div style='font-weight: bold'>Context Creator</div><div style='font-size: 70%; margin-top: 0px'>[Component]</div><div style='font-size: 80%; margin-top:10px'>API Application Context<br />Manager</div>")
+      style 27 fill:#85bbf0,stroke:#5d82a8,color:#000000
     end
 
+    23-. "<div>Writes case audit logs</div><div style='font-size: 70%'></div>" .->29
+    26-. "<div>Reads authenticated user's<br />session from the session<br />cache</div><div style='font-size: 70%'></div>" .->29
+    27-. "<div>Reads and writes<br />authenticated user's session<br />from/to the session cache</div><div style='font-size: 70%'></div>" .->29
     8-. "<div>Reads and writes case data</div><div style='font-size: 70%'></div>" .->14
     8-. "<div>Reads and writes case<br />assignments</div><div style='font-size: 70%'></div>" .->15
     8-. "<div>Reads Manhattan attorneys</div><div style='font-size: 70%'></div>" .->13
@@ -57,18 +64,18 @@ graph TB
     8-. "<div>Reads case summaries for data<br />verification</div><div style='font-size: 70%'></div>" .->22
     8-. "<div>Reads and writes<br />consolidation order data</div><div style='font-size: 70%'></div>" .->24
     8-. "<div>Reads associated orders from<br />consolidation</div><div style='font-size: 70%'></div>" .->25
-    14-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->26
-    14-. "<div>Reads case assignments</div><div style='font-size: 70%'></div>" .->27
-    24-. "<div>Reads and Writes<br />consolidations</div><div style='font-size: 70%'></div>" .->27
-    15-. "<div>Reads and writes case<br />assignments</div><div style='font-size: 70%'></div>" .->27
-    16-. "<div>Reads case docket entries</div><div style='font-size: 70%'></div>" .->26
-    17-. "<div>Reads case audit logs</div><div style='font-size: 70%'></div>" .->27
-    18-. "<div>Reads case summaries</div><div style='font-size: 70%'></div>" .->26
-    25-. "<div>Reads associated case<br />references</div><div style='font-size: 70%'></div>" .->27
-    19-. "<div>Reads USTP office information</div><div style='font-size: 70%'></div>" .->26
-    20-. "<div>Reads case events</div><div style='font-size: 70%'></div>" .->27
-    21-. "<div>Writes case audit logs</div><div style='font-size: 70%'></div>" .->27
-    22-. "<div>Reads case summaries matching<br />a case transfer event</div><div style='font-size: 70%'></div>" .->26
-    23-. "<div>Writes case audit logs</div><div style='font-size: 70%'></div>" .->27
+    8-. "<div>Reads the authenticated<br />user's session</div><div style='font-size: 70%'></div>" .->26
+    14-. "<div>Gets case data</div><div style='font-size: 70%'></div>" .->28
+    14-. "<div>Reads case assignments</div><div style='font-size: 70%'></div>" .->29
+    24-. "<div>Reads and Writes<br />consolidations</div><div style='font-size: 70%'></div>" .->29
+    15-. "<div>Reads and writes case<br />assignments</div><div style='font-size: 70%'></div>" .->29
+    16-. "<div>Reads case docket entries</div><div style='font-size: 70%'></div>" .->28
+    17-. "<div>Reads case audit logs</div><div style='font-size: 70%'></div>" .->29
+    18-. "<div>Reads case summaries</div><div style='font-size: 70%'></div>" .->28
+    25-. "<div>Reads associated case<br />references</div><div style='font-size: 70%'></div>" .->29
+    19-. "<div>Reads USTP office information</div><div style='font-size: 70%'></div>" .->28
+    20-. "<div>Reads case events</div><div style='font-size: 70%'></div>" .->29
+    21-. "<div>Writes case audit logs</div><div style='font-size: 70%'></div>" .->29
+    22-. "<div>Reads case summaries matching<br />a case transfer event</div><div style='font-size: 70%'></div>" .->28
   end
 ```

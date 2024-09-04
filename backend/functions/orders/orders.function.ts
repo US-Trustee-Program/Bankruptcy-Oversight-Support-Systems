@@ -1,17 +1,10 @@
-import { AzureFunction, Context, HttpRequest } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
-import { httpError, httpSuccess } from '../lib/adapters/utils/http-response';
-import ContextCreator from '../lib/adapters/utils/application-context-creator';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import {
-  OrdersController,
-  GetOrdersResponse,
-  PatchOrderResponse,
-} from '../lib/controllers/orders/orders.controller';
-import { BadRequestError } from '../lib/common-errors/bad-request';
+import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { TransferOrderAction } from '../../../common/src/cams/orders';
-import { ApplicationContext } from '../lib/adapters/types/basic';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'ORDERS_FUNCTION';
 
@@ -19,47 +12,41 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const httpTrigger: AzureFunction = async function (
-  functionContext: Context,
+export default async function handler(
   request: HttpRequest,
-): Promise<void> {
-  const context = await ContextCreator.applicationContextCreator(functionContext, request);
-  let response;
+  invocationContext: InvocationContext,
+): Promise<HttpResponseInit> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  let response: HttpResponseInit;
   try {
-    context.session = await ContextCreator.getApplicationContextSession(context);
-
-    if (request.method === 'GET') {
-      response = await getOrders(context);
-    } else if (request.method === 'PATCH') {
-      response = await updateOrder(context);
+    const context = await ContextCreator.applicationContextCreator(
+      invocationContext,
+      logger,
+      request,
+    );
+    const orderController = new OrdersController(context);
+    if (context.request.method === 'GET') {
+      const orderGet = await orderController.getOrders(context);
+      response = toAzureSuccess(orderGet);
+    } else if (context.request.method === 'PATCH') {
+      //TODO: Json Mapping with these requestBody objects
+      const id = context.request.params['id'];
+      const camsResponse = await orderController.updateOrder(
+        context,
+        id,
+        context.request.body as TransferOrderAction,
+      );
+      response = toAzureSuccess(camsResponse);
     }
-    functionContext.res = httpSuccess(response);
+    return response;
   } catch (camsError) {
-    context.logger.camsError(camsError);
-    functionContext.res = httpError(camsError);
-  }
-};
-
-async function getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
-  const ordersController = new OrdersController(context);
-  const responseBody = await ordersController.getOrders(context);
-  return responseBody;
-}
-
-async function updateOrder(context: ApplicationContext): Promise<PatchOrderResponse> {
-  const ordersController = new OrdersController(context);
-  const data = context.req.body;
-  const id = context.req.params['id'];
-  if (id !== data.id) {
-    const camsError = new BadRequestError(MODULE_NAME, {
-      message: 'Cannot update order. ID of order does not match ID of request.',
-    });
-    throw camsError;
-  }
-  const orderType = data.orderType;
-  if (orderType === 'transfer') {
-    return ordersController.updateOrder(context, id, data as TransferOrderAction);
+    return toAzureError(logger, MODULE_NAME, camsError);
   }
 }
 
-export default httpTrigger;
+app.http('orders', {
+  methods: ['GET', 'PATCH'],
+  authLevel: 'anonymous',
+  handler,
+  route: 'orders/{id?}',
+});

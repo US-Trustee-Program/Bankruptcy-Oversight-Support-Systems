@@ -31,7 +31,7 @@ describe('offices gateway tests', () => {
     const querySpy = jest.spyOn(database, 'executeQuery');
 
     beforeEach(async () => {
-      applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      applicationContext = await createMockApplicationContext();
       querySpy.mockImplementation(jest.fn());
     });
 
@@ -80,7 +80,7 @@ describe('offices gateway tests', () => {
     const querySpy = jest.spyOn(database, 'executeQuery');
 
     beforeEach(async () => {
-      applicationContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+      applicationContext = await createMockApplicationContext();
       querySpy.mockImplementation(jest.fn());
     });
 

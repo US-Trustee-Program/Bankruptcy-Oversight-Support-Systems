@@ -34,7 +34,7 @@ describe('Orders use case', () => {
   let useCase: OrdersUseCase;
 
   beforeEach(async () => {
-    mockContext = await createMockApplicationContext({ DATABASE_MOCK: 'true' });
+    mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession();
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
@@ -143,10 +143,9 @@ describe('Orders use case', () => {
       .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
 
-    const mockCreateAssignment = jest.spyOn(
-      CaseAssignmentUseCase.prototype,
-      'createTrialAttorneyAssignments',
-    );
+    const mockCreateAssignment = jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockResolvedValue();
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 

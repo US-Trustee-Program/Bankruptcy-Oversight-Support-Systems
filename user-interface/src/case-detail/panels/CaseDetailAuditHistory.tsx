@@ -10,7 +10,7 @@ import {
   CaseTransferHistory,
 } from '@common/cams/history';
 import { useEffect, useState } from 'react';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 export interface CaseDetailAuditHistoryProps {
   caseId: string;

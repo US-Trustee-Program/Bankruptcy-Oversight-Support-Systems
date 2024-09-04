@@ -1,5 +1,4 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import Chapter15MockApi from '@/lib/models/chapter15-mock.api.cases';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
@@ -106,11 +105,6 @@ describe('TransferOrderAccordion', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     order = MockData.getTransferOrder();
-    vi.spyOn(Chapter15MockApi, 'get').mockResolvedValueOnce({
-      message: '',
-      count: 1,
-      body: { dateFiled: order.dateFiled, debtor: order.debtor },
-    });
   });
 
   afterEach(() => {
