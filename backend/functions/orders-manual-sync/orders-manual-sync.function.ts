@@ -43,6 +43,7 @@ export default async function handler(
     return toAzureError(context, MODULE_NAME, error);
   }
 }
+
 app.http('order-manual-sync', {
   methods: ['POST'],
   handler,

@@ -105,7 +105,6 @@ export class CasesCosmosDbRepository implements CasesRepository {
       ],
     };
     const response = await this.queryData<CaseHistory>(context, querySpec);
-    console.log('Case history repo:', caseId, query, response);
     return response;
   }
 

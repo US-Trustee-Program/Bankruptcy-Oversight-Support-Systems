@@ -12,6 +12,7 @@ import { buildTestResponseError } from '../azure/testing-helpers';
 
 describe('Orders suggestions function tests', () => {
   const context = createMockAzureFunctionContext();
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -29,7 +30,6 @@ describe('Orders suggestions function tests', () => {
       method: 'GET',
     });
     const response = await handler(request, context);
-    console.log('Response:   ', response);
     expect(getSuggestedCasesSpy).toHaveBeenCalled();
     expect(response).toMatchObject(azureHttpResponse);
   });
@@ -42,7 +42,6 @@ describe('Orders suggestions function tests', () => {
     const request = createMockAzureFunctionRequest({
       method: 'GET',
     });
-    console.log('Azure Http Response:    ', azureHttpResponse);
     const response = await handler(request, context);
     expect(response).toMatchObject(azureHttpResponse);
     expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);

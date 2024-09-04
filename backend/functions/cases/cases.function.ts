@@ -24,7 +24,7 @@ export default async function handler(
     );
     const casesController = new CasesController(applicationContext);
 
-    if (request.method === 'GET' && applicationContext.request.params.caseId) {
+    if (applicationContext.request.method === 'GET' && applicationContext.request.params.caseId) {
       const response = await casesController.getCaseDetails({
         caseId: applicationContext.request.params.caseId,
       });
