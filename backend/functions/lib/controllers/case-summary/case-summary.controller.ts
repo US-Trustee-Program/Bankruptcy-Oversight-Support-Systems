@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseDetail } from '../../../../../common/src/cams/cases';
+import { CaseSummary } from '../../../../../common/src/cams/cases';
 import CaseManagement from '../../use-cases/case-management';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -15,13 +15,16 @@ export class CaseSummaryController {
 
   public async getCaseSummary(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<CaseDetail>> {
+  ): Promise<CamsHttpResponseInit<CaseSummary>> {
     try {
-      const caseSummary = await this.useCase.getCaseSummary(context, context.request.params.caseId);
+      const caseSummary = await this.useCase.getCaseSummary(
+        context,
+        context.request!.params.caseId,
+      );
       const success = httpSuccess({
         body: {
           meta: {
-            self: context.request.url,
+            self: context.request!.url,
           },
           data: caseSummary,
         },
