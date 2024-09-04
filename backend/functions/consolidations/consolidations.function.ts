@@ -13,7 +13,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION' as const;
+const MODULE_NAME = 'CONSOLIDATIONS-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,

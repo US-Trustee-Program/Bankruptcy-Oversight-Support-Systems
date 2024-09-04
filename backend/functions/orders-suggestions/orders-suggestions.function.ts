@@ -9,7 +9,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'ORDER-SUGGESTIONS-FUNCTION' as const;
+const MODULE_NAME = 'ORDER-SUGGESTIONS-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,

@@ -4,7 +4,7 @@ import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gat
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 
-const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION' as const;
+const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,

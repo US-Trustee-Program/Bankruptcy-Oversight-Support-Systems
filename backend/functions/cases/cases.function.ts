@@ -7,7 +7,7 @@ import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
 
-const MODULE_NAME = 'CASES-FUNCTION' as const;
+const MODULE_NAME = 'CASES-FUNCTION';
 
 initializeApplicationInsights();
 

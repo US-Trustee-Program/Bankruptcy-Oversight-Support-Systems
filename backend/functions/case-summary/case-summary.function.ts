@@ -7,7 +7,7 @@ import { CaseSummaryController } from '../lib/controllers/case-summary/case-summ
 
 dotenv.config();
 
-const MODULE_NAME = 'CASE-SUMMARY-FUNCTION' as const;
+const MODULE_NAME = 'CASE-SUMMARY-FUNCTION';
 
 initializeApplicationInsights();
 
