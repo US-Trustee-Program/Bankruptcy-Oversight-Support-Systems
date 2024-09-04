@@ -97,7 +97,7 @@ if [[ "${expected_git_sha}" != '' ]]; then
   while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
     retry=$((retry+1))
     curl "${targetApiURL}" | tee api_response.json
-    currentGitSha=$(python3 -c "import sys, json; print(json.load(open('api_response.json'))['info']['sha'])")
+    currentGitSha=$(python3 -c "import sys, json; print(json.load(open('api_response.json'))['data']['info']['sha'])")
     echo "Current sha ${currentGitSha}"
     if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
       apiStatusCode=$("${apiCmd[@]}")
