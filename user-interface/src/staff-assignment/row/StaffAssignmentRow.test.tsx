@@ -3,7 +3,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentRow, StaffAssignmentRowOptions } from './StaffAssignmentRow';
 import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { render, screen, waitFor } from '@testing-library/react';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
 import { BrowserRouter } from 'react-router-dom';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';

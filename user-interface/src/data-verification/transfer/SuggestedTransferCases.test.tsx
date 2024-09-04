@@ -13,7 +13,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 const testOffices: OfficeDetails[] = [
   {

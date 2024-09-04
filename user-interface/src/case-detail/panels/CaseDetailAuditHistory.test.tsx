@@ -4,7 +4,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { ConsolidationOrder } from '@common/cams/orders';
 import MockData from '@common/cams/test-utilities/mock-data';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';

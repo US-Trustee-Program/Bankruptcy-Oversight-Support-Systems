@@ -13,7 +13,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import { BrowserRouter } from 'react-router-dom';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});

@@ -10,7 +10,7 @@ import {
 } from '@common/cams/orders';
 import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import Api2 from '@/lib/hooks/UseApi2';
+import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('Review Orders screen', () => {
