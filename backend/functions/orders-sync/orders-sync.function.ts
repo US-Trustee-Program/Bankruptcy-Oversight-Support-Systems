@@ -12,7 +12,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'ORDERS-SYNC-FUNCTION' as const;
+const MODULE_NAME = 'ORDERS-SYNC-FUNCTION';
 
 export default async function timerTrigger(
   _myTimer: Timer,

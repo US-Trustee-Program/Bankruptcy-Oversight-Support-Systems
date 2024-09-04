@@ -9,7 +9,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'CASE-DOCKET-FUNCTION' as const;
+const MODULE_NAME = 'CASE-DOCKET-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,

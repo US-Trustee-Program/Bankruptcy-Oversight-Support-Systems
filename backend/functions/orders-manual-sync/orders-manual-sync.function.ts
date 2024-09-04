@@ -10,7 +10,7 @@ dotenv.config();
 
 initializeApplicationInsights();
 
-const MODULE_NAME = 'ORDERS-MANUAL-SYNC-FUNCTION' as const;
+const MODULE_NAME = 'ORDERS-MANUAL-SYNC-FUNCTION';
 
 /**
  * Used to invoke the orders sync process between DXTR and CAMS CosmosDB from an accessable HTTP endpoint.

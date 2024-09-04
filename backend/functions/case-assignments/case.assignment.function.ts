@@ -7,7 +7,7 @@ import { CamsUserReference } from '../../../common/src/cams/users';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 import { CamsRole } from '../../../common/src/cams/roles';
 
-const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION' as const;
+const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
 
 initializeApplicationInsights();
 

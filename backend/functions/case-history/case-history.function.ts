@@ -5,7 +5,7 @@ import { CaseHistoryController } from '../lib/controllers/case-history/case-hist
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { azureToCamsHttpRequest, toAzureError, toAzureSuccess } from '../azure/functions';
 
-const MODULE_NAME = 'CASE-HISTORY-FUNCTION' as const;
+const MODULE_NAME = 'CASE-HISTORY-FUNCTION';
 
 dotenv.config();
 
