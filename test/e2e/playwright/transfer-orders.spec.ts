@@ -36,7 +36,7 @@ test.describe('Transfer Orders', () => {
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
-    orderResponseBody = (await orderResponse.json()).body;
+    orderResponseBody = (await orderResponse.json()).data;
 
     expect(orderResponseBody).not.toBeFalsy();
   });

@@ -23,7 +23,7 @@ test.describe('Consolidation Orders', () => {
     await officesRequestPromise;
 
     const orderResponse = await orderResponsePromise;
-    orderResponseBody = (await orderResponse.json()).body;
+    orderResponseBody = (await orderResponse.json()).data;
 
     expect(orderResponseBody).not.toBeFalsy();
   });
@@ -134,12 +134,6 @@ test.describe('Consolidation Orders', () => {
     await page
       .locator(
         `input[data-testid="checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0"]`,
-      )
-      .dispatchEvent('click');
-
-    await page
-      .locator(
-        `input[data-testid="checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-1"]`,
       )
       .dispatchEvent('click');
 
