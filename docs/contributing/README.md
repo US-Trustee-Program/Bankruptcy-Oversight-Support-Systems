@@ -109,3 +109,7 @@ az cloud set --name AzureUSGovernment
 ```
 
 After that is complete, running `az login` will open a browser tab to log you in to your Azure account.
+
+## Architecture Diagrams
+
+We use the Structurizr domain-specific-language (DSL) to describe non-sensitive portions of our system architecture. When the architecture changes, the `/architecture/cams.dsl` file must be updated to reflect that change, and the `/architecture/export-architecture-diagrams.sh` script must be run. The script contains information about proper usage.
