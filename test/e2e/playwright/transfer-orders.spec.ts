@@ -11,10 +11,6 @@ interface Order {
   docketSuggestedCaseNumber: string;
 }
 
-interface OrdersResponse {
-  body: Array<Order>;
-}
-
 test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
@@ -36,7 +32,7 @@ test.describe('Transfer Orders', () => {
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
-    orderResponseBody = (await orderResponse.json()).body;
+    orderResponseBody = (await orderResponse.json()).data;
 
     expect(orderResponseBody).not.toBeFalsy();
   });
@@ -63,9 +59,8 @@ test.describe('Transfer Orders', () => {
     // Wait for the transfer orders.
     const request = await ordersRequestPromise;
     const response = await request.response();
-    const ordersResponse = (await response?.json()) as OrdersResponse;
-    const orders = ordersResponse.body;
-    const pendingTransfers = orders.filter(
+    const ordersResponse = (await response.json()).data;
+    const pendingTransfers = ordersResponse.filter(
       (o) => o.orderType === 'transfer' && o.status === 'pending',
     );
     const firstOrder = pendingTransfers[0] ?? null;
