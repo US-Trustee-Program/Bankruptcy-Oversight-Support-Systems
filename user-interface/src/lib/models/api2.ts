@@ -24,7 +24,7 @@ interface ApiClient {
   headers: Record<string, string>;
   host: string;
   createPath(path: string, params: ObjectKeyVal): string;
-  post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
+  post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
@@ -34,7 +34,11 @@ interface ApiClient {
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
   patch<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
-  post<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  post<T = object>(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBody<T> | void>;
   put<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 }
 
@@ -83,8 +87,11 @@ export function useGenericApi(): GenericApiClient {
       path: string,
       body: object,
       options?: ObjectKeyVal,
-    ): Promise<ResponseBody<T>> {
+    ): Promise<ResponseBody<T> | void> {
       const responseBody = await api.post(justThePath(path), body, options);
+      if (!responseBody) {
+        return;
+      }
       return responseBody as ResponseBody<T>;
     },
     async put<T = object>(
@@ -159,8 +166,8 @@ async function searchCases(predicate: CasesSearchPredicate) {
   return api().post<CaseBasics[]>('/cases', predicate);
 }
 
-async function postStaffAssignments(action: StaffAssignmentAction): Promise<ResponseBody> {
-  return api().post('/case-assignments', action);
+async function postStaffAssignments(action: StaffAssignmentAction): Promise<void> {
+  await api().post('/case-assignments', action);
 }
 
 export const _Api2 = {

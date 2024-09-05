@@ -70,6 +70,13 @@ describe('associated cases tests', () => {
     expect(loadingIndicator).toBeInTheDocument();
   });
 
+  test('should display alert if no associated cases are available', async () => {
+    renderComponent([], false);
+
+    const alert = screen.queryByTestId('alert-container-no-cases');
+    expect(alert).toBeInTheDocument();
+  });
+
   test('should display associated case table when data exists', async () => {
     const mock: EventCaseReference[] = getAssociatedCasesMock('081-34-34811', 'substantive');
     renderComponent(mock, false);

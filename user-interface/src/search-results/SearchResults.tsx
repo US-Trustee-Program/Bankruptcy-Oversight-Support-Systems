@@ -60,9 +60,14 @@ export function SearchResults(props: SearchResultsProps) {
 
   const api = useApi2();
 
-  function handleSearchResults(response: ResponseBody<CaseBasics[]>) {
-    setSearchResults(response);
-    setEmptyResponse(response.data.length === 0);
+  function handleSearchResults(response: ResponseBody<CaseBasics[]> | void) {
+    if (response) {
+      setSearchResults(response);
+      setEmptyResponse(response.data.length === 0);
+    } else {
+      setSearchResults(null);
+      setEmptyResponse(true);
+    }
   }
 
   function handleSearchError() {
