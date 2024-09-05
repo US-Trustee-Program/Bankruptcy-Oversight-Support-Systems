@@ -24,16 +24,27 @@ interface ApiClient {
   headers: Record<string, string>;
   host: string;
   createPath(path: string, params: ObjectKeyVal): string;
+
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
-  getQueryStringsToPassthrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
+  getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
 }
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
   patch<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+
+  /**
+   * ONLY USE WITH OUR OWN API!!!!
+   * This function makes assumptions about the responses to POST requests that do not handle
+   * all possibilities according to the HTTP specifications.
+   *
+   * @param path string The path after '/api'.
+   * @param body object The payload for the request.
+   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   */
   post<T = object>(
     path: string,
     body: object,

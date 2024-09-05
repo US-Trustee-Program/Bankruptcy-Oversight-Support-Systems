@@ -24,9 +24,6 @@ export function addApiAfterHook(hook: (response: Response) => Promise<void>) {
   }
 }
 
-/**
- * ONLY USE WITH OUR OWN API!!!!
- */
 export default class Api {
   public static headers: Record<string, string> = {};
 
@@ -55,6 +52,15 @@ export default class Api {
     }
   }
 
+  /**
+   * ONLY USE WITH OUR OWN API!!!!
+   * This function makes assumptions about the responses to POST requests that do not handle
+   * all possibilities according to the HTTP specifications.
+   *
+   * @param path string The path after '/api'.
+   * @param body object The payload for the request.
+   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   */
   public static async post(
     path: string,
     body: object,
@@ -62,7 +68,7 @@ export default class Api {
   ): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
-      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
+      const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
       const response = await httpPost({ url: Api.host + pathStr, body, headers: this.headers });
@@ -83,7 +89,7 @@ export default class Api {
   public static async get(path: string, options?: ObjectKeyVal): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
-      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
+      const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpGet({ url: Api.host + pathStr, headers: this.headers });
       await this.executeAfterHooks(response);
@@ -110,7 +116,7 @@ export default class Api {
   ): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
-      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
+      const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
       await this.executeAfterHooks(response);
@@ -134,7 +140,7 @@ export default class Api {
   ): Promise<ResponseBody> {
     try {
       await this.executeBeforeHooks();
-      const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
+      const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
       const response = await httpPut({ url: Api.host + pathStr, body, headers: this.headers });
       await this.executeAfterHooks(response);
@@ -151,7 +157,7 @@ export default class Api {
     }
   }
 
-  public static getQueryStringsToPassthrough(
+  public static getQueryStringsToPassThrough(
     search: string,
     options: ObjectKeyVal = {},
   ): ObjectKeyVal {
