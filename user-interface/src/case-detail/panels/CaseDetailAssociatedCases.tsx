@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export interface CaseDetailAssociatedCasesProps {
   associatedCases: EventCaseReference[];
@@ -20,7 +21,15 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
   return (
     <div className="associated-cases">
       {isAssociatedCasesLoading && <LoadingIndicator />}
-      {!isAssociatedCasesLoading && (
+      {!isAssociatedCasesLoading && consolidation.length === 0 && (
+        <Alert
+          id="no-cases"
+          type={UswdsAlertStyle.Error}
+          title="Associated Cases Not Available"
+          message="We are unable to retrieve associated cases at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue."
+        ></Alert>
+      )}
+      {!isAssociatedCasesLoading && consolidation.length > 0 && (
         <>
           <h3>Consolidated cases ({consolidation.length})</h3>
           <h4>{consolidationTypeMap.get(consolidation[0].consolidationType)}</h4>

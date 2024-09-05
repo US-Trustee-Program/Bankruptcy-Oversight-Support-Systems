@@ -36,5 +36,5 @@ app.http('case-associated', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'cases/{id?}/associated',
+  route: 'cases/{caseId?}/associated',
 });

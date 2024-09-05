@@ -92,15 +92,26 @@ describe('Specific tests for the API model', () => {
     expect(Api.get('/some/path', {})).resolves.toEqual(payload);
   });
 
-  test('should return data when response is Ok', () => {
+  test('should return data when response is Ok with a payload', () => {
     const payload = { foo: 'mock post' };
     const mockHttpPost = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
+      text: () => Promise.resolve(JSON.stringify(payload)),
       ok: true,
     });
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
     expect(Api.post('/some/path', {})).resolves.toEqual(payload);
+  });
+
+  test('should return data when response is Ok without a payload', () => {
+    const mockHttpPost = vi.fn().mockResolvedValue({
+      json: () => JSON.parse(''),
+      text: () => Promise.resolve('{'),
+      ok: true,
+    });
+    vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
+    expect(Api.post('/some/path', {})).resolves.toBeUndefined();
   });
 
   test('should throw error when "patch" response is not ok', () => {
@@ -139,7 +150,7 @@ describe('Specific tests for the API model', () => {
     const key = 'x-ms-routing-name';
     const value = 'theValue';
     const search = `${key}=${value}`;
-    const options = Api.getQueryStringsToPassthrough(search, {});
+    const options = Api.getQueryStringsToPassThrough(search, {});
     expect(options[key]).toEqual(value);
   });
 
@@ -155,7 +166,7 @@ describe('Specific tests for the API model', () => {
       ...passedOptions,
       [key]: value,
     };
-    const options = Api.getQueryStringsToPassthrough(search, passedOptions);
+    const options = Api.getQueryStringsToPassThrough(search, passedOptions);
     expect(options).toEqual(expectedOptions);
   });
 });

@@ -442,7 +442,6 @@ describe('ConsolidationOrderAccordion tests', () => {
     openAccordion(order.id!);
     const testCase = { ...order.childCases[0] };
     testCase.caseId = '999-99-99999';
-    // setupApiGetMock({ bCase: testCase });
 
     await toggleEnableCaseListForm(order.id!);
 
