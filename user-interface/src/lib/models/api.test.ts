@@ -150,7 +150,7 @@ describe('Specific tests for the API model', () => {
     const key = 'x-ms-routing-name';
     const value = 'theValue';
     const search = `${key}=${value}`;
-    const options = Api.getQueryStringsToPassthrough(search, {});
+    const options = Api.getQueryStringsToPassThrough(search, {});
     expect(options[key]).toEqual(value);
   });
 
@@ -166,7 +166,7 @@ describe('Specific tests for the API model', () => {
       ...passedOptions,
       [key]: value,
     };
-    const options = Api.getQueryStringsToPassthrough(search, passedOptions);
+    const options = Api.getQueryStringsToPassThrough(search, passedOptions);
     expect(options).toEqual(expectedOptions);
   });
 });
