@@ -243,6 +243,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       .then((response) => {
         if (response) {
           setAssociatedCases(response.data);
+          // If an empty array comes back, we break
           setIsAssociatedCasesLoading(false);
         }
       })
@@ -392,8 +393,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   caseId={caseId}
                   initiallySelectedNavLink={navState}
                   showAssociatedCasesList={
-                    caseBasicInfo.consolidation != undefined &&
-                    caseBasicInfo.consolidation?.length > 0
+                    caseBasicInfo.consolidation !== undefined &&
+                    caseBasicInfo.consolidation.length > 0
                   }
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (

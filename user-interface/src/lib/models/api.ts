@@ -24,6 +24,9 @@ export function addApiAfterHook(hook: (response: Response) => Promise<void>) {
   }
 }
 
+/**
+ * ONLY USE WITH OUR OWN API!!!!
+ */
 export default class Api {
   public static headers: Record<string, string> = {};
 
@@ -56,7 +59,7 @@ export default class Api {
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseBody> {
+  ): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassthrough(window.location.search, options);
@@ -65,12 +68,12 @@ export default class Api {
       const response = await httpPost({ url: Api.host + pathStr, body, headers: this.headers });
       await this.executeAfterHooks(response);
 
-      const data = await response.json();
-
       if (response.ok) {
-        return data;
+        const data = await response.text();
+        return data.length > 1 ? JSON.parse(data) : undefined;
       } else {
-        return Promise.reject(new Error(data.message));
+        const error = await response.json();
+        return Promise.reject(new Error(error.message));
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));

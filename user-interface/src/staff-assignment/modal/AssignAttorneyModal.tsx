@@ -178,24 +178,22 @@ function _AssignAttorneyModal(
     setIsUpdatingAssignment(true);
 
     try {
-      const result = await api.postStaffAssignments({
+      await api.postStaffAssignments({
         caseId: bCase?.caseId,
         attorneyList: finalAttorneyList,
         role: CamsRole.TrialAttorney,
       });
-      if (result) {
-        if (submitCallbackRef.current) {
-          submitCallbackRef.current({
-            bCase,
-            selectedAttorneyList: finalAttorneyList,
-            previouslySelectedList,
-            status: 'success',
-            apiResult: result,
-          });
-        }
-        setCheckListValues([]);
-        setIsUpdatingAssignment(false);
+      if (submitCallbackRef.current) {
+        submitCallbackRef.current({
+          bCase,
+          selectedAttorneyList: finalAttorneyList,
+          previouslySelectedList,
+          status: 'success',
+          apiResult: {},
+        });
       }
+      setCheckListValues([]);
+      setIsUpdatingAssignment(false);
     } catch (e) {
       if (submitCallbackRef.current) {
         submitCallbackRef.current({
