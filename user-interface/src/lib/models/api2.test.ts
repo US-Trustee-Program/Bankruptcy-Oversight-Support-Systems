@@ -1,8 +1,10 @@
 import { describe } from 'vitest';
 import MockApi2 from '@/lib/testing/mock-api2';
-import Api2, { extractPathFromUri, addAuthHeaderToApi, useGenericApi, _Api2 } from './api2';
-import Api, { addApiBeforeHook, addApiAfterHook } from '@/lib/models/api';
+import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } from './api2';
+import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { StaffAssignmentAction } from '@common/cams/assignments';
+import { CamsRole } from '@common/cams/roles';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -98,7 +100,19 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderRejection, 'some-id', api);
     await callApiFunction(api2.Api2.searchCases, 'some-id', api);
-    await callApiFunction(api2.Api2.postStaffAssignments, 'some-id', api);
+  });
+
+  test('should handle no body properly', async () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockImplementation(() => {
+      return Promise.resolve();
+    });
+    const assignmentAction: StaffAssignmentAction = {
+      caseId: '000-00-00000',
+      attorneyList: MockData.buildArray(MockData.getAttorneyUser, 2),
+      role: CamsRole.TrialAttorney,
+    };
+    await api2.Api2.postStaffAssignments(assignmentAction);
+    expect(postSpy).toHaveBeenCalled();
   });
 
   test('should handle error properly', async () => {

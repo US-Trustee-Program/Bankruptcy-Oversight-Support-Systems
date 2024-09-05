@@ -392,8 +392,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   caseId={caseId}
                   initiallySelectedNavLink={navState}
                   showAssociatedCasesList={
-                    caseBasicInfo.consolidation != undefined &&
-                    caseBasicInfo.consolidation?.length > 0
+                    caseBasicInfo.consolidation !== undefined &&
+                    caseBasicInfo.consolidation.length > 0
                   }
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
