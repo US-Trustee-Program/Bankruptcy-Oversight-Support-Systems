@@ -243,7 +243,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       .then((response) => {
         if (response) {
           setAssociatedCases(response.data);
-          // If an empty array comes back, we break
           setIsAssociatedCasesLoading(false);
         }
       })
