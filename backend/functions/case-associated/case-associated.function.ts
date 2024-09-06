@@ -24,7 +24,7 @@ export default async function handler(
     );
     const controller = new CaseAssociatedController(applicationContext);
 
-    const response = await controller.getAssociatedCases(applicationContext);
+    const response = await controller.handleRequest(applicationContext);
 
     return toAzureSuccess(response);
   } catch (error) {
