@@ -89,4 +89,3 @@ app.http('healthcheck', {
   methods: ['GET'],
   handler,
 });
-//There is "entryPoint": "default" set within functions.json for this, might want to see why that is
