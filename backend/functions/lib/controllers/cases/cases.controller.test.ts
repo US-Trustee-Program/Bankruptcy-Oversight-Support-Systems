@@ -16,23 +16,42 @@ describe('cases controller test', () => {
   const caseDetail: ResourceActions<CaseDetail> = MockData.getCaseDetail({
     override: { caseId: caseId1 },
   });
-  let applicationContext: ApplicationContext;
+  let context: ApplicationContext;
   let controller: CasesController;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     jest.spyOn(CaseManagement.prototype, 'getCaseDetail').mockResolvedValue(caseDetail);
 
-    applicationContext = await createMockApplicationContext();
-    controller = new CasesController(applicationContext);
+    context = await createMockApplicationContext();
+    controller = new CasesController(context);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  describe('handleRequest test', () => {
+    test('should call getCaseDetails', () => {
+      const spy = jest
+        .spyOn(CasesController.prototype, 'getCaseDetails')
+        .mockResolvedValue(MockData.getCaseDetail());
+      context.request = {
+        method: 'GET',
+        url: 'http://localhost:3000',
+        headers: {},
+        query: {},
+        params: { caseId: caseId1 },
+      };
+
+      controller.handleRequest(context);
+      expect(spy).toHaveBeenCalledWith({ caseId: caseId1 });
+    });
   });
 
   describe('getCaseDetails', () => {
     test('Should get case details of case using caseId', async () => {
-      const expected: CamsHttpResponseInit<ResourceActions<CaseDetail>> = expect.objectContaining({
-        body: { data: caseDetail },
-      });
       const actual1 = await controller.getCaseDetails({ caseId: caseId1 });
-      expect(actual1).toEqual(expected);
+      expect(actual1).toEqual(caseDetail);
     });
   });
 
@@ -43,15 +62,13 @@ describe('cases controller test', () => {
     test('should return an empty array for no matches', async () => {
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: 0,
-              currentPage: 0,
-            },
-            data: [],
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: 0,
+            currentPage: 0,
           },
+          data: [],
         },
       );
 
@@ -74,13 +91,11 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: expect.objectContaining({
-              next: `${mockRequestUrl}?limit=${limit}&offset=${offset + limit}`,
-            }),
-            data: expect.anything(),
-          },
+          meta: { self: mockRequestUrl },
+          pagination: expect.objectContaining({
+            next: `${mockRequestUrl}?limit=${limit}&offset=${offset + limit}`,
+          }),
+          data: expect.anything(),
         },
       );
 
@@ -92,8 +107,8 @@ describe('cases controller test', () => {
       });
 
       const actual = await controller.searchCases(camsHttpRequest);
-      expect(actual.body.data).toHaveLength(limit);
-      expect(actual.body.data).toEqual(data.slice(0, limit));
+      expect(actual.data).toHaveLength(limit);
+      expect(actual.data).toEqual(data.slice(0, limit));
       expect(actual).toEqual(expected);
     });
 
@@ -103,15 +118,13 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: data.length,
-              currentPage: 1,
-            },
-            data,
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: data.length,
+            currentPage: 1,
           },
+          data,
         },
       );
 
@@ -124,8 +137,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(actual.body.data).toHaveLength(limit);
-      expect(actual.body.data).toEqual(data.slice(0, limit));
+      expect(actual.data).toHaveLength(limit);
+      expect(actual.data).toEqual(data.slice(0, limit));
     });
 
     test('should not return a next link when result set is smaller than limit', async () => {
@@ -134,15 +147,13 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: data.length,
-              currentPage: 1,
-            },
-            data,
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: data.length,
+            currentPage: 1,
           },
+          data,
         },
       );
 
@@ -155,8 +166,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(actual.body.data).toHaveLength(limit - 1);
-      expect(actual.body.data).toEqual(data);
+      expect(actual.data).toHaveLength(limit - 1);
+      expect(actual.data).toEqual(data);
     });
 
     test('should return previous link but no next link when on the last set', async () => {
@@ -167,16 +178,14 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: data.length,
-              previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
-              currentPage: 2,
-            },
-            data,
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: data.length,
+            previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
+            currentPage: 2,
           },
+          data,
         },
       );
 
@@ -201,17 +210,15 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: dataMinusHint.length,
-              next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
-              previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
-              currentPage: 2,
-            },
-            data: dataMinusHint,
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: dataMinusHint.length,
+            next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
+            previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
+            currentPage: 2,
           },
+          data: dataMinusHint,
         },
       );
 
@@ -224,8 +231,8 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(actual.body.data).toHaveLength(limit);
-      expect(actual.body.data).toEqual(data.slice(0, limit));
+      expect(actual.data).toHaveLength(limit);
+      expect(actual.data).toEqual(data.slice(0, limit));
     });
 
     test('should return search results for a caseNumber', async () => {
@@ -234,15 +241,13 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: data.length,
-              currentPage: 1,
-            },
-            data,
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: data.length,
+            currentPage: 1,
           },
+          data,
         },
       );
 
@@ -263,15 +268,13 @@ describe('cases controller test', () => {
 
       const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
         {
-          body: {
-            meta: { self: mockRequestUrl },
-            pagination: {
-              limit,
-              count: data.length,
-              currentPage: 1,
-            },
-            data,
+          meta: { self: mockRequestUrl },
+          pagination: {
+            limit,
+            count: data.length,
+            currentPage: 1,
           },
+          data,
         },
       );
 
