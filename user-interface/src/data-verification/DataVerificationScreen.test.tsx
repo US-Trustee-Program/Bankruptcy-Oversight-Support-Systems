@@ -219,7 +219,7 @@ describe('Review Orders screen', () => {
     const mockFeatureFlags = {
       'consolidations-enabled': false,
     };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     render(
       <BrowserRouter>
         <DataVerificationScreen />
@@ -279,7 +279,7 @@ describe('Review Orders screen', () => {
     const mockFeatureFlags = {
       'consolidations-enabled': true,
     };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
     };
