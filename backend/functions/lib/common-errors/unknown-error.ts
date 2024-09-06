@@ -1,11 +1,15 @@
 import { CamsError, CamsErrorOptions } from './cams-error';
-import { INTERNAL_SERVER_ERROR } from './constants';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 interface UnknownErrorOptions extends CamsErrorOptions {}
 
 export class UnknownError extends CamsError {
   constructor(module: string, options: UnknownErrorOptions = {}) {
-    super(module, { status: INTERNAL_SERVER_ERROR, message: 'Unknown error', ...options });
+    super(module, {
+      status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      message: 'Unknown error',
+      ...options,
+    });
   }
 }
