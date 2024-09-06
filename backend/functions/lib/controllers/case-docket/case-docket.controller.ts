@@ -5,17 +5,17 @@ import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { CaseDocket } from '../../../../../common/src/cams/cases';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
 
-export class CaseDocketController {
+export class CaseDocketController implements CamsController {
   private readonly useCase: CaseDocketUseCase;
 
   constructor(applicationContext: ApplicationContext) {
     this.useCase = getCaseDocketUseCase(applicationContext);
   }
-
-  public async getCaseDocket(
+  public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseDocket>> {
     try {
