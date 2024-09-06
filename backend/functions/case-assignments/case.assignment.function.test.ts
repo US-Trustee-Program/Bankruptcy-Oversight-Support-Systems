@@ -46,7 +46,7 @@ describe('Case Assignment Function Tests', () => {
       statusCode: HttpStatusCodes.CREATED,
     });
     jest
-      .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
+      .spyOn(CaseAssignmentController.prototype, 'handleRequest')
       .mockResolvedValue(camsHttpResponse);
 
     const request = createMockAzureFunctionRequest(defaultRequestProps);
@@ -86,9 +86,7 @@ describe('Case Assignment Function Tests', () => {
         ...requestOverride,
       });
       const { azureHttpResponse } = buildTestResponseError(error);
-      jest
-        .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
-        .mockRejectedValue(error);
+      jest.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockRejectedValue(error);
 
       const response = await handler(request, context);
       expect(response).toEqual(azureHttpResponse);
@@ -98,9 +96,7 @@ describe('Case Assignment Function Tests', () => {
   test('Should return an HTTP Error if the controller throws an error during assignment creation', async () => {
     const error = new UnknownError('MOCK_CASE_ASSIGNMENT_MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest
-      .spyOn(CaseAssignmentController.prototype, 'createTrialAttorneyAssignments')
-      .mockRejectedValue(error);
+    jest.spyOn(CaseAssignmentController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const requestOverride = {
       body: {
@@ -140,7 +136,7 @@ describe('Case Assignment Function Tests', () => {
     const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
 
     const getAssignmentRequestSpy = jest
-      .spyOn(Object.getPrototypeOf(assignmentController), 'getTrialAttorneyAssignments')
+      .spyOn(Object.getPrototypeOf(assignmentController), 'handleRequest')
       .mockReturnValue(assignments);
     await handler(request, context);
 

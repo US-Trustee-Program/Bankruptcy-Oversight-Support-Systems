@@ -19,19 +19,12 @@ export default async function handler(
       logger,
       request,
     );
-    let assignmentResponse: HttpResponseInit;
     const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
       applicationContext,
     );
-    if (request.method === 'POST') {
-      assignmentResponse = toAzureSuccess(
-        await caseAssignmentController.createTrialAttorneyAssignments(applicationContext),
-      );
-    } else {
-      assignmentResponse = toAzureSuccess(
-        await caseAssignmentController.getTrialAttorneyAssignments(applicationContext),
-      );
-    }
+    const assignmentResponse = toAzureSuccess(
+      await caseAssignmentController.handleRequest(applicationContext),
+    );
     return assignmentResponse;
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
