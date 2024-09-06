@@ -103,11 +103,9 @@ export class OrdersController {
     }
   }
 
-  public async syncOrders(
-    context: ApplicationContext,
-    options?: SyncOrdersOptions,
-  ): Promise<SyncOrdersResponse> {
+  public async syncOrders(context: ApplicationContext): Promise<SyncOrdersResponse> {
     try {
+      const options = context.request.body as SyncOrdersOptions;
       const data = await this.useCase.syncOrders(context, options);
       return httpSuccess<SyncOrdersStatus>({
         body: { data },
