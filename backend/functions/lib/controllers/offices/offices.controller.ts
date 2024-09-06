@@ -1,7 +1,6 @@
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
-import { CamsHttpRequest } from '../../adapters/types/http';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 
@@ -17,14 +16,14 @@ export class OfficesController {
   }
 
   public async getOffices(
-    request: CamsHttpRequest,
+    context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<OfficeDetails[]>> {
     try {
-      const offices = await this.useCase.getOffices(this.applicationContext);
+      const offices = await this.useCase.getOffices(context);
       return httpSuccess({
         body: {
           meta: {
-            self: request.url,
+            self: context.request.url,
           },
           data: offices,
         },
