@@ -1,10 +1,9 @@
+import * as dotenv from 'dotenv';
 import { app, InvocationContext, Timer } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { toAzureError } from '../azure/functions';
-
-import * as dotenv from 'dotenv';
 
 // TODO: We need to look into upgrading this to use v4 of Azure Functions
 dotenv.config();
@@ -21,7 +20,7 @@ export default async function timerTrigger(
   try {
     const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
     const ordersController = new OrdersController(appContext);
-    await ordersController.syncOrders(appContext);
+    await ordersController.handleRequest(appContext);
   } catch (error) {
     toAzureError(logger, MODULE_NAME, error);
   }

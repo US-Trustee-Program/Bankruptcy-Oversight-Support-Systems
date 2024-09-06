@@ -22,6 +22,8 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
+import { CamsController } from '../controller';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -31,7 +33,7 @@ export type UpdateOrderResponse = CamsHttpResponseInit;
 export type SyncOrdersResponse = CamsHttpResponseInit<SyncOrdersStatus>;
 export type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
 
-export class OrdersController {
+export class OrdersController implements CamsController {
   private readonly useCase: OrdersUseCase;
 
   constructor(context: ApplicationContext) {
@@ -44,12 +46,76 @@ export class OrdersController {
       getConsolidationOrdersRepository(context),
     );
   }
+  public async handleRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<CaseSummary[] | Order[] | SyncOrdersStatus | undefined>> {
+    if (!context.request) {
+      return this.syncOrders(context);
+    }
 
-  public async getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
+    const simplePath = new URL(context.request.url).pathname.split('/')[2];
+
+    switch (simplePath) {
+      case 'consolidations':
+        return this.handleConsolidations(context);
+      case 'orders':
+        return this.handleOrders(context);
+      case 'order-manual-sync':
+        return this.handleOrderSync(context);
+      case 'orders-suggestions':
+        return this.handleOrdersSuggestions(context);
+      default:
+        throw new NotFoundError(MODULE_NAME, {
+          message: 'Could not map requested path to action ' + context.request.url,
+        });
+    }
+  }
+
+  private async handleOrders(context: ApplicationContext) {
+    let response;
+    if (context.request.method === 'GET') {
+      response = await this.getOrders(context);
+    } else if (context.request.method === 'PATCH') {
+      const id = context.request.params['id'];
+      response = await this.updateOrder(context, id, context.request.body as TransferOrderAction);
+    }
+    return response;
+  }
+
+  private async handleConsolidations(context: ApplicationContext) {
+    const procedure = context.request.params.procedure;
+    let response: ManageConsolidationResponse;
+
+    if (procedure === 'reject') {
+      response = await this.rejectConsolidation(context);
+    } else if (procedure === 'approve') {
+      response = await this.approveConsolidation(context);
+    } else {
+      throw new BadRequestError(MODULE_NAME, {
+        message: `Could not perform ${procedure}.`,
+      });
+    }
+    return response;
+  }
+
+  private async handleOrderSync(context: ApplicationContext) {
+    return this.syncOrders(context);
+  }
+
+  private async handleOrdersSuggestions(context: ApplicationContext) {
+    return this.getSuggestedCases(context);
+  }
+
+  async getOrders(context: ApplicationContext): Promise<GetOrdersResponse> {
     try {
       const data = await this.useCase.getOrders(context);
-      return httpSuccess<Order[]>({
-        body: { data },
+      return httpSuccess({
+        body: {
+          meta: {
+            self: context.request.url,
+          },
+          data,
+        },
       });
     } catch (originalError) {
       throw isCamsError(originalError)
@@ -58,7 +124,7 @@ export class OrdersController {
     }
   }
 
-  public async getSuggestedCases(context: ApplicationContext): Promise<GetSuggestedCasesResponse> {
+  async getSuggestedCases(context: ApplicationContext): Promise<GetSuggestedCasesResponse> {
     try {
       const data = await this.useCase.getSuggestedCases(context);
       return httpSuccess({
@@ -76,7 +142,7 @@ export class OrdersController {
     }
   }
 
-  public async updateOrder(
+  async updateOrder(
     context: ApplicationContext,
     id: string,
     data: TransferOrderAction,
@@ -103,7 +169,7 @@ export class OrdersController {
     }
   }
 
-  public async syncOrders(context: ApplicationContext): Promise<SyncOrdersResponse> {
+  async syncOrders(context: ApplicationContext): Promise<SyncOrdersResponse> {
     try {
       const options = context.request.body as SyncOrdersOptions;
       const data = await this.useCase.syncOrders(context, options);
@@ -117,9 +183,7 @@ export class OrdersController {
     }
   }
 
-  public async rejectConsolidation(
-    context: ApplicationContext,
-  ): Promise<ManageConsolidationResponse> {
+  async rejectConsolidation(context: ApplicationContext): Promise<ManageConsolidationResponse> {
     try {
       if (isConsolidationOrderRejection(context.request.body)) {
         if (context.request.body.rejectedCases.length == 0) {
@@ -138,9 +202,7 @@ export class OrdersController {
     }
   }
 
-  public async approveConsolidation(
-    context: ApplicationContext,
-  ): Promise<ManageConsolidationResponse> {
+  async approveConsolidation(context: ApplicationContext): Promise<ManageConsolidationResponse> {
     try {
       if (isConsolidationOrderApproval(context.request.body)) {
         if (!context.request.body.consolidationType) {

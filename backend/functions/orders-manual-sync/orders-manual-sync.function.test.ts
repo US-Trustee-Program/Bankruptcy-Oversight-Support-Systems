@@ -30,7 +30,11 @@ describe('Orders Sync Function tests', () => {
 
   test('Should call orders controller method syncOrders', async () => {
     const { camsHttpResponse } = buildTestResponseSuccess<SyncOrdersStatus>({ data: syncResponse });
-    const request = createMockAzureFunctionRequest({ params: {}, method: 'POST' });
+    const request = createMockAzureFunctionRequest({
+      url: 'http://domain/api/order-manual-sync',
+      params: {},
+      method: 'POST',
+    });
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')
       .mockResolvedValue(camsHttpResponse);
@@ -39,7 +43,11 @@ describe('Orders Sync Function tests', () => {
   });
 
   test('Should log a camsError if syncOrders throws a CamsError', async () => {
-    const request = createMockAzureFunctionRequest({ params: {}, method: 'POST' });
+    const request = createMockAzureFunctionRequest({
+      url: 'http://domain/api/order-manual-sync',
+      params: {},
+      method: 'POST',
+    });
 
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')

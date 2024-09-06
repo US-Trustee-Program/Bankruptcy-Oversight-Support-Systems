@@ -12,6 +12,10 @@ import { buildTestResponseError } from '../azure/testing-helpers';
 
 describe('Orders suggestions function tests', () => {
   const context = createMockAzureFunctionContext();
+  const request = createMockAzureFunctionRequest({
+    url: 'http://domain/api/orders-suggestions',
+    method: 'GET',
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -26,9 +30,7 @@ describe('Orders suggestions function tests', () => {
     const getSuggestedCasesSpy = jest
       .spyOn(OrdersController.prototype, 'getSuggestedCases')
       .mockResolvedValue(camsHttpResponse);
-    const request = createMockAzureFunctionRequest({
-      method: 'GET',
-    });
+
     const response = await handler(request, context);
     expect(getSuggestedCasesSpy).toHaveBeenCalled();
     expect(response).toMatchObject(azureHttpResponse);
@@ -39,9 +41,6 @@ describe('Orders suggestions function tests', () => {
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
     jest.spyOn(OrdersController.prototype, 'getSuggestedCases').mockRejectedValue(error);
 
-    const request = createMockAzureFunctionRequest({
-      method: 'GET',
-    });
     const response = await handler(request, context);
     expect(response).toMatchObject(azureHttpResponse);
     expect(loggerCamsErrorSpy).toHaveBeenCalledWith(error);
