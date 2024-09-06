@@ -32,7 +32,7 @@ describe('Case summary function', () => {
       data: [],
     });
     jest
-      .spyOn(CaseAssociatedController.prototype, 'getAssociatedCases')
+      .spyOn(CaseAssociatedController.prototype, 'handleRequest')
       .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
@@ -43,7 +43,7 @@ describe('Case summary function', () => {
     const error = new NotFoundError('CASE-ASSOCIATED-USE-CASE', {
       message: 'Case summary not found for case ID.',
     });
-    jest.spyOn(CaseAssociatedController.prototype, 'getAssociatedCases').mockRejectedValue(error);
+    jest.spyOn(CaseAssociatedController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const { azureHttpResponse } = buildTestResponseError(error);
 

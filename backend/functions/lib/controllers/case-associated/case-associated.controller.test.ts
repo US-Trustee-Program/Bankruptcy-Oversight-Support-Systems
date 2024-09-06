@@ -16,7 +16,7 @@ describe('Test case-history controller', () => {
     applicationContext = await createMockApplicationContext();
   });
 
-  test('should return associated cases when getAssociatedCases is called', async () => {
+  test('should return associated cases when handleRequest is called', async () => {
     const associatedCases = [
       MockData.getConsolidationReference({ override: { documentType: 'CONSOLIDATION_FROM' } }),
       MockData.getConsolidationReference(),
@@ -27,7 +27,7 @@ describe('Test case-history controller', () => {
     const caseId = NORMAL_CASE_ID;
     applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController(applicationContext);
-    const result = await controller.getAssociatedCases(applicationContext);
+    const result = await controller.handleRequest(applicationContext);
     expect(result.body.data).toEqual(associatedCases);
   });
 
@@ -38,7 +38,7 @@ describe('Test case-history controller', () => {
     const caseId = NOT_FOUND_ERROR_CASE_ID;
     applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController(applicationContext);
-    await expect(controller.getAssociatedCases(applicationContext)).rejects.toThrow('Not found');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Not found');
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
@@ -51,8 +51,6 @@ describe('Test case-history controller', () => {
       .mockImplementation(async () => {
         throw Error(expectedMessage);
       });
-    await expect(controller.getAssociatedCases(applicationContext)).rejects.toThrow(
-      expectedMessage,
-    );
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedMessage);
   });
 });

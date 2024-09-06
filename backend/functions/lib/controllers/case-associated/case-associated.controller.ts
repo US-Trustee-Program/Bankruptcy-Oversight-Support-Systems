@@ -14,7 +14,7 @@ export class CaseAssociatedController {
     this.useCase = new CaseAssociatedUseCase(applicationContext);
   }
 
-  public async getAssociatedCases(
+  public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<EventCaseReference[]>> {
     try {
