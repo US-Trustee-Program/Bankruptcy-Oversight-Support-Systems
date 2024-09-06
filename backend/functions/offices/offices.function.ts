@@ -20,7 +20,7 @@ export default async function handler(
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
-    const responseBody = await officesController.getOffices(applicationContext);
+    const responseBody = await officesController.handleRequest(applicationContext);
     return toAzureSuccess(responseBody);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);

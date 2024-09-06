@@ -49,7 +49,7 @@ describe('Case History Function Tests', () => {
       data: CASE_HISTORY,
     });
     jest
-      .spyOn(CaseHistoryController.prototype, 'getCaseHistory')
+      .spyOn(CaseHistoryController.prototype, 'handleRequest')
       .mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
@@ -58,7 +58,7 @@ describe('Case History Function Tests', () => {
 
   test('Should return an error response for a non-existent case ID', async () => {
     const error = new NotFoundError('test-module');
-    jest.spyOn(CaseHistoryController.prototype, 'getCaseHistory').mockRejectedValue(error);
+    jest.spyOn(CaseHistoryController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const requestOverride = {
       params: {

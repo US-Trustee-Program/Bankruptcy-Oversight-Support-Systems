@@ -36,7 +36,7 @@ export default async function handler(
 
   const ordersController = new OrdersController(context);
   try {
-    const results = await ordersController.syncOrders(context);
+    const results = await ordersController.handleRequest(context);
     return toAzureSuccess(results);
   } catch (error) {
     return toAzureError(context, MODULE_NAME, error);

@@ -17,6 +17,7 @@ describe('Consolidations Function tests', () => {
     params: {
       procedure: '',
     },
+    url: 'http://domain/api/consolidations',
     method: 'PUT',
     body: {},
   };
