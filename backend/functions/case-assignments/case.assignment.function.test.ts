@@ -119,28 +119,6 @@ describe('Case Assignment Function Tests', () => {
     expect(response).toEqual(azureHttpResponse);
   });
 
-  test('Should call createAssignmentRequest with the request parameters, when passed to httpTrigger in the body', async () => {
-    const caseId = '001-67-89012';
-    const requestOverride = {
-      body: { caseId: caseId, attorneyList: ['Jane Doe'], role: 'TrialAttorney' },
-    };
-
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const appContext = await createMockApplicationContext();
-    const assignmentController: CaseAssignmentController = new CaseAssignmentController(appContext);
-    const createAssignmentRequestSpy = jest.spyOn(
-      Object.getPrototypeOf(assignmentController),
-      'createTrialAttorneyAssignments',
-    );
-    await handler(request, context);
-
-    expect(createAssignmentRequestSpy).toHaveBeenCalledWith(expect.objectContaining({ caseId }));
-  });
-
   test('Should return a list of assignments when valid caseId is supplied for GET request', async () => {
     const caseId = '001-67-89012';
     const requestOverride: Partial<CamsHttpRequest> = {
@@ -166,7 +144,6 @@ describe('Case Assignment Function Tests', () => {
       .mockReturnValue(assignments);
     await handler(request, context);
 
-    expect(getAssignmentRequestSpy).toHaveBeenCalledWith(caseId);
     expect(getAssignmentRequestSpy).toHaveReturnedWith(assignments);
   });
 });

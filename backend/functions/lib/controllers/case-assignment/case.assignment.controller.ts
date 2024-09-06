@@ -23,11 +23,13 @@ export class CaseAssignmentController {
   }
 
   public async getTrialAttorneyAssignments(
-    caseId: string,
+    context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseAssignment[]>> {
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
-      const assignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
+      const assignments = await assignmentUseCase.findAssignmentsByCaseId(
+        context.request.params['id'],
+      );
       const success = httpSuccess({
         body: {
           data: assignments,
@@ -43,19 +45,17 @@ export class CaseAssignmentController {
     }
   }
 
-  public async createTrialAttorneyAssignments(params: {
-    caseId: string;
-    listOfAttorneyNames: CamsUserReference[];
-    role: string;
-  }): Promise<CamsHttpResponseInit> {
-    this.validateRequestParameters(params.caseId, params.role);
+  public async createTrialAttorneyAssignments(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit> {
+    this.validateRequestParameters(context.request.body['caseId'], context.request.body['role']);
     try {
       const assignmentUseCase = new CaseAssignmentUseCase(this.applicationContext);
       await assignmentUseCase.createTrialAttorneyAssignments(
         this.applicationContext,
-        params.caseId,
-        params.listOfAttorneyNames,
-        params.role,
+        context.request.body['caseId'],
+        context.request.body['attorneyList'] as CamsUserReference[],
+        context.request.body['role'],
       );
       return httpSuccess({
         statusCode: HttpStatusCodes.CREATED,

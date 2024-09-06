@@ -17,6 +17,7 @@ import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices
 import { UnknownError } from '../../common-errors/unknown-error';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { httpSuccess } from '../../adapters/utils/http-response';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -45,13 +46,18 @@ describe('Case Assignment Creation Tests', () => {
     const listOfAttorneyNames = [Jane];
     const testCaseAssignment = {
       caseId: '081-18-12345',
-      listOfAttorneyNames,
-      role: trialAttorneyRole,
+      attorneyList: listOfAttorneyNames,
+      role: 'TrialAttorney',
     };
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: '081-18-12345' },
+      body: testCaseAssignment,
+    });
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
-      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
+      await assignmentController.createTrialAttorneyAssignments(applicationContext);
 
     expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
     expect(assignmentResponse.body).toBeUndefined();
@@ -64,10 +70,14 @@ describe('Case Assignment Creation Tests', () => {
       listOfAttorneyNames,
       role: trialAttorneyRole,
     };
-
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: '081-18-12345' },
+      body: testCaseAssignment,
+    });
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
-      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
+      await assignmentController.createTrialAttorneyAssignments(applicationContext);
 
     expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
     expect(assignmentResponse.body).toBeUndefined();
@@ -80,10 +90,14 @@ describe('Case Assignment Creation Tests', () => {
       listOfAttorneyNames: listOfAttorneys,
       role: trialAttorneyRole,
     };
-
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: '081-18-12345' },
+      body: testCaseAssignment,
+    });
     const assignmentController = new CaseAssignmentController(applicationContext);
     const assignmentResponse =
-      await assignmentController.createTrialAttorneyAssignments(testCaseAssignment);
+      await assignmentController.createTrialAttorneyAssignments(applicationContext);
 
     expect(assignmentResponse.statusCode).toEqual(HttpStatusCodes.CREATED);
     expect(assignmentResponse.body).toBeUndefined();
@@ -97,7 +111,7 @@ describe('Case Assignment Creation Tests', () => {
       .mockResolvedValue(assignments);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
-    const result = await assignmentController.getTrialAttorneyAssignments('081-18-12345');
+    const result = await assignmentController.getTrialAttorneyAssignments(applicationContext);
     expect(result).toEqual(camsHttpResponse);
   });
 
@@ -108,9 +122,9 @@ describe('Case Assignment Creation Tests', () => {
       .mockRejectedValue(new CamsError('TEST', { message: errorMessage }));
     const assignmentController = new CaseAssignmentController(applicationContext);
 
-    await expect(assignmentController.getTrialAttorneyAssignments('081-18-12345')).rejects.toThrow(
-      errorMessage,
-    );
+    await expect(
+      assignmentController.getTrialAttorneyAssignments(applicationContext),
+    ).rejects.toThrow(errorMessage);
   });
 
   test('should throw a CAMS permission error', async () => {
@@ -121,14 +135,18 @@ describe('Case Assignment Creation Tests', () => {
     };
     const mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession();
-
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
+      body: testCaseAssignment,
+    });
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
       .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
 
     const assignmentController = new CaseAssignmentController(mockContext);
     await expect(
-      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+      assignmentController.createTrialAttorneyAssignments(applicationContext),
     ).rejects.toThrow('User does not have appropriate access to create assignments.');
   });
 
@@ -138,9 +156,9 @@ describe('Case Assignment Creation Tests', () => {
       .mockRejectedValue(new Error());
     const assignmentController = new CaseAssignmentController(applicationContext);
 
-    await expect(assignmentController.getTrialAttorneyAssignments('081-18-12345')).rejects.toThrow(
-      'Unknown error',
-    );
+    await expect(
+      assignmentController.getTrialAttorneyAssignments(applicationContext),
+    ).rejects.toThrow('Unknown error');
   });
 
   test('should throw an UnknownError when an error that is not a CamsError is caught', async () => {
@@ -153,11 +171,15 @@ describe('Case Assignment Creation Tests', () => {
       listOfAttorneyNames: [],
       role: CamsRole.TrialAttorney,
     };
-
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
+      body: testCaseAssignment,
+    });
     const assignmentController = new CaseAssignmentController(applicationContext);
 
     await expect(
-      assignmentController.createTrialAttorneyAssignments(testCaseAssignment),
+      assignmentController.createTrialAttorneyAssignments(applicationContext),
     ).rejects.toThrow(error);
   });
 });
