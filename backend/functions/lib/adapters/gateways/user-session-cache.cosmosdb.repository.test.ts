@@ -16,6 +16,7 @@ describe('User session cache Cosmos repository tests', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
+    delete context.session;
     repo = new UserSessionCacheCosmosDbRepository(context);
     jest.clearAllMocks();
   });
