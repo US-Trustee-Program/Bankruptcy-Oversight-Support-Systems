@@ -2,7 +2,6 @@ import { CamsError } from '../lib/common-errors/cams-error';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { BUFFALO, DELAWARE, MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
-import { CamsRole } from '../../../common/src/cams/roles';
 import handler from './offices.function';
 import {
   buildTestResponseError,
@@ -27,16 +26,9 @@ describe('offices Function tests', () => {
     jest.clearAllMocks();
   });
 
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.CaseAssignmentManager],
-      },
-    }),
-  );
+  jest
+    .spyOn(ContextCreator, 'getApplicationContextSession')
+    .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
 
   test('should set successful response', async () => {
     const bodySuccess: OfficeDetails[] = testOffices;

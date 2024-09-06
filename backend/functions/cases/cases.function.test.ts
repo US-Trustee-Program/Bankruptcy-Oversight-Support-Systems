@@ -9,23 +9,14 @@ import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
-import { CamsRole } from '../../../common/src/cams/roles';
 import { InvocationContext } from '@azure/functions';
 import { ResourceActions } from '../../../common/src/cams/actions';
 import { CaseBasics, CaseDetail } from '../../../common/src/cams/cases';
 
 describe('Cases function', () => {
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.TrialAttorney],
-      },
-    }),
-  );
+  jest
+    .spyOn(ContextCreator, 'getApplicationContextSession')
+    .mockResolvedValue(MockData.getManhattanTrialAttorneySession());
 
   const originalEnv = process.env;
 

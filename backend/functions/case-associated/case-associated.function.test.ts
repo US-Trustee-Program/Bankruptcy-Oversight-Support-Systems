@@ -3,8 +3,6 @@ import { CaseAssociatedController } from '../lib/controllers/case-associated/cas
 import handler from './case-associated.function';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
-import { CamsRole } from '../../../common/src/cams/roles';
 import { InvocationContext } from '@azure/functions';
 import {
   buildTestResponseError,
@@ -14,16 +12,9 @@ import {
 import { EventCaseReference } from '../../../common/src/cams/events';
 
 describe('Case summary function', () => {
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.TrialAttorney],
-      },
-    }),
-  );
+  jest
+    .spyOn(ContextCreator, 'getApplicationContextSession')
+    .mockResolvedValue(MockData.getManhattanTrialAttorneySession());
 
   const request = createMockAzureFunctionRequest({
     params: {
