@@ -37,7 +37,7 @@ describe('offices Function tests', () => {
       data: bodySuccess,
     });
 
-    jest.spyOn(OfficesController.prototype, 'getOffices').mockResolvedValue(camsHttpResponse);
+    jest.spyOn(OfficesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
@@ -50,7 +50,7 @@ describe('offices Function tests', () => {
     });
 
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    jest.spyOn(OfficesController.prototype, 'getOffices').mockRejectedValue(error);
+    jest.spyOn(OfficesController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 
