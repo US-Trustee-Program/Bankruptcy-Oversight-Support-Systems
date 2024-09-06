@@ -27,9 +27,9 @@ export class CaseAssignmentController implements CamsController {
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<CaseAssignment[]>> {
     if (context.request.method === 'POST') {
       this.validateRequestParameters(context.request.body['caseId'], context.request.body['role']);
-      return createTrialAttorneyAssignments(context);
+      return this.createTrialAttorneyAssignments(context);
     } else {
-      return getTrialAttorneyAssignments(context);
+      return this.getTrialAttorneyAssignments(context);
     }
   }
 
@@ -60,49 +60,50 @@ export class CaseAssignmentController implements CamsController {
       throw new AssignmentError(MODULE_NAME, { message });
     }
   }
-}
-async function getTrialAttorneyAssignments(
-  context: ApplicationContext,
-): Promise<CamsHttpResponseInit<CaseAssignment[]>> {
-  try {
-    const assignmentUseCase = new CaseAssignmentUseCase(context);
-    const assignments = await assignmentUseCase.findAssignmentsByCaseId(
-      context.request.params['id'],
-    );
-    const success = httpSuccess({
-      body: {
-        data: assignments,
-      },
-    });
-    return success;
-  } catch (exception) {
-    context.logger.error(MODULE_NAME, exception.message);
-    if (exception instanceof CamsError) {
-      throw exception;
-    }
-    throw new UnknownError(MODULE_NAME, { originalError: exception });
-  }
-}
 
-async function createTrialAttorneyAssignments(
-  context: ApplicationContext,
-): Promise<CamsHttpResponseInit> {
-  try {
-    const assignmentUseCase = new CaseAssignmentUseCase(context);
-    await assignmentUseCase.createTrialAttorneyAssignments(
-      context,
-      context.request.body['caseId'],
-      context.request.body['attorneyList'] as CamsUserReference[],
-      context.request.body['role'],
-    );
-    return httpSuccess({
-      statusCode: HttpStatusCodes.CREATED,
-    });
-  } catch (exception) {
-    context.logger.error(MODULE_NAME, exception.message);
-    if (exception instanceof CamsError) {
-      throw exception;
+  public async getTrialAttorneyAssignments(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<CaseAssignment[]>> {
+    try {
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      const assignments = await assignmentUseCase.findAssignmentsByCaseId(
+        context.request.params['id'],
+      );
+      const success = httpSuccess({
+        body: {
+          data: assignments,
+        },
+      });
+      return success;
+    } catch (exception) {
+      context.logger.error(MODULE_NAME, exception.message);
+      if (exception instanceof CamsError) {
+        throw exception;
+      }
+      throw new UnknownError(MODULE_NAME, { originalError: exception });
     }
-    throw new UnknownError(MODULE_NAME, { originalError: exception });
+  }
+
+  public async createTrialAttorneyAssignments(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit> {
+    try {
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      await assignmentUseCase.createTrialAttorneyAssignments(
+        context,
+        context.request.body['caseId'],
+        context.request.body['attorneyList'] as CamsUserReference[],
+        context.request.body['role'],
+      );
+      return httpSuccess({
+        statusCode: HttpStatusCodes.CREATED,
+      });
+    } catch (exception) {
+      context.logger.error(MODULE_NAME, exception.message);
+      if (exception instanceof CamsError) {
+        throw exception;
+      }
+      throw new UnknownError(MODULE_NAME, { originalError: exception });
+    }
   }
 }
