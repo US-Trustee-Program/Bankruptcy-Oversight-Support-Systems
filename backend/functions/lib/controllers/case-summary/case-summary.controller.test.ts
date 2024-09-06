@@ -17,7 +17,7 @@ describe('Test case-summary controller', () => {
     const caseDetail = MockData.getCaseDetail();
 
     jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(caseDetail);
-    const response = await controller.getCaseSummary(applicationContext);
+    const response = await controller.handleRequest(applicationContext);
     expect(response).toEqual(
       expect.objectContaining({
         body: { meta: expect.objectContaining({ self: expect.any(String) }), data: caseDetail },
@@ -30,12 +30,12 @@ describe('Test case-summary controller', () => {
       message: 'Case summary not found for case ID.',
     });
     jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockRejectedValue(error);
-    await expect(controller.getCaseSummary(applicationContext)).rejects.toThrow(error);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(error);
   });
 
   test('should throw any other error', async () => {
     const error = new Error('TestError');
     jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockRejectedValue(error);
-    await expect(controller.getCaseSummary(applicationContext)).rejects.toThrow('Unknown error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown error');
   });
 });
