@@ -3,7 +3,6 @@ import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
-import { SyncOrdersOptions } from '../lib/use-cases/orders/orders';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 dotenv.config();
@@ -37,7 +36,7 @@ export default async function handler(
 
   const ordersController = new OrdersController(context);
   try {
-    const results = await ordersController.syncOrders(context, request.body as SyncOrdersOptions);
+    const results = await ordersController.syncOrders(context);
     return toAzureSuccess(results);
   } catch (error) {
     return toAzureError(context, MODULE_NAME, error);
