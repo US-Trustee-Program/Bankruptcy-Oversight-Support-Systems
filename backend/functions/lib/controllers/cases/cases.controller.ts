@@ -25,13 +25,13 @@ export class CasesController implements CamsController {
   }
 
   public async handleRequest(context: ApplicationContext) {
-    let data: ResourceActions<CaseDetail> | ResponseBody<ResourceActions<CaseBasics>[]>;
+    let data: ResponseBody<ResourceActions<CaseDetail> | ResourceActions<CaseBasics>[]>;
     if (context.request.method === 'GET' && context.request.params.caseId) {
       data = await this.getCaseDetails({ caseId: context.request.params.caseId });
     } else {
       data = await this.searchCases(context.request);
     }
-    return httpSuccess({ body: { data } });
+    return httpSuccess({ body: data });
   }
 
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
@@ -39,7 +39,7 @@ export class CasesController implements CamsController {
       this.applicationContext,
       requestQueryFilters.caseId,
     );
-    return data;
+    return { data };
   }
 
   public async searchCases(request: CamsHttpRequest) {

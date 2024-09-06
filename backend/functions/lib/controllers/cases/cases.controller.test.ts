@@ -34,7 +34,7 @@ describe('cases controller test', () => {
     test('should call getCaseDetails', () => {
       const spy = jest
         .spyOn(CasesController.prototype, 'getCaseDetails')
-        .mockResolvedValue(MockData.getCaseDetail());
+        .mockResolvedValue({ data: MockData.getCaseDetail() });
       context.request = {
         method: 'GET',
         url: 'http://localhost:3000',
@@ -51,7 +51,7 @@ describe('cases controller test', () => {
   describe('getCaseDetails', () => {
     test('Should get case details of case using caseId', async () => {
       const actual1 = await controller.getCaseDetails({ caseId: caseId1 });
-      expect(actual1).toEqual(caseDetail);
+      expect(actual1).toEqual({ data: caseDetail });
     });
   });
 

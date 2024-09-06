@@ -26,15 +26,6 @@ export default async function handler(
 
     const camsResponse = await casesController.handleRequest(applicationContext);
     return toAzureSuccess(camsResponse);
-    // if (applicationContext.request.method === 'GET' && applicationContext.request.params.caseId) {
-    //   const response = await casesController.getCaseDetails({
-    //     caseId: applicationContext.request.params.caseId,
-    //   });
-    //   return toAzureSuccess(response);
-    // } else {
-    //   const response = await casesController.searchCases(applicationContext.request);
-    //   return toAzureSuccess(response);
-    // }
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
