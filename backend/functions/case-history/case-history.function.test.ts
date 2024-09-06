@@ -6,8 +6,6 @@ import { InvocationContext } from '@azure/functions';
 import handler from './case-history.function';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
-import { CamsRole } from '../../../common/src/cams/roles';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
 import {
   buildTestResponseError,
@@ -27,16 +25,9 @@ describe('Case History Function Tests', () => {
 
   beforeEach(() => {
     context = new InvocationContext();
-    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-      MockData.getCamsSession({
-        user: {
-          id: 'userId-Bob Jones',
-          name: 'Bob Jones',
-          offices: [MANHATTAN],
-          roles: [CamsRole.CaseAssignmentManager],
-        },
-      }),
-    );
+    jest
+      .spyOn(ContextCreator, 'getApplicationContextSession')
+      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
   });
 
   test('Should return case history for an existing case ID', async () => {
