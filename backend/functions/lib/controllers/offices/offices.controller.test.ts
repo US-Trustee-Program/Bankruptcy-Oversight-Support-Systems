@@ -31,7 +31,8 @@ describe('offices controller tests', () => {
 
     const controller = new OfficesController(applicationContext);
     const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
-    const offices = await controller.getOffices(camsHttpRequest);
+    applicationContext.request = camsHttpRequest;
+    const offices = await controller.getOffices(applicationContext);
     expect(offices).toEqual(
       expect.objectContaining({
         body: { meta: expect.objectContaining({ self: expect.any(String) }), data: OFFICES },
@@ -47,8 +48,8 @@ describe('offices controller tests', () => {
     const controller = new OfficesController(applicationContext);
     await expect(async () => {
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
-
-      await controller.getOffices(camsHttpRequest);
+      applicationContext.request = camsHttpRequest;
+      await controller.getOffices(applicationContext);
     }).rejects.toThrow('Some expected CAMS error.');
   });
 
@@ -60,8 +61,8 @@ describe('offices controller tests', () => {
     const controller = new OfficesController(applicationContext);
     await expect(async () => {
       const camsHttpRequest = mockCamsHttpRequest({ query: { caseNumber: '00-00000' } });
-
-      await controller.getOffices(camsHttpRequest);
+      applicationContext.request = camsHttpRequest;
+      await controller.getOffices(applicationContext);
     }).rejects.toThrow('Unknown error');
   });
 });
