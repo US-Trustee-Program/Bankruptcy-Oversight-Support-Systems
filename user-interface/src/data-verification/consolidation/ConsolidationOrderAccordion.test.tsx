@@ -48,8 +48,8 @@ describe('ConsolidationOrderAccordion tests', () => {
   const offices: OfficeDetails[] = MockData.getOffices();
   const regionMap = new Map();
 
-  const onOrderUpdateMockFunc = vitest.fn();
-  const onExpandMockFunc = vitest.fn();
+  const onOrderUpdateMockFunc = vi.fn();
+  const onExpandMockFunc = vi.fn();
   let mockFeatureFlags: FeatureFlagSet;
 
   beforeEach(async () => {
@@ -57,14 +57,14 @@ describe('ConsolidationOrderAccordion tests', () => {
     mockFeatureFlags = {
       'consolidations-enabled': true,
     };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-    vitest
-      .spyOn(Api2, 'getCaseAssignments')
-      .mockResolvedValue({ data: MockData.buildArray(MockData.getAttorneyAssignment, 2) });
-    vitest
-      .spyOn(Api2, 'getCaseAssociations')
-      .mockRejectedValue('404 Case associations not found for the case ID.');
-    vitest.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: MockData.getCaseSummary() });
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({
+      data: MockData.buildArray(MockData.getAttorneyAssignment, 2),
+    });
+    vi.spyOn(Api2, 'getCaseAssociations').mockRejectedValue(
+      '404 Case associations not found for the case ID.',
+    );
+    vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: MockData.getCaseSummary() });
   });
 
   afterEach(() => {
@@ -234,7 +234,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     renderWithProps();
     openAccordion(order.id!);
     // setupApiGetMock({ bCase: order.childCases[0] });
-    // vitest.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: order.childCases[0] });
+    // vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue({ data: order.childCases[0] });
 
     const includeAllCheckbox = document.querySelector(`.checkbox-toggle label`);
     const approveButton = findApproveButton(order.id!);

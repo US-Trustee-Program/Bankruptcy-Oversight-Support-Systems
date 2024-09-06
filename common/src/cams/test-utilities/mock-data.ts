@@ -33,6 +33,7 @@ import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
 import { sortDates } from '../../date-helper';
+import { CamsRole } from '../roles';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -480,6 +481,28 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   };
 }
 
+function getManhattanAssignmentManagerSession(): CamsSession {
+  return getCamsSession({
+    user: {
+      id: 'userId-Bob Jones',
+      name: 'Bob Jones',
+      offices: [MANHATTAN],
+      roles: [CamsRole.CaseAssignmentManager],
+    },
+  });
+}
+
+function getManhattanTrialAttorneySession(): CamsSession {
+  return getCamsSession({
+    user: {
+      id: 'userId-Bob Jones',
+      name: 'Bob Jones',
+      offices: [MANHATTAN],
+      roles: [CamsRole.TrialAttorney],
+    },
+  });
+}
+
 function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
   const ONE_HOUR = 3600;
@@ -533,6 +556,8 @@ export const MockData = {
   getCamsUser,
   getAttorneyUser,
   getCamsSession,
+  getManhattanAssignmentManagerSession,
+  getManhattanTrialAttorneySession,
   getJwt,
 };
 

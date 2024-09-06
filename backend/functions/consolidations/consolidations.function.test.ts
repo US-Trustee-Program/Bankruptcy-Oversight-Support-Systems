@@ -2,8 +2,6 @@ import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import handler from './consolidations.function';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import ContextCreator from '../azure/application-context-creator';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
-import { CamsRole } from '../../../common/src/cams/roles';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
@@ -25,16 +23,9 @@ describe('Consolidations Function tests', () => {
 
   const context = createMockAzureFunctionContext();
 
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.CaseAssignmentManager],
-      },
-    }),
-  );
+  jest
+    .spyOn(ContextCreator, 'getApplicationContextSession')
+    .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
 
   afterEach(() => {
     jest.clearAllMocks();
