@@ -13,7 +13,7 @@ describe('Test case-docket controller', () => {
     const caseId = NORMAL_CASE_ID;
     const mockContext = await createMockApplicationContext({ request: { params: { caseId } } });
     const controller = new CaseDocketController(mockContext);
-    const result = await controller.getCaseDocket(mockContext);
+    const result = await controller.handleRequest(mockContext);
     expect(result.body.data).toEqual(DXTR_CASE_DOCKET_ENTRIES);
   });
 
@@ -21,7 +21,7 @@ describe('Test case-docket controller', () => {
     const caseId = NOT_FOUND_ERROR_CASE_ID;
     const mockContext = await createMockApplicationContext({ request: { params: { caseId } } });
     const controller = new CaseDocketController(mockContext);
-    await expect(controller.getCaseDocket(mockContext)).rejects.toThrow('Not found');
+    await expect(controller.handleRequest(mockContext)).rejects.toThrow('Not found');
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
@@ -32,6 +32,6 @@ describe('Test case-docket controller', () => {
     jest.spyOn(CaseDocketUseCase.prototype, 'getCaseDocket').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
-    await expect(controller.getCaseDocket(mockContext)).rejects.toThrow(expectedMessage);
+    await expect(controller.handleRequest(mockContext)).rejects.toThrow(expectedMessage);
   });
 });
