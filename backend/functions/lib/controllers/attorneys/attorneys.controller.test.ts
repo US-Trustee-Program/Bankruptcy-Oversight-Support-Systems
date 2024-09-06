@@ -1,6 +1,5 @@
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { commonHeaders } from '../../adapters/utils/http-response';
 import AttorneysList from '../../use-cases/attorneys';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { AttorneysController } from './attorneys.controller';
