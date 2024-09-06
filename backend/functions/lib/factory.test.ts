@@ -33,7 +33,6 @@ describe('Factory functions', () => {
         DATABASE_MOCK: 'false',
         COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
       },
-      request: {},
     });
     mockDbContext = await createMockApplicationContext();
   });
