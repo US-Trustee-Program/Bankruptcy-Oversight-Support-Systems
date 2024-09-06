@@ -7,6 +7,7 @@ import { CamsHttpRequest } from '../../adapters/types/http';
 import { Pagination } from '../../../../../common/src/api/pagination';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { ResourceActions } from '../../../../../common/src/cams/actions';
+import { CamsController } from '../controller';
 
 const _MODULE_NAME = 'CASES-CONTROLLER';
 
@@ -14,7 +15,7 @@ function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
   return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
 }
 
-export class CasesController {
+export class CasesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
   private readonly caseManagement: CaseManagement;
 
@@ -23,18 +24,28 @@ export class CasesController {
     this.caseManagement = new CaseManagement(this.applicationContext);
   }
 
+  public async handleRequest(context: ApplicationContext) {
+    let data: ResponseBody<ResourceActions<CaseDetail> | ResourceActions<CaseBasics>[]>;
+    if (context.request.method === 'GET' && context.request.params.caseId) {
+      data = await this.getCaseDetails({ caseId: context.request.params.caseId });
+    } else {
+      data = await this.searchCases(context.request);
+    }
+    return httpSuccess({ body: data });
+  }
+
   public async getCaseDetails(requestQueryFilters: { caseId: string }) {
     const data = await this.caseManagement.getCaseDetail(
       this.applicationContext,
       requestQueryFilters.caseId,
     );
-    return httpSuccess<ResourceActions<CaseDetail>>({ body: { data } });
+    return { data };
   }
 
   public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
     const body = await this.paginateSearchCases(predicate, request.url);
-    return httpSuccess<ResourceActions<CaseBasics>[]>({ body });
+    return body;
   }
 
   async paginateSearchCases(

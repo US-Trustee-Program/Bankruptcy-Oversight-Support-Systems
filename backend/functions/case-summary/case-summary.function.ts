@@ -23,7 +23,7 @@ export default async function handler(
       request,
     );
     const caseSummaryController = new CaseSummaryController(applicationContext);
-    const response = await caseSummaryController.getCaseSummary(applicationContext);
+    const response = await caseSummaryController.handleRequest(applicationContext);
     return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);

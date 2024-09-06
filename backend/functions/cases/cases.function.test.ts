@@ -1,22 +1,25 @@
 import handler from './cases.function';
-import {
-  buildTestResponseError,
-  buildTestResponseSuccess,
-  createMockAzureFunctionContext,
-  createMockAzureFunctionRequest,
-} from '../azure/testing-helpers';
+import { buildTestResponseSuccess, createMockAzureFunctionRequest } from '../azure/testing-helpers';
 import { CasesController } from '../lib/controllers/cases/cases.controller';
-import { NotFoundError } from '../lib/common-errors/not-found-error';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { InvocationContext } from '@azure/functions';
 import { ResourceActions } from '../../../common/src/cams/actions';
-import { CaseBasics, CaseDetail } from '../../../common/src/cams/cases';
+import { CaseDetail } from '../../../common/src/cams/cases';
+import { commonHeaders } from '../lib/adapters/utils/http-response';
+import { CamsError } from '../lib/common-errors/cams-error';
 
 describe('Cases function', () => {
   jest
     .spyOn(ContextCreator, 'getApplicationContextSession')
     .mockResolvedValue(MockData.getManhattanTrialAttorneySession());
+  const caseDetails = MockData.getCaseDetail();
+  const request = createMockAzureFunctionRequest({
+    method: 'GET',
+    params: {
+      caseId: caseDetails.caseId,
+    },
+  });
 
   const originalEnv = process.env;
 
@@ -34,80 +37,23 @@ describe('Cases function', () => {
 
   afterAll(() => {
     process.env = originalEnv;
+    jest.resetAllMocks();
   });
 
-  test('Should return a case when called with a caseId', async () => {
-    const caseDetails = MockData.getCaseDetail();
-    const request = createMockAzureFunctionRequest({
-      method: 'GET',
-      params: {
-        caseId: caseDetails.caseId,
-      },
-    });
-
+  test('should return success response', async () => {
     const expects = buildTestResponseSuccess<ResourceActions<CaseDetail>>({
       data: caseDetails,
     });
     const { camsHttpResponse, azureHttpResponse } = expects;
-
-    jest.spyOn(CasesController.prototype, 'getCaseDetails').mockResolvedValue(camsHttpResponse);
-
+    jest.spyOn(CasesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
   });
 
-  test('should perform search', async () => {
-    const request = createMockAzureFunctionRequest({
-      method: 'POST',
-      body: {
-        caseNumber: '00-12345',
-      },
-    });
-    const expects = buildTestResponseSuccess<ResourceActions<CaseBasics>[]>({
-      data: [MockData.getCaseBasics(), MockData.getCaseBasics()],
-    });
-    const { camsHttpResponse, azureHttpResponse } = expects;
-
-    jest.spyOn(CasesController.prototype, 'searchCases').mockResolvedValue(camsHttpResponse);
-
+  test('should return error response', async () => {
+    const error = new CamsError('test-module', { message: 'Some CAMS error.' });
+    jest.spyOn(CasesController.prototype, 'handleRequest').mockRejectedValue(error);
     const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
-});
-
-describe('Cases function errors', () => {
-  const context = createMockAzureFunctionContext();
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
-  });
-
-  type TestParams = { name: string; error: Error; requestParam: object };
-  const params: TestParams[] = [
-    {
-      name: 'getCaseDetails',
-      error: new NotFoundError('test-error'),
-      requestParam: { params: { caseId: '000-00-12345' } },
-    },
-    {
-      name: 'searchCases',
-      error: new Error('test-error'),
-      requestParam: {
-        method: 'POST',
-        body: { caseNumber: '00-12345' },
-      },
-    },
-  ];
-
-  test.each(params)(`should handle error from $name`, async (params: TestParams) => {
-    const request = createMockAzureFunctionRequest(params.requestParam);
-    const { azureHttpResponse } = buildTestResponseError(params.error);
-
-    jest.spyOn(CasesController.prototype, 'getCaseDetails').mockRejectedValue(params.error);
-    jest.spyOn(CasesController.prototype, 'searchCases').mockRejectedValue(params.error);
-
-    const response = await handler(request, context);
-    expect(response).toEqual(azureHttpResponse);
+    expect(response).toEqual({ headers: commonHeaders, status: 500, jsonBody: error.message });
   });
 });

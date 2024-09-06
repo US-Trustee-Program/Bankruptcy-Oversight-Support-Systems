@@ -26,7 +26,7 @@ describe('Case docket function', () => {
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseDocket>({
       data: DXTR_CASE_DOCKET_ENTRIES,
     });
-    jest.spyOn(CaseDocketController.prototype, 'getCaseDocket').mockResolvedValue(camsHttpResponse);
+    jest.spyOn(CaseDocketController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
@@ -39,7 +39,7 @@ describe('Case docket function', () => {
     const request = createMockAzureFunctionRequest(requestProps);
     const error = new NotFoundError('TEST-MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
-    jest.spyOn(CaseDocketController.prototype, 'getCaseDocket').mockRejectedValue(error);
+    jest.spyOn(CaseDocketController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 

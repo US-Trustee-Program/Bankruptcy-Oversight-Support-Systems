@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
-import { httpSuccess } from '../lib/adapters/utils/http-response';
+import { MeController } from '../lib/controllers/me/me.controller';
 
 const MODULE_NAME = 'ME-FUNCTION';
 
@@ -16,11 +16,8 @@ export async function handler(
       logger,
       request,
     );
-    const response = httpSuccess({
-      body: {
-        data: applicationContext.session,
-      },
-    });
+    const meController = new MeController();
+    const response = await meController.handleRequest(applicationContext);
     return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);

@@ -3,10 +3,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 
-export class OfficesController {
+export class OfficesController implements CamsController {
   private readonly useCase: OfficesUseCase;
   private readonly applicationContext: ApplicationContext;
 
@@ -14,8 +15,7 @@ export class OfficesController {
     this.applicationContext = applicationContext;
     this.useCase = new OfficesUseCase();
   }
-
-  public async getOffices(
+  public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<OfficeDetails[]>> {
     try {

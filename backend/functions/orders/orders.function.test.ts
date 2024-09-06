@@ -14,7 +14,9 @@ import { commonHeaders } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Orders Function tests', () => {
-  const request = createMockAzureFunctionRequest();
+  const request = createMockAzureFunctionRequest({
+    url: 'http://domain/api/orders',
+  });
   const context = createMockAzureFunctionContext();
 
   beforeEach(() => {
@@ -47,6 +49,7 @@ describe('Orders Function tests', () => {
       .mockResolvedValue(camsHttpResponse);
 
     const orderRequest = createMockAzureFunctionRequest({
+      url: 'http://domain/api/orders',
       params: { id },
       body: {
         id,
@@ -80,6 +83,7 @@ describe('Orders Function tests', () => {
 
     const id = '1234567890';
     const requestOverride: Partial<CamsHttpRequest> = {
+      url: 'http://domain/api/orders',
       params: { id },
       body: {
         id,
