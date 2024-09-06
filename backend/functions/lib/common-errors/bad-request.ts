@@ -1,10 +1,10 @@
 import { CamsError, CamsErrorOptions } from './cams-error';
-import { BAD_REQUEST } from './constants';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 interface BadRequestErrorOptions extends CamsErrorOptions {}
 export class BadRequestError extends CamsError {
   constructor(module: string, options: BadRequestErrorOptions = {}) {
-    super(module, { status: BAD_REQUEST, message: 'Bad request', ...options });
+    super(module, { status: HttpStatusCodes.BAD_REQUEST, message: 'Bad request', ...options });
   }
 }
