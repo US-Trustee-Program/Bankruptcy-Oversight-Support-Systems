@@ -22,8 +22,9 @@ export default async function handler(
       logger,
       request,
     );
-    const attorneysList = await AttorneysController.getAttorneyList(applicationContext);
-    return toAzureSuccess(attorneysList);
+    const attorneysController = new AttorneysController();
+    const response = await attorneysController.handleRequest(applicationContext);
+    return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }

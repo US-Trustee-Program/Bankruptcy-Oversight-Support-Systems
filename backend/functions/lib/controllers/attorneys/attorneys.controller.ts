@@ -2,21 +2,28 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import AttorneysList from '../../use-cases/attorneys';
 import { AttorneyUser } from '../../../../../common/src/cams/users';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
 
-async function getAttorneyList(
-  context: ApplicationContext,
-): Promise<CamsHttpResponseInit<AttorneyUser[]>> {
-  context.logger.info(MODULE_NAME, 'Getting Attorneys list.');
-  const attorneysList = new AttorneysList();
-  const data = await attorneysList.getAttorneyList(context);
-  const success = httpSuccess({ body: { data } });
-  return success;
+export class AttorneysController implements CamsController {
+  private readonly useCase: AttorneysList;
+
+  constructor() {
+    this.useCase = new AttorneysList();
+  }
+
+  public async handleRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<AttorneyUser[]>> {
+    context.logger.info(MODULE_NAME, 'Getting Attorneys list.');
+    try {
+      const data = await this.useCase.getAttorneyList(context);
+      const success = httpSuccess({ body: { data } });
+      return success;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }
-
-export const AttorneysController = {
-  getAttorneyList,
-};
-
-export default AttorneysController;
