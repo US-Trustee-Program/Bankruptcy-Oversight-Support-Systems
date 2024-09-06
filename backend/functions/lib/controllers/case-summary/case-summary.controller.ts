@@ -3,17 +3,17 @@ import { CaseSummary } from '../../../../../common/src/cams/cases';
 import CaseManagement from '../../use-cases/case-management';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
 
-export class CaseSummaryController {
+export class CaseSummaryController implements CamsController {
   private readonly useCase: CaseManagement;
 
   constructor(applicationContext: ApplicationContext) {
     this.useCase = new CaseManagement(applicationContext);
   }
-
-  public async getCaseSummary(
+  public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseSummary>> {
     try {
