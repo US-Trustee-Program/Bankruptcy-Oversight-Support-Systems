@@ -1,4 +1,4 @@
-import { INTERNAL_SERVER_ERROR } from './constants';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 
 export interface CamsErrorOptions {
   status?: number;
@@ -17,7 +17,7 @@ export class CamsError extends Error {
   constructor(module: string, options: CamsErrorOptions = {}) {
     super();
     this.message = options.message || options.originalError?.message || 'Unknown CAMS Error';
-    this.status = options.status ?? INTERNAL_SERVER_ERROR;
+    this.status = options.status ?? HttpStatusCodes.INTERNAL_SERVER_ERROR;
     this.module = module;
     this.originalError = options.originalError;
     this.data = options.data;
