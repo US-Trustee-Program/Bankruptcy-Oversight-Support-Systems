@@ -17,7 +17,7 @@ describe('consolidationOrderAccordion presenter tests', () => {
     mockFeatureFlags = {
       'consolidations-enabled': true,
     };
-    vitest.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   test('should get lead case id', () => {

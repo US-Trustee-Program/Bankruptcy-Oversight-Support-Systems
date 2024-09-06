@@ -3,8 +3,6 @@ import { CaseAssignmentController } from '../lib/controllers/case-assignment/cas
 import ContextCreator from '../azure/application-context-creator';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { CamsRole } from '../../../common/src/cams/roles';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
@@ -30,16 +28,9 @@ describe('Case Assignment Function Tests', () => {
   let context;
 
   beforeEach(() => {
-    jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-      MockData.getCamsSession({
-        user: {
-          id: 'userId-Bob Jones',
-          name: 'Bob Jones',
-          offices: [MANHATTAN],
-          roles: [CamsRole.CaseAssignmentManager],
-        },
-      }),
-    );
+    jest
+      .spyOn(ContextCreator, 'getApplicationContextSession')
+      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
     context = new InvocationContext({
       logHandler: () => {},
       invocationId: 'id',

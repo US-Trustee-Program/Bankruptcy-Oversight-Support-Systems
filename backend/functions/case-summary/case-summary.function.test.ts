@@ -4,8 +4,6 @@ import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../lib/common-errors/not-found-error';
 import handler from './case-summary.function';
 import ContextCreator from '../azure/application-context-creator';
-import { MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
-import { CamsRole } from '../../../common/src/cams/roles';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
@@ -15,16 +13,9 @@ import { CamsHttpRequest } from '../lib/adapters/types/http';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
 
 describe('Case summary function', () => {
-  jest.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
-    MockData.getCamsSession({
-      user: {
-        id: 'userId-Bob Jones',
-        name: 'Bob Jones',
-        offices: [MANHATTAN],
-        roles: [CamsRole.TrialAttorney],
-      },
-    }),
-  );
+  jest
+    .spyOn(ContextCreator, 'getApplicationContextSession')
+    .mockResolvedValue(MockData.getManhattanTrialAttorneySession());
 
   const baseRequest: Partial<CamsHttpRequest> = {
     method: 'GET',
