@@ -24,8 +24,8 @@ export default async function handler(
     );
     const controller = new OrdersController(applicationContext);
 
-    const body = await controller.getSuggestedCases(applicationContext);
-    return toAzureSuccess(body);
+    const response = await controller.handleRequest(applicationContext);
+    return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
