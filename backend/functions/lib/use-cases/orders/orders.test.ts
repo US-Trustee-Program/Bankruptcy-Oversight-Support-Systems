@@ -30,12 +30,15 @@ import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { sortDates } from '../../../../../common/src/date-helper';
 import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.repository';
 import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
+import { CaseAssignmentUseCase } from '../case-assignment';
+import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -47,10 +50,15 @@ describe('Orders use case', () => {
   let casesGateway;
   let consolidationRepo;
   let useCase: OrdersUseCase;
+  const authorizedUser = MockData.getCamsUser({
+    roles: [CamsRole.DataVerifier],
+    offices: [MANHATTAN],
+  });
+  const unauthorizedUser = MockData.getCamsUser({ roles: [] });
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
-    mockContext.session = await createMockApplicationContextSession();
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
@@ -68,19 +76,33 @@ describe('Orders use case', () => {
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   test('should return list of orders for the API from the repo', async () => {
-    const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()].sort(
-      (a, b) => sortDates(a.orderDate, b.orderDate),
-    );
-    const mockRead = jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValueOnce({
-      resources: mockOrders,
+    const mockTransfer1 = MockData.getTransferOrder({ override: { orderDate: '2024-08-01' } });
+    const mockTransfer2 = MockData.getTransferOrder({ override: { orderDate: '2024-09-01' } });
+    const mockTransferOrders = [mockTransfer1, mockTransfer2];
+    const mockConsolidation1 = MockData.getConsolidationOrder({
+      override: { orderDate: '2024-08-02' },
     });
+    const mockConsolidation2 = MockData.getConsolidationOrder({
+      override: { orderDate: '2024-09-02' },
+    });
+    const mockConsolidationOrders = [mockConsolidation1, mockConsolidation2];
+
+    // TODO: We need to change getOrders to search similar to how we changed getAll to search
+    const orderRepoMock = jest.spyOn(ordersRepo, 'search').mockResolvedValue(mockTransferOrders);
+    const consolidationsRepoMock = jest
+      .spyOn(consolidationRepo, 'search')
+      .mockResolvedValue(mockConsolidationOrders);
+
+    const divisionCodes = authorizedUser.offices.map((office) => office.courtDivisionCode);
+    const expectedResult = [mockTransfer1, mockConsolidation1, mockTransfer2, mockConsolidation2];
     const result = await useCase.getOrders(mockContext);
-    expect(result).toEqual(mockOrders);
-    expect(mockRead).toHaveBeenCalled();
+    expect(result).toEqual(expectedResult);
+    expect(orderRepoMock).toHaveBeenCalledWith(mockContext, { divisionCodes });
+    expect(consolidationsRepoMock).toHaveBeenCalledWith(mockContext, { divisionCodes });
   });
 
   test('should return list of suggested cases for an order', async () => {
@@ -449,5 +471,131 @@ describe('Orders use case', () => {
       'Cannot consolidate order. The lead case is a child case of another consolidation.',
     );
     expect(mockGetConsolidation).toHaveBeenCalled();
+  });
+
+  test('should throw an error if user is unauthorized to update transfers', async () => {
+    const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
+
+    const action: TransferOrderAction = {
+      id: order.id,
+      orderType: 'transfer',
+      caseId: order.caseId,
+      newCase: order.newCase,
+      status: 'approved',
+    };
+
+    const updateOrderFn = jest
+      .spyOn(ordersRepo, 'updateOrder')
+      .mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+    const transferToFn = jest.spyOn(casesRepo, 'createTransferTo');
+    const transferFromFn = jest.spyOn(casesRepo, 'createTransferFrom');
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
+    mockContext.session = await createMockApplicationContextSession({ user: unauthorizedUser });
+
+    await expect(useCase.updateTransferOrder(mockContext, order.id, action)).rejects.toThrow();
+    expect(updateOrderFn).not.toHaveBeenCalled();
+    expect(getOrderFn).not.toHaveBeenCalled();
+    expect(transferToFn).not.toHaveBeenCalled();
+    expect(transferFromFn).not.toHaveBeenCalled();
+    expect(auditFn).not.toHaveBeenCalled();
+  });
+
+  test('should throw an error if user is unauthorized to approve consolidations', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      status: 'approved',
+    };
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockRejectedValue('We should never call this');
+    mockContext.session = await createMockApplicationContextSession({ user: unauthorizedUser });
+
+    await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
+      'Unauthorized',
+    );
+    expect(mockGetConsolidation).not.toHaveBeenCalled();
+  });
+
+  test('should throw an error if user is unauthorized to reject consolidations', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const rejection: ConsolidationOrderActionRejection = {
+      ...pendingConsolidation,
+      rejectedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      status: 'rejected',
+    };
+    const mockDelete = jest
+      .spyOn(consolidationRepo, 'delete')
+      .mockRejectedValue('We should never call this');
+    mockContext.session = await createMockApplicationContextSession({ user: unauthorizedUser });
+
+    await expect(useCase.rejectConsolidation(mockContext, rejection)).rejects.toThrow(
+      'Unauthorized',
+    );
+    expect(mockDelete).not.toHaveBeenCalled();
+  });
+
+  test('test that approved orders identify the user who made the change', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const approval: ConsolidationOrderActionApproval = {
+      ...pendingConsolidation,
+      approvedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      status: 'approved',
+    };
+    const mockCreateCaseHistory = jest.spyOn(
+      CasesCosmosDbRepository.prototype,
+      'createCaseHistory',
+    );
+    jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockImplementation(() => Promise.resolve());
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
+    await useCase.approveConsolidation(mockContext, approval);
+    expect(mockCreateCaseHistory).toHaveBeenCalledWith(
+      mockContext,
+      expect.objectContaining({ changedBy: getCamsUserReference(authorizedUser) }),
+    );
+  });
+
+  test('test that rejected orders identify the user who made the change', async () => {
+    const pendingConsolidation = MockData.getConsolidationOrder();
+    const leadCase = MockData.getCaseSummary();
+    const rejection: ConsolidationOrderActionRejection = {
+      ...pendingConsolidation,
+      rejectedCases: pendingConsolidation.childCases.map((bCase) => {
+        return bCase.caseId;
+      }),
+      leadCase,
+      status: 'approved',
+    };
+    const mockCreateCaseHistory = jest.spyOn(
+      CasesCosmosDbRepository.prototype,
+      'createCaseHistory',
+    );
+    jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockImplementation(() => Promise.resolve());
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
+    await useCase.rejectConsolidation(mockContext, rejection);
+    expect(mockCreateCaseHistory).toHaveBeenCalledWith(
+      mockContext,
+      expect.objectContaining({ changedBy: getCamsUserReference(authorizedUser) }),
+    );
   });
 });

@@ -8,16 +8,21 @@ import {
 import { OrdersUseCase } from './orders';
 
 import * as FactoryModule from '../../factory';
-import { CasesRepository, ConsolidationOrdersRepository } from '../gateways.types';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { ConsolidationFrom, ConsolidationTo } from '../../../../../common/src/cams/events';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
 import {
   getCasesGateway,
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
 } from '../../factory';
+import { CasesRepository, ConsolidationOrdersRepository } from '../gateways.types';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { ConsolidationFrom, ConsolidationTo } from '../../../../../common/src/cams/events';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 // TODO: This could be a testing library functions.
 function setupCasesRepoMock(repo: CasesRepository) {
@@ -122,9 +127,14 @@ describe('orders use case tests', () => {
   let ordersRepo;
   let runtimeStateRepo;
   let casesGateway;
+  const authorizedUser = MockData.getCamsUser({
+    roles: [CamsRole.DataVerifier],
+    offices: [MANHATTAN],
+  });
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
@@ -176,6 +186,4 @@ describe('orders use case tests', () => {
     expect(casesRepoSpy.createConsolidationTo).not.toHaveBeenCalled();
     expect(casesRepoSpy.createConsolidationFrom).not.toHaveBeenCalled();
   });
-
-  test('should not consolidate a case that has already been consolidated', () => {});
 });

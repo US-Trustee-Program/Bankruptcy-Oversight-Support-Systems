@@ -42,6 +42,8 @@ import { CaseAssignmentUseCase } from '../case-assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -82,8 +84,9 @@ export class OrdersUseCase {
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    const transferOrders = await this.ordersRepo.getOrders(context);
-    const consolidationOrders = await this.consolidationsRepo.getAll(context);
+    const divisionCodes = context.session.user.offices.map((office) => office.courtDivisionCode);
+    const transferOrders = await this.ordersRepo.search(context, { divisionCodes });
+    const consolidationOrders = await this.consolidationsRepo.search(context, { divisionCodes });
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
@@ -99,6 +102,10 @@ export class OrdersUseCase {
     id: string,
     data: TransferOrderAction,
   ): Promise<void> {
+    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
+
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     let order: Order;
@@ -131,6 +138,7 @@ export class OrdersUseCase {
         before: initialOrder as TransferOrder,
         after: order,
         occurredAtTimestamp: new Date().toISOString(),
+        changedBy: getCamsUserReference(context.session.user),
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -294,6 +302,7 @@ export class OrdersUseCase {
       before: isConsolidationHistory(before) ? before : null,
       after,
       occurredAtTimestamp: new Date().toISOString(),
+      changedBy: getCamsUserReference(context.session!.user),
     };
   }
 
@@ -305,6 +314,10 @@ export class OrdersUseCase {
     consolidationType?: ConsolidationType,
     leadCase?: CaseSummary,
   ): Promise<ConsolidationOrder[]> {
+    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
+
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );

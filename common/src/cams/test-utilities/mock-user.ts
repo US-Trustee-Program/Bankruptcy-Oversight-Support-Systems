@@ -68,13 +68,23 @@ export const MockUsers: MockUser[] = [
     },
   },
   {
-    sub: 'paralegal',
-    label: 'Bert - Paralegal',
+    sub: 'bert@fake.com',
+    label: 'Bert - Data Verifier (Manhattan)',
     user: {
-      id: '==MOCKUSER=paralegal==',
+      id: 'bert@fake.com',
       name: 'Bert',
-      roles: [],
+      roles: [CamsRole.DataVerifier],
       offices: REGION_02_GROUP_NY,
+    },
+  },
+  {
+    sub: 'earnie@fake.com',
+    label: 'Earnie - Data Verifier (Buffalo)',
+    user: {
+      id: 'earnie@fake.com',
+      name: 'Earnie',
+      roles: [CamsRole.DataVerifier],
+      offices: REGION_02_GROUP_BU,
     },
   },
   {

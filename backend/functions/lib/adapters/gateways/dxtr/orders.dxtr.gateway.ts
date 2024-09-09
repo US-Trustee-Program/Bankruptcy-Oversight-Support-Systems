@@ -409,6 +409,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         CS.CS_SHORT_TITLE AS caseTitle,
         CS.CS_CHAPTER AS chapter,
         C.COURT_NAME AS courtName,
+        CS.CS_DIV as courtDivisionCode,
         O.OFFICE_NAME_DISPLAY AS courtDivisionName,
         G.REGION_ID AS regionId,
         R.REGION_NAME AS regionName,

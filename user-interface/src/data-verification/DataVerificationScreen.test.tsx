@@ -12,9 +12,15 @@ import { OfficeDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
+import LocalStorage from '@/lib/utils/local-storage';
 
 describe('Review Orders screen', () => {
+  const user = testingUtilities.setUserWithRoles([CamsRole.DataVerifier]);
+
   beforeEach(async () => {
+    LocalStorage.setSession(MockData.getCamsSession({ user }));
     vi.stubEnv('CAMS_PA11Y', 'true');
   });
 
@@ -254,6 +260,20 @@ describe('Review Orders screen', () => {
 
     const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
     expect(consolidationsFilter).not.toBeInTheDocument();
+  });
+
+  test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
+    testingUtilities.setUserWithRoles([]);
+    const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
+    LocalStorage.setSession(MockData.getCamsSession({ user: unauthorizedUser }));
+    const alertSpy = testingUtilities.spyOnGlobalAlert();
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    expect(alertSpy.error).toHaveBeenCalledWith('Invalid Permissions');
   });
 
   test('should not render a list if an API error is encountered', async () => {
