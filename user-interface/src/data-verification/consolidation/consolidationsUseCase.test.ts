@@ -45,7 +45,6 @@ describe('Consolidation UseCase tests', () => {
     expect(store.leadCase).toBeNull();
     expect(store.leadCaseId).toEqual('');
     expect(store.leadCaseNumber).toEqual('');
-    expect(store.leadCaseCourt).toEqual('');
     expect(store.leadCaseNumberError).toEqual('');
     expect(store.foundValidCaseNumber).toBe(false);
   }
