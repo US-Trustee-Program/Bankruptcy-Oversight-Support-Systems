@@ -121,12 +121,12 @@ export default class Api {
       const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
       await this.executeAfterHooks(response);
 
-      const data = await response.json();
-
       if (response.ok) {
-        return data;
+        const data = await response.text();
+        return data.length > 1 ? JSON.parse(data) : undefined;
       } else {
-        return Promise.reject(new Error(data.message));
+        const error = await response.json();
+        return Promise.reject(new Error(error.message));
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
