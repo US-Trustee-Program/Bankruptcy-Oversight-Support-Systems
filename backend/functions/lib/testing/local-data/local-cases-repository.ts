@@ -10,6 +10,7 @@ import {
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CasesRepository } from '../../use-cases/gateways.types';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 export class LocalCasesRepository implements CasesRepository {
   caseHistoryContainer: CaseHistory[] = [];
@@ -69,7 +70,13 @@ export class LocalCasesRepository implements CasesRepository {
     throw new Error('Not implemented.');
   }
 
-  async createCaseHistory(_context: ApplicationContext, history: CaseHistory) {
+  async createCaseHistory(context: ApplicationContext, history: CaseHistory) {
+    if (!history.occurredAtTimestamp) {
+      history.occurredAtTimestamp = new Date().toISOString();
+    }
+    if (!history.changedBy) {
+      history.changedBy = getCamsUserReference(context.session.user);
+    }
     this.caseHistoryContainer.push(history);
   }
 }
