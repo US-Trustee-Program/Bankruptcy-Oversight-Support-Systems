@@ -60,7 +60,7 @@ export class OrdersController implements CamsController {
         return this.handleConsolidations(context);
       case 'orders':
         return this.handleOrders(context);
-      case 'order-manual-sync':
+      case 'orders-sync':
         return this.handleOrderSync(context);
       case 'orders-suggestions':
         return this.handleOrdersSuggestions(context);

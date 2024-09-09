@@ -8,11 +8,16 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 
 describe('Header', () => {
-  const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
-  LocalStorage.setSession(MockData.getCamsSession({ user }));
+  const user = MockData.getCamsUser({
+    roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
+  });
   vi.spyOn(FeatureFlags, 'default').mockReturnValue({
     'transfer-orders-enabled': true,
     'case-search-enabled': true,
+  });
+
+  beforeEach(() => {
+    LocalStorage.setSession(MockData.getCamsSession({ user }));
   });
 
   function renderWithoutProps() {
@@ -90,5 +95,21 @@ describe('Header', () => {
 
     const current = document.querySelectorAll('.usa-current.current');
     expect(current).toHaveLength(1);
+  });
+
+  test('should not display data verification link when unauthorized', () => {
+    const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
+    LocalStorage.setSession(MockData.getCamsSession({ user: unauthorizedUser }));
+    renderWithoutProps();
+
+    const link = screen.queryByTestId('header-data-verification-link');
+    expect(link).not.toBeInTheDocument();
+  });
+
+  test('should display data verification link when authorized', async () => {
+    renderWithoutProps();
+
+    const link = screen.queryByTestId('header-data-verification-link');
+    expect(link).toBeInTheDocument();
   });
 });

@@ -22,6 +22,8 @@ import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -32,10 +34,14 @@ describe('Orders use case', () => {
   let casesGateway;
   let consolidationRepo;
   let useCase: OrdersUseCase;
+  const authorizedUser = MockData.getCamsUser({
+    roles: [CamsRole.DataVerifier],
+    offices: [MANHATTAN],
+  });
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
-    mockContext.session = await createMockApplicationContextSession();
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);

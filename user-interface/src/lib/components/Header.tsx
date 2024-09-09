@@ -112,23 +112,25 @@ export const Header = () => {
                 </li>
               )}
 
-              {transferOrdersFlag && (
-                <li className="usa-nav__primary-item">
-                  <NavLink
-                    to="/data-verification"
-                    data-testid="header-data-verification-link"
-                    className={
-                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
-                    }
-                    onClick={() => {
-                      return setActiveNav(NavState.DATA_VERIFICATION);
-                    }}
-                    title="view status of, approve, or reject case events"
-                  >
-                    Data Verification
-                  </NavLink>
-                </li>
-              )}
+              {session &&
+                session.user.roles?.includes(CamsRole.DataVerifier) &&
+                transferOrdersFlag && (
+                  <li className="usa-nav__primary-item">
+                    <NavLink
+                      to="/data-verification"
+                      data-testid="header-data-verification-link"
+                      className={
+                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                      }
+                      onClick={() => {
+                        return setActiveNav(NavState.DATA_VERIFICATION);
+                      }}
+                      title="view status of, approve, or reject case events"
+                    >
+                      Data Verification
+                    </NavLink>
+                  </li>
+                )}
 
               {caseSearchFlag && (
                 <li className="usa-nav__primary-item">

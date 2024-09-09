@@ -8,7 +8,8 @@ export const ROLE_MAPPING_PATH = '/rolemapping.csv';
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
   'USTP_CAMS_Case_assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
-  'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n';
+  'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
+  'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n';
 
 export const OFFICE_MAPPING_PATH = '/officemapping.csv';
 const OFFICE_MAPPING =
