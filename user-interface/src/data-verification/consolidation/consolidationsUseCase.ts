@@ -62,7 +62,6 @@ const consolidationUseCase = (
   function clearLeadCase(): void {
     store.setLeadCase(null);
     store.setLeadCaseId('');
-    store.setLeadCaseCourt('');
     store.setLeadCaseNumber('');
     store.setLeadCaseNumberError('');
     store.setFoundValidCaseNumber(false);
