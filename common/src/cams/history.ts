@@ -23,7 +23,7 @@ export function isConsolidationHistory(history: unknown): history is Consolidati
 type AbstractCaseHistory<B, A> = {
   id?: string;
   caseId: string;
-  occurredAtTimestamp: string;
+  occurredAtTimestamp?: string;
   before: B;
   after: A;
   changedBy?: CamsUserReference;

@@ -137,8 +137,6 @@ export class OrdersUseCase {
         documentType: 'AUDIT_TRANSFER',
         before: initialOrder as TransferOrder,
         after: order,
-        occurredAtTimestamp: new Date().toISOString(),
-        changedBy: getCamsUserReference(context.session.user),
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -203,7 +201,10 @@ export class OrdersUseCase {
           documentType: 'AUDIT_TRANSFER',
           before: null,
           after: order,
-          occurredAtTimestamp: new Date().toISOString(),
+          changedBy: {
+            id: '',
+            name: '',
+          },
         };
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
@@ -227,7 +228,6 @@ export class OrdersUseCase {
         documentType: 'AUDIT_CONSOLIDATION',
         before: null,
         after: history,
-        occurredAtTimestamp: new Date().toISOString(),
       };
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }

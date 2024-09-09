@@ -118,7 +118,6 @@ export class CaseAssignmentUseCase {
       occurredAtTimestamp: currentDate,
       before: existingAssignmentRecords,
       after: newAssignmentRecords,
-      changedBy: getCamsUserReference(context.session!.user),
     };
     await this.casesRepository.createCaseHistory(context, history);
 
