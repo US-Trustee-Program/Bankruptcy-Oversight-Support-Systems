@@ -109,11 +109,20 @@ export default class Api {
     }
   }
 
+  /**
+   * ONLY USE WITH OUR OWN API!!!!
+   * This function makes assumptions about the responses to PATCH requests that do not handle
+   * all possibilities according to the HTTP specifications.
+   *
+   * @param path string The path after '/api'.
+   * @param body object The payload for the request.
+   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   */
   public static async patch(
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseBody> {
+  ): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);

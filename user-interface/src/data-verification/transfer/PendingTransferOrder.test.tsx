@@ -233,7 +233,7 @@ describe('PendingTransferOrder component', () => {
       const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockResolvedValue({
         data: MockData.getTransferOrder({
           override: {
-            dateFiled: order.dateFiled,
+            dateFiled: '2024-08-01',
             debtor: order.debtor,
           },
         }),
@@ -291,8 +291,8 @@ describe('PendingTransferOrder component', () => {
       const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockResolvedValue({
         data: MockData.getTransferOrder({
           override: {
-            dateFiled: order.dateFiled,
             debtor: order.debtor,
+            dateFiled: new Date().toISOString(),
           },
         }),
       });
