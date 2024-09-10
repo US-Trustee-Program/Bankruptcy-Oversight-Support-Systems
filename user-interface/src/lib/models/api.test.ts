@@ -7,6 +7,7 @@ describe('Specific tests for the API model', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+  
   test('createPath should return a properly constructed URL when passed a basic path and an array of query parameters', () => {
     const path = '/foo/bar';
     const params: ObjectKeyVal = {
