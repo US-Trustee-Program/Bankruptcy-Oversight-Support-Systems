@@ -69,7 +69,7 @@ export class LocalCasesRepository implements CasesRepository {
     throw new Error('Not implemented.');
   }
 
-  async createCaseHistory(_context: ApplicationContext, history: CaseHistory) {
+  async createCaseHistory(context: ApplicationContext, history: CaseHistory) {
     this.caseHistoryContainer.push(history);
   }
 }

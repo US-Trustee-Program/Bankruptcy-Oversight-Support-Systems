@@ -5,6 +5,7 @@ import { CaseHistory } from '@common/cams/history';
 import { ConsolidationOrder } from '@common/cams/orders';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
@@ -28,7 +29,8 @@ describe('audit history tests', () => {
       name: 'Alfred',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      updatedBy: MockData.getCamsUserReference(),
     },
     {
       caseId,
@@ -37,7 +39,8 @@ describe('audit history tests', () => {
       name: 'Bradford',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      updatedBy: MockData.getCamsUserReference(),
     },
   ];
   const assignmentAfter: CaseAssignment[] = [
@@ -48,7 +51,8 @@ describe('audit history tests', () => {
       name: 'Charles',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      updatedBy: MockData.getCamsUserReference(),
     },
     {
       caseId,
@@ -57,7 +61,8 @@ describe('audit history tests', () => {
       name: 'Daniel',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      updatedBy: MockData.getCamsUserReference(),
     },
     {
       caseId,
@@ -66,7 +71,8 @@ describe('audit history tests', () => {
       name: 'Edward',
       role: 'TrialAttorney',
       assignedOn: '2023-12-25T00:00:00.000Z',
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      updatedBy: MockData.getCamsUserReference(),
     },
   ];
   const caseHistory: CaseHistory[] = [
@@ -74,37 +80,37 @@ describe('audit history tests', () => {
       id: '1234567890',
       documentType: 'AUDIT_ASSIGNMENT',
       caseId,
-      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      updatedOn: '2023-12-25T00:00:00.000Z',
       before: assignmentBefore,
       after: assignmentAfter,
-      changedBy: MockData.getCamsUserReference(),
+      updatedBy: MockData.getCamsUserReference(),
     },
     {
       id: '1234567890',
       documentType: 'AUDIT_TRANSFER',
       caseId,
-      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      updatedOn: '2023-12-25T00:00:00.000Z',
       before: pendingTransferOrder,
       after: approvedTransferOrder,
-      changedBy: MockData.getCamsUserReference(),
+      updatedBy: MockData.getCamsUserReference(),
     },
     {
       id: '1234567890',
       documentType: 'AUDIT_CONSOLIDATION',
       caseId,
-      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      updatedOn: '2023-12-25T00:00:00.000Z',
       before: null,
       after: pendingConsolidationOrder,
-      changedBy: MockData.getCamsUserReference(),
+      updatedBy: MockData.getCamsUserReference(),
     },
     {
       id: '1234567890',
       documentType: 'AUDIT_CONSOLIDATION',
       caseId,
-      occurredAtTimestamp: '2023-12-25T00:00:00.000Z',
+      updatedOn: '2023-12-25T00:00:00.000Z',
       before: pendingConsolidationOrder,
       after: rejectedConsolidationOrder,
-      changedBy: MockData.getCamsUserReference(),
+      updatedBy: MockData.getCamsUserReference(),
     },
   ];
 
@@ -157,9 +163,9 @@ describe('audit history tests', () => {
     expect(dateElement).toBeInTheDocument();
     expect(dateElement).toHaveTextContent('12/25/2023');
 
-    const changedByElement = screen.queryByTestId('changed-by-0');
-    expect(changedByElement).toBeInTheDocument();
-    expect(changedByElement).toHaveTextContent(caseHistory[0].changedBy!.name);
+    const updatedByElement = screen.queryByTestId('changed-by-0');
+    expect(updatedByElement).toBeInTheDocument();
+    expect(updatedByElement).toHaveTextContent(caseHistory[0].updatedBy!.name);
   });
 
   test('should display (none) when no assignments exist.', async () => {
@@ -168,7 +174,8 @@ describe('audit history tests', () => {
         id: '',
         documentType: 'AUDIT_ASSIGNMENT',
         caseId,
-        occurredAtTimestamp: '',
+        updatedOn: '',
+        updatedBy: SYSTEM_USER_REFERENCE,
         before: [],
         after: [],
       },
@@ -196,7 +203,8 @@ describe('audit history tests', () => {
         id: '',
         documentType: 'AUDIT_TRANSFER',
         caseId,
-        occurredAtTimestamp: '2024-01-31T12:00:00Z',
+        updatedOn: '2024-01-31T12:00:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
         before: pendingTransferOrder,
         after: approvedTransferOrder,
       },
@@ -204,7 +212,8 @@ describe('audit history tests', () => {
         id: '',
         documentType: 'AUDIT_TRANSFER',
         caseId,
-        occurredAtTimestamp: '2024-01-29T12:00:00Z',
+        updatedOn: '2024-01-29T12:00:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
         before: null,
         after: pendingTransferOrder,
       },

@@ -25,7 +25,8 @@ const assignments: CaseAssignment[] = [
     name: attorneyJaneSmith.name,
     role: CamsRole.TrialAttorney,
     assignedOn: currentDate,
-    changedBy: MockData.getCamsUserReference(),
+    updatedOn: currentDate,
+    updatedBy: MockData.getCamsUserReference(),
   },
   {
     documentType: 'ASSIGNMENT',
@@ -35,7 +36,8 @@ const assignments: CaseAssignment[] = [
     name: attorneyJoeNobel.name,
     role: CamsRole.TrialAttorney,
     assignedOn: currentDate,
-    changedBy: MockData.getCamsUserReference(),
+    updatedOn: currentDate,
+    updatedBy: MockData.getCamsUserReference(),
   },
 ];
 
