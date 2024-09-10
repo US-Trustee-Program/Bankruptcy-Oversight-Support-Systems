@@ -16,7 +16,6 @@ import {
   ConsolidationOrderActionRejection,
   FlexibleTransferOrderAction,
   Order,
-  TransferOrder,
 } from '@common/cams/orders';
 import { CasesSearchPredicate } from '@common/api/search';
 
@@ -177,7 +176,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   return Promise.resolve(response as ResponseBody<T>);
 }
 
-async function patch<T = unknown>(
+async function _patch<T = unknown>(
   _path: string,
   data: object,
   _options?: ObjectKeyVal,
@@ -243,10 +242,8 @@ async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSum
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
 
-async function patchTransferOrder(
-  data: FlexibleTransferOrderAction,
-): Promise<ResponseBody<TransferOrder>> {
-  return patch<TransferOrder>(`/orders/${data.id}`, data);
+async function patchTransferOrder(_data: FlexibleTransferOrderAction): Promise<void> {
+  return Promise.resolve();
 }
 
 async function putConsolidationOrderApproval(
