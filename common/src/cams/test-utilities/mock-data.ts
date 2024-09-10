@@ -410,6 +410,7 @@ function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorn
 
 function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssignment {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const secondDate = someDateAfterThisDate(firstDate, 28);
   return {
     id: randomId(),
     documentType: 'ASSIGNMENT',
@@ -418,8 +419,9 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
     name: faker.person.fullName(),
     role: 'TrialAttorney',
     assignedOn: firstDate,
-    unassignedOn: someDateAfterThisDate(firstDate, 28),
-    changedBy: getCamsUserReference(),
+    unassignedOn: secondDate,
+    updatedOn: secondDate,
+    updatedBy: getCamsUserReference(),
     ...override,
   };
 }

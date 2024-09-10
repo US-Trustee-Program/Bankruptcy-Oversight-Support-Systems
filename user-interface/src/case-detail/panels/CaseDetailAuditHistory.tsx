@@ -58,10 +58,10 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
             .join(', ')}
         </td>
         <td data-testid={`changed-by-${idx}`}>
-          {history.changedBy && <>{history.changedBy.name}</>}
+          {history.updatedBy && <>{history.updatedBy.name}</>}
         </td>
         <td data-testid={`change-date-${idx}`}>
-          <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
+          <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
         </td>
       </tr>
     );
@@ -82,10 +82,10 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
           {history.after && orderStatusType.get(history.after.status)}
         </td>
         <td data-testid={`changed-by-${idx}`}>
-          {history.changedBy && <>{history.changedBy.name}</>}
+          {history.updatedBy && <>{history.updatedBy.name}</>}
         </td>
         <td data-testid={`change-date-${idx}`}>
-          <span className="text-no-wrap">{formatDate(history.occurredAtTimestamp)}</span>
+          <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
         </td>
       </tr>
     );
