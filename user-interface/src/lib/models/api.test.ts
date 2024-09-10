@@ -4,6 +4,9 @@ import * as httpAdapter from '../utils/http.adapter';
 import { vi } from 'vitest';
 
 describe('Specific tests for the API model', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   test('createPath should return a properly constructed URL when passed a basic path and an array of query parameters', () => {
     const path = '/foo/bar';
     const params: ObjectKeyVal = {
@@ -138,6 +141,7 @@ describe('Specific tests for the API model', () => {
     const payload = { foo: 'mock patch' };
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
+      text: () => Promise.resolve(JSON.stringify(payload)),
       status: 200,
       ok: true,
     });

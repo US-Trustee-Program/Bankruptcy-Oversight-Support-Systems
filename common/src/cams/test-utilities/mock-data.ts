@@ -264,9 +264,8 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
     orderType: 'transfer',
     orderDate: override.orderDate ?? someDateAfterThisDate(summary.dateFiled),
     dateFiled:
-      (override.dateFiled ?? override.orderDate)
-        ? someDateBeforeThisDate(override.orderDate)
-        : summary.dateFiled,
+      override.dateFiled ??
+      (override.orderDate ? someDateBeforeThisDate(override.orderDate) : summary.dateFiled),
     status: override.status || 'pending',
     docketEntries: [getDocketEntry()],
     docketSuggestedCaseNumber: override.status === 'approved' ? undefined : randomCaseNumber(),

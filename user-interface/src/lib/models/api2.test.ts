@@ -5,6 +5,8 @@ import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentAction } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
+import { randomUUID } from 'crypto';
+import { TransferOrderAction } from '@common/cams/orders';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -96,7 +98,6 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getOffices, null, api);
     await callApiFunction(api2.Api2.getOrders, null, api);
     await callApiFunction(api2.Api2.getOrderSuggestions, 'some-id', api);
-    await callApiFunction(api2.Api2.patchTransferOrder, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderRejection, 'some-id', api);
     await callApiFunction(api2.Api2.searchCases, 'some-id', api);
@@ -113,6 +114,19 @@ describe('_Api2 functions', async () => {
     };
     await api2.Api2.postStaffAssignments(assignmentAction);
     expect(postSpy).toHaveBeenCalled();
+
+    const patchSpy = vi.spyOn(api.default, 'patch').mockImplementation(() => {
+      return Promise.resolve();
+    });
+    const approval: TransferOrderAction = {
+      id: randomUUID(),
+      caseId: MockData.randomCaseId(),
+      orderType: 'transfer',
+      newCase: MockData.getCaseSummary(),
+      status: 'approved',
+    };
+    await api2.Api2.patchTransferOrder(approval);
+    expect(patchSpy).toHaveBeenCalled();
   });
 
   test('should handle error properly', async () => {
