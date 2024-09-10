@@ -57,6 +57,7 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
 function addSuperUserOffices(user: CamsUser) {
   if (user.roles.includes(CamsRole.SuperUser)) {
     user.offices = OFFICES;
+    user.roles = Object.values(CamsRole);
   }
 }
 
