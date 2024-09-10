@@ -1,7 +1,8 @@
 import { CamsUserReference } from './users';
 import { CamsRole } from './roles';
+import { Auditable } from './auditable';
 
-export type CaseAssignment = {
+export type CaseAssignment = Auditable & {
   id?: string;
   documentType: 'ASSIGNMENT';
   caseId: string;
@@ -10,7 +11,6 @@ export type CaseAssignment = {
   role: string;
   assignedOn: string;
   unassignedOn?: string;
-  changedBy: CamsUserReference;
 };
 
 export type StaffAssignmentAction = {

@@ -32,7 +32,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
     const testCaseAttorneyAssignment2: CaseAssignment = {
       documentType: 'ASSIGNMENT',
@@ -41,7 +42,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: perryMason,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -75,7 +77,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     const actualIdResponse = await repository.createAssignment(testCaseAttorneyAssignment);
@@ -98,7 +101,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     await repository.createAssignment(existingCaseAttorneyAssignment);
@@ -110,7 +114,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: benMatlock,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
@@ -128,7 +133,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
     const testCaseAttorneyAssignment2: CaseAssignment = {
       documentType: 'ASSIGNMENT',
@@ -137,7 +143,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: perryMason,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     const assignmentId1 = await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -176,7 +183,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: benMatlock,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     await expect(repository.createAssignment(testCaseAttorneyAssignment)).rejects.toThrow(
@@ -222,7 +230,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: perryMason,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
     const testCaseAttorneyAssignment2: CaseAssignment = {
       documentType: 'ASSIGNMENT',
@@ -231,7 +240,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: benMatlock,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     const caseIdTwo = randomUUID();
@@ -242,7 +252,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
     const testCaseAttorneyAssignment4: CaseAssignment = {
       documentType: 'ASSIGNMENT',
@@ -251,7 +262,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: perryMason,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     const caseIdThree = randomUUID();
@@ -262,7 +274,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
     const testCaseAttorneyAssignment6: CaseAssignment = {
       documentType: 'ASSIGNMENT',
@@ -271,7 +284,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: benMatlock,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     await repository.createAssignment(testCaseAttorneyAssignment1);
@@ -362,7 +376,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: clairHuxtable,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     await expect(repository.createAssignment(existingCaseAttorneyAssignment)).rejects.toThrow(
@@ -379,7 +394,8 @@ describe('Test case assignment cosmosdb repository tests', () => {
       name: benMatlock,
       role: CamsRole.TrialAttorney,
       assignedOn: currentDate,
-      changedBy: MockData.getCamsUserReference(),
+      updatedOn: currentDate,
+      updatedBy: MockData.getCamsUserReference(),
     };
 
     await expect(repository.updateAssignment(testCaseAttorneyAssignment)).rejects.toThrow(

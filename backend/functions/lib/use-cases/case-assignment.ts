@@ -7,8 +7,8 @@ import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { AssignmentError } from './assignment.exception';
+import { createAuditRecord } from '../../../../common/src/cams/auditable';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -70,15 +70,18 @@ export class CaseAssignmentUseCase {
     const attorneys = [...new Set(newAssignments)];
     const currentDate = new Date().toISOString();
     attorneys.forEach((attorney) => {
-      const assignment: CaseAssignment = {
-        documentType: 'ASSIGNMENT',
-        caseId: caseId,
-        userId: attorney.id,
-        name: attorney.name,
-        role: CamsRole[role],
-        assignedOn: currentDate,
-        changedBy: getCamsUserReference(context.session!.user),
-      };
+      const assignment = createAuditRecord<CaseAssignment>(
+        {
+          documentType: 'ASSIGNMENT',
+          caseId: caseId,
+          userId: attorney.id,
+          name: attorney.name,
+          role: CamsRole[role],
+          assignedOn: currentDate,
+        },
+        context.session.user,
+        { updatedOn: currentDate },
+      );
       listOfAssignments.push(assignment);
     });
     const listOfAssignmentIdsCreated: string[] = [];
@@ -112,13 +115,16 @@ export class CaseAssignmentUseCase {
     }
 
     const newAssignmentRecords = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
-    const history: CaseAssignmentHistory = {
-      caseId,
-      documentType: 'AUDIT_ASSIGNMENT',
-      occurredAtTimestamp: currentDate,
-      before: existingAssignmentRecords,
-      after: newAssignmentRecords,
-    };
+    const history = createAuditRecord<CaseAssignmentHistory>(
+      {
+        caseId,
+        documentType: 'AUDIT_ASSIGNMENT',
+        before: existingAssignmentRecords,
+        after: newAssignmentRecords,
+      },
+      context.session.user,
+      { updatedOn: currentDate },
+    );
     await this.casesRepository.createCaseHistory(context, history);
 
     context.logger.info(
