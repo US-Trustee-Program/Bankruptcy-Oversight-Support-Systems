@@ -474,12 +474,18 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
 }
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
+  let offices = [MANHATTAN];
+  let roles = [];
+  if (override?.user?.roles.includes(CamsRole.SuperUser)) {
+    offices = OFFICES;
+    roles = Object.values(CamsRole);
+  }
   return {
     user: {
       id: randomId(),
       name: 'Mock Name',
-      offices: [MANHATTAN],
-      roles: [],
+      offices,
+      roles,
     },
     accessToken: getJwt(),
     provider: 'mock',
