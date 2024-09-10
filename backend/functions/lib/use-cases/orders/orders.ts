@@ -34,6 +34,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { sortDates, sortDatesReverse } from '../../../../../common/src/date-helper';
 import * as crypto from 'crypto';
 import {
+  CaseConsolidationHistory,
   CaseHistory,
   ConsolidationOrderSummary,
   isConsolidationHistory,
@@ -43,7 +44,7 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { getCamsUserReference } from '../../../../../common/src/cams/session';
+import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -132,12 +133,15 @@ export class OrdersUseCase {
         await this.casesRepo.createTransferFrom(context, transferFrom);
         await this.casesRepo.createTransferTo(context, transferTo);
       }
-      const caseHistory: CaseHistory = {
-        caseId: order.caseId,
-        documentType: 'AUDIT_TRANSFER',
-        before: initialOrder as TransferOrder,
-        after: order,
-      };
+      const caseHistory = createAuditRecord<CaseHistory>(
+        {
+          caseId: order.caseId,
+          documentType: 'AUDIT_TRANSFER',
+          before: initialOrder as TransferOrder,
+          after: order,
+        },
+        context.session.user,
+      );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
   }
@@ -196,16 +200,15 @@ export class OrdersUseCase {
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
-        const caseHistory: CaseHistory = {
-          caseId: order.caseId,
-          documentType: 'AUDIT_TRANSFER',
-          before: null,
-          after: order,
-          changedBy: {
-            id: '',
-            name: '',
+        const caseHistory = createAuditRecord<CaseHistory>(
+          {
+            caseId: order.caseId,
+            documentType: 'AUDIT_TRANSFER',
+            before: null,
+            after: order,
           },
-        };
+          context.session.user,
+        );
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
     }
@@ -223,12 +226,15 @@ export class OrdersUseCase {
         status: 'pending',
         childCases: [],
       };
-      const caseHistory: CaseHistory = {
-        caseId: order.caseId,
-        documentType: 'AUDIT_CONSOLIDATION',
-        before: null,
-        after: history,
-      };
+      const caseHistory = createAuditRecord<CaseHistory>(
+        {
+          caseId: order.caseId,
+          documentType: 'AUDIT_CONSOLIDATION',
+          before: null,
+          after: history,
+        },
+        context.session.user,
+      );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
 
@@ -287,7 +293,7 @@ export class OrdersUseCase {
       const fullHistory = await this.casesRepo.getCaseHistory(context, bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
-        .sort((a, b) => sortDatesReverse(a.occurredAtTimestamp, b.occurredAtTimestamp))
+        .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
         .shift()?.after;
     } catch {
       before = undefined;
@@ -296,14 +302,15 @@ export class OrdersUseCase {
     if (isConsolidationHistory(before) && before.childCases.length > 0) {
       after.childCases.push(...before.childCases);
     }
-    return {
-      caseId: bCase.caseId,
-      documentType: 'AUDIT_CONSOLIDATION',
-      before: isConsolidationHistory(before) ? before : null,
-      after,
-      occurredAtTimestamp: new Date().toISOString(),
-      changedBy: getCamsUserReference(context.session!.user),
-    };
+    return createAuditRecord<CaseConsolidationHistory>(
+      {
+        caseId: bCase.caseId,
+        documentType: 'AUDIT_CONSOLIDATION',
+        before: isConsolidationHistory(before) ? before : null,
+        after,
+      },
+      context.session.user,
+    );
   }
 
   private async handleConsolidation(

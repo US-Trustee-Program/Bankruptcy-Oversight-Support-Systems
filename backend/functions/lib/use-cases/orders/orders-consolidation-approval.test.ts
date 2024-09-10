@@ -24,6 +24,7 @@ import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/sr
 import { CaseAssignmentUseCase } from '../case-assignment';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -136,7 +137,8 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
     };
 
     const mockGetHistory = jest
@@ -246,7 +248,8 @@ describe('Orders use case', () => {
       caseId: originalConsolidation.childCases[0].caseId,
       before: null,
       after: before,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')

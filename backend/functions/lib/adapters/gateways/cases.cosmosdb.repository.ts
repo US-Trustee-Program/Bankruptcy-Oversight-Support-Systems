@@ -13,7 +13,6 @@ import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
@@ -111,12 +110,6 @@ export class CasesCosmosDbRepository implements CasesRepository {
 
   async createCaseHistory(context: ApplicationContext, history: CaseHistory): Promise<string> {
     try {
-      if (!history.occurredAtTimestamp) {
-        history.occurredAtTimestamp = new Date().toISOString();
-      }
-      if (!history.changedBy) {
-        history.changedBy = getCamsUserReference(context.session.user);
-      }
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)

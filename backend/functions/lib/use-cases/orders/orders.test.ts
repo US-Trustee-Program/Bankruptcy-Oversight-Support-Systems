@@ -380,7 +380,8 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: authorizedUser,
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
@@ -568,7 +569,7 @@ describe('Orders use case', () => {
     await useCase.approveConsolidation(mockContext, approval);
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
       mockContext,
-      expect.objectContaining({ changedBy: getCamsUserReference(authorizedUser) }),
+      expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
   });
 
@@ -595,7 +596,7 @@ describe('Orders use case', () => {
     await useCase.rejectConsolidation(mockContext, rejection);
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
       mockContext,
-      expect.objectContaining({ changedBy: getCamsUserReference(authorizedUser) }),
+      expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
   });
 });
