@@ -45,6 +45,7 @@ import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -85,9 +86,13 @@ export class OrdersUseCase {
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    const divisionCodes = context.session.user.offices.map((office) => office.courtDivisionCode);
-    const transferOrders = await this.ordersRepo.search(context, { divisionCodes });
-    const consolidationOrders = await this.consolidationsRepo.search(context, { divisionCodes });
+    let predicate: OrdersSearchPredicate = undefined;
+    if (context.session) {
+      const divisionCodes = context.session.user.offices.map((office) => office.courtDivisionCode);
+      predicate = { divisionCodes };
+    }
+    const transferOrders = await this.ordersRepo.search(context, predicate);
+    const consolidationOrders = await this.consolidationsRepo.search(context, predicate);
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
@@ -140,7 +145,7 @@ export class OrdersUseCase {
           before: initialOrder as TransferOrder,
           after: order,
         },
-        context.session.user,
+        context.session,
       );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -207,7 +212,7 @@ export class OrdersUseCase {
             before: null,
             after: order,
           },
-          context.session.user,
+          context.session,
         );
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
@@ -233,7 +238,7 @@ export class OrdersUseCase {
           before: null,
           after: history,
         },
-        context.session.user,
+        context.session,
       );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -309,7 +314,7 @@ export class OrdersUseCase {
         before: isConsolidationHistory(before) ? before : null,
         after,
       },
-      context.session.user,
+      context.session,
     );
   }
 
