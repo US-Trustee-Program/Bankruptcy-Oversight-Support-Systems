@@ -150,6 +150,48 @@ export default function DataVerificationScreen() {
     getOffices();
   }, []);
 
+  let visibleItemCount = 0;
+  let pendingItemCount = 0;
+  const accordionItems = orderList
+    .filter((o) => {
+      if (isConsolidationOrder(o)) {
+        return featureFlags[CONSOLIDATIONS_ENABLED];
+      } else {
+        return true;
+      }
+    })
+    .sort((a, b) => sortDates(a.orderDate, b.orderDate))
+    .map((order) => {
+      const isHidden =
+        !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);
+      if (!isHidden) visibleItemCount++;
+      if (order.status === 'pending') pendingItemCount++;
+
+      return isTransferOrder(order) ? (
+        <TransferOrderAccordion
+          key={`accordion-${order.id}`}
+          order={order}
+          regionsMap={regionsMap}
+          officesList={officesList}
+          orderType={orderType}
+          statusType={orderStatusType}
+          onOrderUpdate={handleTransferOrderUpdate}
+          hidden={isHidden}
+        ></TransferOrderAccordion>
+      ) : (
+        <ConsolidationOrderAccordion
+          key={`accordion-${order.id}`}
+          order={order}
+          regionsMap={regionsMap}
+          officesList={officesList}
+          orderType={orderType}
+          statusType={orderStatusType}
+          onOrderUpdate={handleConsolidationOrderUpdate}
+          hidden={isHidden}
+        ></ConsolidationOrderAccordion>
+      );
+    });
+
   return (
     <MainContent data-testid="data-verification-screen" className="data-verification-screen">
       <DocumentTitle name="Data Verification" />
@@ -217,53 +259,37 @@ export default function DataVerificationScreen() {
                     </div>
                   </div>
                 </div>
-                <div className="data-verification-accordion-header">
-                  <div className="grid-row grid-gap-lg">
-                    <div className="grid-col-6 text-no-wrap">Court District</div>
-                    <div className="grid-col-2 text-no-wrap">Order Filed</div>
-                    <div className="grid-col-2 text-no-wrap">Event Type</div>
-                    <div className="grid-col-2 text-no-wrap">Event Status</div>
-                  </div>
-                </div>
-                <AccordionGroup>
-                  {orderList
-                    .filter((o) => {
-                      if (isConsolidationOrder(o)) {
-                        return featureFlags[CONSOLIDATIONS_ENABLED];
-                      } else {
-                        return true;
-                      }
-                    })
-                    .sort((a, b) => sortDates(a.orderDate, b.orderDate))
-                    .map((order) => {
-                      const isHidden =
-                        !typeFilter.includes(order.orderType) ||
-                        !statusFilter.includes(order.status);
-                      return isTransferOrder(order) ? (
-                        <TransferOrderAccordion
-                          key={`accordion-${order.id}`}
-                          order={order}
-                          regionsMap={regionsMap}
-                          officesList={officesList}
-                          orderType={orderType}
-                          statusType={orderStatusType}
-                          onOrderUpdate={handleTransferOrderUpdate}
-                          hidden={isHidden}
-                        ></TransferOrderAccordion>
-                      ) : (
-                        <ConsolidationOrderAccordion
-                          key={`accordion-${order.id}`}
-                          order={order}
-                          regionsMap={regionsMap}
-                          officesList={officesList}
-                          orderType={orderType}
-                          statusType={orderStatusType}
-                          onOrderUpdate={handleConsolidationOrderUpdate}
-                          hidden={isHidden}
-                        ></ConsolidationOrderAccordion>
-                      );
-                    })}
-                </AccordionGroup>
+                {pendingItemCount === 0 && (
+                  <Alert
+                    id="no-pending-orders"
+                    type={UswdsAlertStyle.Info}
+                    title="All case events reviewed"
+                    message="There are no case events pending review"
+                    show={true}
+                  ></Alert>
+                )}
+                {visibleItemCount === 0 && orderList.length > 0 && (
+                  <Alert
+                    id="too-many-filters"
+                    type={UswdsAlertStyle.Info}
+                    title="All Cases Hidden"
+                    message="Please enable one or more filters to show hidden cases"
+                    show={true}
+                  ></Alert>
+                )}
+                {visibleItemCount > 0 && (
+                  <>
+                    <div className="data-verification-accordion-header" data-testid="orders-header">
+                      <div className="grid-row grid-gap-lg">
+                        <div className="grid-col-6 text-no-wrap">Court District</div>
+                        <div className="grid-col-2 text-no-wrap">Order Filed</div>
+                        <div className="grid-col-2 text-no-wrap">Event Type</div>
+                        <div className="grid-col-2 text-no-wrap">Event Status</div>
+                      </div>
+                    </div>
+                    <AccordionGroup>{...accordionItems}</AccordionGroup>
+                  </>
+                )}
               </section>
             </>
           )}
