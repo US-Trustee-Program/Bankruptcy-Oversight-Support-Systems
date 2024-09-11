@@ -91,7 +91,6 @@ describe('Orders use case', () => {
     });
     const mockConsolidationOrders = [mockConsolidation1, mockConsolidation2];
 
-    // TODO: We need to change getOrders to search similar to how we changed getAll to search
     const orderRepoMock = jest.spyOn(ordersRepo, 'search').mockResolvedValue(mockTransferOrders);
     const consolidationsRepoMock = jest
       .spyOn(consolidationRepo, 'search')
