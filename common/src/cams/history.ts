@@ -1,7 +1,7 @@
 import { CaseAssignment } from './assignments';
+import { Auditable } from './auditable';
 import { CaseSummary } from './cases';
 import { OrderStatus, TransferOrder } from './orders';
-import { CamsUserReference } from './users';
 
 export interface ConsolidationOrderSummary {
   status: OrderStatus;
@@ -19,14 +19,11 @@ export function isConsolidationHistory(history: unknown): history is Consolidati
   return typeof history === 'object' && 'status' in history;
 }
 
-// TODO: Consider a way to make the occurredAtTimestamp optional when creating a record, otherwise it is required.
-type AbstractCaseHistory<B, A> = {
+type AbstractCaseHistory<B, A> = Auditable & {
   id?: string;
   caseId: string;
-  occurredAtTimestamp: string;
   before: B;
   after: A;
-  changedBy?: CamsUserReference;
 };
 
 export type CaseAssignmentHistory = AbstractCaseHistory<CaseAssignment[], CaseAssignment[]> & {

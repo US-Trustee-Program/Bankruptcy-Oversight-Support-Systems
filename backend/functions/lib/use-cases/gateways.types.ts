@@ -13,6 +13,7 @@ import {
 } from '../../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
 import { CaseDocket } from '../../../../common/src/cams/cases';
+import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 
 export interface RepositoryResource {
   id?: string;
@@ -27,7 +28,10 @@ export interface DocumentRepository<T extends RepositoryResource> {
 }
 
 export interface ConsolidationOrdersRepository extends DocumentRepository<ConsolidationOrder> {
-  getAll(context: ApplicationContext): Promise<ConsolidationOrder[]>;
+  search(
+    context: ApplicationContext,
+    predicate?: OrdersSearchPredicate,
+  ): Promise<ConsolidationOrder[]>;
 }
 
 export interface CaseDocketGateway {
@@ -46,7 +50,7 @@ export interface OrdersGateway {
 }
 
 export interface OrdersRepository {
-  getOrders(context: ApplicationContext): Promise<Order[]>;
+  search(context: ApplicationContext, predicate?: OrdersSearchPredicate): Promise<Order[]>;
   getOrder(context: ApplicationContext, id: string, partitionKey: string): Promise<Order>;
   putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
   updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction);

@@ -23,3 +23,7 @@ export type CasesSearchPredicate = SearchPredicate & {
   assignments?: CamsUserReference[];
   caseIds?: string[];
 };
+
+export type OrdersSearchPredicate = SearchPredicate & {
+  divisionCodes?: string[];
+};

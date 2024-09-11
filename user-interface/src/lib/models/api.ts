@@ -109,11 +109,20 @@ export default class Api {
     }
   }
 
+  /**
+   * ONLY USE WITH OUR OWN API!!!!
+   * This function makes assumptions about the responses to PATCH requests that do not handle
+   * all possibilities according to the HTTP specifications.
+   *
+   * @param path string The path after '/api'.
+   * @param body object The payload for the request.
+   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   */
   public static async patch(
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseBody> {
+  ): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
@@ -121,12 +130,12 @@ export default class Api {
       const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
       await this.executeAfterHooks(response);
 
-      const data = await response.json();
-
       if (response.ok) {
-        return data;
+        const data = await response.text();
+        return data.length > 1 ? JSON.parse(data) : undefined;
       } else {
-        return Promise.reject(new Error(data.message));
+        const error = await response.json();
+        return Promise.reject(new Error(error.message));
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));

@@ -1,7 +1,7 @@
 import { OfficeDetails } from '../courts';
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
-import { BUFFALO, DELAWARE, MANHATTAN, WHITE_PLAINS } from './offices.mock';
+import { BUFFALO, DELAWARE, MANHATTAN, OFFICES, WHITE_PLAINS } from './offices.mock';
 
 const REGION_02_GROUP_NY: OfficeDetails[] = [MANHATTAN, WHITE_PLAINS];
 const REGION_02_GROUP_BU: OfficeDetails[] = [BUFFALO];
@@ -14,17 +14,26 @@ export type MockUser = {
   hide?: boolean;
 };
 
+function addSuperUserOffices(user: CamsUser) {
+  if (user.roles.includes(CamsRole.SuperUser)) {
+    user.offices = OFFICES;
+    user.roles = Object.values(CamsRole);
+  }
+}
+
 export const SUPERUSER = {
   sub: 'user@fake.com',
   label: "Martha's Son - Super User",
   user: {
     id: '==MOCKUSER=user@fake.com==',
     name: "Martha's Son",
-    roles: [CamsRole.SuperUser, CamsRole.CaseAssignmentManager, CamsRole.TrialAttorney],
+    roles: [CamsRole.SuperUser],
     offices: [],
   },
   hide: true,
 };
+
+addSuperUserOffices(SUPERUSER.user);
 
 export const MockUsers: MockUser[] = [
   {
@@ -68,13 +77,23 @@ export const MockUsers: MockUser[] = [
     },
   },
   {
-    sub: 'paralegal',
-    label: 'Bert - Paralegal',
+    sub: 'bert@fake.com',
+    label: 'Bert - Data Verifier (Manhattan)',
     user: {
-      id: '==MOCKUSER=paralegal==',
+      id: 'bert@fake.com',
       name: 'Bert',
-      roles: [],
+      roles: [CamsRole.DataVerifier],
       offices: REGION_02_GROUP_NY,
+    },
+  },
+  {
+    sub: 'earnie@fake.com',
+    label: 'Earnie - Data Verifier (Buffalo)',
+    user: {
+      id: 'earnie@fake.com',
+      name: 'Earnie',
+      roles: [CamsRole.DataVerifier],
+      offices: REGION_02_GROUP_BU,
     },
   },
   {

@@ -22,6 +22,9 @@ import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -32,10 +35,14 @@ describe('Orders use case', () => {
   let casesGateway;
   let consolidationRepo;
   let useCase: OrdersUseCase;
+  const authorizedUser = MockData.getCamsUser({
+    roles: [CamsRole.DataVerifier],
+    offices: [MANHATTAN],
+  });
 
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
-    mockContext.session = await createMockApplicationContextSession();
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     ordersGateway = getOrdersGateway(mockContext);
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
@@ -130,7 +137,8 @@ describe('Orders use case', () => {
       caseId: pendingConsolidation.childCases[0].caseId,
       before: null,
       after: before,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
     };
 
     const mockGetHistory = jest
@@ -240,7 +248,8 @@ describe('Orders use case', () => {
       caseId: originalConsolidation.childCases[0].caseId,
       before: null,
       after: before,
-      occurredAtTimestamp: '2024-01-01T12:00:00.000Z',
+      updatedOn: '2024-01-01T12:00:00.000Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
     };
     const mockGetHistory = jest
       .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')

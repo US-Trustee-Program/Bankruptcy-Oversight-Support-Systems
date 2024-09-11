@@ -27,14 +27,28 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
-  patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
+  patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
 }
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
-  patch<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+
+  /**
+   * ONLY USE WITH OUR OWN API!!!!
+   * This function makes assumptions about the responses to PATCH requests that do not handle
+   * all possibilities according to the HTTP specifications.
+   *
+   * @param path string The path after '/api'.
+   * @param body object The payload for the request.
+   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   */
+  patch<T = object>(
+    path: string,
+    body: object,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBody<T> | void>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
@@ -90,8 +104,11 @@ export function useGenericApi(): GenericApiClient {
       path: string,
       body: object,
       options?: ObjectKeyVal,
-    ): Promise<ResponseBody<T>> {
+    ): Promise<ResponseBody<T> | void> {
       const responseBody = await api.patch(justThePath(path), body, options);
+      if (!responseBody) {
+        return;
+      }
       return responseBody as ResponseBody<T>;
     },
     async post<T = object>(
@@ -162,7 +179,7 @@ async function getOrderSuggestions(caseId: string) {
 }
 
 async function patchTransferOrder(data: FlexibleTransferOrderAction) {
-  return api().patch<TransferOrder>(`/orders/${data.id}`, data);
+  await api().patch<TransferOrder>(`/orders/${data.id}`, data);
 }
 
 async function putConsolidationOrderApproval(data: ConsolidationOrderActionApproval) {
