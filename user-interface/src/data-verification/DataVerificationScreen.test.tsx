@@ -211,6 +211,74 @@ describe('Review Orders screen', () => {
     expect(consolidationsFilter).toBeInTheDocument();
   });
 
+  test('should show "all cases reviewed" alert when order list does not contain pending orders', async () => {
+    const ordersResponse = {
+      data: [
+        MockData.getTransferOrder({ override: { status: 'approved' } }),
+        MockData.getConsolidationOrder({ override: { status: 'approved' } }),
+      ],
+    };
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const spinner = document.querySelector('.loading-spinner');
+      expect(spinner).not.toBeInTheDocument();
+    });
+
+    const alert = screen.getByTestId('alert-no-pending-orders');
+    expect(alert).toBeInTheDocument();
+  });
+
+  test('should show "select filters" alert when a list is empty because filters are applied', async () => {
+    const ordersResponse = {
+      data: [
+        MockData.getTransferOrder({ override: { status: 'approved' } }),
+        MockData.getTransferOrder({ override: { status: 'pending' } }),
+        MockData.getConsolidationOrder({
+          override: { status: 'approved', leadCase: MockData.getCaseSummary() },
+        }),
+        MockData.getConsolidationOrder({
+          override: { status: 'pending', leadCase: MockData.getCaseSummary() },
+        }),
+      ],
+    };
+    const mockFeatureFlags = {
+      'consolidations-enabled': true,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+    const loadingSpinner = document.querySelector('.loading-spinner-caption');
+    await waitFor(() => {
+      expect(loadingSpinner).not.toBeInTheDocument();
+    });
+    const pendingOrderFilter = screen.getByTestId(`order-status-filter-pending`);
+    fireEvent.click(pendingOrderFilter);
+    const consolidationOrderFilter = screen.getByTestId(`order-status-filter-consolidation`);
+    fireEvent.click(consolidationOrderFilter);
+    const transferOrderFilter = screen.getByTestId(`order-status-filter-transfer`);
+    fireEvent.click(transferOrderFilter);
+
+    await waitFor(() => {
+      const alert = screen.queryByTestId('alert-too-many-filters');
+      expect(alert).toBeInTheDocument();
+    });
+
+    const header = screen.queryByTestId('orders-header');
+    expect(header).not.toBeInTheDocument();
+  });
+
   test('should not show consolidation orders when consolidation feature flag is false', async () => {
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
@@ -287,9 +355,8 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(async () => {
-      const accordionGroup = screen.getByTestId('accordion-group');
-      expect(accordionGroup).toBeInTheDocument();
-      expect(accordionGroup.childElementCount).toEqual(0);
+      const alertContainer = document.querySelector('.usa-alert-container');
+      expect(alertContainer).toBeInTheDocument();
     });
 
     mock.mockRestore();
