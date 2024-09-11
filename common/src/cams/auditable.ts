@@ -1,4 +1,4 @@
-import { getCamsUserReference } from './session';
+import { CamsSession, getCamsUserReference } from './session';
 import { CamsUserReference } from './users';
 
 export type Auditable = {
@@ -8,13 +8,14 @@ export type Auditable = {
 
 export const SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'SYSTEM', name: 'SYSTEM' };
 
-export function createAuditRecord<
-  T extends Auditable,
-  U extends CamsUserReference = CamsUserReference,
->(record: Omit<T, 'updatedOn' | 'updatedBy'>, user?: U, override?: Partial<Auditable>): T {
+export function createAuditRecord<T extends Auditable>(
+  record: Omit<T, 'updatedOn' | 'updatedBy'>,
+  session?: CamsSession,
+  override?: Partial<Auditable>,
+): T {
   return {
     updatedOn: new Date().toISOString(),
-    updatedBy: user ? getCamsUserReference(user) : SYSTEM_USER_REFERENCE,
+    updatedBy: session ? getCamsUserReference(session.user) : SYSTEM_USER_REFERENCE,
     ...record,
     ...override,
   } as T;

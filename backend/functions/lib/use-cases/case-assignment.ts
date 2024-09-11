@@ -79,7 +79,7 @@ export class CaseAssignmentUseCase {
           role: CamsRole[role],
           assignedOn: currentDate,
         },
-        context.session.user,
+        context.session,
         { updatedOn: currentDate },
       );
       listOfAssignments.push(assignment);
@@ -122,7 +122,7 @@ export class CaseAssignmentUseCase {
         before: existingAssignmentRecords,
         after: newAssignmentRecords,
       },
-      context.session.user,
+      context.session,
       { updatedOn: currentDate },
     );
     await this.casesRepository.createCaseHistory(context, history);
