@@ -34,6 +34,7 @@ import { CamsError } from '../../common-errors/cams-error';
 import { sortDates, sortDatesReverse } from '../../../../../common/src/date-helper';
 import * as crypto from 'crypto';
 import {
+  CaseConsolidationHistory,
   CaseHistory,
   ConsolidationOrderSummary,
   isConsolidationHistory,
@@ -42,6 +43,8 @@ import { CaseAssignmentUseCase } from '../case-assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -82,8 +85,9 @@ export class OrdersUseCase {
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    const transferOrders = await this.ordersRepo.getOrders(context);
-    const consolidationOrders = await this.consolidationsRepo.getAll(context);
+    const divisionCodes = context.session.user.offices.map((office) => office.courtDivisionCode);
+    const transferOrders = await this.ordersRepo.search(context, { divisionCodes });
+    const consolidationOrders = await this.consolidationsRepo.search(context, { divisionCodes });
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
@@ -99,6 +103,10 @@ export class OrdersUseCase {
     id: string,
     data: TransferOrderAction,
   ): Promise<void> {
+    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
+
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
     let order: Order;
@@ -125,13 +133,15 @@ export class OrdersUseCase {
         await this.casesRepo.createTransferFrom(context, transferFrom);
         await this.casesRepo.createTransferTo(context, transferTo);
       }
-      const caseHistory: CaseHistory = {
-        caseId: order.caseId,
-        documentType: 'AUDIT_TRANSFER',
-        before: initialOrder as TransferOrder,
-        after: order,
-        occurredAtTimestamp: new Date().toISOString(),
-      };
+      const caseHistory = createAuditRecord<CaseHistory>(
+        {
+          caseId: order.caseId,
+          documentType: 'AUDIT_TRANSFER',
+          before: initialOrder as TransferOrder,
+          after: order,
+        },
+        context.session.user,
+      );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
   }
@@ -190,13 +200,15 @@ export class OrdersUseCase {
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
-        const caseHistory: CaseHistory = {
-          caseId: order.caseId,
-          documentType: 'AUDIT_TRANSFER',
-          before: null,
-          after: order,
-          occurredAtTimestamp: new Date().toISOString(),
-        };
+        const caseHistory = createAuditRecord<CaseHistory>(
+          {
+            caseId: order.caseId,
+            documentType: 'AUDIT_TRANSFER',
+            before: null,
+            after: order,
+          },
+          context.session.user,
+        );
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
     }
@@ -214,13 +226,15 @@ export class OrdersUseCase {
         status: 'pending',
         childCases: [],
       };
-      const caseHistory: CaseHistory = {
-        caseId: order.caseId,
-        documentType: 'AUDIT_CONSOLIDATION',
-        before: null,
-        after: history,
-        occurredAtTimestamp: new Date().toISOString(),
-      };
+      const caseHistory = createAuditRecord<CaseHistory>(
+        {
+          caseId: order.caseId,
+          documentType: 'AUDIT_CONSOLIDATION',
+          before: null,
+          after: history,
+        },
+        context.session.user,
+      );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
 
@@ -279,7 +293,7 @@ export class OrdersUseCase {
       const fullHistory = await this.casesRepo.getCaseHistory(context, bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
-        .sort((a, b) => sortDatesReverse(a.occurredAtTimestamp, b.occurredAtTimestamp))
+        .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
         .shift()?.after;
     } catch {
       before = undefined;
@@ -288,13 +302,15 @@ export class OrdersUseCase {
     if (isConsolidationHistory(before) && before.childCases.length > 0) {
       after.childCases.push(...before.childCases);
     }
-    return {
-      caseId: bCase.caseId,
-      documentType: 'AUDIT_CONSOLIDATION',
-      before: isConsolidationHistory(before) ? before : null,
-      after,
-      occurredAtTimestamp: new Date().toISOString(),
-    };
+    return createAuditRecord<CaseConsolidationHistory>(
+      {
+        caseId: bCase.caseId,
+        documentType: 'AUDIT_CONSOLIDATION',
+        before: isConsolidationHistory(before) ? before : null,
+        after,
+      },
+      context.session.user,
+    );
   }
 
   private async handleConsolidation(
@@ -305,6 +321,10 @@ export class OrdersUseCase {
     consolidationType?: ConsolidationType,
     leadCase?: CaseSummary,
   ): Promise<ConsolidationOrder[]> {
+    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
+
     const includedChildCases = provisionalOrder.childCases.filter((c) =>
       includedCases.includes(c.caseId),
     );

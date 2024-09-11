@@ -48,7 +48,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
       resources: mockOrders,
     });
 
-    const testResult = await repository.getOrders(applicationContext);
+    const testResult = await repository.search(applicationContext);
 
     expect(testResult).toEqual(mockOrders);
     expect(mockFetchAll).toHaveBeenCalled();
@@ -227,7 +227,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(aggregateError);
     jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(aggregateError);
 
-    await expect(repository.getOrders(applicationContext)).rejects.toThrow(serverConfigError);
+    await expect(repository.search(applicationContext)).rejects.toThrow(serverConfigError);
     await expect(
       repository.getOrder(applicationContext, testNewOrderData.id, testNewOrderData.caseId),
     ).rejects.toThrow(serverConfigError);
@@ -245,7 +245,7 @@ describe('Test case assignment cosmosdb repository tests', () => {
     jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(error);
     jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(error);
 
-    await expect(repository.getOrders(applicationContext)).rejects.toThrow(error);
+    await expect(repository.search(applicationContext)).rejects.toThrow(error);
     await expect(
       repository.getOrder(applicationContext, testNewOrderData.id, testNewOrderData.caseId),
     ).rejects.toThrow(error);

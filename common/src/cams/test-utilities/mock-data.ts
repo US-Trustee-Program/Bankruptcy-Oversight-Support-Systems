@@ -99,6 +99,13 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   return someDate.toISOString().split('T')[0];
 }
 
+function someDateBeforeThisDate(thisDateString: string, days?: number): string {
+  const thisDate = new Date(Date.parse(thisDateString));
+  const daysToSubtract = days || randomInt(1000);
+  const someDate = new Date(thisDate.setDate(thisDate.getDate() - daysToSubtract));
+  return someDate.toISOString().split('T')[0];
+}
+
 function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {
   return chapters[randomInt(chapters.length - 1)];
 }
@@ -257,7 +264,10 @@ function getTransferOrder(options: Options<TransferOrder> = { override: {} }): T
     ...summary,
     id: faker.string.uuid(),
     orderType: 'transfer',
-    orderDate: someDateAfterThisDate(summary.dateFiled),
+    orderDate: override.orderDate ?? someDateAfterThisDate(summary.dateFiled),
+    dateFiled:
+      override.dateFiled ??
+      (override.orderDate ? someDateBeforeThisDate(override.orderDate) : summary.dateFiled),
     status: override.status || 'pending',
     docketEntries: [getDocketEntry()],
     docketSuggestedCaseNumber: override.status === 'approved' ? undefined : randomCaseNumber(),
@@ -280,7 +290,7 @@ function getConsolidationOrder(
     courtName: summary.courtName,
     id: faker.string.uuid(),
     orderType: 'consolidation',
-    orderDate: someDateAfterThisDate(summary.dateFiled),
+    orderDate: override.orderDate ?? someDateAfterThisDate(summary.dateFiled),
     status: override.status || 'pending',
     courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),
@@ -402,6 +412,7 @@ function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorn
 
 function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssignment {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const secondDate = someDateAfterThisDate(firstDate, 28);
   return {
     id: randomId(),
     documentType: 'ASSIGNMENT',
@@ -410,8 +421,9 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
     name: faker.person.fullName(),
     role: 'TrialAttorney',
     assignedOn: firstDate,
-    unassignedOn: someDateAfterThisDate(firstDate, 28),
-    changedBy: getCamsUserReference(),
+    unassignedOn: secondDate,
+    updatedOn: secondDate,
+    updatedBy: getCamsUserReference(),
     ...override,
   };
 }
@@ -466,12 +478,18 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
 }
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
+  let offices = [MANHATTAN];
+  let roles = [];
+  if (override?.user?.roles.includes(CamsRole.SuperUser)) {
+    offices = OFFICES;
+    roles = Object.values(CamsRole);
+  }
   return {
     user: {
       id: randomId(),
       name: 'Mock Name',
-      offices: [MANHATTAN],
-      roles: [],
+      offices,
+      roles,
     },
     accessToken: getJwt(),
     provider: 'mock',

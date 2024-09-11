@@ -110,9 +110,6 @@ export class CasesCosmosDbRepository implements CasesRepository {
 
   async createCaseHistory(context: ApplicationContext, history: CaseHistory): Promise<string> {
     try {
-      if (!history.occurredAtTimestamp) {
-        history.occurredAtTimestamp = new Date().toISOString();
-      }
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)

@@ -46,7 +46,8 @@ export default class FakeAssignmentsCosmosClientHumble {
                   name: 'Test Attorney',
                   role: 'TrialAttorney',
                   assignedOn: '2024-03-05',
-                  changedBy: MockData.getCamsUserReference(),
+                  updatedOn: '2024-03-05',
+                  updatedBy: MockData.getCamsUserReference(),
                 };
               }
               assignment.id = `assignment-id-${Math.round(Math.random() * 1000)}`;

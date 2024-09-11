@@ -10,6 +10,7 @@ import { Order, TransferOrder, TransferOrderAction } from '../../../../../common
 import CosmosClientHumble from '../../cosmos-humble-objects/cosmos-client-humble';
 import { MockHumbleClient } from '../../testing/mock.cosmos-client-humble';
 import { QueryOptions } from '../../cosmos-humble-objects/cosmos-items-humble';
+import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_ORDERS';
 const CONTAINER_NAME: string = 'orders';
@@ -32,12 +33,27 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
     this.moduleName = moduleName;
   }
 
-  async getOrders(context: ApplicationContext): Promise<Order[]> {
-    const query = 'SELECT * FROM c ORDER BY c.orderDate ASC';
-    const querySpec = {
-      query,
-      parameters: [],
-    };
+  async search(context: ApplicationContext, predicate?: OrdersSearchPredicate): Promise<Order[]> {
+    let querySpec;
+    if (!predicate) {
+      querySpec = {
+        query: 'SELECT * FROM c ORDER BY c.orderDate ASC',
+        parameters: [],
+      };
+    } else {
+      // TODO: Sanitize the inputs
+      // Group designator comes from local-storage-gateway and is store in the user session cache.
+      // We get associated division codes from DXTR and also store that in the session cache.
+      // We are not ever trusting the client with this information as of 9 Sept 2024.
+      const whereClause =
+        'WHERE ' +
+        predicate.divisionCodes.map((dCode) => `c.courtDivisionCode='${dCode}'`).join(' OR ') +
+        ' ORDER BY c.orderDate ASC';
+      querySpec = {
+        query: 'SELECT * FROM c ' + whereClause,
+        parameters: [],
+      };
+    }
     const response = await this.queryData<Order>(context, querySpec);
     return response;
   }

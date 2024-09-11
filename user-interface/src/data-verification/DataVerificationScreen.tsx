@@ -23,6 +23,9 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';
+import { CamsRole } from '@common/cams/roles';
+import LocalStorage from '@/lib/utils/local-storage';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -46,9 +49,16 @@ export default function DataVerificationScreen() {
     timeOut: 8,
   });
 
+  const globalAlert = useGlobalAlert();
+  const session = LocalStorage.getSession();
   const regionNumber = '02';
 
   const api = useApi2();
+
+  if (!session?.user?.roles?.includes(CamsRole.DataVerifier)) {
+    globalAlert?.error('Invalid Permissions');
+    return <></>;
+  }
 
   async function getOrders() {
     setIsOrderListLoading(true);

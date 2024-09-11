@@ -12,6 +12,7 @@ import {
 import { AggregateAuthenticationError } from '@azure/identity';
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 
 describe('Runtime State Repo', () => {
   const caseId1 = '111-11-11111';
@@ -122,7 +123,8 @@ describe('Test case history cosmosdb repository tests', () => {
     const testCaseAssignmentHistory: CaseAssignmentHistory = {
       caseId,
       documentType: 'AUDIT_ASSIGNMENT',
-      occurredAtTimestamp: new Date().toISOString(),
+      updatedOn: new Date().toISOString(),
+      updatedBy: SYSTEM_USER_REFERENCE,
       before: [],
       after: [],
     };
@@ -137,7 +139,8 @@ describe('Test case history cosmosdb repository tests', () => {
     const testCaseAssignmentHistory: CaseAssignmentHistory = {
       caseId,
       documentType: 'AUDIT_ASSIGNMENT',
-      occurredAtTimestamp: new Date().toISOString(),
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: new Date().toISOString(),
       before: [],
       after: [],
     };
