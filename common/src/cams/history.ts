@@ -19,7 +19,6 @@ export function isConsolidationHistory(history: unknown): history is Consolidati
   return typeof history === 'object' && 'status' in history;
 }
 
-// TODO: Consider a way to make the occurredAtTimestamp optional when creating a record, otherwise it is required.
 type AbstractCaseHistory<B, A> = Auditable & {
   id?: string;
   caseId: string;
