@@ -316,14 +316,14 @@ interface FilterProps<T extends string> {
 function Filter<T extends string>(props: FilterProps<T>) {
   const { label, filterType, filters, callback } = props;
   return (
-    <div
-      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big`}
+    <button
+      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
       aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
       onClick={() => callback(filterType)}
       data-testid={`order-status-filter-${filterType}`}
     >
       {label}
       <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
-    </div>
+    </button>
   );
 }
