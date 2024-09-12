@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@azure/cosmos": "3.17.3",
-    "@azure/functions": "^4.5.0",
+    "@azure/functions": "^4.5.1",
     "@azure/identity": "^4.4.1",
     "@azure/keyvault-secrets": "^4.8.0",
     "@launchdarkly/node-server-sdk": "^9.5.2",
