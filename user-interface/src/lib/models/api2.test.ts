@@ -57,11 +57,11 @@ describe('extractPathFromUri', () => {
     const api = addAuthHeaderToApi();
     api.host = `https://some-domain.gov`;
     const expectedPath = '/this/is/a/path';
-    const uri = `${api.host}${expectedPath}?these=are;the=params`;
+    const uri = `${api.host}${expectedPath}?these=are&the=params`;
 
-    const actualPath = extractPathFromUri(uri, api);
+    const { uriOrPathSubstring } = extractPathFromUri(uri, api);
 
-    expect(actualPath).toEqual(expectedPath);
+    expect(uriOrPathSubstring).toEqual(expectedPath);
   });
 
   test('should return path when given only a path', () => {
@@ -69,9 +69,9 @@ describe('extractPathFromUri', () => {
     api.host = '';
     const expectedPath = '/this/is/a/path';
 
-    const actualPath = extractPathFromUri(expectedPath, api);
+    const { uriOrPathSubstring } = extractPathFromUri(expectedPath, api);
 
-    expect(actualPath).toEqual(expectedPath);
+    expect(uriOrPathSubstring).toEqual(expectedPath);
   });
 });
 
