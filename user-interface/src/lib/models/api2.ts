@@ -73,11 +73,18 @@ export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
   }
 
   const paramsIndex = uriOrPath.search(/\?.*=/);
+  const queryParams: ObjectKeyVal = {};
+  let uriOrPathSubstring: string = '' + uriOrPath;
   if (paramsIndex >= 0) {
-    uriOrPath = uriOrPath.substring(0, paramsIndex);
+    uriOrPathSubstring = uriOrPath.substring(0, paramsIndex);
+    const queryParamString = uriOrPath.substring(paramsIndex + 1).split('&');
+    queryParamString.forEach((param) => {
+      const splitParams = param.split('=');
+      queryParams[splitParams[0]] = splitParams[1];
+    });
   }
 
-  return uriOrPath;
+  return { uriOrPathSubstring, queryParams };
 }
 
 export function addAuthHeaderToApi(): ApiClient {
@@ -91,13 +98,18 @@ export function addAuthHeaderToApi(): ApiClient {
 export function useGenericApi(): GenericApiClient {
   const api = addAuthHeaderToApi();
 
-  function justThePath(uriOrPath: string): string {
+  function justThePath(uriOrPath: string): {
+    uriOrPathSubstring: string;
+    queryParams: ObjectKeyVal;
+  } {
     return extractPathFromUri(uriOrPath, api);
   }
 
   return {
     async get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
-      const body = await api.get(justThePath(path), options);
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const body = await api.get(uriOrPathSubstring, options);
       return body as ResponseBody<T>;
     },
     async patch<T = object>(
@@ -105,7 +117,9 @@ export function useGenericApi(): GenericApiClient {
       body: object,
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T> | void> {
-      const responseBody = await api.patch(justThePath(path), body, options);
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const responseBody = await api.patch(uriOrPathSubstring, body, options);
       if (!responseBody) {
         return;
       }
@@ -116,7 +130,9 @@ export function useGenericApi(): GenericApiClient {
       body: object,
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T> | void> {
-      const responseBody = await api.post(justThePath(path), body, options);
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const responseBody = await api.post(uriOrPathSubstring, body, options);
       if (!responseBody) {
         return;
       }
@@ -127,11 +143,14 @@ export function useGenericApi(): GenericApiClient {
       body: object,
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
-      const responseBody = await api.put(justThePath(path), body, options);
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const responseBody = await api.put(uriOrPathSubstring, body, options);
       return responseBody as ResponseBody<T>;
     },
   };
 }
+
 const api = useGenericApi;
 
 async function getAttorneys() {
