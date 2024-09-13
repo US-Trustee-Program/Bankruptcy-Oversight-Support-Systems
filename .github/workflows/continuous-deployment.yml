@@ -131,7 +131,10 @@ jobs:
         unit-test-backend,
         unit-test-common,
       ]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
+    if: |
+      ((github.ref == 'refs/heads/main')
+      || (github.ref == 'refs/heads/dependency-updates-auto')
+      || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
