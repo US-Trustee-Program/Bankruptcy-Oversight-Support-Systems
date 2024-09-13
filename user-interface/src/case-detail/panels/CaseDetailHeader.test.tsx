@@ -37,10 +37,12 @@ describe('Case Detail Header tests', () => {
     );
 
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
     const isFinishedH2 = screen.getByTestId('h2-with-case-info');
     const caseChapter = screen.getByTestId('case-chapter');
 
-    expect(isLoadingH1).toContainHTML(testCaseDetail.caseTitle);
+    expect(isLoadingH1).toContainHTML('Case Detail');
+    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
@@ -65,11 +67,15 @@ describe('Case Detail Header tests', () => {
     const app = await screen.findByTestId('app-component-test-id');
     await waitFor(
       async () => {
-        const title = await screen.findByTestId('case-detail-heading');
-        expect(title.innerHTML).toEqual(testCaseDetail.caseTitle);
+        const heading = await screen.findByTestId('case-detail-heading');
+        expect(heading.innerHTML).toEqual('Case Detail');
       },
       { timeout: 1000 },
     );
+    await waitFor(async () => {
+      const title = await screen.findByTestId('case-detail-heading-title');
+      expect(title.innerHTML).toEqual(testCaseDetail.caseTitle);
+    });
 
     let normalHeader = await screen.findByTestId('case-detail-header');
     expect(normalHeader).toBeInTheDocument();

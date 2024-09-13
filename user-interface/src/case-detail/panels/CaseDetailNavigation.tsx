@@ -52,7 +52,7 @@ function CaseDetailNavigationComponent({
               onClick={() => setActiveNav(NavState.BASIC_INFO)}
               data-testid="basic-info-link"
             >
-              Case Summary
+              Case Details
             </Link>
           </li>
           <li className="usa-sidenav__item">

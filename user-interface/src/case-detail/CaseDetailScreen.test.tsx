@@ -77,7 +77,7 @@ describe('Case Detail screen tests', () => {
 
     await waitFor(
       async () => {
-        const title = screen.getByTestId('case-detail-heading');
+        const title = screen.getByTestId('case-detail-heading-title');
         expect(title.innerHTML).toEqual('The Beach Boys');
 
         const caseNumber = document.querySelector('.case-number');
@@ -99,7 +99,9 @@ describe('Case Detail screen tests', () => {
         expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
 
         const courtName = screen.getByTestId('court-name-and-district');
-        expect(courtName.innerHTML).toEqual('Court of Law - Manhattan');
+        expect(courtName.innerHTML).toEqual(
+          `Court of Law - Manhattan (${testCaseDetail.courtDivisionCode})`,
+        );
 
         const region = screen.getByTestId('case-detail-region-id');
         expect(region.innerHTML).toEqual('Region 2 - New York Office');
@@ -608,7 +610,7 @@ describe('Case Detail screen tests', () => {
 
     await waitFor(
       async () => {
-        const title = screen.getByTestId('case-detail-heading');
+        const title = screen.getByTestId('case-detail-heading-title');
         expect(title.innerHTML).toEqual('The Beach Boys');
 
         const unassignedElement = document.querySelector('.unassigned-placeholder');
