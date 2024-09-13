@@ -1,5 +1,6 @@
-import { CamsUser } from '../../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsJwt } from '../../../../../common/src/cams/jwt';
+import { ApplicationContext } from './basic';
 
 export type AuthorizationConfig = {
   provider: string | null;
@@ -11,4 +12,12 @@ export type AuthorizationConfig = {
 export interface OpenIdConnectGateway {
   verifyToken: (accessToken: string) => Promise<CamsJwt>;
   getUser: (accessToken: string) => Promise<CamsUser>;
+}
+
+export interface UserGroupGateway {
+  getUserGroups: (context: ApplicationContext) => Promise<CamsUserGroup[]>;
+  getUserGroupUsers(
+    context: ApplicationContext,
+    group: CamsUserGroup,
+  ): Promise<CamsUserReference[]>;
 }
