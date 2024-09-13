@@ -1,3 +1,5 @@
+import { CamsUserReference } from './users';
+
 export interface OfficeDetails {
   officeName: string;
   officeCode: string;
@@ -10,6 +12,7 @@ export interface OfficeDetails {
   regionId: string;
   regionName: string;
   state?: string;
+  staff?: CamsUserReference[];
 }
 
 export function filterCourtByDivision(divisionCode: string, officeList: OfficeDetails[]) {

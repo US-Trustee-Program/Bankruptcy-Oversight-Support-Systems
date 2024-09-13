@@ -5,11 +5,6 @@
     "databaseContainers": {
       "value": [
         {
-          "name": "healthcheck",
-          "partitionKey1": "/id",
-          "partitionKeys": ["/id"]
-        },
-        {
           "name": "assignments",
           "partitionKey1": "/caseId",
           "partitionKeys": ["/caseId"]
@@ -20,14 +15,24 @@
           "partitionKeys": ["/caseId"]
         },
         {
-          "name": "orders",
-          "partitionKey1": "/caseId",
-          "partitionKeys": ["/caseId"]
-        },
-        {
           "name": "consolidations",
           "partitionKey1": "/consolidationId",
           "partitionKeys": ["/consolidationId"]
+        },
+        {
+          "name": "healthcheck",
+          "partitionKey1": "/id",
+          "partitionKeys": ["/id"]
+        },
+        {
+          "name": "office-staff",
+          "partitionKey1": "/courtDivisionCode",
+          "partitionKeys": ["/courtDivisionCode"]
+        },
+        {
+          "name": "orders",
+          "partitionKey1": "/caseId",
+          "partitionKeys": ["/caseId"]
         },
         {
           "name": "runtime-state",
