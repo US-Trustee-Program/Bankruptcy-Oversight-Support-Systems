@@ -5,7 +5,7 @@ import { GatewayHelper } from '../gateway-helper';
 import { NORMAL_CASE_ID } from '../../../testing/testing-constants';
 import { CaseDocket } from '../../../../../../common/src/cams/cases';
 
-const MODULENAME = 'CASE-DOCKET-MOCK-GATEWAY';
+const MODULE_NAME = 'CASE-DOCKET-MOCK-GATEWAY';
 
 export class MockCaseDocketGateway implements CaseDocketGateway {
   async getCaseDocket(_context: ApplicationContext, caseId: string): Promise<CaseDocket> {
@@ -13,6 +13,6 @@ export class MockCaseDocketGateway implements CaseDocketGateway {
     if (caseId === NORMAL_CASE_ID) {
       return Promise.resolve(gatewayHelper.getCaseDocketEntriesMockExtract());
     }
-    return Promise.reject(new NotFoundError(MODULENAME, { data: { caseId } }));
+    return Promise.reject(new NotFoundError(MODULE_NAME, { data: { caseId } }));
   }
 }
