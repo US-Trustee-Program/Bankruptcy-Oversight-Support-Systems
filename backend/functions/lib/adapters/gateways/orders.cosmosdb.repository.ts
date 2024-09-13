@@ -85,10 +85,11 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
 
   async updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction) {
     try {
+      const partitionKey = data.caseId;
       const { resource: existingOrder } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(id, data.caseId)
+        .item(id, partitionKey)
         .read<TransferOrder>();
 
       if (!existingOrder) {
@@ -110,7 +111,7 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
       await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(id)
+        .item(id, partitionKey)
         .replace(updatedOrder);
 
       context.logger.debug(this.moduleName, `Order updated ${id}`);
