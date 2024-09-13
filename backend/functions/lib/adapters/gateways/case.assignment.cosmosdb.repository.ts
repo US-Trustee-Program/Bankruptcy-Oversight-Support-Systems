@@ -54,10 +54,11 @@ export class CaseAssignmentCosmosDbRepository implements CaseAssignmentRepositor
 
   async updateAssignment(caseAssignment: CaseAssignment): Promise<string> {
     try {
+      const partitionKey = caseAssignment.caseId;
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(caseAssignment.id)
+        .item(caseAssignment.id, partitionKey)
         .replace(caseAssignment);
       this.applicationContext.logger.debug(MODULE_NAME, `Assignment updated ${resource.id}`);
       return resource.id;
