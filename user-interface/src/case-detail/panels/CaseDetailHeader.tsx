@@ -121,7 +121,11 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
                 {props.isLoading && <>Loading Case Details...</>}
                 {!props.isLoading && 'Case Detail'}
               </h1>
-              {!props.isLoading && <h2 title="Case Details">{props.caseDetail?.caseTitle} </h2>}
+              {!props.isLoading && props.caseDetail && (
+                <h2 data-testid="case-detail-heading-title" title="Case Details">
+                  {props.caseDetail.caseTitle}
+                </h2>
+              )}
             </div>
             <div className="grid-col-1"></div>
           </div>
