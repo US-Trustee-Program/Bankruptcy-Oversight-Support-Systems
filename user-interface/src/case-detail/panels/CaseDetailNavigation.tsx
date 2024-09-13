@@ -76,7 +76,7 @@ function CaseDetailNavigationComponent({
               }}
               data-testid="audit-history-link"
             >
-              Audit History
+              Case History
             </Link>
           </li>
           {showAssociatedCasesList && (

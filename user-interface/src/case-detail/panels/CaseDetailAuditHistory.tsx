@@ -110,7 +110,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
   return (
     <div className="case-audit-history">
       <div className="history-type-title">
-        <h3>Audit History</h3>
+        <h3>Case History</h3>
         {isAuditHistoryLoading && <LoadingIndicator />}
         {!isAuditHistoryLoading && (
           <>
