@@ -14,7 +14,7 @@ export interface CaseDetailHeaderProps {
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   const { isFixed, fix, loosen } = useFixedPosition();
-  const courtInformation = `${props.caseDetail?.courtName} - ${props.caseDetail?.courtDivisionName}`;
+  const courtInformation = `${props.caseDetail?.courtName} - ${props.caseDetail?.courtDivisionName} (${props.caseDetail?.courtDivisionCode})`;
   // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
   const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
   const appEl = document.querySelector('.App');
@@ -119,8 +119,9 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
             <div className="grid-col-10">
               <h1 data-testid="case-detail-heading">
                 {props.isLoading && <>Loading Case Details...</>}
-                {!props.isLoading && props.caseDetail?.caseTitle}
+                {!props.isLoading && 'Case Detail'}
               </h1>
+              {!props.isLoading && <h2 title="Case Details">{props.caseDetail?.caseTitle} </h2>}
             </div>
             <div className="grid-col-1"></div>
           </div>
