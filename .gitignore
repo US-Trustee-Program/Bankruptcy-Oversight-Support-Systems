@@ -81,5 +81,8 @@ cams1.code-workspace
 # Build Archives
 **/*.zip
 
-#E2E Test Auth file
+# E2E Test Auth file
 **/.auth
+
+# TypeScript
+**/*.tsbuildinfo*
