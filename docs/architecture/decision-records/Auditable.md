@@ -6,7 +6,9 @@ A historical record needs to be kept related to certain data points in CAMS. Thi
 
 ## Decision
 
-We have created the `Auditable` type which contains the common properties for history. We have also created the `createAuditRecord` function which provides default values for the properties and the ability to override if needed. Consider the example type—`Foo`—as follows:
+We have created the `Auditable` type which contains the common properties for history. We have also created the `createAuditRecord` function which provides default values for the properties. Overriding any of the properties of `Auditable` must be completed aside from calling this helper function but prior to persisting the record. This avoids issues with having two optional parameters.
+
+Consider the example type—`Foo`—as follows:
 
 ```typescript
 type Foo = Auditable & {
@@ -18,20 +20,13 @@ type Foo = Auditable & {
 To create a historical record for an action initiated by a user, call the `createAuditRecord` as follows:
 
 ```typescript
-createAuditRecord<Foo>(someFoo, userSession);
+createAuditRecord<Foo>(someFoo, context.session.user);
 ```
 
 To create a historical record for an action initiated by the system, call the `createAuditRecord` as follows:
 
 ```typescript
 createAuditRecord<Foo>(someFoo);
-```
-
-To create a historical record with an override, call the `createAuditRecord` as follows:
-
-```typescript
-const override = { updatedOn: someDate, updatedBy: someUser };
-createAuditRecord<Foo>(someFoo, override);
 ```
 
 ## Status
