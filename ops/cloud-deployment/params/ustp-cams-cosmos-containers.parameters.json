@@ -25,9 +25,9 @@
           "partitionKeys": ["/id"]
         },
         {
-          "name": "office-staff",
-          "partitionKey1": "/courtDivisionCode",
-          "partitionKeys": ["/courtDivisionCode"]
+          "name": "offices",
+          "partitionKey1": "/officeCode",
+          "partitionKeys": ["/officeCode"]
         },
         {
           "name": "orders",
