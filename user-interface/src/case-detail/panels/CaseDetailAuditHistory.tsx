@@ -117,7 +117,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
             {caseHistory.length < 1 && (
               <div data-testid="empty-assignments-test-id">
                 <Alert
-                  message="There are no assignments in the case history."
+                  message="No changes have been made to this case"
                   type={UswdsAlertStyle.Info}
                   role={'status'}
                   timeout={0}

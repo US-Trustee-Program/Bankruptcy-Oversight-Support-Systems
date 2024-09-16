@@ -26,6 +26,7 @@ import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import useLocationTracker from '@/lib/hooks/UseLocationTracker';
 
 export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
@@ -51,6 +52,12 @@ export default function DataVerificationScreen() {
 
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
+  const { updateLocation } = useLocationTracker();
+
+  useEffect(() => {
+    updateLocation();
+  }, [location.pathname]);
+
   const regionNumber = '02';
 
   const api = useApi2();
