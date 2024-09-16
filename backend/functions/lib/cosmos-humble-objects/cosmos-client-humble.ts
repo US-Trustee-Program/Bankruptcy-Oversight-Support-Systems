@@ -2,9 +2,10 @@ import {
   ClientContext,
   CosmosClient,
   CosmosClientOptions,
+  CosmosDiagnostics,
   DatabaseAccount,
   Databases,
-  GlobalEndpointManager,
+  DiagnosticNodeInternal,
   RequestOptions,
   ResourceResponse,
 } from '@azure/cosmos';
@@ -28,13 +29,10 @@ export default class CosmosClientHumble {
         : new DefaultAzureCredential(),
     };
     this.cosmosClient = new CosmosClient(this.options);
-    const globalEndpointManager = new GlobalEndpointManager(
-      this.options,
-      async (opts: RequestOptions) => this.getDatabaseAccount(opts),
-    );
-    this.clientContext = new ClientContext(this.options, globalEndpointManager);
 
-    this.databases = new Databases(this.cosmosClient, this.clientContext);
+    this.clientContext = this.cosmosClient['clientContext'];
+
+    this.databases = this.cosmosClient['databases'];
   }
 
   public database(id: string): CosmosDatabaseHumble {
@@ -44,11 +42,15 @@ export default class CosmosClientHumble {
   private async getDatabaseAccount(
     options?: RequestOptions,
   ): Promise<ResourceResponse<DatabaseAccount>> {
-    const response = await this.clientContext.getDatabaseAccount(options);
+    const response = await this.clientContext.getDatabaseAccount(
+      new DiagnosticNodeInternal(),
+      options,
+    );
     return new ResourceResponse<DatabaseAccount>(
       response.result,
       response.headers,
       response.code,
+      new CosmosDiagnostics(),
       response.substatus,
     );
   }
