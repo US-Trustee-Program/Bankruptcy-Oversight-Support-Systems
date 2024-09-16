@@ -290,46 +290,44 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               <div>
                 <h3>Consolidation</h3>
               </div>
-              <ul className="usa-list usa-list--unstyled">
-                <div className="consolidation case-card">
-                  <h4>{consolidationTypeMap.get(caseDetail.consolidation[0].consolidationType)}</h4>
-                  <div>
-                    {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
-                      <span className="case-detail-item-name">Lead Case: (this case)</span>
-                    )}
-                    {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_TO' && (
-                      <>
-                        <span className="case-detail-item-name">Lead Case:</span>
-                        <CaseNumber
-                          caseId={caseDetail.consolidation[0].otherCase.caseId}
-                          className="usa-link case-detail-item-value"
-                          data-testid={`case-detail-consolidation-link`}
-                        />{' '}
-                        <span className="case-detail-title-value">
-                          {caseDetail.consolidation[0].otherCase.caseTitle}
-                        </span>
-                      </>
-                    )}
-                  </div>
+              <div className="consolidation case-card">
+                <h4>{consolidationTypeMap.get(caseDetail.consolidation[0].consolidationType)}</h4>
+                <div>
                   {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
-                    <div>
-                      <span className="case-detail-consolidated-case-count">
-                        Cases Consolidated: {caseDetail.consolidation.length + 1}
-                      </span>
-                    </div>
+                    <span className="case-detail-item-name">Lead Case: (this case)</span>
                   )}
+                  {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_TO' && (
+                    <>
+                      <span className="case-detail-item-name">Lead Case:</span>
+                      <CaseNumber
+                        caseId={caseDetail.consolidation[0].otherCase.caseId}
+                        className="usa-link case-detail-item-value"
+                        data-testid={`case-detail-consolidation-link`}
+                      />{' '}
+                      <span className="case-detail-title-value">
+                        {caseDetail.consolidation[0].otherCase.caseTitle}
+                      </span>
+                    </>
+                  )}
+                </div>
+                {caseDetail.consolidation[0].documentType === 'CONSOLIDATION_FROM' && (
                   <div>
-                    <span className="case-detail-item-name">Order Filed:</span>
-                    <span
-                      className="case-detail-item-value"
-                      data-testid={`case-detail-consolidation-order`}
-                    >
-                      {/* This order date is not likely the correct one.  Clarification from Phoenix has been requested */}
-                      {formatDate(caseDetail.consolidation[0].orderDate)}
+                    <span className="case-detail-consolidated-case-count">
+                      Cases Consolidated: {caseDetail.consolidation.length + 1}
                     </span>
                   </div>
+                )}
+                <div>
+                  <span className="case-detail-item-name">Order Filed:</span>
+                  <span
+                    className="case-detail-item-value"
+                    data-testid={`case-detail-consolidation-order`}
+                  >
+                    {/* This order date is not likely the correct one.  Clarification from Phoenix has been requested */}
+                    {formatDate(caseDetail.consolidation[0].orderDate)}
+                  </span>
                 </div>
-              </ul>
+              </div>
             </>
           )}
           {!!caseDetail.transfers?.length && caseDetail.transfers.length > 0 && (
@@ -337,50 +335,46 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               <div>
                 <h3>Transferred Case</h3>
               </div>
-              <ul className="usa-list usa-list--unstyled">
-                <div className="transfers case-card">
-                  {caseDetail.transfers
-                    ?.sort(sortTransfers)
-                    .map((transfer: Transfer, idx: number) => {
-                      return (
-                        <li key={idx} className="transfer">
-                          <h4>
-                            Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}:
-                          </h4>
-                          <div>
-                            <span className="case-detail-item-name">Case Number:</span>
-                            <CaseNumber
-                              caseId={transfer.otherCase.caseId}
-                              className="usa-link case-detail-item-value"
-                              data-testid={`case-detail-transfer-link-${idx}`}
-                            />
-                          </div>
-                          <div className="transfer-court">
-                            <span className="case-detail-item-name">
-                              {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'}{' '}
-                              Court:
-                            </span>
-                            <span
-                              className="case-detail-item-value"
-                              data-testid={`case-detail-transfer-court-${idx}`}
-                            >
-                              {transfer.otherCase.courtName} -{' '}
-                              {transfer.otherCase.courtDivisionName}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="case-detail-item-name">Order Filed:</span>
-                            <span
-                              className="case-detail-item-value"
-                              data-testid={`case-detail-transfer-order-${idx}`}
-                            >
-                              {formatDate(transfer.orderDate)}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
-                </div>
+              <ul className="usa-list usa-list--unstyled transfers case-card">
+                {caseDetail.transfers
+                  ?.sort(sortTransfers)
+                  .map((transfer: Transfer, idx: number) => {
+                    return (
+                      <li key={idx} className="transfer">
+                        <h4>
+                          Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}:
+                        </h4>
+                        <div>
+                          <span className="case-detail-item-name">Case Number:</span>
+                          <CaseNumber
+                            caseId={transfer.otherCase.caseId}
+                            className="usa-link case-detail-item-value"
+                            data-testid={`case-detail-transfer-link-${idx}`}
+                          />
+                        </div>
+                        <div className="transfer-court">
+                          <span className="case-detail-item-name">
+                            {transfer.documentType === 'TRANSFER_FROM' ? 'Previous' : 'New'} Court:
+                          </span>
+                          <span
+                            className="case-detail-item-value"
+                            data-testid={`case-detail-transfer-court-${idx}`}
+                          >
+                            {transfer.otherCase.courtName} - {transfer.otherCase.courtDivisionName}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="case-detail-item-name">Order Filed:</span>
+                          <span
+                            className="case-detail-item-value"
+                            data-testid={`case-detail-transfer-order-${idx}`}
+                          >
+                            {formatDate(transfer.orderDate)}
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  })}
               </ul>
             </>
           )}

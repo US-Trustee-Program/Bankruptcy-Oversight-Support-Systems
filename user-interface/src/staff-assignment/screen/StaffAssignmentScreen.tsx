@@ -8,7 +8,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { CamsUser } from '@common/cams/users';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
@@ -19,6 +19,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import useLocationTracker from '@/lib/hooks/UseLocationTracker';
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
@@ -67,6 +68,12 @@ export const StaffAssignmentScreen = () => {
       uswdsStyle: UswdsButtonStyle.Default,
     },
   };
+
+  const { updateLocation } = useLocationTracker();
+
+  useEffect(() => {
+    updateLocation();
+  }, [location.pathname]);
 
   return (
     <MainContent className="staff-assignment case-list">

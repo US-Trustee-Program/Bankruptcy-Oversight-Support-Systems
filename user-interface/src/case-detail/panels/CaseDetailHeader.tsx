@@ -5,6 +5,7 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import { CaseDetail } from '@common/cams/cases';
+import useLocationTracker from '../../lib/hooks/UseLocationTracker';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -14,11 +15,13 @@ export interface CaseDetailHeaderProps {
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   const { isFixed, fix, loosen } = useFixedPosition();
-  const courtInformation = `${props.caseDetail?.courtName} - ${props.caseDetail?.courtDivisionName} (${props.caseDetail?.courtDivisionCode})`;
+  const courtInformation = `${props.caseDetail?.courtName} (${props.caseDetail?.courtDivisionName})`;
   // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
   const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
   const appEl = document.querySelector('.App');
   const camsHeader = document.querySelector('.cams-header');
+
+  const { previousLocation } = useLocationTracker();
 
   const modifyHeader = () => {
     if (camsHeader) {
@@ -34,6 +37,14 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       }
     }
   };
+
+  function getBackLinkText() {
+    if (previousLocation.includes('my-cases')) return 'My Cases';
+    if (previousLocation.includes('search')) return 'Case Search';
+    if (previousLocation.includes('staff-assignment')) return 'Staff Assignment';
+    if (previousLocation.includes('data-verification')) return 'Data Verification';
+    return 'Case List';
+  }
 
   useEffect(() => {
     if (!props.isLoading && appEl && camsHeader) {
@@ -53,9 +64,9 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <Link className="back-button" to="/staff-assignment">
+                <Link className="back-button" to={previousLocation}>
                   <Icon name="arrow_back"></Icon>
-                  Back to Case List
+                  Back to {getBackLinkText()}
                 </Link>
               </div>
             </div>
@@ -106,9 +117,9 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
-              <Link className="back-button" to="/staff-assignment">
+              <Link className="back-button" to={previousLocation}>
                 <Icon name="arrow_back"></Icon>
-                Back to Case List
+                Back to {getBackLinkText()}
               </Link>
             </div>
             <div className="grid-col-1"></div>
@@ -117,14 +128,19 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
-              <h1 data-testid="case-detail-heading">
-                {props.isLoading && <>Loading Case Details...</>}
-                {!props.isLoading && 'Case Detail'}
-              </h1>
-              {!props.isLoading && props.caseDetail && (
-                <h2 data-testid="case-detail-heading-title" title="Case Details">
-                  {props.caseDetail.caseTitle}
-                </h2>
+              {props.isLoading && (
+                <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
+              )}
+              {!props.isLoading && (
+                <h1 data-testid="case-detail-heading">
+                  Case Details
+                  {props.caseDetail && (
+                    <span data-testid="case-detail-heading-title">
+                      {' '}
+                      - {props.caseDetail.caseTitle}
+                    </span>
+                  )}
+                </h1>
               )}
             </div>
             <div className="grid-col-1"></div>
@@ -135,7 +151,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <h2 className="case-number text-no-wrap" title="Case Number">
-                  {getCaseNumber(props.caseId)}
+                  {props.caseId}
                 </h2>
               </div>
               <div className="grid-col-1"></div>
@@ -147,7 +163,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               <div className="grid-col-1"></div>
               <div className="grid-col-2">
                 <h2 className="case-number text-no-wrap" title="Case Number">
-                  {getCaseNumber(props.caseId)}
+                  {props.caseId}
                 </h2>
               </div>
               <div className="grid-col-5">

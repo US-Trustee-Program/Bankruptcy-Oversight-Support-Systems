@@ -19,6 +19,7 @@ import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import useLocationTracker from '@/lib/hooks/UseLocationTracker';
 
 export default function SearchScreen() {
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
@@ -35,6 +36,11 @@ export default function SearchScreen() {
 
   const api = useApi2();
   const globalAlert = useGlobalAlert();
+  const { updateLocation } = useLocationTracker();
+
+  useEffect(() => {
+    updateLocation();
+  }, [location.pathname]);
 
   function getChapters() {
     const chapterArray: ComboOption[] = [];
