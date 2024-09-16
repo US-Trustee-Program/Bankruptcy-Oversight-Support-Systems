@@ -734,8 +734,8 @@ describe('Case Detail screen tests', () => {
   );
 
   const navRouteTestCases = [
-    ['case-detail/1234', 'basic-info-link'],
-    ['case-detail/1234/', 'basic-info-link'],
+    ['case-detail/1234', 'case-overview-link'],
+    ['case-detail/1234/', 'case-overview-link'],
     ['case-detail/1234/court-docket/', 'court-docket-link'],
   ];
 
