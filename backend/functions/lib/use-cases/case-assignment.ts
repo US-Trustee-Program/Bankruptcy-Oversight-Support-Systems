@@ -79,9 +79,9 @@ export class CaseAssignmentUseCase {
           role: CamsRole[role],
           assignedOn: currentDate,
         },
-        context.session,
-        { updatedOn: currentDate },
+        context.session?.user,
       );
+      assignment.updatedOn = currentDate;
       listOfAssignments.push(assignment);
     });
     const listOfAssignmentIdsCreated: string[] = [];
@@ -122,9 +122,9 @@ export class CaseAssignmentUseCase {
         before: existingAssignmentRecords,
         after: newAssignmentRecords,
       },
-      context.session,
-      { updatedOn: currentDate },
+      context.session?.user,
     );
+    history.updatedOn = currentDate;
     await this.casesRepository.createCaseHistory(context, history);
 
     context.logger.info(
