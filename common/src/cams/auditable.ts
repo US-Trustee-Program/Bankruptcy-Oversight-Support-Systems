@@ -8,15 +8,21 @@ export type Auditable = {
 
 export const SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'SYSTEM', name: 'SYSTEM' };
 
-export function createAuditRecord<T extends Auditable>(
-  record: Omit<T, 'updatedOn' | 'updatedBy'>,
-  session?: CamsSession,
-  override?: Partial<Auditable>,
-): T {
+/**
+ * Decorate a record (T) with the updatedOn and updatedBy properties.
+ * @param args {record: T; session?: CamsSession; override?: Partial<Auditable>} `session` must be provided for a
+ * user-initiated action and not provided for a system-initiated action. `override` may be used to explicitly set
+ * either or both of the Auditable properties based on business logic for a particular use case.
+ */
+export function createAuditRecord<T extends Auditable>(args: {
+  record: Omit<T, 'updatedOn' | 'updatedBy'>;
+  session?: CamsSession;
+  override?: Partial<Auditable>;
+}): T {
   return {
     updatedOn: new Date().toISOString(),
-    updatedBy: session ? getCamsUserReference(session.user) : SYSTEM_USER_REFERENCE,
-    ...record,
-    ...override,
+    updatedBy: args.session ? getCamsUserReference(args.session.user) : SYSTEM_USER_REFERENCE,
+    ...args.record,
+    ...args.override,
   } as T;
 }

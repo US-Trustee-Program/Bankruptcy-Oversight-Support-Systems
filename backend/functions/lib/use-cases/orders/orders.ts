@@ -138,15 +138,15 @@ export class OrdersUseCase {
         await this.casesRepo.createTransferFrom(context, transferFrom);
         await this.casesRepo.createTransferTo(context, transferTo);
       }
-      const caseHistory = createAuditRecord<CaseHistory>(
-        {
+      const caseHistory = createAuditRecord<CaseHistory>({
+        record: {
           caseId: order.caseId,
           documentType: 'AUDIT_TRANSFER',
           before: initialOrder as TransferOrder,
           after: order,
         },
-        context.session,
-      );
+        session: context.session,
+      });
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
   }
@@ -205,15 +205,15 @@ export class OrdersUseCase {
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
-        const caseHistory = createAuditRecord<CaseHistory>(
-          {
+        const caseHistory = createAuditRecord<CaseHistory>({
+          record: {
             caseId: order.caseId,
             documentType: 'AUDIT_TRANSFER',
             before: null,
             after: order,
           },
-          context.session,
-        );
+          session: context.session,
+        });
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
     }
@@ -231,15 +231,15 @@ export class OrdersUseCase {
         status: 'pending',
         childCases: [],
       };
-      const caseHistory = createAuditRecord<CaseHistory>(
-        {
+      const caseHistory = createAuditRecord<CaseHistory>({
+        record: {
           caseId: order.caseId,
           documentType: 'AUDIT_CONSOLIDATION',
           before: null,
           after: history,
         },
-        context.session,
-      );
+        session: context.session,
+      });
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
 
@@ -307,15 +307,15 @@ export class OrdersUseCase {
     if (isConsolidationHistory(before) && before.childCases.length > 0) {
       after.childCases.push(...before.childCases);
     }
-    return createAuditRecord<CaseConsolidationHistory>(
-      {
+    return createAuditRecord<CaseConsolidationHistory>({
+      record: {
         caseId: bCase.caseId,
         documentType: 'AUDIT_CONSOLIDATION',
         before: isConsolidationHistory(before) ? before : null,
         after,
       },
-      context.session,
-    );
+      session: context.session,
+    });
   }
 
   private async handleConsolidation(

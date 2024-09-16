@@ -70,8 +70,8 @@ export class CaseAssignmentUseCase {
     const attorneys = [...new Set(newAssignments)];
     const currentDate = new Date().toISOString();
     attorneys.forEach((attorney) => {
-      const assignment = createAuditRecord<CaseAssignment>(
-        {
+      const assignment = createAuditRecord<CaseAssignment>({
+        record: {
           documentType: 'ASSIGNMENT',
           caseId: caseId,
           userId: attorney.id,
@@ -79,9 +79,9 @@ export class CaseAssignmentUseCase {
           role: CamsRole[role],
           assignedOn: currentDate,
         },
-        context.session,
-        { updatedOn: currentDate },
-      );
+        session: context.session,
+        override: { updatedOn: currentDate },
+      });
       listOfAssignments.push(assignment);
     });
     const listOfAssignmentIdsCreated: string[] = [];
@@ -115,16 +115,16 @@ export class CaseAssignmentUseCase {
     }
 
     const newAssignmentRecords = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
-    const history = createAuditRecord<CaseAssignmentHistory>(
-      {
+    const history = createAuditRecord<CaseAssignmentHistory>({
+      record: {
         caseId,
         documentType: 'AUDIT_ASSIGNMENT',
         before: existingAssignmentRecords,
         after: newAssignmentRecords,
       },
-      context.session,
-      { updatedOn: currentDate },
-    );
+      session: context.session,
+      override: { updatedOn: currentDate },
+    });
     await this.casesRepository.createCaseHistory(context, history);
 
     context.logger.info(

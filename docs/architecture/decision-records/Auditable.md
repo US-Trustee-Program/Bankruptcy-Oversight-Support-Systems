@@ -18,20 +18,20 @@ type Foo = Auditable & {
 To create a historical record for an action initiated by a user, call the `createAuditRecord` as follows:
 
 ```typescript
-createAuditRecord<Foo>(someFoo, userSession);
+createAuditRecord<Foo>({ record: someFoo, session: userSession });
 ```
 
 To create a historical record for an action initiated by the system, call the `createAuditRecord` as follows:
 
 ```typescript
-createAuditRecord<Foo>(someFoo);
+createAuditRecord<Foo>({ record: someFoo });
 ```
 
 To create a historical record with an override, call the `createAuditRecord` as follows:
 
 ```typescript
 const override = { updatedOn: someDate, updatedBy: someUser };
-createAuditRecord<Foo>(someFoo, override);
+createAuditRecord<Foo>({ record: someFoo, override });
 ```
 
 ## Status
