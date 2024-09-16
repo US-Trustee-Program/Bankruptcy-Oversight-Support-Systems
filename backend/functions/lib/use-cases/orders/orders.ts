@@ -145,7 +145,7 @@ export class OrdersUseCase {
           before: initialOrder as TransferOrder,
           after: order,
         },
-        context.session,
+        context.session?.user,
       );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -212,7 +212,7 @@ export class OrdersUseCase {
             before: null,
             after: order,
           },
-          context.session,
+          context.session?.user,
         );
         await this.casesRepo.createCaseHistory(context, caseHistory);
       }
@@ -238,7 +238,7 @@ export class OrdersUseCase {
           before: null,
           after: history,
         },
-        context.session,
+        context.session?.user,
       );
       await this.casesRepo.createCaseHistory(context, caseHistory);
     }
@@ -314,7 +314,7 @@ export class OrdersUseCase {
         before: isConsolidationHistory(before) ? before : null,
         after,
       },
-      context.session,
+      context.session?.user,
     );
   }
 
