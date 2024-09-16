@@ -20,13 +20,13 @@ import Icon from '@/lib/components/uswds/Icon';
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
 
-export interface CaseDetailBasicInfoProps {
+export interface CaseDetailOverviewProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
   onCaseAssignment: (props: CallbackProps) => void;
 }
 
-export default function CaseDetailBasicInfo(props: CaseDetailBasicInfoProps) {
+export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   const { caseDetail, showReopenDate, onCaseAssignment } = props;
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
