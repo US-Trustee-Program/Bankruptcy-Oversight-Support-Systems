@@ -1,4 +1,4 @@
-import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
 
 //TODO: We should probably put this in Cosmos so we don't have to deal with this locally
 export const USTP_OFFICE_DATA_MAP = new Map<string, UstpOfficeDetails>([
