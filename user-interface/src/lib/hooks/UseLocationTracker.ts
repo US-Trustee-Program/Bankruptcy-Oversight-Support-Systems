@@ -24,7 +24,8 @@ export default function useLocationTracker() {
       setPreviousLocation(newLocation);
       localStorage.setItem('previousLocation', newLocation);
     } else {
-      const pathLocation = location.pathname ?? '/my-cases';
+      const pathLocation =
+        location.pathname && location.pathname.length > 0 ? location.pathname : '/my-cases';
       setPreviousLocation(pathLocation);
       localStorage.setItem('previousLocation', pathLocation);
     }
