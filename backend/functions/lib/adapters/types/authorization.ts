@@ -21,3 +21,11 @@ export interface UserGroupGateway {
     group: CamsUserGroup,
   ): Promise<CamsUserReference[]>;
 }
+
+export type UserGroupGatewayConfig = {
+  provider: string | null;
+  url: string | null;
+  clientId: string | null;
+  privateKey: string | null;
+  keyId: string | null;
+};
