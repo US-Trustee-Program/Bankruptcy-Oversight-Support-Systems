@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 export function isValidPath(path: string): boolean {
-  const pathRegex = /^\/[a-zA-Z0-9\-_]+$/;
+  const pathRegex = /^\/[a-zA-Z\-_]+[a-zA-Z0-9\-._~!$?&'()*+,;=:@/]*$/;
   return pathRegex.test(path);
 }
 
