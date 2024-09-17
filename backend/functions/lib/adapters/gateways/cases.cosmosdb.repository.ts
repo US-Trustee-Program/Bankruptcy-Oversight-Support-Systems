@@ -158,7 +158,7 @@ export class CasesCosmosDbRepository implements CasesRepository {
     }
   }
 
-  private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<Array<T>> {
+  private async queryData<T>(context: ApplicationContext, querySpec: object): Promise<T[]> {
     try {
       const { resources: results } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)

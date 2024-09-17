@@ -9,17 +9,13 @@ const MODULE_NAME = 'ATTORNEYS-USE-CASE';
 export default class AttorneysList {
   gateway: AttorneyGatewayInterface;
 
-  constructor(gateway?: AttorneyGatewayInterface) {
-    if (!gateway) {
-      this.gateway = getAttorneyGateway();
-    } else {
-      this.gateway = gateway;
-    }
+  constructor() {
+    this.gateway = getAttorneyGateway();
   }
 
   async getAttorneyList(applicationContext: ApplicationContext): Promise<Array<AttorneyUser>> {
     const assignmentsUseCase = new CaseAssignmentUseCase(applicationContext);
-    const attorneys = await this.gateway.getAttorneysByUstpOffice(applicationContext);
+    const attorneys = await this.gateway.getAttorneys(applicationContext);
 
     for (const atty of attorneys) {
       try {

@@ -185,6 +185,10 @@ async function getMe() {
   return api().get<CamsSession>(`/me`);
 }
 
+async function getOfficeAttorneys(officeCode: string) {
+  return api().get<AttorneyUser[]>(`/offices/${officeCode}/attorneys`);
+}
+
 async function getOffices() {
   return api().get<OfficeDetails[]>(`/offices`);
 }
@@ -226,6 +230,7 @@ export const _Api2 = {
   getCaseAssociations,
   getCaseHistory,
   getMe,
+  getOfficeAttorneys,
   getOffices,
   getOrders,
   getOrderSuggestions,
