@@ -1,5 +1,7 @@
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
+import { UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
+import { USTP_OFFICE_DATA_MAP } from './ustp-office-data-map';
 
 let roleMapping;
 let officeMapping;
@@ -55,6 +57,10 @@ function getOfficeMapping(): Map<string, GroupDesignators> {
   return officeMapping;
 }
 
+function getUstpOffices(): Map<string, UstpOfficeDetails> {
+  return USTP_OFFICE_DATA_MAP;
+}
+
 function getRoleMapping(): Map<string, CamsRole> {
   if (!roleMapping) {
     const roleArray = ROLE_MAPPING.split('\n');
@@ -74,6 +80,7 @@ function getRoleMapping(): Map<string, CamsRole> {
 export const LocalStorageGateway: StorageGateway = {
   get,
   getOfficeMapping,
+  getUstpOffices,
   getRoleMapping,
 };
 
