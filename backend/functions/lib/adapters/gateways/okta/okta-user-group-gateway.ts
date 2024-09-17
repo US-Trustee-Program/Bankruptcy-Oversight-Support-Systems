@@ -4,15 +4,31 @@ import {
   GroupApiListGroupUsersRequest,
 } from '@okta/okta-sdk-nodejs';
 import { CamsUserGroup, CamsUserReference } from '../../../../../../common/src/cams/users';
-import { UserGroupGateway } from '../../types/authorization';
-import { ApplicationContext } from '../../types/basic';
+import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { V2Configuration } from '@okta/okta-sdk-nodejs/src/types/configuration';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { ServerConfigError } from '../../../common-errors/server-config-error';
 
 const MODULE_NAME = 'OKTA_USER_GROUP_GATEWAY';
 const MAX_PAGE_SIZE = 200;
 
 let singleton: Client = undefined;
+
+function validateConfiguration(config: UserGroupGatewayConfig): void {
+  if (config.provider != 'okta') {
+    throw new ServerConfigError(MODULE_NAME, {
+      message: `Invalid provider. Expected 'okta'. Received '${config.provider}'.`,
+    });
+  }
+  const required: (keyof UserGroupGatewayConfig)[] = ['clientId', 'keyId', 'url', 'privateKey'];
+  required.forEach((key) => {
+    if (!config[key]) {
+      throw new ServerConfigError(MODULE_NAME, {
+        message: `Missing configuration. Expected '${key}'.'`,
+      });
+    }
+  });
+}
 
 /**
  * initialize
@@ -23,31 +39,22 @@ let singleton: Client = undefined;
  * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#oauth-20-authentication
  * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#known-issues
  *
- * @param _context ApplicationContext
+ * @param config UserGroupGatewayConfig
  * @returns
  */
-async function initialize(_context: ApplicationContext): Promise<Client> {
-  // EXAMPLE CODE
-  // const client = new okta.Client({
-  //   orgUrl: 'https://dev-1234.oktapreview.com/',
-  //   authorizationMode: 'PrivateKey',
-  //   clientId: '{oauth application ID}',
-  //   scopes: ['okta.users.manage'],
-  //   privateKey: '{JWK}', // <-- see notes below
-  //   keyId: 'kidValue'
-  // });
+export async function initialize(config: UserGroupGatewayConfig): Promise<Client> {
+  validateConfiguration(config);
   try {
-    const config: V2Configuration = {
-      // TODO: Map from context configuration
-      orgUrl: 'https://oktasubdomain/',
-      clientId: '{oauth application ID}',
+    const clientConfig: V2Configuration = {
+      orgUrl: config.url,
+      clientId: config.clientId,
       authorizationMode: 'PrivateKey',
       scopes: ['okta.groups.read'],
-      privateKey: '{ private key JSON }',
-      keyId: '',
+      privateKey: config.privateKey,
+      keyId: config.keyId,
     };
     if (!singleton) {
-      singleton = new Client(config);
+      singleton = new Client(clientConfig);
     }
     return singleton;
   } catch (originalError) {
@@ -64,13 +71,13 @@ async function initialize(_context: ApplicationContext): Promise<Client> {
  * See: https://developer.okta.com/docs/api/
  * See: https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroups
  *
- * @param context ApplicationContext
+ * @param config UserGroupGatewayConfig
  * @returns CamsUserGroup[]
  */
-async function getUserGroups(context: ApplicationContext): Promise<CamsUserGroup[]> {
+async function getUserGroups(config: UserGroupGatewayConfig): Promise<CamsUserGroup[]> {
   const camsUserGroups: CamsUserGroup[] = [];
   try {
-    const client = await initialize(context);
+    const client = await initialize(config);
     const query: GroupApiListGroupsRequest = {
       limit: MAX_PAGE_SIZE,
     };
@@ -98,17 +105,17 @@ async function getUserGroups(context: ApplicationContext): Promise<CamsUserGroup
  * See: https://developer.okta.com/docs/api/
  * See: https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroupUsers
  *
- * @param context ApplicationContext
+ * @param config UserGroupGatewayConfig
  * @param group CamsUserGroup
  * @returns CamsUserReference[]
  */
 async function getUserGroupUsers(
-  context: ApplicationContext,
+  config: UserGroupGatewayConfig,
   group: CamsUserGroup,
 ): Promise<CamsUserReference[]> {
   const camsUserReferences: CamsUserReference[] = [];
   try {
-    const client = await initialize(context);
+    const client = await initialize(config);
     const query: GroupApiListGroupUsersRequest = {
       groupId: group.id,
       limit: MAX_PAGE_SIZE,
@@ -127,7 +134,10 @@ async function getUserGroupUsers(
   return camsUserReferences;
 }
 
-export const OktaUserGroupGateway: UserGroupGateway = {
+export const OktaUserGroupGateway: UserGroupGateway & {
+  initialize(config: UserGroupGatewayConfig);
+} = {
+  initialize,
   getUserGroups,
   getUserGroupUsers,
 };
