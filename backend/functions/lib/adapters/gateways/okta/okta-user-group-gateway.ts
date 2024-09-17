@@ -17,7 +17,7 @@ let singleton: Client = undefined;
 /**
  * initialize
  *
- * Creates an Okta Client instance and retains it is module scope as a singleton.
+ * Creates an Okta Client instance and retains it in module scope as a singleton.
  * Subsequent calls to initialize return the previously created instance.
  *
  * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#oauth-20-authentication

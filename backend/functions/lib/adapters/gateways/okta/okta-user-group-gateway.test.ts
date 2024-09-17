@@ -64,7 +64,7 @@ describe('OktaGroupGateway', () => {
       expect(actual).toEqual(expected);
     });
 
-    test('should throw an error it an error is returned by the api', async () => {
+    test('should throw an error if an error is returned by the api', async () => {
       listGroups.mockRejectedValue(new UnknownError('TEST-MODULE'));
 
       await expect(
@@ -103,7 +103,7 @@ describe('OktaGroupGateway', () => {
       expect(actual).toEqual(expected);
     });
 
-    test('should throw an error it an error is returned by the api', async () => {
+    test('should throw an error if an error is returned by the api', async () => {
       listGroupUsers.mockRejectedValue(new UnknownError('TEST-MODULE'));
 
       await expect(
