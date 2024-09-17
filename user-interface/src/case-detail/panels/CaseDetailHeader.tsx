@@ -21,7 +21,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   const appEl = document.querySelector('.App');
   const camsHeader = document.querySelector('.cams-header');
 
-  const { previousLocation } = useLocationTracker();
+  const { previousLocation, homeTab } = useLocationTracker();
 
   const modifyHeader = () => {
     if (camsHeader) {
@@ -64,7 +64,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
-                <Link className="back-button" to={previousLocation}>
+                <Link className="back-button" to={previousLocation} target={homeTab}>
                   <Icon name="arrow_back"></Icon>
                   Back to {getBackLinkText()}
                 </Link>
@@ -117,7 +117,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
-              <Link className="back-button" to={previousLocation}>
+              <Link className="back-button" to={previousLocation} target={homeTab}>
                 <Icon name="arrow_back"></Icon>
                 Back to {getBackLinkText()}
               </Link>
