@@ -64,6 +64,8 @@ export function Login(props: LoginProps): React.ReactNode {
     }
   }
 
+  window.name = `CAMS_WINDOW_${Math.floor(Date.now() / 1000)}`;
+
   let providerComponent;
   switch (provider) {
     case 'okta':
