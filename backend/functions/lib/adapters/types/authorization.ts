@@ -1,6 +1,5 @@
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsJwt } from '../../../../../common/src/cams/jwt';
-import { ApplicationContext } from './basic';
 
 export type AuthorizationConfig = {
   provider: string | null;
@@ -15,9 +14,9 @@ export interface OpenIdConnectGateway {
 }
 
 export interface UserGroupGateway {
-  getUserGroups: (context: ApplicationContext) => Promise<CamsUserGroup[]>;
+  getUserGroups: (config: UserGroupGatewayConfig) => Promise<CamsUserGroup[]>;
   getUserGroupUsers(
-    context: ApplicationContext,
+    config: UserGroupGatewayConfig,
     group: CamsUserGroup,
   ): Promise<CamsUserReference[]>;
 }
