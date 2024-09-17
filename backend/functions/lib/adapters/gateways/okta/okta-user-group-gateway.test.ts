@@ -36,6 +36,7 @@ describe('OktaGroupGateway', () => {
         `Invalid provider. Expected 'okta'. Received '${configCopy.provider}'.`,
       );
     });
+
     test('missing parameters', async () => {
       const required: (keyof UserGroupGatewayConfig)[] = ['clientId', 'keyId', 'url', 'privateKey'];
       for (const key of required) {
@@ -45,6 +46,12 @@ describe('OktaGroupGateway', () => {
           `Missing configuration. Expected '${key}'.'`,
         );
       }
+    });
+
+    test('unknown error on initialization', async () => {
+      // TODO: Must be able to mock the Client class from the Okta SDK
+      // const testError = 'Test Error';
+      // await expect(OktaUserGroupGateway.initialize(configuration)).rejects.toThrow(testError);
     });
   });
 
