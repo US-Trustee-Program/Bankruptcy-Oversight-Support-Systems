@@ -13,6 +13,11 @@ export default function useLocationTracker() {
 
     return storedLocation && isValidPath(storedLocation) ? storedLocation : '/my-cases';
   });
+  const [homeTab, setHomeTab] = useState<string>(() => {
+    const target = localStorage.getItem('homeTab');
+
+    return target ?? '';
+  });
 
   const updateLocation = useCallback((newLocation?: string) => {
     if (newLocation && isValidPath(newLocation)) {
@@ -23,14 +28,23 @@ export default function useLocationTracker() {
       setPreviousLocation(pathLocation);
       localStorage.setItem('previousLocation', pathLocation);
     }
+    if (window.name.match(/^CAMS_WINDOW_[0-9]+/)) {
+      setHomeTab(window.name);
+      localStorage.setItem('homeTab', window.name);
+    }
   }, []);
 
   useEffect(() => {
     const storedLocation = localStorage.getItem('previousLocation');
+    const storedTab = localStorage.getItem('homeTab');
+
     if (storedLocation && isValidPath(storedLocation)) {
       setPreviousLocation(storedLocation);
     }
-  });
+    if (storedTab && storedTab.length > 0) {
+      setHomeTab(storedTab);
+    }
+  }, []);
 
-  return { previousLocation, updateLocation };
+  return { previousLocation, homeTab, updateLocation };
 }
