@@ -67,14 +67,14 @@ describe('Case Detail Header tests', () => {
     const app = await screen.findByTestId('app-component-test-id');
     await waitFor(
       async () => {
-        const heading = await screen.findByTestId('case-detail-heading');
-        expect(heading.innerHTML).toEqual('Case Detail');
+        const heading = await screen.findByTestId('case-detail-heading-title');
+        expect(heading.innerHTML).toEqual(` - ${testCaseDetail.caseTitle}`);
       },
       { timeout: 1000 },
     );
     await waitFor(async () => {
       const title = await screen.findByTestId('case-detail-heading-title');
-      expect(title.innerHTML).toEqual(testCaseDetail.caseTitle);
+      expect(title.innerHTML).toEqual(` - ${testCaseDetail.caseTitle}`);
     });
 
     let normalHeader = await screen.findByTestId('case-detail-header');

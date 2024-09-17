@@ -7,6 +7,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
+import * as detailHeader from './panels/CaseDetailHeader';
 
 const caseId = '101-23-12345';
 
@@ -31,11 +32,55 @@ describe('Case Detail screen tests', () => {
 
   type MaybeString = string | undefined;
 
-  beforeAll(() => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
     process.env = {
       ...env,
       CAMS_PA11Y: 'true',
     };
+  });
+
+  test('should render CaseDetailHeader', async () => {
+    const testCaseDetail: CaseDetail = {
+      caseId: caseId,
+      dxtrId: '123',
+      chapter: '15',
+      regionId: '02',
+      officeName: 'New York',
+      officeCode: '000',
+      caseTitle: 'The Beach Boys',
+      dateFiled: '01-04-1962',
+      judgeName: rickBHartName,
+      courtId: '01',
+      courtName: 'Court of Law',
+      courtDivisionName: 'Manhattan',
+      courtDivisionCode: '081',
+      debtorTypeLabel: 'Corporate Business',
+      petitionLabel: 'Voluntary',
+      closedDate: '01-08-1963',
+      dismissedDate: '01-08-1964',
+      assignments: [brianWilson, carlWilson],
+      debtor: {
+        name: 'Roger Rabbit',
+        address1: '123 Rabbithole Lane',
+        address2: 'Apt 117',
+        address3: 'Suite C',
+        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+      },
+      debtorAttorney,
+      groupDesignator: '01',
+      regionName: 'Test Region',
+    };
+    const headerSpy = vi.spyOn(detailHeader, 'default');
+
+    render(
+      <BrowserRouter>
+        <CaseDetailScreen caseDetail={testCaseDetail} />
+      </BrowserRouter>,
+    );
+    await waitFor(() => {
+      expect(headerSpy).toHaveBeenCalled();
+    });
   });
 
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
@@ -78,10 +123,11 @@ describe('Case Detail screen tests', () => {
     await waitFor(
       async () => {
         const title = screen.getByTestId('case-detail-heading-title');
-        expect(title.innerHTML).toEqual('The Beach Boys');
+        const expectedTitle = ` - ${testCaseDetail.caseTitle}`;
+        expect(title.innerHTML).toEqual(expectedTitle);
 
         const caseNumber = document.querySelector('.case-number');
-        expect(caseNumber?.innerHTML).toEqual(getCaseNumber(caseId));
+        expect(caseNumber?.innerHTML).toEqual(caseId);
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
         expect(dateFiled).toHaveTextContent('Filed');
@@ -99,9 +145,7 @@ describe('Case Detail screen tests', () => {
         expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
 
         const courtName = screen.getByTestId('court-name-and-district');
-        expect(courtName.innerHTML).toEqual(
-          `Court of Law - Manhattan (${testCaseDetail.courtDivisionCode})`,
-        );
+        expect(courtName.innerHTML).toEqual(`Court of Law (${testCaseDetail.courtDivisionName})`);
 
         const region = screen.getByTestId('case-detail-region-id');
         expect(region.innerHTML).toEqual('Region 2 - New York Office');
@@ -607,11 +651,11 @@ describe('Case Detail screen tests', () => {
         <CaseDetailScreen caseDetail={testCaseDetail} />
       </BrowserRouter>,
     );
-
+    const expectedTitle = ` - ${testCaseDetail.caseTitle}`;
     await waitFor(
       async () => {
         const title = screen.getByTestId('case-detail-heading-title');
-        expect(title.innerHTML).toEqual('The Beach Boys');
+        expect(title.innerHTML).toEqual(expectedTitle);
 
         const unassignedElement = document.querySelector('.unassigned-placeholder');
         expect(unassignedElement).toBeInTheDocument();
