@@ -17,6 +17,7 @@ import {
   CasesRepository,
   ConsolidationOrdersRepository,
   DocumentRepository,
+  OfficesRepository,
   OrdersGateway,
   OrdersRepository,
   RuntimeStateRepository,
@@ -43,6 +44,7 @@ import LocalStorageGateway from './adapters/gateways/storage/local-storage-gatew
 import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
+import { OfficesCosmosDbRepository } from './adapters/gateways/offices.cosmosdb.repository';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
@@ -116,6 +118,10 @@ export const getOfficesGateway = (
   } else {
     return new OfficesDxtrGateway();
   }
+};
+
+export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
+  return new OfficesCosmosDbRepository(applicationContext);
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {

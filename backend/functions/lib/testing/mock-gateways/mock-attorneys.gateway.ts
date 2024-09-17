@@ -10,9 +10,11 @@ async function getAttorneysByUstpOffice(
   const attorneys = TRIAL_ATTORNEYS.filter((att) => att.offices['officeCode'].includes(officeCode));
   return attorneys;
 }
+
 async function getAttorneys(_applicationContext: ApplicationContext): Promise<Array<AttorneyUser>> {
   return TRIAL_ATTORNEYS;
 }
+
 const MockAttorneysGateway: AttorneyGatewayInterface = {
   getAttorneys,
   getAttorneysByUstpOffice,
