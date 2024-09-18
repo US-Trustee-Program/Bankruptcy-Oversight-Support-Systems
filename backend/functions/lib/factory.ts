@@ -16,7 +16,6 @@ import { ConnectionPool, config } from 'mssql';
 import {
   CasesRepository,
   ConsolidationOrdersRepository,
-  DocumentRepository,
   OfficesRepository,
   OrdersGateway,
   OrdersRepository,
@@ -30,7 +29,6 @@ import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-stat
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
-import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
@@ -144,13 +142,13 @@ export const getRuntimeStateRepository = (
   return new RuntimeStateCosmosDbRepository(applicationContext);
 };
 
-export const getCosmosDbCrudRepository = <T>(
-  context: ApplicationContext,
-  containerName: string,
-  moduleName: string,
-): DocumentRepository<T> => {
-  return new CosmosDbRepository<T>(context, containerName, moduleName);
-};
+// export const getCosmosDbCrudRepository = <T>(
+//   context: ApplicationContext,
+//   containerName: string,
+//   moduleName: string,
+// ): DocumentRepository<T> => {
+//   return new CosmosDbRepository<T>(context, containerName, moduleName);
+// };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
   if (context.config.authConfig.provider === 'okta') return OktaGateway;

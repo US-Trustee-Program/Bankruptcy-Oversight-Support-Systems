@@ -8,12 +8,40 @@ const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
 const CONTAINER_NAME: string = 'consolidations';
 
 export default class ConsolidationOrdersCosmosDbRepository
-  extends CosmosDbRepository<ConsolidationOrder>
   implements ConsolidationOrdersRepository
 {
+  private repo: CosmosDbRepository<ConsolidationOrder>;
+
   constructor(context: ApplicationContext) {
-    super(context, CONTAINER_NAME, MODULE_NAME);
+    this.repo = new CosmosDbRepository<ConsolidationOrder>(context, CONTAINER_NAME, MODULE_NAME);
   }
+
+  get(context: ApplicationContext, id: string, partitionKey: string): Promise<ConsolidationOrder> {
+    return this.repo.get(context, id, partitionKey);
+  }
+
+  update(
+    _context: ApplicationContext,
+    _id: string,
+    _partitionKey: string,
+    _data: ConsolidationOrder,
+  ) {
+    throw new Error('Method not implemented.');
+  }
+
+  put(context: ApplicationContext, data: ConsolidationOrder): Promise<ConsolidationOrder> {
+    return this.repo.put(context, data);
+    throw new Error('Method not implemented.');
+  }
+
+  putAll(context: ApplicationContext, list: ConsolidationOrder[]): Promise<ConsolidationOrder[]> {
+    return this.repo.putAll(context, list);
+  }
+
+  delete(context: ApplicationContext, id: string, partitionKey: string) {
+    return this.repo.delete(context, id, partitionKey);
+  }
+
   public async search(
     context: ApplicationContext,
     predicate?: OrdersSearchPredicate,
@@ -38,6 +66,6 @@ export default class ConsolidationOrdersCosmosDbRepository
         parameters: [],
       };
     }
-    return await this.query(context, querySpec);
+    return await this.repo.query(context, querySpec);
   }
 }
