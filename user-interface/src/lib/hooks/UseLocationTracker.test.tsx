@@ -37,10 +37,10 @@ describe('useLocationTracker tests', () => {
   test('should return expected default previousLocation and homeTab values when no window.name is set and no previous URL is set', () => {
     render(<TestComponent />);
 
-    const link = document.querySelector('a.back-button');
+    const link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', '/my-cases');
-    expect(link).toHaveAttribute('target', '_self');
+    expect(link).toHaveAttribute('data-href', '/my-cases');
+    expect(link).toHaveAttribute('data-target', '_self');
   });
 
   test('should return expected default previousLocation and homeTab values when window.name is set to an invalid name and no previous URL is set', () => {
@@ -49,10 +49,10 @@ describe('useLocationTracker tests', () => {
 
     render(<TestComponent target={newTarget} />);
 
-    const link = document.querySelector('a.back-button');
+    const link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', '/my-cases');
-    expect(link).toHaveAttribute('target', '_self');
+    expect(link).toHaveAttribute('data-href', '/my-cases');
+    expect(link).toHaveAttribute('data-target', '');
   });
 
   test('should return expected default previousLocation and homeTab values when an invalid path is supplied is set to an invalid name and no previous URL is set', () => {
@@ -61,10 +61,10 @@ describe('useLocationTracker tests', () => {
 
     render(<TestComponent location={path} />);
 
-    const link = document.querySelector('a.back-button');
+    const link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', '/my-cases');
-    expect(link).toHaveAttribute('target', '_self');
+    expect(link).toHaveAttribute('data-href', '/my-cases');
+    expect(link).toHaveAttribute('data-target', '');
   });
 
   test('should reset previousLocation and homeTab to values from localStorage after forced refresh of browser tab', () => {
@@ -75,17 +75,17 @@ describe('useLocationTracker tests', () => {
 
     render(<TestComponent location={path} target={target} />);
 
-    let link = document.querySelector('a.back-button');
+    let link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', path);
-    expect(link).toHaveAttribute('target', target);
+    expect(link).toHaveAttribute('data-href', path);
+    expect(link).toHaveAttribute('data-target', target);
 
     render(<TestComponent />);
 
-    link = document.querySelector('a.back-button');
+    link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', path);
-    expect(link).toHaveAttribute('target', target);
+    expect(link).toHaveAttribute('data-href', path);
+    expect(link).toHaveAttribute('data-target', target);
   });
 
   test('should return expected given previousLocation and homeTab values when a valid path was previously visited', () => {
@@ -93,10 +93,10 @@ describe('useLocationTracker tests', () => {
 
     render(<TestComponent updateLocation={true} />);
 
-    const link = document.querySelector('a.back-button');
+    const link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', '/some/valid/path');
-    expect(link).toHaveAttribute('target', '_self');
+    expect(link).toHaveAttribute('data-href', '/some/valid/path');
+    expect(link).toHaveAttribute('data-target', '');
   });
 
   test('should call updateLocation and return given previousLocation and homeTab values when window.name is set to a valid name and previous URL is supplied to useLocationTracker', () => {
@@ -106,9 +106,9 @@ describe('useLocationTracker tests', () => {
 
     render(<TestComponent location={path} />);
 
-    const link = document.querySelector('a.back-button');
+    const link = document.querySelector('.back-button');
 
-    expect(link).toHaveAttribute('href', path);
-    expect(link).toHaveAttribute('target', newTarget);
+    expect(link).toHaveAttribute('data-href', path);
+    expect(link).toHaveAttribute('data-target', newTarget);
   });
 });
