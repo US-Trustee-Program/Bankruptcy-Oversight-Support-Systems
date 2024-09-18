@@ -23,7 +23,7 @@ const configuration: UserGroupGatewayConfig = {
   provider: 'okta',
   url: 'http://somedomain/',
   clientId: 'clientId',
-  privateKey: 'privateKey', // pragma: allowlist secret
+  privateKey: '{}', // pragma: allowlist secret
   keyId: 'keyId',
 };
 
@@ -48,11 +48,11 @@ describe('OktaGroupGateway', () => {
       }
     });
 
-    test('unknown error on initialization', async () => {
-      // TODO: Must be able to mock the Client class from the Okta SDK
-      // const testError = 'Test Error';
-      // await expect(OktaUserGroupGateway.initialize(configuration)).rejects.toThrow(testError);
-    });
+    // test('unknown error on initialization', async () => {
+    //   // TODO: Must be able to mock the Client class from the Okta SDK
+    //   // const testError = 'Test Error';
+    //   // await expect(OktaUserGroupGateway.initialize(configuration)).rejects.toThrow(testError);
+    // });
   });
 
   describe('getUserGroups', () => {
@@ -112,22 +112,36 @@ describe('OktaGroupGateway', () => {
       name: 'cams group name',
     };
 
-    const user: User = {
-      id: 'user@nodomain.com',
-      profile: {
-        displayName: 'Abe Lincoln',
-      },
-    };
-
     test('should return a list of CamsUsers', async () => {
-      listGroupUsers.mockResolvedValue(buildMockCollection<User>([user]));
+      const user1: User = {
+        id: '00123abc',
+        profile: {
+          login: 'user@nodomain.com',
+          displayName: 'Abe Lincoln',
+        },
+      };
+
+      const user2: User = {
+        id: '99123abc',
+        profile: {
+          login: 'user2@nodomain.com',
+          firstName: 'Mary',
+          lastName: 'Lincoln',
+        },
+      };
+
+      listGroupUsers.mockResolvedValue(buildMockCollection<User>([user1, user2]));
 
       const actual = await OktaUserGroupGateway.getUserGroupUsers(configuration, camsUserGroup);
 
       const expected: CamsUserReference[] = [
         {
-          id: user.id,
-          name: user.profile.displayName,
+          id: user1.profile.login,
+          name: user1.profile.displayName,
+        },
+        {
+          id: user2.profile.login,
+          name: user2.profile.lastName + ', ' + user2.profile.firstName,
         },
       ];
       expect(actual).toEqual(expected);
