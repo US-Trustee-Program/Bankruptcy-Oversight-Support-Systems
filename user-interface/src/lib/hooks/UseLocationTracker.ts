@@ -16,7 +16,7 @@ export default function useLocationTracker() {
   const [homeTab, setHomeTab] = useState<string>(() => {
     const target = localStorage.getItem('homeTab');
 
-    return target ?? '';
+    return target ?? '_self';
   });
 
   const updateLocation = useCallback((newLocation?: string) => {
