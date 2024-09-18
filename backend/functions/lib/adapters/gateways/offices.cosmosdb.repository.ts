@@ -3,6 +3,7 @@ import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_OFFICES';
 const CONTAINER_NAME: string = 'offices';
@@ -28,8 +29,7 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const query =
-      "SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and CamsRole.TRIAL_ATTORNEY IN c.roles";
+    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ${CamsRole.TrialAttorney} IN c.roles`;
     const querySpec = {
       query,
       parameters: [
@@ -39,10 +39,6 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
         },
       ],
     };
-    try {
-      return await this.officeStaffRepo.query(context, querySpec);
-    } catch (error) {
-      // do stuff
-    }
+    return await this.officeStaffRepo.query(context, querySpec);
   }
 }
