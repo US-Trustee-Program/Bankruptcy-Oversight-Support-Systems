@@ -24,7 +24,12 @@ export default function TestComponent(props: TestComponentProps) {
 
   return (
     <div>
-      <a className="back-button" href={previousLocation} target={homeTab}>
+      <a
+        className="back-button"
+        href={previousLocation || '#'}
+        target={homeTab || '_self'}
+        rel="noopener noreferrer"
+      >
         Link
       </a>
     </div>
