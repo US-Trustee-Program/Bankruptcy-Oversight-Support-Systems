@@ -17,7 +17,9 @@ async function testOktaGroupApi() {
       console.log(`${group.name} users`, users, '\n');
     }
   } catch (error) {
-    console.error(error);
+    console.error(error, '\n');
+  } finally {
+    console.log('Done', '\n');
   }
 }
 

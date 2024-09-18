@@ -50,7 +50,7 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
       clientId: config.clientId,
       authorizationMode: 'PrivateKey',
       scopes: ['okta.groups.read'],
-      privateKey: config.privateKey,
+      privateKey: JSON.parse(config.privateKey),
       keyId: config.keyId,
     };
     if (!singleton) {
@@ -124,8 +124,10 @@ async function getUserGroupUsers(
 
     for await (const oktaUser of oktaUsers) {
       camsUserReferences.push({
-        id: oktaUser.id,
-        name: oktaUser.profile.displayName,
+        id: oktaUser.profile.login,
+        name:
+          oktaUser.profile.displayName ??
+          oktaUser.profile.lastName + ', ' + oktaUser.profile.firstName,
       });
     }
   } catch (originalError) {
