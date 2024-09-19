@@ -122,9 +122,9 @@ export function useGenericApi(): GenericApiClient {
       const body = await api.get(uriOrPathSubstring, options);
       return body as ResponseBody<T>;
     },
-    async patch<T extends object = object>(
+    async patch<T extends object = object, U extends object = object>(
       path: string,
-      body: object,
+      body: U,
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T> | void> {
       const { uriOrPathSubstring, queryParams } = justThePath(path);
@@ -135,9 +135,9 @@ export function useGenericApi(): GenericApiClient {
       }
       return responseBody as ResponseBody<T>;
     },
-    async post<T extends object = object>(
+    async post<T extends object = object, U extends object = object>(
       path: string,
-      body: object,
+      body: U,
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T> | void> {
       const { uriOrPathSubstring, queryParams } = justThePath(path);
