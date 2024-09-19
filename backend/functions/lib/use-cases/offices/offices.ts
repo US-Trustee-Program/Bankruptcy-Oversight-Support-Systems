@@ -66,6 +66,9 @@ export class OfficesUseCase {
 
       const users = await gateway.getUserGroupUsers(config, officeGroup);
       for (const user of users) {
+        if (!userMap.has(user.id)) {
+          userMap.set(user.id, user);
+        }
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
         office.staff.push(userWithRoles);
         await repository.putOfficeStaff(context, office.officeCode, userWithRoles);
