@@ -32,18 +32,19 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
     user: CamsUserReference,
   ): Promise<void> {
     const staff = createAuditRecord<OfficeStaff>({
+      id: officeCode + ':' + user.id,
       documentType: 'OFFICE_STAFF',
       officeCode,
-      ...user,
+      user,
     });
-    await this.officeStaffRepo.put(context, staff);
+    await this.officeStaffRepo.upsert(context, staff.id, officeCode, staff);
   }
 
   async getOfficeAttorneys(
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ARRAY_CONTAINS(c.roles, @role)`;
+    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ARRAY_CONTAINS(c.user.roles, @role)`;
     const querySpec = {
       query,
       parameters: [
@@ -57,6 +58,7 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
         },
       ],
     };
-    return await this.officeStaffRepo.query(context, querySpec);
+    const docs = await this.officeStaffRepo.query(context, querySpec);
+    return docs.map((doc) => doc.user);
   }
 }
