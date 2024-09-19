@@ -23,6 +23,7 @@ module.exports = {
     'lib/cosmos-humble-objects/',
     'lib/testing/mock-data/index.ts',
     'lib/testing/local-data/',
+    'lib/testing/isolated-integration/',
     'lib/testing/testing-utilities.ts',
     'jest.*config.js',
     'lib/adapters/gateways/okta/HumbleVerifier.ts',
