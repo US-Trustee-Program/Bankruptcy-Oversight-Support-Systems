@@ -60,17 +60,23 @@ export class OfficesUseCase {
     }
 
     // Write users with roles to the repo for each office.
+    const officesWithUsers: UstpOfficeDetails[] = [];
     for (const officeGroup of officeGroups) {
-      const office = groupToOfficeMap.get(officeGroup.name);
+      const office = { ...groupToOfficeMap.get(officeGroup.name) };
       const users = await gateway.getUserGroupUsers(config, officeGroup);
       for (const user of users) {
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
         repository.putOfficeStaff(context, office.officeCode, userWithRoles);
-        officeGroup.users.push(userWithRoles);
+        office.staff.push(userWithRoles);
       }
+      officesWithUsers.push(office);
     }
 
     // TODO: What to do with users with roles WITHOUT offices?
-    return officeGroups;
+    return {
+      userGroups,
+      users: [...userMap.values()],
+      officesWithUsers,
+    };
   }
 }
