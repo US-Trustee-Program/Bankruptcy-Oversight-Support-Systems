@@ -16,7 +16,7 @@ export default async function handler(
       logger,
       request,
     );
-    const officesController = new OfficesController(applicationContext);
+    const officesController = new OfficesController();
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
 
@@ -31,5 +31,5 @@ app.http('offices', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
-  route: 'offices',
+  route: 'offices/{officeCode?}/{subResource?}',
 });

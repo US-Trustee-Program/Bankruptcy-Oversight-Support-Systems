@@ -24,6 +24,6 @@ export type CasesSearchPredicate = SearchPredicate & {
   caseIds?: string[];
 };
 
-export type OrdersSearchPredicate = SearchPredicate & {
-  divisionCodes?: string[];
+export type OrdersSearchPredicate = {
+  divisionCodes: string[];
 };

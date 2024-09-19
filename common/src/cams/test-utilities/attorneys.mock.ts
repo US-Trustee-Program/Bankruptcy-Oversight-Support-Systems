@@ -18,6 +18,7 @@ const manhattanAttorneys = MockUsers.filter(
   (user) => user.user.offices[0] === MANHATTAN && user.user.roles[0] === CamsRole.TrialAttorney,
 ).map((user) => user.user);
 
+export const USTP_OFFICE_TRIAL_ATTORNEYS: AttorneyUser[] = [];
 export const TRIAL_ATTORNEYS: AttorneyUser[] = [
   ...manhattanAttorneys,
   {

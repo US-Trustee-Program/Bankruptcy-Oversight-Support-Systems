@@ -9,14 +9,13 @@ import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assig
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
-
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
 import {
   CasesRepository,
   ConsolidationOrdersRepository,
-  DocumentRepository,
+  OfficesRepository,
   OrdersGateway,
   OrdersRepository,
   RuntimeStateRepository,
@@ -29,7 +28,6 @@ import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-stat
 import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
-import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
@@ -43,6 +41,7 @@ import LocalStorageGateway from './adapters/gateways/storage/local-storage-gatew
 import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
+import { OfficesCosmosDbRepository } from './adapters/gateways/offices.cosmosdb.repository';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
@@ -118,6 +117,10 @@ export const getOfficesGateway = (
   }
 };
 
+export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
+  return new OfficesCosmosDbRepository(applicationContext);
+};
+
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
   return new OrdersCosmosDbRepository(applicationContext);
 };
@@ -136,14 +139,6 @@ export const getRuntimeStateRepository = (
   applicationContext: ApplicationContext,
 ): RuntimeStateRepository => {
   return new RuntimeStateCosmosDbRepository(applicationContext);
-};
-
-export const getCosmosDbCrudRepository = <T>(
-  context: ApplicationContext,
-  containerName: string,
-  moduleName: string,
-): DocumentRepository<T> => {
-  return new CosmosDbRepository<T>(context, containerName, moduleName);
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
