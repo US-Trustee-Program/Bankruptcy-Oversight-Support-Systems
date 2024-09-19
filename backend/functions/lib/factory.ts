@@ -9,7 +9,6 @@ import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assig
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
-
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
@@ -141,14 +140,6 @@ export const getRuntimeStateRepository = (
 ): RuntimeStateRepository => {
   return new RuntimeStateCosmosDbRepository(applicationContext);
 };
-
-// export const getCosmosDbCrudRepository = <T>(
-//   context: ApplicationContext,
-//   containerName: string,
-//   moduleName: string,
-// ): DocumentRepository<T> => {
-//   return new CosmosDbRepository<T>(context, containerName, moduleName);
-// };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
   if (context.config.authConfig.provider === 'okta') return OktaGateway;
