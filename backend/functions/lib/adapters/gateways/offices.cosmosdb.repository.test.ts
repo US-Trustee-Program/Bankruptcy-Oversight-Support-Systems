@@ -35,6 +35,8 @@ describe('offices cosmosDB repository tests', () => {
       }),
     );
     expect(querySpy.mock.calls[0][1]['query']).toContain('OFFICE_STAFF');
-    expect(querySpy.mock.calls[0][1]['query']).toContain(CamsRole.TrialAttorney);
+    expect(querySpy.mock.calls[0][1]['parameters']).toEqual(
+      expect.arrayContaining([expect.objectContaining({ value: CamsRole.TrialAttorney })]),
+    );
   });
 });
