@@ -79,6 +79,19 @@ export class CosmosDbRepository<T> implements DocumentRepository<T> {
     return this.execute<T>(context, lambdaToExecute);
   }
 
+  public async upsert(context: ApplicationContext, id: string, partitionKey: string, data: T) {
+    const lambdaToExecute = async <T>(): Promise<T> => {
+      const { resource } = await this.cosmosDbClient
+        .database(this.cosmosConfig.databaseName)
+        .container(this.containerName)
+        .items.upsert(data, { partitionKey });
+
+      context.logger.debug(this.moduleName, `${typeof data} Inserted/Updated ${id}`);
+      return resource;
+    };
+    return this.execute<T>(context, lambdaToExecute);
+  }
+
   public async put(context: ApplicationContext, data: T): Promise<T> {
     const lambdaToExecute = async <T>(): Promise<T> => {
       const { resource } = await this.cosmosDbClient
