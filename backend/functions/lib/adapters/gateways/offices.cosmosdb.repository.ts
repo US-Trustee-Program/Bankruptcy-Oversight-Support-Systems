@@ -37,7 +37,7 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
       officeCode,
       user,
     });
-    await this.officeStaffRepo.upsert(context, staff.id, officeCode, staff);
+    await this.officeStaffRepo.upsert(context, officeCode, staff);
   }
 
   async getOfficeAttorneys(

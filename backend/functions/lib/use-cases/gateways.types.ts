@@ -23,7 +23,7 @@ export interface RepositoryResource {
 export interface DocumentRepository<T extends RepositoryResource> {
   get(context: ApplicationContext, id: string, partitionKey: string): Promise<T>;
   update(context: ApplicationContext, id: string, partitionKey: string, data: T);
-  upsert(context: ApplicationContext, id: string, partitionKey: string, data: T);
+  upsert(context: ApplicationContext, partitionKey: string, data: T): Promise<T>;
   put(context: ApplicationContext, data: T): Promise<T>;
   putAll(context: ApplicationContext, list: T[]): Promise<T[]>;
   delete(context: ApplicationContext, id: string, partitionKey: string);

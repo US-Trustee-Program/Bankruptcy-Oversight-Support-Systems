@@ -31,10 +31,9 @@ export default class ConsolidationOrdersCosmosDbRepository
 
   upsert(
     _context: ApplicationContext,
-    _id: string,
     _partitionKey: string,
     _data: ConsolidationOrder,
-  ) {
+  ): Promise<ConsolidationOrder> {
     throw new Error('Method not implemented.');
   }
 
