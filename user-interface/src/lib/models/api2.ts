@@ -40,27 +40,41 @@ interface GenericApiClient {
    * This function makes assumptions about the responses to PATCH requests that do not handle
    * all possibilities according to the HTTP specifications.
    *
-   * @template {object} T
+   * @template {T extends object = object} T
+   * @template {U extends object = object} U
    * @param {string} path The path after '/api'.
-   * @param {T} body The payload for the request.
+   * @param {U} body The payload for the request.
    * @param {ObjectKeyVal} [options] Query params in the form of key/value pairs.
    * @returns {Promise<ResponseBody | void>}
    */
-  patch<T = object>(path: string, body: T, options?: ObjectKeyVal): Promise<ResponseBody<T> | void>;
+  patch<T extends object = object, U extends object = object>(
+    path: string,
+    body: U,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBody<T> | void>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
    * This function makes assumptions about the responses to POST requests that do not handle
    * all possibilities according to the HTTP specifications.
    *
-   * @template {object} T
+   * @template {T extends object = object} T
+   * @template {U extends object = object} U
    * @param {string} path The path after '/api'.
-   * @param {T} body The payload for the request.
+   * @param {U} body The payload for the request.
    * @param {ObjectKeyVal} [options] Query params in the form of key/value pairs.
    * @returns {Promise<ResponseBody | void>}
    */
-  post<T = object>(path: string, body: T, options?: ObjectKeyVal): Promise<ResponseBody<T> | void>;
-  put<T = object>(path: string, body: T, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  post<T extends object = object, U extends object = object>(
+    path: string,
+    body: U,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBody<T> | void>;
+  put<T extends object = object, U extends object = object>(
+    path: string,
+    body: U,
+    options?: ObjectKeyVal,
+  ): Promise<ResponseBody<T>>;
 }
 
 export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
@@ -108,7 +122,7 @@ export function useGenericApi(): GenericApiClient {
       const body = await api.get(uriOrPathSubstring, options);
       return body as ResponseBody<T>;
     },
-    async patch<T = object>(
+    async patch<T extends object = object>(
       path: string,
       body: object,
       options?: ObjectKeyVal,
@@ -121,7 +135,7 @@ export function useGenericApi(): GenericApiClient {
       }
       return responseBody as ResponseBody<T>;
     },
-    async post<T = object>(
+    async post<T extends object = object>(
       path: string,
       body: object,
       options?: ObjectKeyVal,
@@ -134,9 +148,9 @@ export function useGenericApi(): GenericApiClient {
       }
       return responseBody as ResponseBody<T>;
     },
-    async put<T = object>(
+    async put<T extends object = object, U extends object = object>(
       path: string,
-      body: object,
+      body: U,
       options?: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
       const { uriOrPathSubstring, queryParams } = justThePath(path);
@@ -198,19 +212,25 @@ async function getOrderSuggestions(caseId: string) {
 }
 
 async function patchTransferOrder(data: FlexibleTransferOrderAction) {
-  await api().patch<TransferOrder>(`/orders/${data.id}`, data);
+  await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
 }
 
 async function putConsolidationOrderApproval(data: ConsolidationOrderActionApproval) {
-  return api().put<ConsolidationOrder[]>('/consolidations/approve', data);
+  return api().put<ConsolidationOrder[], ConsolidationOrderActionApproval>(
+    '/consolidations/approve',
+    data,
+  );
 }
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
-  return api().put<ConsolidationOrder[]>('/consolidations/reject', data);
+  return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
+    '/consolidations/reject',
+    data,
+  );
 }
 
 async function searchCases(predicate: CasesSearchPredicate) {
-  return api().post<CaseBasics[]>('/cases', predicate);
+  return api().post<CaseBasics[], CasesSearchPredicate>('/cases', predicate);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction): Promise<void> {
