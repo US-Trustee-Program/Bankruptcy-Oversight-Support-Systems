@@ -39,7 +39,7 @@
     "@azure/identity": "$@azure/identity"
   },
   "scripts": {
-    "clean": "rm -rf ./dist & rm -rf ./node_modules & rm -rf ./coverage",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage",
     "build": "tsc --build tsconfig.build.json",
     "build-common": "pushd ../../common && npm ci && npm run build && popd",
     "watch": "tsc --project tsconfig.build.json -w",
