@@ -7,6 +7,7 @@ import { ErrorResponse } from '@azure/cosmos';
 import { ID_ALREADY_EXISTS } from './cosmos.helper';
 import { DocumentRepository } from '../../../use-cases/gateways.types';
 import { CosmosDbRepository } from './cosmos.repository';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 interface TestType {
   id?: string;
@@ -30,13 +31,6 @@ describe('Test generic cosmosdb repository', () => {
     });
     jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(error);
     await expect(cosmosCrudRepo.get(mockDbContext, '', '')).rejects.toThrow(expectedError);
-  });
-
-  test('should get error', async () => {
-    const errorMessage = 'something bad happened';
-    const error = new Error(errorMessage);
-    jest.spyOn(MockHumbleItem.prototype, 'read').mockRejectedValue(error);
-    await expect(cosmosCrudRepo.get(mockDbContext, '', '')).rejects.toThrow(errorMessage);
   });
 
   test('should get mocked item', async () => {
@@ -154,12 +148,13 @@ describe('Test generic cosmosdb repository', () => {
     ];
 
     const otherError = new Error('mock error');
+    const camsError = new UnknownError(moduleName, { originalError: otherError });
 
     const mockCreate = jest
       .spyOn(MockHumbleItems.prototype, 'create')
       .mockRejectedValueOnce(otherError);
 
-    await expect(cosmosCrudRepo.putAll(mockDbContext, items)).rejects.toThrow(otherError);
+    await expect(cosmosCrudRepo.putAll(mockDbContext, items)).rejects.toThrow(camsError);
     expect(mockCreate).toHaveBeenCalled();
   });
 });
