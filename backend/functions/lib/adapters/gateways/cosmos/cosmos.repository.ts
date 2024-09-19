@@ -5,6 +5,7 @@ import { CosmosConfig } from '../../types/database';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { isPreExistingDocumentError } from './cosmos.helper';
 import { DocumentRepository } from '../../../use-cases/gateways.types';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 export class CosmosDbRepository<T> implements DocumentRepository<T> {
   protected cosmosDbClient;
@@ -35,7 +36,7 @@ export class CosmosDbRepository<T> implements DocumentRepository<T> {
           originalError,
         });
       } else {
-        throw originalError;
+        throw new UnknownError(this.moduleName, { originalError });
       }
     }
   }
