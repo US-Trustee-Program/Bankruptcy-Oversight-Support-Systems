@@ -29,13 +29,17 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ${CamsRole.TrialAttorney} IN c.roles`;
+    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ARRAY_CONTAINS(c.roles, @role)`;
     const querySpec = {
       query,
       parameters: [
         {
           name: '@officeCode',
           value: officeCode,
+        },
+        {
+          name: '@role',
+          value: CamsRole.TrialAttorney,
         },
       ],
     };
