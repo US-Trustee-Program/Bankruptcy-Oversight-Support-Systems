@@ -62,13 +62,15 @@ export class OfficesUseCase {
     // Write users with roles to the repo for each office.
     const officesWithUsers: UstpOfficeDetails[] = [];
     for (const officeGroup of officeGroups) {
-      const office = { ...groupToOfficeMap.get(officeGroup.name) };
+      const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
+
       const users = await gateway.getUserGroupUsers(config, officeGroup);
       for (const user of users) {
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
-        repository.putOfficeStaff(context, office.officeCode, userWithRoles);
         office.staff.push(userWithRoles);
+        await repository.putOfficeStaff(context, office.officeCode, userWithRoles);
       }
+
       officesWithUsers.push(office);
     }
 
