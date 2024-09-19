@@ -80,6 +80,7 @@ export class CosmosDbRepository<T> implements DocumentRepository<T> {
   }
 
   public async upsert(context: ApplicationContext, id: string, partitionKey: string, data: T) {
+    // TODO: Consider returning the ID of the *inserted* document. Do not pass the id as a parameter.
     const lambdaToExecute = async <T>(): Promise<T> => {
       const { resource } = await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
