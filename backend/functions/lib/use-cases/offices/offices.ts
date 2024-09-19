@@ -1,8 +1,12 @@
-import { OfficeDetails } from '../../../../../common/src/cams/courts';
-import { CamsRole } from '../../../../../common/src/cams/roles';
+import { OfficeDetails, UstpOfficeDetails } from '../../../../../common/src/cams/courts';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { getOfficesGateway, getUserGroupGateway, getOfficesRepository } from '../../factory';
+import {
+  getOfficesGateway,
+  getUserGroupGateway,
+  getOfficesRepository,
+  getStorageGateway,
+} from '../../factory';
 import { AttorneyUser } from '../../../../../common/src/cams/users';
 
 export class OfficesUseCase {
@@ -19,24 +23,32 @@ export class OfficesUseCase {
     return repository.getOfficeAttorneys(context, officeCode);
   }
 
-  public async syncOfficeStaff(applicationContext: ApplicationContext): Promise<object> {
-    const results = {
-      userGroups: [],
-    };
+  public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
+    const config = context.config.userGroupGatewayConfig;
+    const repository = getOfficesRepository(context);
+    const gateway = getUserGroupGateway(context);
+    const storage = getStorageGateway(context);
 
-    const gateway = getUserGroupGateway(applicationContext);
-    // TODO: get repo gateway
+    // Get IdP to CAMS mappings.
+    const offices = storage.getUstpOffices();
+    const groupToRoleMap = storage.getRoleMapping();
+    const groupToOfficeMap = [...offices.values()].reduce((acc, office) => {
+      acc.set(office.idpGroupId, office);
+      return acc;
+    }, new Map<string, UstpOfficeDetails>());
 
-    const config = applicationContext.config.userGroupGatewayConfig;
+    // Filter out any groups not relevant to CAMS.
     const userGroups = await gateway.getUserGroups(config);
-    const userMap = new Map<string, CamsUserReference>();
+    const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
+    const roleGroups = userGroups.filter((group) => {
+      groupToRoleMap.has(group.name);
+    });
 
-    // TODO: implement the filter.
-    const roleGroups = userGroups.filter(() => true);
+    // Map roles to users.
+    const userMap = new Map<string, CamsUserReference>();
     for (const roleGroup of roleGroups) {
       const users = await gateway.getUserGroupUsers(config, roleGroup);
-      // TODO: Set the appropriate role for the group.
-      const role = CamsRole.TrialAttorney;
+      const role = groupToRoleMap.get(roleGroup.name);
       for (const user of users) {
         if (userMap.has(user.id)) {
           userMap.get(user.id).roles.push(role);
@@ -45,22 +57,20 @@ export class OfficesUseCase {
           userMap.set(user.id, user);
         }
       }
-      results.userGroups.push(roleGroup);
     }
 
-    // TODO: implement the filter.
-    const officeGroups = userGroups.filter(() => true);
+    // Write users with roles to the repo for each office.
     for (const officeGroup of officeGroups) {
-      // TODO: Map the group name to the office Id.
-      const officeId = '';
+      const office = groupToOfficeMap.get(officeGroup.name);
       const users = await gateway.getUserGroupUsers(config, officeGroup);
       for (const user of users) {
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
-        console.log(officeId, userWithRoles);
-        // TODO: Write user document to repo
+        repository.putOfficeStaff(context, office.officeCode, userWithRoles);
+        officeGroup.users.push(userWithRoles);
       }
     }
 
-    return results;
+    // TODO: What to do with users with roles WITHOUT offices?
+    return officeGroups;
   }
 }
