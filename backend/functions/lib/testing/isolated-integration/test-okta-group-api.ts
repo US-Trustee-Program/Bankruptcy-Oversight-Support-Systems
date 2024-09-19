@@ -27,7 +27,7 @@ async function testOktaGroupApi() {
     });
     const useCase = new OfficesUseCase();
     const results = await useCase.syncOfficeStaff(context);
-    console.log('syncOfficeStaff', JSON.stringify(results));
+    console.log('syncOfficeStaff', JSON.stringify(results, null, 2), '\n');
   } catch (error) {
     console.error(error, '\n');
   } finally {
