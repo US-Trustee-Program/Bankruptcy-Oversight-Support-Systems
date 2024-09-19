@@ -16,7 +16,6 @@ export default async function handler(
       logger,
       request,
     );
-    console.log(applicationContext.request.params);
     const officesController = new OfficesController();
     applicationContext.session =
       await ContextCreator.getApplicationContextSession(applicationContext);
