@@ -3,17 +3,19 @@ import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { OfficeStaff } from '../../../../../common/src/cams/staff';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_OFFICES';
 const CONTAINER_NAME: string = 'offices';
 
 export class OfficesCosmosDbRepository implements OfficesRepository {
-  private officeStaffRepo: CosmosDbRepository<CamsUserReference>;
+  private officeStaffRepo: CosmosDbRepository<OfficeStaff>;
   private officesRepo: CosmosDbRepository<UstpOfficeDetails>;
 
   constructor(context: ApplicationContext) {
-    this.officeStaffRepo = new CosmosDbRepository<CamsUserReference>(
+    this.officeStaffRepo = new CosmosDbRepository<OfficeStaff>(
       context,
       CONTAINER_NAME,
       MODULE_NAME,
@@ -23,6 +25,18 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
       CONTAINER_NAME,
       MODULE_NAME,
     );
+  }
+  async putOfficeStaff(
+    context: ApplicationContext,
+    officeCode: string,
+    user: CamsUserReference,
+  ): Promise<void> {
+    const staff = createAuditRecord<OfficeStaff>({
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...user,
+    });
+    await this.officeStaffRepo.put(context, staff);
   }
 
   async getOfficeAttorneys(

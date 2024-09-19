@@ -14,7 +14,7 @@ import {
 import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
 import { CaseDocket } from '../../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
-import { AttorneyUser } from '../../../../common/src/cams/users';
+import { AttorneyUser, CamsUserReference } from '../../../../common/src/cams/users';
 
 export interface RepositoryResource {
   id?: string;
@@ -82,6 +82,11 @@ export interface CasesRepository {
 
 export interface OfficesRepository {
   getOfficeAttorneys(context: ApplicationContext, officeCode: string): Promise<AttorneyUser[]>;
+  putOfficeStaff(
+    context: ApplicationContext,
+    officeCode: string,
+    user: CamsUserReference,
+  ): Promise<void>;
 }
 
 // TODO: Move these models to a top level models file?
