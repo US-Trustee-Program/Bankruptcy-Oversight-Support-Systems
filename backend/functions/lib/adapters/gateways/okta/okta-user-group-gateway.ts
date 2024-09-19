@@ -36,11 +36,11 @@ function validateConfiguration(config: UserGroupGatewayConfig): void {
  * Creates an Okta Client instance and retains it in module scope as a singleton.
  * Subsequent calls to initialize return the previously created instance.
  *
- * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#oauth-20-authentication
- * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#known-issues
+ * @see https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#oauth-20-authentication
+ * @see https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#known-issues
  *
- * @param config UserGroupGatewayConfig
- * @returns
+ * @param {UserGroupGatewayConfig} config
+ * @returns {Client}
  */
 export async function initialize(config: UserGroupGatewayConfig): Promise<Client> {
   validateConfiguration(config);
@@ -67,12 +67,12 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
  *
  * Retrieves a list of Okta groups and transforms them into a list of CamsUserGroup.
  *
- * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#groups
- * See: https://developer.okta.com/docs/api/
- * See: https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroups
+ * @see https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#groups
+ * @see https://developer.okta.com/docs/api/
+ * @see https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroups
  *
- * @param config UserGroupGatewayConfig
- * @returns CamsUserGroup[]
+ * @param {UserGroupGatewayConfig} config
+ * @returns {CamsUserGroup[]}
  */
 async function getUserGroups(config: UserGroupGatewayConfig): Promise<CamsUserGroup[]> {
   const camsUserGroups: CamsUserGroup[] = [];
@@ -101,13 +101,13 @@ async function getUserGroups(config: UserGroupGatewayConfig): Promise<CamsUserGr
  * Retrieves a list of Okta users for a given Okta group and transforms them
  * into a list of CamsUserReference.
  *
- * See: https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#groups
- * See: https://developer.okta.com/docs/api/
- * See: https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroupUsers
+ * @see https://github.com/okta/okta-sdk-nodejs?tab=readme-ov-file#groups
+ * @see https://developer.okta.com/docs/api/
+ * @see https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroupUsers
  *
- * @param config UserGroupGatewayConfig
- * @param group CamsUserGroup
- * @returns CamsUserReference[]
+ * @param {UserGroupGatewayConfig} config
+ * @param {CamsUserGroup} group
+ * @returns {CamsUserReference[]}
  */
 async function getUserGroupUsers(
   config: UserGroupGatewayConfig,
