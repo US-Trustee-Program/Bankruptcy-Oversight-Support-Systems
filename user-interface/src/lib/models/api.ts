@@ -57,9 +57,10 @@ export default class Api {
    * This function makes assumptions about the responses to POST requests that do not handle
    * all possibilities according to the HTTP specifications.
    *
-   * @param path string The path after '/api'.
-   * @param body object The payload for the request.
-   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   * @param {string} path The path after '/api'.
+   * @param {object} body The payload for the request.
+   * @param {ObjectKeyVal} [options] Query params in the form of key/value pairs.
+   * @returns {Promise<ResponseBody | void>}
    */
   public static async post(
     path: string,
@@ -114,9 +115,10 @@ export default class Api {
    * This function makes assumptions about the responses to PATCH requests that do not handle
    * all possibilities according to the HTTP specifications.
    *
-   * @param path string The path after '/api'.
-   * @param body object The payload for the request.
-   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   * @param {string} path The path after '/api'.
+   * @param {object} body The payload for the request.
+   * @param {ObjectKeyVal} [options] Query params in the form of key/value pairs.
+   * @returns {Promise<ResponseBody | void>}
    */
   public static async patch(
     path: string,

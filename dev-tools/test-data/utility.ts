@@ -1,9 +1,9 @@
 import { ColumnNames, TableRecordHelper } from './types';
 
 /**
- * Quick and dirty assert function.
- * @param condition results of some evaluation
- * @param message a message to use in a thrown Error
+ * Throws a new error with the provided message if condition evaluates to false.
+ * @param {boolean} condition results of some evaluation
+ * @param {string} [message='Assertion failed.'] a message to use in a thrown Error
  */
 export function assert(condition: boolean, message: string = 'Assertion failed.') {
   if (!condition) {

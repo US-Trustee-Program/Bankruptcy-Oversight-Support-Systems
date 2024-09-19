@@ -40,31 +40,27 @@ interface GenericApiClient {
    * This function makes assumptions about the responses to PATCH requests that do not handle
    * all possibilities according to the HTTP specifications.
    *
-   * @param path string The path after '/api'.
-   * @param body object The payload for the request.
-   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   * @template {object} T
+   * @param {string} path The path after '/api'.
+   * @param {T} body The payload for the request.
+   * @param {ObjectKeyVal} [options] Query params in the form of key/value pairs.
+   * @returns {Promise<ResponseBody | void>}
    */
-  patch<T = object>(
-    path: string,
-    body: object,
-    options?: ObjectKeyVal,
-  ): Promise<ResponseBody<T> | void>;
+  patch<T = object>(path: string, body: T, options?: ObjectKeyVal): Promise<ResponseBody<T> | void>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
    * This function makes assumptions about the responses to POST requests that do not handle
    * all possibilities according to the HTTP specifications.
    *
-   * @param path string The path after '/api'.
-   * @param body object The payload for the request.
-   * @param options ObjectKeyVal Query params in the form of key/value pairs.
+   * @template {object} T
+   * @param {string} path The path after '/api'.
+   * @param {T} body The payload for the request.
+   * @param {ObjectKeyVal} [options] Query params in the form of key/value pairs.
+   * @returns {Promise<ResponseBody | void>}
    */
-  post<T = object>(
-    path: string,
-    body: object,
-    options?: ObjectKeyVal,
-  ): Promise<ResponseBody<T> | void>;
-  put<T = object>(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  post<T = object>(path: string, body: T, options?: ObjectKeyVal): Promise<ResponseBody<T> | void>;
+  put<T = object>(path: string, body: T, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 }
 
 export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
