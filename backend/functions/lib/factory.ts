@@ -30,7 +30,7 @@ import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repo
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { CosmosDbRepository } from './adapters/gateways/cosmos/cosmos.repository';
-import { OpenIdConnectGateway } from './adapters/types/authorization';
+import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
 import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
@@ -43,6 +43,7 @@ import LocalStorageGateway from './adapters/gateways/storage/local-storage-gatew
 import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
+import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -166,4 +167,8 @@ export const getUserSessionCacheRepository = (
 
 export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
   return LocalStorageGateway;
+};
+
+export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGateway => {
+  return OktaUserGroupGateway;
 };

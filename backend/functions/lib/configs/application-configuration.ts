@@ -1,8 +1,9 @@
 import * as dotenv from 'dotenv';
 import { ServerType } from '../adapters/types/basic';
 import { CosmosConfig, IDbConfig } from '../adapters/types/database';
-import { AuthorizationConfig } from '../adapters/types/authorization';
+import { AuthorizationConfig, UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { getAuthorizationConfig } from './authorization-configuration';
+import { getUserGroupGatewayConfig } from './user-groups-gateway-configuration';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ export class ApplicationConfiguration {
   public readonly cosmosConfig: CosmosConfig;
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
+  public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -21,6 +23,7 @@ export class ApplicationConfiguration {
     this.cosmosConfig = this.getCosmosConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
+    this.userGroupGatewayConfig = getUserGroupGatewayConfig();
   }
 
   private getAppServerConfig(): ServerType {

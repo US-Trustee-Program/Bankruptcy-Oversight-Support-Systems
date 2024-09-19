@@ -14,3 +14,9 @@ export type CamsUser = CamsUserReference & {
 export type AttorneyUser = CamsUser & {
   caseLoad?: number;
 };
+
+export type CamsUserGroup = {
+  id: string;
+  name: string;
+  users?: CamsUser[];
+};
