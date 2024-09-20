@@ -2,7 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 import CaseDetailOverview, { CaseDetailOverviewProps } from './CaseDetailOverview';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { Consolidation, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';

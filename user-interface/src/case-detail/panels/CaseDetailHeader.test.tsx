@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import CaseDetailHeader, { copyCaseNumber } from './CaseDetailHeader';
+import CaseDetailHeader from './CaseDetailHeader';
 import CaseDetailScreen from '../CaseDetailScreen';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
 import { MockInstance } from 'vitest';
+import { copyCaseNumber } from '@/lib/utils/caseNumber';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(

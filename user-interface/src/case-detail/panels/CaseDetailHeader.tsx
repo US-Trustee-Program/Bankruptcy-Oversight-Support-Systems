@@ -1,16 +1,9 @@
 import './CaseDetailHeader.scss';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import { CaseDetail } from '@common/cams/cases';
 import Icon from '@/lib/components/uswds/Icon';
-
-export function copyCaseNumber(caseId: string | undefined): void {
-  const CASE_ID_PATTERN = /^\d{3}-\d{2}-\d{5}$/;
-  if (caseId && CASE_ID_PATTERN.test(caseId)) {
-    navigator.clipboard.writeText(caseId);
-  }
-}
+import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;

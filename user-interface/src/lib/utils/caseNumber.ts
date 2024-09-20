@@ -6,3 +6,10 @@ export function getCaseNumber(caseId: string | undefined): string {
   }
   return '';
 }
+
+export function copyCaseNumber(caseId: string | undefined): void {
+  const CASE_ID_PATTERN = /^\d{3}-\d{2}-\d{5}$/;
+  if (caseId && CASE_ID_PATTERN.test(caseId)) {
+    navigator.clipboard.writeText(caseId);
+  }
+}

@@ -9,7 +9,7 @@ import {
 import { BrowserRouter } from 'react-router-dom';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseAssignment } from '@common/cams/assignments';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseSummary } from '@common/cams/cases';
 import { Consolidation } from '@common/cams/events';
 import Api2 from '@/lib/models/api2';

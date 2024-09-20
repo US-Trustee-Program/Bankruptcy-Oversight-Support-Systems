@@ -1,4 +1,4 @@
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';

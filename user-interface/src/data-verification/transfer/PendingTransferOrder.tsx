@@ -12,7 +12,7 @@ import {
   TransferConfirmationModalImperative,
 } from './TransferConfirmationModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { OfficeDetails } from '@common/cams/courts';
 import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';

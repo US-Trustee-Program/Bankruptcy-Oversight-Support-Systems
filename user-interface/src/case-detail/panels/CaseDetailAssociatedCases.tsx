@@ -4,7 +4,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import './CaseDetailAssociatedCases.scss';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export interface CaseDetailAssociatedCasesProps {
