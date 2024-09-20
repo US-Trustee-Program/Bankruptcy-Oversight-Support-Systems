@@ -201,11 +201,12 @@ function getCaseDetail(
 }
 
 /**
- * @param data T required There is no simple way to determine what type T is and generate
+ * @param {T} data There is no simple way to determine what type T is and generate
  *  random data accordingly, so it is required to provide it. We could modify to behave like
  *  buildArray does and accept a function from here as well, but it should verify the type
  *  is correct if we do that.
- * @param self String optional The URI for the resource being mocked
+ * @param {String} [self='some-url'] The URI for the resource being mocked
+ * @returns {ResponseBody<T>}
  */
 function getNonPaginatedResponseBody<T>(data: T, self: string = 'some-url'): ResponseBody<T> {
   return {
@@ -217,11 +218,11 @@ function getNonPaginatedResponseBody<T>(data: T, self: string = 'some-url'): Res
 }
 
 /**
- * @param data T required There is no simple way to determine what type T is and generate
+ * @param {T} data There is no simple way to determine what type T is and generate
  *  random data accordingly, so it is required to provide it. We could modify to behave like
- *  buildArray does and accept a function from here as well, but it should verify the type
+ *  `buildArray` does and accept a function from here as well, but it should verify the type
  *  is correct if we do that.
- * @param options Options<WithPagination> optional Provide an object like the following:
+ * @param {Options<Pagination>} [options={ override: {} }] Provide an object like the following:
  *  {
  *    entityType?: 'company' | 'person',
  *    override?: {
@@ -232,7 +233,8 @@ function getNonPaginatedResponseBody<T>(data: T, self: string = 'some-url'): Res
  *      currentPage?: number
  *    }
  *  }
- * @param self String optional The URI for the resource being mocked
+ * @param {String} [self='some-url'] The URI for the resource being mocked
+ * @returns {ResponseBody<T>}
  */
 function getPaginatedResponseBody<T>(
   data: T,
