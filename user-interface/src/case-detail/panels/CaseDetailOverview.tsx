@@ -323,7 +323,6 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                     className="case-detail-item-value"
                     data-testid={`case-detail-consolidation-order`}
                   >
-                    {/* This order date is not likely the correct one.  Clarification from Phoenix has been requested */}
                     {formatDate(caseDetail.consolidation[0].orderDate)}
                   </span>
                 </div>
