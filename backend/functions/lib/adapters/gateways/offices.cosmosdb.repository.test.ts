@@ -1,11 +1,10 @@
 import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
-import { OfficesCosmosDbRepository } from './offices.cosmosdb.repository';
+import { OfficesCosmosDbRepository, OfficeStaff } from './offices.cosmosdb.repository';
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { OfficeStaff } from '../../../../../common/src/cams/staff';
 import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
@@ -35,6 +34,7 @@ describe('offices cosmosDB repository tests', () => {
         ...user,
         updatedOn: '2024-10-01T00:00:00.000Z',
         updatedBy: SYSTEM_USER_REFERENCE,
+        ttl: 100,
       };
     });
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({ resources: staffDocs });
