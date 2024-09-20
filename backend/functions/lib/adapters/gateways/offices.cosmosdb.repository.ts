@@ -6,6 +6,7 @@ import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
 import { OfficeStaff } from '../../../../../common/src/cams/staff';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_OFFICES';
 const CONTAINER_NAME: string = 'offices';
@@ -32,10 +33,10 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
     user: CamsUserReference,
   ): Promise<void> {
     const staff = createAuditRecord<OfficeStaff>({
-      id: officeCode + ':' + user.id,
+      id: user.id,
       documentType: 'OFFICE_STAFF',
       officeCode,
-      user,
+      ...user,
     });
     await this.officeStaffRepo.upsert(context, officeCode, staff);
   }
@@ -44,7 +45,7 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ARRAY_CONTAINS(c.user.roles, @role)`;
+    const query = `SELECT * FROM c WHERE c.officeCode = @officeCode and c.documentType = 'OFFICE_STAFF' and ARRAY_CONTAINS(c.roles, @role)`;
     const querySpec = {
       query,
       parameters: [
@@ -59,6 +60,6 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
       ],
     };
     const docs = await this.officeStaffRepo.query(context, querySpec);
-    return docs.map((doc) => doc.user);
+    return docs.map((doc) => getCamsUserReference(doc));
   }
 }

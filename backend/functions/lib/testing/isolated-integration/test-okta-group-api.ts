@@ -27,6 +27,13 @@ async function testOktaGroupApi() {
     });
     const useCase = new OfficesUseCase();
     const results = await useCase.syncOfficeStaff(context);
+
+    const attorneys = await useCase.getOfficeAttorneys(
+      context,
+      'USTP_CAMS_Region_2_Office_Manhattan',
+    );
+    console.log('attorneys', attorneys, '\n');
+
     console.log('syncOfficeStaff', JSON.stringify(results, null, 2), '\n');
   } catch (error) {
     console.error(error, '\n');
