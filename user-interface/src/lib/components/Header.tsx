@@ -58,8 +58,8 @@ export const Header = () => {
       <Banner></Banner>
       <div className="usa-overlay"></div>
       <header role="banner" className="cams-header usa-header usa-header--basic">
-        <div className="usa-nav-container">
-          <div className="usa-navbar">
+        <div className="cams-header-contents">
+          <div className="cams-logo-and-title">
             <div className="cams-logo usa-logo">
               <img
                 src="/doj-logo.png"
@@ -67,88 +67,91 @@ export const Header = () => {
                 className="doj-logo usa-banner__header"
               ></img>
             </div>
-            <button type="button" className="usa-menu-btn">
-              Menu
-            </button>
+            <div className="site-title">
+              <span className="text-no-wrap">U.S. Trustee Program</span>
+              <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
+            </div>
           </div>
-          <div className="site-title">
-            <span className="text-no-wrap">U.S. Trustee Program</span>
-            <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
-          </div>
-          <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
-            <button type="button" className="usa-nav__close">
-              <img src="/assets/img/usa-icons/close.svg" role="img" alt="Close" />
-            </button>
-            <ul className="usa-nav__primary usa-accordion">
-              <li className="usa-nav__primary-item">
-                <NavLink
-                  to="/my-cases"
-                  data-testid="header-my-cases-link"
-                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
-                  onClick={() => {
-                    return setActiveNav(NavState.MY_CASES);
-                  }}
-                  title="view a list of cases assigned to your account"
-                >
-                  My Cases
-                </NavLink>
-              </li>
 
-              {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
-                <li className="usa-nav__primary-item">
-                  <NavLink
-                    to="/staff-assignment"
-                    data-testid="header-staff-assignment-link"
-                    className={
-                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
-                    }
-                    onClick={() => {
-                      return setActiveNav(NavState.STAFF_ASSIGNMENT);
-                    }}
-                    title="view or edit staff assignments for cases"
-                  >
-                    Staff Assignment
-                  </NavLink>
-                </li>
-              )}
-
-              {session &&
-                session.user.roles?.includes(CamsRole.DataVerifier) &&
-                transferOrdersFlag && (
+          <div className="usa-nav-container">
+            <div className="usa-navbar">
+              <nav
+                aria-label="Primary navigation"
+                className="usa-nav cams-nav-bar"
+                role="navigation"
+              >
+                <ul className="usa-nav__primary">
                   <li className="usa-nav__primary-item">
                     <NavLink
-                      to="/data-verification"
-                      data-testid="header-data-verification-link"
-                      className={
-                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
-                      }
+                      to="/my-cases"
+                      data-testid="header-my-cases-link"
+                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
                       onClick={() => {
-                        return setActiveNav(NavState.DATA_VERIFICATION);
+                        return setActiveNav(NavState.MY_CASES);
                       }}
-                      title="view status of, approve, or reject case events"
+                      title="view a list of cases assigned to your account"
                     >
-                      Data Verification
+                      My Cases
                     </NavLink>
                   </li>
-                )}
 
-              {caseSearchFlag && (
-                <li className="usa-nav__primary-item">
-                  <NavLink
-                    to="/search"
-                    data-testid="header-search-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                    onClick={() => {
-                      return setActiveNav(NavState.SEARCH);
-                    }}
-                    title="search for cases"
-                  >
-                    Case Search
-                  </NavLink>
-                </li>
-              )}
-            </ul>
-          </nav>
+                  {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
+                    <li className="usa-nav__primary-item">
+                      <NavLink
+                        to="/staff-assignment"
+                        data-testid="header-staff-assignment-link"
+                        className={
+                          'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
+                        }
+                        onClick={() => {
+                          return setActiveNav(NavState.STAFF_ASSIGNMENT);
+                        }}
+                        title="view or edit staff assignments for cases"
+                      >
+                        Staff Assignment
+                      </NavLink>
+                    </li>
+                  )}
+
+                  {session &&
+                    session.user.roles?.includes(CamsRole.DataVerifier) &&
+                    transferOrdersFlag && (
+                      <li className="usa-nav__primary-item">
+                        <NavLink
+                          to="/data-verification"
+                          data-testid="header-data-verification-link"
+                          className={
+                            'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                          }
+                          onClick={() => {
+                            return setActiveNav(NavState.DATA_VERIFICATION);
+                          }}
+                          title="view status of, approve, or reject case events"
+                        >
+                          Data Verification
+                        </NavLink>
+                      </li>
+                    )}
+
+                  {caseSearchFlag && (
+                    <li className="usa-nav__primary-item">
+                      <NavLink
+                        to="/search"
+                        data-testid="header-search-link"
+                        className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                        onClick={() => {
+                          return setActiveNav(NavState.SEARCH);
+                        }}
+                        title="search for cases"
+                      >
+                        Case Search
+                      </NavLink>
+                    </li>
+                  )}
+                </ul>
+              </nav>
+            </div>
+          </div>
         </div>
       </header>
     </>
