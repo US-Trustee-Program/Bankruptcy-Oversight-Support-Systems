@@ -127,7 +127,7 @@ describe('Case Detail screen tests', () => {
         expect(title.innerHTML).toEqual(expectedTitle);
 
         const caseNumber = document.querySelector('.case-number');
-        expect(caseNumber?.innerHTML).toEqual(caseId);
+        expect(caseNumber?.textContent?.trim()).toEqual(caseId);
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
         expect(dateFiled).toHaveTextContent('Filed');

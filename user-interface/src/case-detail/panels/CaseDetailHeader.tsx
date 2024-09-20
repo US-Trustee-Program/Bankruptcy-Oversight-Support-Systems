@@ -3,6 +3,14 @@ import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import { CaseDetail } from '@common/cams/cases';
+import Icon from '@/lib/components/uswds/Icon';
+
+export function copyCaseNumber(caseId: string | undefined): void {
+  const CASE_ID_PATTERN = /^\d{3}-\d{2}-\d{5}$/;
+  if (caseId && CASE_ID_PATTERN.test(caseId)) {
+    navigator.clipboard.writeText(caseId);
+  }
+}
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -32,6 +40,22 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       }
     }
   };
+
+  function printCaseIdHeader() {
+    return (
+      <h2 className="case-number text-no-wrap" title="Case Number">
+        {props.caseId}{' '}
+        <button
+          id="header-case-id"
+          className="usa-button usa-button--unstyled"
+          onClick={() => copyCaseNumber(props.caseId)}
+          title="Copy Case Id to clipboard"
+        >
+          <Icon name={'content_copy'}></Icon>
+        </button>
+      </h2>
+    );
+  }
 
   useEffect(() => {
     if (!props.isLoading && appEl && camsHeader) {
@@ -116,11 +140,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           {props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="loading-h2">
               <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <h2 className="case-number text-no-wrap" title="Case Number">
-                  {props.caseId}
-                </h2>
-              </div>
+              <div className="grid-col-10">{printCaseIdHeader()}</div>
               <div className="grid-col-1"></div>
             </div>
           )}
@@ -128,11 +148,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
           {!props.isLoading && (
             <div className="grid-row grid-gap-lg" data-testid="h2-with-case-info">
               <div className="grid-col-1"></div>
-              <div className="grid-col-2">
-                <h2 className="case-number text-no-wrap" title="Case Number">
-                  {props.caseId}
-                </h2>
-              </div>
+              <div className="grid-col-2">{printCaseIdHeader()}</div>
               <div className="grid-col-5">
                 <h2
                   className="court-name"
