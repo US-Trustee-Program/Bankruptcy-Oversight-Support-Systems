@@ -3,17 +3,20 @@ import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { OfficeStaff } from '../../../../../common/src/cams/staff';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_OFFICES';
 const CONTAINER_NAME: string = 'offices';
 
 export class OfficesCosmosDbRepository implements OfficesRepository {
-  private officeStaffRepo: CosmosDbRepository<CamsUserReference>;
+  private officeStaffRepo: CosmosDbRepository<OfficeStaff>;
   private officesRepo: CosmosDbRepository<UstpOfficeDetails>;
 
   constructor(context: ApplicationContext) {
-    this.officeStaffRepo = new CosmosDbRepository<CamsUserReference>(
+    this.officeStaffRepo = new CosmosDbRepository<OfficeStaff>(
       context,
       CONTAINER_NAME,
       MODULE_NAME,
@@ -23,6 +26,19 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
       CONTAINER_NAME,
       MODULE_NAME,
     );
+  }
+  async putOfficeStaff(
+    context: ApplicationContext,
+    officeCode: string,
+    user: CamsUserReference,
+  ): Promise<void> {
+    const staff = createAuditRecord<OfficeStaff>({
+      id: user.id,
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...user,
+    });
+    await this.officeStaffRepo.upsert(context, officeCode, staff);
   }
 
   async getOfficeAttorneys(
@@ -43,6 +59,7 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
         },
       ],
     };
-    return await this.officeStaffRepo.query(context, querySpec);
+    const docs = await this.officeStaffRepo.query(context, querySpec);
+    return docs.map((doc) => getCamsUserReference(doc));
   }
 }

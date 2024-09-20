@@ -29,6 +29,14 @@ export default class ConsolidationOrdersCosmosDbRepository
     throw new Error('Method not implemented.');
   }
 
+  upsert(
+    _context: ApplicationContext,
+    _partitionKey: string,
+    _data: ConsolidationOrder,
+  ): Promise<ConsolidationOrder> {
+    throw new Error('Method not implemented.');
+  }
+
   put(context: ApplicationContext, data: ConsolidationOrder): Promise<ConsolidationOrder> {
     return this.repo.put(context, data);
     throw new Error('Method not implemented.');
