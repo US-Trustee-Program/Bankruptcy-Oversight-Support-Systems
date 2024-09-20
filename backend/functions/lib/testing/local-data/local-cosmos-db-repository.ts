@@ -17,6 +17,10 @@ export class LocalCosmosDbRepository<T extends Item> implements DocumentReposito
     throw new Error('Method not implemented.');
   }
 
+  upsert(_context: ApplicationContext, _partitionKey: string, _data: T): Promise<T> {
+    throw new Error('Method not implemented.');
+  }
+
   async put(_context: ApplicationContext, data: T): Promise<T> {
     const doc: T = { ...data, id: crypto.randomUUID() };
     this.container.push(doc);
