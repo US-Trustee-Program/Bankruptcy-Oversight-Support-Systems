@@ -5,7 +5,7 @@ import { Timer } from '@azure/functions';
 import { createMockAzureFunctionContext } from '../azure/testing-helpers';
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 
-describe('Order Sync Function tests', () => {
+describe('Orders Sync Function tests', () => {
   const context = createMockAzureFunctionContext();
   const timer: Timer = {
     isPastDue: false,
@@ -19,7 +19,7 @@ describe('Order Sync Function tests', () => {
     },
   };
 
-  test('Should call offices controller method handleTimer', async () => {
+  test('Should call orders controller method handleTimer', async () => {
     const handleTimer = jest
       .spyOn(OrdersController.prototype, 'handleTimer')
       .mockImplementation(() => Promise.resolve());
