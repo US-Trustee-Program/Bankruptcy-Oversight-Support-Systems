@@ -3,17 +3,25 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsController } from '../controller';
+import { CamsController, CamsTimerController } from '../controller';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 
-export class OfficesController implements CamsController {
+export class OfficesController implements CamsController, CamsTimerController {
   private readonly useCase: OfficesUseCase;
 
   constructor() {
     this.useCase = new OfficesUseCase();
+  }
+
+  public async handleTimer(context: ApplicationContext): Promise<void> {
+    try {
+      await this.useCase.syncOfficeStaff(context);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   public async handleRequest(

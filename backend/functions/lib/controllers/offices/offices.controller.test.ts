@@ -4,9 +4,11 @@ import { OfficesController } from './offices.controller';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 let getOffices = jest.fn();
 let getOfficeAttorneys = jest.fn();
+const syncOfficeStaff = jest.fn();
 
 jest.mock('../../use-cases/offices/offices', () => {
   return {
@@ -14,6 +16,7 @@ jest.mock('../../use-cases/offices/offices', () => {
       return {
         getOffices,
         getOfficeAttorneys,
+        syncOfficeStaff,
       };
     }),
   };
@@ -28,6 +31,20 @@ describe('offices controller tests', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  test('should return successful when handleTimer is called', async () => {
+    const controller = new OfficesController();
+    await expect(controller.handleTimer(applicationContext)).resolves.toBeFalsy();
+    expect(syncOfficeStaff).toHaveBeenCalled();
+  });
+
+  test('should throw error when handleTimer throws', async () => {
+    const error = new UnknownError('TEST_MODULE');
+    syncOfficeStaff.mockRejectedValue(error);
+    const controller = new OfficesController();
+    await expect(controller.handleTimer(applicationContext)).rejects.toThrow(error);
+    expect(syncOfficeStaff).toHaveBeenCalled();
   });
 
   test('should return successful response', async () => {
