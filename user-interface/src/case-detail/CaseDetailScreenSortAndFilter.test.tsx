@@ -96,7 +96,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(searchInput).toBeInTheDocument();
       });
 
-      const basicInfoLink = screen.getByTestId('basic-info-link');
+      const basicInfoLink = screen.getByTestId('case-overview-link');
       fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
@@ -139,7 +139,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(searchInput).toBeInTheDocument();
       });
 
-      const basicInfoLink = screen.getByTestId('basic-info-link');
+      const basicInfoLink = screen.getByTestId('case-overview-link');
       fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
@@ -183,7 +183,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(filterSelectElement).toBeInTheDocument();
       });
 
-      const basicInfoLink = screen.getByTestId('basic-info-link');
+      const basicInfoLink = screen.getByTestId('case-overview-link');
       fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
         filterSelectElement = document.querySelector(filterSelectClass);
@@ -220,7 +220,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(filterSelectElement).toBeInTheDocument();
       });
 
-      const basicInfoLink = screen.getByTestId('basic-info-link');
+      const basicInfoLink = screen.getByTestId('case-overview-link');
       fireEvent.click(basicInfoLink as Element);
       await waitFor(() => {
         filterSelectElement = document.querySelector(filterSelectClass);

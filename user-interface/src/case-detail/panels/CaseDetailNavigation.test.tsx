@@ -6,19 +6,19 @@ describe('Navigation tests', () => {
   const activeNavClass = 'usa-current';
 
   test(`should return ${activeNavClass} when the activeNav equals the stateToCheck`, () => {
-    const result = setCurrentNav(NavState.BASIC_INFO, NavState.BASIC_INFO);
+    const result = setCurrentNav(NavState.CASE_OVERVIEW, NavState.CASE_OVERVIEW);
 
     expect(result).toEqual(activeNavClass);
   });
 
   test('should return an empty string when the activeNav does not equal the stateToCheck', () => {
-    const result = setCurrentNav(NavState.BASIC_INFO, NavState.COURT_DOCKET);
+    const result = setCurrentNav(NavState.CASE_OVERVIEW, NavState.COURT_DOCKET);
 
     expect(result).toEqual('');
   });
 
   test.each([
-    ['basic-info-link'],
+    ['case-overview-link'],
     ['court-docket-link'],
     ['audit-history-link'],
     ['associated-cases-link'],
@@ -27,7 +27,7 @@ describe('Navigation tests', () => {
       <BrowserRouter>
         <CaseDetailNavigation
           caseId="12345"
-          initiallySelectedNavLink={NavState.BASIC_INFO}
+          initiallySelectedNavLink={NavState.CASE_OVERVIEW}
           showAssociatedCasesList={true}
         />
       </BrowserRouter>,
@@ -45,10 +45,10 @@ describe('Navigation tests', () => {
     });
   });
 
-  test(`mapNavState should return ${NavState.BASIC_INFO} when the url does not contain a path after the case number`, () => {
+  test(`mapNavState should return ${NavState.CASE_OVERVIEW} when the url does not contain a path after the case number`, () => {
     const result = mapNavState('case-detail/1234');
 
-    expect(result).toEqual(NavState.BASIC_INFO);
+    expect(result).toEqual(NavState.CASE_OVERVIEW);
   });
 
   test(`mapNavState should return ${NavState.COURT_DOCKET} when the url path contains 'court-docket' after the case number`, () => {

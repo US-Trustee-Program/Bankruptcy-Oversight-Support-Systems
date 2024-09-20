@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';

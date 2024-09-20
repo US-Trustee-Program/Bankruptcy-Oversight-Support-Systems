@@ -82,7 +82,11 @@ describe('MyCasesScreen', () => {
     });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
-    render(<MyCasesScreen></MyCasesScreen>);
+    render(
+      <BrowserRouter>
+        <MyCasesScreen></MyCasesScreen>
+      </BrowserRouter>,
+    );
 
     const body = document.querySelector('body');
     expect(body).toHaveTextContent('Invalid user expectation');

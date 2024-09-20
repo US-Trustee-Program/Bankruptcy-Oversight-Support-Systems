@@ -26,7 +26,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
-const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailBasicInfo'));
+const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailOverview'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
 
 type SortDirection = 'Oldest' | 'Newest';

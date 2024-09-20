@@ -10,7 +10,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { OfficeDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';

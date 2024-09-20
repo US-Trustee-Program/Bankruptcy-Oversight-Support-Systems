@@ -12,6 +12,7 @@ import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('StaffAssignmentScreen', () => {
   test('should render a list of cases assigned to a case assignment manager', async () => {
@@ -39,7 +40,11 @@ describe('StaffAssignmentScreen', () => {
       .spyOn(staffAssignmentRow, 'StaffAssignmentRow')
       .mockReturnValue(<></>);
 
-    render(<StaffAssignmentScreen></StaffAssignmentScreen>);
+    render(
+      <BrowserRouter>
+        <StaffAssignmentScreen></StaffAssignmentScreen>
+      </BrowserRouter>,
+    );
 
     expect(SearchResults).toHaveBeenCalledWith(
       {
@@ -62,7 +67,11 @@ describe('StaffAssignmentScreen', () => {
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
     const alertSpy = testingUtilities.spyOnGlobalAlert();
-    render(<StaffAssignmentScreen></StaffAssignmentScreen>);
+    render(
+      <BrowserRouter>
+        <StaffAssignmentScreen></StaffAssignmentScreen>
+      </BrowserRouter>,
+    );
 
     expect(alertSpy.error).toHaveBeenCalledWith('Invalid Permissions');
   });
@@ -71,7 +80,11 @@ describe('StaffAssignmentScreen', () => {
     testingUtilities.setUser({ offices: undefined, roles: [CamsRole.CaseAssignmentManager] });
     const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
 
-    render(<StaffAssignmentScreen></StaffAssignmentScreen>);
+    render(
+      <BrowserRouter>
+        <StaffAssignmentScreen></StaffAssignmentScreen>
+      </BrowserRouter>,
+    );
 
     expect(SearchResults).toHaveBeenCalledWith(
       {

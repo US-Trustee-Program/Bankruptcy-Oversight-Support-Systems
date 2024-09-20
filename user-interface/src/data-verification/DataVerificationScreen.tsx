@@ -51,6 +51,7 @@ export default function DataVerificationScreen() {
 
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
+
   const regionNumber = '02';
 
   const api = useApi2();

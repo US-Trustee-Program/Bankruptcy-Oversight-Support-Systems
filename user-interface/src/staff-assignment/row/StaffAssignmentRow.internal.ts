@@ -2,7 +2,7 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import Actions from '@common/cams/actions';
 import { CallbackProps } from '../modal/AssignAttorneyModal';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { AttorneyUser } from '@common/cams/users';
 import { CaseBasics } from '@common/cams/cases';
 import { useState } from '@/lib/hooks/UseState';

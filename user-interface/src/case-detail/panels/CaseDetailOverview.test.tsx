@@ -1,8 +1,8 @@
 import { BrowserRouter } from 'react-router-dom';
-import CaseDetailBasicInfo, { CaseDetailBasicInfoProps } from './CaseDetailBasicInfo';
+import CaseDetailOverview, { CaseDetailOverviewProps } from './CaseDetailOverview';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { Consolidation, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -68,8 +68,8 @@ describe('Case detail basic information panel', () => {
   };
   vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
 
-  function renderWithProps(props?: Partial<CaseDetailBasicInfoProps>) {
-    const defaultProps: CaseDetailBasicInfoProps = {
+  function renderWithProps(props?: Partial<CaseDetailOverviewProps>) {
+    const defaultProps: CaseDetailOverviewProps = {
       caseDetail: BASE_TEST_CASE_DETAIL,
       showReopenDate: false,
       onCaseAssignment: vi.fn(),
@@ -78,7 +78,7 @@ describe('Case detail basic information panel', () => {
     const renderProps = { ...defaultProps, ...props };
     render(
       <BrowserRouter>
-        <CaseDetailBasicInfo {...renderProps} />
+        <CaseDetailOverview {...renderProps} />
       </BrowserRouter>,
     );
   }
