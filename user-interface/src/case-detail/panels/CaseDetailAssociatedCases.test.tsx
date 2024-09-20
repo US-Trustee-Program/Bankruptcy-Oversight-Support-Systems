@@ -4,7 +4,7 @@ import CaseDetailAssociatedCases from './CaseDetailAssociatedCases';
 import { ConsolidationFrom, ConsolidationTo, EventCaseReference } from '@common/cams/events';
 import { ConsolidationType } from '@common/cams/orders';
 import { BrowserRouter } from 'react-router-dom';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 
 function getAssociatedCasesMock(caseId: string, consolidationType: ConsolidationType) {

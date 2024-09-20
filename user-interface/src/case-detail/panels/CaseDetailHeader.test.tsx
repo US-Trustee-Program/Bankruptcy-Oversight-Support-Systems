@@ -3,20 +3,24 @@ import { BrowserRouter } from 'react-router-dom';
 import CaseDetailHeader from './CaseDetailHeader';
 import CaseDetailScreen from '../CaseDetailScreen';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { ResourceActions } from '@common/cams/actions';
+import { CaseDetail } from '@common/cams/cases';
+import { MockInstance } from 'vitest';
+import { copyCaseNumber } from '@/lib/utils/caseNumber';
+
+function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
+  render(
+    <BrowserRouter>
+      <CaseDetailHeader caseDetail={caseDetail} isLoading={isLoading} caseId={caseDetail.caseId} />
+    </BrowserRouter>,
+  );
+}
 
 describe('Case Detail Header tests', () => {
   const testCaseDetail = MockData.getCaseDetail();
 
   test('should render loading info when isLoading is true', () => {
-    render(
-      <BrowserRouter>
-        <CaseDetailHeader
-          caseDetail={testCaseDetail}
-          isLoading={true}
-          caseId={testCaseDetail.caseId}
-        />
-      </BrowserRouter>,
-    );
+    basicRender(testCaseDetail, true);
 
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
     const isLoadingH2 = screen.getByTestId('loading-h2');
@@ -26,21 +30,15 @@ describe('Case Detail Header tests', () => {
   });
 
   test('should render case detail info when isLoading is false', () => {
-    render(
-      <BrowserRouter>
-        <CaseDetailHeader
-          caseDetail={testCaseDetail}
-          isLoading={false}
-          caseId={testCaseDetail.caseId}
-        />
-      </BrowserRouter>,
-    );
+    basicRender(testCaseDetail, false);
 
     const isLoadingH1 = screen.getByTestId('case-detail-heading');
+    const isLoadingH2 = screen.getByTestId('case-detail-heading-title');
     const isFinishedH2 = screen.getByTestId('h2-with-case-info');
     const caseChapter = screen.getByTestId('case-chapter');
 
-    expect(isLoadingH1).toContainHTML(testCaseDetail.caseTitle);
+    expect(isLoadingH1).toContainHTML('Case Detail');
+    expect(isLoadingH2).toContainHTML(testCaseDetail.caseTitle);
     expect(isFinishedH2).toBeInTheDocument();
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter&nbsp;${testCaseDetail.chapter}`,
@@ -65,11 +63,15 @@ describe('Case Detail Header tests', () => {
     const app = await screen.findByTestId('app-component-test-id');
     await waitFor(
       async () => {
-        const title = await screen.findByTestId('case-detail-heading');
-        expect(title.innerHTML).toEqual(testCaseDetail.caseTitle);
+        const heading = await screen.findByTestId('case-detail-heading-title');
+        expect(heading.innerHTML).toEqual(` - ${testCaseDetail.caseTitle}`);
       },
       { timeout: 1000 },
     );
+    await waitFor(async () => {
+      const title = await screen.findByTestId('case-detail-heading-title');
+      expect(title.innerHTML).toEqual(` - ${testCaseDetail.caseTitle}`);
+    });
 
     let normalHeader = await screen.findByTestId('case-detail-header');
     expect(normalHeader).toBeInTheDocument();
@@ -114,5 +116,42 @@ describe('Case Detail Header tests', () => {
       },
       { timeout: 5000 },
     );
+  });
+
+  describe('Testing the clipboard with caseId', () => {
+    let writeTextMock: MockInstance<(data: string) => Promise<void>> = vi
+      .fn()
+      .mockResolvedValue('');
+
+    beforeEach(() => {
+      if (!navigator.clipboard) {
+        Object.assign(navigator, {
+          clipboard: {
+            writeText: writeTextMock,
+          },
+        });
+      } else {
+        writeTextMock = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+      }
+    });
+
+    test('clicking copy button should write caseId to clipboard', async () => {
+      basicRender(testCaseDetail, false);
+
+      const caseIdCopyButton = document.querySelector('#header-case-id');
+
+      fireEvent.click(caseIdCopyButton!);
+
+      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
+    });
+
+    test('should only copy to clipboard if we have a valid case number', () => {
+      copyCaseNumber('abcdefg#!@#$%');
+      expect(writeTextMock).not.toHaveBeenCalled();
+
+      copyCaseNumber(testCaseDetail.caseId);
+      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
+      expect(writeTextMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

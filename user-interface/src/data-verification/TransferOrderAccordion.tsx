@@ -3,7 +3,7 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { OfficeDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
 import {
   PendingTransferOrder,

@@ -2,7 +2,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import useWindowSize from '@/lib/hooks/UseWindowSize';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { CaseAssignment } from '@common/cams/assignments';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';

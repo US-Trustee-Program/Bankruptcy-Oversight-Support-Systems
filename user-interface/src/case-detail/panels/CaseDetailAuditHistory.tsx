@@ -110,14 +110,14 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
   return (
     <div className="case-audit-history">
       <div className="history-type-title">
-        <h3>Audit History</h3>
+        <h3>Change History</h3>
         {isAuditHistoryLoading && <LoadingIndicator />}
         {!isAuditHistoryLoading && (
           <>
             {caseHistory.length < 1 && (
               <div data-testid="empty-assignments-test-id">
                 <Alert
-                  message="There are no assignments in the case history."
+                  message="No changes have been made to this case."
                   type={UswdsAlertStyle.Info}
                   role={'status'}
                   timeout={0}

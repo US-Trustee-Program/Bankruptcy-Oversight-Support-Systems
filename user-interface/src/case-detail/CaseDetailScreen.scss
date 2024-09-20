@@ -1,52 +1,55 @@
 @import '../styles/theme.scss';
-.App {
-  .body {
-    .case-detail {
-      h4 {
-        margin-block-start: 0;
-        margin-block-end: 0;
+
+.case-detail {
+  h4 {
+    margin-block-start: 0;
+    margin-block-end: 0;
+  }
+
+  .link-icon {
+    margin-left: 0.25rem;
+    vertical-align: middle;
+  }
+  .case-card-list {
+    .case-card {
+      line-height: 1.5;
+
+      h3 {
+        margin-bottom: 0.5rem;
       }
 
-      .link-icon {
-        margin-left: .25rem;
-        vertical-align: middle;
+      li.transfer {
+        margin-bottom: 1rem;
       }
-      .case-card-list {
-        .case-card {
-          li.transfer {
-            margin-bottom: 1rem;
-          }
-          .case-detail-item-name {
-            padding-right: 0.5rem;
-          }
-          .transfer-court {
-            span {
-              white-space: nowrap;
-            }
-          }
+      .case-detail-item-name {
+        padding-right: .5rem;
+      }
+      .transfer-court {
+        span {
+          white-space: nowrap;
         }
       }
-      .assigned-staff-list {
-        .case-detail-region-id {
-          padding-bottom: 0.5rem;
-        }
-        .individual-assignee {
-          .vertical-divider {
-            padding: 0 0.5rem;
-          }
-        }
+    }
+  }
+  .assigned-staff-list {
+    .case-detail-region-id {
+      padding-bottom: 0.5rem;
+    }
+    .individual-assignee {
+      .vertical-divider {
+        padding: 0 0.5rem;
       }
-      ul {
-        padding-bottom: 0.5rem;
-      }
-      .filter-and-search {
-        .form-field {
-          padding-bottom: 1.5rem;
-        }
-        .docket-summary-facets label {
-          margin-bottom: 0.5rem;
-        }
-      }
+    }
+  }
+  ul {
+    padding-bottom: 0.5rem;
+  }
+  .filter-and-search {
+    .form-field {
+      padding-bottom: 1.5rem;
+    }
+    .docket-summary-facets label {
+      margin-bottom: 0.5rem;
     }
   }
 }
