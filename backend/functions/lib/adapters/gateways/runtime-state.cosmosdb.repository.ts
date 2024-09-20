@@ -60,8 +60,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
       await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)
         .container(this.containerName)
-        .item(syncState.id, syncState.documentType)
-        .replace(syncState);
+        .items.upsert(syncState, { partitionKey: syncState.documentType });
     } catch (e) {
       context.logger.error(MODULE_NAME, `${e.status} : ${e.name} : ${e.message}`);
       if (e instanceof AggregateAuthenticationError) {

@@ -6,8 +6,10 @@ import {
   getUserGroupGateway,
   getOfficesRepository,
   getStorageGateway,
+  getRuntimeStateRepository,
 } from '../../factory';
 import { AttorneyUser } from '../../../../../common/src/cams/users';
+import { OfficeStaffSyncState } from '../gateways.types';
 
 export class OfficesUseCase {
   public async getOffices(context: ApplicationContext): Promise<OfficeDetails[]> {
@@ -75,11 +77,18 @@ export class OfficesUseCase {
       officesWithUsers.push(office);
     }
 
-    // TODO: What to do with users with roles WITHOUT offices?
-    return {
+    const result: OfficeStaffSyncState = {
+      documentType: 'OFFICE_STAFF_SYNC_STATE',
       userGroups,
       users: [...userMap.values()],
       officesWithUsers,
     };
+
+    const runtimeStateRepo = getRuntimeStateRepository(context);
+
+    await runtimeStateRepo.updateState<OfficeStaffSyncState>(context, result);
+
+    // TODO: What to do with users with roles WITHOUT offices?
+    return result;
   }
 }
