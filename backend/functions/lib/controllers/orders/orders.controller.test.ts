@@ -63,6 +63,27 @@ describe('orders controller tests', () => {
     jest.clearAllMocks();
   });
 
+  test('should return successful when handleTimer is called', async () => {
+    const syncOrdersSpy = jest
+      .spyOn(OrdersUseCase.prototype, 'syncOrders')
+      .mockResolvedValue(syncResponse);
+
+    const controller = new OrdersController(applicationContext);
+    await expect(controller.handleTimer(applicationContext)).resolves.toBeFalsy();
+    expect(syncOrdersSpy).toHaveBeenCalled();
+  });
+
+  test('should throw error when handleTimer throws', async () => {
+    const error = new UnknownError('TEST_MODULE');
+    const syncOrdersSpy = jest
+      .spyOn(OrdersUseCase.prototype, 'syncOrders')
+      .mockRejectedValue(error);
+
+    const controller = new OrdersController(applicationContext);
+    await expect(controller.handleTimer(applicationContext)).rejects.toThrow(error);
+    expect(syncOrdersSpy).toHaveBeenCalled();
+  });
+
   test('should get orders', async () => {
     const mockRead = jest
       .spyOn(MockHumbleQuery.prototype, 'fetchAll')
@@ -93,16 +114,6 @@ describe('orders controller tests', () => {
     const result = await controller.updateOrder(applicationContext, id, orderTransfer);
     expect(result).toEqual(expectedResult);
     expect(updateOrderSpy).toHaveBeenCalledWith(applicationContext, id, orderTransfer);
-  });
-
-  test('should sync orders', async () => {
-    const syncOrdersSpy = jest
-      .spyOn(OrdersUseCase.prototype, 'syncOrders')
-      .mockResolvedValue(syncResponse);
-
-    const controller = new OrdersController(applicationContext);
-    await controller.syncOrders(applicationContext);
-    expect(syncOrdersSpy).toHaveBeenCalledWith(applicationContext, undefined);
   });
 
   test('should get suggested cases', async () => {

@@ -22,7 +22,7 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
-import { CamsController } from '../controller';
+import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
@@ -33,7 +33,7 @@ export type UpdateOrderResponse = CamsHttpResponseInit;
 export type SyncOrdersResponse = CamsHttpResponseInit<SyncOrdersStatus>;
 export type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
 
-export class OrdersController implements CamsController {
+export class OrdersController implements CamsController, CamsTimerController {
   private readonly useCase: OrdersUseCase;
 
   constructor(context: ApplicationContext) {
@@ -46,13 +46,18 @@ export class OrdersController implements CamsController {
       getConsolidationOrdersRepository(context),
     );
   }
+
+  public async handleTimer(context: ApplicationContext): Promise<void> {
+    try {
+      await this.useCase.syncOrders(context);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseSummary[] | Order[] | SyncOrdersStatus | undefined>> {
-    if (!context.request) {
-      return this.syncOrders(context);
-    }
-
     const simplePath = new URL(context.request.url).pathname.split('/')[2];
 
     switch (simplePath) {

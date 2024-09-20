@@ -1,11 +1,11 @@
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
 import { CamsError } from '../lib/common-errors/cams-error';
-import timerTrigger from './orders-sync.function';
+import timerTrigger from './office-staff-sync.function';
 import { Timer } from '@azure/functions';
 import { createMockAzureFunctionContext } from '../azure/testing-helpers';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { OfficesController } from '../lib/controllers/offices/offices.controller';
 
-describe('Orders Sync Function tests', () => {
+describe('Office Staff Sync Function tests', () => {
   const context = createMockAzureFunctionContext();
   const timer: Timer = {
     isPastDue: false,
@@ -19,9 +19,9 @@ describe('Orders Sync Function tests', () => {
     },
   };
 
-  test('Should call orders controller method handleTimer', async () => {
+  test('Should call offices controller method handleTimer', async () => {
     const handleTimer = jest
-      .spyOn(OrdersController.prototype, 'handleTimer')
+      .spyOn(OfficesController.prototype, 'handleTimer')
       .mockImplementation(() => Promise.resolve());
     await timerTrigger(timer, context);
     expect(handleTimer).toHaveBeenCalled();
@@ -29,7 +29,7 @@ describe('Orders Sync Function tests', () => {
 
   test('Should log a camsError if handleTimer throws a CamsError', async () => {
     const handleTimer = jest
-      .spyOn(OrdersController.prototype, 'handleTimer')
+      .spyOn(OfficesController.prototype, 'handleTimer')
       .mockRejectedValue(new CamsError('TEST_MODULE', { message: 'error' }));
     const camsError = jest.spyOn(LoggerImpl.prototype, 'camsError').mockImplementation(() => {});
     await timerTrigger(timer, context);
