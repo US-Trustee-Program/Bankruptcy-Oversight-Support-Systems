@@ -2,8 +2,8 @@ import './CaseDetailHeader.scss';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import { CaseDetail } from '@common/cams/cases';
-import Icon from '@/lib/components/uswds/Icon';
 import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
+import CopyButton from '@/lib/components/cams/CopyButton';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -38,14 +38,11 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
     return (
       <h2 className="case-number text-no-wrap" title="Case Number">
         {props.caseId}{' '}
-        <button
+        <CopyButton
           id="header-case-id"
-          className="usa-button usa-button--unstyled"
           onClick={() => copyCaseNumber(props.caseId)}
           title="Copy Case Id to clipboard"
-        >
-          <Icon name={'content_copy'}></Icon>
-        </button>
+        />
       </h2>
     );
   }
