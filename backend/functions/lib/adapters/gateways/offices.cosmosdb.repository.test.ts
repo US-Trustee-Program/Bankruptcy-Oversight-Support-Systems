@@ -7,6 +7,7 @@ import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { OfficeStaff } from '../../../../../common/src/cams/staff';
 import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 describe('offices cosmosDB repository tests', () => {
   let context: ApplicationContext;
@@ -23,13 +24,15 @@ describe('offices cosmosDB repository tests', () => {
 
   test('should query data with office code, staff doc type, and trial attorney role', async () => {
     const officeCode = 'test-office';
-    const attorneys = MockData.buildArray(MockData.getAttorneyUser, 5);
+    const attorneys = MockData.buildArray(MockData.getAttorneyUser, 5).map((user) =>
+      getCamsUserReference(user),
+    );
     const staffDocs: OfficeStaff[] = attorneys.map((user) => {
       return {
-        id: officeCode + ':' + user.id,
+        id: user.id,
         documentType: 'OFFICE_STAFF',
         officeCode,
-        user,
+        ...user,
         updatedOn: '2024-10-01T00:00:00.000Z',
         updatedBy: SYSTEM_USER_REFERENCE,
       };
