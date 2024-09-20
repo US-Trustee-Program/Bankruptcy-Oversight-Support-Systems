@@ -347,6 +347,10 @@ var applicationSettings = concat(
       name: 'FEATURE_FLAG_SDK_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
     }
+    {
+      name: 'CAMS_USER_GROUP_GATEWAY_CONFIG'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
+    }
   ],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
