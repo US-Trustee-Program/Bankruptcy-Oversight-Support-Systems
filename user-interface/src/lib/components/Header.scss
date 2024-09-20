@@ -16,64 +16,148 @@
   padding: 15px 50px;
   position: relative;
 
-  .usa-nav-container {
-    margin: 0;
-    max-width: none;
+  .cams-header-contents {
+    display: flex;
+    flex-flow: row;
 
-    .usa-navbar {
-      max-width: 125px;
+    .cams-logo-and-title {
+      display: flex;
+      flex-flow: row;
 
       .cams-logo.usa-logo {
+        flex: 0 0 auto;
         margin: 0px;
         .doj-logo {
           height: 125px;
           width: 120px;
         }
       }
-    }
-    .cams-nav-bar {
-      a {
-        vertical-align: middle;
+      .site-title {
+        flex: 0 0 auto;
+        flex-direction: column;
+        justify-content: center;
         color: white;
-        font-weight: bold;
-        text-decoration: none;
-        padding-right: 15px;
-      }
-      a:hover {
-        color: colors.$gold;
-        text-decoration: underline;
-      }
-      .usa-current::after {
-        background-color: colors.$gold;
-      }
+        padding: 0 30px;
+        min-height: 125px;
+        min-width: 420px;
+        margin-top: 0;
+        margin-bottom: 0;
+        font-size: 2.5rem;
 
-      .usa-search {
-        .usa-form-group {
-          margin-top: 0;
+        .sub-title {
+          display: block;
+          font-size: 1.5rem;
+        }
+      }
+    }
 
-          .usa-input-group {
+    .usa-nav-container {
+      margin: 0;
+      padding-left: 20px;
+      padding-right: 20px;
+      max-width: none;
+
+      .usa-navbar {
+        width: 100%;
+      }
+      .cams-nav-bar {
+        a {
+          vertical-align: middle;
+          color: white;
+          font-weight: bold;
+          text-decoration: none;
+          padding-right: 15px;
+        }
+        a:hover {
+          color: colors.$gold;
+          text-decoration: underline;
+        }
+        .usa-current::after {
+          background-color: colors.$gold;
+        }
+        ul.usa-nav__primary {
+          list-style-type: none;
+          li {
+            a {
+              white-space: nowrap;
+              font-size: 1.06rem;
+            }
+          }
+        }
+
+        .usa-search {
+          .usa-form-group {
             margin-top: 0;
-            height: 2rem;
+
+            .usa-input-group {
+              margin-top: 0;
+              height: 2rem;
+            }
           }
         }
       }
     }
+
   }
+}
 
-  .site-title {
-    display: flex;
-    height: 125px;
-    flex-direction: column;
-    justify-content: center;
-    color: white;
-    padding: 0 30px;
-    margin-top: 0;
-    margin-bottom: 0;
-    font-size: 2.5rem;
-
-    .sub-title {
+/* below 1024px width, switch to vertically layered view */
+@media screen and (max-width: 63.99em) {
+  .cams-header {
+    .cams-header-contents {
       display: block;
-      font-size: 1.5rem;
+
+      .usa-nav-container {
+        .usa-navbar {
+          border-bottom: none;
+
+          .usa-nav {
+            display: flex;
+            position: relative;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            padding: 0 0 1rem 0.5rem;
+            float: left;
+
+            top: auto;
+            right: auto;
+            bottom: auto;
+            left: auto;
+
+            background: transparent;
+            border-right: none;
+            z-index: auto;
+
+            ul.usa-nav__primary {
+              display: inline-block;
+
+              li.usa-nav__primary-item {
+                display: inline-block;
+                border-top: none;
+              }
+
+              a:not(.usa-button):hover {
+                background-color: transparent;
+              }
+              .usa-current::after {
+                width: auto;
+                height: 0.25rem;
+                top: auto;
+                left: 1rem;
+                right: 1rem;
+                bottom: -0.25rem;
+
+                border-radius: 0;
+                content: "";
+                display: block;
+                position: absolute;
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
