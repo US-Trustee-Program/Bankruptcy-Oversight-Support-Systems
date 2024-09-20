@@ -14,7 +14,8 @@ import {
 import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/history';
 import { CaseDocket } from '../../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
-import { AttorneyUser, CamsUserReference } from '../../../../common/src/cams/users';
+import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
+import { UstpOfficeDetails } from '../../../../common/src/cams/courts';
 
 export interface RepositoryResource {
   id?: string;
@@ -91,7 +92,7 @@ export interface OfficesRepository {
 }
 
 // TODO: Move these models to a top level models file?
-export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE';
+export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -101,6 +102,13 @@ export type RuntimeState = {
 export type OrderSyncState = RuntimeState & {
   documentType: 'ORDERS_SYNC_STATE';
   txId: string;
+};
+
+export type OfficeStaffSyncState = RuntimeState & {
+  documentType: 'OFFICE_STAFF_SYNC_STATE';
+  userGroups: CamsUserGroup[];
+  users: CamsUserReference[];
+  officesWithUsers: UstpOfficeDetails[];
 };
 
 export interface RuntimeStateRepository {
