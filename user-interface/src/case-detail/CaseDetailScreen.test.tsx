@@ -2,7 +2,7 @@ import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import CaseDetailScreen from './CaseDetailScreen';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';

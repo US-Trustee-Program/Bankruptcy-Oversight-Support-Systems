@@ -1,6 +1,6 @@
 import './AssignAttorneyModal.scss';
 import { forwardRef, RefObject, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { AlertDetails } from '@/lib/components/uswds/Alert';
 import { CaseBasics } from '@common/cams/cases';
