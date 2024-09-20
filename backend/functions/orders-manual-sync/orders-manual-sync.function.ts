@@ -18,10 +18,10 @@ const MODULE_NAME = 'ORDERS-MANUAL-SYNC-FUNCTION';
  * specific AO_TX.TX_ID to start the sync from or omit it from the request body to use the last runtime state
  * stored in CosmosDB.
  *
- * curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
+ * curl -v -d '{"txIdOverride": "0"}' -H "Content-Type: application/json" http://localhost:7071/api/orders-sync
  *
- * @param invocationContext
- * @param request
+ * @param {HttpRequest} request
+ * @param {InvocationContext} invocationContext
  */
 export default async function handler(
   request: HttpRequest,

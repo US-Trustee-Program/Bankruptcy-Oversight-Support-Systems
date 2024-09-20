@@ -1,7 +1,7 @@
 import { OfficeDetails } from '../courts';
 
 /***************************************************************************\
- * !! The Following Offices are aligend with legitimate court divisions
+ * !! The Following Offices are aligned with legitimate court divisions
  *    as found in the adapters/gateways/dxtr/dxtr.constants.ts file.
  *    Because many of our tests will take an office at random out of
  *    this list, and then do a lookup in dxtr.constants.ts ( which is
