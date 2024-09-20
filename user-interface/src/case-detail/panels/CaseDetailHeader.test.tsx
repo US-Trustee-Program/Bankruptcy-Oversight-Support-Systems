@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import * as useLocationTracker from '@/lib/hooks/UseLocationTracker';
 import CaseDetailHeader from './CaseDetailHeader';
 import CaseDetailScreen from '../CaseDetailScreen';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -114,40 +113,6 @@ describe('Case Detail Header tests', () => {
         expect(fixedHeader).not.toBeInTheDocument();
       },
       { timeout: 5000 },
-    );
-  });
-
-  describe('back link tests', () => {
-    afterEach(() => {
-      vi.restoreAllMocks();
-    });
-
-    const backLinkTestCases = [
-      ['/my-cases', '', 'My Cases'],
-      ['/search', 'CAMS_WINDOW_012', 'Case Search'],
-      ['/staff-assignment', 'CAMS_WINDOW_012', 'Staff Assignment'],
-      ['/data-verification', 'CAMS_WINDOW_345', 'Data Verification'],
-      ['/foobar', 'CAMS_WINDOW_678', 'Case List'],
-    ];
-
-    test.each(backLinkTestCases)(
-      'back link should be setup to link back to Search in tab CAMS_WINDOW_012',
-      (previousLocation: string, homeTab: string, displayText: string) => {
-        vi.spyOn(useLocationTracker, 'default').mockImplementation(() => {
-          return {
-            previousLocation,
-            homeTab,
-            updateLocation: vi.fn(),
-          };
-        });
-
-        basicRender(testCaseDetail, false);
-
-        const backLink = document.querySelector('.back-button');
-        expect(backLink).toHaveAttribute('href', previousLocation);
-        expect(backLink).toHaveAttribute('target', homeTab);
-        expect(backLink).toHaveTextContent(`Back to ${displayText}`);
-      },
     );
   });
 });

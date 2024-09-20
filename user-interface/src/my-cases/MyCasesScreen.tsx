@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -16,12 +16,9 @@ import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import useLocationTracker from '@/lib/hooks/UseLocationTracker';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
-
-  const { updateLocation } = useLocationTracker();
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -45,10 +42,6 @@ export const MyCasesScreen = () => {
       uswdsStyle: UswdsButtonStyle.Default,
     },
   };
-
-  useEffect(() => {
-    updateLocation();
-  }, [location.pathname]);
 
   return (
     <MainContent className="my-cases case-list">

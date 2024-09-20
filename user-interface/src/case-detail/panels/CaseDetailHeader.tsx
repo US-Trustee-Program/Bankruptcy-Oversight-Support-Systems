@@ -1,11 +1,8 @@
 import './CaseDetailHeader.scss';
-import { Link } from 'react-router-dom';
-import Icon from '@/lib/components/uswds/Icon';
 import { getCaseNumber } from '@/lib/utils/formatCaseNumber';
 import { useEffect } from 'react';
 import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import { CaseDetail } from '@common/cams/cases';
-import useLocationTracker from '../../lib/hooks/UseLocationTracker';
 
 export interface CaseDetailHeaderProps {
   isLoading: boolean;
@@ -20,8 +17,6 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
   const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
   const appEl = document.querySelector('.App');
   const camsHeader = document.querySelector('.cams-header');
-
-  const { previousLocation, homeTab } = useLocationTracker();
 
   const modifyHeader = () => {
     if (camsHeader) {
@@ -38,14 +33,6 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
     }
   };
 
-  function getBackLinkText() {
-    if (previousLocation.includes('my-cases')) return 'My Cases';
-    if (previousLocation.includes('search')) return 'Case Search';
-    if (previousLocation.includes('staff-assignment')) return 'Staff Assignment';
-    if (previousLocation.includes('data-verification')) return 'Data Verification';
-    return 'Case List';
-  }
-
   useEffect(() => {
     if (!props.isLoading && appEl && camsHeader) {
       appEl.addEventListener('scroll', modifyHeader);
@@ -61,15 +48,6 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       {isFixed && (
         <>
           <div className="case-detail-header fixed" data-testid="case-detail-fixed-header">
-            <div className="grid-row grid-gap-lg">
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <Link className="back-button" to={previousLocation} target={homeTab}>
-                  <Icon name="arrow_back"></Icon>
-                  Back to {getBackLinkText()}
-                </Link>
-              </div>
-            </div>
             <div className="grid-row grid-gap-lg">
               <div className="grid-col-1"></div>
               <div className="grid-col-4">
@@ -114,17 +92,6 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
       )}
       {!isFixed && (
         <div className="case-detail-header" data-testid="case-detail-header">
-          <div className="grid-row grid-gap-lg">
-            <div className="grid-col-1"></div>
-            <div className="grid-col-10">
-              <Link className="back-button" to={previousLocation} target={homeTab}>
-                <Icon name="arrow_back"></Icon>
-                Back to {getBackLinkText()}
-              </Link>
-            </div>
-            <div className="grid-col-1"></div>
-          </div>
-
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-10">
