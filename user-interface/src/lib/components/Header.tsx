@@ -21,8 +21,6 @@ export enum NavState {
 function mapNavState(path: string) {
   const cleanPath = path.replace(/^\//, '').split('/');
   switch (cleanPath[0]) {
-    case 'case-detail':
-      return NavState.DEFAULT;
     case 'data-verification':
       return NavState.DATA_VERIFICATION;
     case 'my-cases':
@@ -49,6 +47,15 @@ export const Header = () => {
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
+  //function handleLinkKeyDown(ev: React.KeyboardEvent, nav: NavState) {
+  function handleLinkKeyDown(ev: React.KeyboardEvent) {
+    if (ev.key === ' ') {
+      ev.preventDefault();
+      (ev.target as HTMLAnchorElement).click();
+      //return setActiveNav(nav);
+    }
+  }
+
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
   }, [location]);
@@ -61,11 +68,7 @@ export const Header = () => {
         <div className="cams-header-contents">
           <div className="cams-logo-and-title">
             <div className="cams-logo usa-logo">
-              <img
-                src="/doj-logo.png"
-                alt="U.S. Trustee Program banner"
-                className="doj-logo usa-banner__header"
-              ></img>
+              <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
             </div>
             <div className="site-title">
               <span className="text-no-wrap">U.S. Trustee Program</span>
@@ -80,75 +83,85 @@ export const Header = () => {
                 className="usa-nav cams-nav-bar"
                 role="navigation"
               >
-                <ul className="usa-nav__primary">
-                  <li className="usa-nav__primary-item">
-                    <NavLink
-                      to="/my-cases"
-                      data-testid="header-my-cases-link"
-                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
-                      onClick={() => {
-                        return setActiveNav(NavState.MY_CASES);
-                      }}
-                      title="view a list of cases assigned to your account"
-                    >
-                      My Cases
-                    </NavLink>
-                  </li>
-
-                  {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
-                    <li className="usa-nav__primary-item">
+                <div role="menubar">
+                  <ul className="usa-nav__primary" role="menu">
+                    <li className="usa-nav__primary-item" role="menuitem">
                       <NavLink
-                        to="/staff-assignment"
-                        data-testid="header-staff-assignment-link"
-                        className={
-                          'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
-                        }
-                        onClick={() => {
-                          return setActiveNav(NavState.STAFF_ASSIGNMENT);
-                        }}
-                        title="view or edit staff assignments for cases"
+                        to="/my-cases"
+                        data-testid="header-my-cases-link"
+                        className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
+                        onClick={() => setActiveNav(NavState.MY_CASES)}
+                        onKeyDown={handleLinkKeyDown}
+                        title="view a list of cases assigned to your account"
+                        aria-selected={activeNav === NavState.MY_CASES}
+                        aria-current={activeNav === NavState.MY_CASES ? 'page' : undefined}
                       >
-                        Staff Assignment
+                        My Cases
                       </NavLink>
                     </li>
-                  )}
 
-                  {session &&
-                    session.user.roles?.includes(CamsRole.DataVerifier) &&
-                    transferOrdersFlag && (
+                    {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
                       <li className="usa-nav__primary-item">
                         <NavLink
-                          to="/data-verification"
-                          data-testid="header-data-verification-link"
+                          to="/staff-assignment"
+                          data-testid="header-staff-assignment-link"
                           className={
-                            'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                            'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
                           }
-                          onClick={() => {
-                            return setActiveNav(NavState.DATA_VERIFICATION);
-                          }}
-                          title="view status of, approve, or reject case events"
+                          onClick={() => setActiveNav(NavState.STAFF_ASSIGNMENT)}
+                          onKeyDown={handleLinkKeyDown}
+                          title="view or edit staff assignments for cases"
+                          aria-selected={activeNav === NavState.STAFF_ASSIGNMENT}
+                          aria-current={
+                            activeNav === NavState.STAFF_ASSIGNMENT ? 'page' : undefined
+                          }
                         >
-                          Data Verification
+                          Staff Assignment
                         </NavLink>
                       </li>
                     )}
 
-                  {caseSearchFlag && (
-                    <li className="usa-nav__primary-item">
-                      <NavLink
-                        to="/search"
-                        data-testid="header-search-link"
-                        className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                        onClick={() => {
-                          return setActiveNav(NavState.SEARCH);
-                        }}
-                        title="search for cases"
-                      >
-                        Case Search
-                      </NavLink>
-                    </li>
-                  )}
-                </ul>
+                    {session &&
+                      session.user.roles?.includes(CamsRole.DataVerifier) &&
+                      transferOrdersFlag && (
+                        <li className="usa-nav__primary-item">
+                          <NavLink
+                            to="/data-verification"
+                            data-testid="header-data-verification-link"
+                            className={
+                              'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                            }
+                            onClick={() => setActiveNav(NavState.DATA_VERIFICATION)}
+                            onKeyDown={handleLinkKeyDown}
+                            title="view status of, approve, or reject case events"
+                            aria-selected={activeNav === NavState.DATA_VERIFICATION}
+                            aria-current={
+                              activeNav === NavState.DATA_VERIFICATION ? 'page' : undefined
+                            }
+                          >
+                            Data Verification
+                          </NavLink>
+                        </li>
+                      )}
+
+                    {caseSearchFlag && (
+                      <li className="usa-nav__primary-item">
+                        <NavLink
+                          to="/search"
+                          data-testid="header-search-link"
+                          className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                          onClick={() => setActiveNav(NavState.SEARCH)}
+                          onKeyDown={handleLinkKeyDown}
+                          title="search for cases"
+                          aria-selected={activeNav === NavState.SEARCH}
+                          aria-current={activeNav === NavState.SEARCH ? 'page' : undefined}
+                        >
+                          Case Search
+                        </NavLink>
+                      </li>
+                    )}
+                  </ul>
+                </div>
               </nav>
             </div>
           </div>
