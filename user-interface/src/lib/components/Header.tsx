@@ -47,12 +47,10 @@ export const Header = () => {
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
-  //function handleLinkKeyDown(ev: React.KeyboardEvent, nav: NavState) {
   function handleLinkKeyDown(ev: React.KeyboardEvent) {
     if (ev.key === ' ') {
       ev.preventDefault();
       (ev.target as HTMLAnchorElement).click();
-      //return setActiveNav(nav);
     }
   }
 
