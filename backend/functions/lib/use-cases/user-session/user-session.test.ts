@@ -1,5 +1,5 @@
-import { ConflictError, isConflictError, UserSessionGateway } from './user-session-gateway';
-import { ApplicationContext } from '../types/basic';
+import { ConflictError, isConflictError, UserSessionUseCase } from './user-session';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
@@ -11,7 +11,7 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
-import { UserSessionCacheCosmosDbRepository } from './user-session-cache.cosmosdb.repository';
+import { UserSessionCacheCosmosDbRepository } from '../../adapters/gateways/user-session-cache.cosmosdb.repository';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 
 describe('user-session.gateway test', () => {
@@ -39,10 +39,10 @@ describe('user-session.gateway test', () => {
     expires: Number.MAX_SAFE_INTEGER,
   };
   let context: ApplicationContext;
-  let gateway: UserSessionGateway;
+  let gateway: UserSessionUseCase;
 
   beforeEach(async () => {
-    gateway = new UserSessionGateway();
+    gateway = new UserSessionUseCase();
     context = await createMockApplicationContext({
       env: { CAMS_LOGIN_PROVIDER: 'mock', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
@@ -56,7 +56,9 @@ describe('user-session.gateway test', () => {
       claims,
       header: jwtHeader as CamsJwtHeader,
     });
-    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue(mockUser);
+    jest
+      .spyOn(MockOpenIdConnectGateway, 'getUser')
+      .mockResolvedValue({ user: mockUser, groups: [] });
   });
 
   afterEach(() => {

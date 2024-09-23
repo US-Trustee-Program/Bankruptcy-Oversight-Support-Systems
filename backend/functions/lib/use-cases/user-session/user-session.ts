@@ -1,15 +1,14 @@
-import { SessionGateway } from '../utils/session-gateway';
 import {
   getAuthorizationGateway,
   getOfficesGateway,
   getUserSessionCacheRepository,
 } from '../../factory';
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { OfficeDetails } from '../../../../../common/src/cams/courts';
-import LocalStorageGateway from './storage/local-storage-gateway';
+import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../../common/src/cams/session';
@@ -73,7 +72,7 @@ async function getOffices(
   return offices;
 }
 
-export class UserSessionGateway implements SessionGateway {
+export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
     const cached = await sessionCacheRepository.get(context, token);
@@ -89,20 +88,14 @@ export class UserSessionGateway implements SessionGateway {
           message: 'Unsupported authentication provider.',
         });
       }
-      const jwt = await authGateway.verifyToken(token);
-      if (!jwt) {
-        throw new UnauthorizedError(MODULE_NAME, {
-          message: 'Unable to verify token.',
-        });
-      }
-      const user = await authGateway.getUser(token);
+
+      const { user, groups, jwt } = await authGateway.getUser(token);
+      user.roles = getRoles(groups);
+      user.offices = await getOffices(context, groups);
 
       // Simulate the legacy behavior by appending roles and Manhattan office to the user
       // if the 'restrict-case-assignment' feature flag is not set.
-      if (context.featureFlags['restrict-case-assignment']) {
-        user.roles = getRoles(jwt.claims.groups);
-        user.offices = await getOffices(context, jwt.claims.groups);
-      } else {
+      if (!context.featureFlags['restrict-case-assignment']) {
         user.offices = [OFFICES.find((office) => office.courtDivisionCode === '081')];
         user.roles = [CamsRole.CaseAssignmentManager];
       }

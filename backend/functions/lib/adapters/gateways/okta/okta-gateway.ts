@@ -43,10 +43,19 @@ async function verifyToken(token: string): Promise<CamsJwt> {
   }
 }
 
-async function getUser(accessToken: string): Promise<CamsUser> {
+async function getUser(
+  accessToken: string,
+): Promise<{ user: CamsUser; groups: string[]; jwt: CamsJwt }> {
   const { userInfoUri } = getAuthorizationConfig();
 
   try {
+    const jwt = await verifyToken(accessToken);
+    if (!jwt) {
+      throw new UnauthorizedError(MODULE_NAME, {
+        message: 'Unable to verify token.',
+      });
+    }
+
     const response = await fetch(userInfoUri, {
       method: 'GET',
       headers: { authorization: 'Bearer ' + accessToken },
@@ -54,13 +63,20 @@ async function getUser(accessToken: string): Promise<CamsUser> {
 
     if (response.ok) {
       const oktaUser = (await response.json()) as OktaUserInfo;
-      // TODO: We need to decide on the claim we will map to CamsUser.id
-      const camsUser: CamsUser = {
+      const user: CamsUser = {
         id: oktaUser.sub,
         name: oktaUser.name,
       };
 
-      return camsUser;
+      type DojLoginUnifiedGroupClaims = {
+        ad_groups?: string[];
+        groups?: string[];
+      };
+
+      const claims = jwt.claims as unknown as DojLoginUnifiedGroupClaims;
+      const groups: string[] = [].concat(claims.ad_groups, claims.groups);
+
+      return { user, groups, jwt };
     } else {
       throw new Error('Failed to retrieve user info from Okta.');
     }
@@ -70,7 +86,6 @@ async function getUser(accessToken: string): Promise<CamsUser> {
 }
 
 const OktaGateway: OpenIdConnectGateway = {
-  verifyToken,
   getUser,
 };
 
