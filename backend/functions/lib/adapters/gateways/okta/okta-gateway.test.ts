@@ -64,7 +64,8 @@ describe('Okta gateway tests', () => {
       aud: 'api://default',
       iat: 0,
       exp: Math.floor(Date.now() / 1000) + 600,
-      groups: [],
+      ad_groups: ['groupA', 'groupB'],
+      groups: ['groupB', 'groupC'],
     };
     const jwtHeader = {
       alg: 'RS256',
@@ -86,7 +87,11 @@ describe('Okta gateway tests', () => {
     const mockFetchResponse = MockFetch.ok(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
     const actual = await gateway.getUser(token);
-    expect(actual).toEqual({ user: { id: undefined, name: userInfo.name }, groups: [], jwt });
+    expect(actual).toEqual({
+      user: { id: undefined, name: userInfo.name },
+      groups: ['groupA', 'groupB', 'groupC'],
+      jwt,
+    });
   });
 
   test('Should throw UnauthorizedError if not given valid input ', async () => {

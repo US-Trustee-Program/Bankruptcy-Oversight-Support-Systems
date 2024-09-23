@@ -75,7 +75,7 @@ async function getUser(
       };
 
       const claims = jwt.claims as unknown as DojLoginUnifiedGroupClaims;
-      const groups: string[] = [].concat(claims.ad_groups, claims.groups);
+      const groups = Array.from(new Set<string>([].concat(claims.ad_groups, claims.groups)));
 
       return { user, groups, jwt };
     } else {
