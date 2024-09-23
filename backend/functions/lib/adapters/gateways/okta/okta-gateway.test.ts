@@ -31,7 +31,7 @@ describe('Okta gateway tests', () => {
       userInfoUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
-    await expect(gateway.verifyToken('test')).rejects.toThrow('Invalid provider.');
+    await expect(gateway.getUser('test')).rejects.toThrow('Invalid provider.');
   });
 
   test('Should receive invalid issuer error', async () => {
@@ -42,7 +42,7 @@ describe('Okta gateway tests', () => {
       userInfoUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
-    await expect(gateway.verifyToken('test')).rejects.toThrow('Issuer not provided.');
+    await expect(gateway.getUser('test')).rejects.toThrow('Issuer not provided.');
   });
 
   test('Should receive invalid audience error', async () => {
@@ -53,10 +53,10 @@ describe('Okta gateway tests', () => {
       userInfoUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
-    await expect(gateway.verifyToken('test')).rejects.toThrow('Audience not provided.');
+    await expect(gateway.getUser('test')).rejects.toThrow('Audience not provided.');
   });
 
-  test('Should return valid Jwt when given valid token and audience', async () => {
+  test('Should return valid user with Jwt when given valid token and audience', async () => {
     const token = 'testToken';
     const jwtClaims = {
       iss: 'https://fake.okta.com/oauth2/default',
@@ -64,7 +64,8 @@ describe('Okta gateway tests', () => {
       aud: 'api://default',
       iat: 0,
       exp: Math.floor(Date.now() / 1000) + 600,
-      groups: [],
+      ad_groups: ['groupA', 'groupB'],
+      groups: ['groupB', 'groupC'],
     };
     const jwtHeader = {
       alg: 'RS256',
@@ -79,27 +80,24 @@ describe('Okta gateway tests', () => {
       isNotBefore: jest.fn(),
     };
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(jwt);
-    const actual = await gateway.verifyToken(token);
-    expect(actual).toEqual(jwt);
-  });
-
-  test('Should throw UnauthorizedError if not given valid input ', async () => {
-    const token = 'testToken';
-    jest.spyOn(Verifier, 'verifyAccessToken').mockRejectedValue(new Error('Test error'));
-    await expect(gateway.verifyToken(token)).rejects.toThrow('Unauthorized');
-  });
-
-  test('getUser should return a valid response with user.name', async () => {
     const userInfo = {
       name: 'Test Name',
       testAttribute: '',
     };
     const mockFetchResponse = MockFetch.ok(userInfo);
     jest.spyOn(global, 'fetch').mockImplementation(mockFetchResponse);
-    const actualResponse = await gateway.getUser('testAccessToken');
+    const actual = await gateway.getUser(token);
+    expect(actual).toEqual({
+      user: { id: undefined, name: userInfo.name },
+      groups: ['groupA', 'groupB', 'groupC'],
+      jwt,
+    });
+  });
 
-    expect(actualResponse).not.toEqual(expect.objectContaining({ testAttribute: '' }));
-    expect(actualResponse).toEqual(expect.objectContaining({ name: 'Test Name' }));
+  test('Should throw UnauthorizedError if not given valid input ', async () => {
+    const token = 'testToken';
+    jest.spyOn(Verifier, 'verifyAccessToken').mockRejectedValue(new Error('Test error'));
+    await expect(gateway.getUser(token)).rejects.toThrow('Unauthorized');
   });
 
   test('getUser should throw Error if call failed', async () => {
