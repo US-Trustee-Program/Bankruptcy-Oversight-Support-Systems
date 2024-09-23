@@ -5,6 +5,7 @@ import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
 import { CamsUser } from '../../../../../../common/src/cams/users';
 import { CamsJwt } from '../../../../../../common/src/cams/jwt';
+import { isCamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
 
@@ -81,7 +82,9 @@ async function getUser(
       throw new Error('Failed to retrieve user info from Okta.');
     }
   } catch (originalError) {
-    throw new UnauthorizedError(MODULE_NAME, { originalError });
+    throw isCamsError(originalError)
+      ? originalError
+      : new UnauthorizedError(MODULE_NAME, { originalError });
   }
 }
 

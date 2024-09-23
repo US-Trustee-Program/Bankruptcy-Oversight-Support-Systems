@@ -13,9 +13,10 @@ import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.m
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 import { UserSessionCacheCosmosDbRepository } from '../../adapters/gateways/user-session-cache.cosmosdb.repository';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
+import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 
 describe('user-session.gateway test', () => {
-  const jwt = MockData.getJwt();
+  const jwtString = MockData.getJwt();
   const claims = {
     iss: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
     sub: 'user@fake.com',
@@ -28,12 +29,12 @@ describe('user-session.gateway test', () => {
   const mockUser = MockData.getCamsUser();
   const expectedSession = MockData.getCamsSession({
     user: mockUser,
-    accessToken: jwt,
+    accessToken: jwtString,
     provider,
   });
   const mockCamsSession: CamsSession = {
     user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
-    accessToken: jwt,
+    accessToken: jwtString,
     provider,
     issuer: 'http://issuer/',
     expires: Number.MAX_SAFE_INTEGER,
@@ -44,7 +45,7 @@ describe('user-session.gateway test', () => {
   beforeEach(async () => {
     gateway = new UserSessionUseCase();
     context = await createMockApplicationContext({
-      env: { CAMS_LOGIN_PROVIDER: 'mock', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
+      env: { CAMS_LOGIN_PROVIDER: 'okta', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
 
     const jwtHeader = {
@@ -52,13 +53,18 @@ describe('user-session.gateway test', () => {
       typ: undefined,
       kid: '',
     };
-    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue({
+    const camsJwt = {
       claims,
       header: jwtHeader as CamsJwtHeader,
-    });
+    };
+    jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
+    // jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue({
+    //   claims,
+    //   header: jwtHeader as CamsJwtHeader,
+    // });
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
-      .mockResolvedValue({ user: mockUser, groups: [] });
+      .mockResolvedValue({ user: mockUser, groups: [], jwt: camsJwt });
   });
 
   afterEach(() => {
@@ -70,7 +76,7 @@ describe('user-session.gateway test', () => {
     const createSpy = jest
       .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'put')
       .mockResolvedValue(mockCamsSession);
-    const session = await gateway.lookup(context, jwt, provider);
+    const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
       ...expectedSession,
       expires: expect.any(Number),
@@ -86,7 +92,7 @@ describe('user-session.gateway test', () => {
     const createSpy = jest
       .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'put')
       .mockRejectedValue('We should not call this function.');
-    const session = await gateway.lookup(context, jwt, provider);
+    const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
       ...expectedSession,
       expires: expect.any(Number),
@@ -100,10 +106,10 @@ describe('user-session.gateway test', () => {
       resources: [],
     });
     jest
-      .spyOn(MockOpenIdConnectGateway, 'verifyToken')
-      .mockRejectedValue(new UnauthorizedError('TEST_USER_SESSION_GATEWAY'));
+      .spyOn(MockOpenIdConnectGateway, 'getUser')
+      .mockRejectedValue(new UnauthorizedError('test-module'));
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
-    await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow();
+    await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow();
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -111,16 +117,24 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
-    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue(null);
-    await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
+      user: mockUser,
+      groups: [],
+      jwt: null,
+    });
+    await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
   });
 
   test('should handle undefined jwt from authGateway', async () => {
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
-    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue(undefined);
-    await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
+      user: mockUser,
+      groups: [],
+      jwt: undefined,
+    });
+    await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
   });
 
   test('should return valid session and NOT add to cache when Conflict error is received', async () => {
@@ -141,9 +155,9 @@ describe('user-session.gateway test', () => {
       .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get')
       .mockResolvedValueOnce(null)
       .mockResolvedValue(mockCamsSession);
-    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockRejectedValue(conflictError);
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(conflictError);
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
-    const session = await gateway.lookup(context, jwt, provider);
+    const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
       ...mockCamsSession,
       expires: expect.any(Number),
@@ -173,9 +187,9 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
       resources: [],
     });
-    jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockRejectedValue(new Error('Test error'));
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(new Error('Test error'));
     const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
-    await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(UnauthorizedError);
+    await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
     expect(createSpy).not.toHaveBeenCalled();
   });
 
@@ -184,7 +198,7 @@ describe('user-session.gateway test', () => {
       resources: [],
     });
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
-    await expect(gateway.lookup(context, jwt, provider)).rejects.toThrow(ServerConfigError);
+    await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(ServerConfigError);
   });
 
   test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
@@ -198,7 +212,7 @@ describe('user-session.gateway test', () => {
     const localContext = { ...context, featureFlags: { ...context.featureFlags } };
     localContext.featureFlags['restrict-case-assignment'] = false;
 
-    const session = await gateway.lookup(localContext, jwt, provider);
+    const session = await gateway.lookup(localContext, jwtString, provider);
     expect(session.user.offices).toEqual([
       OFFICES.find((office) => office.courtDivisionCode === '081'),
     ]);
