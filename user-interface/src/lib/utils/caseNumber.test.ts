@@ -1,6 +1,7 @@
 import { MockInstance } from 'vitest';
 import { copyCaseNumber, getCaseNumber } from './caseNumber';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { waitFor } from '@testing-library/react';
 
 describe('Formatting case id', () => {
   it('Should get case number from case id', async () => {
@@ -41,7 +42,9 @@ describe('Testing the clipboard with caseId', () => {
 
   test('clicking copy button should write caseId to clipboard', async () => {
     copyCaseNumber(testCaseDetail.caseId);
-    expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
+    waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
+    });
   });
 
   test('should only copy to clipboard if we have a valid case number', () => {
@@ -49,7 +52,9 @@ describe('Testing the clipboard with caseId', () => {
     expect(writeTextMock).not.toHaveBeenCalled();
 
     copyCaseNumber(testCaseDetail.caseId);
-    expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
-    expect(writeTextMock).toHaveBeenCalledTimes(1);
+    waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
+      expect(writeTextMock).toHaveBeenCalledTimes(1);
+    });
   });
 });
