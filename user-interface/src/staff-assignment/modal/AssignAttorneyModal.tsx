@@ -243,6 +243,20 @@ function _AssignAttorneyModal(
     }
   };
 
+  const handleTab = (ev: React.KeyboardEvent, isVisible: boolean) => {
+    if (
+      ev.key == 'Tab' &&
+      !ev.shiftKey &&
+      isVisible &&
+      (ev.target as Element).classList.contains('usa-modal__close')
+    ) {
+      const attorneyList = document.querySelector(`#${props.modalId}-description`);
+      if (attorneyList) {
+        (attorneyList as HTMLElement).focus();
+      }
+    }
+  };
+
   useEffect(() => {
     fetchAttorneys();
   }, []);
@@ -254,6 +268,7 @@ function _AssignAttorneyModal(
       className="assign-attorney-modal"
       onOpen={onOpen}
       onClose={cancelModal}
+      onTabKey={handleTab}
       heading={modalHeading}
       content={
         <>

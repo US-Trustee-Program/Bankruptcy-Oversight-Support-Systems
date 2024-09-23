@@ -13,6 +13,7 @@ export interface ModalProps {
   actionButtonGroup: SubmitCancelBtnProps;
   onOpen?: () => void;
   onClose?: () => void;
+  onTabKey?: (ev: React.KeyboardEvent, isVisible: boolean) => void;
 }
 
 function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
