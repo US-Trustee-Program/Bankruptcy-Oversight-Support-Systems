@@ -58,10 +58,6 @@ describe('user-session.gateway test', () => {
       header: jwtHeader as CamsJwtHeader,
     };
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
-    // jest.spyOn(MockOpenIdConnectGateway, 'verifyToken').mockResolvedValue({
-    //   claims,
-    //   header: jwtHeader as CamsJwtHeader,
-    // });
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
       .mockResolvedValue({ user: mockUser, groups: [], jwt: camsJwt });
