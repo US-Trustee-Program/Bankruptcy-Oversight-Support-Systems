@@ -97,6 +97,25 @@ describe('Header', () => {
     expect(current).toHaveLength(1);
   });
 
+  test.each(linkTestIds)(
+    'should activate %s link when space bar is pressed',
+    async (linkTestId: string) => {
+      renderWithoutProps();
+
+      let link = await screen.findByTestId(linkTestId);
+      fireEvent.focus(link);
+      fireEvent.keyDown(link, { key: ' ', code: 'Space' });
+
+      waitFor(async () => {
+        link = await screen.findByTestId(linkTestId);
+        expect(link).toHaveClass('usa-current current');
+      });
+
+      const current = document.querySelectorAll('.usa-current.current');
+      expect(current).toHaveLength(1);
+    },
+  );
+
   test('should not display data verification link when unauthorized', () => {
     const unauthorizedUser = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
     LocalStorage.setSession(MockData.getCamsSession({ user: unauthorizedUser }));
