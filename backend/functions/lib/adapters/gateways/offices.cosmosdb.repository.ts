@@ -3,13 +3,19 @@ import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
 import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
-import { OfficeStaff } from '../../../../../common/src/cams/staff';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_OFFICES';
 const CONTAINER_NAME: string = 'offices';
+
+export type OfficeStaff = CamsUserReference &
+  Auditable & {
+    documentType: 'OFFICE_STAFF';
+    officeCode: string;
+    ttl: number;
+  };
 
 export class OfficesCosmosDbRepository implements OfficesRepository {
   private officeStaffRepo: CosmosDbRepository<OfficeStaff>;
@@ -32,11 +38,13 @@ export class OfficesCosmosDbRepository implements OfficesRepository {
     officeCode: string,
     user: CamsUserReference,
   ): Promise<void> {
+    const ttl = 4500; // 75 minutes
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
       officeCode,
       ...user,
+      ttl,
     });
     await this.officeStaffRepo.upsert(context, officeCode, staff);
   }
