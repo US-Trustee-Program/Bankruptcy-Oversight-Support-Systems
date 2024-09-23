@@ -2,7 +2,7 @@ import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
 import { ApplicationConfiguration } from '../lib/configs/application-configuration';
-import { MockUserSessionGateway } from '../lib/testing/mock-gateways/mock-user-session-gateway';
+import { MockUserSessionUseCase } from '../lib/testing/mock-gateways/mock-user-session-use-case';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
 import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
@@ -78,7 +78,7 @@ describe('Application Context Creator', () => {
       const mockContext = await createMockApplicationContext();
       mockContext.request = request;
       const lookupSpy = jest
-        .spyOn(MockUserSessionGateway.prototype, 'lookup')
+        .spyOn(MockUserSessionUseCase.prototype, 'lookup')
         .mockResolvedValue(MockData.getCamsSession());
       await ContextCreator.getApplicationContextSession(mockContext);
       expect(lookupSpy).toHaveBeenCalled();

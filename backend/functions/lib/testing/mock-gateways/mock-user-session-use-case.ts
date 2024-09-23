@@ -1,6 +1,5 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { SessionGateway } from '../../adapters/utils/session-gateway';
 import { getUser } from './mock-oauth2-gateway';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsSession } from '../../../../../common/src/cams/session';
@@ -9,13 +8,13 @@ import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 
 const cache = new Map<string, CamsSession>();
 
-export class MockUserSessionGateway implements SessionGateway {
+export class MockUserSessionUseCase {
   async lookup(
     context: ApplicationContext,
     accessToken: string,
     provider: string,
   ): Promise<CamsSession> {
-    const user = await getUser(accessToken);
+    const { user } = await getUser(accessToken);
 
     const parts = accessToken.split('.');
     const key = parts[2];

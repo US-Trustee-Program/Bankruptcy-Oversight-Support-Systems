@@ -6,8 +6,7 @@ import { getFeatureFlags } from '../lib/adapters/utils/feature-flag';
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
 import { azureToCamsHttpRequest } from './functions';
 import { UnauthorizedError } from '../lib/common-errors/unauthorized-error';
-import { getUserSessionGateway } from '../lib/factory';
-import { SessionGateway } from '../lib/adapters/utils/session-gateway';
+import { getUserSessionUseCase } from '../lib/factory';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -77,8 +76,8 @@ async function getApplicationContextSession(context: ApplicationContext) {
     });
   }
 
-  const sessionGateway: SessionGateway = getUserSessionGateway(context);
-  const session = await sessionGateway.lookup(
+  const sessionUseCase = getUserSessionUseCase(context);
+  const session = await sessionUseCase.lookup(
     context,
     accessToken,
     context.config.authConfig.provider,
