@@ -65,11 +65,10 @@ export async function getUser(accessToken: string) {
   const decodedToken = jwt.decode(accessToken);
   const mockUser = mockUsers.find((role) => role.sub === decodedToken.sub);
   addSuperUserOffices(mockUser.user);
-  return mockUser.user;
+  return { user: mockUser.user, groups: [], jwt: {} as CamsJwt };
 }
 
 const MockOpenIdConnectGateway: OpenIdConnectGateway = {
-  verifyToken,
   getUser,
 };
 
