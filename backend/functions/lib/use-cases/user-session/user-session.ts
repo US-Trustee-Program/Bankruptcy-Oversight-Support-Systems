@@ -116,14 +116,12 @@ export class UserSessionUseCase {
         return await sessionCacheRepository.get(context, token);
       }
 
-      if (isCamsError(originalError)) {
-        throw originalError;
-      }
-
-      throw new UnauthorizedError(MODULE_NAME, {
-        message: originalError.message,
-        originalError,
-      });
+      throw isCamsError(originalError)
+        ? originalError
+        : new UnauthorizedError(MODULE_NAME, {
+            message: originalError.message,
+            originalError,
+          });
     }
   }
 }
