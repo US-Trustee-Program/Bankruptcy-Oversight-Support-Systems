@@ -65,7 +65,7 @@ function getRoleMapping(): Map<string, CamsRole> {
   if (!roleMapping) {
     const roleArray = ROLE_MAPPING.split('\n');
     roleMapping = roleArray.reduce((roleMap, roleString, idx) => {
-      if (idx === 0) return roleMap;
+      if (idx === 0 || !roleString.length) return roleMap;
       const roleInfo = roleString.split(',');
 
       roleMap.set(roleInfo[1], CamsRole[roleInfo[2]]);

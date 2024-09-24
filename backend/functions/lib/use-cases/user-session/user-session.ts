@@ -89,9 +89,9 @@ export class UserSessionUseCase {
         });
       }
 
-      const { user, groups, jwt } = await authGateway.getUser(token);
-      user.roles = getRoles(groups);
-      user.offices = await getOffices(context, groups);
+      const { user, jwt } = await authGateway.getUser(token);
+      user.roles = getRoles(jwt.claims.groups);
+      user.offices = await getOffices(context, jwt.claims.groups);
 
       // Simulate the legacy behavior by appending roles and Manhattan office to the user
       // if the 'restrict-case-assignment' feature flag is not set.
