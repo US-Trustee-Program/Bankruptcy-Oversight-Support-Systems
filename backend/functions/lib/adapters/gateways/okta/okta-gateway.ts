@@ -44,9 +44,7 @@ async function verifyToken(token: string): Promise<CamsJwt> {
   }
 }
 
-async function getUser(
-  accessToken: string,
-): Promise<{ user: CamsUser; groups: string[]; jwt: CamsJwt }> {
+async function getUser(accessToken: string): Promise<{ user: CamsUser; jwt: CamsJwt }> {
   const { userInfoUri } = getAuthorizationConfig();
 
   try {
@@ -69,15 +67,20 @@ async function getUser(
         name: oktaUser.name,
       };
 
-      type DojLoginUnifiedGroupClaims = {
-        ad_groups?: string[];
-        groups?: string[];
-      };
+      // DOJ Login Okta instances return a custom `AD_Groups` attribute on claims that does not
+      // appear on standard Okta claims. This line checks to see if it exists and if not
+      // appends an empty array for groups that will carry no permissions for the user.
+      jwt.claims.groups = Array.from(
+        new Set<string>(
+          [].concat(
+            jwt.claims.groups ?? [],
+            jwt.claims.AD_Groups ?? [],
+            jwt.claims.ad_groups ?? [],
+          ),
+        ),
+      );
 
-      const claims = jwt.claims as unknown as DojLoginUnifiedGroupClaims;
-      const groups = Array.from(new Set<string>([].concat(claims.ad_groups, claims.groups)));
-
-      return { user, groups, jwt };
+      return { user, jwt };
     } else {
       throw new Error('Failed to retrieve user info from Okta.');
     }

@@ -11,7 +11,7 @@ export type CamsJwtClaims = {
   nbf?: number;
   iat?: number;
   jti?: string;
-  groups: string[];
+  groups?: string[];
   [key: string]: unknown;
 };
 

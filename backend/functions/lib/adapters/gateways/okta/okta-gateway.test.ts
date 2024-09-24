@@ -89,8 +89,10 @@ describe('Okta gateway tests', () => {
     const actual = await gateway.getUser(token);
     expect(actual).toEqual({
       user: { id: undefined, name: userInfo.name },
-      groups: ['groupA', 'groupB', 'groupC'],
-      jwt,
+      jwt: {
+        ...jwt,
+        claims: { ...jwt.claims, groups: expect.arrayContaining(['groupA', 'groupB', 'groupC']) },
+      },
     });
   });
 
