@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { RadioRef } from '../../type-declarations/input-fields';
+import Button, { UswdsButtonStyle } from './Button';
 
 export interface RadioProps {
   id: string;
@@ -29,7 +30,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
     if (inputRef.current) inputRef.current.checked = value;
   }
 
-  function handleOnClick(_ev: React.MouseEvent<HTMLLabelElement>) {
+  function handleOnClick(_ev: React.MouseEvent<HTMLButtonElement>) {
     // clicking a radio button should always select it.  You should not be able to unselect by clicking a selected radio.
     if (inputRef.current?.checked !== undefined) inputRef.current.checked = true;
 
@@ -42,6 +43,11 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
 
   return (
     <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
+      <label htmlFor={props.id} data-testid={`${props.id}-click-target`}>
+        <Button className={`usa-radio__label ${UswdsButtonStyle.Unstyled}`} onClick={handleOnClick}>
+          {props.label}
+        </Button>
+      </label>
       <input
         className={`usa-input usa-tooltip usa-radio__input`}
         id={props.id}
@@ -55,14 +61,6 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         onChange={() => {}}
         ref={inputRef}
       />
-      <label
-        className="usa-radio__label"
-        htmlFor={props.id}
-        onClick={handleOnClick}
-        data-testid={`${props.id}-click-target`}
-      >
-        {props.label}
-      </label>
     </div>
   );
 }

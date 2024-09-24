@@ -62,7 +62,7 @@ export const Header = () => {
     <>
       <Banner></Banner>
       <div className="usa-overlay"></div>
-      <header role="banner" className="cams-header usa-header usa-header--basic">
+      <header role="banner" className="cams-header usa-header usa-header--basic" tabIndex={-1}>
         <div className="cams-header-contents">
           <div className="cams-logo-and-title">
             <div className="cams-logo usa-logo">
@@ -77,21 +77,29 @@ export const Header = () => {
           <div className="usa-nav-container">
             <div className="usa-navbar">
               <nav
-                aria-label="Primary navigation"
                 className="usa-nav cams-nav-bar"
                 role="navigation"
+                aria-labelledby="primary-nav-heading"
+                tabIndex={-1}
               >
                 <div role="menubar">
+                  <h2
+                    id="primary-nav-heading"
+                    className="screen-reader-only"
+                    aria-label="Primary navigation"
+                  >
+                    Main navigation
+                  </h2>
                   <ul className="usa-nav__primary" role="menu">
-                    <li className="usa-nav__primary-item" role="menuitem">
+                    <li className="usa-nav__primary-item" role="none">
                       <NavLink
+                        role="menuitem"
                         to="/my-cases"
                         data-testid="header-my-cases-link"
                         className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
                         onClick={() => setActiveNav(NavState.MY_CASES)}
                         onKeyDown={handleLinkKeyDown}
                         title="view a list of cases assigned to your account"
-                        aria-selected={activeNav === NavState.MY_CASES}
                         aria-current={activeNav === NavState.MY_CASES ? 'page' : undefined}
                       >
                         My Cases
@@ -99,8 +107,9 @@ export const Header = () => {
                     </li>
 
                     {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
-                      <li className="usa-nav__primary-item">
+                      <li className="usa-nav__primary-item" role="none">
                         <NavLink
+                          role="menuitem"
                           to="/staff-assignment"
                           data-testid="header-staff-assignment-link"
                           className={
@@ -109,7 +118,6 @@ export const Header = () => {
                           onClick={() => setActiveNav(NavState.STAFF_ASSIGNMENT)}
                           onKeyDown={handleLinkKeyDown}
                           title="view or edit staff assignments for cases"
-                          aria-selected={activeNav === NavState.STAFF_ASSIGNMENT}
                           aria-current={
                             activeNav === NavState.STAFF_ASSIGNMENT ? 'page' : undefined
                           }
@@ -122,8 +130,9 @@ export const Header = () => {
                     {session &&
                       session.user.roles?.includes(CamsRole.DataVerifier) &&
                       transferOrdersFlag && (
-                        <li className="usa-nav__primary-item">
+                        <li className="usa-nav__primary-item" role="none">
                           <NavLink
+                            role="menuitem"
                             to="/data-verification"
                             data-testid="header-data-verification-link"
                             className={
@@ -132,7 +141,7 @@ export const Header = () => {
                             onClick={() => setActiveNav(NavState.DATA_VERIFICATION)}
                             onKeyDown={handleLinkKeyDown}
                             title="view status of, approve, or reject case events"
-                            aria-selected={activeNav === NavState.DATA_VERIFICATION}
+                            //aria-selected={activeNav === NavState.DATA_VERIFICATION}
                             aria-current={
                               activeNav === NavState.DATA_VERIFICATION ? 'page' : undefined
                             }
@@ -143,15 +152,16 @@ export const Header = () => {
                       )}
 
                     {caseSearchFlag && (
-                      <li className="usa-nav__primary-item">
+                      <li className="usa-nav__primary-item" role="none">
                         <NavLink
+                          role="menuitem"
                           to="/search"
                           data-testid="header-search-link"
                           className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
                           onClick={() => setActiveNav(NavState.SEARCH)}
                           onKeyDown={handleLinkKeyDown}
                           title="search for cases"
-                          aria-selected={activeNav === NavState.SEARCH}
+                          //aria-selected={activeNav === NavState.SEARCH}
                           aria-current={activeNav === NavState.SEARCH ? 'page' : undefined}
                         >
                           Case Search

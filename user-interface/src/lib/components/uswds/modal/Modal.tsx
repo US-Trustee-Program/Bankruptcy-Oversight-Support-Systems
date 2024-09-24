@@ -1,4 +1,13 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, {
+  cloneElement,
+  forwardRef,
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
@@ -20,9 +29,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
-  const [keyboardAccessible, setKeyboardAccessible] = useState<number>(-1);
   const [openModalButtonRef, setOpenModalButtonRef] =
     useState<React.RefObject<OpenModalButtonRef> | null>(null);
+  const [firstElement, setFirstElement] = useState<HTMLElement | null>(null);
 
   const modalShellRef = useRef<HTMLInputElement | null>(null);
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
@@ -31,7 +40,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     data['data-force-action'] = true;
   }
 
-  const handleKeyDown = (ev: KeyboardEvent) => {
+  const handleKeyDown = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
     if (!props.forceAction) {
       if (ev.key === 'Escape') {
         close(ev);
@@ -50,12 +59,11 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
 
     hide();
-    setKeyboardAccessible(100000);
 
     openModalButtonRef?.current?.focus();
   }
 
-  const handleTab = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleTab = (ev: React.KeyboardEvent<HTMLElement>) => {
     if (
       ev.key == 'Tab' &&
       !ev.shiftKey &&
@@ -63,15 +71,15 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       (ev.target as Element).classList.contains('usa-modal__close')
     ) {
       ev.preventDefault();
-      modalShellRef?.current?.focus();
-    }
-  };
-
-  const handleShiftTab = (ev: React.KeyboardEvent<HTMLDivElement>) => {
-    const elementEquivalency =
-      (ev.target as Element).id === `${props.modalId}-description` ||
-      (ev.target as Element).id === `${props.modalId}`;
-    if (ev.key == 'Tab' && ev.shiftKey && isVisible && elementEquivalency) {
+      if (firstElement) {
+        firstElement.focus();
+      }
+    } else if (
+      ev.key == 'Tab' &&
+      ev.shiftKey &&
+      isVisible &&
+      (ev.target as Element) === firstElement
+    ) {
       ev.preventDefault();
       const button = document.querySelector('.usa-button.usa-modal__close');
       if (button) {
@@ -79,6 +87,61 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       }
     }
   };
+
+  interface EnhancableProps {
+    onKeyDown?: (e: React.KeyboardEvent<HTMLElement>) => void;
+    children?: ReactNode;
+  }
+
+  function enhanceChildrenWithKeyDownHandlers(
+    child: ReactNode,
+    isFirstInteractive: boolean = true,
+  ): ReactNode {
+    if (React.isValidElement(child)) {
+      const props = child.props as EnhancableProps;
+
+      // eslint-disable-next-line react/prop-types
+      const existingOnKeyDown = props.onKeyDown;
+
+      const combinedOnKeyDown = isFirstInteractive
+        ? (ev: React.KeyboardEvent<HTMLElement>) => {
+            if (existingOnKeyDown) existingOnKeyDown(ev);
+            handleKeyDown(ev);
+          }
+        : existingOnKeyDown;
+
+      // according to chatGPT, we don't need to worry about Prop Types because typescript should manage prop validation
+      // eslint-disable-next-line react/prop-types
+      const enhancedContent = props.children
+        ? // eslint-disable-next-line react/prop-types
+          React.Children.map(props.children, (child) =>
+            enhanceChildrenWithKeyDownHandlers(
+              child,
+              isFirstInteractive && !isInteractiveElement(child),
+            ),
+          )
+        : null;
+
+      return cloneElement(child as ReactElement, {
+        onKeyDown: combinedOnKeyDown,
+        children: enhancedContent,
+      });
+    }
+
+    return child;
+  }
+
+  function isInteractiveElement(child: ReactNode): boolean {
+    if (React.isValidElement(child)) {
+      const tag = child.type;
+      return (
+        typeof tag === 'string' &&
+        ['button', 'a', 'input', 'textarea', 'select', 'checkbox', 'radio'].includes(tag)
+      );
+    }
+    return false;
+  }
+
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton?.onClick) {
       const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
@@ -122,13 +185,18 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
   useEffect(() => {
     if (isVisible && modalShellRef.current) {
-      setKeyboardAccessible(-1);
-      modalShellRef.current.focus();
-    }
-  }, [isVisible]);
+      const firstFocusableElement = modalShellRef.current.querySelector(
+        'button, [href], input, [tabindex]:not([tabindex="-1"])',
+      );
 
-  useEffect(() => {
-    if (isVisible) {
+      if (firstFocusableElement) {
+        setFirstElement(firstFocusableElement as HTMLElement);
+        (firstFocusableElement as HTMLElement).focus();
+      } else {
+        setFirstElement(modalShellRef.current as HTMLElement);
+        modalShellRef.current.focus();
+      }
+
       const keyDownEventHandler = (ev: KeyboardEvent) => {
         handleKeyDown(ev);
       };
@@ -150,6 +218,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
     >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className="usa-modal-overlay"
         aria-controls={props.modalId}
@@ -163,10 +232,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           className={modalClassNames}
           id={props.modalId}
           {...data}
-          tabIndex={keyboardAccessible}
           ref={modalShellRef}
-          onKeyDown={handleShiftTab}
           data-testid={`modal-content-${props.modalId}`}
+          aria-modal="true"
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
@@ -176,8 +244,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 </h2>
               )}
               <div className="usa-prose">
-                <section id={props.modalId + '-description'} tabIndex={0}>
-                  {props.content}
+                <section id={props.modalId + '-description'}>
+                  {enhanceChildrenWithKeyDownHandlers(props.content)}
                 </section>
               </div>
               <div className="usa-modal__footer">
@@ -190,6 +258,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.submitButton.label,
                           onClick: submitBtnClick,
+                          onKeyDown: handleTab,
                           className: props.actionButtonGroup.submitButton.className ?? '',
                           disabled: props.actionButtonGroup.submitButton.disabled ?? false,
                           uswdsStyle:
@@ -203,6 +272,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.cancelButton.label,
                           onClick: cancelBtnClick,
+                          onKeyDown: handleTab,
                           className: props.actionButtonGroup.cancelButton?.className ?? '',
                           uswdsStyle:
                             props.actionButtonGroup.cancelButton?.uswdsStyle ??

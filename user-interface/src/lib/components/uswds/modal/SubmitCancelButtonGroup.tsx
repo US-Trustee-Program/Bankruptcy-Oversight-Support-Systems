@@ -10,6 +10,7 @@ export type SubmitCancelBtnProps = {
   submitButton?: {
     label: string;
     onClick?: MouseEventHandler<HTMLButtonElement>;
+    onKeyDown?: React.KeyboardEventHandler<HTMLButtonElement>;
     closeOnClick?: boolean;
     className?: string;
     uswdsStyle?: UswdsButtonStyle;
@@ -18,6 +19,7 @@ export type SubmitCancelBtnProps = {
   cancelButton?: {
     label: string;
     onClick?: MouseEventHandler;
+    onKeyDown?: React.KeyboardEventHandler<HTMLButtonElement>;
     className?: string;
     uswdsStyle?: UswdsButtonStyle;
   };
@@ -52,6 +54,7 @@ function SubmitCancelButtonGroupComponent(
               uswdsStyle={submitButton.uswdsStyle ?? UswdsButtonStyle.Default}
               className={submitButton.className ?? ''}
               onClick={submitButton.onClick}
+              onKeyDown={submitButton.onKeyDown}
               disabled={submitButton.disabled ?? false}
             >
               {submitButton.label.length > 0 ? submitButton.label : 'Submit'}
@@ -65,6 +68,7 @@ function SubmitCancelButtonGroupComponent(
               uswdsStyle={cancelButton.uswdsStyle ?? UswdsButtonStyle.Unstyled}
               className={cancelButtonClassName}
               onClick={cancelButton.onClick ?? close}
+              onKeyDown={cancelButton.onKeyDown}
             >
               {cancelButton.label.length > 0 ? cancelButton.label : 'Go back'}
             </Button>

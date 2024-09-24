@@ -83,9 +83,7 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
                   )}
                   {formatDate(order.orderDate)} - {docketEntry.summaryText}
                 </Link>
-                <p tabIndex={0} className="measure-6 text-wrap">
-                  {docketEntry.fullText}
-                </p>
+                <p className="measure-6 text-wrap">{docketEntry.fullText}</p>
                 {docketEntry.documents && (
                   <DocketEntryDocumentList documents={docketEntry.documents} />
                 )}
