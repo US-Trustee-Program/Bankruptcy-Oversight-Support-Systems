@@ -60,7 +60,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
-      .mockResolvedValue({ user: mockUser, groups: [], jwt: camsJwt });
+      .mockResolvedValue({ user: mockUser, jwt: camsJwt });
   });
 
   afterEach(() => {
@@ -115,7 +115,6 @@ describe('user-session.gateway test', () => {
     });
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
       user: mockUser,
-      groups: [],
       jwt: null,
     });
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
@@ -127,7 +126,6 @@ describe('user-session.gateway test', () => {
     });
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
       user: mockUser,
-      groups: [],
       jwt: undefined,
     });
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
