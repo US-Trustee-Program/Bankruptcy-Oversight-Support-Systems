@@ -76,6 +76,9 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   return (
     <div id="case-detail-court-docket-panel">
+      <h3 className="docket-entries-main-header" aria-label="Docket Entries">
+        Docket Entries
+      </h3>
       <div id="searchable-docket" data-testid="searchable-docket">
         {props.isDocketLoading && <LoadingIndicator />}
         {!props.isDocketLoading &&
@@ -87,14 +90,14 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                 key={idx}
                 data-testid={`docket-entry-${idx}`}
               >
-                <div
+                <h4
                   className="grid-col-1 document-number-column usa-tooltip"
                   data-testid={`docket-entry-${idx}-number`}
-                  aria-label="document number"
+                  aria-label={`Document number ${docketEntry.documentNumber}`}
                   title={`Document number ${docketEntry.documentNumber}`}
                 >
                   {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
-                </div>
+                </h4>
                 <div className="grid-col-11 docket-content">
                   <div
                     className="docket-entry-header"
