@@ -22,7 +22,7 @@
         margin-bottom: 1rem;
       }
       .case-detail-item-name {
-        padding-right: .5rem;
+        padding-right: 0.5rem;
       }
       .transfer-court {
         span {
@@ -45,6 +45,13 @@
     padding-bottom: 0.5rem;
   }
   .filter-and-search {
+    .filter-header {
+      margin-bottom: 0.5rem;
+    }
+    .filter-info-text {
+      font-style: italic;
+      margin-bottom: 2rem;
+    }
     .form-field {
       padding-bottom: 1.5rem;
     }

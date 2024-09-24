@@ -401,6 +401,13 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     className={`filter-and-search padding-y-4`}
                     data-testid="filter-and-search-panel"
                   >
+                    <h3 className="filter-header" aria-label="Court Docket Filters">
+                      Filters
+                    </h3>
+                    <div className="filter-info-text">
+                      As filters are applied, docket entries will be sorted or filtered
+                      automatically
+                    </div>
                     <div className="sort form-field">
                       <div className="usa-sort usa-sort--small">
                         <button
@@ -427,7 +434,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           className="search-icon"
                           id="basic-search-field"
                           name="basic-search"
-                          label="Find in Docket"
+                          label="Find text in Docket"
                           icon="search"
                           autoComplete="off"
                           onChange={searchDocketText}

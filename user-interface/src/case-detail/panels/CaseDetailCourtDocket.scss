@@ -1,6 +1,10 @@
 @import '../../styles/abstracts/colors';
 
 #case-detail-court-docket-panel {
+  .docket-entries-main-header {
+    margin-left: 3rem;
+    margin-bottom: 2rem;
+  }
   .docket-entry {
     padding-bottom: 2rem;
 
@@ -15,6 +19,7 @@
         color: black;
       }
       .docket-full-text {
+        font-style: normal;
         padding-top: 0.5rem;
       }
       .docket-documents {
@@ -50,5 +55,4 @@
     width: 2rem;
     vertical-align: middle;
   }
-
 }
