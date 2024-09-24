@@ -64,6 +64,7 @@ describe('Okta gateway tests', () => {
       aud: 'api://default',
       iat: 0,
       exp: Math.floor(Date.now() / 1000) + 600,
+      AD_Groups: ['groupD'],
       ad_groups: ['groupA', 'groupB'],
       groups: ['groupB', 'groupC'],
     };
@@ -91,7 +92,10 @@ describe('Okta gateway tests', () => {
       user: { id: undefined, name: userInfo.name },
       jwt: {
         ...jwt,
-        claims: { ...jwt.claims, groups: expect.arrayContaining(['groupA', 'groupB', 'groupC']) },
+        claims: {
+          ...jwt.claims,
+          groups: expect.arrayContaining(['groupA', 'groupB', 'groupC', 'groupD']),
+        },
       },
     });
   });
