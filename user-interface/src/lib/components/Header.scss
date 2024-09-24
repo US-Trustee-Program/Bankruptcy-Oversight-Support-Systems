@@ -19,6 +19,7 @@
   .cams-header-contents {
     display: flex;
     flex-flow: row;
+    justify-content: space-between;
 
     .cams-logo-and-title {
       display: flex;
@@ -109,6 +110,9 @@
       display: block;
 
       .usa-nav-container {
+        padding-left: 0;
+        padding-right: 0;
+
         .usa-navbar {
           border-bottom: none;
 

@@ -258,7 +258,7 @@ function _AssignAttorneyModal(
       content={
         <>
           <div className="visible-headings">
-            <label className="attorney-name">Attorney Name</label>
+            <h2 className="attorney-name">Attorney Name</h2>
           </div>
           <div className="usa-table-container--scrollable" ref={tableContainer}>
             <table className="attorney-list" role="none">

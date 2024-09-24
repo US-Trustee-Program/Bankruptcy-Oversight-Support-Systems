@@ -1,3 +1,4 @@
+import Button, { UswdsButtonStyle } from './Button';
 import './forms.scss';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
@@ -30,10 +31,16 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
   const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
 
-  const checkHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
+  const checkHandler = (_ev: React.MouseEvent<HTMLButtonElement>) => {
     if (props.onChange) {
-      props.onChange(ev);
+      const syntheticEvent = {
+        target: {
+          checked: !isChecked,
+        },
+      } as React.ChangeEvent<HTMLInputElement>;
+      props.onChange(syntheticEvent);
     }
+
     setIsChecked(!isChecked);
   };
 
@@ -81,6 +88,14 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   const labelTestId = `checkbox-label-${props.id}`;
   return (
     <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`}>
+      <label htmlFor={props.id} data-testid={labelTestId}>
+        <Button
+          className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
+          onClick={checkHandler}
+        >
+          {props.label}
+        </Button>
+      </label>
       <input
         type="checkbox"
         data-testid={checkboxTestId}
@@ -90,16 +105,14 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         value={props.value}
         aria-label={props.label ?? `check ${props.value}`}
         checked={isChecked}
-        onChange={checkHandler}
+        onChange={() => {}}
         onFocus={focusHandler}
         data-indeterminate={indeterminateState || null}
         title={props.title}
         required={props.required}
         disabled={props.disabled}
+        tabIndex={-1}
       />
-      <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
-        {props.label}
-      </label>
     </div>
   );
 };

@@ -208,7 +208,7 @@ function _SuggestedTransferCases(
             <>
               <div className="grid-col-1"></div>
               <div className="transfer-from-to__div transfer-description grid-col-10">
-                <div className="transfer-text" tabIndex={0}>
+                <div className="transfer-text">
                   {suggestedCases && suggestedCases?.length > 0 && (
                     <CaseTable
                       id="suggested-cases"

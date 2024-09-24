@@ -61,16 +61,16 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
                     .map((bCase, idx) => {
                       return (
                         <tr key={idx}>
-                          <td scope="row">
+                          <td>
                             <CaseNumber caseId={bCase.otherCase.caseId} />
                             <span> ({bCase.otherCase.courtDivisionName})</span>
                           </td>
-                          <td scope="row" className="title-column">
+                          <td className="title-column">
                             {bCase.otherCase.caseTitle}
                             {bCase.documentType === 'CONSOLIDATION_TO' && ` (Lead)`}
                           </td>
-                          <td scope="row">{formatDate(bCase.otherCase.dateFiled)}</td>
-                          <td scope="row">{formatDate(bCase.orderDate)}</td>
+                          <td>{formatDate(bCase.otherCase.dateFiled)}</td>
+                          <td>{formatDate(bCase.orderDate)}</td>
                         </tr>
                       );
                     })}
