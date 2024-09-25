@@ -20,7 +20,7 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('should call onChange callback when checked or unchecked', async () => {
-    const radioButtonLabel = screen.getByTestId(`${defaultProps.id}-click-target`);
+    const radioButtonLabel = screen.getByTestId(`button-${defaultProps.id}-click-target`);
     const radioButton = screen.getByTestId(defaultProps.id);
     fireEvent.click(radioButtonLabel);
     await waitFor(() => {

@@ -105,8 +105,9 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         disabled={props.disabled}
         tabIndex={-1}
       />
-      <label htmlFor={props.id} data-testid={labelTestId}>
+      <label htmlFor={props.id}>
         <Button
+          id={labelTestId}
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
           onClick={checkHandler}
         >

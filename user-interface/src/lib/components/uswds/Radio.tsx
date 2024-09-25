@@ -57,8 +57,9 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         tabIndex={-1}
         ref={inputRef}
       />
-      <label htmlFor={props.id} data-testid={`${props.id}-click-target`}>
+      <label htmlFor={props.id}>
         <Button
+          id={`${props.id}-click-target`}
           className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
           onClick={handleOnClick}
         >
