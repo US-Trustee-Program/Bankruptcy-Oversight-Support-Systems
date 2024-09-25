@@ -70,14 +70,16 @@ async function getUser(accessToken: string): Promise<{ user: CamsUser; jwt: Cams
       // DOJ Login Okta instances return a custom `AD_Groups` attribute on claims that does not
       // appear on standard Okta claims. This line checks to see if it exists and if not
       // appends an empty array for groups that will carry no permissions for the user.
+
+      const adGroups = Object.keys(jwt.claims).reduce((acc, key) => {
+        if (key.toLowerCase() === 'ad_groups') {
+          acc.push(jwt.claims[key]);
+        }
+        return acc;
+      }, []);
+
       jwt.claims.groups = Array.from(
-        new Set<string>(
-          [].concat(
-            jwt.claims.groups ?? [],
-            jwt.claims.AD_Groups ?? [],
-            jwt.claims.ad_groups ?? [],
-          ),
-        ),
+        new Set<string>([].concat(jwt.claims.groups ?? [], ...adGroups)),
       );
 
       return { user, jwt };
