@@ -31,6 +31,43 @@ button.unstyled-button {
   }
 }
 
+.usa-radio__input + label {
+  button {
+    text-decoration: none;
+    margin-top: 0;
+    line-height: 1.25rem;
+  }
+  button:active, button:hover {
+    text-decoration: none;
+  }
+}
+.usa-radio__input:checked + label {
+  [class *= __label]::before {
+    box-shadow: 0 0 0 2px #005ea2, inset 0 0 0 2px #fff;
+    background-color: #005ea2;
+  }
+}
+.usa-checkbox__input + label {
+  button {
+    text-decoration: none;
+    margin-top: 0;
+    line-height: 1.25rem;
+  }
+  button:active, button:hover {
+    text-decoration: none;
+  }
+}
+.usa-checkbox__input:checked + label {
+  [class *= __label]::before {
+    background-color: #005ea2;
+    background-image: url(/assets/styles/img/correct8.svg), linear-gradient(transparent, transparent);
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: .75rem auto;
+    box-shadow: 0 0 0 2px #005ea2;
+  }
+}
+
 .usa-fieldset {
   legend[data-required="true"]::after {
     content: ' *';
