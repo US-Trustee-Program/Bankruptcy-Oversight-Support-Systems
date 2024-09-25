@@ -43,11 +43,6 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
 
   return (
     <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
-      <label htmlFor={props.id} data-testid={`${props.id}-click-target`}>
-        <Button className={`usa-radio__label ${UswdsButtonStyle.Unstyled}`} onClick={handleOnClick}>
-          {props.label}
-        </Button>
-      </label>
       <input
         className={`usa-input usa-tooltip usa-radio__input`}
         id={props.id}
@@ -59,8 +54,17 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         checked={isChecked()}
         required={props.required}
         onChange={() => {}}
+        tabIndex={-1}
         ref={inputRef}
       />
+      <label htmlFor={props.id} data-testid={`${props.id}-click-target`}>
+        <Button
+          className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
+          onClick={handleOnClick}
+        >
+          {props.label}
+        </Button>
+      </label>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { Banner } from '@/lib/components/uswds/Banner';
 import { PropsWithChildren } from 'react';
+import '@/lib/components/Header.scss';
 import './BlankPage.scss';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
@@ -11,26 +12,16 @@ export function BlankPage(props: BlankPageProps) {
       <Banner></Banner>
       <div className="usa-overlay"></div>
       <header role="banner" className="cams-header usa-header usa-header--basic">
-        <div className="cams-header-contents">
+        <div className="usa-nav-container">
           <div className="cams-logo-and-title">
-            <div className="cams-logo usa-logo">
-              <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
+            <div className="usa-navbar">
+              <div className="cams-logo usa-logo">
+                <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
+              </div>
             </div>
             <div className="site-title">
               <span className="text-no-wrap">U.S. Trustee Program</span>
               <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
-            </div>
-          </div>
-
-          <div className="usa-nav-container">
-            <div className="usa-navbar">
-              <nav
-                aria-label="Primary navigation"
-                className="usa-nav cams-nav-bar"
-                role="navigation"
-              >
-                <ul className="usa-nav__primary usa-accordion"></ul>
-              </nav>
             </div>
           </div>
         </div>
