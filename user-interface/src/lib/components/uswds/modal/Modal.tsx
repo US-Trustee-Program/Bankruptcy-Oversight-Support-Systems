@@ -1,13 +1,4 @@
-import React, {
-  cloneElement,
-  forwardRef,
-  ReactElement,
-  ReactNode,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
@@ -63,7 +54,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     openModalButtonRef?.current?.focus();
   }
 
-  const handleTab = (ev: React.KeyboardEvent<HTMLElement>) => {
+  const handleTab = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
+    console.log(ev);
     if (
       ev.key == 'Tab' &&
       !ev.shiftKey &&
@@ -78,69 +70,16 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       ev.key == 'Tab' &&
       ev.shiftKey &&
       isVisible &&
+      firstElement &&
       (ev.target as Element) === firstElement
     ) {
       ev.preventDefault();
-      const button = document.querySelector('.usa-button.usa-modal__close');
+      const button = document.querySelector(`#${props.modalId} .usa-button.usa-modal__close`);
       if (button) {
         (button as HTMLElement).focus();
       }
     }
   };
-
-  interface EnhancableProps {
-    onKeyDown?: (e: React.KeyboardEvent<HTMLElement>) => void;
-    children?: ReactNode;
-  }
-
-  function enhanceChildrenWithKeyDownHandlers(
-    child: ReactNode,
-    isFirstInteractive: boolean = true,
-  ): ReactNode {
-    if (React.isValidElement(child)) {
-      const props = child.props as EnhancableProps;
-
-      // eslint-disable-next-line react/prop-types
-      const existingOnKeyDown = props.onKeyDown;
-
-      const combinedOnKeyDown = isFirstInteractive
-        ? (ev: React.KeyboardEvent<HTMLElement>) => {
-            if (existingOnKeyDown) existingOnKeyDown(ev);
-            handleKeyDown(ev);
-          }
-        : existingOnKeyDown;
-
-      // according to chatGPT, we don't need to worry about Prop Types because typescript should manage prop validation
-      // eslint-disable-next-line react/prop-types
-      const enhancedContent = props.children
-        ? // eslint-disable-next-line react/prop-types
-          React.Children.map(props.children, (child) =>
-            enhanceChildrenWithKeyDownHandlers(
-              child,
-              isFirstInteractive && !isInteractiveElement(child),
-            ),
-          )
-        : null;
-
-      return cloneElement(child as ReactElement, {
-        onKeyDown: combinedOnKeyDown,
-        children: enhancedContent,
-      });
-    }
-
-    return child;
-  }
-
-  function isInteractiveElement(child: ReactNode): boolean {
-    if (React.isValidElement(child)) {
-      const tag = child.type;
-      return (
-        typeof tag === 'string' &&
-        ['button', 'a', 'input', 'textarea', 'select', 'checkbox', 'radio'].includes(tag)
-      );
-    }
-    return false;
-  }
 
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton?.onClick) {
@@ -184,14 +123,46 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }));
 
   useEffect(() => {
+    let firstEl: HTMLElement | null = null;
     if (isVisible && modalShellRef.current) {
-      const firstFocusableElement = modalShellRef.current.querySelector(
-        'button, [href], input, [tabindex]:not([tabindex="-1"])',
+      const interactiveElements = modalShellRef.current.querySelectorAll(
+        'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
       );
 
-      if (firstFocusableElement) {
-        setFirstElement(firstFocusableElement as HTMLElement);
-        (firstFocusableElement as HTMLElement).focus();
+      interactiveElements.forEach((el) => {
+        const element = el as HTMLElement;
+        if (!firstEl) {
+          firstEl = element;
+          if (firstEl.classList.contains('usa-radio__input')) {
+            const inputLabel = firstEl.parentElement?.querySelector('label');
+            if (inputLabel) {
+              const labelButton = inputLabel.querySelector('button.usa-radio__label');
+              if (labelButton) firstEl = labelButton as HTMLElement;
+            }
+          } else if (firstEl.classList.contains('usa-checkbox__input')) {
+            const inputLabel = firstEl.parentElement?.querySelector('label');
+            if (inputLabel) {
+              const labelButton = inputLabel.querySelector('button.usa-checkbox__label');
+              if (labelButton) firstEl = labelButton as HTMLElement;
+            }
+          }
+        }
+
+        const existingHandler = element.onkeydown;
+
+        const enhancedHandler = (event: KeyboardEvent) => {
+          if (existingHandler) {
+            existingHandler.call(element, event);
+          }
+          handleTab(event);
+        };
+
+        element.onkeydown = enhancedHandler;
+      });
+
+      if (firstEl) {
+        setFirstElement(firstEl);
+        (firstEl as HTMLElement).focus();
       } else {
         setFirstElement(modalShellRef.current as HTMLElement);
         modalShellRef.current.focus();
@@ -204,6 +175,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       document.addEventListener('keydown', keyDownEventHandler);
 
       return () => {
+        interactiveElements.forEach((el) => {
+          (el as HTMLElement).onkeydown = null;
+        });
         document.removeEventListener('keydown', keyDownEventHandler);
       };
     }
@@ -244,9 +218,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 </h2>
               )}
               <div className="usa-prose">
-                <section id={props.modalId + '-description'}>
-                  {enhanceChildrenWithKeyDownHandlers(props.content)}
-                </section>
+                <section id={props.modalId + '-description'}>{props.content}</section>
               </div>
               <div className="usa-modal__footer">
                 <SubmitCancelButtonGroup

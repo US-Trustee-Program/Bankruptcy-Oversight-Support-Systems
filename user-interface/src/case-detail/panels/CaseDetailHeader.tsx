@@ -41,7 +41,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
         <CopyButton
           id="header-case-id"
           onClick={() => copyCaseNumber(props.caseId)}
-          title="Copy Case Id to clipboard"
+          title="Copy Case ID to clipboard"
         />
       </h2>
     );
