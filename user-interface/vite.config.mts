@@ -6,7 +6,6 @@ import envCompatible from 'vite-plugin-env-compatible';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import svgr from 'vite-plugin-svgr';
-import eslint from 'vite-plugin-eslint';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -36,7 +35,6 @@ export default defineConfig({
     // svgr options: https://react-svgr.com/docs/options/
     svgr({ svgrOptions: { icon: true } }),
     viteTsconfigPaths(),
-    eslint(),
   ],
   envPrefix: 'CAMS_',
   resolve: {
