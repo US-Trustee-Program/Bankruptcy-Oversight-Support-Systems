@@ -1,28 +1,29 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { RadioRef } from '@/lib/type-declarations/input-fields';
 import Radio, { RadioProps } from './Radio';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<RadioRef>();
   const onChangeHandlerSpy = vi.fn();
 
   const defaultProps: RadioProps = {
-    id: 'radio-1',
+    id: '1',
     label: 'RadioLabelText',
     name: 'KeyName',
     value: '1',
     onChange: onChangeHandlerSpy,
   };
 
+  const radioTestId = `radio-${defaultProps.id}`;
+
   beforeEach(() => {
     render(<Radio {...defaultProps} ref={ref}></Radio>);
   });
 
   test('should call onChange callback when checked or unchecked', async () => {
-    const radioButtonLabel = screen.getByTestId(`button-${defaultProps.id}-click-target`);
-    const radioButton = screen.getByTestId(defaultProps.id);
-    fireEvent.click(radioButtonLabel);
+    const radioButton = testingUtilities.selectRadio('1');
     await waitFor(() => {
       expect(onChangeHandlerSpy).toHaveBeenCalled();
     });
@@ -36,7 +37,7 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('should be able to check/uncheck programmatically', async () => {
-    const radioButton = screen.getByTestId(defaultProps.id);
+    const radioButton = screen.getByTestId(radioTestId);
     expect(radioButton).not.toBeChecked();
 
     expect(ref.current?.isChecked()).toBeFalsy();
@@ -54,7 +55,7 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('should be able to disable/enable programmatically', async () => {
-    const radioButton = screen.getByTestId(defaultProps.id);
+    const radioButton = screen.getByTestId(radioTestId);
     expect(radioButton).not.toBeDisabled();
 
     ref.current?.disable(true);

@@ -41,14 +41,15 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
 
   useImperativeHandle(ref, () => ({ check, disable, isChecked }));
 
+  const radioTestId = `radio-${props.id}`;
   return (
     <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
       <input
         className={`usa-input usa-tooltip usa-radio__input`}
-        id={props.id}
+        id={radioTestId}
         type="radio"
         name={props.name}
-        data-testid={props.id}
+        data-testid={radioTestId}
         disabled={isDisabled}
         value={props.value}
         checked={isChecked()}
@@ -59,7 +60,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
       />
       <label htmlFor={props.id}>
         <Button
-          id={`${props.id}-click-target`}
+          id={`${radioTestId}-click-target`}
           className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
           onClick={handleOnClick}
         >

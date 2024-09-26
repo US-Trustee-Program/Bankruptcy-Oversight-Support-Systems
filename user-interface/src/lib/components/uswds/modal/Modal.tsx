@@ -54,8 +54,12 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     openModalButtonRef?.current?.focus();
   }
 
-  const handleTab = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
-    console.log(ev);
+  const handleTab = (
+    ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent,
+    firstEl: HTMLElement | null,
+  ) => {
+    if (!firstEl) return;
+
     if (
       ev.key == 'Tab' &&
       !ev.shiftKey &&
@@ -63,15 +67,15 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       (ev.target as Element).classList.contains('usa-modal__close')
     ) {
       ev.preventDefault();
-      if (firstElement) {
-        firstElement.focus();
+      if (firstEl) {
+        firstEl.focus();
       }
     } else if (
       ev.key == 'Tab' &&
       ev.shiftKey &&
       isVisible &&
-      firstElement &&
-      (ev.target as Element) === firstElement
+      firstEl &&
+      (ev.target as Element) === firstEl
     ) {
       ev.preventDefault();
       const button = document.querySelector(`#${props.modalId} .usa-button.usa-modal__close`);
@@ -154,7 +158,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           if (existingHandler) {
             existingHandler.call(element, event);
           }
-          handleTab(event);
+          handleTab(event, firstEl);
         };
 
         element.onkeydown = enhancedHandler;
@@ -230,7 +234,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.submitButton.label,
                           onClick: submitBtnClick,
-                          onKeyDown: handleTab,
+                          onKeyDown: (ev) => handleTab(ev, firstElement),
                           className: props.actionButtonGroup.submitButton.className ?? '',
                           disabled: props.actionButtonGroup.submitButton.disabled ?? false,
                           uswdsStyle:
@@ -244,7 +248,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.cancelButton.label,
                           onClick: cancelBtnClick,
-                          onKeyDown: handleTab,
+                          onKeyDown: (ev) => handleTab(ev, firstElement),
                           className: props.actionButtonGroup.cancelButton?.className ?? '',
                           uswdsStyle:
                             props.actionButtonGroup.cancelButton?.uswdsStyle ??
@@ -263,7 +267,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 data-close-modal
                 onClick={close}
                 data-testid={`modal-x-button-${props.modalId}`}
-                onKeyDown={handleTab}
+                onKeyDown={(ev) => handleTab(ev, firstElement)}
               >
                 <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
                   <use xlinkHref={closeIcon}></use>

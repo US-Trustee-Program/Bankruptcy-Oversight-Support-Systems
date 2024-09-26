@@ -27,7 +27,7 @@ describe('Test Checkbox component', async () => {
     const checkboxOnClick = vi.fn();
     renderWithProps({ onChange: checkboxOnClick });
 
-    const checkbox = screen.getByTestId('button-checkbox-label-checkbox123');
+    const checkbox = screen.getByTestId('button-checkbox-button-checkbox123');
     fireEvent.click(checkbox);
     expect(checkboxOnClick).toHaveBeenCalled();
   });

@@ -35,6 +35,7 @@ button.unstyled-button {
   button {
     text-decoration: none;
     margin-top: 0;
+    height: 1.25rem;
     line-height: 1.25rem;
   }
   button:active, button:hover {
@@ -48,10 +49,13 @@ button.unstyled-button {
   }
 }
 .usa-checkbox__input + label {
+  line-height: 1.25rem;
   button {
+    display: inline-block;
     text-decoration: none;
     margin-top: 0;
-    line-height: 1.25rem;
+    height:1.25rem;
+    margin-bottom: 1rem;
   }
   button:active, button:hover {
     text-decoration: none;
