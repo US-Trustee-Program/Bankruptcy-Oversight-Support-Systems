@@ -6,6 +6,7 @@ describe('LocalCache', () => {
 
   beforeEach(() => {
     // Mocking window.localStorage
+    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', {
       getItem: (key: string) => mockStorage.get(key) ?? null,
       setItem: (key: string, value: string) => {
@@ -88,8 +89,24 @@ describe('LocalCache', () => {
     expect(result).toBe(false);
   });
 
-  test('should check if cache is enabled', () => {
-    expect(LocalCache.isCacheEnabled()).toBeTruthy();
+  test('should check if cache is disabled if the local storage API is not available', async () => {
+    vi.stubGlobal('localStorage', null);
+    vi.resetModules();
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
+  });
+
+  test('should check if cache is disabled if the CAMS_DISABLE_LOCAL_CACHE config is true', async () => {
+    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'true');
+    vi.resetModules();
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeFalsy();
+  });
+
+  test('should check if cache is enabled', async () => {
+    vi.resetModules();
+    const reloaded = await import('./local-cache');
+    expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
   });
 
   test('should safely handle exceptions', () => {
