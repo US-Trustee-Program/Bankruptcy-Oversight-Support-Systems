@@ -16,7 +16,7 @@ function purge() {
     if (window.localStorage) {
       Object.keys(window.localStorage).forEach((key) => {
         if (key.startsWith(NAMESPACE)) {
-          const cached = JSON.parse(window.localStorage[key]) as Cachable;
+          const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
           if (cached && cached.expiresAfter < Date.now()) {
             window.localStorage.removeItem(key);
           }
