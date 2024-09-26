@@ -4,7 +4,6 @@ import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getStorageGateway } from '../../factory';
 import { OfficesRepository } from '../../use-cases/gateways.types';
-import { createMockApplicationContext } from '../testing-utilities';
 
 export class MockOfficesRepository implements OfficesRepository {
   async getOfficeAttorneys(
@@ -36,18 +35,3 @@ export class MockOfficesRepository implements OfficesRepository {
     throw new Error('Method not implemented.');
   }
 }
-
-// Test
-createMockApplicationContext().then((context) => {
-  const repo = new MockOfficesRepository();
-  const printAttorneys = (attorneys: AttorneyUser[]) =>
-    console.log(
-      JSON.stringify(
-        attorneys.map((a) => a.name),
-        null,
-        2,
-      ),
-    );
-  repo.getOfficeAttorneys(context, 'USTP_CAMS_Region_2_Office_Manhattan').then(printAttorneys);
-  repo.getOfficeAttorneys(context, 'USTP_CAMS_Region_2_Office_Buffalo').then(printAttorneys);
-});
