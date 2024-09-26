@@ -142,6 +142,7 @@ function _ConsolidationCaseTable(
                   className="checkbox-toggle"
                   onChange={toggleAllCheckBoxes}
                   value={checkboxGroupState}
+                  title="select all cases"
                   ref={toggleCheckboxRef}
                 ></Checkbox>
               </th>

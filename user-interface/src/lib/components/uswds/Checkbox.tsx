@@ -88,7 +88,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     [],
   );
   const checkboxTestId = `checkbox-${props.id}`;
-  const labelTestId = `checkbox-button-${props.id}`;
+  const labelTestId = `${checkboxTestId}-click-target`;
   return (
     <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`}>
       <input
@@ -109,11 +109,12 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
         disabled={props.disabled}
         tabIndex={-1}
       />
-      <label htmlFor={props.id}>
+      <label htmlFor={checkboxTestId}>
         <Button
           id={labelTestId}
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
           onClick={checkHandler}
+          title={props.title}
         >
           {props.label}
         </Button>

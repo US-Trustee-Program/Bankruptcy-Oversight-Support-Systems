@@ -156,7 +156,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const initialValue = (caseNumberToggleCheckbox as HTMLInputElement).checked;
 
     const caseNumberToggleCheckboxButton = screen.getByTestId(
-      `button-checkbox-button-lead-case-form-checkbox-toggle-${id}`,
+      `button-checkbox-lead-case-form-checkbox-toggle-${id}-click-target`,
     );
     fireEvent.click(caseNumberToggleCheckboxButton);
 

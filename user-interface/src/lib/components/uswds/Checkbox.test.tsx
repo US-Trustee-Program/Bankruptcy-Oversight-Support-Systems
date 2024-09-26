@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import Checkbox, { CheckboxProps, CheckboxRef, CheckboxState } from './Checkbox';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Test Checkbox component', async () => {
   function renderWithProps(props?: Partial<CheckboxProps>, ref?: React.Ref<CheckboxRef>) {
@@ -27,8 +28,7 @@ describe('Test Checkbox component', async () => {
     const checkboxOnClick = vi.fn();
     renderWithProps({ onChange: checkboxOnClick });
 
-    const checkbox = screen.getByTestId('button-checkbox-button-checkbox123');
-    fireEvent.click(checkbox);
+    testingUtilities.selectCheckbox('checkbox123');
     expect(checkboxOnClick).toHaveBeenCalled();
   });
 

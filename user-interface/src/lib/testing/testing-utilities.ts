@@ -87,7 +87,7 @@ function spyOnUseState() {
 function selectCheckbox(querySelector: string) {
   const checkbox = document.querySelector(`#checkbox-${querySelector}`);
   if (checkbox) {
-    const checkboxLabelButton = document.querySelector(`#checkbox-button-${querySelector}`);
+    const checkboxLabelButton = document.querySelector(`#checkbox-${querySelector}-click-target`);
     if (checkboxLabelButton) fireEvent.click(checkboxLabelButton);
   }
   return checkbox;
