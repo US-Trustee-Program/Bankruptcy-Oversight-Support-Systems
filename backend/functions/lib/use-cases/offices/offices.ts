@@ -78,6 +78,7 @@ export class OfficesUseCase {
     }
 
     const result: OfficeStaffSyncState = {
+      id: 'OFFICE_STAFF_SYNC_STATE',
       documentType: 'OFFICE_STAFF_SYNC_STATE',
       userGroups,
       users: [...userMap.values()],
