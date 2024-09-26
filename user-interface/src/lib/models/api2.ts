@@ -169,10 +169,13 @@ type CacheOptions = {
   ttl?: number;
 };
 
-function withCache<TT>(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
+function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   // TODO: For now we are only implementing `get`. In the future we may want to cache responses from the other HTTP verbs.
   return {
-    get: async function <T = TT>(path: string, options: ObjectKeyVal): Promise<ResponseBody<T>> {
+    get: async function <T = object>(
+      path: string,
+      options: ObjectKeyVal,
+    ): Promise<ResponseBody<T>> {
       if (LocalCache.isCacheEnabled()) {
         const cached = LocalCache.get<ResponseBody<T>>(cacheOptions.key);
         if (cached) {
@@ -223,7 +226,7 @@ async function getMe() {
 
 async function getOfficeAttorneys(officeCode: string) {
   const path = `/offices/${officeCode}/attorneys`;
-  return withCache<AttorneyUser[]>({ key: path }).get(path);
+  return withCache({ key: path }).get<AttorneyUser[]>(path);
 }
 
 async function getOffices() {
