@@ -12,6 +12,7 @@ export interface RadioProps {
   value: string;
   checked?: boolean;
   required?: boolean;
+  title?: string;
 }
 
 function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
@@ -50,6 +51,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         type="radio"
         name={props.name}
         data-testid={radioTestId}
+        title={props.title}
         disabled={isDisabled}
         value={props.value}
         checked={isChecked()}
@@ -58,10 +60,11 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
         tabIndex={-1}
         ref={inputRef}
       />
-      <label htmlFor={props.id}>
+      <label htmlFor={radioTestId}>
         <Button
           id={`${radioTestId}-click-target`}
           className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
+          title={props.title}
           onClick={handleOnClick}
         >
           {props.label}
