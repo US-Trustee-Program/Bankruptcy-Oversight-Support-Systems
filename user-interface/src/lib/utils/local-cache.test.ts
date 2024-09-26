@@ -105,17 +105,14 @@ describe('LocalCache', () => {
       length: 0,
     });
 
-    expect(() => {
-      LocalCache.get('key');
-    }).not.toThrow();
-    expect(() => {
-      LocalCache.set('key', 'value');
-    }).not.toThrow();
-    expect(() => {
-      LocalCache.remove('key');
-    }).not.toThrow();
-    expect(() => {
-      LocalCache.purge();
-    }).not.toThrow();
+    const calls = [
+      () => LocalCache.get('key'),
+      () => LocalCache.set('key', 'value'),
+      () => LocalCache.remove('key'),
+      () => LocalCache.purge(),
+    ];
+    calls.forEach((call) => {
+      expect(call).not.toThrow();
+    });
   });
 });
