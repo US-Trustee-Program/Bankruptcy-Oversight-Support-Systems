@@ -19,6 +19,7 @@ import { ResponseBody } from '@common/api/response';
 import LocalStorage from '../utils/local-storage';
 import Api from './api';
 import MockApi from '../testing/mock-api2';
+import LocalCache from '../utils/local-cache';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -163,6 +164,34 @@ export function useGenericApi(): GenericApiClient {
 
 const api = useGenericApi;
 
+type CacheOptions = {
+  key: string;
+  ttl?: number;
+};
+
+function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
+  // TODO: For now we are only implementing `get`. In the future we may want to cache responses from the other HTTP verbs.
+  return {
+    get: async function <T = object>(
+      path: string,
+      options: ObjectKeyVal,
+    ): Promise<ResponseBody<T>> {
+      if (LocalCache.isCacheEnabled()) {
+        const cached = LocalCache.get<ResponseBody<T>>(cacheOptions.key);
+        if (cached) {
+          return Promise.resolve(cached);
+        } else {
+          const response = await api().get<T>(path, options);
+          LocalCache.set<ResponseBody<T>>(cacheOptions.key, response, cacheOptions.ttl);
+          return Promise.resolve(response);
+        }
+      } else {
+        return api().get<T>(path, options);
+      }
+    },
+  };
+}
+
 async function getAttorneys() {
   return api().get<AttorneyUser[]>('/attorneys');
 }
@@ -196,7 +225,8 @@ async function getMe() {
 }
 
 async function getOfficeAttorneys(officeCode: string) {
-  return api().get<AttorneyUser[]>(`/offices/${officeCode}/attorneys`);
+  const path = `/offices/${officeCode}/attorneys`;
+  return withCache({ key: path }).get<AttorneyUser[]>(path);
 }
 
 async function getOffices() {
