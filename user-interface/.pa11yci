@@ -26,7 +26,8 @@
         "set field #basic-search-field to joint",
         "set field #document-number-search-field to 10000",
         "clear field #document-number-search-field",
-        "click element #facet-multi-select-combo-box-input"
+        "click element #facet-multi-select-combo-box-input",
+        "click element #docket-date-range-date-start"
       ],
       "viewport": {
         "width": 1280,

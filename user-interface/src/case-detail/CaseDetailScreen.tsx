@@ -460,8 +460,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="in-docket-search form-field" data-testid="docket-date-range">
                       <DateRangePicker
                         id="docket-date-range"
-                        startDateLabel="Docket Entries from"
-                        endDateLabel="To"
+                        startDateLabel="Docket Date Range Start"
+                        endDateLabel="Docket Date Range End"
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
                         minDate={dateRangeBounds.start}
