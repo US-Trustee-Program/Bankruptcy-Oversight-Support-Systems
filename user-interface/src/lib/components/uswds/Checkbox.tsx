@@ -116,7 +116,7 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
           onClick={checkHandler}
           title={props.title}
         >
-          {props.label}
+          {props.label ?? <>&nbsp;</>}
         </Button>
       </label>
     </div>
