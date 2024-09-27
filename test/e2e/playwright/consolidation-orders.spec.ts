@@ -66,7 +66,7 @@ test.describe('Consolidation Orders', () => {
       // Clicking the label did not seem to fire the click event on the checkbox input.
       await page
         .locator(
-          `input[data-testid="checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}"]`,
+          `button[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}-click-target"]`,
         )
         .dispatchEvent('click');
     }
@@ -133,12 +133,14 @@ test.describe('Consolidation Orders', () => {
 
     await page
       .locator(
-        `input[data-testid="checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0"]`,
+        `button[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0-click-target"]`,
       )
       .dispatchEvent('click');
 
     await page
-      .locator(`#lead-case-form-checkbox-toggle-${pendingConsolidationOrder.id}`)
+      .locator(
+        `#checkbox-lead-case-form-checkbox-toggle-${pendingConsolidationOrder.id}-click-target`,
+      )
       .dispatchEvent('click');
 
     // Action fill form for selecting a lead case not listed in child cases
