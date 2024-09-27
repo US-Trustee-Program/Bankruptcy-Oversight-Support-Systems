@@ -42,7 +42,7 @@ describe('MockLogin', () => {
     );
 
     await waitFor(() => {
-      const radio = testingUtilities.selectRadio('radio-role-0');
+      const radio = testingUtilities.selectRadio('role-0');
       expect(radio).toBeInTheDocument();
     });
 
@@ -65,7 +65,7 @@ describe('MockLogin', () => {
       </BrowserRouter>,
     );
 
-    testingUtilities.selectRadio('radio-role-0');
+    testingUtilities.selectRadio('role-0');
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
