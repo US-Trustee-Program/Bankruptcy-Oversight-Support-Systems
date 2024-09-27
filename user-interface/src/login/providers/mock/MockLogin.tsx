@@ -116,8 +116,8 @@ export function MockLogin(props: MockLoginProps) {
             {MockUsers.filter((role) => !role.hide).map((role, idx) => {
               return (
                 <Radio
-                  key={`radio-role-${idx}`}
-                  id={`radio-role-${idx}`}
+                  key={`role-${idx}`}
+                  id={`role-${idx}`}
                   name="role"
                   label={role.label}
                   value={role.sub}
