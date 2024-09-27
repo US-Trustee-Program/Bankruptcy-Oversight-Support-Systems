@@ -12,7 +12,11 @@ const doMockAuth = provider === 'mock';
 const userGroupGatewayConfig: UserGroupGatewayConfig = (
   doMockAuth
     ? ({} as const)
-    : ({ ...keyValuesToRecord(process.env.CAMS_USER_GROUP_GATEWAY_CONFIG), provider } as const)
+    : ({
+        token: process.env.OKTA_API_KEY,
+        ...keyValuesToRecord(process.env.CAMS_USER_GROUP_GATEWAY_CONFIG),
+        provider,
+      } as const)
 ) as UserGroupGatewayConfig;
 
 export function getUserGroupGatewayConfig(): UserGroupGatewayConfig {
