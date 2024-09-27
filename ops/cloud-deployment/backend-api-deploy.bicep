@@ -351,6 +351,10 @@ var applicationSettings = concat(
       name: 'CAMS_USER_GROUP_GATEWAY_CONFIG'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
     }
+    {
+      name: 'OKTA-API-KEY'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
+    }
   ],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
