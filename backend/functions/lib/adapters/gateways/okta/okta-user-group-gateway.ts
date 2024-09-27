@@ -20,6 +20,11 @@ function validateConfiguration(config: UserGroupGatewayConfig): void {
       message: `Invalid provider. Expected 'okta'. Received '${config.provider}'.`,
     });
   }
+  // API Key Configuration
+  if (config.token) {
+    return;
+  }
+  // Private Key Configuration
   const required: (keyof UserGroupGatewayConfig)[] = ['clientId', 'keyId', 'url', 'privateKey'];
   required.forEach((key) => {
     if (!config[key]) {
@@ -44,16 +49,24 @@ function validateConfiguration(config: UserGroupGatewayConfig): void {
  */
 export async function initialize(config: UserGroupGatewayConfig): Promise<Client> {
   validateConfiguration(config);
+  let clientConfig: V2Configuration;
   try {
-    const clientConfig: V2Configuration = {
-      orgUrl: config.url,
-      clientId: config.clientId,
-      authorizationMode: 'PrivateKey',
-      scopes: ['okta.groups.read'],
-      privateKey: JSON.parse(config.privateKey),
-      keyId: config.keyId,
-    };
     if (!singleton) {
+      if (config.token) {
+        clientConfig = {
+          orgUrl: config.url,
+          token: config.token,
+        };
+      } else {
+        clientConfig = {
+          orgUrl: config.url,
+          clientId: config.clientId,
+          authorizationMode: 'PrivateKey',
+          scopes: ['okta.groups.read'],
+          privateKey: JSON.parse(config.privateKey),
+          keyId: config.keyId,
+        };
+      }
       singleton = new Client(clientConfig);
     }
     return singleton;
