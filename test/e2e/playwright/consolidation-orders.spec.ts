@@ -45,7 +45,7 @@ test.describe('Consolidation Orders', () => {
 
     // select substantive consolidation type
     const consolidationTypeSubstantive = page.getByTestId(
-      `button-substantive-${pendingConsolidationOrder.id}-click-target`,
+      `button-radio-substantive-${pendingConsolidationOrder.id}-click-target`,
     );
 
     await consolidationTypeSubstantive.click();
@@ -121,7 +121,7 @@ test.describe('Consolidation Orders', () => {
 
     // select substantive consolidation type
     const consolidationTypeSubstantive = page.getByTestId(
-      `button-substantive-${pendingConsolidationOrder.id}-click-target`,
+      `button-radio-substantive-${pendingConsolidationOrder.id}-click-target`,
     );
 
     await consolidationTypeSubstantive.click();
