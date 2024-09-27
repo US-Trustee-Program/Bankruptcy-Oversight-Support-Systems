@@ -23,7 +23,8 @@ export interface UserGroupGateway {
 export type UserGroupGatewayConfig = {
   provider: string | null;
   url: string | null;
-  clientId: string | null;
-  privateKey: string | null;
-  keyId: string | null;
+  token?: string | null;
+  clientId?: string | null;
+  privateKey?: string | null;
+  keyId?: string | null;
 };
