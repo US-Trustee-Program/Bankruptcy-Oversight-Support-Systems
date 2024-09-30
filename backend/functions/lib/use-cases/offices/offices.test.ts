@@ -2,7 +2,7 @@ import { OfficesUseCase } from './offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
-import { OfficesCosmosDbRepository } from '../../adapters/gateways/offices.cosmosdb.repository';
+import * as factory from '../../factory';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -21,9 +21,13 @@ describe('offices use case tests', () => {
 
   test('should return attorneys', async () => {
     const useCase = new OfficesUseCase();
-    const repoSpy = jest
-      .spyOn(OfficesCosmosDbRepository.prototype, 'getOfficeAttorneys')
-      .mockResolvedValue([]);
+    const repoSpy = jest.fn().mockResolvedValue([]);
+    jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
+      return {
+        putOfficeStaff: jest.fn(),
+        getOfficeAttorneys: repoSpy,
+      };
+    });
 
     const officeCode = 'new-york';
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
