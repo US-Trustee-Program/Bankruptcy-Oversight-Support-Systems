@@ -3,6 +3,8 @@ import { CamsUserGroup, CamsUserReference } from '../../../../../../common/src/c
 import { OktaUserGroupGateway } from './okta-user-group-gateway';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { UserGroupGatewayConfig } from '../../types/authorization';
+import { ApplicationContext } from '../../types/basic';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
 
 const listGroups = jest.fn();
 const listGroupUsers = jest.fn();
@@ -77,10 +79,16 @@ describe('OktaGroupGateway', () => {
       },
     };
 
+    let context: ApplicationContext;
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+    });
+
     test('should return a list of CamsUserGroups', async () => {
       listGroups.mockResolvedValue(buildMockCollection<Group>([group1, group2, group3]));
 
-      const actual = await OktaUserGroupGateway.getUserGroups(configuration);
+      const actual = await OktaUserGroupGateway.getUserGroups(context, configuration);
 
       const expected: CamsUserGroup[] = [
         {
@@ -102,7 +110,7 @@ describe('OktaGroupGateway', () => {
     test('should throw an error if an error is returned by the api', async () => {
       listGroups.mockRejectedValue(new UnknownError('TEST-MODULE'));
 
-      await expect(OktaUserGroupGateway.getUserGroups(configuration)).rejects.toThrow();
+      await expect(OktaUserGroupGateway.getUserGroups(context, configuration)).rejects.toThrow();
     });
   });
 
@@ -111,6 +119,12 @@ describe('OktaGroupGateway', () => {
       id: 'foo',
       name: 'cams group name',
     };
+
+    let context: ApplicationContext;
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+    });
 
     test('should return a list of CamsUsers', async () => {
       const user1: User = {
@@ -132,7 +146,11 @@ describe('OktaGroupGateway', () => {
 
       listGroupUsers.mockResolvedValue(buildMockCollection<User>([user1, user2]));
 
-      const actual = await OktaUserGroupGateway.getUserGroupUsers(configuration, camsUserGroup);
+      const actual = await OktaUserGroupGateway.getUserGroupUsers(
+        context,
+        configuration,
+        camsUserGroup,
+      );
 
       const expected: CamsUserReference[] = [
         {
@@ -151,7 +169,7 @@ describe('OktaGroupGateway', () => {
       listGroupUsers.mockRejectedValue(new UnknownError('TEST-MODULE'));
 
       await expect(
-        OktaUserGroupGateway.getUserGroupUsers(configuration, camsUserGroup),
+        OktaUserGroupGateway.getUserGroupUsers(context, configuration, camsUserGroup),
       ).rejects.toThrow();
     });
   });
