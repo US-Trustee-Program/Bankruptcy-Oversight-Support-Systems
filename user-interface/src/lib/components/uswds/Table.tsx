@@ -159,7 +159,7 @@ export const TableComponent = (
   }
 
   return (
-    <div id={id} className={containerClass} tabIndex={0} ref={ref}>
+    <div id={id} className={containerClass} ref={ref}>
       <table className={tableClass} {...otherProperties}>
         {title && <caption>{title}</caption>}
         {children}

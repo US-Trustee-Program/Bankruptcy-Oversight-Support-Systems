@@ -4,6 +4,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { OpenModalButton } from './OpenModalButton';
 import Modal from './Modal';
 import { ModalRefType } from './modal-refs';
+import Checkbox from '../Checkbox';
+import Radio from '../Radio';
+import Button from '../Button';
 
 describe('Test Modal component', () => {
   const modalId = 'test-modal';
@@ -29,6 +32,15 @@ describe('Test Modal component', () => {
       },
     };
 
+    const content = (
+      <div>
+        Test Content
+        <Checkbox id={'test-checkbox'} value={5}></Checkbox>
+        <Radio id={'test-radio-button'} name={'radio1'} label={'Radio 1'} value={'1'}></Radio>
+        <Button>Foo</Button>;
+      </div>
+    );
+
     render(
       <React.StrictMode>
         <BrowserRouter>
@@ -40,7 +52,7 @@ describe('Test Modal component', () => {
               modalId={modalId}
               ref={modalRef}
               heading={'Test Heading'}
-              content={'Test Content'}
+              content={content}
               actionButtonGroup={actionButtonGroup}
               onClose={closeModal}
               onOpen={onOpenModal}
@@ -155,37 +167,39 @@ describe('Test Modal component', () => {
     expect(submitButtonOnClick).toHaveBeenCalled();
   });
 
-  test('should initially focus modal body when modal is first opened, and then move focus to modal body when close button is in focus and user presses Tab key', async () => {
+  test('should initially focus first input in modal when modal is first opened, and then move focus to first input in modal when close button is in focus and user presses Tab key', async () => {
     const openButton = screen.getByTestId('open-modal-button-open-test');
-    const modalContent = screen.getByTestId(`modal-content-${modalId}`);
     const modalCloseButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    const firstElement = document.querySelector('.usa-checkbox__label');
 
     fireEvent.click(openButton);
 
     expect(onOpenModal).toHaveBeenCalled();
-    expect(modalContent).toHaveFocus();
+    expect(firstElement).toHaveFocus();
 
     modalCloseButton.focus();
     expect(modalCloseButton).toHaveFocus();
 
     fireEvent.keyDown(modalCloseButton, { key: 'Tab' });
 
-    expect(modalContent).toHaveFocus();
+    expect(firstElement).toHaveFocus();
   });
 
-  test('should move focus to close button if modal body is in focus and user presses Shift-Tab key combination', async () => {
+  test('should move focus to close button if modals first input field is in focus and user presses Shift-Tab key combination', async () => {
     const openButton = screen.getByTestId('open-modal-button-open-test');
-    const modalContent = screen.getByTestId(`modal-content-${modalId}`);
     const modalCloseButton = screen.getByTestId(`modal-x-button-${modalId}`);
+    const firstElement = document.querySelector('.usa-checkbox__label');
 
     fireEvent.click(openButton);
 
     expect(onOpenModal).toHaveBeenCalled();
-    expect(modalContent).toHaveFocus();
+    expect(firstElement).toHaveFocus();
 
-    fireEvent.keyDown(modalContent, { key: 'Tab', shiftKey: true });
+    fireEvent.keyDown(firstElement!, { key: 'Tab', shiftKey: true });
 
-    expect(modalCloseButton).toHaveFocus();
+    await vi.waitFor(() => {
+      expect(modalCloseButton).toHaveFocus();
+    });
   });
 
   test('modal buttons should have the given labels', async () => {

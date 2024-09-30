@@ -215,7 +215,7 @@ function ConsolidationOrderModalComponent(
           </ul>
         </div>
         <div data-testid="modal-rejection-reason-container">
-          <label>Reason for rejection</label>
+          <label htmlFor={`rejection-reason-${id}`}>Reason for rejection</label>
           <textarea
             id={`rejection-reason-${id}`}
             data-testid={`rejection-reason-input-${id}`}

@@ -6,6 +6,7 @@ import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
 import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
+import { fireEvent } from '@testing-library/react';
 
 async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
   const startTime = Date.now();
@@ -83,12 +84,32 @@ function spyOnUseState() {
   return vi.spyOn(UseStateModule, 'useState').mockImplementation(useStateMock);
 }
 
+function selectCheckbox(querySelector: string) {
+  const checkbox = document.querySelector(`#checkbox-${querySelector}`);
+  if (checkbox) {
+    const checkboxLabelButton = document.querySelector(`#checkbox-${querySelector}-click-target`);
+    if (checkboxLabelButton) fireEvent.click(checkboxLabelButton);
+  }
+  return checkbox;
+}
+
+function selectRadio(querySelector: string) {
+  const radio = document.querySelector(`#radio-${querySelector}`);
+  if (radio) {
+    const radioLabelButton = document.querySelector(`#radio-${querySelector}-click-target`);
+    if (radioLabelButton) fireEvent.click(radioLabelButton);
+  }
+  return radio;
+}
+
 export const TestingUtilities = {
   waitFor,
   setUser,
   setUserWithRoles,
   spyOnGlobalAlert,
   spyOnUseState,
+  selectCheckbox,
+  selectRadio,
 };
 
 export default TestingUtilities;

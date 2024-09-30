@@ -20,9 +20,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
-  const [keyboardAccessible, setKeyboardAccessible] = useState<number>(-1);
   const [openModalButtonRef, setOpenModalButtonRef] =
     useState<React.RefObject<OpenModalButtonRef> | null>(null);
+  const [firstElement, setFirstElement] = useState<HTMLElement | null>(null);
 
   const modalShellRef = useRef<HTMLInputElement | null>(null);
   const submitCancelButtonGroupRef = useRef<SubmitCancelButtonGroupRef>(null);
@@ -31,7 +31,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     data['data-force-action'] = true;
   }
 
-  const handleKeyDown = (ev: KeyboardEvent) => {
+  const handleKeyDown = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
     if (!props.forceAction) {
       if (ev.key === 'Escape') {
         close(ev);
@@ -50,12 +50,16 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
 
     hide();
-    setKeyboardAccessible(100000);
 
     openModalButtonRef?.current?.focus();
   }
 
-  const handleTab = (ev: React.KeyboardEvent<HTMLButtonElement>) => {
+  const handleTab = (
+    ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent,
+    firstEl: HTMLElement | null,
+  ) => {
+    if (!firstEl) return;
+
     if (
       ev.key == 'Tab' &&
       !ev.shiftKey &&
@@ -63,22 +67,24 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       (ev.target as Element).classList.contains('usa-modal__close')
     ) {
       ev.preventDefault();
-      modalShellRef?.current?.focus();
-    }
-  };
-
-  const handleShiftTab = (ev: React.KeyboardEvent<HTMLDivElement>) => {
-    const elementEquivalency =
-      (ev.target as Element).id === `${props.modalId}-description` ||
-      (ev.target as Element).id === `${props.modalId}`;
-    if (ev.key == 'Tab' && ev.shiftKey && isVisible && elementEquivalency) {
+      if (firstEl) {
+        firstEl.focus();
+      }
+    } else if (
+      ev.key == 'Tab' &&
+      ev.shiftKey &&
+      isVisible &&
+      firstEl &&
+      (ev.target as Element) === firstEl
+    ) {
       ev.preventDefault();
-      const button = document.querySelector('.usa-button.usa-modal__close');
+      const button = document.querySelector(`#${props.modalId} .usa-button.usa-modal__close`);
       if (button) {
         (button as HTMLElement).focus();
       }
     }
   };
+
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton?.onClick) {
       const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
@@ -121,14 +127,51 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }));
 
   useEffect(() => {
+    let firstEl: HTMLElement | null = null;
     if (isVisible && modalShellRef.current) {
-      setKeyboardAccessible(-1);
-      modalShellRef.current.focus();
-    }
-  }, [isVisible]);
+      const interactiveElements = modalShellRef.current.querySelectorAll(
+        'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
+      );
 
-  useEffect(() => {
-    if (isVisible) {
+      interactiveElements.forEach((el) => {
+        const element = el as HTMLElement;
+        if (!firstEl) {
+          firstEl = element;
+          if (firstEl.classList.contains('usa-radio__input')) {
+            const inputLabel = firstEl.parentElement?.querySelector('label');
+            if (inputLabel) {
+              const labelButton = inputLabel.querySelector('button.usa-radio__label');
+              if (labelButton) firstEl = labelButton as HTMLElement;
+            }
+          } else if (firstEl.classList.contains('usa-checkbox__input')) {
+            const inputLabel = firstEl.parentElement?.querySelector('label');
+            if (inputLabel) {
+              const labelButton = inputLabel.querySelector('button.usa-checkbox__label');
+              if (labelButton) firstEl = labelButton as HTMLElement;
+            }
+          }
+        }
+
+        const existingHandler = element.onkeydown;
+
+        const enhancedHandler = (event: KeyboardEvent) => {
+          if (existingHandler) {
+            existingHandler.call(element, event);
+          }
+          handleTab(event, firstEl);
+        };
+
+        element.onkeydown = enhancedHandler;
+      });
+
+      if (firstEl) {
+        setFirstElement(firstEl);
+        (firstEl as HTMLElement).focus();
+      } else {
+        setFirstElement(modalShellRef.current as HTMLElement);
+        modalShellRef.current.focus();
+      }
+
       const keyDownEventHandler = (ev: KeyboardEvent) => {
         handleKeyDown(ev);
       };
@@ -136,6 +179,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       document.addEventListener('keydown', keyDownEventHandler);
 
       return () => {
+        interactiveElements.forEach((el) => {
+          (el as HTMLElement).onkeydown = null;
+        });
         document.removeEventListener('keydown', keyDownEventHandler);
       };
     }
@@ -150,6 +196,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
     >
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className="usa-modal-overlay"
         aria-controls={props.modalId}
@@ -163,10 +210,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           className={modalClassNames}
           id={props.modalId}
           {...data}
-          tabIndex={keyboardAccessible}
           ref={modalShellRef}
-          onKeyDown={handleShiftTab}
           data-testid={`modal-content-${props.modalId}`}
+          aria-modal="true"
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
@@ -176,9 +222,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 </h2>
               )}
               <div className="usa-prose">
-                <section id={props.modalId + '-description'} tabIndex={0}>
-                  {props.content}
-                </section>
+                <section id={props.modalId + '-description'}>{props.content}</section>
               </div>
               <div className="usa-modal__footer">
                 <SubmitCancelButtonGroup
@@ -190,6 +234,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.submitButton.label,
                           onClick: submitBtnClick,
+                          onKeyDown: (ev) => handleTab(ev, firstElement),
                           className: props.actionButtonGroup.submitButton.className ?? '',
                           disabled: props.actionButtonGroup.submitButton.disabled ?? false,
                           uswdsStyle:
@@ -203,6 +248,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                       ? {
                           label: props.actionButtonGroup.cancelButton.label,
                           onClick: cancelBtnClick,
+                          onKeyDown: (ev) => handleTab(ev, firstElement),
                           className: props.actionButtonGroup.cancelButton?.className ?? '',
                           uswdsStyle:
                             props.actionButtonGroup.cancelButton?.uswdsStyle ??
@@ -221,7 +267,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
                 data-close-modal
                 onClick={close}
                 data-testid={`modal-x-button-${props.modalId}`}
-                onKeyDown={handleTab}
+                onKeyDown={(ev) => handleTab(ev, firstElement)}
               >
                 <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
                   <use xlinkHref={closeIcon}></use>

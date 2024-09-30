@@ -1,5 +1,6 @@
+import Button, { UswdsButtonStyle } from './Button';
 import './forms.scss';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 export enum CheckboxState {
   UNCHECKED = -1,
@@ -29,11 +30,20 @@ export interface CheckboxRef {
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
   const [isChecked, setIsChecked] = useState<boolean>(props.checked ?? false);
   const [indeterminateState, setIndeterminateState] = useState<boolean>(false);
+  const realCheckboxRef = useRef<HTMLInputElement>(null);
 
-  const checkHandler = (ev: React.ChangeEvent<HTMLInputElement>) => {
+  const checkHandler = (_ev: React.MouseEvent<HTMLButtonElement>) => {
     if (props.onChange) {
-      props.onChange(ev);
+      const syntheticEvent = {
+        target: realCheckboxRef.current,
+        currentTarget: realCheckboxRef.current,
+      } as React.ChangeEvent<HTMLInputElement>;
+
+      syntheticEvent.target.checked = !isChecked;
+
+      props.onChange(syntheticEvent);
     }
+
     setIsChecked(!isChecked);
   };
 
@@ -78,27 +88,36 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
     [],
   );
   const checkboxTestId = `checkbox-${props.id}`;
-  const labelTestId = `checkbox-label-${props.id}`;
+  const labelTestId = `${checkboxTestId}-click-target`;
   return (
     <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`}>
       <input
         type="checkbox"
         data-testid={checkboxTestId}
-        id={props.id}
+        id={checkboxTestId}
         className="usa-checkbox__input"
+        ref={realCheckboxRef}
         name={props.name ?? ''}
         value={props.value}
         aria-label={props.label ?? `check ${props.value}`}
         checked={isChecked}
-        onChange={checkHandler}
+        onChange={() => {}}
         onFocus={focusHandler}
         data-indeterminate={indeterminateState || null}
         title={props.title}
         required={props.required}
         disabled={props.disabled}
+        tabIndex={-1}
       />
-      <label className="usa-checkbox__label" htmlFor={props.id} data-testid={labelTestId}>
-        {props.label}
+      <label htmlFor={checkboxTestId}>
+        <Button
+          id={labelTestId}
+          className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
+          onClick={checkHandler}
+          title={props.title}
+        >
+          {props.label ?? <>&nbsp;</>}
+        </Button>
       </label>
     </div>
   );

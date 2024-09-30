@@ -446,7 +446,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           <div
             className={`item-list-container ${expandedClass}`}
             id={`${props.id}-item-list`}
-            aria-hidden={`${expanded}`}
+            aria-hidden={expanded}
             tabIndex={-1}
             style={dropdownLocation ?? undefined}
           >
