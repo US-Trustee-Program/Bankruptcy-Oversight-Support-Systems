@@ -11,6 +11,8 @@ import {
 import { AttorneyUser } from '../../../../../common/src/cams/users';
 import { OfficeStaffSyncState } from '../gateways.types';
 
+const MODULE_NAME = 'OFFICES_USE_CASE';
+
 export class OfficesUseCase {
   public async getOffices(context: ApplicationContext): Promise<OfficeDetails[]> {
     const gateway = getOfficesGateway(context);
@@ -84,6 +86,7 @@ export class OfficesUseCase {
       users: [...userMap.values()],
       officesWithUsers,
     };
+    context.logger.info(MODULE_NAME, 'Office sync state', result);
 
     const runtimeStateRepo = getRuntimeStateRepository(context);
 
