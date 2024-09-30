@@ -101,6 +101,7 @@ async function getUserGroups(
   try {
     const client = await initialize(config);
     const query: GroupApiListGroupsRequest = {
+      q: 'USTP CAMS',
       limit: MAX_PAGE_SIZE,
     };
     const oktaGroups = await client.groupApi.listGroups(query);
