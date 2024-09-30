@@ -42,6 +42,7 @@ import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway
 import { OfficesCosmosDbRepository } from './adapters/gateways/offices.cosmosdb.repository';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
+import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -117,6 +118,9 @@ export const getOfficesGateway = (
 };
 
 export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
+  if (applicationContext.config.authConfig.provider === 'mock') {
+    return new MockOfficesRepository();
+  }
   return new OfficesCosmosDbRepository(applicationContext);
 };
 
