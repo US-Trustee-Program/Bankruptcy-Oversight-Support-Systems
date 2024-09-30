@@ -352,7 +352,7 @@ var applicationSettings = concat(
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
     }
     {
-      name: 'OKTA-API-KEY'
+      name: 'OKTA_API_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     }
   ],
