@@ -130,6 +130,7 @@ async function getUserGroups(
  * @see https://developer.okta.com/docs/api/
  * @see https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroupUsers
  *
+ * @param {ApplicationContext} context
  * @param {UserGroupGatewayConfig} config
  * @param {CamsUserGroup} group
  * @returns {CamsUserReference[]}
