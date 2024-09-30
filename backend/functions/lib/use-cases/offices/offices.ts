@@ -40,14 +40,14 @@ export class OfficesUseCase {
     }, new Map<string, UstpOfficeDetails>());
 
     // Filter out any groups not relevant to CAMS.
-    const userGroups = await gateway.getUserGroups(config);
+    const userGroups = await gateway.getUserGroups(context, config);
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 
     // Map roles to users.
     const userMap = new Map<string, CamsUserReference>();
     for (const roleGroup of roleGroups) {
-      const users = await gateway.getUserGroupUsers(config, roleGroup);
+      const users = await gateway.getUserGroupUsers(context, config, roleGroup);
       const role = groupToRoleMap.get(roleGroup.name);
       for (const user of users) {
         if (userMap.has(user.id)) {
@@ -64,7 +64,7 @@ export class OfficesUseCase {
     for (const officeGroup of officeGroups) {
       const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
 
-      const users = await gateway.getUserGroupUsers(config, officeGroup);
+      const users = await gateway.getUserGroupUsers(context, config, officeGroup);
       for (const user of users) {
         if (!userMap.has(user.id)) {
           userMap.set(user.id, user);

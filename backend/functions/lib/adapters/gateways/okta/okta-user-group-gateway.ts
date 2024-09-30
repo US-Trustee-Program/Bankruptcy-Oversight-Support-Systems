@@ -8,6 +8,8 @@ import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorizat
 import { V2Configuration } from '@okta/okta-sdk-nodejs/src/types/configuration';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
+import { isCamsError } from '../../../common-errors/cams-error';
+import { ApplicationContext } from '../../types/basic';
 
 const MODULE_NAME = 'OKTA_USER_GROUP_GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -56,6 +58,7 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
         clientConfig = {
           orgUrl: config.url,
           token: config.token,
+          authorizationMode: 'SSWS',
         };
       } else {
         clientConfig = {
@@ -71,7 +74,9 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
     }
     return singleton;
   } catch (originalError) {
-    throw new UnknownError(MODULE_NAME, { originalError });
+    throw isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError, message: 'Failed to initialize.' });
   }
 }
 
@@ -84,10 +89,14 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
  * @see https://developer.okta.com/docs/api/
  * @see https://developer.okta.com/docs/api/openapi/okta-management/management/tag/Group/#tag/Group/operation/listGroups
  *
+ * @param {ApplicationContext} context
  * @param {UserGroupGatewayConfig} config
  * @returns {CamsUserGroup[]}
  */
-async function getUserGroups(config: UserGroupGatewayConfig): Promise<CamsUserGroup[]> {
+async function getUserGroups(
+  context: ApplicationContext,
+  config: UserGroupGatewayConfig,
+): Promise<CamsUserGroup[]> {
   const camsUserGroups: CamsUserGroup[] = [];
   try {
     const client = await initialize(config);
@@ -102,8 +111,11 @@ async function getUserGroups(config: UserGroupGatewayConfig): Promise<CamsUserGr
         name: oktaGroup.profile.name,
       });
     }
+    context.logger.info(MODULE_NAME, `Retrieved ${camsUserGroups.length} groups.`);
   } catch (originalError) {
-    throw new UnknownError(MODULE_NAME, { originalError });
+    throw isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError, message: 'Failed to retrieve groups.' });
   }
   return camsUserGroups;
 }
@@ -123,6 +135,7 @@ async function getUserGroups(config: UserGroupGatewayConfig): Promise<CamsUserGr
  * @returns {CamsUserReference[]}
  */
 async function getUserGroupUsers(
+  context: ApplicationContext,
   config: UserGroupGatewayConfig,
   group: CamsUserGroup,
 ): Promise<CamsUserReference[]> {
@@ -143,8 +156,11 @@ async function getUserGroupUsers(
           oktaUser.profile.lastName + ', ' + oktaUser.profile.firstName,
       });
     }
+    context.logger.info(MODULE_NAME, `Retrieved ${camsUserReferences.length} users.`);
   } catch (originalError) {
-    throw new UnknownError(MODULE_NAME, { originalError });
+    throw isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, { originalError, message: 'Failed to retrieve users.' });
   }
   return camsUserReferences;
 }
