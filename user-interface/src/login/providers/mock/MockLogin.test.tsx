@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { MockLogin } from './MockLogin';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
@@ -40,9 +41,10 @@ describe('MockLogin', () => {
       </BrowserRouter>,
     );
 
-    const radioButton = screen.queryByTestId('radio-role-0-click-target');
-    expect(radioButton).toBeInTheDocument();
-    fireEvent.click(radioButton!);
+    await waitFor(() => {
+      const radio = testingUtilities.selectRadio('role-0');
+      expect(radio).toBeInTheDocument();
+    });
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
@@ -63,9 +65,7 @@ describe('MockLogin', () => {
       </BrowserRouter>,
     );
 
-    const radioButton = screen.queryByTestId('radio-role-0-click-target');
-    expect(radioButton).toBeInTheDocument();
-    fireEvent.click(radioButton!);
+    testingUtilities.selectRadio('role-0');
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();

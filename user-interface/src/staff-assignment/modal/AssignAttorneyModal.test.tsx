@@ -103,31 +103,28 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(submitButton).toBeDisabled();
     });
 
-    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
-    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-
-    fireEvent.click(checkbox1);
+    const checkbox1 = testingUtilities.selectCheckbox('1-checkbox');
 
     await waitFor(() => {
       expect(checkbox1).toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    fireEvent.click(checkbox2);
+    const checkbox2 = testingUtilities.selectCheckbox('2-checkbox');
 
     await waitFor(() => {
       expect(checkbox2).toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    fireEvent.click(checkbox1);
+    testingUtilities.selectCheckbox('1-checkbox');
 
     await waitFor(() => {
       expect(checkbox1).not.toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    fireEvent.click(checkbox2);
+    testingUtilities.selectCheckbox('2-checkbox');
 
     await waitFor(() => {
       expect(checkbox2).not.toBeChecked();
@@ -162,13 +159,9 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
-    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-    const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
-
-    fireEvent.click(checkbox1);
-    fireEvent.click(checkbox2);
-    fireEvent.click(checkbox3);
+    testingUtilities.selectCheckbox('1-checkbox');
+    testingUtilities.selectCheckbox('2-checkbox');
+    testingUtilities.selectCheckbox('3-checkbox');
     fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -237,13 +230,9 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    const checkbox1 = screen.getByTestId('checkbox-1-checkbox');
-    const checkbox2 = screen.getByTestId('checkbox-2-checkbox');
-    const checkbox3 = screen.getByTestId('checkbox-3-checkbox');
-
-    fireEvent.click(checkbox1);
-    fireEvent.click(checkbox2);
-    fireEvent.click(checkbox3);
+    testingUtilities.selectCheckbox('1-checkbox');
+    testingUtilities.selectCheckbox('2-checkbox');
+    testingUtilities.selectCheckbox('3-checkbox');
     fireEvent.click(submitButton);
 
     await waitFor(() => {

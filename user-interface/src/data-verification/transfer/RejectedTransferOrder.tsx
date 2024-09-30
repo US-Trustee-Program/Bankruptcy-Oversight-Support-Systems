@@ -23,7 +23,6 @@ export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
         <div className="grid-col-1"></div>
         <div
           className="transfer-text grid-col-10"
-          tabIndex={0}
           data-testid={`accordion-content-reject-message-${order.caseId}`}
         >
           Rejected transfer of{' '}

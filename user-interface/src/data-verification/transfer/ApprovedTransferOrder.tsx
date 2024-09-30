@@ -21,11 +21,7 @@ export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
       </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
-        <div
-          className="transfer-text grid-col-10"
-          tabIndex={0}
-          data-testid={`action-text-${order.id}`}
-        >
+        <div className="transfer-text grid-col-10" data-testid={`action-text-${order.id}`}>
           Transferred{' '}
           <CaseNumber
             caseId={order.caseId}

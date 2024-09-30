@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { RadioRef } from '../../type-declarations/input-fields';
+import Button, { UswdsButtonStyle } from './Button';
 
 export interface RadioProps {
   id: string;
@@ -11,6 +12,7 @@ export interface RadioProps {
   value: string;
   checked?: boolean;
   required?: boolean;
+  title?: string;
 }
 
 function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
@@ -29,7 +31,7 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
     if (inputRef.current) inputRef.current.checked = value;
   }
 
-  function handleOnClick(_ev: React.MouseEvent<HTMLLabelElement>) {
+  function handleOnClick(_ev: React.MouseEvent<HTMLButtonElement>) {
     // clicking a radio button should always select it.  You should not be able to unselect by clicking a selected radio.
     if (inputRef.current?.checked !== undefined) inputRef.current.checked = true;
 
@@ -40,28 +42,33 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
 
   useImperativeHandle(ref, () => ({ check, disable, isChecked }));
 
+  const radioTestId = `radio-${props.id}`;
   return (
     <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
       <input
         className={`usa-input usa-tooltip usa-radio__input`}
-        id={props.id}
+        id={radioTestId}
         type="radio"
         name={props.name}
-        data-testid={props.id}
+        data-testid={radioTestId}
+        title={props.title}
         disabled={isDisabled}
         value={props.value}
         checked={isChecked()}
         required={props.required}
         onChange={() => {}}
+        tabIndex={-1}
         ref={inputRef}
       />
-      <label
-        className="usa-radio__label"
-        htmlFor={props.id}
-        onClick={handleOnClick}
-        data-testid={`${props.id}-click-target`}
-      >
-        {props.label}
+      <label htmlFor={radioTestId}>
+        <Button
+          id={`${radioTestId}-click-target`}
+          className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
+          title={props.title}
+          onClick={handleOnClick}
+        >
+          {props.label}
+        </Button>
       </label>
     </div>
   );

@@ -13,6 +13,7 @@
     "plugin:prettier/recommended",
     "plugin:react/recommended",
     "plugin:@typescript-eslint/recommended",
+    "plugin:jsx-a11y/recommended",
     "prettier"
   ],
   "overrides": [],
@@ -24,7 +25,7 @@
       "jsx": true
     }
   },
-  "plugins": ["react", "@typescript-eslint", "prettier"],
+  "plugins": ["react", "@typescript-eslint", "prettier", "jsx-a11y"],
   "rules": {
     "react/react-in-jsx-scope": "off",
     "brace-style": ["warn", "1tbs"],
@@ -47,6 +48,8 @@
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }
-    ]
+    ],
+    "jsx-a11y/aria-props": "error",
+    "jsx-a11y/aria-role": "error"
   }
 }

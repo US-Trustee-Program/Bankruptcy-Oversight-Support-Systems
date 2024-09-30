@@ -13,6 +13,7 @@ import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -164,8 +165,7 @@ describe('Case detail basic information panel', () => {
         expect(modal).toBeVisible();
       });
 
-      const checkbox = screen.getByTestId('checkbox-0-checkbox');
-      fireEvent.click(checkbox);
+      testingUtilities.selectCheckbox('0-checkbox');
 
       const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
       fireEvent.click(submitButton);

@@ -142,6 +142,7 @@ function _ConsolidationCaseTable(
                   className="checkbox-toggle"
                   onChange={toggleAllCheckBoxes}
                   value={checkboxGroupState}
+                  title="select all cases"
                   ref={toggleCheckboxRef}
                 ></Checkbox>
               </th>
@@ -160,7 +161,7 @@ function _ConsolidationCaseTable(
               accumulator.push(
                 <tr key={`${key}-case-info`} data-testid={`${key}-case-info`} className="case-info">
                   {onSelect && (
-                    <td scope="row">
+                    <td>
                       <Checkbox
                         id={`case-selection-${id}-${idx}`}
                         onChange={handleCaseSelection}
@@ -171,19 +172,17 @@ function _ConsolidationCaseTable(
                       ></Checkbox>
                     </td>
                   )}
-                  <td scope="row">
+                  <td>
                     <div className="my-stuff">
                       <div>
                         <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
                       </div>
                     </div>
                   </td>
-                  <td scope="row">{bCase.caseTitle}</td>
-                  <td scope="row" className="text-no-wrap">
-                    {bCase.chapter}
-                  </td>
-                  <td scope="row">{formatDate(bCase.dateFiled)}</td>
-                  <td scope="row" className="text-no-wrap">
+                  <td>{bCase.caseTitle}</td>
+                  <td className="text-no-wrap">{bCase.chapter}</td>
+                  <td>{formatDate(bCase.dateFiled)}</td>
+                  <td className="text-no-wrap">
                     {!props.isDataEnhanced && (
                       <LoadingSpinner
                         id={`loading-spinner-case-assignment-${bCase.caseId}`}
@@ -242,9 +241,7 @@ function _ConsolidationCaseTable(
                               )}
                               {bCase.courtName} - {docketEntry.summaryText}
                             </Link>
-                            <p tabIndex={0} className="measure-6 text-wrap">
-                              {docketEntry.fullText}
-                            </p>
+                            <p className="measure-6 text-wrap">{docketEntry.fullText}</p>
                             {docketEntry.documents && (
                               <DocketEntryDocumentList documents={docketEntry.documents} />
                             )}

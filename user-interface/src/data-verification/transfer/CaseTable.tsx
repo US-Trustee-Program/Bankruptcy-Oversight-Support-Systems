@@ -53,7 +53,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
             if (!onSelect) return <></>;
             return (
               <tr key={'empty'} data-testid={'empty-row'}>
-                <td scope="col">
+                <td>
                   <input
                     type="radio"
                     onChange={handleCaseSelection}
@@ -73,7 +73,7 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
           return (
             <tr key={key} data-testid={key}>
               {onSelect && (
-                <td scope="col">
+                <td>
                   <input
                     type="radio"
                     onChange={handleCaseSelection}
@@ -85,23 +85,19 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                   ></input>
                 </td>
               )}
-              <td scope="row">
+              <td>
                 <CaseNumber
                   caseId={bCase.caseId}
                   data-testid={`case-detail-${bCase.caseId}-${id}`}
                 />
               </td>
-              <td scope="row">
+              <td>
                 {bCase.courtName} ({bCase.courtDivisionName})
               </td>
-              <td scope="row">{bCase.caseTitle}</td>
-              <td scope="row">{bCase.chapter}</td>
-              <td scope="row" className="text-no-wrap">
-                {formatDate(bCase.dateFiled)}
-              </td>
-              <td scope="row" className="text-no-wrap">
-                {taxId}
-              </td>
+              <td>{bCase.caseTitle}</td>
+              <td>{bCase.chapter}</td>
+              <td className="text-no-wrap">{formatDate(bCase.dateFiled)}</td>
+              <td className="text-no-wrap">{taxId}</td>
             </tr>
           );
         })}
