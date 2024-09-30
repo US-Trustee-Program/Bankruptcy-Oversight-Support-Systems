@@ -400,6 +400,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   <div
                     className={`filter-and-search padding-y-4`}
                     data-testid="filter-and-search-panel"
+                    aria-live="polite"
                   >
                     <h3 className="filter-header" aria-label="Court Docket Filters">
                       Filters
@@ -505,7 +506,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
               </div>
             </div>
-            <div className="grid-col-8">
+            <div className="grid-col-8" aria-live="polite">
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   <Route

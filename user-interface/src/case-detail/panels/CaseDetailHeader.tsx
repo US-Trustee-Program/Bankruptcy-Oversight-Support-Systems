@@ -36,7 +36,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
 
   function printCaseIdHeader() {
     return (
-      <h2 className="case-number text-no-wrap" title="Case Number">
+      <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
         {props.caseId}{' '}
         <CopyButton
           id="header-case-id"

@@ -96,7 +96,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                   aria-label={`Document number ${docketEntry.documentNumber}`}
                   title={`Document number ${docketEntry.documentNumber}`}
                 >
-                  {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
+                  {docketEntry.documentNumber ?? ''}
                 </h4>
                 <div className="grid-col-11 docket-content">
                   <div
