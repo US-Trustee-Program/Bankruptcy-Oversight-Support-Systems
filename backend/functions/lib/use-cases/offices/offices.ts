@@ -76,6 +76,7 @@ export class OfficesUseCase {
         await repository.putOfficeStaff(context, office.officeCode, userWithRoles);
       }
 
+      context.logger.info(MODULE_NAME, `Synced ${users.length} users to the ${office} office.`);
       officesWithUsers.push(office);
     }
 
@@ -86,7 +87,6 @@ export class OfficesUseCase {
       users: [...userMap.values()],
       officesWithUsers,
     };
-    context.logger.info(MODULE_NAME, 'Office sync state', result);
 
     const runtimeStateRepo = getRuntimeStateRepository(context);
 
