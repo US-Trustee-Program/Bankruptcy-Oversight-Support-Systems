@@ -38,6 +38,11 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
+  function printDocketHeader(docket: CaseDocketEntry) {
+    const outputString = `${docket.documentNumber ?? ''} - ${formatDate(docket.dateFiled)} - ${docket.summaryText}`;
+    return outputString;
+  }
+
   useEffect(() => {
     if (!props.isDocketLoading) {
       if (!hasDocketEntries) {
@@ -79,48 +84,37 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
       <h3 className="docket-entries-main-header" aria-label="Docket Entries">
         Docket Entries
       </h3>
-      <div id="searchable-docket" data-testid="searchable-docket">
+      <ol id="searchable-docket" data-testid="searchable-docket">
         {props.isDocketLoading && <LoadingIndicator />}
         {!props.isDocketLoading &&
           hasDocketEntries &&
           docketEntries?.map((docketEntry: CaseDocketEntry, idx: number) => {
             return (
-              <div
-                className="grid-row grid-gap-lg docket-entry"
-                key={idx}
-                data-testid={`docket-entry-${idx}`}
-              >
-                <h4
-                  className="grid-col-1 document-number-column usa-tooltip"
-                  data-testid={`docket-entry-${idx}-number`}
-                  aria-label={`Document number ${docketEntry.documentNumber}`}
-                  title={`Document number ${docketEntry.documentNumber}`}
-                >
-                  {docketEntry.documentNumber ?? ''}
-                </h4>
-                <div className="grid-col-11 docket-content">
-                  <div
-                    className="docket-entry-header"
-                    aria-label="date filed and summary text for the docket entry"
+              <>
+                <li className="docket-entry" key={idx} data-testid={`docket-entry-${idx}`}>
+                  <h4
+                    className="grid-col-12 document-number-column docket-entry-header usa-tooltip"
                     data-testid={`docket-entry-${idx}-header`}
+                    title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                    aria-label={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
                   >
-                    {formatDate(docketEntry.dateFiled)} - {docketEntry.summaryText}
+                    {printDocketHeader(docketEntry)}
+                  </h4>
+                  <div className="docket-content">
+                    <div
+                      className="docket-full-text"
+                      data-testid={`docket-entry-${idx}-text`}
+                      aria-label="full text of docket entry"
+                    >
+                      {docketEntry.fullText}
+                    </div>
+                    {docketEntry.documents && <DocketEntryDocumentList docketEntry={docketEntry} />}
                   </div>
-                  <div
-                    className="docket-full-text"
-                    data-testid={`docket-entry-${idx}-text`}
-                    aria-label="full text of docket entry"
-                  >
-                    {docketEntry.fullText}
-                  </div>
-                  {docketEntry.documents && (
-                    <DocketEntryDocumentList documents={docketEntry.documents} />
-                  )}
-                </div>
-              </div>
+                </li>
+              </>
             );
           })}
-      </div>
+      </ol>
       <Alert
         message={alertOptions?.message || ''}
         type={alertOptions?.type || UswdsAlertStyle.Error}
