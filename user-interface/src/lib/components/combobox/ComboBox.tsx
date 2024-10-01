@@ -29,6 +29,8 @@ type InputProps = JSX.IntrinsicElements['input'] &
 export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
   label?: string;
   ariaLabelPrefix?: string;
+  ariaDescription?: string;
+  ariaLive?: 'off' | 'assertive' | 'polite' | undefined;
   autoComplete?: 'off';
   icon?: string;
   options: ComboOption[];
@@ -52,6 +54,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     multiSelect,
     wrapPills,
     ariaLabelPrefix,
+    ariaDescription,
     ...otherProps
   } = props;
 
@@ -372,6 +375,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         >
           {label}
         </label>
+        <span id={`${props.id}-aria-description`} hidden>
+          {ariaDescription ?? ''}
+        </span>
       </div>
       {multiSelect === true && (
         <div className="pills-and-clear-all">
@@ -379,7 +385,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             id={`${props.id}-pill-box`}
             className="pill-box"
             wrapPills={wrapPills}
-            ariaLabelPrefix={ariaLabelPrefix}
+            ariaLabelPrefix={ariaLabelPrefix ?? undefined}
             selections={selections ?? []}
             onSelectionChange={handlePillSelection}
             disabled={comboboxDisabled}
@@ -406,7 +412,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               <Pill
                 id={`pill-${props.id}`}
                 label={selections[0].label}
-                ariaLabelPrefix={ariaLabelPrefix}
+                ariaLabelPrefix={ariaLabelPrefix ?? undefined}
                 value={selections[0].value}
                 wrapText={wrapPills}
                 onClick={handleSingleSelectPillClick}
@@ -424,7 +430,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 onClick={openDropdown}
                 value={value}
                 disabled={comboboxDisabled}
-                aria-label={`${props.ariaLabelPrefix}: Enter text to filter options. Use up and down arrows to open dropdown list.`}
+                aria-label={`${props.ariaLabelPrefix ? props.ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+                aria-describedby={`${props.id}-aria-description`}
+                aria-live={props.ariaLive ?? undefined}
+                aria-haspopup="listbox"
+                aria-expanded={expanded}
+                aria-controls={`${props.id}-item-list`}
+                role="combobox"
                 ref={filterRef}
               />
             )}
@@ -445,15 +457,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         {!comboboxDisabled && (
           <div
             className={`item-list-container ${expandedClass}`}
-            id={`${props.id}-item-list`}
+            id={`${props.id}-item-list-container`}
             aria-hidden={expanded}
             tabIndex={-1}
             style={dropdownLocation ?? undefined}
           >
-            <ul>
+            <ul id={`${props.id}-item-list`} role="listbox">
               {filteredOptions.map((option, idx) => (
                 <li
                   className={setListItemClass(idx, option)}
+                  aria-hidden={option.hidden ? 'true' : 'false'}
                   data-testid={`${props.id}-item-${idx}`}
                   key={`${props.id}-${idx}`}
                 >
@@ -464,7 +477,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${props.ariaLabelPrefix} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
+                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${props.ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
                   >
                     {
                       <>
