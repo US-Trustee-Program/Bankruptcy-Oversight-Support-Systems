@@ -1,5 +1,27 @@
 import { CamsUserReference } from './users';
 
+export function ustpOfficeToCourtOffice(ustp: UstpOfficeDetails): CourtOfficeDetails[] {
+  const courtOffices: CourtOfficeDetails[] = [];
+  ustp.groups.reduce((acc, group) => {
+    group.divisions.forEach((division) => {
+      acc.push({
+        officeName: division.courtOffice.courtOfficeName,
+        officeCode: division.courtOffice.courtOfficeCode,
+        courtId: division.court.courtId,
+        courtName: division.court.courtName,
+        courtDivisionCode: division.divisionCode,
+        // TODO: Fix this gap in the mapping to court division name.
+        courtDivisionName: division.court.courtName, // Is this mapping correct??
+        groupDesignator: group.groupDesignator,
+        regionId: ustp.regionId,
+        regionName: ustp.regionName,
+      });
+    });
+    return acc;
+  }, courtOffices);
+  return courtOffices;
+}
+
 //TODO: Start switching this over to use this
 export type CourtOfficeDetails = OfficeDetails;
 export interface OfficeDetails {
