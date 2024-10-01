@@ -1,42 +1,44 @@
 @import '../../styles/abstracts/colors';
 
 #case-detail-court-docket-panel {
+  margin-left: 2rem;
+
   .docket-entries-main-header {
-    margin-left: 3rem;
     margin-bottom: 2rem;
   }
-  .docket-entry {
-    padding-bottom: 2rem;
+  #searchable-docket {
+    list-style-type: none;
 
-    h3 {
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-    .docket-content {
-      line-height: 24px;
-      ::highlight(search-results) {
-        background-color: $yellow-20;
-        color: black;
+    .docket-entry {
+      padding-bottom: 2rem;
+
+      h3 {
+        margin-top: 0;
+        margin-bottom: 0;
       }
-      .docket-full-text {
-        font-style: normal;
-        padding-top: 0.5rem;
-      }
-      .docket-documents {
-        padding-top: 0.5rem;
-        li {
-          padding-bottom: 0.25rem;
+      .docket-content {
+        line-height: 24px;
+        ::highlight(search-results) {
+          background-color: $yellow-20;
+          color: black;
         }
-        li:last-child {
-          padding-bottom: 0;
+        .docket-full-text {
+          font-style: normal;
+          padding-top: 0.5rem;
+        }
+        .docket-documents {
+          padding-top: 0.5rem;
+          li {
+            padding-bottom: 0.25rem;
+          }
+          li:last-child {
+            padding-bottom: 0;
+          }
         }
       }
-    }
-    .document-number-column {
-      text-align: right;
-    }
-    .docket-entry-header {
-      font-weight: bold;
+      .docket-entry-header {
+        font-weight: bold;
+      }
     }
   }
   .sort {
