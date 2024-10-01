@@ -8,6 +8,8 @@ export interface DatePickerProps {
   maxDate?: string;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   label?: string;
+  ariaDescription?: string;
+  ariaLive?: 'off' | 'assertive' | 'polite' | undefined;
   disabled?: boolean;
   name?: string;
   value?: string;
@@ -15,7 +17,7 @@ export interface DatePickerProps {
 }
 
 function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
-  const { id, label, minDate, maxDate } = props;
+  const { id, label, ariaDescription, ariaLive, minDate, maxDate } = props;
 
   const [isDisabled, setIsDisabled] = useState<boolean>(
     props.disabled !== undefined ? !!props.disabled : false,
@@ -67,12 +69,13 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
           id={id}
           name={props.name ?? ''}
           aria-labelledby={id + '-date-label'}
-          aria-describedby={id + '-date-hint'}
+          aria-describedby={ariaDescription ?? id + '-date-hint'}
+          aria-live={ariaLive ?? undefined}
           onChange={props.onChange}
           data-testid={id}
           min={minDate}
           max={maxDate}
-          value={dateValue === null ? '' : dateValue}
+          value={dateValue ?? undefined}
           disabled={isDisabled}
           required={props.required}
         />

@@ -6,6 +6,21 @@ import './DateRangePicker.scss';
 // Alias for readability.
 const debounce = setTimeout;
 
+export const formatDateForVoiceOver = (dateString: string) => {
+  try {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  } catch (e) {
+    console.log(`Invalid date supplied for formatting: ${dateString}`);
+  }
+};
+
 export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   onStartDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onEndDateChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
@@ -13,10 +28,23 @@ export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   endDateLabel?: string;
   value?: DateRange;
   disabled?: boolean;
+  ariaDescription?: string;
+  ariaLive?: 'off' | 'assertive' | 'polite' | undefined;
 }
 
 function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
-  const { id, startDateLabel, endDateLabel, minDate, maxDate, value, disabled, required } = props;
+  const {
+    id,
+    startDateLabel,
+    endDateLabel,
+    ariaDescription,
+    ariaLive,
+    minDate,
+    maxDate,
+    value,
+    disabled,
+    required,
+  } = props;
 
   const [internalDateRange, setInternalDateRange] = useState<DateRange>({
     start: minDate,
@@ -91,6 +119,8 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
         maxDate={internalDateRange.end}
         onChange={onStartDateChange}
         label={startDateLabel || 'Start date'}
+        ariaDescription={`${id}-aria-description`}
+        ariaLive={ariaLive ?? undefined}
         name="event-date-start"
         value={value?.start}
         disabled={disabled}
@@ -103,11 +133,46 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
         maxDate={maxDate}
         onChange={onEndDateChange}
         label={endDateLabel || 'End date'}
+        ariaDescription={`${id}-aria-description`}
+        ariaLive={ariaLive ?? undefined}
         name="event-date-end"
         value={value?.end}
         disabled={disabled}
         required={required}
       />
+      <span id={`${id}-aria-description`} aria-live="polite" hidden>
+        <span>Format: numeric month / numeric day / 4 digit year.</span>
+        {ariaDescription ? <span>{ariaDescription}</span> : ''}
+        {(minDate || maxDate) && (
+          <span>
+            (Valid date range is
+            {minDate && (
+              <>
+                {maxDate && <>within </>}
+                {minDate}
+              </>
+            )}
+            {maxDate && (
+              <>
+                {minDate && <> and </>}
+                {!minDate && <> on or before </>}
+                {maxDate}
+              </>
+            )}
+            )
+          </span>
+        )}
+        {(internalDateRange?.start || internalDateRange?.end) && (
+          <span>
+            Date range is currently set to{' '}
+            {internalDateRange?.start && (
+              <>start {formatDateForVoiceOver(internalDateRange.start)}</>
+            )}
+            {internalDateRange?.end && <>end {formatDateForVoiceOver(internalDateRange.end)}</>}
+          </span>
+        )}{' '}
+        - <span>Use arrow keys to navigate days or type the date directly.</span>
+      </span>
     </div>
   );
 }
