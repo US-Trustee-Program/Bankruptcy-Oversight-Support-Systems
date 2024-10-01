@@ -7,6 +7,7 @@ import {
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import CaseManagement from './case-management';
+import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -32,7 +33,7 @@ jest.mock('../adapters/gateways/case.assignment.cosmosdb.repository', () => {
 
 describe('Case assignment tests', () => {
   let applicationContext: ApplicationContext;
-  const userOffice = MockData.randomOffice();
+  const userOffice = MockData.randomUstpOffice();
   const user = {
     id: 'userId-Mock Name',
     name: 'Mock Name',
@@ -85,11 +86,11 @@ describe('Case assignment tests', () => {
 
     test('should create new case assignments when none exist on the case', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
-      jest
-        .spyOn(CaseManagement.prototype, 'getCaseSummary')
-        .mockResolvedValue(
-          MockData.getCaseDetail({ override: { courtDivisionCode: userOffice.courtDivisionCode } }),
-        );
+      jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
 
       findAssignmentsByCaseId.mockResolvedValue([]);
 
@@ -121,11 +122,11 @@ describe('Case assignment tests', () => {
 
     test('should add new case assignments on a case with existing assignments', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
-      jest
-        .spyOn(CaseManagement.prototype, 'getCaseSummary')
-        .mockResolvedValue(
-          MockData.getCaseDetail({ override: { courtDivisionCode: userOffice.courtDivisionCode } }),
-        );
+      jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
@@ -159,11 +160,11 @@ describe('Case assignment tests', () => {
     test('should remove assignments', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
 
-      jest
-        .spyOn(CaseManagement.prototype, 'getCaseSummary')
-        .mockResolvedValue(
-          MockData.getCaseDetail({ override: { courtDivisionCode: userOffice.courtDivisionCode } }),
-        );
+      jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
 
       const assignments = [];
 

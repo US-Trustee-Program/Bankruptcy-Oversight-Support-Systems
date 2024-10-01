@@ -17,7 +17,7 @@ import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
@@ -26,7 +26,7 @@ export function getAction<T extends CaseBasics>(
   context: ApplicationContext,
   bCase: ResourceActions<T>,
 ): Action[] {
-  const userDivisions = context.session.user.offices.map((office) => office.courtDivisionCode);
+  const userDivisions = getCourtDivisionCodes(context.session.user);
   const actions: Action[] = [];
   if (
     userDivisions.includes(bCase.courtDivisionCode) &&

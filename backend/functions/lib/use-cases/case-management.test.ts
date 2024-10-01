@@ -1,7 +1,6 @@
 import CaseManagement, { getAction } from './case-management';
 import { UnknownError } from '../common-errors/unknown-error';
 import { CamsError } from '../common-errors/cams-error';
-import { describe } from 'node:test';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import {
@@ -11,7 +10,12 @@ import {
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCasesGateway, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
-import { BUFFALO, MANHATTAN } from '../../../../common/src/cams/test-utilities/offices.mock';
+import { CamsUser } from '../../../../common/src/cams/users';
+import {
+  REGION_02_GROUP_BU,
+  REGION_02_GROUP_NY,
+} from '../../../../common/src/cams/test-utilities/mock-user';
+import { ustpOfficeToCourtOffice } from '../../../../common/src/cams/courts';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -63,8 +67,8 @@ jest.mock('./case-assignment', () => {
 describe('Case management tests', () => {
   let applicationContext: ApplicationContext;
   let useCase: CaseManagement;
-  const userOffice = MockData.randomOffice();
-  const user = {
+  const userOffice = MockData.randomUstpOffice();
+  const user: CamsUser = {
     id: 'userId-Mock Name',
     name: 'Mock Name',
     offices: [userOffice],
@@ -85,7 +89,7 @@ describe('Case management tests', () => {
     jest.restoreAllMocks();
   });
 
-  describe('contructor tests', () => {
+  describe('constructor tests', () => {
     test('should always set casesRepo and officesGateway', () => {
       const casesGateway = getCasesGateway(applicationContext);
       const casesRepo = getCasesRepository(applicationContext);
@@ -102,7 +106,8 @@ describe('Case management tests', () => {
 
   describe('getAction tests', () => {
     test('should return post action if user has office with correct division code and Case Assignment Manager role', async () => {
-      const officeDetail = applicationContext.session.user.offices[0];
+      const courtOffices = ustpOfficeToCourtOffice(applicationContext.session.user.offices[0]);
+      const officeDetail = courtOffices[0];
       const caseNumber = '00-00000';
       const bCase = MockData.getCaseDetail({
         override: {
@@ -206,7 +211,8 @@ describe('Case management tests', () => {
 
     test('should include case assignment action if the user has case assignment role', async () => {
       const officeName = 'Test Office';
-      const officeDetail = applicationContext.session.user.offices[0];
+      const courtOffices = ustpOfficeToCourtOffice(applicationContext.session.user.offices[0]);
+      const officeDetail = courtOffices[0];
       const caseNumber = '00-00000';
       const bCase = MockData.getCaseDetail({
         override: {
@@ -268,10 +274,12 @@ describe('Case management tests', () => {
     });
 
     test('should return cases and actions for the user', async () => {
+      const courtDivisionCode =
+        applicationContext.session.user.offices[0].groups[0].divisions[0].divisionCode;
       const bCase = MockData.getCaseSummary({
         override: {
           caseId: '999-' + caseNumber,
-          courtDivisionCode: applicationContext.session.user.offices[0].courtDivisionCode,
+          courtDivisionCode,
         },
       });
       const _actions = [
@@ -289,7 +297,7 @@ describe('Case management tests', () => {
     });
 
     test('should return search cases by assignment', async () => {
-      const user = MockData.getCamsUser({ offices: [MANHATTAN, BUFFALO] });
+      const user = MockData.getCamsUser({ offices: [REGION_02_GROUP_NY, REGION_02_GROUP_BU] });
       const caseIds = ['081-00-12345', '081-11-23456', '091-12-34567'];
       const assignments = caseIds.map((caseId) => MockData.getAttorneyAssignment({ caseId }));
       const cases = caseIds.map((caseId) => {

@@ -1,10 +1,10 @@
 import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getUser } from './mock-oauth2-gateway';
-import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 
 const cache = new Map<string, CamsSession>();
 
@@ -26,7 +26,7 @@ export class MockUserSessionUseCase {
     // Simulate the legacy behavior by appending roles and Manhattan office to the user
     // if the 'restrict-case-assignment' feature flag is not set.
     if (!context.featureFlags['restrict-case-assignment']) {
-      user.offices = [OFFICES.find((office) => office.courtDivisionCode === '081')];
+      user.offices = [REGION_02_GROUP_NY];
       user.roles = [CamsRole.CaseAssignmentManager];
     }
 

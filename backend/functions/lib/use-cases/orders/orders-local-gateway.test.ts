@@ -22,7 +22,7 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 
 // TODO: This could be a testing library functions.
 function setupCasesRepoMock(repo: CasesRepository) {
@@ -129,7 +129,7 @@ describe('orders use case tests', () => {
   let casesGateway;
   const authorizedUser = MockData.getCamsUser({
     roles: [CamsRole.DataVerifier],
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   });
 
   beforeEach(async () => {
