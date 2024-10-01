@@ -8,12 +8,17 @@ import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock-offices.repository';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   test('should return offices', async () => {
@@ -74,7 +79,7 @@ describe('offices use case tests', () => {
       );
 
     const putSpy = jest
-      .spyOn(OfficesCosmosDbRepository.prototype, 'putOfficeStaff')
+      .spyOn(MockOfficesRepository.prototype, 'putOfficeStaff')
       .mockResolvedValue();
     const stateRepoSpy = jest
       .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
