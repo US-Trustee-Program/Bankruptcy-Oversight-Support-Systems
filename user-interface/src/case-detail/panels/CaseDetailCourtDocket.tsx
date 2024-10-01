@@ -39,7 +39,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
   function printDocketHeader(docket: CaseDocketEntry) {
-    const outputString = `${docket.documentNumber ?? ''} - ${formatDate(docket.dateFiled)} - ${docket.summaryText}`;
+    const outputString = `${docket.documentNumber ? docket.documentNumber + ' - ' : ''}${formatDate(docket.dateFiled)} - ${docket.summaryText}`;
     return outputString;
   }
 

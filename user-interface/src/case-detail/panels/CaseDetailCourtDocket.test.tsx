@@ -37,6 +37,7 @@ describe('court docket panel tests', () => {
     },
   ];
   const firstIndex = 0;
+  const secondIndex = 1;
 
   test('should render loading info when isDocketLoading is true', () => {
     render(
@@ -78,19 +79,24 @@ describe('court docket panel tests', () => {
     expect(docketEntry1).toBeInTheDocument();
     expect(docketEntry2).toBeInTheDocument();
 
-    const docketEntry1DocumentNumber = screen.getByTestId('docket-entry-0-number');
-    expect(docketEntry1DocumentNumber).toHaveTextContent(documentNumberOne?.toString() || '');
     const docketEntry1Header = screen.getByTestId('docket-entry-0-header');
+    expect(docketEntry1Header).toHaveTextContent(documentNumberOne?.toString() || '');
     expect(docketEntry1Header.innerHTML).toEqual(
-      formatDate(docketEntries[firstIndex].dateFiled) +
+      documentNumberOne?.toString() +
+        ' - ' +
+        formatDate(docketEntries[firstIndex].dateFiled) +
         ' - ' +
         docketEntries[firstIndex].summaryText,
     );
     const docketEntry1Text = screen.getByTestId('docket-entry-0-text');
     expect(docketEntry1Text.innerHTML).toEqual(docketEntries[firstIndex].fullText);
 
-    const docketEntry2DocumentNumber = screen.getByTestId('docket-entry-1-number');
-    expect(docketEntry2DocumentNumber.innerHTML).toEqual('');
+    const docketEntry2Header = screen.getByTestId('docket-entry-1-header');
+    expect(docketEntry2Header.innerHTML).toEqual(
+      formatDate(docketEntries[secondIndex].dateFiled) +
+        ' - ' +
+        docketEntries[secondIndex].summaryText,
+    );
   });
 
   describe('No docket entry alert tests', () => {
