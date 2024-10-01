@@ -436,6 +436,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           id="basic-search-field"
                           name="basic-search"
                           label="Find text in Docket"
+                          aria-label="Find text in Docket entries. Results will be updated while you type."
+                          aria-live="polite"
                           icon="search"
                           autoComplete="off"
                           onChange={searchDocketText}
@@ -454,6 +456,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         onPillSelection={handleSelectedFacet}
                         onUpdateSelection={handleFacetClear}
                         label="Filter by Summary"
+                        ariaDescription="Select multiple options. Results will update when the dropdown is closed."
+                        ariaLive="off"
                         multiSelect={true}
                         ref={facetPickerRef}
                       />
@@ -461,6 +465,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="in-docket-search form-field" data-testid="docket-date-range">
                       <DateRangePicker
                         id="docket-date-range"
+                        ariaDescription="Find Docket entries that fall within date range. Results will be updated as your selection is made."
+                        aria-live="polite"
                         startDateLabel="Docket Date Range Start"
                         endDateLabel="Docket Date Range End"
                         onStartDateChange={handleStartDateChange}
@@ -481,6 +487,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           type="number"
                           name="search-by-document-number"
                           label="Go to Document Number"
+                          aria-label="Go to specific Document Number.  Results will be updated while you type."
+                          aria-live="polite"
                           icon="search"
                           autoComplete="off"
                           onChange={searchDocumentNumber}
