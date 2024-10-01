@@ -43,7 +43,7 @@ async function getOffices(
   idpGroups: string[],
 ): Promise<UstpOfficeDetails[]> {
   const ustpOffices = LocalStorageGateway.getUstpOffices();
-  return [...ustpOffices.values()].filter((office) => idpGroups.includes(office.idpGroupId));
+  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
 }
 
 export class UserSessionUseCase {

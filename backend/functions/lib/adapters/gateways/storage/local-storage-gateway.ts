@@ -1,6 +1,6 @@
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import { USTP_OFFICE_DATA_MAP, UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
 
 let roleMapping;
 
@@ -35,8 +35,8 @@ function get(path: string): string | null {
   return storage.get(path);
 }
 
-function getUstpOffices(): Map<string, UstpOfficeDetails> {
-  return USTP_OFFICE_DATA_MAP;
+function getUstpOffices(): UstpOfficeDetails[] {
+  return USTP_OFFICES_ARRAY;
 }
 
 function getRoleMapping(): Map<string, CamsRole> {
