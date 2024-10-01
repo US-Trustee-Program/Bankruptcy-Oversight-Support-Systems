@@ -3,6 +3,6 @@ import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
 
 export type StorageGateway = {
   get(key: string): string | null;
-  getUstpOffices(): Map<string, UstpOfficeDetails>;
+  getUstpOffices(): UstpOfficeDetails[];
   getRoleMapping(): Map<string, CamsRole>;
 };

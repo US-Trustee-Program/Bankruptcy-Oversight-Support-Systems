@@ -22,8 +22,9 @@ export function ustpOfficeToCourtOffice(ustp: UstpOfficeDetails): CourtOfficeDet
   return courtOffices;
 }
 
-//TODO: Start switching this over to use this
 export type CourtOfficeDetails = OfficeDetails;
+
+// THIS IS THE LEGACY MODEL.
 export interface OfficeDetails {
   officeName: string;
   officeCode: string;
@@ -58,17 +59,17 @@ export type UstpGroup = {
 export type UstpDivision = {
   divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
   court: Court;
-  courtOffice: CourtOffice; // DXTR AO_CS_DIV.OFFICE_CODE
+  courtOffice: CourtOffice;
 };
 
 export type Court = {
   courtId: string; // DXTR AO_CS_DIV.COURT_ID
-  courtName?: string; // DXTR
+  courtName?: string; // DXTR AO_COURT.COURT_NAME
 };
 
 export type CourtOffice = {
-  courtOfficeCode: string;
-  courtOfficeName: string;
+  courtOfficeCode: string; // DXTR AO_OFFICE.OFFICE_CODE
+  courtOfficeName: string; // DXTR AO_OFFICE.OFFICE_DISPLAY_NAME
 };
 
 export function filterCourtByDivision(divisionCode: string, officeList: OfficeDetails[]) {
