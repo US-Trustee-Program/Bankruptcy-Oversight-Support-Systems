@@ -76,7 +76,10 @@ export class OfficesUseCase {
         await repository.putOfficeStaff(context, office.officeCode, userWithRoles);
       }
 
-      context.logger.info(MODULE_NAME, `Synced ${users.length} users to the ${office} office.`);
+      context.logger.info(
+        MODULE_NAME,
+        `Synced ${users.length} users to the ${office.officeName} office.`,
+      );
       officesWithUsers.push(office);
     }
 
