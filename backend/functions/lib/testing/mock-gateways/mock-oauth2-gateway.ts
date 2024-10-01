@@ -2,11 +2,11 @@ import * as jwt from 'jsonwebtoken';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { MockUser, MockUsers } from '../../../../../common/src/cams/test-utilities/mock-user';
-import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsUser } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
+import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
@@ -56,7 +56,7 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
 
 function addSuperUserOffices(user: CamsUser) {
   if (user.roles.includes(CamsRole.SuperUser)) {
-    user.offices = OFFICES;
+    user.offices = USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }
 }

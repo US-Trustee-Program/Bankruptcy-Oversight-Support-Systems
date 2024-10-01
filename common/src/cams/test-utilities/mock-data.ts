@@ -16,7 +16,7 @@ import {
   TransferOrder,
 } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
-import { MANHATTAN, OFFICES } from './offices.mock';
+import { OFFICES } from './offices.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import {
@@ -34,6 +34,8 @@ import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
 import { sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
+import { USTP_OFFICES_ARRAY } from '../courts';
+import { REGION_02_GROUP_NY } from './mock-user';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -86,6 +88,10 @@ function getOfficesByGroupDesignator(groupDesignator: string) {
 
 function randomOffice() {
   return OFFICES[randomInt(OFFICES.length - 1)];
+}
+
+function randomUstpOffice() {
+  return USTP_OFFICES_ARRAY[randomInt(USTP_OFFICES_ARRAY.length - 1)];
 }
 
 function randomDate(year = '2024') {
@@ -466,7 +472,7 @@ function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
   return {
     id: randomId(),
     name: faker.person.fullName(),
-    offices: [randomOffice()],
+    offices: [randomUstpOffice()],
     roles: [],
     ...override,
   };
@@ -480,10 +486,10 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
 }
 
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
-  let offices = [MANHATTAN];
+  let offices = [REGION_02_GROUP_NY];
   let roles = [];
   if (override?.user?.roles.includes(CamsRole.SuperUser)) {
-    offices = OFFICES;
+    offices = USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
   return {
@@ -506,7 +512,7 @@ function getManhattanAssignmentManagerSession(): CamsSession {
     user: {
       id: 'userId-Bob Jones',
       name: 'Bob Jones',
-      offices: [MANHATTAN],
+      offices: [REGION_02_GROUP_NY],
       roles: [CamsRole.CaseAssignmentManager],
     },
   });
@@ -517,7 +523,7 @@ function getManhattanTrialAttorneySession(): CamsSession {
     user: {
       id: 'userId-Bob Jones',
       name: 'Bob Jones',
-      offices: [MANHATTAN],
+      offices: [REGION_02_GROUP_NY],
       roles: [CamsRole.TrialAttorney],
     },
   });
@@ -550,6 +556,7 @@ function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
 export const MockData = {
   randomCaseId,
   randomOffice,
+  randomUstpOffice,
   getAttorneyAssignment,
   getCaseBasics,
   getCaseSummary,

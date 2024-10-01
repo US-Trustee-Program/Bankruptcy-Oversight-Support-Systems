@@ -9,11 +9,11 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
-import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 import { UserSessionCacheCosmosDbRepository } from '../../adapters/gateways/user-session-cache.cosmosdb.repository';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -207,9 +207,7 @@ describe('user-session.gateway test', () => {
     localContext.featureFlags['restrict-case-assignment'] = false;
 
     const session = await gateway.lookup(localContext, jwtString, provider);
-    expect(session.user.offices).toEqual([
-      OFFICES.find((office) => office.courtDivisionCode === '081'),
-    ]);
+    expect(session.user.offices).toEqual([REGION_02_GROUP_NY]);
     expect(session.user.roles).toEqual([CamsRole.CaseAssignmentManager]);
   });
 });

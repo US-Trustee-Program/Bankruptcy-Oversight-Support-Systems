@@ -16,13 +16,10 @@ export class MockOfficesRepository implements OfficesRepository {
     if (!ustpOffices.has(officeCode)) {
       return Promise.resolve([]);
     }
-    const ustpOffice = ustpOffices.get(officeCode);
     const users: AttorneyUser[] = MockUsers.filter(
       (mockUser) =>
         mockUser.user.roles.includes(CamsRole.TrialAttorney) &&
-        !!mockUser.user.offices.find(
-          (office) => !!ustpOffice.groups.find((o) => o.groupDesignator === office.groupDesignator),
-        ),
+        !!mockUser.user.offices.find((o) => o.officeCode === officeCode),
     ).map<AttorneyUser>((mockUser) => mockUser.user);
     return Promise.resolve(users);
   }

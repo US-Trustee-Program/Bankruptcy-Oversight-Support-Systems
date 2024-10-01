@@ -13,11 +13,11 @@ import {
 } from '../../testing/testing-utilities';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { UnknownError } from '../../common-errors/unknown-error';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -30,7 +30,7 @@ describe('Case Assignment Creation Tests', () => {
   const user = {
     ...MockData.getCamsUserReference(),
     name: 'Mock Name',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
     roles: [CamsRole.CaseAssignmentManager],
   };
   beforeEach(async () => {
