@@ -407,7 +407,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     </h3>
                     <div className="filter-info-text">
                       As filters are applied, docket entries will be sorted or filtered
-                      automatically
+                      automatically.
                     </div>
                     <div className="sort form-field">
                       <div className="usa-sort usa-sort--small">

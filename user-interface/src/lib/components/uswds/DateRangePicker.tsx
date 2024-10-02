@@ -17,7 +17,7 @@ export const formatDateForVoiceOver = (dateString: string) => {
       day: 'numeric',
     });
   } catch (e) {
-    console.log(`Invalid date supplied for formatting: ${dateString}`);
+    // Invalid date supplied for formatting
   }
 };
 
@@ -141,7 +141,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
         required={required}
       />
       <span id={`${id}-aria-description`} aria-live="polite" hidden>
-        <span>Format: numeric month / numeric day / 4 digit year.</span>
+        <span>Format: numeric month / numeric day / 4-digit year.</span>
         {ariaDescription ? <span>{ariaDescription}</span> : ''}
         {(minDate || maxDate) && (
           <span>
