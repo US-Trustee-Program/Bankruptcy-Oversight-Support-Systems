@@ -1,4 +1,9 @@
-import { filterCourtByDivision } from './courts';
+import {
+  CourtOfficeDetails,
+  filterCourtByDivision,
+  UstpOfficeDetails,
+  ustpOfficeToCourtOffice,
+} from './courts';
 import { OFFICES } from './test-utilities/offices.mock';
 
 describe('common court library tests', () => {
@@ -39,4 +44,165 @@ describe('common court library tests', () => {
     const newOfficeList = filterCourtByDivision('555', OFFICES);
     expect(newOfficeList).toBeNull();
   });
+
+  test('should map a ustp office to a court office', () => {
+    const ustpOffice: UstpOfficeDetails = seattleOffice;
+    const expectedCourtOffices: CourtOfficeDetails[] = [
+      {
+        courtDivisionCode: '812',
+        courtDivisionName: 'Western District of Washington',
+        courtId: '0981',
+        courtName: 'Western District of Washington',
+        groupDesignator: 'SE',
+        officeCode: '2',
+        officeName: 'Seattle',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+      {
+        courtDivisionCode: '813',
+        courtDivisionName: 'Western District of Washington',
+        courtId: '0981',
+        courtName: 'Western District of Washington',
+        groupDesignator: 'SE',
+        officeCode: '3',
+        officeName: 'Tacoma',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+      {
+        courtDivisionCode: '710',
+        courtDivisionName: 'District of Alaska',
+        courtId: '097-',
+        courtName: 'District of Alaska',
+        groupDesignator: 'AK',
+        officeCode: '1',
+        officeName: 'Juneau',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+      {
+        courtDivisionCode: '720',
+        courtDivisionName: 'District of Alaska',
+        courtId: '097-',
+        courtName: 'District of Alaska',
+        groupDesignator: 'AK',
+        officeCode: '2',
+        officeName: 'Nome',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+      {
+        courtDivisionCode: '730',
+        courtDivisionName: 'District of Alaska',
+        courtId: '097-',
+        courtName: 'District of Alaska',
+        groupDesignator: 'AK',
+        officeCode: '3',
+        officeName: 'Anchorage',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+      {
+        courtDivisionCode: '740',
+        courtDivisionName: 'District of Alaska',
+        courtId: '097-',
+        courtName: 'District of Alaska',
+        groupDesignator: 'AK',
+        officeCode: '4',
+        officeName: 'Fairbanks',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+      {
+        courtDivisionCode: '750',
+        courtDivisionName: 'District of Alaska',
+        courtId: '097-',
+        courtName: 'District of Alaska',
+        groupDesignator: 'AK',
+        officeCode: '5',
+        officeName: 'Ketchikan',
+        regionId: '18',
+        regionName: 'Seattle',
+      },
+    ];
+    const courtOffices = ustpOfficeToCourtOffice(ustpOffice);
+    expect(courtOffices).toEqual(expectedCourtOffices);
+  });
 });
+
+const seattleOffice = {
+  officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+  idpGroupId: 'USTP CAMS Region 18 Office Seattle',
+  officeName: 'Seattle',
+  groups: [
+    {
+      groupDesignator: 'SE',
+      divisions: [
+        {
+          divisionCode: '812',
+          court: { courtId: '0981', courtName: 'Western District of Washington' },
+          courtOffice: {
+            courtOfficeCode: '2',
+            courtOfficeName: 'Seattle',
+          },
+        },
+        {
+          divisionCode: '813',
+          court: { courtId: '0981', courtName: 'Western District of Washington' },
+          courtOffice: {
+            courtOfficeCode: '3',
+            courtOfficeName: 'Tacoma',
+          },
+        },
+      ],
+    },
+    {
+      groupDesignator: 'AK',
+      divisions: [
+        {
+          divisionCode: '710',
+          court: { courtId: '097-', courtName: 'District of Alaska' },
+          courtOffice: {
+            courtOfficeCode: '1',
+            courtOfficeName: 'Juneau',
+          },
+        },
+        {
+          divisionCode: '720',
+          court: { courtId: '097-', courtName: 'District of Alaska' },
+          courtOffice: {
+            courtOfficeCode: '2',
+            courtOfficeName: 'Nome',
+          },
+        },
+        {
+          divisionCode: '730',
+          court: { courtId: '097-', courtName: 'District of Alaska' },
+          courtOffice: {
+            courtOfficeCode: '3',
+            courtOfficeName: 'Anchorage',
+          },
+        },
+        {
+          divisionCode: '740',
+          court: { courtId: '097-', courtName: 'District of Alaska' },
+          courtOffice: {
+            courtOfficeCode: '4',
+            courtOfficeName: 'Fairbanks',
+          },
+        },
+        {
+          divisionCode: '750',
+          court: { courtId: '097-', courtName: 'District of Alaska' },
+          courtOffice: {
+            courtOfficeCode: '5',
+            courtOfficeName: 'Ketchikan',
+          },
+        },
+      ],
+    },
+  ],
+  regionId: '18',
+  regionName: 'Seattle',
+};

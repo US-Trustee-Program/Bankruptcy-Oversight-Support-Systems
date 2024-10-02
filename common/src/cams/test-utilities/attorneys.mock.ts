@@ -1,7 +1,6 @@
 import { CamsRole } from '../roles';
 import { AttorneyUser } from '../users';
-import MockUsers from './mock-user';
-import { MANHATTAN } from './offices.mock';
+import MockUsers, { REGION_02_GROUP_NY } from './mock-user';
 
 export const MockAttorneys: Record<string, AttorneyUser> = {
   Daisy: { id: '0001', name: 'Daisy', offices: [], roles: [CamsRole.TrialAttorney] },
@@ -15,7 +14,8 @@ export const MockAttorneys: Record<string, AttorneyUser> = {
 };
 
 const manhattanAttorneys = MockUsers.filter(
-  (user) => user.user.offices[0] === MANHATTAN && user.user.roles[0] === CamsRole.TrialAttorney,
+  (user) =>
+    user.user.offices[0] === REGION_02_GROUP_NY && user.user.roles[0] === CamsRole.TrialAttorney,
 ).map((user) => user.user);
 
 export const USTP_OFFICE_TRIAL_ATTORNEYS: AttorneyUser[] = [];
@@ -24,67 +24,67 @@ export const TRIAL_ATTORNEYS: AttorneyUser[] = [
   {
     id: 'ATY001',
     name: 'Linda A Rifkin',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
 
   {
     id: 'ATY002',
     name: 'Susan Arbeit',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY003',
     name: 'Mark Bruh',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY004',
     name: 'Shara Cornell',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY005',
     name: 'Brian S Masumoto',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY006',
     name: 'Andrea B Schwartz',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY007',
     name: 'Paul K Schwartzenberg',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY008',
     name: 'Shannon Scott',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY009',
     name: 'Tara Tiantian',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY010',
     name: 'Andy Velez-Rivera',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY011',
     name: 'Daniel Rudewicz',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY012',
     name: 'Annie Wells',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
   {
     id: 'ATY013',
     name: 'Greg M Zipes',
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   },
 ];

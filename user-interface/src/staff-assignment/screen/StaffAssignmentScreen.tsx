@@ -7,7 +7,7 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { CamsUser } from '@common/cams/users';
+import { CamsUser, getCourtDivisionCodes } from '@common/cams/users';
 import { useRef } from 'react';
 import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
@@ -24,7 +24,7 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
-    divisionCodes: user.offices?.map((office) => office.courtDivisionCode),
+    divisionCodes: getCourtDivisionCodes(user),
   };
 
   if (!predicate.divisionCodes) {

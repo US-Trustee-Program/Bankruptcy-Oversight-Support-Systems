@@ -36,7 +36,7 @@ export class OfficesUseCase {
     // Get IdP to CAMS mappings.
     const offices = storage.getUstpOffices();
     const groupToRoleMap = storage.getRoleMapping();
-    const groupToOfficeMap = [...offices.values()].reduce((acc, office) => {
+    const groupToOfficeMap = offices.reduce((acc, office) => {
       acc.set(office.idpGroupId, office);
       return acc;
     }, new Map<string, UstpOfficeDetails>());
@@ -76,7 +76,10 @@ export class OfficesUseCase {
         await repository.putOfficeStaff(context, office.officeCode, userWithRoles);
       }
 
-      context.logger.info(MODULE_NAME, `Synced ${users.length} users to the ${office} office.`);
+      context.logger.info(
+        MODULE_NAME,
+        `Synced ${users.length} users to the ${office.officeName} office.`,
+      );
       officesWithUsers.push(office);
     }
 

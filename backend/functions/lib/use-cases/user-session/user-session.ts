@@ -1,17 +1,13 @@
-import {
-  getAuthorizationGateway,
-  getOfficesGateway,
-  getUserSessionCacheRepository,
-} from '../../factory';
+import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { OfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
-import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../../common/src/cams/session';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -45,31 +41,9 @@ function getRoles(groups: string[]): CamsRole[] {
 async function getOffices(
   context: ApplicationContext,
   idpGroups: string[],
-): Promise<OfficeDetails[]> {
-  const officesMap = LocalStorageGateway.getOfficeMapping();
-  const dxtrGroupDesignators = idpGroups
-    .filter((idpGroup) => officesMap.has(idpGroup))
-    .reduce((groupDesignators, idpGroup) => {
-      officesMap.get(idpGroup).forEach((designator) => {
-        groupDesignators.add(designator);
-      });
-      return groupDesignators;
-    }, new Set<string>());
-  const officesGateway = getOfficesGateway(context);
-
-  const offices: OfficeDetails[] = [];
-  for (const designator of dxtrGroupDesignators) {
-    try {
-      const officesPerDesignator = await officesGateway.getOfficesByGroupDesignator(
-        context,
-        designator,
-      );
-      officesPerDesignator.forEach((office) => offices.push(office));
-    } catch (error) {
-      context.logger.warn(MODULE_NAME, error.message, { designator });
-    }
-  }
-  return offices;
+): Promise<UstpOfficeDetails[]> {
+  const ustpOffices = LocalStorageGateway.getUstpOffices();
+  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
 }
 
 export class UserSessionUseCase {
@@ -96,7 +70,7 @@ export class UserSessionUseCase {
       // Simulate the legacy behavior by appending roles and Manhattan office to the user
       // if the 'restrict-case-assignment' feature flag is not set.
       if (!context.featureFlags['restrict-case-assignment']) {
-        user.offices = [OFFICES.find((office) => office.courtDivisionCode === '081')];
+        user.offices = [REGION_02_GROUP_NY];
         user.roles = [CamsRole.CaseAssignmentManager];
       }
 

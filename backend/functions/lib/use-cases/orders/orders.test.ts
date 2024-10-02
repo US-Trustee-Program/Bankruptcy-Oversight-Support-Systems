@@ -38,7 +38,8 @@ import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gatew
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import { CaseAssignmentUseCase } from '../case-assignment';
-import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
+import { getCourtDivisionCodes } from '../../../../../common/src/cams/users';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -52,7 +53,7 @@ describe('Orders use case', () => {
   let useCase: OrdersUseCase;
   const authorizedUser = MockData.getCamsUser({
     roles: [CamsRole.DataVerifier],
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   });
   const unauthorizedUser = MockData.getCamsUser({ roles: [] });
 
@@ -96,7 +97,7 @@ describe('Orders use case', () => {
       .spyOn(consolidationRepo, 'search')
       .mockResolvedValue(mockConsolidationOrders);
 
-    const divisionCodes = authorizedUser.offices.map((office) => office.courtDivisionCode);
+    const divisionCodes = getCourtDivisionCodes(authorizedUser);
     const expectedResult = [mockTransfer1, mockConsolidation1, mockTransfer2, mockConsolidation2];
     const result = await useCase.getOrders(mockContext);
     expect(result).toEqual(expectedResult);
