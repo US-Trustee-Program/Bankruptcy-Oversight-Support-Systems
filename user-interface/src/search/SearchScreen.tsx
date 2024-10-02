@@ -28,6 +28,7 @@ export default function SearchScreen() {
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
+  const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
@@ -61,6 +62,16 @@ export default function SearchScreen() {
     caseNumberInputRef.current?.disable(value);
     courtSelectionRef.current?.disable(value);
     chapterSelectionRef.current?.disable(value);
+  }
+
+  function setStartSearching() {
+    setActiveElement(document.activeElement);
+    disableSearchForm(true);
+  }
+
+  function setEndSearching() {
+    disableSearchForm(false);
+    if (activeElement) (activeElement as HTMLElement).focus();
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
@@ -143,7 +154,10 @@ export default function SearchScreen() {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-2">
-          <h2>Filters</h2>
+          <h2 aria-describedby="search-filter-description">Filters</h2>
+          <div id="search-filter-description">
+            As filters are applied, cases will appear in the search results automatically.
+          </div>
           <div className={`filter-and-search`} data-testid="filter-and-search-panel">
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
@@ -156,6 +170,8 @@ export default function SearchScreen() {
                   onChange={handleCaseNumberChange}
                   allowEnterKey={true}
                   allowPartialCaseNumber={false}
+                  aria-label="Find case by Case Number. Results will update automatically once a valid Case Number has been entered."
+                  aria-live="polite"
                   ref={caseNumberInputRef}
                 />
               </div>
@@ -167,6 +183,8 @@ export default function SearchScreen() {
                   className="new-court__select"
                   label="District (Division)"
                   ariaLabelPrefix="District (Division)"
+                  ariaDescription="Select multiple Districts (Divisions). Results will update when the dropdown is closed."
+                  aria-live="off"
                   onClose={handleCourtSelection}
                   onPillSelection={handleCourtSelection}
                   onUpdateSelection={handleCourtClear}
@@ -185,6 +203,8 @@ export default function SearchScreen() {
                   className="case-chapter__select"
                   label="Chapter"
                   ariaLabelPrefix="Chapter"
+                  ariaDescription="Select multiple Chapters. Results will update when the dropdown is closed."
+                  aria-live="off"
                   onClose={handleChapterSelection}
                   onPillSelection={handleChapterSelection}
                   onUpdateSelection={handleChapterClear}
@@ -216,12 +236,8 @@ export default function SearchScreen() {
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}
-              onStartSearching={() => {
-                disableSearchForm(true);
-              }}
-              onEndSearching={() => {
-                disableSearchForm(false);
-              }}
+              onStartSearching={setStartSearching}
+              onEndSearching={setEndSearching}
               header={SearchResultsHeader}
               row={SearchResultsRow}
             />

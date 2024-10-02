@@ -56,6 +56,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ariaDescription,
     ...otherProps
   } = props;
+  console.log(ariaDescription);
 
   // ========== STATE ==========
 
@@ -234,29 +235,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
     switch (ev.key) {
       case 'Tab':
-        if (expanded && (ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          let index = 0;
-          if (list && index < filteredOptions.length) {
-            while (
-              list.children[index] &&
-              list.children[index].classList.contains('hidden') &&
-              index < filteredOptions.length
-            ) {
-              ++index;
-            }
-          }
-          if (index === filteredOptions.length) {
-            closeDropdown(false);
-          } else {
-            const button = list?.children[index].querySelector('button');
-            if (list && button) {
-              focusAndHandleScroll(ev, button);
-              ev.preventDefault();
-            }
-          }
-        } else {
-          closeDropdown(false);
-        }
+        closeDropdown(false);
         break;
       case 'Escape':
         closeDropdown();
