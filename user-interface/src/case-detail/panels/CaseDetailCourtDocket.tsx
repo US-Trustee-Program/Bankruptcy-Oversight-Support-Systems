@@ -39,7 +39,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
   function printDocketHeader(docket: CaseDocketEntry) {
-    const outputString = `${docket.documentNumber ? docket.documentNumber + ' - ' : ''}${formatDate(docket.dateFiled)} - ${docket.summaryText}`;
+    const outputString = `${formatDate(docket.dateFiled)} - ${docket.summaryText}`;
     return outputString;
   }
 
@@ -90,24 +90,38 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           hasDocketEntries &&
           docketEntries?.map((docketEntry: CaseDocketEntry, idx: number) => {
             return (
-              <li className="docket-entry" key={idx} data-testid={`docket-entry-${idx}`}>
-                <h4
-                  className="grid-col-12 document-number-column docket-entry-header usa-tooltip"
-                  data-testid={`docket-entry-${idx}-header`}
-                  title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
-                  aria-label={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
-                >
-                  {printDocketHeader(docketEntry)}
-                </h4>
-                <div className="docket-content">
-                  <div
-                    className="docket-full-text"
-                    data-testid={`docket-entry-${idx}-text`}
-                    aria-label="full text of docket entry"
-                  >
-                    {docketEntry.fullText}
+              <li
+                className="docket-entry grid-container"
+                key={idx}
+                data-testid={`docket-entry-${idx}`}
+              >
+                <div className="grid-row">
+                  <div className="grid-col-1 document-number-column" aria-hidden={true}>
+                    {docketEntry.documentNumber}
                   </div>
-                  {docketEntry.documents && <DocketEntryDocumentList docketEntry={docketEntry} />}
+                  <div className="grid-col-11">
+                    <h4
+                      className="docket-entry-header usa-tooltip"
+                      data-testid={`docket-entry-${idx}-header`}
+                      title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                      aria-label={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                    >
+                      {printDocketHeader(docketEntry)}
+                    </h4>
+                  </div>
+                </div>
+                <div className="grid-row">
+                  <div className="grid-col-1"></div>
+                  <div className="grid-col-11 docket-content">
+                    <div
+                      className="docket-full-text"
+                      data-testid={`docket-entry-${idx}-text`}
+                      aria-label="full text of docket entry"
+                    >
+                      {docketEntry.fullText}
+                    </div>
+                    {docketEntry.documents && <DocketEntryDocumentList docketEntry={docketEntry} />}
+                  </div>
                 </div>
               </li>
             );
