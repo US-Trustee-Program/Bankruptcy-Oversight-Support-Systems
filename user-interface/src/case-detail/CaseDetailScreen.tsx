@@ -457,7 +457,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         onUpdateSelection={handleFacetClear}
                         label="Filter by Summary"
                         ariaDescription="Select multiple options. Results will update when the dropdown is closed."
-                        ariaLive="off"
+                        aria-live="off"
                         multiSelect={true}
                         ref={facetPickerRef}
                       />
