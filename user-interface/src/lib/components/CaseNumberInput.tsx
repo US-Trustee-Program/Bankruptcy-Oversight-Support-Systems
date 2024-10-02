@@ -72,13 +72,17 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
 
   return (
-    <Input
-      {...otherProps}
-      ref={forwardedRef}
-      onChange={handleOnChange}
-      onKeyDown={handleEnter}
-      includeClearButton={true}
-    ></Input>
+    <>
+      <Input
+        {...otherProps}
+        ref={forwardedRef}
+        onChange={handleOnChange}
+        onKeyDown={handleEnter}
+        includeClearButton={true}
+        ariaDescription="For example, 12-34567"
+        placeholder="__-_____"
+      ></Input>
+    </>
   );
 }
 

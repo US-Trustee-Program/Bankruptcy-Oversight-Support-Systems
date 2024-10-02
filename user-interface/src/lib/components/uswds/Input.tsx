@@ -14,6 +14,7 @@ export type InputProps = JSX.IntrinsicElements['input'] & {
   value?: string;
   icon?: string;
   includeClearButton?: boolean;
+  ariaDescription?: string;
 };
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
@@ -21,7 +22,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
-  const { includeClearButton, ...otherProps } = props;
+  const { includeClearButton, ariaDescription, ...otherProps } = props;
 
   function emitChange(value: string) {
     if (props.onChange) {
@@ -51,6 +52,10 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputDisabled(value);
   }
 
+  function ariaDescribedBy() {
+    return `input-hint-${props.id ?? Math.random().toString(36).slice(2, 7)}`;
+  }
+
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
     setInputValue(ev.target.value);
     if (props.onChange) {
@@ -69,7 +74,22 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
       <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
         {props.label}
       </label>
+      {ariaDescription && (
+        <div className="usa-hint" id={ariaDescribedBy()}>
+          {ariaDescription}
+        </div>
+      )}
       <div className="usa-input-group">
+        <input
+          {...otherProps}
+          className={`usa-input usa-tooltip ${props.className ?? ''}`}
+          data-position={props.position ?? 'right'}
+          onChange={handleOnChange}
+          data-testid={props.id}
+          disabled={inputDisabled}
+          value={inputValue}
+          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+        />
         {includeClearButton && !inputDisabled && (
           <div className="usa-input-suffix" aria-hidden="true">
             <Button uswdsStyle={UswdsButtonStyle.Unstyled} onClick={clearValue}>
@@ -82,15 +102,6 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
             <Icon focusable={false} name={props.icon}></Icon>
           </div>
         )}
-        <input
-          {...otherProps}
-          className={`usa-input usa-tooltip ${props.className ?? ''}`}
-          data-position={props.position ?? 'right'}
-          onChange={handleOnChange}
-          data-testid={props.id}
-          disabled={inputDisabled}
-          value={inputValue}
-        />
       </div>
     </div>
   );
