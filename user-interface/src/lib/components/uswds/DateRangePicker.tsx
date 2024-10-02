@@ -29,7 +29,6 @@ export interface DateRangePickerProps extends Omit<DatePickerProps, 'value'> {
   value?: DateRange;
   disabled?: boolean;
   ariaDescription?: string;
-  ariaLive?: 'off' | 'assertive' | 'polite' | undefined;
 }
 
 function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<DateRangePickerRef>) {
@@ -38,7 +37,6 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
     startDateLabel,
     endDateLabel,
     ariaDescription,
-    ariaLive,
     minDate,
     maxDate,
     value,
@@ -119,8 +117,8 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
         maxDate={internalDateRange.end}
         onChange={onStartDateChange}
         label={startDateLabel || 'Start date'}
-        ariaDescription={`${id}-aria-description`}
-        ariaLive={ariaLive ?? undefined}
+        aria-describedby={`${id}-aria-description`}
+        aria-live={props['aria-live'] ?? undefined}
         name="event-date-start"
         value={value?.start}
         disabled={disabled}
@@ -133,8 +131,8 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
         maxDate={maxDate}
         onChange={onEndDateChange}
         label={endDateLabel || 'End date'}
-        ariaDescription={`${id}-aria-description`}
-        ariaLive={ariaLive ?? undefined}
+        aria-describedby={`${id}-aria-description`}
+        aria-live={props['aria-live'] ?? undefined}
         name="event-date-end"
         value={value?.end}
         disabled={disabled}

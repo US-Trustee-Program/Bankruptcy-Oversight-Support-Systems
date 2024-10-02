@@ -30,7 +30,6 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
   label?: string;
   ariaLabelPrefix?: string;
   ariaDescription?: string;
-  ariaLive?: 'off' | 'assertive' | 'polite' | undefined;
   autoComplete?: 'off';
   icon?: string;
   options: ComboOption[];
@@ -55,7 +54,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     wrapPills,
     ariaLabelPrefix,
     ariaDescription,
-    ariaLive,
     ...otherProps
   } = props;
 
@@ -433,7 +431,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 disabled={comboboxDisabled}
                 aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
                 aria-describedby={`${props.id}-aria-description`}
-                aria-live={ariaLive ?? undefined}
+                aria-live={props['aria-live'] ?? undefined}
                 aria-haspopup="listbox"
                 aria-expanded={expanded}
                 aria-controls={`${props.id}-item-list`}
