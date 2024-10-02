@@ -1,27 +1,8 @@
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
 import { ApplicationContext } from '../../adapters/types/basic';
 
-export type FlatOfficeDetails = {
-  officeName: string;
-  officeCode: string;
-  courtId: string;
-  courtName: string;
-  courtDivisionCode: string;
-  courtDivisionName: string;
-  groupDesignator: string;
-  regionId: string;
-  regionName: string;
-  state?: string;
-  staff?: CamsUserReference[];
-};
-
 export interface OfficesGateway {
+  // TODO: Rename to getUstpOfficeName??
   getOfficeName(id: string): string;
-
-  getOfficesByGroupDesignator(
-    applicationContext: ApplicationContext,
-    groupDesignator: string,
-  ): Promise<FlatOfficeDetails[]>;
-
-  getOffices(applicationContext: ApplicationContext): Promise<FlatOfficeDetails[]>;
+  getOffices(applicationContext: ApplicationContext): Promise<UstpOfficeDetails[]>;
 }
