@@ -3,13 +3,12 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
-import { OfficesGatewayInterface } from '../../../use-cases/offices/offices.gateway.interface';
+import { FlatOfficeDetails, OfficesGateway } from '../../../use-cases/offices/offices.types';
 import { USTP_OFFICE_NAME_MAP } from './dxtr.constants';
-import { OfficeDetails } from '../../../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
-export default class OfficesDxtrGateway implements OfficesGatewayInterface {
+export default class OfficesDxtrGateway implements OfficesGateway {
   getOfficeName(id: string): string {
     if (USTP_OFFICE_NAME_MAP.has(id)) return USTP_OFFICE_NAME_MAP.get(id);
     throw new CamsError(MODULE_NAME, {
@@ -18,7 +17,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     });
   }
 
-  async getOffices(context: ApplicationContext): Promise<OfficeDetails[]> {
+  async getOffices(context: ApplicationContext): Promise<FlatOfficeDetails[]> {
     const input: DbTableFieldSpec[] = [];
 
     const query = `
@@ -46,16 +45,17 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     );
 
     if (queryResult.success) {
-      return (queryResult.results as mssql.IResult<OfficeDetails>).recordset;
+      return (queryResult.results as mssql.IResult<FlatOfficeDetails>).recordset;
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
   }
 
+  // TODO: This does not appear to be used. Tech debt?
   async getOfficesByGroupDesignator(
     context: ApplicationContext,
     groupDesignator: string,
-  ): Promise<OfficeDetails[]> {
+  ): Promise<FlatOfficeDetails[]> {
     const input: DbTableFieldSpec[] = [];
 
     if (groupDesignator.length !== 2) {
@@ -97,7 +97,7 @@ export default class OfficesDxtrGateway implements OfficesGatewayInterface {
     );
 
     if (queryResult.success) {
-      const results = queryResult.results as mssql.IResult<OfficeDetails>;
+      const results = queryResult.results as mssql.IResult<FlatOfficeDetails>;
       if (results.recordset.length === 0) {
         throw new CamsError(MODULE_NAME, {
           message: 'Office not found by query designator.',
