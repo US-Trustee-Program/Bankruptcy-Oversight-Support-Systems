@@ -13,6 +13,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
+import { getCourtDivisionCodes } from '@common/cams/users';
 
 describe('StaffAssignmentScreen', () => {
   test('should render a list of cases assigned to a case assignment manager', async () => {
@@ -26,7 +27,7 @@ describe('StaffAssignmentScreen', () => {
     const expectedPredicate: CasesSearchPredicate = {
       limit: DEFAULT_SEARCH_LIMIT,
       offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: user.offices?.map((office) => office.courtDivisionCode),
+      divisionCodes: getCourtDivisionCodes(user),
     };
 
     const SearchResults = vi

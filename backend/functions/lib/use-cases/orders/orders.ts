@@ -41,7 +41,7 @@ import {
 } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUserReference, getCourtDivisionCodes } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
@@ -88,7 +88,7 @@ export class OrdersUseCase {
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
     let predicate: OrdersSearchPredicate = undefined;
     if (context.session) {
-      const divisionCodes = context.session.user.offices.map((office) => office.courtDivisionCode);
+      const divisionCodes = getCourtDivisionCodes(context.session.user);
       predicate = { divisionCodes };
     }
     const transferOrders = await this.ordersRepo.search(context, predicate);

@@ -1,10 +1,8 @@
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import { UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
-import { USTP_OFFICE_DATA_MAP } from './ustp-office-data-map';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
 
 let roleMapping;
-let officeMapping;
 
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';
 const ROLE_MAPPING =
@@ -37,28 +35,8 @@ function get(path: string): string | null {
   return storage.get(path);
 }
 
-export type GroupDesignators = string[];
-
-function getOfficeMapping(): Map<string, GroupDesignators> {
-  if (!officeMapping) {
-    const officeArray = OFFICE_MAPPING.split('\n');
-
-    officeMapping = officeArray.reduce((officeMap, officeString, idx) => {
-      if (idx === 0 || officeString.length === 0) return officeMap;
-      const officeInfo = officeString.split(',');
-      const groupDesignators = officeInfo[2].split('|');
-
-      officeMap.set(officeInfo[1], groupDesignators);
-
-      return officeMap;
-    }, new Map<string, GroupDesignators>());
-  }
-
-  return officeMapping;
-}
-
-function getUstpOffices(): Map<string, UstpOfficeDetails> {
-  return USTP_OFFICE_DATA_MAP;
+function getUstpOffices(): UstpOfficeDetails[] {
+  return USTP_OFFICES_ARRAY;
 }
 
 function getRoleMapping(): Map<string, CamsRole> {
@@ -79,7 +57,6 @@ function getRoleMapping(): Map<string, CamsRole> {
 
 export const LocalStorageGateway: StorageGateway = {
   get,
-  getOfficeMapping,
   getUstpOffices,
   getRoleMapping,
 };

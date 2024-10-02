@@ -23,8 +23,8 @@ import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment';
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { MANHATTAN } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -37,7 +37,7 @@ describe('Orders use case', () => {
   let useCase: OrdersUseCase;
   const authorizedUser = MockData.getCamsUser({
     roles: [CamsRole.DataVerifier],
-    offices: [MANHATTAN],
+    offices: [REGION_02_GROUP_NY],
   });
 
   beforeEach(async () => {

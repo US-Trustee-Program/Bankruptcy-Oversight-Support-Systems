@@ -8,14 +8,14 @@ import React from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
-import { MANHATTAN } from '@common/cams/test-utilities/offices.mock';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBody } from '@common/api/response';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 
-const offices = [MANHATTAN!];
+const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
 const mark = MockData.getAttorneyUser({ name: 'Mark Bruh', offices });
 const shara = MockData.getAttorneyUser({ name: 'Shara Cornell', offices });

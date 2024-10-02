@@ -13,16 +13,13 @@ export class MockOfficesRepository implements OfficesRepository {
     // TODO: Remap the office code to use the user.offices when user.offices is changed to use UstpOfficeDetail.
     const storageGateway = getStorageGateway(context);
     const ustpOffices = storageGateway.getUstpOffices();
-    if (!ustpOffices.has(officeCode)) {
+    if (!ustpOffices.find((office) => office.officeCode === officeCode)) {
       return Promise.resolve([]);
     }
-    const ustpOffice = ustpOffices.get(officeCode);
     const users: AttorneyUser[] = MockUsers.filter(
       (mockUser) =>
         mockUser.user.roles.includes(CamsRole.TrialAttorney) &&
-        !!mockUser.user.offices.find(
-          (office) => !!ustpOffice.groups.find((o) => o.groupDesignator === office.groupDesignator),
-        ),
+        !!mockUser.user.offices.find((o) => o.officeCode === officeCode),
     ).map<AttorneyUser>((mockUser) => mockUser.user);
     return Promise.resolve(users);
   }

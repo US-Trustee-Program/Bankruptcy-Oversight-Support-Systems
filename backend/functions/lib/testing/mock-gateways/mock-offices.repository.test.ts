@@ -14,6 +14,6 @@ describe('MockOfficesRepository', () => {
     ]);
 
     const buAttys = await repo.getOfficeAttorneys(context, 'USTP_CAMS_Region_2_Office_Buffalo');
-    expect(buAttys.map((atty) => atty.name)).toEqual([]);
+    expect(buAttys.map((atty) => atty.name)).toEqual(["Martha's Son"]);
   });
 });
