@@ -50,7 +50,7 @@ describe('common court library tests', () => {
     const expectedCourtOffices: CourtOfficeDetails[] = [
       {
         courtDivisionCode: '812',
-        courtDivisionName: 'Western District of Washington',
+        courtDivisionName: 'Seattle',
         courtId: '0981',
         courtName: 'Western District of Washington',
         groupDesignator: 'SE',
@@ -61,7 +61,7 @@ describe('common court library tests', () => {
       },
       {
         courtDivisionCode: '813',
-        courtDivisionName: 'Western District of Washington',
+        courtDivisionName: 'Tacoma',
         courtId: '0981',
         courtName: 'Western District of Washington',
         groupDesignator: 'SE',
@@ -72,7 +72,7 @@ describe('common court library tests', () => {
       },
       {
         courtDivisionCode: '710',
-        courtDivisionName: 'District of Alaska',
+        courtDivisionName: 'Juneau',
         courtId: '097-',
         courtName: 'District of Alaska',
         groupDesignator: 'AK',
@@ -83,7 +83,7 @@ describe('common court library tests', () => {
       },
       {
         courtDivisionCode: '720',
-        courtDivisionName: 'District of Alaska',
+        courtDivisionName: 'Nome',
         courtId: '097-',
         courtName: 'District of Alaska',
         groupDesignator: 'AK',
@@ -94,7 +94,7 @@ describe('common court library tests', () => {
       },
       {
         courtDivisionCode: '730',
-        courtDivisionName: 'District of Alaska',
+        courtDivisionName: 'Anchorage',
         courtId: '097-',
         courtName: 'District of Alaska',
         groupDesignator: 'AK',
@@ -105,7 +105,7 @@ describe('common court library tests', () => {
       },
       {
         courtDivisionCode: '740',
-        courtDivisionName: 'District of Alaska',
+        courtDivisionName: 'Fairbanks',
         courtId: '097-',
         courtName: 'District of Alaska',
         groupDesignator: 'AK',
@@ -116,7 +116,7 @@ describe('common court library tests', () => {
       },
       {
         courtDivisionCode: '750',
-        courtDivisionName: 'District of Alaska',
+        courtDivisionName: 'Ketchikan',
         courtId: '097-',
         courtName: 'District of Alaska',
         groupDesignator: 'AK',
