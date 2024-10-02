@@ -79,12 +79,11 @@ describe('court docket panel tests', () => {
     expect(docketEntry1).toBeInTheDocument();
     expect(docketEntry2).toBeInTheDocument();
 
+    const documentNumberColumn = docketEntry1.querySelector('.document-number-column');
     const docketEntry1Header = screen.getByTestId('docket-entry-0-header');
-    expect(docketEntry1Header).toHaveTextContent(documentNumberOne?.toString() || '');
+    expect(documentNumberColumn).toHaveTextContent(documentNumberOne?.toString() || '');
     expect(docketEntry1Header.innerHTML).toEqual(
-      documentNumberOne?.toString() +
-        ' - ' +
-        formatDate(docketEntries[firstIndex].dateFiled) +
+      formatDate(docketEntries[firstIndex].dateFiled) +
         ' - ' +
         docketEntries[firstIndex].summaryText,
     );
