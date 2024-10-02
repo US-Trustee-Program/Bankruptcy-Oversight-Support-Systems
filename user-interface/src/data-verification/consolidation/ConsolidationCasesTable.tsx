@@ -243,7 +243,7 @@ function _ConsolidationCaseTable(
                             </Link>
                             <p className="measure-6 text-wrap">{docketEntry.fullText}</p>
                             {docketEntry.documents && (
-                              <DocketEntryDocumentList documents={docketEntry.documents} />
+                              <DocketEntryDocumentList docketEntry={docketEntry} />
                             )}
                           </div>
                         );
