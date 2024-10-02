@@ -23,10 +23,13 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
     props.disabled !== undefined ? !!props.disabled : false,
   );
 
-  const [dateValue, setDateValue] = useState<string | null>(props.value ?? null);
+  const [dateValue, setDateValue] = useState<string | undefined>(props.value ?? undefined);
 
   function clearValue() {
     setDateValue('');
+    setTimeout(() => {
+      setDateValue(undefined);
+    }, 100);
   }
 
   function resetValue() {
@@ -75,7 +78,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
           data-testid={id}
           min={minDate}
           max={maxDate}
-          value={dateValue ?? undefined}
+          value={dateValue}
           disabled={isDisabled}
           required={props.required}
         />

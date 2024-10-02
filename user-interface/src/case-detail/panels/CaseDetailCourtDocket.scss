@@ -8,9 +8,12 @@
   }
   #searchable-docket {
     list-style-type: none;
+    padding-left: 0;
 
     .docket-entry {
       padding-bottom: 2rem;
+      padding-left: 0;
+      margin-left: 0;
 
       h3 {
         margin-top: 0;
@@ -36,7 +39,11 @@
           }
         }
       }
-      .docket-entry-header {
+      .document-number-column {
+        text-align: right;
+        padding-right: 1rem;
+      }
+      .document-number-column, .docket-entry-header {
         font-weight: bold;
       }
     }
