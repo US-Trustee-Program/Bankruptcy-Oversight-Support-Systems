@@ -1,5 +1,5 @@
-import { OfficeDetails, UstpOfficeDetails } from '../../../../../common/src/cams/courts';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { UstpDivision, UstpGroup, UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
@@ -8,15 +8,69 @@ import {
   getStorageGateway,
   getRuntimeStateRepository,
 } from '../../factory';
-import { AttorneyUser } from '../../../../../common/src/cams/users';
 import { OfficeStaffSyncState } from '../gateways.types';
+import { FlatOfficeDetails } from './offices.types';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 
+function toUstpOfficeDetails(flatOfficeDetails: FlatOfficeDetails[]): UstpOfficeDetails[] {
+  const ustpOfficeDetailsMap = new Map<string, UstpOfficeDetails>();
+  flatOfficeDetails.forEach((flatOffice) => {
+    // Synthesize an AD group name based on the DXTR values:
+    const formattedRegionId = ('00' + flatOffice.regionId).slice(-2);
+    const ustpOfficeCode = `USTP_CAMS_Region_${formattedRegionId}_Office_${flatOffice.courtDivisionName}`;
+
+    let current: UstpOfficeDetails;
+    if (ustpOfficeDetailsMap.has(ustpOfficeCode)) {
+      current = ustpOfficeDetailsMap.get(ustpOfficeCode);
+    } else {
+      current = {
+        officeCode: ustpOfficeCode,
+        officeName: '',
+        idpGroupId: ustpOfficeCode.replace('_', ' '),
+        groups: [],
+        regionId: flatOffice.regionId,
+        regionName: flatOffice.regionName,
+      };
+      ustpOfficeDetailsMap.set(ustpOfficeCode, current);
+    }
+
+    let group: UstpGroup | undefined = current.groups.find(
+      (g) => g.groupDesignator === flatOffice.groupDesignator,
+    );
+    if (!group) {
+      group = {
+        groupDesignator: flatOffice.groupDesignator,
+        divisions: [],
+      };
+      current.groups.push(group);
+    }
+
+    const division: UstpDivision = {
+      divisionCode: flatOffice.courtDivisionCode,
+      court: {
+        courtId: flatOffice.courtId,
+        courtName: flatOffice.courtName,
+      },
+      courtOffice: {
+        courtOfficeCode: flatOffice.officeCode,
+        courtOfficeName: flatOffice.officeName,
+      },
+    };
+    group.divisions.push(division);
+  });
+
+  return [...ustpOfficeDetailsMap.values()];
+}
+
 export class OfficesUseCase {
-  public async getOffices(context: ApplicationContext): Promise<OfficeDetails[]> {
+  public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const gateway = getOfficesGateway(context);
-    return gateway.getOffices(context);
+    let flatOfficeDetails = await gateway.getOffices(context);
+    flatOfficeDetails = flatOfficeDetails.map((office) => {
+      return { ...office, officeName: gateway.getOfficeName(office.courtDivisionCode) };
+    });
+    return toUstpOfficeDetails(flatOfficeDetails);
   }
 
   public async getOfficeAttorneys(
@@ -95,7 +149,6 @@ export class OfficesUseCase {
 
     await runtimeStateRepo.updateState<OfficeStaffSyncState>(context, result);
 
-    // TODO: What to do with users with roles WITHOUT offices?
     return result;
   }
 }
