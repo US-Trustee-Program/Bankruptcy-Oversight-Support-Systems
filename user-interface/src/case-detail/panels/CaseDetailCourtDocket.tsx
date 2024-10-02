@@ -90,28 +90,26 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           hasDocketEntries &&
           docketEntries?.map((docketEntry: CaseDocketEntry, idx: number) => {
             return (
-              <>
-                <li className="docket-entry" key={idx} data-testid={`docket-entry-${idx}`}>
-                  <h4
-                    className="grid-col-12 document-number-column docket-entry-header usa-tooltip"
-                    data-testid={`docket-entry-${idx}-header`}
-                    title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
-                    aria-label={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+              <li className="docket-entry" key={idx} data-testid={`docket-entry-${idx}`}>
+                <h4
+                  className="grid-col-12 document-number-column docket-entry-header usa-tooltip"
+                  data-testid={`docket-entry-${idx}-header`}
+                  title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                  aria-label={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                >
+                  {printDocketHeader(docketEntry)}
+                </h4>
+                <div className="docket-content">
+                  <div
+                    className="docket-full-text"
+                    data-testid={`docket-entry-${idx}-text`}
+                    aria-label="full text of docket entry"
                   >
-                    {printDocketHeader(docketEntry)}
-                  </h4>
-                  <div className="docket-content">
-                    <div
-                      className="docket-full-text"
-                      data-testid={`docket-entry-${idx}-text`}
-                      aria-label="full text of docket entry"
-                    >
-                      {docketEntry.fullText}
-                    </div>
-                    {docketEntry.documents && <DocketEntryDocumentList docketEntry={docketEntry} />}
+                    {docketEntry.fullText}
                   </div>
-                </li>
-              </>
+                  {docketEntry.documents && <DocketEntryDocumentList docketEntry={docketEntry} />}
+                </div>
+              </li>
             );
           })}
       </ol>
