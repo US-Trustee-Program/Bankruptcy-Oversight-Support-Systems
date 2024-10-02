@@ -55,6 +55,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     wrapPills,
     ariaLabelPrefix,
     ariaDescription,
+    ariaLive,
     ...otherProps
   } = props;
 
@@ -430,9 +431,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 onClick={openDropdown}
                 value={value}
                 disabled={comboboxDisabled}
-                aria-label={`${props.ariaLabelPrefix ? props.ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+                aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
                 aria-describedby={`${props.id}-aria-description`}
-                aria-live={props.ariaLive ?? undefined}
+                aria-live={ariaLive ?? undefined}
                 aria-haspopup="listbox"
                 aria-expanded={expanded}
                 aria-controls={`${props.id}-item-list`}
@@ -477,7 +478,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${props.ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
+                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
                   >
                     {
                       <>
