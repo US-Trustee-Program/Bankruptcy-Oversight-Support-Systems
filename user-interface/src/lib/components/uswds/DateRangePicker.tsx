@@ -16,7 +16,7 @@ export const formatDateForVoiceOver = (dateString: string) => {
       month: 'long',
       day: 'numeric',
     });
-  } catch (e) {
+  } catch (_e) {
     // Invalid date supplied for formatting
   }
 };
