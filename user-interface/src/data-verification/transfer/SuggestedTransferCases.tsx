@@ -1,6 +1,6 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseSummary } from '@common/cams/cases';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -24,7 +24,7 @@ enum ValidationStates {
 
 export type SuggestedTransferCasesProps = {
   order: TransferOrder;
-  officesList: OfficeDetails[];
+  officesList: CourtDivisionDetails[];
   onCaseSelection: (bCase: CaseSummary | null) => void;
   onAlert: (alertDetails: AlertDetails) => void;
   onInvalidCaseNumber: () => void;
@@ -40,7 +40,7 @@ function _SuggestedTransferCases(
     ValidationStates.notValidated,
   );
   const [newCaseSummary, setNewCaseSummary] = useState<CaseSummary | null>(null);
-  const [newCaseDivision, setNewCaseDivision] = useState<OfficeDetails | null>(null);
+  const [newCaseDivision, setNewCaseDivision] = useState<CourtDivisionDetails | null>(null);
   const [newCaseNumber, setNewCaseNumber] = useState<string | null>(
     order.docketSuggestedCaseNumber || null,
   );

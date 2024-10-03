@@ -1,4 +1,4 @@
-import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
@@ -28,12 +28,13 @@ export class OfficesUseCase {
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
     const config = context.config.userGroupGatewayConfig;
+    const officesGateway = getOfficesGateway(context);
     const repository = getOfficesRepository(context);
-    const gateway = getUserGroupGateway(context);
+    const userGroupSource = getUserGroupGateway(context);
     const storage = getStorageGateway(context);
 
     // Get IdP to CAMS mappings.
-    const offices = storage.getUstpOffices();
+    const offices = await officesGateway.getOffices(context);
     const groupToRoleMap = storage.getRoleMapping();
     const groupToOfficeMap = offices.reduce((acc, office) => {
       acc.set(office.idpGroupId, office);
@@ -41,14 +42,14 @@ export class OfficesUseCase {
     }, new Map<string, UstpOfficeDetails>());
 
     // Filter out any groups not relevant to CAMS.
-    const userGroups = await gateway.getUserGroups(context, config);
+    const userGroups = await userGroupSource.getUserGroups(context, config);
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 
     // Map roles to users.
     const userMap = new Map<string, CamsUserReference>();
     for (const roleGroup of roleGroups) {
-      const users = await gateway.getUserGroupUsers(context, config, roleGroup);
+      const users = await userGroupSource.getUserGroupUsers(context, config, roleGroup);
       const role = groupToRoleMap.get(roleGroup.name);
       for (const user of users) {
         if (userMap.has(user.id)) {
@@ -65,7 +66,7 @@ export class OfficesUseCase {
     for (const officeGroup of officeGroups) {
       const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
 
-      const users = await gateway.getUserGroupUsers(context, config, officeGroup);
+      const users = await userGroupSource.getUserGroupUsers(context, config, officeGroup);
       for (const user of users) {
         if (!userMap.has(user.id)) {
           userMap.set(user.id, user);

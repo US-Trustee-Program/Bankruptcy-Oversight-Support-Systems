@@ -1,11 +1,11 @@
 import { ConsolidationOrderAccordionProps } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
-import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
+import { filterCourtByDivision, CourtDivisionDetails } from '@common/cams/courts';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
 
 export class ConsolidationStoreMock implements ConsolidationStore {
   consolidationType: ConsolidationType | null = null;
-  filteredOfficesList: OfficeDetails[] | null;
+  filteredOfficesList: CourtDivisionDetails[] | null;
   foundValidCaseNumber: boolean = false;
   isProcessing: boolean = false;
   isDataEnhanced: boolean = false;
@@ -19,7 +19,7 @@ export class ConsolidationStoreMock implements ConsolidationStore {
   selectedCases: ConsolidationOrderCase[] = [];
   showLeadCaseForm: boolean = false;
 
-  constructor(props: ConsolidationOrderAccordionProps, officesList: OfficeDetails[]) {
+  constructor(props: ConsolidationOrderAccordionProps, officesList: CourtDivisionDetails[]) {
     this.filteredOfficesList = filterCourtByDivision(props.order.courtDivisionCode, officesList);
     this.order = props.order;
   }
@@ -28,7 +28,7 @@ export class ConsolidationStoreMock implements ConsolidationStore {
     this.consolidationType = newType;
   };
 
-  setFilteredOfficesList = (val: OfficeDetails[]): void => {
+  setFilteredOfficesList = (val: CourtDivisionDetails[]): void => {
     this.filteredOfficesList = val;
   };
 

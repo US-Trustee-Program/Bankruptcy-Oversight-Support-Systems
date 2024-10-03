@@ -13,7 +13,7 @@ import {
 } from './TransferConfirmationModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import { FromCaseSummary } from './FromCaseSummary';
 import { useApi2 } from '@/lib/hooks/UseApi2';
@@ -27,7 +27,7 @@ export type PendingTransferOrderProps = {
   order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   // TODO: This is a lot of prop drilling. Maybe add a custom hook???
-  officesList: Array<OfficeDetails>;
+  officesList: Array<CourtDivisionDetails>;
 };
 
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {

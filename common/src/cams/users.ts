@@ -1,4 +1,4 @@
-import { UstpOfficeDetails } from './courts';
+import { UstpOfficeDetails } from './offices';
 import { CamsRole } from './roles';
 
 export type CamsUserReference = {

@@ -7,7 +7,7 @@ import {
   ConsolidationOrderAccordionProps,
 } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
@@ -46,7 +46,7 @@ describe('ConsolidationOrderAccordion tests', () => {
   const order: ConsolidationOrder = MockData.getConsolidationOrder({
     override: { courtDivisionCode: '081' },
   });
-  const offices: OfficeDetails[] = MockData.getOffices();
+  const offices: CourtDivisionDetails[] = MockData.getCourts();
   const regionMap = new Map();
 
   const onOrderUpdateMockFunc = vi.fn();
@@ -76,7 +76,7 @@ describe('ConsolidationOrderAccordion tests', () => {
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
-      officesList: offices,
+      courts: offices,
       orderType,
       statusType: orderStatusType,
       onOrderUpdate: onOrderUpdateMockFunc,

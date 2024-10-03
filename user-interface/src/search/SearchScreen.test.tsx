@@ -429,7 +429,7 @@ describe('search screen', () => {
   });
 
   test('should show an error alert if offices cannot be retrieved from API', async () => {
-    vi.spyOn(Api2, 'getOffices')
+    vi.spyOn(Api2, 'getCourts')
       .mockRejectedValueOnce({
         message: 'some error',
       })

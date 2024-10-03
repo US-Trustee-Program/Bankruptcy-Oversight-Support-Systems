@@ -8,7 +8,7 @@ import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock-offices.repository';
-import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/courts';
+import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;

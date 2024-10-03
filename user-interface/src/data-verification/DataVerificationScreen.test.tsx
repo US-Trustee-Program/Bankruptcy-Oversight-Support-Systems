@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import DataVerificationScreen, { officeSorter } from './DataVerificationScreen';
+import DataVerificationScreen, { courtSorter } from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import {
@@ -8,7 +8,7 @@ import {
   ConsolidationOrder,
   isConsolidationOrder,
 } from '@common/cams/orders';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -30,7 +30,7 @@ describe('Review Orders screen', () => {
   });
 
   test('should sort offices', () => {
-    const testOffices: OfficeDetails[] = [
+    const testOffices: CourtDivisionDetails[] = [
       {
         courtDivisionCode: '001',
         groupDesignator: 'AA',
@@ -80,7 +80,7 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
     ];
-    const expectedOffices: OfficeDetails[] = [
+    const expectedOffices: CourtDivisionDetails[] = [
       {
         courtDivisionCode: '001',
         groupDesignator: 'AA',
@@ -130,8 +130,8 @@ describe('Review Orders screen', () => {
         regionName: 'NEW YORK',
       },
     ];
-    const actualOffices = testOffices.sort(officeSorter);
-    expect(actualOffices).toEqual<OfficeDetails[]>(expectedOffices);
+    const actualOffices = testOffices.sort(courtSorter);
+    expect(actualOffices).toEqual<CourtDivisionDetails[]>(expectedOffices);
   });
 
   test('should toggle filter button', async () => {

@@ -1,4 +1,4 @@
-import { OfficeDetails } from '../courts';
+import { CourtDivisionDetails } from '../courts';
 
 /***************************************************************************\
  * !! The Following Offices are aligned with legitimate court divisions
@@ -7,7 +7,7 @@ import { OfficeDetails } from '../courts';
  *    this list, and then do a lookup in dxtr.constants.ts ( which is
  *    used in our live system ), DO NOT ADD mock offices to this file.
  \***************************************************************************/
-export const OFFICES: OfficeDetails[] = [
+export const COURT_DIVISIONS: CourtDivisionDetails[] = [
   {
     courtDivisionCode: '710',
     groupDesignator: 'AK',
@@ -3502,7 +3502,7 @@ export const OFFICES: OfficeDetails[] = [
   },
 ];
 
-export const MANHATTAN = OFFICES.find((office) => office.courtDivisionCode === '081');
-export const WHITE_PLAINS = OFFICES.find((office) => office.courtDivisionCode === '087');
-export const BUFFALO = OFFICES.find((office) => office.courtDivisionCode === '091');
-export const DELAWARE = OFFICES.find((office) => office.courtDivisionCode === '111');
+export const MANHATTAN = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '081');
+export const WHITE_PLAINS = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '087');
+export const BUFFALO = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '091');
+export const DELAWARE = COURT_DIVISIONS.find((office) => office.courtDivisionCode === '111');

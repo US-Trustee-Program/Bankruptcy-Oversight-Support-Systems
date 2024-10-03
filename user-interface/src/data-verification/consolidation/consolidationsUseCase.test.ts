@@ -54,7 +54,7 @@ describe('Consolidation UseCase tests', () => {
       order: mockOrder,
       statusType: orderStatusType,
       orderType: orderType,
-      officesList: MockData.getOffices(),
+      courts: MockData.getCourts(),
       regionsMap: new Map(),
       onOrderUpdate: onOrderUpdateSpy,
       onExpand,
