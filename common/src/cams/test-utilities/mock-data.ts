@@ -82,10 +82,6 @@ function getOffices() {
   return OFFICES;
 }
 
-function getOfficesByGroupDesignator(groupDesignator: string) {
-  return OFFICES.filter((office) => office.groupDesignator === groupDesignator);
-}
-
 function randomOffice() {
   return OFFICES[randomInt(OFFICES.length - 1)];
 }
@@ -562,7 +558,6 @@ export const MockData = {
   getCaseSummary,
   getCaseDetail,
   getOffices,
-  getOfficesByGroupDesignator,
   getParty,
   getDocketEntry,
   getNonPaginatedResponseBody,

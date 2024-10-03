@@ -1,5 +1,5 @@
-import { OfficeDetails, UstpOfficeDetails } from '../../../../../common/src/cams/courts';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
@@ -8,13 +8,12 @@ import {
   getStorageGateway,
   getRuntimeStateRepository,
 } from '../../factory';
-import { AttorneyUser } from '../../../../../common/src/cams/users';
 import { OfficeStaffSyncState } from '../gateways.types';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 
 export class OfficesUseCase {
-  public async getOffices(context: ApplicationContext): Promise<OfficeDetails[]> {
+  public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const gateway = getOfficesGateway(context);
     return gateway.getOffices(context);
   }
@@ -95,7 +94,6 @@ export class OfficesUseCase {
 
     await runtimeStateRepo.updateState<OfficeStaffSyncState>(context, result);
 
-    // TODO: What to do with users with roles WITHOUT offices?
     return result;
   }
 }

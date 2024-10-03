@@ -10,8 +10,7 @@ export function ustpOfficeToCourtOffice(ustp: UstpOfficeDetails): CourtOfficeDet
         courtId: division.court.courtId,
         courtName: division.court.courtName,
         courtDivisionCode: division.divisionCode,
-        // TODO: Fix this gap in the mapping to court division name.?? Redundant to courtName?
-        courtDivisionName: division.court.courtName, // Is this mapping correct??
+        courtDivisionName: division.courtOffice.courtOfficeName,
         groupDesignator: group.groupDesignator,
         regionId: ustp.regionId,
         regionName: ustp.regionName,
@@ -22,9 +21,22 @@ export function ustpOfficeToCourtOffice(ustp: UstpOfficeDetails): CourtOfficeDet
   return courtOffices;
 }
 
-export type CourtOfficeDetails = OfficeDetails;
+export type CourtOfficeDetails = {
+  officeName: string;
+  officeCode: string;
+  courtId: string;
+  courtName: string;
+  courtDivisionCode: string;
+  courtDivisionName: string;
+  groupDesignator: string;
+  regionId: string;
+  regionName: string;
+  state?: string;
+  staff?: CamsUserReference[];
+};
 
 // THIS IS THE LEGACY MODEL.
+// TODO: Delete this and see what breaks! :)
 export interface OfficeDetails {
   officeName: string;
   officeCode: string;
@@ -155,7 +167,7 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
       },
     ],
     regionId: '18',
-    regionName: 'Seattle',
+    regionName: 'SEATTLE',
   },
   {
     officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
@@ -170,14 +182,14 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
             court: { courtId: '0311', courtName: 'District of Delaware' },
             courtOffice: {
               courtOfficeCode: '1',
-              courtOfficeName: 'Wilmington',
+              courtOfficeName: 'Delaware',
             },
           },
         ],
       },
     ],
     regionId: '3',
-    regionName: 'Philadelphia',
+    regionName: 'PHILADELPHIA',
   },
   {
     officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
@@ -207,7 +219,7 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
       },
     ],
     regionId: '2',
-    regionName: 'New York',
+    regionName: 'NEW YORK',
   },
   {
     officeCode: 'USTP_CAMS_Region_2_Office_Buffalo',
@@ -229,7 +241,7 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
       },
     ],
     regionId: '2',
-    regionName: 'New York',
+    regionName: 'NEW YORK',
   },
 ];
 

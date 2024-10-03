@@ -1,7 +1,6 @@
 import { CamsError } from '../lib/common-errors/cams-error';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { BUFFALO, DELAWARE, MANHATTAN } from '../../../common/src/cams/test-utilities/offices.mock';
 import handler from './offices.function';
 import {
   buildTestResponseError,
@@ -10,12 +9,11 @@ import {
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
-import { OfficeDetails } from '../../../common/src/cams/courts';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../common/src/cams/courts';
 
 describe('offices Function tests', () => {
   let request;
   let context;
-  const testOffices = [MANHATTAN, DELAWARE, BUFFALO];
 
   beforeEach(() => {
     request = createMockAzureFunctionRequest();
@@ -31,9 +29,9 @@ describe('offices Function tests', () => {
     .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
 
   test('should set successful response', async () => {
-    const bodySuccess: OfficeDetails[] = testOffices;
+    const bodySuccess: UstpOfficeDetails[] = USTP_OFFICES_ARRAY;
 
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<OfficeDetails[]>({
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<UstpOfficeDetails[]>({
       data: bodySuccess,
     });
 

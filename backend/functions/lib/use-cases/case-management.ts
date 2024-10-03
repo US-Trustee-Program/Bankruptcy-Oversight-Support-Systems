@@ -11,7 +11,7 @@ import { CaseAssignmentUseCase } from './case-assignment';
 import { UnknownError } from '../common-errors/unknown-error';
 import { isCamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
-import { OfficesGatewayInterface } from './offices/offices.gateway.interface';
+import { OfficesGateway } from './offices/offices.types';
 import { CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
@@ -41,7 +41,7 @@ export default class CaseManagement {
   assignmentGateway: CaseAssignmentRepositoryInterface;
   casesGateway: CasesInterface;
   casesRepo: CasesRepository;
-  officesGateway: OfficesGatewayInterface;
+  officesGateway: OfficesGateway;
 
   constructor(
     applicationContext: ApplicationContext,
