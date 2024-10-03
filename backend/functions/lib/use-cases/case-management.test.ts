@@ -15,7 +15,7 @@ import {
   REGION_02_GROUP_BU,
   REGION_02_GROUP_NY,
 } from '../../../../common/src/cams/test-utilities/mock-user';
-import { ustpOfficeToCourtOffice } from '../../../../common/src/cams/courts';
+import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -106,7 +106,7 @@ describe('Case management tests', () => {
 
   describe('getAction tests', () => {
     test('should return post action if user has office with correct division code and Case Assignment Manager role', async () => {
-      const courtOffices = ustpOfficeToCourtOffice(applicationContext.session.user.offices[0]);
+      const courtOffices = ustpOfficeToCourtDivision(applicationContext.session.user.offices[0]);
       const officeDetail = courtOffices[0];
       const caseNumber = '00-00000';
       const bCase = MockData.getCaseDetail({
@@ -211,7 +211,7 @@ describe('Case management tests', () => {
 
     test('should include case assignment action if the user has case assignment role', async () => {
       const officeName = 'Test Office';
-      const courtOffices = ustpOfficeToCourtOffice(applicationContext.session.user.offices[0]);
+      const courtOffices = ustpOfficeToCourtDivision(applicationContext.session.user.offices[0]);
       const officeDetail = courtOffices[0];
       const caseNumber = '00-00000';
       const bCase = MockData.getCaseDetail({

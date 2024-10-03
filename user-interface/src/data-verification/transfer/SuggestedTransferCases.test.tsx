@@ -7,7 +7,7 @@ import {
   SuggestedTransferCasesProps,
 } from './SuggestedTransferCases';
 import { OrderStatus, TransferOrder } from '@common/cams/orders';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
@@ -15,7 +15,7 @@ import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
 
-const testOffices: OfficeDetails[] = [
+const testOffices: CourtDivisionDetails[] = [
   {
     courtDivisionCode: '001',
     groupDesignator: 'AA',

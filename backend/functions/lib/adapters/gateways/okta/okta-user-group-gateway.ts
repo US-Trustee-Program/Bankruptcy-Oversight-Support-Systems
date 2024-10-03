@@ -152,7 +152,7 @@ async function getUserGroupUsers(
 
     for await (const oktaUser of oktaUsers) {
       camsUserReferences.push({
-        id: oktaUser.profile.login,
+        id: oktaUser.id,
         name:
           oktaUser.profile.displayName ??
           oktaUser.profile.lastName + ', ' + oktaUser.profile.firstName,

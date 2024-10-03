@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../../common/src/cams/session';

@@ -16,7 +16,7 @@ import {
   isConsolidationOrder,
   isTransferOrder,
 } from '@common/cams/orders';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
 import { sortDates } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
@@ -27,7 +27,7 @@ import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
-export function officeSorter(a: OfficeDetails, b: OfficeDetails) {
+export function courtSorter(a: CourtDivisionDetails, b: CourtDivisionDetails) {
   const aKey = a.courtName + '-' + a.courtDivisionName;
   const bKey = b.courtName + '-' + b.courtDivisionName;
   if (aKey === bKey) return 0;
@@ -39,7 +39,7 @@ export default function DataVerificationScreen() {
   const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
   const [typeFilter, setTypeFilter] = useState<OrderType[]>(['transfer', 'consolidation']);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
-  const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
+  const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
   const [isOrderListLoading, setIsOrderListLoading] = useState(false);
   const alertRef = useRef<AlertRefType>(null);
@@ -75,16 +75,16 @@ export default function DataVerificationScreen() {
       });
   }
 
-  async function getOffices() {
+  async function getCourts() {
     api
-      .getOffices()
+      .getCourts()
       .then((response) => {
-        const officeList = (response as ResponseBody<OfficeDetails[]>).data;
-        setOfficesList(officeList.sort(officeSorter));
+        const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
+        setCourts(courts.sort(courtSorter));
         setRegionsMap(
-          officeList.reduce((regionsMap, office) => {
-            if (!regionsMap.has(office.regionId)) {
-              regionsMap.set(office.regionId, office.regionName);
+          courts.reduce((regionsMap, court) => {
+            if (!regionsMap.has(court.regionId)) {
+              regionsMap.set(court.regionId, court.regionName);
             }
             return regionsMap;
           }, new Map()),
@@ -148,7 +148,7 @@ export default function DataVerificationScreen() {
 
   useEffect(() => {
     getOrders();
-    getOffices();
+    getCourts();
   }, []);
 
   let visibleItemCount = 0;
@@ -173,7 +173,7 @@ export default function DataVerificationScreen() {
           key={`accordion-${order.id}`}
           order={order}
           regionsMap={regionsMap}
-          officesList={officesList}
+          courts={courts}
           orderType={orderType}
           statusType={orderStatusType}
           onOrderUpdate={handleTransferOrderUpdate}
@@ -184,7 +184,7 @@ export default function DataVerificationScreen() {
           key={`accordion-${order.id}`}
           order={order}
           regionsMap={regionsMap}
-          officesList={officesList}
+          courts={courts}
           orderType={orderType}
           statusType={orderStatusType}
           onOrderUpdate={handleConsolidationOrderUpdate}

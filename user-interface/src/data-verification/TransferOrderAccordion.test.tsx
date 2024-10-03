@@ -6,7 +6,7 @@ import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferO
 import { describe } from 'vitest';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 
 vi.mock('../lib/components/CamsSelect', () => import('../lib/components/CamsSelect.mock'));
@@ -44,7 +44,7 @@ describe('TransferOrderAccordion', () => {
   let order: TransferOrder;
   const regionMap = new Map();
   regionMap.set('02', 'NEW YORK');
-  const testOffices: OfficeDetails[] = [
+  const testOffices: CourtDivisionDetails[] = [
     {
       courtDivisionCode: '001',
       groupDesignator: 'AA',
@@ -86,7 +86,7 @@ describe('TransferOrderAccordion', () => {
   function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
     const defaultProps: TransferOrderAccordionProps = {
       order: order,
-      officesList: testOffices,
+      courts: testOffices,
       orderType,
       statusType: orderStatusType,
       onOrderUpdate: () => {},

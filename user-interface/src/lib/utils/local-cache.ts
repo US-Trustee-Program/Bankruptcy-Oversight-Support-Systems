@@ -1,10 +1,12 @@
+import { HOUR } from './datetime';
+
 type Cachable<T = unknown> = {
   expiresAfter: number;
   value: T;
 };
 
 const NAMESPACE = 'cams:cache:';
-const DEFAULT_TTL = 3600000; // 60 minutes
+const DEFAULT_TTL = HOUR;
 const canCache = !!window.localStorage && import.meta.env['CAMS_DISABLE_LOCAL_CACHE'] !== 'true';
 
 function isCacheEnabled() {

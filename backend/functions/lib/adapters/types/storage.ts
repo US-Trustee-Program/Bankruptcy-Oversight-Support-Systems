@@ -1,5 +1,5 @@
 import { CamsRole } from '../../../../../common/src/cams/roles';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 
 export type StorageGateway = {
   get(key: string): string | null;

@@ -1,4 +1,4 @@
-import { USTP_OFFICE_DATA_MAP, USTP_OFFICES_ARRAY } from '../courts';
+import { USTP_OFFICE_DATA_MAP, USTP_OFFICES_ARRAY } from '../offices';
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
 

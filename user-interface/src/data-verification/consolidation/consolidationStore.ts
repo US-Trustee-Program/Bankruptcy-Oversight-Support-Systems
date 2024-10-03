@@ -1,12 +1,12 @@
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 interface ConsolidationStore {
   consolidationType: ConsolidationType | null;
   setConsolidationType(val: ConsolidationType | null): void;
 
-  filteredOfficesList: OfficeDetails[] | null;
-  setFilteredOfficesList(officesList: OfficeDetails[] | null): void;
+  filteredOfficesList: CourtDivisionDetails[] | null;
+  setFilteredOfficesList(officesList: CourtDivisionDetails[] | null): void;
 
   foundValidCaseNumber: boolean;
   setFoundValidCaseNumber(val: boolean): void;

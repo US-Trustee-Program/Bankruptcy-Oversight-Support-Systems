@@ -1,10 +1,10 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { OfficesController } from './offices.controller';
 import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { OfficesController } from '../offices/offices.controller';
 
 let getOffices = jest.fn();
 let getOfficeAttorneys = jest.fn();

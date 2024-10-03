@@ -95,7 +95,7 @@ describe('ConsolidationOrderModalComponent', () => {
   test('should allow user to approve a consolidation', async () => {
     const id = 'test';
     const childCases = MockData.buildArray(MockData.getCaseSummary, 2);
-    const courts = MockData.getOffices().slice(0, 3);
+    const courts = MockData.getCourts().slice(0, 3);
 
     const leadCase = MockData.getCaseSummary();
     const consolidationType = 'substantive';

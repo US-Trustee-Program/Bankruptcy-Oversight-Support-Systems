@@ -4,8 +4,8 @@ import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
-import { OFFICES } from '../../../../../../common/src/cams/test-utilities/offices.mock';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
+import { COURT_DIVISIONS } from '../../../../../../common/src/cams/test-utilities/courts.mock';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/offices';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {
@@ -44,7 +44,7 @@ describe('offices gateway tests', () => {
       const mockResults: QueryResults = {
         success: true,
         results: {
-          recordset: OFFICES,
+          recordset: COURT_DIVISIONS,
         },
         message: '',
       };

@@ -9,7 +9,7 @@ import { AttorneyUser } from '@common/cams/users';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { CamsSession } from '@common/cams/session';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -18,13 +18,14 @@ import {
   Order,
 } from '@common/cams/orders';
 import { CasesSearchPredicate } from '@common/api/search';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseActions = [Actions.ManageAssignments];
 const caseDetails = MockData.getCaseDetail({
   override: { _actions: caseActions, chapter: '15' },
 });
-const offices = MockData.getOffices().slice(0, 5);
+const courts = MockData.getCourts().slice(0, 5);
 
 // Consolidated Lead Case
 const consolidationLeadCaseId = '999-99-00001';
@@ -161,7 +162,11 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   } else if (path.match(/\/offices/)) {
     response = {
-      data: offices,
+      data: USTP_OFFICES_ARRAY,
+    };
+  } else if (path.match(/\/courts/)) {
+    response = {
+      data: courts,
     };
   } else if (path.match(/\/me/)) {
     response = {
@@ -226,12 +231,16 @@ async function getCaseHistory(caseId: string): Promise<ResponseBody<CaseHistory[
   return get<CaseHistory[]>(`/cases/${caseId}/history`);
 }
 
+async function getCourts(): Promise<ResponseBody<CourtDivisionDetails[]>> {
+  return get<CourtDivisionDetails[]>(`/courts`);
+}
+
 async function getMe(): Promise<ResponseBody<CamsSession>> {
   return get<CamsSession>(`/me`);
 }
 
-async function getOffices(): Promise<ResponseBody<OfficeDetails[]>> {
-  return get<OfficeDetails[]>(`/offices`);
+async function getOffices(): Promise<ResponseBody<UstpOfficeDetails[]>> {
+  return get<UstpOfficeDetails[]>(`/offices`);
 }
 
 async function getOrders(): Promise<ResponseBody<Order[]>> {
@@ -274,6 +283,7 @@ export const MockApi2 = {
   getCaseAssignments,
   getCaseAssociations,
   getCaseHistory,
+  getCourts,
   getMe,
   getOffices,
   getOrders,
