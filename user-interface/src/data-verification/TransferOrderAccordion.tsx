@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Accordion } from '@/lib/components/uswds/Accordion';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
@@ -17,7 +17,7 @@ export interface TransferOrderAccordionProps {
   order: TransferOrder;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
-  officesList: Array<OfficeDetails>;
+  courts: Array<CourtDivisionDetails>;
   regionsMap: Map<string, string>;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   onExpand?: (id: string) => void;
@@ -26,7 +26,7 @@ export interface TransferOrderAccordionProps {
 }
 
 export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
-  const { order, hidden, statusType, orderType, officesList, expandedId, onExpand } = props;
+  const { order, hidden, statusType, orderType, courts, expandedId, onExpand } = props;
   const [expanded, setExpanded] = useState<boolean>(false);
 
   const pendingTransferOrderRef = useRef<PendingTransferOrderImperative>(null);
@@ -90,7 +90,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
               <PendingTransferOrder
                 order={order}
                 onOrderUpdate={props.onOrderUpdate}
-                officesList={officesList}
+                officesList={courts}
                 ref={pendingTransferOrderRef}
               />
             )}

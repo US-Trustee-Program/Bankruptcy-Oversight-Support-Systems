@@ -4,12 +4,12 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
-import { officeSorter } from '@/data-verification/DataVerificationScreen';
+import { courtSorter } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -27,7 +27,7 @@ export default function SearchScreen() {
   });
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
-  const [officesList, setOfficesList] = useState<Array<OfficeDetails>>([]);
+  const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
@@ -46,11 +46,11 @@ export default function SearchScreen() {
     setChapterList(chapterArray);
   }
 
-  async function getOffices() {
+  async function getCourts() {
     api
-      .getOffices()
+      .getCourts()
       .then((response) => {
-        setOfficesList(response.data.sort(officeSorter));
+        setOfficesList(response.data.sort(courtSorter));
       })
       .catch(() => {
         globalAlert?.error('Cannot load office list');
@@ -126,7 +126,7 @@ export default function SearchScreen() {
   }
 
   useEffect(() => {
-    getOffices();
+    getCourts();
     getChapters();
   }, []);
 

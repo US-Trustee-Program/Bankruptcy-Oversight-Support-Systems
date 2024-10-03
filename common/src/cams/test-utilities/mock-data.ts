@@ -16,7 +16,7 @@ import {
   TransferOrder,
 } from '../orders';
 import { DebtorAttorney, Party } from '../parties';
-import { OFFICES } from './offices.mock';
+import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
 import {
@@ -34,7 +34,7 @@ import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
 import { sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
-import { USTP_OFFICES_ARRAY } from '../courts';
+import { USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
 
 type EntityType = 'company' | 'person';
@@ -78,12 +78,16 @@ function randomEin() {
   return '99-' + ('0000000' + randomInt(9999999)).slice(-7);
 }
 
+function getCourts() {
+  return COURT_DIVISIONS;
+}
+
 function getOffices() {
-  return OFFICES;
+  return USTP_OFFICES_ARRAY;
 }
 
 function randomOffice() {
-  return OFFICES[randomInt(OFFICES.length - 1)];
+  return COURT_DIVISIONS[randomInt(COURT_DIVISIONS.length - 1)];
 }
 
 function randomUstpOffice() {
@@ -557,6 +561,7 @@ export const MockData = {
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,
+  getCourts,
   getOffices,
   getParty,
   getDocketEntry,

@@ -154,11 +154,11 @@ describe('OktaGroupGateway', () => {
 
       const expected: CamsUserReference[] = [
         {
-          id: user1.profile.login,
+          id: user1.id,
           name: user1.profile.displayName,
         },
         {
-          id: user2.profile.login,
+          id: user2.id,
           name: user2.profile.lastName + ', ' + user2.profile.firstName,
         },
       ];

@@ -49,3 +49,9 @@ export function sortDatesReverse(dateA: Date | string, dateB: Date | string): nu
   // newest date first
   return sortDates(dateA, dateB) * -1;
 }
+
+// Time units expressed in seconds:
+export const SECOND = 1;
+export const MINUTE = 60;
+export const HOUR = 3600;
+export const DAY = 86400;

@@ -1,6 +1,6 @@
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/offices';
 
 let roleMapping;
 

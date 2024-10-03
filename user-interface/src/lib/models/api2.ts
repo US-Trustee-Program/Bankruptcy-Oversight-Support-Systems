@@ -1,6 +1,7 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { UstpOfficeDetails } from '@common/cams/offices';
 import { Consolidation } from '@common/cams/events';
 import {
   ConsolidationOrder,
@@ -18,8 +19,9 @@ import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
 import LocalStorage from '../utils/local-storage';
 import Api from './api';
-import MockApi from '../testing/mock-api2';
+import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
+import { DAY } from '../utils/datetime';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -220,6 +222,11 @@ async function getCaseHistory(caseId: string) {
   return api().get<CaseHistory[]>(`/cases/${caseId}/history`);
 }
 
+async function getCourts() {
+  const path = `/courts`;
+  return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
+}
+
 async function getMe() {
   return api().get<CamsSession>(`/me`);
 }
@@ -230,7 +237,8 @@ async function getOfficeAttorneys(officeCode: string) {
 }
 
 async function getOffices() {
-  return api().get<OfficeDetails[]>(`/offices`);
+  const path = `/offices`;
+  return withCache({ key: path, ttl: DAY }).get<UstpOfficeDetails[]>(path);
 }
 
 async function getOrders() {
@@ -275,6 +283,7 @@ export const _Api2 = {
   getCaseAssignments,
   getCaseAssociations,
   getCaseHistory,
+  getCourts,
   getMe,
   getOfficeAttorneys,
   getOffices,
@@ -287,6 +296,6 @@ export const _Api2 = {
   searchCases,
 };
 
-export const Api2 = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi : _Api2;
+export const Api2 = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi2 : _Api2;
 
 export default Api2;

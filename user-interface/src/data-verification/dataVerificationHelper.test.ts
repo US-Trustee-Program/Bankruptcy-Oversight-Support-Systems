@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { getOfficeList } from './dataVerificationHelper';
 
 describe('data verification helper tests', () => {
   test('should properly map court information for selection', () => {
-    const offices: OfficeDetails[] = [
+    const offices: CourtDivisionDetails[] = [
       {
         officeName: '',
         officeCode: '',
@@ -43,7 +43,7 @@ describe('data verification helper tests', () => {
   });
 
   test('should get office select options', () => {
-    const testOffices: OfficeDetails[] = [
+    const testOffices: CourtDivisionDetails[] = [
       {
         courtDivisionCode: '001',
         groupDesignator: 'AA',

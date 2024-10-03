@@ -1,4 +1,4 @@
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';

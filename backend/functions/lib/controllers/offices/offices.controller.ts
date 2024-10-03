@@ -1,6 +1,6 @@
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController, CamsTimerController } from '../controller';

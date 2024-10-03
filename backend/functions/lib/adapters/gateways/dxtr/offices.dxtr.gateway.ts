@@ -10,7 +10,7 @@ import {
   UstpDivision,
   UstpGroup,
   UstpOfficeDetails,
-} from '../../../../../../common/src/cams/courts';
+} from '../../../../../../common/src/cams/offices';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';
 

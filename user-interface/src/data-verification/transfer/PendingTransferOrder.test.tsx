@@ -1,4 +1,4 @@
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe } from 'vitest';
@@ -23,7 +23,7 @@ const mockGetTransferredCaseSuggestionsEmpty = { data: [] };
 
 const regionMap = new Map();
 regionMap.set('02', 'NEW YORK');
-const testOffices: OfficeDetails[] = [
+const testOffices: CourtDivisionDetails[] = [
   {
     courtDivisionCode: '001',
     groupDesignator: 'AA',

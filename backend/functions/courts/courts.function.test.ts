@@ -1,17 +1,18 @@
 import { CamsError } from '../lib/common-errors/cams-error';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import handler from './offices.function';
+import handler from './courts.function';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { OfficesController } from '../lib/controllers/offices/offices.controller';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../common/src/cams/offices';
+import { CourtsController } from '../lib/controllers/courts/courts.controller';
+import { CourtDivisionDetails } from '../../../common/src/cams/courts';
+import { COURT_DIVISIONS } from '../../../common/src/cams/test-utilities/courts.mock';
 
-describe('offices Function tests', () => {
+describe('Courts Function tests', () => {
   let request;
   let context;
 
@@ -29,13 +30,15 @@ describe('offices Function tests', () => {
     .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
 
   test('should set successful response', async () => {
-    const bodySuccess: UstpOfficeDetails[] = USTP_OFFICES_ARRAY;
+    const bodySuccess: CourtDivisionDetails[] = COURT_DIVISIONS;
 
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<UstpOfficeDetails[]>({
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<
+      CourtDivisionDetails[]
+    >({
       data: bodySuccess,
     });
 
-    jest.spyOn(OfficesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    jest.spyOn(CourtsController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
@@ -48,7 +51,7 @@ describe('offices Function tests', () => {
     });
 
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    jest.spyOn(OfficesController.prototype, 'handleRequest').mockRejectedValue(error);
+    jest.spyOn(CourtsController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 
