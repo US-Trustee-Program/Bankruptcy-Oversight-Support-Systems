@@ -40,7 +40,7 @@ describe('Courts Function tests', () => {
   });
 
   test('should set error response', async () => {
-    const error = new CamsError('MOCK_OFFICES_CONTROLLER', {
+    const error = new CamsError('MOCK_COURTS_CONTROLLER', {
       message: 'Some expected CAMS error.',
     });
 
