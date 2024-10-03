@@ -96,7 +96,10 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                 data-testid={`docket-entry-${idx}`}
               >
                 <div className="grid-row">
-                  <div className="grid-col-1 document-number-column" aria-hidden={true}>
+                  <div
+                    className="grid-col-1 document-number-column"
+                    aria-label={`Docket Number ${docketEntry.documentNumber}`}
+                  >
                     {docketEntry.documentNumber}
                   </div>
                   <div className="grid-col-11">
@@ -104,7 +107,7 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                       className="docket-entry-header usa-tooltip"
                       data-testid={`docket-entry-${idx}-header`}
                       title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
-                      aria-label={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                      aria-label={`Filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
                     >
                       {printDocketHeader(docketEntry)}
                     </h4>

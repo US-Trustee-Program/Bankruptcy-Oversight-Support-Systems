@@ -110,6 +110,11 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
       data-min-date={props.minDate}
       data-max-date={props.maxDate}
     >
+      {ariaDescription && (
+        <span id={`${id}-aria-description`} hidden>
+          {ariaDescription}
+        </span>
+      )}
       <DatePicker
         ref={startDateRef}
         id={`${id}-date-start`}
@@ -140,7 +145,6 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
       />
       <span id={`${id}-aria-description`} aria-live="polite" hidden>
         <span>Format: numeric month / numeric day / 4-digit year.</span>
-        {ariaDescription ? <span>{ariaDescription}</span> : ''}
         {(minDate || maxDate) && (
           <span>
             (Valid date range is
