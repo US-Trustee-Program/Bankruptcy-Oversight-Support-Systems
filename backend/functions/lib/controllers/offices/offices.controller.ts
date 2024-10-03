@@ -1,6 +1,6 @@
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { OfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController, CamsTimerController } from '../controller';
@@ -26,7 +26,7 @@ export class OfficesController implements CamsController, CamsTimerController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<OfficeDetails[] | CamsUserReference[]>> {
+  ): Promise<CamsHttpResponseInit<UstpOfficeDetails[] | CamsUserReference[]>> {
     try {
       const params = context.request.params;
       let data;

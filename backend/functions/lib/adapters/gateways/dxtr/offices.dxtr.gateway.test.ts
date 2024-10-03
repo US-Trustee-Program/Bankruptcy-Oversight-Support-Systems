@@ -4,7 +4,8 @@ import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
-import { MANHATTAN, OFFICES } from '../../../../../../common/src/cams/test-utilities/offices.mock';
+import { OFFICES } from '../../../../../../common/src/cams/test-utilities/offices.mock';
+import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/courts';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {
@@ -51,10 +52,18 @@ describe('offices gateway tests', () => {
         return Promise.resolve(mockResults);
       });
 
-      const gateway = new OfficesDxtrGateway();
+      const expectedOffices: UstpOfficeDetails[] = USTP_OFFICES_ARRAY;
 
+      const gateway = new OfficesDxtrGateway();
       const offices = await gateway.getOffices(applicationContext);
-      expect(offices).toEqual(OFFICES);
+
+      expectedOffices.forEach((expectedOffice) => {
+        const actualOffice = offices.find((o) => o.officeCode === expectedOffice.officeCode);
+        const { groups: _groups, ...actualRest } = actualOffice;
+        const { groups: __groups, ...expectedRest } = expectedOffice;
+        expect(actualOffice.groups).toEqual(expect.arrayContaining(expectedOffice.groups));
+        expect(actualRest).toEqual(expectedRest);
+      });
     });
 
     test('should throw error when success is false calling getOffices', async () => {
@@ -71,80 +80,6 @@ describe('offices gateway tests', () => {
 
       await expect(async () => {
         await gateway.getOffices(applicationContext);
-      }).rejects.toThrow('Some expected SQL error.');
-    });
-  });
-
-  describe('getOfficeByGroupDesignator test', () => {
-    let applicationContext: ApplicationContext;
-    const querySpy = jest.spyOn(database, 'executeQuery');
-
-    beforeEach(async () => {
-      applicationContext = await createMockApplicationContext();
-      querySpy.mockImplementation(jest.fn());
-    });
-
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
-
-    test('Should get office by office code and courtid', async () => {
-      const mockResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [MANHATTAN],
-        },
-        message: '',
-      };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      const gateway = new OfficesDxtrGateway();
-
-      const offices = await gateway.getOfficesByGroupDesignator(applicationContext, 'NY');
-      expect(offices).toEqual([MANHATTAN]);
-    });
-
-    test('should throw invalid parameter exception with invalid parameters', async () => {
-      const gateway = new OfficesDxtrGateway();
-      await expect(async () => {
-        await gateway.getOfficesByGroupDesignator(applicationContext, '');
-      }).rejects.toThrow('Invalid group designator supplied');
-    });
-
-    test('should throw invalid parameter exception with invalid parameters', async () => {
-      const mockResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      const gateway = new OfficesDxtrGateway();
-      await expect(async () => {
-        await gateway.getOfficesByGroupDesignator(applicationContext, 'ZZ');
-      }).rejects.toThrow('Office not found by query designator.');
-    });
-
-    test('should throw CamsError when success is false when calling getOfficeByGroupDesignator', async () => {
-      const mockResults: QueryResults = {
-        success: false,
-        results: {},
-        message: 'Some expected SQL error.',
-      };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      const gateway = new OfficesDxtrGateway();
-
-      await expect(async () => {
-        await gateway.getOfficesByGroupDesignator(applicationContext, 'NY');
       }).rejects.toThrow('Some expected SQL error.');
     });
   });

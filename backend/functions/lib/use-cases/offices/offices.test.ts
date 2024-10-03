@@ -1,7 +1,6 @@
 import { OfficesUseCase } from './offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
 import * as factory from '../../factory';
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
@@ -9,6 +8,7 @@ import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock-offices.repository';
+import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/courts';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -24,9 +24,16 @@ describe('offices use case tests', () => {
   test('should return offices', async () => {
     const useCase = new OfficesUseCase();
 
+    jest.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
+      return {
+        getOfficeName: jest.fn(),
+        getOffices: jest.fn().mockResolvedValue(USTP_OFFICES_ARRAY),
+      };
+    });
+
     const offices = await useCase.getOffices(applicationContext);
 
-    expect(offices).toEqual(OFFICES);
+    expect(offices).toEqual(USTP_OFFICES_ARRAY);
   });
 
   test('should return attorneys', async () => {
