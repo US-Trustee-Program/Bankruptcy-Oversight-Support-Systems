@@ -1,6 +1,4 @@
 import { CamsError } from '../lib/common-errors/cams-error';
-import ContextCreator from '../azure/application-context-creator';
-import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import handler from './courts.function';
 import {
   buildTestResponseError,
@@ -22,12 +20,8 @@ describe('Courts Function tests', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
-
-  jest
-    .spyOn(ContextCreator, 'getApplicationContextSession')
-    .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
 
   test('should set successful response', async () => {
     const bodySuccess: CourtDivisionDetails[] = COURT_DIVISIONS;
