@@ -8,7 +8,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import './ConsolidationOrderModal.scss';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
@@ -32,7 +32,7 @@ export interface ConsolidationOrderModalProps {
   id: string;
   onCancel: () => void;
   onConfirm: (results: ConfirmActionResults) => void;
-  courts?: OfficeDetails[];
+  courts?: CourtDivisionDetails[];
 }
 
 export type ShowOptionParams = {

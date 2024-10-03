@@ -1,7 +1,7 @@
 import { formatDate } from '@/lib/utils/datetime';
 import { useEffect } from 'react';
 import { ConsolidationOrder } from '@common/cams/orders';
-import { OfficeDetails } from '@common/cams/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import './ConsolidationOrderAccordion.scss';
 import { getOfficeList } from '@/data-verification/dataVerificationHelper';
 import { getUniqueDivisionCodeOrUndefined } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
@@ -20,7 +20,7 @@ export interface ConsolidationOrderAccordionProps {
   order: ConsolidationOrder;
   statusType: Map<string, string>;
   orderType: Map<string, string>;
-  officesList: Array<OfficeDetails>;
+  courts: Array<CourtDivisionDetails>;
   regionsMap: Map<string, string>;
   onOrderUpdate: OnOrderUpdate;
   onExpand?: (id: string) => void;
@@ -61,9 +61,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     confirmationModal: consolidationControls.confirmationModal,
     divisionCode: getUniqueDivisionCodeOrUndefined(consolidationStore.order.childCases),
     expandedAccordionId: expandedId!,
-    filteredOfficeRecords: getOfficeList(
-      consolidationStore.filteredOfficesList ?? props.officesList,
-    ),
+    filteredOfficeRecords: getOfficeList(consolidationStore.filteredOfficesList ?? props.courts),
     formattedOrderFiledDate: formatDate(consolidationStore.order.orderDate),
     foundValidCaseNumber: consolidationStore.foundValidCaseNumber,
     hidden: hidden ?? false,

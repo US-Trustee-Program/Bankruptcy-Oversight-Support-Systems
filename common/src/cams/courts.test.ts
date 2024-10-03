@@ -1,10 +1,6 @@
-import {
-  CourtOfficeDetails,
-  filterCourtByDivision,
-  UstpOfficeDetails,
-  ustpOfficeToCourtOffice,
-} from './courts';
-import { OFFICES } from './test-utilities/offices.mock';
+import { CourtDivisionDetails, filterCourtByDivision, ustpOfficeToCourtDivision } from './courts';
+import { COURT_DIVISIONS } from './test-utilities/courts.mock';
+import { UstpOfficeDetails } from './offices';
 
 describe('common court library tests', () => {
   test('should filter court offices list by court division', async () => {
@@ -34,20 +30,20 @@ describe('common court library tests', () => {
         regionName: 'NEW ORLEANS',
       },
     ];
-    const newOfficeList = filterCourtByDivision('3N3', OFFICES);
+    const newOfficeList = filterCourtByDivision('3N3', COURT_DIVISIONS);
 
     expect(newOfficeList.length).toEqual(2);
     expect(newOfficeList).toEqual(expect.arrayContaining([...expectedOffices]));
   });
 
   test('should filter court offices list by court division', async () => {
-    const newOfficeList = filterCourtByDivision('555', OFFICES);
+    const newOfficeList = filterCourtByDivision('555', COURT_DIVISIONS);
     expect(newOfficeList).toBeNull();
   });
 
   test('should map a ustp office to a court office', () => {
     const ustpOffice: UstpOfficeDetails = seattleOffice;
-    const expectedCourtOffices: CourtOfficeDetails[] = [
+    const expectedCourtOffices: CourtDivisionDetails[] = [
       {
         courtDivisionCode: '812',
         courtDivisionName: 'Seattle',
@@ -126,7 +122,7 @@ describe('common court library tests', () => {
         regionName: 'Seattle',
       },
     ];
-    const courtOffices = ustpOfficeToCourtOffice(ustpOffice);
+    const courtOffices = ustpOfficeToCourtDivision(ustpOffice);
     expect(courtOffices).toEqual(expectedCourtOffices);
   });
 });

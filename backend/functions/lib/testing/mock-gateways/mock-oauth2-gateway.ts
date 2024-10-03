@@ -6,7 +6,7 @@ import { CamsUser } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
-import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/courts';
+import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockUsers: MockUser[] = MockUsers;

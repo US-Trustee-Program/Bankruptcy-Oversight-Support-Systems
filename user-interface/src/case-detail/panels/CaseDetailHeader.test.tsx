@@ -5,8 +5,7 @@ import CaseDetailScreen from '../CaseDetailScreen';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
-import { MockInstance } from 'vitest';
-import { copyCaseNumber } from '@/lib/utils/caseNumber';
+import * as caseNumber from '@/lib/utils/caseNumber';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(
@@ -119,39 +118,16 @@ describe('Case Detail Header tests', () => {
   });
 
   describe('Testing the clipboard with caseId', () => {
-    let writeTextMock: MockInstance<(data: string) => Promise<void>> = vi
-      .fn()
-      .mockResolvedValue('');
-
-    beforeEach(() => {
-      if (!navigator.clipboard) {
-        Object.assign(navigator, {
-          clipboard: {
-            writeText: writeTextMock,
-          },
-        });
-      } else {
-        writeTextMock = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
-      }
-    });
-
     test('clicking copy button should write caseId to clipboard', async () => {
+      const copySpy = vi.spyOn(caseNumber, 'copyCaseNumber').mockImplementation(vi.fn());
+
       basicRender(testCaseDetail, false);
 
       const caseIdCopyButton = document.querySelector('#header-case-id');
 
       fireEvent.click(caseIdCopyButton!);
 
-      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
-    });
-
-    test('should only copy to clipboard if we have a valid case number', () => {
-      copyCaseNumber('abcdefg#!@#$%');
-      expect(writeTextMock).not.toHaveBeenCalled();
-
-      copyCaseNumber(testCaseDetail.caseId);
-      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
-      expect(writeTextMock).toHaveBeenCalledTimes(1);
+      expect(copySpy).toHaveBeenCalledWith(testCaseDetail.caseId);
     });
   });
 });

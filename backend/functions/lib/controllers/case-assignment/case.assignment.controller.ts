@@ -9,6 +9,7 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController } from '../controller';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -22,7 +23,8 @@ export class CaseAssignmentController implements CamsController {
   constructor(context: ApplicationContext) {
     this.applicationContext = context;
   }
-  handleRequest(
+
+  public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<CaseAssignment[]>> {
     if (context.request.method === 'POST') {
@@ -35,29 +37,24 @@ export class CaseAssignmentController implements CamsController {
 
   private validateRequestParameters(caseId: string, role: string) {
     const badParams = [];
-    let errors = false;
-    let message = '';
+    const messages = [];
     if (!caseId) {
       badParams.push('caseId');
-      errors = true;
     } else if (!caseId.match(VALID_CASEID_PATTERN)) {
-      message += INVALID_CASEID_MESSAGE;
-      errors = true;
+      messages.push(INVALID_CASEID_MESSAGE);
     }
     if (!role) {
       badParams.push('role');
-      errors = true;
+    } else if (!(role in CamsRole)) {
+      messages.push(INVALID_ROLE_MESSAGE);
     }
-    if (!(role in CamsRole)) {
-      message += INVALID_ROLE_MESSAGE;
-      errors = true;
+    if (badParams.length > 0) {
+      const isPlural = badParams.length > 1;
+      const message = `Required ${isPlural ? 'parameters' : 'parameter'} ${badParams.join(', ')} ${isPlural ? 'are' : 'is'} absent.`;
+      messages.push(message);
     }
-    if (errors) {
-      if (badParams.length > 0) {
-        if (message.length > 0) message += ' ';
-        message += `Required parameter(s) ${badParams.join(', ')} is/are absent.`;
-      }
-      throw new AssignmentError(MODULE_NAME, { message });
+    if (messages.length) {
+      throw new AssignmentError(MODULE_NAME, { message: messages.join(' ') });
     }
   }
 
@@ -100,10 +97,7 @@ export class CaseAssignmentController implements CamsController {
       });
     } catch (exception) {
       context.logger.error(MODULE_NAME, exception.message);
-      if (exception instanceof CamsError) {
-        throw exception;
-      }
-      throw new UnknownError(MODULE_NAME, { originalError: exception });
+      throw getCamsError(exception, MODULE_NAME);
     }
   }
 }

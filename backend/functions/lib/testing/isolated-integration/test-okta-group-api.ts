@@ -13,18 +13,19 @@ async function testOktaGroupApi() {
   console.log(config, '\n');
 
   try {
-    const groups = await OktaUserGroupGateway.getUserGroups(config);
-    console.log('groups', groups, '\n');
-
-    for (const group of groups) {
-      const users = await OktaUserGroupGateway.getUserGroupUsers(config, group);
-      console.log(`${group.name} users`, users, '\n');
-    }
-
     const context = await applicationContextCreator.getApplicationContext({
       invocationContext: new InvocationContext(),
       logger: new LoggerImpl('test-invocation'),
     });
+
+    const groups = await OktaUserGroupGateway.getUserGroups(context, config);
+    console.log('groups', groups, '\n');
+
+    for (const group of groups) {
+      const users = await OktaUserGroupGateway.getUserGroupUsers(context, config, group);
+      console.log(`${group.name} users`, users, '\n');
+    }
+
     const useCase = new OfficesUseCase();
     const results = await useCase.syncOfficeStaff(context);
 

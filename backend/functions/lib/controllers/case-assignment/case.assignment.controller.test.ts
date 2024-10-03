@@ -100,6 +100,96 @@ describe('Case Assignment Creation Tests', () => {
     expect(assignmentResponse.body).toBeUndefined();
   });
 
+  test('should identify a singular missing parameter', async () => {
+    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
+    const testCaseAssignment = {
+      caseId: undefined,
+      listOfAttorneyNames: listOfAttorneys,
+      role: CamsRole.TrialAttorney,
+    };
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: undefined,
+      body: testCaseAssignment,
+    });
+    const assignmentController = new CaseAssignmentController(applicationContext);
+    await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
+      'Required parameter caseId is absent.',
+    );
+  });
+
+  test('should identify plural missing parameters', async () => {
+    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
+    const testCaseAssignment = {
+      caseId: undefined,
+      listOfAttorneyNames: listOfAttorneys,
+      role: undefined,
+    };
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: undefined,
+      body: testCaseAssignment,
+    });
+    const assignmentController = new CaseAssignmentController(applicationContext);
+    await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
+      'Required parameters caseId, role are absent.',
+    );
+  });
+
+  test('should identify invalid case id', async () => {
+    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
+    const testCaseAssignment = {
+      caseId: 'hello',
+      listOfAttorneyNames: listOfAttorneys,
+      role: CamsRole.TrialAttorney,
+    };
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: 'bogus-id' },
+      body: testCaseAssignment,
+    });
+    const assignmentController = new CaseAssignmentController(applicationContext);
+    await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
+      'caseId must be formatted like 01-12345.',
+    );
+  });
+
+  test('should identify a bad role assignment', async () => {
+    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
+    const testCaseAssignment = {
+      caseId: '081-18-12345',
+      listOfAttorneyNames: listOfAttorneys,
+      role: 'bad-role',
+    };
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: '081-18-12345' },
+      body: testCaseAssignment,
+    });
+    const assignmentController = new CaseAssignmentController(applicationContext);
+    await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
+      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
+    );
+  });
+
+  test('should identify a bad role assignment', async () => {
+    const listOfAttorneys: CamsUserReference[] = [Jane, Tom, Jane, Adrian, Tom];
+    const testCaseAssignment = {
+      caseId: '081-18-12345',
+      listOfAttorneyNames: listOfAttorneys,
+      role: 'bad-role',
+    };
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: { id: '081-18-12345' },
+      body: testCaseAssignment,
+    });
+    const assignmentController = new CaseAssignmentController(applicationContext);
+    await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
+      'Invalid role for the attorney. Requires role to be a TrialAttorney for case assignment.',
+    );
+  });
+
   test('should fetch a list of assignments when a GET request is called', async () => {
     const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
     const camsHttpResponse = httpSuccess({ body: { data: assignments } });

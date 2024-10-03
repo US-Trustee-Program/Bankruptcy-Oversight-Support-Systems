@@ -1,7 +1,7 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesController } from './offices.controller';
-import { OFFICES } from '../../../../../common/src/cams/test-utilities/offices.mock';
+import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -48,7 +48,7 @@ describe('offices controller tests', () => {
   });
 
   test('should return successful response', async () => {
-    getOffices = jest.fn().mockResolvedValue(OFFICES);
+    getOffices = jest.fn().mockResolvedValue(COURT_DIVISIONS);
 
     const controller = new OfficesController();
     const camsHttpRequest = mockCamsHttpRequest();
@@ -56,7 +56,10 @@ describe('offices controller tests', () => {
     const offices = await controller.handleRequest(applicationContext);
     expect(offices).toEqual(
       expect.objectContaining({
-        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: OFFICES },
+        body: {
+          meta: expect.objectContaining({ self: expect.any(String) }),
+          data: COURT_DIVISIONS,
+        },
       }),
     );
     expect(getOfficeAttorneys).not.toHaveBeenCalled();

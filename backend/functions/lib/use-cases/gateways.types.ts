@@ -15,7 +15,7 @@ import { CaseAssignmentHistory, CaseHistory } from '../../../../common/src/cams/
 import { CaseDocket } from '../../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
-import { UstpOfficeDetails } from '../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 
 export interface RepositoryResource {
   id?: string;

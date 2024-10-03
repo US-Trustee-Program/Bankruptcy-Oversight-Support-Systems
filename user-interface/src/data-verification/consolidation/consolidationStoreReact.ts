@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
-import { filterCourtByDivision, OfficeDetails } from '@common/cams/courts';
+import { filterCourtByDivision, CourtDivisionDetails } from '@common/cams/courts';
 import { ConsolidationOrderAccordionProps } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 
 export function useConsolidationStoreReact(
   props: ConsolidationOrderAccordionProps,
-  officesList: OfficeDetails[],
+  officesList: CourtDivisionDetails[],
 ): ConsolidationStore {
   const [consolidationType, setConsolidationType] = useState<ConsolidationType | null>(null);
-  const [filteredOfficesList, setFilteredOfficesList] = useState<OfficeDetails[] | null>(
+  const [filteredOfficesList, setFilteredOfficesList] = useState<CourtDivisionDetails[] | null>(
     filterCourtByDivision(props.order.courtDivisionCode, officesList),
   );
   const [foundValidCaseNumber, setFoundValidCaseNumber] = useState<boolean>(false);

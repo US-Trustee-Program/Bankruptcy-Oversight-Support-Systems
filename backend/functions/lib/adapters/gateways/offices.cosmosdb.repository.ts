@@ -2,7 +2,7 @@ import { OfficesRepository } from '../../use-cases/gateways.types';
 import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { CosmosDbRepository } from './cosmos/cosmos.repository';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/courts';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
