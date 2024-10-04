@@ -4,13 +4,13 @@ import { ApplicationContext } from '../../types/basic';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
 import { OfficesGateway } from '../../../use-cases/offices/offices.types';
-import { USTP_OFFICE_NAME_MAP } from './dxtr.constants';
 import { CamsUserReference } from '../../../../../../common/src/cams/users';
 import {
   UstpDivision,
   UstpGroup,
   UstpOfficeDetails,
 } from '../../../../../../common/src/cams/offices';
+import { buildOfficeCode, getOfficeName } from '../../../use-cases/offices/offices';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
@@ -31,12 +31,8 @@ type DxtrFlatOfficeDetails = {
 function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOfficeDetails[] {
   const ustpOfficeDetailsMap = new Map<string, UstpOfficeDetails>();
   flatOfficeDetails.forEach((flatOffice) => {
-    // Synthesize an AD group name based on the DXTR values:
-    const formattedRegionId = parseInt(flatOffice.regionId).toString();
-    const fortmattedOfficeName = cleanOfficeName(getOfficeName(flatOffice.courtDivisionCode));
-    const ustpOfficeCode = `USTP_CAMS_Region_${formattedRegionId}_Office_${fortmattedOfficeName}`;
-
     let current: UstpOfficeDetails;
+    const ustpOfficeCode = buildOfficeCode(flatOffice.regionId, flatOffice.courtDivisionCode);
     if (ustpOfficeDetailsMap.has(ustpOfficeCode)) {
       current = ustpOfficeDetailsMap.get(ustpOfficeCode);
     } else {
@@ -77,20 +73,6 @@ function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOf
   });
 
   return [...ustpOfficeDetailsMap.values()];
-}
-
-function getOfficeName(id: string): string {
-  if (USTP_OFFICE_NAME_MAP.has(id)) return USTP_OFFICE_NAME_MAP.get(id);
-  throw new CamsError(MODULE_NAME, {
-    message: 'Cannot find office by ID',
-    data: { id },
-  });
-}
-
-function cleanOfficeName(name: string) {
-  let officeName = name.replace(/\s/g, '_');
-  officeName = officeName.replace(/[^_A-Z0-9]/gi, '');
-  return officeName;
 }
 
 export default class OfficesDxtrGateway implements OfficesGateway {

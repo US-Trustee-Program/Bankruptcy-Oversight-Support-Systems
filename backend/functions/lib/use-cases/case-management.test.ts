@@ -16,6 +16,7 @@ import {
   REGION_02_GROUP_NY,
 } from '../../../../common/src/cams/test-utilities/mock-user';
 import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
+import { buildOfficeCode } from './offices/offices';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -282,6 +283,7 @@ describe('Case management tests', () => {
           courtDivisionCode,
         },
       });
+      const officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
       const _actions = [
         {
           actionName: 'manage assignments',
@@ -290,7 +292,7 @@ describe('Case management tests', () => {
         },
       ];
 
-      const expected = [{ ...bCase, _actions }];
+      const expected = [{ ...bCase, officeCode, _actions }];
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([bCase]);
       const actual = await useCase.searchCases(applicationContext, { caseNumber });
       expect(actual).toEqual(expected);

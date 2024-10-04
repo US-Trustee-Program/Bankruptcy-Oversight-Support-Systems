@@ -12,6 +12,7 @@
     "build": "npm run build:common && npm run build:backend && npm run build:frontend",
     "build:backend": "cd backend/functions && npm run build",
     "build:frontend": "cd user-interface && npm run build",
-    "build:common": "cd common && npm run build"
+    "build:common": "cd common && npm run build",
+    "clean-and-build": "npm run clean:all && npm run ci:all && npm run build"
   }
 }
