@@ -1,5 +1,5 @@
 import './forms.scss';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
@@ -7,7 +7,7 @@ import Button, { UswdsButtonStyle } from './Button';
 // Alias for readability.
 //const debounce = setTimeout;
 
-export type InputProps = JSX.IntrinsicElements['input'] & {
+export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   label?: string;
   autoComplete?: 'off';
   position?: 'left' | 'right';
@@ -15,6 +15,7 @@ export type InputProps = JSX.IntrinsicElements['input'] & {
   icon?: string;
   includeClearButton?: boolean;
   ariaDescription?: string;
+  onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
 };
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
@@ -23,6 +24,8 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
   const { includeClearButton, ariaDescription, ...otherProps } = props;
+
+  const inputRef = useRef(null);
 
   function emitChange(value: string) {
     if (props.onChange) {
@@ -42,6 +45,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   function clearValue() {
     setInputValue('');
     emitChange('');
+    if (inputRef.current) (inputRef.current as HTMLInputElement).focus();
   }
 
   function setValue(value: string) {
@@ -54,6 +58,13 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
 
   function ariaDescribedBy() {
     return `input-hint-${props.id ?? Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  function handleFocus(ev: React.FocusEvent<HTMLElement>) {
+    if (inputRef.current && props.onFocus) {
+      ev.target = inputRef.current;
+      props.onFocus(ev);
+    }
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -85,10 +96,12 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
           className={`usa-input usa-tooltip ${props.className ?? ''}`}
           data-position={props.position ?? 'right'}
           onChange={handleOnChange}
+          onFocus={handleFocus}
           data-testid={props.id}
           disabled={inputDisabled}
           value={inputValue}
           aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+          ref={inputRef}
         />
         {includeClearButton && !inputDisabled && (
           <div className="usa-input-suffix" aria-hidden="true">
