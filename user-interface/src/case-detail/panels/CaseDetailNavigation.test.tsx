@@ -3,7 +3,7 @@ import CaseDetailNavigation, { NavState, mapNavState, setCurrentNav } from './Ca
 import { BrowserRouter } from 'react-router-dom';
 
 describe('Navigation tests', () => {
-  const activeNavClass = 'usa-current';
+  const activeNavClass = 'usa-current current';
 
   test(`should return ${activeNavClass} when the activeNav equals the stateToCheck`, () => {
     const result = setCurrentNav(NavState.CASE_OVERVIEW, NavState.CASE_OVERVIEW);
