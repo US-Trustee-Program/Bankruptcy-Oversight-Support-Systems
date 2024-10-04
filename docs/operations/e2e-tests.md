@@ -20,8 +20,9 @@ In order to run playwright locally you will need to install playwright with the 
 
 ### Setup for running against locally hosted application
 
-- When running playwright against the locally hosted application, you will want to ensure the NodeApi is running against a clean e2e database or the database needed for testing. `COSMOS_DATABASE_NAME=cams-e2e-<envHash>`
-- run the application locally [Running](../running.md)
+- When running playwright against the locally hosted application, you will want to ensure the NodeApi is running against a clean e2e database or the database needed for testing, and has the following .env values within backend/function : `COSMOS_DATABASE_NAME=cams-e2e-<envHash> CAMS_LOGIN_PROVIDER=mock`
+- Within the user-interface/.env file you will need `CAMS_LOGIN_PROVIDER=mock`
+- For other configuration and to run the application locally [See Running...](../running.md)
 - ensure your test/e2e/ .env file has `TARGET_HOST=http://localhost:3000`
 - ensure your test/e2e/ .env file has `CAMS_LOGIN_PROVIDER=mock`
 
