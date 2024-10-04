@@ -7,7 +7,7 @@ To run E2E tests on the CAMS app from your local machine, you will require a .en
 - `authFile="playwright/.auth/user.json"`
 - `TARGET_HOST=http://localhost:3000`
 - `CAMS_LOGIN_PROVIDER = "mock | okta | none"`
-- `OKTA_USER_NAME=<if provide is okta>`
+- `OKTA_USER_NAME=<if provider is okta>`
 - `OKTA_PASSWORD=<if provider is okta>`
 
 ## Installation
