@@ -29,6 +29,8 @@ export default function SearchScreen() {
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
   const [activeElement, setActiveElement] = useState<Element | null>(null);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [isFilterFormDisabled, setIsFilterFormDisabled] = useState<boolean>(false);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
@@ -65,13 +67,25 @@ export default function SearchScreen() {
   }
 
   function setStartSearching() {
-    setActiveElement(document.activeElement);
     disableSearchForm(true);
+    setIsSearching(true);
   }
 
   function setEndSearching() {
     disableSearchForm(false);
-    if (activeElement) (activeElement as HTMLElement).focus();
+    setIsSearching(false);
+  }
+
+  function handleFilterFormElementFocus(ev: React.FocusEvent<HTMLElement>) {
+    if (activeElement !== ev.target) setActiveElement(ev.target);
+  }
+
+  function handleFilterFormEnabled() {
+    setIsFilterFormDisabled(false);
+  }
+
+  function handleFilterFormDisabled() {
+    setIsFilterFormDisabled(true);
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
@@ -141,6 +155,14 @@ export default function SearchScreen() {
     getChapters();
   }, []);
 
+  useEffect(() => {
+    if (activeElement && !isFilterFormDisabled) {
+      setTimeout(() => {
+        (activeElement as HTMLElement).focus();
+      }, 100);
+    }
+  }, [isSearching, isFilterFormDisabled]);
+
   return (
     <MainContent className="search-screen" data-testid="search">
       <DocumentTitle name="Case Search" />
@@ -168,6 +190,9 @@ export default function SearchScreen() {
                   label="Case Number"
                   autoComplete="off"
                   onChange={handleCaseNumberChange}
+                  onEnable={handleFilterFormEnabled}
+                  onDisable={handleFilterFormDisabled}
+                  onFocus={handleFilterFormElementFocus}
                   allowEnterKey={true}
                   allowPartialCaseNumber={false}
                   aria-label="Find case by Case Number. Results will update automatically once a valid Case Number has been entered."
@@ -188,6 +213,9 @@ export default function SearchScreen() {
                   onClose={handleCourtSelection}
                   onPillSelection={handleCourtSelection}
                   onUpdateSelection={handleCourtClear}
+                  onEnable={handleFilterFormEnabled}
+                  onDisable={handleFilterFormDisabled}
+                  onFocus={handleFilterFormElementFocus}
                   options={getOfficeList(officesList)}
                   required={false}
                   multiSelect={true}
@@ -208,6 +236,9 @@ export default function SearchScreen() {
                   onClose={handleChapterSelection}
                   onPillSelection={handleChapterSelection}
                   onUpdateSelection={handleChapterClear}
+                  onEnable={handleFilterFormEnabled}
+                  onDisable={handleFilterFormDisabled}
+                  onFocus={handleFilterFormElementFocus}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
@@ -240,6 +271,7 @@ export default function SearchScreen() {
               onEndSearching={setEndSearching}
               header={SearchResultsHeader}
               row={SearchResultsRow}
+              aria-live="polite"
             />
           )}
         </div>
