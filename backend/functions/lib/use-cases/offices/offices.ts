@@ -11,6 +11,7 @@ import {
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { CamsError } from '../../common-errors/cams-error';
+import AttorneysList from '../attorneys';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 
@@ -24,8 +25,15 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const repository = getOfficesRepository(context);
-    return repository.getOfficeAttorneys(context, officeCode);
+    let attorneys: AttorneyUser[] = [];
+    if (context.featureFlags['restrict-case-assignment']) {
+      const repository = getOfficesRepository(context);
+      attorneys = await repository.getOfficeAttorneys(context, officeCode);
+    } else {
+      const attorneysUseCase = new AttorneysList();
+      attorneys = await attorneysUseCase.getAttorneyList(context);
+    }
+    return attorneys;
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
