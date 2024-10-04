@@ -9,6 +9,8 @@ import {
   getRuntimeStateRepository,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
+import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 
@@ -97,4 +99,25 @@ export class OfficesUseCase {
 
     return result;
   }
+}
+
+export function buildOfficeCode(regionId: string, courtDivisionCode: string): string {
+  // Synthesize an AD group name based on the DXTR values:
+  const formattedRegionId = parseInt(regionId).toString();
+  const formattedOfficeName = cleanOfficeName(getOfficeName(courtDivisionCode));
+  return `USTP_CAMS_Region_${formattedRegionId}_Office_${formattedOfficeName}`;
+}
+
+export function getOfficeName(id: string): string {
+  if (USTP_OFFICE_NAME_MAP.has(id)) return USTP_OFFICE_NAME_MAP.get(id);
+  throw new CamsError(MODULE_NAME, {
+    message: 'Cannot find office by ID',
+    data: { id },
+  });
+}
+
+function cleanOfficeName(name: string) {
+  let officeName = name.replace(/\s/g, '_');
+  officeName = officeName.replace(/[^_A-Z0-9]/gi, '');
+  return officeName;
 }
