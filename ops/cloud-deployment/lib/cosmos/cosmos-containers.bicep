@@ -30,6 +30,7 @@ resource dataContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/conta
     }
   }
 }]
+
 resource sessionContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
   parent: database
   name: 'user-session-cache'
@@ -43,6 +44,22 @@ resource sessionContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
       }
       defaultTtl: -1
       uniqueKeyPolicy: { uniqueKeys: [{ paths: ['/signature'] }] }
+    }
+  }
+}
+
+resource officesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
+  parent: database
+  name: 'offices'
+  properties: {
+    resource: {
+      id: 'offices'
+      partitionKey: {
+        paths: [
+          '/officeCode'
+        ]
+      }
+      defaultTtl: -1
     }
   }
 }

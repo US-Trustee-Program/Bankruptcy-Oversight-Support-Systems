@@ -25,11 +25,6 @@
           "partitionKeys": ["/id"]
         },
         {
-          "name": "offices",
-          "partitionKey1": "/officeCode",
-          "partitionKeys": ["/officeCode"]
-        },
-        {
           "name": "orders",
           "partitionKey1": "/caseId",
           "partitionKeys": ["/caseId"]
