@@ -121,9 +121,9 @@ function _AssignAttorneyModal(
 
   const fetchAttorneys = async () => {
     let attorneys;
-
+    if (!bCase) return;
     try {
-      attorneys = await api.getAttorneys();
+      attorneys = await api.getOfficeAttorneys(bCase.officeCode ?? '');
       setAttorneyList((attorneys as ResponseBody<AttorneyUser[]>).data);
     } catch (e) {
       globalAlert?.error((e as Error).message);
@@ -245,7 +245,7 @@ function _AssignAttorneyModal(
 
   useEffect(() => {
     fetchAttorneys();
-  }, []);
+  }, [bCase]);
 
   return (
     <Modal

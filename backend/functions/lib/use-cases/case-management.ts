@@ -19,6 +19,7 @@ import Actions, { Action, ResourceActions } from '../../../../common/src/cams/ac
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
+import { buildOfficeCode } from './offices/offices';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -78,7 +79,9 @@ export default class CaseManagement {
         predicate,
       );
       for (const casesKey in cases) {
-        cases[casesKey]._actions = getAction<CaseBasics>(context, cases[casesKey]);
+        const bCase = cases[casesKey];
+        bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
+        bCase._actions = getAction<CaseBasics>(context, bCase);
       }
       return cases;
     } catch (originalError) {

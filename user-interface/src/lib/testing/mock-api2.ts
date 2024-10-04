@@ -160,6 +160,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: orders,
     };
+  } else if (path.match(/\/offices\/.*\/attorneys/)) {
+    response = {
+      data: MockData.buildArray(MockData.getAttorneyUser, 5),
+    };
   } else if (path.match(/\/offices/)) {
     response = {
       data: USTP_OFFICES_ARRAY,
@@ -239,6 +243,10 @@ async function getMe(): Promise<ResponseBody<CamsSession>> {
   return get<CamsSession>(`/me`);
 }
 
+async function getOfficeAttorneys(officeCode: string) {
+  return get<AttorneyUser[]>(`/offices/${officeCode}/attorneys`);
+}
+
 async function getOffices(): Promise<ResponseBody<UstpOfficeDetails[]>> {
   return get<UstpOfficeDetails[]>(`/offices`);
 }
@@ -285,6 +293,7 @@ export const MockApi2 = {
   getCaseHistory,
   getCourts,
   getMe,
+  getOfficeAttorneys,
   getOffices,
   getOrders,
   getOrderSuggestions,
