@@ -15,7 +15,7 @@ test.describe('Consolidation Orders', () => {
       timeoutOption,
     );
     const officesRequestPromise = page.waitForEvent('requestfinished', {
-      predicate: (e) => e.url().includes('api/offices'),
+      predicate: (e) => e.url().includes('api/courts'),
       timeout: 30000,
     });
     await page.goto('/data-verification');
@@ -58,8 +58,8 @@ test.describe('Consolidation Orders', () => {
     }
 
     for (let i = 0; i < childCaseCount; ++i) {
-      // The following is neccessary because the USWDS checkbox input is rendered hidden off-screen.
-      // Therefore playwright can't check the box if it can't see it using the normal page.getByTestId.
+      // The following is necessary because the USWDS checkbox input is rendered hidden off-screen.
+      // Therefore, playwright can't check the box if it can't see it using the normal page.getByTestId.
       // So using this method, you can locate the checkbox and fire a click event.
       // I tried getting the label by test id, but it can't click on the label because the checkbox
       // image is rendered in a css pseudo class, and javascript can not access the pseudo class.
