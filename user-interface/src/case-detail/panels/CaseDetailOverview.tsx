@@ -16,6 +16,7 @@ import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Icon from '@/lib/components/uswds/Icon';
+import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
 
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
@@ -30,6 +31,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   const { caseDetail, showReopenDate, onCaseAssignment } = props;
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
+  const openModalButtonRef = useRef<OpenModalButtonRef>(null);
 
   function sortTransfers(a: Transfer, b: Transfer) {
     return sortDatesReverse(a.orderDate, b.orderDate);
@@ -38,6 +40,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   function handleCaseAssignment(props: CallbackProps) {
     onCaseAssignment(props);
     assignmentModalRef.current?.hide();
+    openModalButtonRef.current?.focus();
   }
 
   return (
@@ -88,6 +91,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     modalId={'assignmentModalId'}
                     modalRef={assignmentModalRef}
+                    ref={openModalButtonRef}
                     openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
                     ariaLabel="Edit assigned staff"
                     title="Open Staff Assignment window"
