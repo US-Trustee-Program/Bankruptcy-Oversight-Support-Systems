@@ -25,7 +25,7 @@ test.describe('Transfer Orders', () => {
       predicate: (e) => e.url().includes('api/orders'),
     });
     officesRequestPromise = page.waitForEvent('requestfinished', {
-      predicate: (e) => e.url().includes('api/offices'),
+      predicate: (e) => e.url().includes('api/courts'),
     });
 
     await page.goto('/data-verification');
