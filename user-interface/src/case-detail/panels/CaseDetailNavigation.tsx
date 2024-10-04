@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 
 export function mapNavState(path: string) {
   const cleanPath = path.replace(/\/$/, '').split('/');
@@ -30,7 +30,7 @@ export enum NavState {
 }
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
-  return activeNav === stateToCheck ? 'usa-current' : '';
+  return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
 function CaseDetailNavigationComponent({
@@ -43,54 +43,57 @@ function CaseDetailNavigationComponent({
 
   return (
     <>
-      <nav className={`case-details-navigation ${className ?? ''}`} aria-label="Side navigation">
+      <nav
+        className={`case-details-navigation ${className ?? ''}`}
+        aria-label="Case Detail Side navigation"
+        role="navigation"
+      >
         <ul className="usa-sidenav">
           <li className="usa-sidenav__item">
-            <Link
-              className={setCurrentNav(activeNav, NavState.CASE_OVERVIEW)}
+            <NavLink
               to={`/case-detail/${caseId}/`}
-              onClick={() => setActiveNav(NavState.CASE_OVERVIEW)}
               data-testid="case-overview-link"
+              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_OVERVIEW)}
+              onClick={() => setActiveNav(NavState.CASE_OVERVIEW)}
+              title="view basic details about the current case"
+              end
             >
               Case Overview
-            </Link>
+            </NavLink>
           </li>
           <li className="usa-sidenav__item">
-            <Link
-              className={setCurrentNav(activeNav, NavState.COURT_DOCKET)}
+            <NavLink
               to={`/case-detail/${caseId}/court-docket`}
-              onClick={() => {
-                return setActiveNav(NavState.COURT_DOCKET);
-              }}
               data-testid="court-docket-link"
+              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.COURT_DOCKET)}
+              onClick={() => setActiveNav(NavState.COURT_DOCKET)}
+              title="view court docket entries"
             >
               Court Docket
-            </Link>
+            </NavLink>
           </li>
           <li className="usa-sidenav__item">
-            <Link
-              className={setCurrentNav(activeNav, NavState.AUDIT_HISTORY)}
+            <NavLink
               to={`/case-detail/${caseId}/audit-history`}
-              onClick={() => {
-                return setActiveNav(NavState.AUDIT_HISTORY);
-              }}
               data-testid="audit-history-link"
+              className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.AUDIT_HISTORY)}
+              onClick={() => setActiveNav(NavState.AUDIT_HISTORY)}
+              title="view case audit history"
             >
               Change History
-            </Link>
+            </NavLink>
           </li>
           {showAssociatedCasesList && (
             <li className="usa-sidenav__item">
-              <Link
-                className={setCurrentNav(activeNav, NavState.ASSOCIATED_CASES)}
+              <NavLink
                 to={`/case-detail/${caseId}/associated-cases`}
-                onClick={() => {
-                  return setActiveNav(NavState.ASSOCIATED_CASES);
-                }}
                 data-testid="associated-cases-link"
+                className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.ASSOCIATED_CASES)}
+                onClick={() => setActiveNav(NavState.ASSOCIATED_CASES)}
+                title="view associated cases"
               >
                 Associated Cases
-              </Link>
+              </NavLink>
             </li>
           )}
         </ul>

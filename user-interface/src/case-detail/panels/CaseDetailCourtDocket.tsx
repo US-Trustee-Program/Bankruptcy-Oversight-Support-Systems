@@ -38,6 +38,11 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
+  function printDocketHeader(docket: CaseDocketEntry) {
+    const outputString = `${formatDate(docket.dateFiled)} - ${docket.summaryText}`;
+    return outputString;
+  }
+
   useEffect(() => {
     if (!props.isDocketLoading) {
       if (!hasDocketEntries) {
@@ -76,48 +81,55 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   return (
     <div id="case-detail-court-docket-panel">
-      <div id="searchable-docket" data-testid="searchable-docket">
+      <h3 className="docket-entries-main-header" aria-label="Docket Entries">
+        Docket Entries
+      </h3>
+      <ol id="searchable-docket" data-testid="searchable-docket">
         {props.isDocketLoading && <LoadingIndicator />}
         {!props.isDocketLoading &&
           hasDocketEntries &&
           docketEntries?.map((docketEntry: CaseDocketEntry, idx: number) => {
             return (
-              <div
-                className="grid-row grid-gap-lg docket-entry"
+              <li
+                className="docket-entry grid-container"
                 key={idx}
                 data-testid={`docket-entry-${idx}`}
               >
-                <div
-                  className="grid-col-1 document-number-column usa-tooltip"
-                  data-testid={`docket-entry-${idx}-number`}
-                  aria-label="document number"
-                  title={`Document number ${docketEntry.documentNumber}`}
-                >
-                  {docketEntry.documentNumber ? <h3>{docketEntry.documentNumber}</h3> : ''}
-                </div>
-                <div className="grid-col-11 docket-content">
+                <div className="grid-row">
                   <div
-                    className="docket-entry-header"
-                    aria-label="date filed and summary text for the docket entry"
-                    data-testid={`docket-entry-${idx}-header`}
+                    className="grid-col-1 document-number-column"
+                    aria-label={`Docket Number ${docketEntry.documentNumber}`}
                   >
-                    {formatDate(docketEntry.dateFiled)} - {docketEntry.summaryText}
+                    {docketEntry.documentNumber}
                   </div>
-                  <div
-                    className="docket-full-text"
-                    data-testid={`docket-entry-${idx}-text`}
-                    aria-label="full text of docket entry"
-                  >
-                    {docketEntry.fullText}
+                  <div className="grid-col-11">
+                    <h4
+                      className="docket-entry-header usa-tooltip"
+                      data-testid={`docket-entry-${idx}-header`}
+                      title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                      aria-label={`Filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
+                    >
+                      {printDocketHeader(docketEntry)}
+                    </h4>
                   </div>
-                  {docketEntry.documents && (
-                    <DocketEntryDocumentList documents={docketEntry.documents} />
-                  )}
                 </div>
-              </div>
+                <div className="grid-row">
+                  <div className="grid-col-1"></div>
+                  <div className="grid-col-11 docket-content">
+                    <div
+                      className="docket-full-text"
+                      data-testid={`docket-entry-${idx}-text`}
+                      aria-label="full text of docket entry"
+                    >
+                      {docketEntry.fullText}
+                    </div>
+                    {docketEntry.documents && <DocketEntryDocumentList docketEntry={docketEntry} />}
+                  </div>
+                </div>
+              </li>
             );
           })}
-      </div>
+      </ol>
       <Alert
         message={alertOptions?.message || ''}
         type={alertOptions?.type || UswdsAlertStyle.Error}

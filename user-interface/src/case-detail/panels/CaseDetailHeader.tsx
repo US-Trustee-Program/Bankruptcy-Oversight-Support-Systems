@@ -34,9 +34,18 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
     }
   };
 
+  function printH1() {
+    return (
+      <h1 data-testid="case-detail-heading">
+        Case Details{' '}
+        <span data-testid="case-detail-heading-title"> - {props.caseDetail?.caseTitle}</span>
+      </h1>
+    );
+  }
+
   function printCaseIdHeader() {
     return (
-      <h2 className="case-number text-no-wrap" title="Case Number">
+      <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
         {props.caseId}{' '}
         <CopyButton
           id="header-case-id"
@@ -112,17 +121,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               {props.isLoading && (
                 <h1 data-testid="case-detail-heading">Loading Case Details...</h1>
               )}
-              {!props.isLoading && (
-                <h1 data-testid="case-detail-heading">
-                  Case Details
-                  {props.caseDetail && (
-                    <span data-testid="case-detail-heading-title">
-                      {' '}
-                      - {props.caseDetail.caseTitle}
-                    </span>
-                  )}
-                </h1>
-              )}
+              {!props.isLoading && props.caseDetail && printH1()}
             </div>
             <div className="grid-col-1"></div>
           </div>

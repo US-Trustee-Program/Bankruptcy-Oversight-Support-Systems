@@ -1,5 +1,6 @@
-import { CaseDocketEntryDocument } from '@common/cams/cases';
+import { CaseDocketEntry, CaseDocketEntryDocument } from '@common/cams/cases';
 import Icon from './uswds/Icon';
+import { formatDateForVoiceOver } from './uswds/DateRangePicker';
 
 export function fileSizeDescription(fileSize: number): string {
   // https://learn.microsoft.com/en-us/style-guide/a-z-word-list-term-collections/term-collections/bits-bytes-terms
@@ -29,11 +30,12 @@ export function generateDocketFilenameDisplay(linkInfo: CaseDocketEntryDocument)
 }
 
 export interface DocketEntryDocumentListProps {
-  documents?: Array<CaseDocketEntryDocument>;
+  docketEntry?: CaseDocketEntry;
 }
 
 export default function DocketEntryDocumentList(props: DocketEntryDocumentListProps) {
-  const { documents } = props;
+  const { docketEntry } = props;
+  const documents: CaseDocketEntryDocument[] | undefined = docketEntry?.documents;
 
   if (!documents || documents.length === 0) return <></>;
 
@@ -43,7 +45,12 @@ export default function DocketEntryDocumentList(props: DocketEntryDocumentListPr
         {documents.map((linkInfo: CaseDocketEntryDocument) => {
           return (
             <li key={linkInfo.fileUri}>
-              <a href={linkInfo.fileUri} target="_blank" rel="noreferrer">
+              <a
+                href={linkInfo.fileUri}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Link for document number ${docketEntry?.documentNumber ?? ''} ${formatDateForVoiceOver(docketEntry?.dateFiled ?? '')} ${docketEntry?.summaryText}`}
+              >
                 {generateDocketFilenameDisplay(linkInfo)}
                 <Icon className="link-icon" name="launch"></Icon>
               </a>

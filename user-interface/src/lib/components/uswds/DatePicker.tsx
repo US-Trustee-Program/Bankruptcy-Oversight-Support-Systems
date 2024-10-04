@@ -2,7 +2,7 @@ import './forms.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 
-export interface DatePickerProps {
+export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
   minDate?: string;
   maxDate?: string;
@@ -12,19 +12,22 @@ export interface DatePickerProps {
   name?: string;
   value?: string;
   required?: boolean;
-}
+};
 
 function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const { id, label, minDate, maxDate } = props;
 
   const [isDisabled, setIsDisabled] = useState<boolean>(
-    props.disabled !== undefined ? props.disabled : false,
+    props.disabled !== undefined ? !!props.disabled : false,
   );
 
-  const [dateValue, setDateValue] = useState<string | null>(props.value ?? null);
+  const [dateValue, setDateValue] = useState<string | undefined>(props.value ?? undefined);
 
   function clearValue() {
     setDateValue('');
+    setTimeout(() => {
+      setDateValue(undefined);
+    }, 100);
   }
 
   function resetValue() {
@@ -67,12 +70,13 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
           id={id}
           name={props.name ?? ''}
           aria-labelledby={id + '-date-label'}
-          aria-describedby={id + '-date-hint'}
+          aria-describedby={props['aria-describedby'] ?? id + '-date-hint'}
+          aria-live={props['aria-live'] ?? undefined}
           onChange={props.onChange}
           data-testid={id}
           min={minDate}
           max={maxDate}
-          value={dateValue === null ? undefined : dateValue}
+          value={dateValue}
           disabled={isDisabled}
           required={props.required}
         />

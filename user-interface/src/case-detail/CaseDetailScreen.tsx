@@ -400,7 +400,15 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   <div
                     className={`filter-and-search padding-y-4`}
                     data-testid="filter-and-search-panel"
+                    aria-live="polite"
                   >
+                    <h3 className="filter-header" aria-label="Court Docket Filters">
+                      Filters
+                    </h3>
+                    <div className="filter-info-text">
+                      As filters are applied, docket entries will be sorted or filtered
+                      automatically.
+                    </div>
                     <div className="sort form-field">
                       <div className="usa-sort usa-sort--small">
                         <button
@@ -427,7 +435,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           className="search-icon"
                           id="basic-search-field"
                           name="basic-search"
-                          label="Find in Docket"
+                          label="Find text in Docket"
+                          aria-label="Find text in Docket entries. Results will be updated while you type."
+                          aria-live="polite"
                           icon="search"
                           autoComplete="off"
                           onChange={searchDocketText}
@@ -446,6 +456,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         onPillSelection={handleSelectedFacet}
                         onUpdateSelection={handleFacetClear}
                         label="Filter by Summary"
+                        ariaDescription="Select multiple options. Results will update when the dropdown is closed."
+                        aria-live="off"
                         multiSelect={true}
                         ref={facetPickerRef}
                       />
@@ -453,8 +465,10 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="in-docket-search form-field" data-testid="docket-date-range">
                       <DateRangePicker
                         id="docket-date-range"
-                        startDateLabel="Docket Entries from"
-                        endDateLabel="To"
+                        ariaDescription="Find Docket entries that fall within date range. Results will be updated as your selection is made."
+                        aria-live="polite"
+                        startDateLabel="Docket Date Range Start"
+                        endDateLabel="Docket Date Range End"
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
                         minDate={dateRangeBounds.start}
@@ -473,6 +487,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           type="number"
                           name="search-by-document-number"
                           label="Go to Document Number"
+                          aria-label="Go to specific Document Number.  Results will be updated while you type."
+                          aria-live="polite"
                           icon="search"
                           autoComplete="off"
                           onChange={searchDocumentNumber}
@@ -498,7 +514,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
               </div>
             </div>
-            <div className="grid-col-8">
+            <div className="grid-col-8" aria-live="polite">
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   <Route

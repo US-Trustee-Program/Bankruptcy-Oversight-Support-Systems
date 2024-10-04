@@ -77,9 +77,7 @@ export const Header = () => {
                   to="/my-cases"
                   data-testid="header-my-cases-link"
                   className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
-                  onClick={() => {
-                    return setActiveNav(NavState.MY_CASES);
-                  }}
+                  onClick={() => setActiveNav(NavState.MY_CASES)}
                   title="view a list of cases assigned to your account"
                 >
                   My Cases

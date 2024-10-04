@@ -19,16 +19,28 @@ const badDocument = {
 
 describe('DocketEntryDocumentList component', () => {
   describe('HTML', () => {
+    function createDocket(documents: CaseDocketEntryDocument[]) {
+      return {
+        sequenceNumber: 1,
+        dateFiled: '2024-10-01',
+        summaryText: 'Summary Text',
+        fullText: 'Full text description',
+        documents,
+      };
+    }
+
     test('should render a list', () => {
       const documents = [document, badDocument];
-      render(<DocketEntryDocumentList documents={documents} />);
+      const docket = createDocket(documents);
+      render(<DocketEntryDocumentList docketEntry={docket} />);
       const root = screen.queryByTestId('document-unordered-list');
       expect(root).toBeInTheDocument();
       expect(root?.childNodes.length).toEqual(documents.length);
     });
 
     test('should render an empty fragment for an empty list', () => {
-      render(<DocketEntryDocumentList documents={[]} />);
+      const docket = createDocket([]);
+      render(<DocketEntryDocumentList docketEntry={docket} />);
       const root = screen.queryByTestId('document-unordered-list');
       expect(root).not.toBeInTheDocument();
     });

@@ -1,37 +1,51 @@
 @import '../../styles/abstracts/colors';
 
 #case-detail-court-docket-panel {
-  .docket-entry {
-    padding-bottom: 2rem;
+  margin-left: 2rem;
 
-    h3 {
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-    .docket-content {
-      line-height: 24px;
-      ::highlight(search-results) {
-        background-color: $yellow-20;
-        color: black;
+  .docket-entries-main-header {
+    margin-bottom: 2rem;
+  }
+  #searchable-docket {
+    list-style-type: none;
+    padding-left: 0;
+
+    .docket-entry {
+      padding-bottom: 2rem;
+      padding-left: 0;
+      margin-left: 0;
+
+      h3 {
+        margin-top: 0;
+        margin-bottom: 0;
       }
-      .docket-full-text {
-        padding-top: 0.5rem;
-      }
-      .docket-documents {
-        padding-top: 0.5rem;
-        li {
-          padding-bottom: 0.25rem;
+      .docket-content {
+        line-height: 24px;
+        ::highlight(search-results) {
+          background-color: $yellow-20;
+          color: black;
         }
-        li:last-child {
-          padding-bottom: 0;
+        .docket-full-text {
+          font-style: normal;
+          padding-top: 0.5rem;
+        }
+        .docket-documents {
+          padding-top: 0.5rem;
+          li {
+            padding-bottom: 0.25rem;
+          }
+          li:last-child {
+            padding-bottom: 0;
+          }
         }
       }
-    }
-    .document-number-column {
-      text-align: right;
-    }
-    .docket-entry-header {
-      font-weight: bold;
+      .document-number-column {
+        text-align: right;
+        padding-right: 1rem;
+      }
+      .document-number-column, .docket-entry-header {
+        font-weight: bold;
+      }
     }
   }
   .sort {
@@ -50,5 +64,4 @@
     width: 2rem;
     vertical-align: middle;
   }
-
 }
