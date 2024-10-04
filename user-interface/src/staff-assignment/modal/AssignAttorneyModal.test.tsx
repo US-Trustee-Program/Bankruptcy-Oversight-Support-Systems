@@ -66,7 +66,7 @@ describe('Test Assign Attorney Modal Component', () => {
   }
 
   beforeEach(() => {
-    vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(attorneyListResponse);
     callback = vi.fn();
   });
 
@@ -247,11 +247,22 @@ describe('Test Assign Attorney Modal Component', () => {
 
   test('should display error alert when call to getAttorneys throws an error', async () => {
     const error = new Error('API Rejection');
-    vi.spyOn(Api2, 'getAttorneys').mockRejectedValue(error);
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockRejectedValue(error);
     const alertSpy = testingUtilities.spyOnGlobalAlert();
 
     const modalRef = React.createRef<AssignAttorneyModalRef>();
     renderWithProps(modalRef, {});
+
+    modalRef.current?.show({
+      callback,
+      bCase: MockData.getCaseBasics({
+        override: {
+          caseId: '123',
+          caseTitle: 'Test Case',
+          dateFiled: '2024-01-01',
+        },
+      }),
+    });
 
     await waitFor(() => {
       expect(alertSpy.error).toHaveBeenCalled();

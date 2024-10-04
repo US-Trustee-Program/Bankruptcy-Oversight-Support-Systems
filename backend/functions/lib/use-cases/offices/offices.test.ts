@@ -9,6 +9,8 @@ import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock-offices.repository';
 import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
+import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
+import AttorneysList from '../attorneys';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -36,7 +38,13 @@ describe('offices use case tests', () => {
     expect(offices).toEqual(USTP_OFFICES_ARRAY);
   });
 
-  test('should return attorneys', async () => {
+  test('should return default attorneys with feature flag off', async () => {
+    const localContext = {
+      ...applicationContext,
+      featureFlags: { ...applicationContext.featureFlags },
+    };
+    localContext.featureFlags['restrict-case-assignment'] = false;
+
     const useCase = new OfficesUseCase();
     const repoSpy = jest.fn().mockResolvedValue([]);
     jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
@@ -45,11 +53,31 @@ describe('offices use case tests', () => {
         getOfficeAttorneys: repoSpy,
       };
     });
+    const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
+
+    const officeCode = 'new-york';
+    const officeAttorneys = await useCase.getOfficeAttorneys(localContext, officeCode);
+    expect(officeAttorneys).toEqual(TRIAL_ATTORNEYS);
+    expect(repoSpy).not.toHaveBeenCalled();
+    expect(attorneysSpy).toHaveBeenCalledWith(localContext);
+  });
+
+  test('should return attorneys for office with feature flag on', async () => {
+    const useCase = new OfficesUseCase();
+    const repoSpy = jest.fn().mockResolvedValue([]);
+    jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
+      return {
+        putOfficeStaff: jest.fn(),
+        getOfficeAttorneys: repoSpy,
+      };
+    });
+    const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
 
     const officeCode = 'new-york';
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
     expect(officeAttorneys).toEqual([]);
     expect(repoSpy).toHaveBeenCalledWith(applicationContext, officeCode);
+    expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
   test('should persist offices', async () => {
