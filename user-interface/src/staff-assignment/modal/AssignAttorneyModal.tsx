@@ -261,6 +261,12 @@ function _AssignAttorneyModal(
     fetchAttorneys();
   }, [bCase]);
 
+  function sortAttorneys(a: AttorneyUser, b: AttorneyUser) {
+    if (a.name < b.name) return -1;
+    if (a.name > b.name) return 1;
+    return 0;
+  }
+
   return (
     <Modal
       ref={modalRef}
@@ -284,7 +290,7 @@ function _AssignAttorneyModal(
               </thead>
               <tbody data-testid="case-load-table-body">
                 {attorneyList.length > 0 &&
-                  attorneyList.map((attorney: AttorneyUser, idx: number) => {
+                  attorneyList.sort(sortAttorneys).map((attorney: AttorneyUser, idx: number) => {
                     return (
                       <tr key={idx}>
                         <td className="assign-attorney-checkbox-column">
