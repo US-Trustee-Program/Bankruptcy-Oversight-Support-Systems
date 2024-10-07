@@ -7,7 +7,6 @@ import AssignAttorneyModal, {
 import React from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
-import { getCamsUserReference } from '@common/cams/session';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { AttorneyUser } from '@common/cams/users';
 import { ResponseBody } from '@common/api/response';
@@ -164,14 +163,21 @@ describe('Test Assign Attorney Modal Component', () => {
     testingUtilities.selectCheckbox('3-checkbox');
     fireEvent.click(submitButton);
 
+    const expectedAttorneys = attorneyList
+      .sort((a, b) => {
+        if (a.name < b.name) return -1;
+        if (a.name > b.name) return 1;
+        return 0;
+      })
+      .slice(1, 3)
+      .map((attorney) => {
+        return { id: attorney.id, name: attorney.name, roles: [] };
+      });
+
     await waitFor(() => {
       expect(postSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          attorneyList: expect.arrayContaining([
-            getCamsUserReference(mark),
-            getCamsUserReference(shara),
-            getCamsUserReference(brian),
-          ]),
+          attorneyList: expect.arrayContaining(expectedAttorneys),
           caseId: '123',
           role: 'TrialAttorney',
         }),
