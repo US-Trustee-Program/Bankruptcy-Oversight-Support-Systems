@@ -125,8 +125,22 @@ export function applySortAndFilters(
         : undefined;
     return { filteredDocketEntries, alertOptions };
   } else {
-    const filteredDocketEntries = docketEntries
-      .filter((docketEntry) => dateRangeFilter(docketEntry, options.selectedDateRange))
+    let dateFilteredDocketEntries = [...docketEntries];
+    if (options.selectedDateRange) {
+      dateFilteredDocketEntries = docketEntries.filter((docketEntry) =>
+        dateRangeFilter(docketEntry, options.selectedDateRange),
+      );
+      if (dateFilteredDocketEntries.length === 0) {
+        const alertOptions = {
+          message:
+            'The date filter selected is out of range. No dockets found during the given period.',
+          title: 'No Document Found in Specified Date Range',
+          type: UswdsAlertStyle.Warning,
+        };
+        return { dateFilteredDocketEntries, alertOptions };
+      }
+    }
+    const filteredDocketEntries = dateFilteredDocketEntries
       .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchInDocketText))
       .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
       .sort(docketSorterClosure(options.sortDirection));
@@ -189,7 +203,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
-  const [dateRangeBounds, setDateRangeBounds] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
@@ -226,7 +239,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         );
         const limits = findDocketLimits(response.data);
         setDocumentRange(limits.documentRange);
-        setDateRangeBounds(limits.dateRange);
         setCaseDocketSummaryFacets(facets);
         setIsDocketLoading(false);
       })
@@ -471,8 +483,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         endDateLabel="Docket Date Range End"
                         onStartDateChange={handleStartDateChange}
                         onEndDateChange={handleEndDateChange}
-                        minDate={dateRangeBounds.start}
-                        maxDate={dateRangeBounds.end}
                         ref={dateRangeRef}
                       ></DateRangePicker>
                     </div>
