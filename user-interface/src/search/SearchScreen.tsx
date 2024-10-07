@@ -13,7 +13,10 @@ import { courtSorter } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { isValidSearchPredicate, SearchResults } from '@/search-results/SearchResults';
+import SearchResults, {
+  isValidSearchPredicate,
+  SearchResultsRef,
+} from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -35,6 +38,7 @@ export default function SearchScreen() {
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
+  const searchResultsRef = useRef<SearchResultsRef>(null);
 
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -159,6 +163,7 @@ export default function SearchScreen() {
     if (activeElement && !isFilterFormDisabled) {
       setTimeout(() => {
         (activeElement as HTMLElement).focus();
+        searchResultsRef.current?.refreshAlert();
       }, 100);
     }
   }, [isSearching, isFilterFormDisabled]);
@@ -196,7 +201,6 @@ export default function SearchScreen() {
                   allowEnterKey={true}
                   allowPartialCaseNumber={false}
                   aria-label="Find case by Case Number. Results will update automatically once a valid Case Number has been entered."
-                  aria-live="polite"
                   ref={caseNumberInputRef}
                 />
               </div>
@@ -265,6 +269,7 @@ export default function SearchScreen() {
           )}
           {isValidSearchPredicate(searchPredicate) && (
             <SearchResults
+              ref={searchResultsRef}
               id="search-results"
               searchPredicate={searchPredicate}
               onStartSearching={setStartSearching}

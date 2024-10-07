@@ -98,7 +98,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
               : 'usa-alert__unset'
         }`}
         role={props.role}
-        aria-live="polite"
+        aria-live={props.role === 'alert' ? 'assertive' : 'polite'}
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
         <div className="usa-alert__body">
