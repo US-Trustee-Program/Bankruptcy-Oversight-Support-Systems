@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { StaffAssignmentScreen } from './StaffAssignmentScreen';
 import {
   CasesSearchPredicate,
@@ -31,7 +31,7 @@ describe('StaffAssignmentScreen', () => {
     };
 
     const SearchResults = vi
-      .spyOn(searchResultsModule, 'SearchResults')
+      .spyOn(searchResultsModule, '_SearchResults')
       .mockImplementation((props: SearchResultsProps) => {
         props.row({ bCase: MockData.getCaseBasics(), idx: 0, key: 0 });
         return <></>;
@@ -46,18 +46,18 @@ describe('StaffAssignmentScreen', () => {
         <StaffAssignmentScreen></StaffAssignmentScreen>
       </BrowserRouter>,
     );
-
-    expect(SearchResults).toHaveBeenCalledWith(
-      {
-        id: 'search-results',
-        noResultsMessage: 'No cases currently assigned.',
-        searchPredicate: expectedPredicate,
-        header: expect.anything(),
-        row: expect.anything(),
-      },
-      {},
-    );
-
+    await waitFor(() => {
+      expect(SearchResults).toHaveBeenCalledWith(
+        {
+          id: 'search-results',
+          noResultsMessage: 'No cases currently assigned.',
+          searchPredicate: expectedPredicate,
+          header: expect.anything(),
+          row: expect.anything(),
+        },
+        {},
+      );
+    });
     expect(staffAssignmentRowSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         options: expect.objectContaining({ modalId: 'assign-attorney-modal' }),
@@ -79,7 +79,7 @@ describe('StaffAssignmentScreen', () => {
 
   test('should default the divisionCodes in the predicate to an empty array if user has no offices', async () => {
     testingUtilities.setUser({ offices: undefined, roles: [CamsRole.CaseAssignmentManager] });
-    const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
+    const SearchResults = vi.spyOn(searchResultsModule, '_SearchResults');
 
     render(
       <BrowserRouter>

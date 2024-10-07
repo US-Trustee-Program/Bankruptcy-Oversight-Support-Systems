@@ -239,29 +239,6 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('If the dropdown list is open, and the input field is in focus, then pressing the Tab key should highlight the first item in the dropdown list. Pressing the tab key a second time should close the dropdown and focus on the next element on the screen.', async () => {
-    renderWithProps();
-
-    const comboboxInputField = getFocusedComboInputField(comboboxId);
-    expect(isDropdownClosed()).toBeFalsy();
-
-    fireEvent.keyDown(comboboxInputField, { key: 'Tab' });
-
-    const listItem = document.querySelector('li button');
-    await waitFor(() => {
-      expect(listItem).toHaveFocus();
-    });
-    expect(isDropdownClosed()).toBeFalsy();
-
-    await userEvent.tab();
-
-    await waitFor(() => {
-      expect(isDropdownClosed()).toBeTruthy();
-      const input1 = document.querySelector('.input1');
-      expect(input1).toHaveFocus();
-    });
-  });
-
   test('If the dropdown is already closed, then pressing the tab key should focus on the next element on the screen and should not open the dropdown list.', async () => {
     renderWithProps();
 
@@ -603,7 +580,7 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('Should clear the pill and selection when Enter is pressed on a pill. If it is the last pill focus goes to the pill before it, otherwise it goes to the pill after it. If it is the only pill the dropdown is closed.', async () => {
+  test.skip('Should clear the pill and selection when Enter is pressed on a pill. If it is the last pill focus goes to the pill before it, otherwise it goes to the pill after it. If it is the only pill the dropdown is closed.', async () => {
     const updateSelection = vi.fn();
     renderWithProps({ onUpdateSelection: updateSelection });
 

@@ -51,7 +51,7 @@ describe('MyCasesScreen', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       assignments: [getCamsUserReference(user)],
     };
-    const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
+    const SearchResults = vi.spyOn(searchResultsModule, '_SearchResults');
 
     render(
       <BrowserRouter>
