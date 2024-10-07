@@ -98,10 +98,22 @@ COSMOS_DATABASE_NAME={the name of the CosmosDb database}
 COSMOS_ENDPOINT={the URI to the CosmosDb endpoint}
 COSMOS_MANAGED_IDENTITY=
 SERVER_PORT=7071
+
 ## LOGIN_PROVIDER and CONFIG must match the frontend to function locally
 CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
 CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
-CAMS_USER_GROUP_GATEWAY_CONFIG='url={oktaUrl}|clientId={oktaClientId}|privateKey={oktaPrivateKey}'    (this is a pipe delimited list, replace curly braces and content with your values)
+
+## OKTA SDK API CONFIGURATION
+## Two options. Use one option not both.
+## CAMS_USER_GROUP_GATEWAY_CONFIG is a pipe delimited list. Replace curly braces and content with your values.
+## Option 1: Private Key Authentication
+## {privateKeyJSON} must be stripped of all whitespace
+CAMS_USER_GROUP_GATEWAY_CONFIG='url={oktaApiUrl}|clientId={oktaClientId}|keyId={publicKeyId}|privateKey={privateKeyJSON}'
+## End Option 1
+## Option 2: API Key Authentication
+CAMS_USER_GROUP_GATEWAY_CONFIG=url={oktaApiUrl}
+OKTA_API_KEY={oktaApiKey}
+## End Option 2
 
 DATABASE_MOCK={a string: true | false}
 CAMS_INFO_SHA=''
