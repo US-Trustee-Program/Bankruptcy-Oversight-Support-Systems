@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { CaseBasics } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
@@ -12,10 +12,6 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
-
-export interface SearchResultsRef {
-  refreshAlert: () => void;
-}
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   return Object.keys(searchPredicate).reduce((isIt, key) => {
@@ -43,7 +39,7 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   row: (props: SearchResultsRowProps) => JSX.Element;
 };
 
-export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchResultsRef>) {
+export function SearchResults(props: SearchResultsProps) {
   const {
     id,
     searchPredicate: searchPredicateProp,
@@ -62,7 +58,6 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
-  const [ariaShowAlert, setAriaShowAlert] = useState<boolean>(true);
   const [searchResults, setSearchResults] = useState<ResponseBody<CaseBasics[]> | null>(null);
 
   const pagination: PaginationModel | undefined = searchResults?.pagination
@@ -100,16 +95,6 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
     setAlertInfo(null);
   }
 
-  function refreshAlert() {
-    if (emptyResponse || alertInfo) {
-      //
-      setAriaShowAlert(false);
-      setTimeout(() => {
-        setAriaShowAlert(true);
-      }, 100);
-    }
-  }
-
   async function search() {
     if (!isValidSearchPredicate(searchPredicate)) return;
     resetAlert();
@@ -131,8 +116,6 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
     setSearchPredicate(predicate);
   }
 
-  useImperativeHandle(ref, () => ({ refreshAlert }));
-
   useEffect(() => {
     if (!deepEqual(searchPredicateProp, searchPredicate)) {
       setSearchPredicate(searchPredicateProp);
@@ -153,7 +136,7 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
             message={alertInfo.message}
             title={alertInfo.title}
             type={UswdsAlertStyle.Error}
-            show={ariaShowAlert}
+            show={true}
             slim={true}
             inline={true}
             role="alert"
@@ -168,7 +151,7 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
             message={noResultsMessage}
             title="No cases found"
             type={UswdsAlertStyle.Info}
-            show={ariaShowAlert}
+            show={true}
             slim={true}
             inline={true}
             role="alert"
@@ -199,5 +182,4 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
   );
 }
 
-const SearchResults = forwardRef(_SearchResults);
 export default SearchResults;

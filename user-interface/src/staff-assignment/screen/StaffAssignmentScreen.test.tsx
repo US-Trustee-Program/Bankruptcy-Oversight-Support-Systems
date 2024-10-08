@@ -32,8 +32,7 @@ describe('StaffAssignmentScreen', () => {
 
     const SearchResults = vi
       .spyOn(searchResultsModule, 'SearchResults')
-      .mockImplementation((props: SearchResultsProps) => {
-        props.row({ bCase: MockData.getCaseBasics(), idx: 0, key: 0 });
+      .mockImplementation((_props: SearchResultsProps) => {
         return <></>;
       });
 
