@@ -156,17 +156,17 @@ export default function SearchScreen() {
   }, []);
 
   useEffect(() => {
-    if (activeElement && !isFilterFormDisabled) {
+    if (activeElement && !isFilterFormDisabled && !isSearching) {
       setTimeout(() => {
         (activeElement as HTMLElement).focus();
 
         const alertElement =
-          document.querySelector('#no-results-alert') ??
-          document.querySelector('#search-error-alert');
+          document.querySelector('#no-results-alert .usa-alert') ??
+          document.querySelector('#search-error-alert .usa-alert');
         if (alertElement) {
-          alertElement.setAttribute('aria-hidden', 'true');
+          alertElement.setAttribute('aria-hidden', '');
           setTimeout(() => {
-            alertElement.setAttribute('aria-hidden', 'false');
+            alertElement.removeAttribute('aria-hidden');
           }, 100);
         }
       }, 100);
