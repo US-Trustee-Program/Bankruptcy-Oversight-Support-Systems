@@ -13,10 +13,7 @@ import { courtSorter } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import SearchResults, {
-  isValidSearchPredicate,
-  SearchResultsRef,
-} from '@/search-results/SearchResults';
+import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -38,7 +35,6 @@ export default function SearchScreen() {
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
-  const searchResultsRef = useRef<SearchResultsRef>(null);
 
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -163,7 +159,16 @@ export default function SearchScreen() {
     if (activeElement && !isFilterFormDisabled) {
       setTimeout(() => {
         (activeElement as HTMLElement).focus();
-        searchResultsRef.current?.refreshAlert();
+
+        const alertElement =
+          document.querySelector('#no-results-alert') ??
+          document.querySelector('#search-error-alert');
+        if (alertElement) {
+          alertElement.setAttribute('aria-hidden', 'true');
+          setTimeout(() => {
+            alertElement.setAttribute('aria-hidden', 'false');
+          }, 100);
+        }
       }, 100);
     }
   }, [isSearching, isFilterFormDisabled]);
@@ -269,7 +274,6 @@ export default function SearchScreen() {
           )}
           {isValidSearchPredicate(searchPredicate) && (
             <SearchResults
-              ref={searchResultsRef}
               id="search-results"
               searchPredicate={searchPredicate}
               onStartSearching={setStartSearching}
