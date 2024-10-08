@@ -199,5 +199,4 @@ export function _SearchResults(props: SearchResultsProps, ref: React.Ref<SearchR
   );
 }
 
-const SearchResults = forwardRef(_SearchResults);
-export default SearchResults;
+export const SearchResults = forwardRef(_SearchResults);
