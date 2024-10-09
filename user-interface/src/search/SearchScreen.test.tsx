@@ -58,6 +58,7 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
+    const searchButton = screen.getByTestId('button-search-submit');
     const loadingSpinner = document.querySelector('.loading-spinner');
     let defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
@@ -76,6 +77,7 @@ describe('search screen', () => {
     const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');
     fireEvent.click(chapterElevenOptionButton);
     fireEvent.click(expandButton!);
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -103,6 +105,7 @@ describe('search screen', () => {
     const chapterTwelveOptionButton = screen.getByTestId('combo-box-option-12');
     fireEvent.click(chapterTwelveOptionButton);
     fireEvent.click(expandButton!);
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
@@ -146,6 +149,7 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
+    const searchButton = screen.getByTestId('button-search-submit');
     const loadingSpinner = document.querySelector('.loading-spinner');
     const defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
@@ -179,6 +183,7 @@ describe('search screen', () => {
     });
 
     fireEvent.click(expandButton);
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
@@ -226,6 +231,7 @@ describe('search screen', () => {
     });
 
     fireEvent.click(expandButton);
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
@@ -281,6 +287,8 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
 
     fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
+    const searchButton = screen.getByTestId('button-search-submit');
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -300,6 +308,7 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
 
     fireEvent.change(caseNumberInput, { target: { value: caseNumber } });
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
@@ -326,6 +335,8 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
 
     fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
+    const searchButton = screen.getByTestId('button-search-submit');
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -345,6 +356,8 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
 
     fireEvent.change(caseNumberInput, { target: { value: caseNumber } });
+    fireEvent.click(searchButton);
+
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
       table = document.querySelector('.search-results table');
@@ -369,6 +382,8 @@ describe('search screen', () => {
     expect(noResultsAlert).not.toBeInTheDocument();
 
     fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
+    const searchButton = screen.getByTestId('button-search-submit');
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
@@ -382,6 +397,7 @@ describe('search screen', () => {
     });
 
     fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
@@ -401,10 +417,12 @@ describe('search screen', () => {
       .mockResolvedValue(searchResponseBody);
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
-
+    const searchButton = screen.getByTestId('button-search-submit');
     expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
 
     fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
+
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
@@ -417,7 +435,7 @@ describe('search screen', () => {
 
     // TODO: We need to make sure the SearchResults.tsx can use the mock api to look this up.
     fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
-
+    fireEvent.click(searchButton);
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
 

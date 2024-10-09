@@ -235,6 +235,7 @@ export default function SearchScreen() {
             </div>
             <div className="search-form-submit form-field">
               <Button
+                id="search-submit"
                 className="search-submit-button"
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
