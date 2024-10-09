@@ -20,8 +20,8 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
 type CaseNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
   onChange: (caseNumber?: string) => void;
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
-  onDisable: () => void;
-  onEnable: () => void;
+  onDisable?: () => void;
+  onEnable?: () => void;
   allowEnterKey?: boolean;
   allowPartialCaseNumber?: boolean;
 };
