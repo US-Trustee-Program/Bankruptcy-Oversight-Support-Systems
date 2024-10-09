@@ -26,16 +26,16 @@ describe('Staff assignment', () => {
     await waitFor(() => {
       staffAssignmentTab = screen.queryByText('Staff Assignment');
       expect(staffAssignmentTab).toBeInTheDocument();
-      fireEvent.click(staffAssignmentTab!);
     });
+    fireEvent.click(staffAssignmentTab!);
 
     let firstCaseAssignmentButton;
     await waitFor(async () => {
       // TODO: Can we use a better selector than test ID since it is closer to an implementation detail than a descriptive label?
       firstCaseAssignmentButton = await screen.queryByTestId('open-modal-button-0');
       expect(firstCaseAssignmentButton).toBeInTheDocument();
-      fireEvent.click(firstCaseAssignmentButton!);
     });
+    fireEvent.click(firstCaseAssignmentButton!);
 
     await waitFor(async () => {
       // TODO: Can we use a better selector than test ID since it is closer to an implementation detail than a descriptive label?
