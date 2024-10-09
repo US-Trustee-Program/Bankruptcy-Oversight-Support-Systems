@@ -245,7 +245,7 @@ export default function SearchScreen() {
             </div>
           </div>
         </div>
-        <div className="grid-col-8" aria-live="polite">
+        <div className="grid-col-8" role="status" aria-live="polite">
           <h2>Results</h2>
           {!isValidSearchPredicate(searchPredicate) && (
             <div className="search-alert">
