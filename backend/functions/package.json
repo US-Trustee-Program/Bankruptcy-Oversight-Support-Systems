@@ -36,7 +36,8 @@
   },
   "main": "dist/backend/functions/*/*.js",
   "overrides": {
-    "@azure/identity": "$@azure/identity"
+    "@azure/identity": "$@azure/identity",
+    "cookie": "^0.7.2"
   },
   "scripts": {
     "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage",
