@@ -13,7 +13,6 @@ import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
 import { getCourtDivisionCodes } from '@common/cams/users';
-// import * as staffAssignmentRow from '../row/StaffAssignmentRow';
 
 describe('StaffAssignmentScreen', () => {
   beforeEach(() => {
@@ -40,13 +39,8 @@ describe('StaffAssignmentScreen', () => {
     const SearchResults = vi
       .spyOn(searchResultsModule, 'default')
       .mockImplementation((_props: SearchResultsProps) => {
-        //I believe this is causing the failure on StaffAssignmentRowSpy
         return <></>;
       });
-
-    // const staffAssignmentRowSpy = vi
-    //   .spyOn(staffAssignmentRow, 'StaffAssignmentRow')
-    //   .mockReturnValue(<></>);
 
     render(
       <BrowserRouter>
@@ -64,12 +58,6 @@ describe('StaffAssignmentScreen', () => {
       },
       {},
     );
-    //Coverage shows that this can go away.
-    // expect(staffAssignmentRowSpy).toHaveBeenCalledWith(
-    //   expect.objectContaining({
-    //     options: expect.objectContaining({ modalId: 'assign-attorney-modal' }),
-    //   }),
-    // );
   });
 
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {

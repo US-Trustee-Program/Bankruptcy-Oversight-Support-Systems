@@ -26,10 +26,6 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
     offset: DEFAULT_SEARCH_OFFSET,
     divisionCodes: getCourtDivisionCodes(user),
   };
-  //This is unnecessary, the starting value of the reducer in getCourtDivisionCodes is an empty array and will never be undefined
-  // if (!predicate.divisionCodes) {
-  //   predicate.divisionCodes = [];
-  // }
 
   return predicate;
 }
