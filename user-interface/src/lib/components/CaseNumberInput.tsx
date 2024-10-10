@@ -110,6 +110,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
         includeClearButton={true}
         ariaDescription="For example, 12-34567"
         placeholder="__-_____"
+        aria-placeholder=""
       ></Input>
     </>
   );
