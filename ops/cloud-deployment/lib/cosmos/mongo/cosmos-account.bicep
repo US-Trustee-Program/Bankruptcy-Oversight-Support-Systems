@@ -44,25 +44,6 @@ var consistencyPolicy = {
   }
 }
 
-// @description('The primary replica region for the Cosmos DB account.')
-// param primaryRegion string
-
-// @description('The secondary replica region for the Cosmos DB account.')
-// param secondaryRegion string
-
-// var locations = [
-//   {
-//     locationName: primaryRegion
-//     failoverPriority: 0
-//     isZoneRedundant: false
-//   }
-//   {
-//     locationName: secondaryRegion
-//     failoverPriority: 1
-//     isZoneRedundant: false
-//   }
-// ]
-
 @minValue(10)
 @maxValue(2147483647)
 @description('Max stale requests. Required for BoundedStaleness. Valid ranges, Single Region: 10 to 2147483647. Multi Region: 100000 to 2147483647.')
@@ -137,6 +118,9 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
       }
       {
         name: 'EnableMongo'
+      }
+      {
+        name: 'EnableMongoRoleBasedAccessControl'
       }
     ]
     publicNetworkAccess: 'Enabled'
