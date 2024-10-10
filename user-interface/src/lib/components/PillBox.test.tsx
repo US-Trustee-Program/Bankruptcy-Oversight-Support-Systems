@@ -80,7 +80,7 @@ describe('Tests for Pill Box', () => {
     for (let i = 0; i < buttons.length; i++) {
       expect(buttons[i]).toHaveAttribute(
         'aria-label',
-        `test-prefix - ${testSelections[i].label} is currently selected. Press Enter key to unselect.`,
+        `test-prefix - ${testSelections[i].label} selected. Click to deselect.`,
       );
     }
   });
