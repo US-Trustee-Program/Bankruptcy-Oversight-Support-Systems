@@ -603,7 +603,7 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('Should clear the pill when presseing Enter and return the focus to the input element', async () => {
+  test('Should clear the pill when pressing Enter and return the focus to the input element', async () => {
     const updateSelection = vi.fn();
     renderWithProps({ onUpdateSelection: updateSelection });
 
