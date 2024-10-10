@@ -85,7 +85,7 @@ describe('StaffAssignmentScreen', () => {
   });
 
   test('should default the divisionCodes in the predicate to an empty array if user has no offices', async () => {
-    testingUtilities.setUser({ offices: undefined, roles: [CamsRole.CaseAssignmentManager] });
+    testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
     const SearchResults = vi.spyOn(searchResultsModule, 'default');
 
     render(
