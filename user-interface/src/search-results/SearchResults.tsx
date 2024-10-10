@@ -158,7 +158,9 @@ export function SearchResults(props: SearchResultsProps) {
           ></Alert>
         </div>
       )}
-      {isSearching && <LoadingSpinner role="status" caption="Searching..." />}
+      {isSearching && (
+        <LoadingSpinner aria-label="Searching" role="status" caption="Searching..." />
+      )}
       {!isSearching && !emptyResponse && (
         <div>
           <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
