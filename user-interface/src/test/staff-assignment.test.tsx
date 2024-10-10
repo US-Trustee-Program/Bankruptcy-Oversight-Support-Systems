@@ -42,6 +42,7 @@ describe('Staff assignment', () => {
       const attorneyListTbody = await screen.queryByTestId('case-load-table-body');
       expect(attorneyListTbody).toBeInTheDocument();
       const attorneyNames = [...attorneyListTbody!.childNodes].map((row) => row.textContent);
+      expect(attorneyNames.length).toBeGreaterThan(1);
       const sortedAttorneyNames = attorneyNames.sort((a, b) => {
         if (!a) return -1;
         if (!b) return -1;
@@ -50,6 +51,7 @@ describe('Staff assignment', () => {
         return 0;
       });
       attorneyNames.forEach((original, idx) => {
+        expect(original).toBeTruthy();
         expect(original).toEqual(sortedAttorneyNames[idx]);
       });
     });
