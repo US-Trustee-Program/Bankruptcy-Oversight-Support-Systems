@@ -5,7 +5,7 @@ param accountName string
 param databaseName string
 
 @description('List of objects with following properties: name, partitionKey1')
-param databaseContainers array
+param databaseCollections array
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
@@ -16,7 +16,7 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2023-1
   name: databaseName
 }
 
-resource dataContainer 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = [for c in databaseContainers: {
+resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = [for c in databaseCollections: {
   parent: database
   name: c.name
   properties: {
