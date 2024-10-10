@@ -19,8 +19,7 @@ import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import Button, { ButtonRef } from '@/lib/components/uswds/Button';
-import { UswdsButtonStyle } from '../lib/components/uswds/Button';
+import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 
 export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
