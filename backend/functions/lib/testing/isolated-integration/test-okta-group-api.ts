@@ -19,7 +19,7 @@ async function testOktaGroupApi() {
       if (typeof value === 'object') {
         context.logger.info(MODULE_NAME, JSON.stringify(value, null, 0));
       } else {
-        context.logger.info(MODULE_NAME, `${value}`);
+        context.logger.info(MODULE_NAME, String(value));
       }
     });
   }
