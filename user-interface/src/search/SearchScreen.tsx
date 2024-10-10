@@ -199,7 +199,7 @@ export default function SearchScreen() {
                   className="new-court__select"
                   label="District (Division)"
                   ariaLabelPrefix="District (Division)"
-                  ariaDescription="Select multiple Districts (Divisions)."
+                  ariaDescription="multi-select"
                   aria-live="off"
                   onClose={handleCourtSelection}
                   onPillSelection={handleCourtSelection}
@@ -220,7 +220,7 @@ export default function SearchScreen() {
                   className="case-chapter__select"
                   label="Chapter"
                   ariaLabelPrefix="Chapter"
-                  ariaDescription="Select multiple Chapters."
+                  ariaDescription="multi-select"
                   aria-live="off"
                   onClose={handleChapterSelection}
                   onPillSelection={handleChapterSelection}
