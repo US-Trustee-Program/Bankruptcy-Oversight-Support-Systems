@@ -6,6 +6,8 @@ import { getUserGroupGatewayConfig } from '../../configs/user-groups-gateway-con
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 
+const MODULE_NAME = 'ITEST';
+
 async function testOktaGroupApi() {
   const context = await applicationContextCreator.getApplicationContext({
     invocationContext: new InvocationContext(),
@@ -15,9 +17,9 @@ async function testOktaGroupApi() {
   function log(...values: unknown[]) {
     values.forEach((value) => {
       if (typeof value === 'object') {
-        context.logger.info('ITEST', JSON.stringify(value, null, 0));
+        context.logger.info(MODULE_NAME, JSON.stringify(value, null, 0));
       } else {
-        context.logger.info('ITEST', `${value}`);
+        context.logger.info(MODULE_NAME, `${value}`);
       }
     });
   }
@@ -46,9 +48,9 @@ async function testOktaGroupApi() {
     log('attorneys', attorneys, '\n');
     log('syncOfficeStaff', results, '\n');
   } catch (error) {
-    log(error, '\n');
+    context.logger.error(MODULE_NAME, error);
   } finally {
-    log('Done', '\n');
+    log('Done.', '\n');
   }
 }
 
