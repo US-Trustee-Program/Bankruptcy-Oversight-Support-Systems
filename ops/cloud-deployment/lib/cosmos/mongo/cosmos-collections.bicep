@@ -58,7 +58,6 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
   properties: {
     resource: {
       id: 'user-session-cache'
-      analyticalStorageTtl: 0
       shardKey: {
         signature: 'Hash'
       }
