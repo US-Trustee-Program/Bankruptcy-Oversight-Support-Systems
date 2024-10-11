@@ -1,7 +1,7 @@
 import { OrderTableImperative } from '@/data-verification/consolidation/ConsolidationCasesTable';
 import { ButtonRef } from '@/lib/components/uswds/Button';
 import { ConfirmationModalImperative } from '@/data-verification/consolidation/ConsolidationOrderModal';
-import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 
@@ -22,7 +22,7 @@ interface ConsolidationControls {
   clearButton: Ref<ButtonRef>;
   confirmationModal: Ref<ConfirmationModalImperative>;
   jointAdministrationRadio: Ref<RadioRef>;
-  leadCaseDivisionInput: Ref<InputRef>;
+  leadCaseDivisionInput: Ref<ComboBoxRef>;
   leadCaseNumberInput: Ref<InputRef>;
   rejectButton: Ref<ButtonRef>;
   substantiveRadio: Ref<RadioRef>;

@@ -68,14 +68,8 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
-    await waitFor(() => {
-      expect(document.querySelector('#case-chapter-search-item-list')).toBeInTheDocument();
-    });
-
-    // Make first search request....
-    fireEvent.click(expandButton!);
-    const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');
-    fireEvent.click(chapterElevenOptionButton);
+    // Make first search request...
+    testingUtilities.selectComboBoxItem('case-chapter-search', 2);
     fireEvent.click(expandButton!);
     fireEvent.click(searchButton);
 
@@ -101,13 +95,13 @@ describe('search screen', () => {
     );
 
     // Make second search request...
-    fireEvent.click(expandButton!);
-    const chapterTwelveOptionButton = screen.getByTestId('combo-box-option-12');
-    fireEvent.click(chapterTwelveOptionButton);
+    testingUtilities.selectComboBoxItem('case-chapter-search', 3);
     fireEvent.click(expandButton!);
     fireEvent.click(searchButton);
 
     await waitFor(() => {
+      const listItemContainer = document.querySelector('#case-chapter-search-item-list-container');
+      screen.debug(listItemContainer!);
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('.search-results table');
       expect(table).not.toBeInTheDocument();
@@ -164,22 +158,9 @@ describe('search screen', () => {
       fireEvent.click(expandButton);
     });
 
-    let divisionItemLi: HTMLElement;
-    let divisionText: string;
-    let divisionItemBtn: HTMLElement;
-
     // Make first search request....
     await waitFor(() => {
-      divisionItemLi = screen.getByTestId('court-selections-search-item-0');
-      divisionText = divisionItemLi.textContent!;
-      divisionItemBtn = screen.getByTestId(`combo-box-option-${divisionText}`);
-      expect(divisionItemLi).toBeInTheDocument();
-      expect(divisionItemBtn).toBeInTheDocument();
-      fireEvent.click(divisionItemBtn);
-    });
-
-    await waitFor(() => {
-      expect(divisionItemLi).toHaveClass('selected');
+      testingUtilities.selectComboBoxItem('court-selections-search');
     });
 
     fireEvent.click(expandButton);
@@ -213,22 +194,7 @@ describe('search screen', () => {
     await waitFor(() => {
       fireEvent.click(expandButton);
     });
-
-    divisionItemLi = screen.getByTestId('court-selections-search-item-1'); // select second option
-
-    divisionText = divisionItemLi.textContent!;
-    divisionItemBtn = screen.getByTestId(`combo-box-option-${divisionText}`);
-
-    // Make first search request....
-    await waitFor(() => {
-      expect(divisionItemLi).toBeInTheDocument();
-      expect(divisionItemBtn).toBeInTheDocument();
-      fireEvent.click(divisionItemBtn);
-    });
-
-    await waitFor(() => {
-      expect(divisionItemLi).toHaveClass('selected');
-    });
+    testingUtilities.selectComboBoxItem('court-selections-search', 1);
 
     fireEvent.click(expandButton);
     fireEvent.click(searchButton);

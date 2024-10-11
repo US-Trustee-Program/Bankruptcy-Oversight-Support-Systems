@@ -15,7 +15,7 @@ import { Consolidation } from '@common/cams/events';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 
-vi.mock('../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
+//TODO: update tests with ComboBox instead of Cams Select
 
 describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();
