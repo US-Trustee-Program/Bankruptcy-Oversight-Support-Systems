@@ -16,12 +16,12 @@ param defaultConsistencyLevel string = 'Session'
 
 @description('Specifies the MongoDB server version to use.')
 @allowed([
-  '3.2'
-  '3.6'
-  '4.0'
   '4.2'
+  '5.0'
+  '6.0'
+  '7.0'
 ])
-param serverVersion string = '4.2'
+param serverVersion string = '7.0'
 
 // Microsoft reference documentation, see https://learn.microsoft.com/en-us/azure/cosmos-db/consistency-levels
 var consistencyPolicy = {

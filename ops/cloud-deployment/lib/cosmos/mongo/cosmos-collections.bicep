@@ -22,12 +22,31 @@ resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
   properties: {
     resource: {
       id: c.name
+      shardKey: {
+        '${c.partitionKey1}': 'Hash'
+      }
       indexes: [
-        {key: {
-          keys: [
-            c.partitionKeys
-          ]
-        }}
+        {
+          key: {
+            keys: [
+              '_id'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              '$**'
+            ]
+          }
+       }
+       {
+          key: {
+            keys: [
+              '${c.partitionKey1}'
+            ]
+          }
+        }
       ]
     }
   }
@@ -39,31 +58,39 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
   properties: {
     resource: {
       id: 'user-session-cache'
-      analyticalStorageTtl: -1
+      analyticalStorageTtl: 0
+      shardKey: {
+        signature: 'Hash'
+      }
       indexes: [
         {
           key: {
-            keys: ['/signature']
+            keys: [
+              '_id'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              '$**'
+            ]
+          }
+       }
+       {
+          key: {
+            keys: [
+              'signature'
+            ]
           }
           options: {
             unique:true
+            expireAfterSeconds: 0
           }
         }
       ]
     }
   }
-  // properties: {
-  //   resource: {
-  //     id: 'user-session-cache'
-  //     partitionKey: {
-  //       paths: [
-  //         '/signature'
-  //       ]
-  //     }
-  //     defaultTtl: -1
-  //     uniqueKeyPolicy: { uniqueKeys: [{ paths: ['/signature'] }] }
-  //   }
-  // }
 }
 
 resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
@@ -72,26 +99,35 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
   properties: {
     resource: {
       id: 'offices'
-      analyticalStorageTtl: -1
+      shardKey: {
+        officeCode: 'Hash'
+      }
       indexes: [
         {
           key: {
-            keys: ['/officeCode']
+            keys: [
+              '_id'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              '$**'
+            ]
+          }
+       }
+       {
+          key: {
+            keys: [
+              'officeCode'
+            ]
+          }
+          options: {
+            expireAfterSeconds: 0
           }
         }
       ]
     }
   }
-  // name: 'offices'
-  // properties: {
-  //   resource: {
-  //     id: 'offices'
-  //     partitionKey: {
-  //       paths: [
-  //         '/officeCode'
-  //       ]
-  //     }
-  //     defaultTtl: -1
-  //   }
-  // }
 }
