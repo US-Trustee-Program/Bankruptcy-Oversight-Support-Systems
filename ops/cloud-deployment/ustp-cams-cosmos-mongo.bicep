@@ -33,7 +33,7 @@ param actionGroupResourceGroupName string = 'rg-analytics'
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = true
 
-// CosmosDb
+// CosmosDb for MongoDB
 module account './lib/cosmos/mongo/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
   scope: resourceGroup(resourceGroupName)
