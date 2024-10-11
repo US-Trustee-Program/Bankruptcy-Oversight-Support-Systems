@@ -56,6 +56,8 @@
     "coverage": "npm test -- --coverage",
     "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && npm test -- --coverage",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib | dot -T svg > ../../docs/architecture/dependency-cruiser/functions/dependency-graph_api_${current_time}.svg",
-    "dependency-cruiser:ci": "npx depcruise --output-type err-long attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib "
+    "dependency-cruiser:ci": "npx depcruise --output-type err-long attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync lib ",
+    "itest:okta-group-api": "npx ts-node ./lib/testing/isolated-integration/test-okta-group-api.ts",
+    "itest:export-office-csv": "npx ts-node ./lib/testing/isolated-integration/export-office-csv.ts"
   }
 }
