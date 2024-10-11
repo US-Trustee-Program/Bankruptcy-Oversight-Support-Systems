@@ -13,11 +13,10 @@ import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FeatureFlagSet } from '@common/feature-flags';
-import { selectItemInMockSelect } from '@/lib/components/CamsSelect.mock';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 
-vi.mock('../../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
+//TODO: update testss with new combobox implementation
 
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
@@ -328,7 +327,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(markAsLeadButton).toHaveClass('usa-button--outline');
     });
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 
@@ -354,7 +353,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(rejectButton).toBeEnabled();
     });
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     enterCaseNumber(caseNumberInput, validCaseNumber);
 
     await waitFor(() => {
@@ -381,7 +380,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '11111111');
@@ -400,7 +399,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     enterCaseNumber(caseNumberInput, getCaseNumber(order.childCases[0].caseId).replace('-', ''));
 
     await waitFor(() => {
@@ -423,7 +422,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '00000000');
@@ -444,7 +443,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    selectItemInMockSelect(`lead-case-court`, 0);
+    testingUtilities.selectComboBoxItem('lead-case-court', 0);
+
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '9999999');

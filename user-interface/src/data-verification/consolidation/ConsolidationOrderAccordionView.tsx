@@ -4,7 +4,6 @@ import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
 import { ConsolidationCaseTable } from '@/data-verification/consolidation/ConsolidationCasesTable';
 import Checkbox from '@/lib/components/uswds/Checkbox';
-import CamsSelect from '@/lib/components/CamsSelect';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -14,6 +13,7 @@ import { ConsolidationOrderModal } from '@/data-verification/consolidation/Conso
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import ComboBox from '@/lib/components/combobox/ComboBox';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -143,16 +143,24 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                     className={`lead-case-form-container lead-case-form-container-${viewModel.order.id}`}
                   >
                     <h3>Enter lead case details:</h3>
+                    <span id="lead-case-form-instructions">
+                      Choose a new court and enter a case number, and the lead case will be selected
+                      for this Case Event automatically.
+                    </span>
                     <div className="lead-case-court-container">
-                      <CamsSelect
+                      <ComboBox
                         id={'lead-case-court'}
-                        required={true}
-                        options={viewModel.filteredOfficeRecords!}
-                        onChange={viewModel.handleSelectLeadCaseCourt}
-                        ref={viewModel.leadCaseDivisionInput}
+                        className="lead-case-court"
                         label="Select a court"
+                        ariaDescription="foo bar"
+                        aria-live="off"
+                        aria-describedby="lead-case-form-instructions"
+                        onUpdateSelection={viewModel.handleSelectLeadCaseCourt}
+                        options={viewModel.filteredOfficeRecords!}
                         value={viewModel.divisionCode}
-                        isSearchable={true}
+                        required={true}
+                        multiSelect={false}
+                        ref={viewModel.leadCaseDivisionInput}
                       />
                     </div>
                     <div className="lead-case-number-container">

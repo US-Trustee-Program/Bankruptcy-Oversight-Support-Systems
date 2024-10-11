@@ -1,15 +1,15 @@
 import { ConsolidationOrder, ConsolidationOrderCase } from '@common/cams/orders';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { OrderTableImperative } from '@/data-verification/consolidation/ConsolidationCasesTable';
-import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { ButtonRef } from '@/lib/components/uswds/Button';
 import {
   ConfirmActionResults,
   ConfirmationModalImperative,
 } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import React from 'react';
-import { CamsSelectOptionList } from '@/lib/components/CamsSelect';
 import { ShowConfirmationModal } from '@/data-verification/consolidation/consolidationControls';
+import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 
 interface ConsolidationViewModel {
   approveButton: React.Ref<ButtonRef>;
@@ -18,7 +18,7 @@ interface ConsolidationViewModel {
   confirmationModal: React.Ref<ConfirmationModalImperative>;
   divisionCode: string | undefined;
   expandedAccordionId: string;
-  filteredOfficeRecords: Record<string, string>[] | null;
+  filteredOfficeRecords: ComboOption[] | null;
   formattedOrderFiledDate: string;
   foundValidCaseNumber: boolean;
   hidden: boolean;
@@ -27,7 +27,7 @@ interface ConsolidationViewModel {
   isValidatingLeadCaseNumber: boolean;
   jointAdministrationRadio: React.Ref<RadioRef>;
   leadCase: ConsolidationOrderCase | null;
-  leadCaseDivisionInput: React.Ref<InputRef>;
+  leadCaseDivisionInput: React.Ref<ComboBoxRef>;
   leadCaseNumberError: string;
   leadCaseNumberInput: React.Ref<InputRef>;
   order: ConsolidationOrder;
@@ -48,7 +48,7 @@ interface ConsolidationViewModel {
   handleOnExpand: () => void;
   handleRejectButtonClick: () => void;
   handleSelectConsolidationType: (value: string) => void;
-  handleSelectLeadCaseCourt: (option: CamsSelectOptionList) => void;
+  handleSelectLeadCaseCourt: (option: ComboOptionList) => void;
   handleToggleLeadCaseForm: (checked: boolean) => void;
   showConfirmationModal: ShowConfirmationModal;
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
