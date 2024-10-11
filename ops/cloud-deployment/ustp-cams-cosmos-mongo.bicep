@@ -9,10 +9,10 @@ param databaseName string
 param databaseCollections array = [] // See parameters.json file
 
 @description('Allowed subnet resource id')
-param allowedSubnet string = ''
+param allowedSubnets array = []
 
-@description('Allowed subnet resource id')
-param allowedSubnetUstp string = ''
+// @description('Allowed subnet resource id')
+// param allowedSubnetUstp string = ''
 
 @description('The resource Id of the workspace.')
 param analyticsWorkspaceId string = ''
@@ -40,7 +40,8 @@ module account './lib/cosmos/mongo/cosmos-account.bicep' = {
   params: {
     accountName: accountName
     location: location
-    allowedSubnets: empty(allowedSubnetUstp) ? [allowedSubnet] :  [allowedSubnet, allowedSubnetUstp]
+    // allowedSubnets: empty(allowedSubnetUstp) ? [allowedSubnet] :  [allowedSubnet, allowedSubnetUstp]
+    allowedSubnets: allowedSubnets
     allowAllNetworks: allowAllNetworks
     keyVaultName: keyVaultName
     kvResourceGroup: kvResourceGroup
