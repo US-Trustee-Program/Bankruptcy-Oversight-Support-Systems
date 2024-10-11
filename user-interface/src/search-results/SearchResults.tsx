@@ -29,7 +29,7 @@ export type SearchResultsRowProps = TableRowProps & {
   bCase: CaseBasics;
 };
 
-export type SearchResultsProps = {
+export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   id: string;
   searchPredicate: CasesSearchPredicate;
   onStartSearching?: () => void;
@@ -40,11 +40,20 @@ export type SearchResultsProps = {
 };
 
 export function SearchResults(props: SearchResultsProps) {
-  const { id, onStartSearching, onEndSearching } = props;
+  const {
+    id,
+    searchPredicate: searchPredicateProp,
+    onStartSearching,
+    onEndSearching,
+    noResultsMessage: noResultsMessageProp,
+    header: Header,
+    row: Row,
+    ...otherProps
+  } = props;
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
-    ...props.searchPredicate,
+    ...searchPredicateProp,
   });
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
@@ -56,7 +65,7 @@ export function SearchResults(props: SearchResultsProps) {
     : undefined;
 
   const noResultsMessage =
-    props.noResultsMessage ?? 'Modify your search criteria to include more cases.';
+    noResultsMessageProp ?? 'Modify your search criteria to include more cases.';
 
   const api = useApi2();
 
@@ -108,20 +117,17 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   useEffect(() => {
-    if (!deepEqual(props.searchPredicate, searchPredicate)) {
-      setSearchPredicate(props.searchPredicate);
+    if (!deepEqual(searchPredicateProp, searchPredicate)) {
+      setSearchPredicate(searchPredicateProp);
     }
-  }, [props.searchPredicate]);
+  }, [searchPredicateProp]);
 
   useEffect(() => {
     search();
   }, [searchPredicate]);
 
-  const Header = props.header;
-  const Row = props.row;
-
   return (
-    <div className="search-results">
+    <div {...otherProps} className="search-results">
       {alertInfo && (
         <div className="search-alert">
           <Alert
@@ -133,6 +139,7 @@ export function SearchResults(props: SearchResultsProps) {
             show={true}
             slim={true}
             inline={true}
+            role="alert"
           ></Alert>
         </div>
       )}
@@ -147,10 +154,13 @@ export function SearchResults(props: SearchResultsProps) {
             show={true}
             slim={true}
             inline={true}
+            role="alert"
           ></Alert>
         </div>
       )}
-      {isSearching && <LoadingSpinner caption="Searching..." />}
+      {isSearching && (
+        <LoadingSpinner aria-label="Searching" role="status" caption="Searching..." />
+      )}
       {!isSearching && !emptyResponse && (
         <div>
           <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
@@ -173,3 +183,5 @@ export function SearchResults(props: SearchResultsProps) {
     </div>
   );
 }
+
+export default SearchResults;

@@ -26,7 +26,7 @@ type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
 
-export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
+export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> {
   label?: string;
   ariaLabelPrefix?: string;
   ariaDescription?: string;
@@ -37,6 +37,9 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange'> {
   onPillSelection?: (options: ComboOption[]) => void;
   onUpdateFilter?: (value: string) => void;
   onClose?: (options: ComboOption[]) => void;
+  onDisable?: () => void;
+  onEnable?: () => void;
+  onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
   multiSelect?: boolean;
   wrapPills?: boolean;
 }
@@ -50,6 +53,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     onPillSelection,
     onUpdateFilter,
     onClose,
+    onDisable,
+    onEnable,
     multiSelect,
     wrapPills,
     ariaLabelPrefix,
@@ -188,6 +193,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function handleClearAllClick() {
     setSelections([]);
     clearFilter();
+    filterRef.current?.focus();
+
     if (props.onUpdateSelection) {
       props.onUpdateSelection([]);
     }
@@ -234,29 +241,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
     switch (ev.key) {
       case 'Tab':
-        if (expanded && (ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          let index = 0;
-          if (list && index < filteredOptions.length) {
-            while (
-              list.children[index] &&
-              list.children[index].classList.contains('hidden') &&
-              index < filteredOptions.length
-            ) {
-              ++index;
-            }
-          }
-          if (index === filteredOptions.length) {
-            closeDropdown(false);
-          } else {
-            const button = list?.children[index].querySelector('button');
-            if (list && button) {
-              focusAndHandleScroll(ev, button);
-              ev.preventDefault();
-            }
-          }
-        } else {
-          closeDropdown(false);
-        }
+        closeDropdown(false);
         break;
       case 'Escape':
         closeDropdown();
@@ -305,6 +290,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
+  function handleOnInputFocus(ev: React.FocusEvent<HTMLElement>) {
+    if (props.onFocus) props.onFocus(ev);
+  }
+
   function handlePillSelection(selections: ComboOption[]) {
     setSelections(selections);
     if (onUpdateSelection && selections) {
@@ -313,6 +302,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (onPillSelection && selections) {
       onPillSelection(selections);
     }
+    filterRef.current?.focus();
   }
 
   function handleSingleSelectPillClick() {
@@ -320,6 +310,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (onPillSelection) {
       onPillSelection([]);
     }
+    filterRef.current?.focus();
   }
 
   function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
@@ -360,6 +351,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }, [selections]);
 
+  useEffect(() => {
+    if (comboboxDisabled && onDisable) {
+      onDisable();
+    } else if (!comboboxDisabled && onEnable) {
+      onEnable();
+    }
+  }, [comboboxDisabled]);
+
   useImperativeHandle(ref, () => ({ getValue, clearValue, disable }));
 
   // ========== JSX ==========
@@ -392,11 +391,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           ></PillBox>
           {selections && selections.length > 0 && (
             <Button
+              id={`${props.id}-clear-all-pills-button`}
               className="pill-clear-button"
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={handleClearAllClick}
               onKeyDown={handleClearAllKeyDown}
-              aria-label="clear all selections"
+              aria-label={`clear all selections ${label ? `for ${label}` : ''}`}
               disabled={comboboxDisabled}
             >
               clear
@@ -427,6 +427,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 onChange={handleInputFilter}
                 onKeyDown={(ev) => handleKeyDown(ev, 0)}
                 onClick={openDropdown}
+                onFocus={handleOnInputFocus}
                 value={value}
                 disabled={comboboxDisabled}
                 aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
@@ -448,7 +449,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             onKeyDown={(ev) => handleKeyDown(ev, 0)}
             disabled={comboboxDisabled}
             tabIndex={-1}
-            aria-label="expand dropdown of select box"
+            aria-label="expand dropdown of combo box"
           >
             <Icon name={expandIcon}></Icon>
           </Button>

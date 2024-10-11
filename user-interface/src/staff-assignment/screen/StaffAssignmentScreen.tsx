@@ -9,7 +9,7 @@ import {
 } from '@common/api/search';
 import { CamsUser, getCourtDivisionCodes } from '@common/cams/users';
 import { useRef } from 'react';
-import { SearchResults, SearchResultsRowProps } from '@/search-results/SearchResults';
+import SearchResults, { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
 import './StaffAssignmentScreen.scss';
@@ -26,10 +26,6 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
     offset: DEFAULT_SEARCH_OFFSET,
     divisionCodes: getCourtDivisionCodes(user),
   };
-
-  if (!predicate.divisionCodes) {
-    predicate.divisionCodes = [];
-  }
 
   return predicate;
 }

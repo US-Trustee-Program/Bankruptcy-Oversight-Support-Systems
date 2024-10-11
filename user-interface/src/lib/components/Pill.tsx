@@ -39,7 +39,7 @@ export function Pill(props: PillProps) {
       onClick={() => props.onClick(props.value)}
       onKeyDown={(ev) => handleKeyDown(ev)}
       tabIndex={0}
-      aria-label={`${props.ariaLabelPrefix} - ${props.label} is currently selected.`}
+      aria-label={`${props.ariaLabelPrefix} - ${props.label} selected. Click to deselect.`}
       disabled={props.disabled}
       data-value={props.value}
       title={`${props.label}`}
