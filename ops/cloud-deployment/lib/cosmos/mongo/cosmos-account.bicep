@@ -23,6 +23,13 @@ param defaultConsistencyLevel string = 'Session'
 ])
 param serverVersion string = '7.0'
 
+param mongoSecretName string = 'MONGO-CONNECTION-STRING'
+
+param keyVaultName string
+
+param kvResourceGroup string
+
+
 // Microsoft reference documentation, see https://learn.microsoft.com/en-us/azure/cosmos-db/consistency-levels
 var consistencyPolicy = {
   Eventual: {
@@ -135,6 +142,16 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
         backupStorageRedundancy: backupStorageRedundancy
       }
     }
+  }
+}
+
+module keyvaultSecret '../../keyvault/keyvault-secret.bicep' = {
+  name: '${accountName}-kv-secret-module'
+  scope: resourceGroup(kvResourceGroup)
+  params: {
+    keyVaultName: keyVaultName
+    secretName: mongoSecretName
+    secretValue: account.listConnectionStrings().connectionStrings[0].connectionString
   }
 }
 

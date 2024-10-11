@@ -20,18 +20,18 @@ param analyticsWorkspaceId string = ''
 @description('WARNING: Set CosmosDb account for public access for all. Should be only enable for development environment.')
 param allowAllNetworks bool = false
 
-// @description('Action Group Name for alerts')
-// param actionGroupName string = ''
+param keyVaultName string
 
-// @description('Action Group Resource Group Name for alerts')
-// param actionGroupResourceGroupName string = ''
+param kvResourceGroup string
 
-// @description('boolean to determine creation and configuration of Alerts')
-// param createAlerts bool = false
+@description('Action Group Name for alerts')
+param actionGroupName string = 'EmailDevelopmentTeam'
 
-// param mongoUser string
+@description('Action Group Resource Group Name for alerts')
+param actionGroupResourceGroupName string = 'rg-analytics'
 
-// param mongoPass string
+@description('boolean to determine creation and configuration of Alerts')
+param createAlerts bool = true
 
 // CosmosDb
 module account './lib/cosmos/mongo/cosmos-account.bicep' = {
@@ -42,6 +42,8 @@ module account './lib/cosmos/mongo/cosmos-account.bicep' = {
     location: location
     allowedSubnets: empty(allowedSubnetUstp) ? [allowedSubnet] :  [allowedSubnet, allowedSubnetUstp]
     allowAllNetworks: allowAllNetworks
+    keyVaultName: keyVaultName
+    kvResourceGroup: kvResourceGroup
   }
 }
 
@@ -71,36 +73,23 @@ module collections './lib/cosmos/mongo/cosmos-collections.bicep' = {
   ]
 }
 
-// user definition for read and write access
-// module userDefinition './lib/cosmos/mongo/cosmos-user-definition.bicep' = {
-//   name: '${accountName}-cosmos-user-def-module'
-//   params: {
-//     accountName: accountName
-//     mongoPass: mongoPass
-//     mongoUser: mongoUser
-//   }
-//   dependsOn: [
-//     account
-//   ]
-// }
-
-// module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-//   name: '${accountName}-availability-alert-module'
-//   params: {
-//     alertName: '${accountName}-availability-alert'
-//     appId: account.outputs.id
-//     timeAggregation: 'Average'
-//     operator: 'LessThan'
-//     targetResourceType: 'Microsoft.DocumentDB/databaseAccounts'
-//     metricName: 'ServiceAvailability'
-//     severity: 2
-//     threshold: 100
-//     evaluationFrequency: 'PT15M'
-//     windowSize: 'PT1H'
-//     actionGroupName: actionGroupName
-//     actionGroupResourceGroupName: actionGroupResourceGroupName
-//   }
-// }
+module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
+  name: '${accountName}-availability-alert-module'
+  params: {
+    alertName: '${accountName}-availability-alert'
+    appId: account.outputs.id
+    timeAggregation: 'Average'
+    operator: 'LessThan'
+    targetResourceType: 'Microsoft.DocumentDB/databaseAccounts'
+    metricName: 'ServiceAvailability'
+    severity: 2
+    threshold: 100
+    evaluationFrequency: 'PT15M'
+    windowSize: 'PT1H'
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
+  }
+}
 
 module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)) {
   name: '${accountName}-cosmos-diagnostic-setting-module'
