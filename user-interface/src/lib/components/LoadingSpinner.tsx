@@ -1,24 +1,26 @@
 import './LoadingSpinner.scss';
 
-export interface LoadingSpinnerProps {
+export type LoadingSpinnerProps = JSX.IntrinsicElements['div'] & {
   id?: string;
   caption?: string;
   className?: string;
   hidden?: boolean;
   height?: string;
-}
+};
 
 export function LoadingSpinner(props: LoadingSpinnerProps) {
-  const id = props.id || 'loading-spinner-' + Date.now();
+  const { id: idProp, caption, className, hidden, height, ...otherProps } = props;
+  const id = idProp || 'loading-spinner-' + Date.now();
 
   return (
     <div
+      {...otherProps}
       id={id}
-      className={`loading-spinner ${props.className ?? ''}`}
+      className={`loading-spinner ${className ?? ''}`}
       data-testid={id}
       style={{
-        visibility: props.hidden === true ? 'hidden' : 'visible',
-        height: props.height ? props.height : undefined,
+        visibility: hidden === true ? 'hidden' : 'visible',
+        height: height ? height : undefined,
       }}
     >
       <svg
@@ -42,7 +44,7 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
         ></path>
       </svg>
-      <span className="loading-spinner-caption">{props.caption}</span>
+      <span className="loading-spinner-caption">{caption}</span>
     </div>
   );
 }

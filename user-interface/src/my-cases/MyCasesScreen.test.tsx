@@ -1,19 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MyCasesScreen } from './MyCasesScreen';
-import {
-  CasesSearchPredicate,
-  DEFAULT_SEARCH_LIMIT,
-  DEFAULT_SEARCH_OFFSET,
-} from '@common/api/search';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
-import * as searchResultsModule from '@/search-results/SearchResults';
 import { CamsUser } from '@common/cams/users';
-import { getCamsUserReference } from '@common/cams/session';
 import { BrowserRouter } from 'react-router-dom';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { formatDate } from '@/lib/utils/datetime';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
@@ -42,16 +37,10 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render a list of cases assigned to a user', async () => {
+    const expectedData = MockData.buildArray(MockData.getCaseBasics, 3);
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
-      data: MockData.buildArray(MockData.getCaseBasics, 3),
+      data: expectedData,
     });
-
-    const expectedPredicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      assignments: [getCamsUserReference(user)],
-    };
-    const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
 
     render(
       <BrowserRouter>
@@ -60,19 +49,21 @@ describe('MyCasesScreen', () => {
     );
 
     await waitFor(() => {
-      const button = screen.getByTestId('open-modal-button');
-      expect(button).toBeInTheDocument();
+      const loadingIndicator = screen.queryByTestId('loading-indicator');
+      expect(loadingIndicator).not.toBeInTheDocument();
     });
-    expect(SearchResults).toHaveBeenCalledWith(
-      {
-        id: 'search-results',
-        noResultsMessage: 'No cases currently assigned.',
-        searchPredicate: expectedPredicate,
-        header: expect.anything(),
-        row: expect.anything(),
-      },
-      {},
-    );
+
+    const tableData = document.querySelectorAll('table tbody td');
+
+    let dIndex = 0;
+    for (let i = 0; i < 3; i++) {
+      expect(tableData![dIndex++]).toHaveTextContent(
+        `${getCaseNumber(expectedData[i].caseId)} (${expectedData[i].courtDivisionName})`,
+      );
+      expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].caseTitle);
+      expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].chapter);
+      expect(tableData![dIndex++]).toHaveTextContent(formatDate(expectedData[i].dateFiled));
+    }
   });
 
   test('should render "Invalid user expectation" if user has no offices', () => {

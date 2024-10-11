@@ -245,7 +245,7 @@ describe('test cams combobox', () => {
     const comboboxInputField = getFocusedComboInputField(comboboxId);
     expect(isDropdownClosed()).toBeFalsy();
 
-    fireEvent.keyDown(comboboxInputField, { key: 'Tab' });
+    fireEvent.keyDown(comboboxInputField, { key: 'ArrowDown' });
 
     const listItem = document.querySelector('li button');
     await waitFor(() => {
@@ -603,11 +603,12 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('Should clear the pill and selection when Enter is pressed on a pill. If it is the last pill focus goes to the pill before it, otherwise it goes to the pill after it. If it is the only pill the dropdown is closed.', async () => {
+  test('Should clear the pill when pressing Enter and return the focus to the input element', async () => {
     const updateSelection = vi.fn();
     renderWithProps({ onUpdateSelection: updateSelection });
 
     const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
+    const comboBoxInput = document.querySelector(`#${comboboxId}-combo-box-input`);
     const listButtons = document.querySelectorAll('li button');
     fireEvent.click(listButtons![0]);
     fireEvent.click(listButtons![1]);
@@ -628,7 +629,7 @@ describe('test cams combobox', () => {
       expect(listItems[2]!).toHaveClass('selected');
 
       expect(pillBox?.children.length).toEqual(2);
-      expect(pillBox!.children[0]).toHaveFocus();
+      expect(comboBoxInput).toHaveFocus();
     });
 
     fireEvent.keyDown(pillBox!.children[0], { key: 'Tab' });
@@ -641,7 +642,7 @@ describe('test cams combobox', () => {
       expect(listItems[2]!).not.toHaveClass('selected');
 
       expect(pillBox?.children.length).toEqual(1);
-      expect(pillBox!.children[0]).toHaveFocus();
+      expect(comboBoxInput).toHaveFocus();
     });
 
     fireEvent.keyDown(pillBox!.children[0], { key: 'Enter' });

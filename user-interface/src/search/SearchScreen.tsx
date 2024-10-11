@@ -13,14 +13,19 @@ import { courtSorter } from '@/data-verification/DataVerificationScreen';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { isValidSearchPredicate, SearchResults } from '@/search-results/SearchResults';
+import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 
 export default function SearchScreen() {
+  const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
+  });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
@@ -28,10 +33,12 @@ export default function SearchScreen() {
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
+  const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
+  const submitButtonRef = useRef<ButtonRef>(null);
 
   const api = useApi2();
   const globalAlert = useGlobalAlert();
@@ -63,47 +70,65 @@ export default function SearchScreen() {
     chapterSelectionRef.current?.disable(value);
   }
 
+  function setStartSearching() {
+    disableSearchForm(true);
+  }
+
+  function setEndSearching() {
+    disableSearchForm(false);
+  }
+
+  function handleFilterFormElementFocus(ev: React.FocusEvent<HTMLElement>) {
+    if (activeElement !== ev.target) setActiveElement(ev.target);
+  }
+
   function handleCaseNumberChange(caseNumber?: string): void {
-    if (searchPredicate.caseNumber != caseNumber) {
-      const newPredicate = { ...searchPredicate, caseNumber };
+    if (temporarySearchPredicate.caseNumber != caseNumber) {
+      const newPredicate = { ...temporarySearchPredicate, caseNumber };
       if (!caseNumber) delete newPredicate.caseNumber;
-      setSearchPredicate(newPredicate);
+      setTemporarySearchPredicate(newPredicate);
     }
   }
 
   function handleCourtClear(options: ComboOption[]) {
-    if (options.length === 0 && searchPredicate.divisionCodes) {
-      const newPredicate = { ...searchPredicate };
+    if (options.length === 0 && temporarySearchPredicate.divisionCodes) {
+      const newPredicate = { ...temporarySearchPredicate };
       delete newPredicate.divisionCodes;
-      setSearchPredicate(newPredicate);
+      setTemporarySearchPredicate(newPredicate);
     }
   }
 
   function handleCourtSelection(selection: ComboOption[]) {
     const newPredicate = {
-      ...searchPredicate,
+      ...temporarySearchPredicate,
     };
     delete newPredicate.divisionCodes;
     if (selection.length) {
       newPredicate.divisionCodes = selection.map((kv: ComboOption) => kv.value);
     }
-    setSearchPredicate(newPredicate);
+    setTemporarySearchPredicate(newPredicate);
   }
 
   function handleChapterClear(options: ComboOption[]) {
-    if (options.length === 0 && searchPredicate.chapters) {
-      const newPredicate = { ...searchPredicate };
+    if (options.length === 0 && temporarySearchPredicate.chapters) {
+      const newPredicate = { ...temporarySearchPredicate };
       delete newPredicate.chapters;
-      setSearchPredicate(newPredicate);
+      setTemporarySearchPredicate(newPredicate);
     }
   }
 
   function handleChapterSelection(selections: ComboOption[]) {
     let performSearch = false;
 
-    if (searchPredicate.chapters && searchPredicate.chapters.length == selections.length) {
+    if (
+      temporarySearchPredicate.chapters &&
+      temporarySearchPredicate.chapters.length == selections.length
+    ) {
       selections.forEach((chapter) => {
-        if (searchPredicate.chapters && !searchPredicate.chapters.includes(chapter.value)) {
+        if (
+          temporarySearchPredicate.chapters &&
+          !temporarySearchPredicate.chapters.includes(chapter.value)
+        ) {
           performSearch = true;
         }
       });
@@ -113,7 +138,7 @@ export default function SearchScreen() {
 
     if (performSearch) {
       const newPredicate = {
-        ...searchPredicate,
+        ...temporarySearchPredicate,
       };
       delete newPredicate.chapters;
 
@@ -121,8 +146,12 @@ export default function SearchScreen() {
         newPredicate.chapters = selections.map((option: ComboOption) => option.value);
       }
 
-      setSearchPredicate(newPredicate);
+      setTemporarySearchPredicate(newPredicate);
     }
+  }
+
+  function performSearch() {
+    setSearchPredicate(temporarySearchPredicate);
   }
 
   useEffect(() => {
@@ -143,7 +172,7 @@ export default function SearchScreen() {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-2">
-          <h2>Filters</h2>
+          <h2>Search By</h2>
           <div className={`filter-and-search`} data-testid="filter-and-search-panel">
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
@@ -154,8 +183,10 @@ export default function SearchScreen() {
                   label="Case Number"
                   autoComplete="off"
                   onChange={handleCaseNumberChange}
+                  onFocus={handleFilterFormElementFocus}
                   allowEnterKey={true}
                   allowPartialCaseNumber={false}
+                  aria-label="Find case by Case Number."
                   ref={caseNumberInputRef}
                 />
               </div>
@@ -167,9 +198,12 @@ export default function SearchScreen() {
                   className="new-court__select"
                   label="District (Division)"
                   ariaLabelPrefix="District (Division)"
+                  ariaDescription="multi-select"
+                  aria-live="off"
                   onClose={handleCourtSelection}
                   onPillSelection={handleCourtSelection}
                   onUpdateSelection={handleCourtClear}
+                  onFocus={handleFilterFormElementFocus}
                   options={getOfficeList(officesList)}
                   required={false}
                   multiSelect={true}
@@ -185,9 +219,12 @@ export default function SearchScreen() {
                   className="case-chapter__select"
                   label="Chapter"
                   ariaLabelPrefix="Chapter"
+                  ariaDescription="multi-select"
+                  aria-live="off"
                   onClose={handleChapterSelection}
                   onPillSelection={handleChapterSelection}
                   onUpdateSelection={handleChapterClear}
+                  onFocus={handleFilterFormElementFocus}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
@@ -195,9 +232,20 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
+            <div className="search-form-submit form-field">
+              <Button
+                id="search-submit"
+                className="search-submit-button"
+                uswdsStyle={UswdsButtonStyle.Default}
+                ref={submitButtonRef}
+                onClick={performSearch}
+              >
+                Search
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="grid-col-8">
+        <div className="grid-col-8" role="status" aria-live="polite">
           <h2>Results</h2>
           {!isValidSearchPredicate(searchPredicate) && (
             <div className="search-alert">
@@ -209,6 +257,7 @@ export default function SearchScreen() {
                 show={true}
                 slim={true}
                 inline={true}
+                role="alert"
               ></Alert>
             </div>
           )}
@@ -216,12 +265,8 @@ export default function SearchScreen() {
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}
-              onStartSearching={() => {
-                disableSearchForm(true);
-              }}
-              onEndSearching={() => {
-                disableSearchForm(false);
-              }}
+              onStartSearching={setStartSearching}
+              onEndSearching={setEndSearching}
               header={SearchResultsHeader}
               row={SearchResultsRow}
             />

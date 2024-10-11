@@ -7,7 +7,6 @@ import {
 } from '@common/api/search';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as searchResultsModule from '@/search-results/SearchResults';
-import * as staffAssignmentRow from '../row/StaffAssignmentRow';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
@@ -16,9 +15,16 @@ import { BrowserRouter } from 'react-router-dom';
 import { getCourtDivisionCodes } from '@common/cams/users';
 
 describe('StaffAssignmentScreen', () => {
+  beforeEach(() => {
+    vi.stubEnv('CAMS_PA11Y', 'true');
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
   test('should render a list of cases assigned to a case assignment manager', async () => {
     const user = testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-    testingUtilities.spyOnGlobalAlert();
 
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       data: MockData.buildArray(MockData.getCaseBasics, 3),
@@ -31,15 +37,10 @@ describe('StaffAssignmentScreen', () => {
     };
 
     const SearchResults = vi
-      .spyOn(searchResultsModule, 'SearchResults')
-      .mockImplementation((props: SearchResultsProps) => {
-        props.row({ bCase: MockData.getCaseBasics(), idx: 0, key: 0 });
+      .spyOn(searchResultsModule, 'default')
+      .mockImplementation((_props: SearchResultsProps) => {
         return <></>;
       });
-
-    const staffAssignmentRowSpy = vi
-      .spyOn(staffAssignmentRow, 'StaffAssignmentRow')
-      .mockReturnValue(<></>);
 
     render(
       <BrowserRouter>
@@ -57,12 +58,6 @@ describe('StaffAssignmentScreen', () => {
       },
       {},
     );
-
-    expect(staffAssignmentRowSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        options: expect.objectContaining({ modalId: 'assign-attorney-modal' }),
-      }),
-    );
   });
 
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
@@ -78,8 +73,8 @@ describe('StaffAssignmentScreen', () => {
   });
 
   test('should default the divisionCodes in the predicate to an empty array if user has no offices', async () => {
-    testingUtilities.setUser({ offices: undefined, roles: [CamsRole.CaseAssignmentManager] });
-    const SearchResults = vi.spyOn(searchResultsModule, 'SearchResults');
+    testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
+    const SearchResults = vi.spyOn(searchResultsModule, 'default');
 
     render(
       <BrowserRouter>

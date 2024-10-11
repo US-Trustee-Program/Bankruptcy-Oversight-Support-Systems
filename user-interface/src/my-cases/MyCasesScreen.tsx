@@ -9,7 +9,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { getCamsUserReference } from '@common/cams/session';
-import { SearchResults } from '@/search-results/SearchResults';
+import SearchResults from '@/search-results/SearchResults';
 import { MyCasesResultsHeader } from './MyCasesResultsHeader';
 import { MyCasesResultsRow } from './MyCasesResultsRow';
 import './MyCasesScreen.scss';
