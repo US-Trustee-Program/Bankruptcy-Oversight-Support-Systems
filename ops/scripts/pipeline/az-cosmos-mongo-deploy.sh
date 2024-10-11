@@ -94,13 +94,14 @@ allowAllNetworks=false
 if [[ ${environment} != 'Main-Gov' ]]; then
     allowAllNetworks=true
 fi
-# createAlerts=false
-# if [[ ${environment} == 'Main-Gov' ]]; then
-#     createAlerts=true
-# fi
+
+createAlerts=false
+if [[ ${environment} == 'Main-Gov' ]]; then
+    createAlerts=true
+fi
 
 # Provision and configure primary Webapp Azure CosmosDb resource
-# shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlerts property unusable
+# shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlertsproperty unusable
 az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-mongo.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-mongo-containers.parameters.json \
     -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
