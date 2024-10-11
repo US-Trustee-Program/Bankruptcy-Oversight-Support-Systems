@@ -2,7 +2,7 @@
 
 # Title:        az-cosmos-deploy.sh
 # Description:  Helper script to provision and configure Azure CosmosDB resources
-# Usage:        ./az-cosmos-deploy.sh
+# Usage:        ./az-cosmos-mongo-deploy.sh
 #
 # Exitcodes
 # ==========
@@ -14,26 +14,16 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 # defaults for optional parameters
 analyticsWorkspaceId=
-# actionGroupResourceGroup=
-# actionGroupName=
-# branchHashId=
+actionGroupResourceGroup=
+actionGroupName=
 # e2eCosmosDbExists=
-#     --branchHashId)
-#         branchHashId="${2}"
-#         shift 2
-#         ;;
-
-#     --e2eCosmosDbExists)
-#         e2eCosmosDbExists="${2}"
-#         shift 2
-#         ;;
-    # --actionGroupResourceGroup) # for Azure alerts
-    #     actionGroupResourceGroup="${2}"
+# branchHashId=
+    # --branchHashId)
+    #     branchHashId="${2}"
     #     shift 2
     #     ;;
-
-    # --actionGroupName) # for Azure alerts
-    #     actionGroupName="${2}"
+    # --e2eCosmosDbExists)
+    #     e2eCosmosDbExists="${2}"
     #     shift 2
     #     ;;
 while [[ $# -gt 0 ]]; do
@@ -63,7 +53,32 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --analyticsWorkspaceId) # for Azure Application Insights
+    --keyVaultName)
+        keyVaultName="${2}"
+        shift 2
+        ;;
+
+    --kvResourceGroup)
+        kvResourceGroup="${2}"
+        shift 2
+        ;;
+
+    --createAlerts)
+        createAlerts="${2}"
+        shift 2
+        ;;
+
+    --actionGroupResourceGroup)
+        actionGroupResourceGroup="${2}"
+        shift 2
+        ;;
+
+    --actionGroupName)
+        actionGroupName="${2}"
+        shift 2
+        ;;
+
+    --analyticsWorkspaceId)
         analyticsWorkspaceId="${2}"
         shift 2
         ;;
@@ -85,13 +100,15 @@ fi
 # fi
 
 # Provision and configure primary Webapp Azure CosmosDb resource
+# shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlerts property unusable
 az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-mongo.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-mongo-containers.parameters.json \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}"
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
 
+# shellcheck disable=SC2086 # REASON: Qoutes render the CreateAlerts property unusable
 az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-mongo.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-mongo-containers.parameters.json \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}"
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks="${allowAllNetworks}" keyVaultName="${keyVaultName}" kvResourceGroup="${kvResourceGroup}" createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
 
 # az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-mongo.bicep \
 #     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
