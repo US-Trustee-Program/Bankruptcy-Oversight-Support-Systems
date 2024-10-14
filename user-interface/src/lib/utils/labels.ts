@@ -2,7 +2,7 @@ import { ConsolidationType, OrderType } from '@common/cams/orders';
 
 export const orderStatusType = new Map([
   ['pending', 'Pending Review'],
-  ['approved', 'Approved'],
+  ['approved', 'Verified'],
   ['rejected', 'Rejected'],
 ]);
 
