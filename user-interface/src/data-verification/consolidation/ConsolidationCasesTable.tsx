@@ -219,6 +219,8 @@ function _ConsolidationCaseTable(
                         id={`assign-lead-${id}-${idx}`}
                         uswdsStyle={setLeadCaseStyle(bCase.caseId)}
                         className="mark-as-lead-button"
+                        role="switch"
+                        aria-checked={bCase.caseId === leadCaseId}
                         onClick={() => handleLeadCaseButton(bCase)}
                       >
                         {setLeadCaseButtonLabels(bCase.caseId)}

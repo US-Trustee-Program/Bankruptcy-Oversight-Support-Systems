@@ -135,6 +135,7 @@ const consolidationUseCase = (
       leadCaseCourt: store.leadCaseCourt,
       leadCaseNumber: store.leadCaseNumber,
     });
+    const currentInput = document.activeElement;
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
       controls.disableLeadCaseForm(true);
       store.setIsValidatingLeadCaseNumber(true);
@@ -197,6 +198,11 @@ const consolidationUseCase = (
           store.setIsValidatingLeadCaseNumber(false);
           controls.disableLeadCaseForm(false);
           store.setFoundValidCaseNumber(false);
+        })
+        .finally(() => {
+          setTimeout(() => {
+            (currentInput as HTMLElement).focus();
+          }, 100);
         });
     }
   }
@@ -415,8 +421,9 @@ const consolidationUseCase = (
     store.setConsolidationType(value as ConsolidationType);
   }
 
-  function handleSelectLeadCaseCourt(option: ComboOptionList): void {
-    store.setLeadCaseCourt((option as ComboOption)?.value || '');
+  function handleSelectLeadCaseCourt(option: ComboOption[]): void {
+    const court = option[0]?.value ?? '';
+    store.setLeadCaseCourt(court);
   }
 
   function handleToggleLeadCaseForm(checked: boolean): void {

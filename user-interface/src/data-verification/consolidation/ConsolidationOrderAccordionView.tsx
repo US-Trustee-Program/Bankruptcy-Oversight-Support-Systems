@@ -21,6 +21,13 @@ export type ConsolidationOrderAccordionViewProps = {
 
 export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordionViewProps) {
   const { viewModel } = props;
+
+  function printAriaLabel() {
+    const action =
+      viewModel.expandedAccordionId === `order-list-${viewModel.order.id}` ? 'Collapse' : 'Expand';
+    return `Click to ${action}.`;
+  }
+
   return (
     <Accordion
       key={viewModel.order.id}
@@ -36,21 +43,21 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
       >
         <div
           className="grid-col-6 text-no-wrap"
-          aria-label={`Court district ${viewModel.order.courtName}`}
+          aria-label={`Court district ${viewModel.order.courtName}.`}
         >
           {viewModel.order.courtName}
         </div>
         <div
           className="grid-col-2 text-no-wrap"
           title="Order Filed"
-          aria-label={`Order Filed ${viewModel.formattedOrderFiledDate}`}
+          aria-label={`Order Filed ${viewModel.formattedOrderFiledDate}.`}
         >
           {viewModel.formattedOrderFiledDate}
         </div>
         <div className="grid-col-2 order-type text-no-wrap">
           <span
             className="event-type-label"
-            aria-label={`Event type ${viewModel.orderType.get(viewModel.order.orderType)}`}
+            aria-label={`Event type ${viewModel.orderType.get(viewModel.order.orderType)}.`}
           >
             {viewModel.orderType.get(viewModel.order.orderType)}
           </span>
@@ -58,11 +65,12 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
         <div className="grid-col-2 order-status text-no-wrap">
           <span
             className={`${viewModel.order.status} event-status-label`}
-            aria-label={`Event status ${viewModel.statusType.get(viewModel.order.status)}`}
+            aria-label={`Event status ${viewModel.statusType.get(viewModel.order.status)}.`}
           >
             {viewModel.statusType.get(viewModel.order.status)}
           </span>
         </div>
+        <div aria-label={printAriaLabel()}></div>
       </section>
       <>
         {viewModel.order.status === 'pending' && (
@@ -174,6 +182,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         required={true}
                         label="Enter a case number"
                         ref={viewModel.leadCaseNumberInput}
+                        aria-describedby="lead-case-form-instructions"
                       />
                       {viewModel.leadCaseNumberError ? (
                         <Alert

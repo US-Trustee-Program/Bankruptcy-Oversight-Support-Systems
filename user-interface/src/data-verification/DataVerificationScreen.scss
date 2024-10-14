@@ -27,10 +27,6 @@
         }
       }
     }
-    .transfer-highlight__span {
-      padding: 0 0.3rem;
-      font-weight: bold;
-    }
   }
 
   .event-status-label {
@@ -67,6 +63,8 @@
     div.event-header {
       font-weight: bold;
       margin-bottom: 0.5rem;
+      h4 {
+        margin-bottom: 0.5rem;     }
     }
     .event-type-container {
       display: inline-block;
@@ -122,6 +120,9 @@
   .data-verification-accordion-header {
     padding: 1rem 3.5rem 1rem 1.25rem;
     font-weight: bold;
+    h3 {
+      margin: 0;
+    }
   }
 }
 

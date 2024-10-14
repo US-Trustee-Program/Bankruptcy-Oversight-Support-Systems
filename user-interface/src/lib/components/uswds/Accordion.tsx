@@ -45,6 +45,7 @@ interface AccordionProps extends PropsWithChildren {
   onExpand?: (id: string) => void;
   onCollapse?: (id: string) => void;
   hidden?: boolean;
+  ariaDescription?: string;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {

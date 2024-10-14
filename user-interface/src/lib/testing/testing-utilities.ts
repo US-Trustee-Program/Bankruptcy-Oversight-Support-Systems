@@ -102,7 +102,7 @@ function selectRadio(id: string) {
   return radio;
 }
 
-function selectComboBoxItem(id: string, itemIndex: number = 0) {
+async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   const itemListContainer = document.querySelector(`#${id}-item-list-container`);
   if (!itemListContainer!.classList.contains('expanded')) {
     const expandButton = document.querySelector(`#${id}-expand`);
@@ -113,7 +113,7 @@ function selectComboBoxItem(id: string, itemIndex: number = 0) {
   expect(listItem).toBeInTheDocument();
   expect(listItemButton).toBeInTheDocument();
   fireEvent.click(listItemButton as Element);
-  vi.waitFor(() => {
+  await vi.waitFor(() => {
     expect(listItem).toHaveClass('selected');
   });
 }
