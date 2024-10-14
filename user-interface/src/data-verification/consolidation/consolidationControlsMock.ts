@@ -7,6 +7,8 @@ import { ShowOptionParams } from '@/data-verification/consolidation/Consolidatio
 import { CheckboxState } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { ButtonRef } from '@/lib/components/uswds/Button';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
 
 export function useConsolidationControlsMock(): ConsolidationControls {
   const approveButton = {
@@ -41,11 +43,16 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const leadCaseDivisionRef = {
     current: {
-      setValue: (value: string) => {},
-      disable: (value: boolean) => {},
+      getValue: () => [
+        {
+          value: '',
+          label: '',
+          selected: false,
+          hidden: false,
+        },
+      ],
       clearValue: () => {},
-      resetValue: () => {},
-      getValue: () => '',
+      disable: (value: boolean) => {},
     },
   };
   const leadCaseNumberRef = {

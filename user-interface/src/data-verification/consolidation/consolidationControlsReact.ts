@@ -3,7 +3,7 @@ import { ConsolidationControls } from '@/data-verification/consolidation/consoli
 import { OrderTableImperative } from '@/data-verification/consolidation/ConsolidationCasesTable';
 import { ButtonRef } from '@/lib/components/uswds/Button';
 import { ConfirmationModalImperative } from '@/data-verification/consolidation/ConsolidationOrderModal';
-import { InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
+import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 
@@ -13,7 +13,7 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   const clearButton = useRef<ButtonRef>(null);
   const confirmationModal = useRef<ConfirmationModalImperative>(null);
   const jointAdministrationRadio = useRef<RadioRef>(null);
-  const leadCaseDivisionInput = useRef<InputRef>(null);
+  const leadCaseDivisionInput = useRef<ComboBoxRef>(null);
   const leadCaseNumberInput = useRef<InputRef>(null);
   const rejectButton = useRef<ButtonRef>(null);
   const substantiveRadio = useRef<RadioRef>(null);
