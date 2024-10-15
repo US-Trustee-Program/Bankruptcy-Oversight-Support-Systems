@@ -4,10 +4,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
+import Api2 from '@/lib/models/api2';
 
 describe('search screen', () => {
   const caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
@@ -68,14 +68,8 @@ describe('search screen', () => {
     expect(table).not.toBeInTheDocument();
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
-    await waitFor(() => {
-      expect(document.querySelector('#case-chapter-search-item-list')).toBeInTheDocument();
-    });
-
-    // Make first search request....
-    fireEvent.click(expandButton!);
-    const chapterElevenOptionButton = screen.getByTestId('combo-box-option-11');
-    fireEvent.click(chapterElevenOptionButton);
+    // Make first search request...
+    await testingUtilities.selectComboBoxItem('case-chapter-search', 2);
     fireEvent.click(expandButton!);
     fireEvent.click(searchButton);
 
@@ -100,10 +94,7 @@ describe('search screen', () => {
       expect.objectContaining(divisionSearchPredicate),
     );
 
-    // Make second search request...
-    fireEvent.click(expandButton!);
-    const chapterTwelveOptionButton = screen.getByTestId('combo-box-option-12');
-    fireEvent.click(chapterTwelveOptionButton);
+    await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
     fireEvent.click(expandButton!);
     fireEvent.click(searchButton);
 
@@ -124,7 +115,6 @@ describe('search screen', () => {
       expect.objectContaining(divisionSearchPredicate),
     );
 
-    // clear division selection
     const pillButton = document.querySelector('#case-chapter-search .pill-clear-button');
     expect(pillButton).toBeInTheDocument();
 
@@ -147,48 +137,43 @@ describe('search screen', () => {
       divisionCodes: expect.any(Array<string>),
     };
 
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      meta: {
+        self: '',
+      },
+      data: MockData.getCourts(),
+    });
+
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
-    const loadingSpinner = document.querySelector('.loading-spinner');
     const defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
 
     let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
-    const expandButton = screen.getByTestId('button-court-selections-search-expand');
 
+    const expandButton = screen.getByTestId('button-court-selections-search-expand');
     await waitFor(() => {
       expect(expandButton).toBeInTheDocument();
-      fireEvent.click(expandButton);
-    });
-
-    let divisionItemLi: HTMLElement;
-    let divisionText: string;
-    let divisionItemBtn: HTMLElement;
-
-    // Make first search request....
-    await waitFor(() => {
-      divisionItemLi = screen.getByTestId('court-selections-search-item-0');
-      divisionText = divisionItemLi.textContent!;
-      divisionItemBtn = screen.getByTestId(`combo-box-option-${divisionText}`);
-      expect(divisionItemLi).toBeInTheDocument();
-      expect(divisionItemBtn).toBeInTheDocument();
-      fireEvent.click(divisionItemBtn);
-    });
-
-    await waitFor(() => {
-      expect(divisionItemLi).toHaveClass('selected');
     });
 
     fireEvent.click(expandButton);
-    fireEvent.click(searchButton);
+
+    // Make first search request....
+    await waitFor(() => {
+      testingUtilities.selectComboBoxItem('court-selections-search', 1);
+    });
+
+    fireEvent.click(expandButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
       expect(expandedList).not.toBeInTheDocument();
     });
+
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -210,27 +195,11 @@ describe('search screen', () => {
     );
 
     // Make second search request...
-    await waitFor(() => {
-      fireEvent.click(expandButton);
-    });
-
-    divisionItemLi = screen.getByTestId('court-selections-search-item-1'); // select second option
-
-    divisionText = divisionItemLi.textContent!;
-    divisionItemBtn = screen.getByTestId(`combo-box-option-${divisionText}`);
-
-    // Make first search request....
-    await waitFor(() => {
-      expect(divisionItemLi).toBeInTheDocument();
-      expect(divisionItemBtn).toBeInTheDocument();
-      fireEvent.click(divisionItemBtn);
-    });
-
-    await waitFor(() => {
-      expect(divisionItemLi).toHaveClass('selected');
-    });
+    fireEvent.click(expandButton);
+    await testingUtilities.selectComboBoxItem('court-selections-search', 2);
 
     fireEvent.click(expandButton);
+
     fireEvent.click(searchButton);
 
     await waitFor(() => {
@@ -238,6 +207,7 @@ describe('search screen', () => {
       expect(expandedList).not.toBeInTheDocument();
     });
 
+    const loadingSpinner = document.querySelector('.loading-spinner');
     await waitFor(() => {
       // wait for loading to disappear
       expect(loadingSpinner).not.toBeInTheDocument();
@@ -440,7 +410,6 @@ describe('search screen', () => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
 
       const searchErrorAlert = document.querySelector('#search-error-alert');
-      screen.debug(searchErrorAlert!);
       expect(searchErrorAlert).not.toBeInTheDocument();
       expect(document.querySelector('.search-results table')).toBeInTheDocument();
     });

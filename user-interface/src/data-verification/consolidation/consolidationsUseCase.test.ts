@@ -419,9 +419,7 @@ describe('Consolidation UseCase tests', () => {
       return store.leadCaseNumberError.length != 0 && store.foundValidCaseNumber === false;
     });
 
-    expect(store.leadCaseNumberError).toEqual(
-      'Cannot verify lead case is not part of another consolidation. some server error',
-    );
+    expect(store.leadCaseNumberError).toEqual('some server error');
     expect(store.isValidatingLeadCaseNumber).toBe(false);
     expect(store.foundValidCaseNumber).toBe(false);
   });

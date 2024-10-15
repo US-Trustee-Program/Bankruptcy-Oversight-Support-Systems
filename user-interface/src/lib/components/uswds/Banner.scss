@@ -18,6 +18,17 @@
   .development {
     background-color: #207bc0;
     color: white;
+
+    .header-container {
+      .login-info {
+        a, a:visited, a:active {
+          color: white;
+        }
+        a:hover {
+          color: colors.$gold;
+        }
+      }
+    }
   }
 
   .test {
@@ -63,10 +74,10 @@
       padding: 0 1rem;
 
       a, a:visited, a:active {
-        color: white;
+        color: black;
       }
       a:hover {
-        color: colors.$gold;
+        color: colors.$eagle;
         text-decoration: underline;
       }
 

@@ -15,7 +15,7 @@ export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
-          <h3>Approved Transfer</h3>
+          <h3>Verified Transfer</h3>
         </div>
         <div className="grid-col-1"></div>
       </div>
@@ -28,25 +28,25 @@ export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
             data-testid={`approved-transfer-original-case-link-${order.caseId}`}
           ></CaseNumber>{' '}
           from
-          <span className="transfer-highlight__span">
+          <strong>
             {order.courtName} ({order.courtDivisionName})
-          </span>
+          </strong>
           to{' '}
           <CaseNumber
             caseId={order.newCase!.caseId}
             data-testid={`approved-transfer-new-case-link-${order.newCase!.caseId}`}
           ></CaseNumber>{' '}
           and court
-          <span className="transfer-highlight__span">
+          <strong>
             {order.newCase?.courtName} ({order.newCase?.courtDivisionName}).
-          </span>
+          </strong>
         </div>
         <div className="grid-col-1"></div>
       </div>
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
-          <h3>Order that was Approved</h3>
+          <h3>Order that was Verified</h3>
         </div>
         <div className="grid-col-1"></div>
       </div>

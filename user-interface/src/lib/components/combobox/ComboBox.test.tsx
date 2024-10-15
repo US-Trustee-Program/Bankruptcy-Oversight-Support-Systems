@@ -733,18 +733,21 @@ describe('test cams combobox', () => {
     const ref = React.createRef<ComboBoxRef>();
     renderWithProps({ multiSelect: false }, ref);
 
-    const input = document.querySelector('.combo-box-input');
-    expect(input).toBeInTheDocument();
+    const expandButton = document.querySelector('.expand-button');
+    expect(expandButton).toBeEnabled();
+    fireEvent.click(expandButton!);
 
     const listButtons = document.querySelectorAll('li button');
     fireEvent.click(listButtons![0]);
 
     const pill = document.querySelector('.pill');
-    const expandButton = document.querySelector('.expand-button');
-
-    expect(input).not.toBeInTheDocument();
-    expect(expandButton).toBeEnabled();
     expect(pill).toBeEnabled();
+
+    await waitFor(() => {
+      const input = document.querySelector('.combo-box-input');
+      expect(input).toBeInTheDocument();
+      expect(input).toBeVisible();
+    });
 
     ref.current?.disable(true);
 

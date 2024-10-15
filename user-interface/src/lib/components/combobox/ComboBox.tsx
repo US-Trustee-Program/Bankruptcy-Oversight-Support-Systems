@@ -22,6 +22,8 @@ export type ComboOption = {
   hidden?: boolean;
 };
 
+export type ComboOptionList = ComboOption | Array<ComboOption>;
+
 type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
@@ -47,7 +49,6 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const {
     label,
-    value,
     disabled,
     onUpdateSelection,
     onPillSelection,
@@ -59,18 +60,27 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     wrapPills,
     ariaLabelPrefix,
     ariaDescription,
+    value: _value,
+    options,
     ...otherProps
   } = props;
 
   // ========== STATE ==========
 
   const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(disabled ?? false);
-  const [selections, setSelections] = useState<ComboOption[]>([]);
+  const [selections, setSelections] = useState<ComboOption[]>(() => {
+    if (props.value) {
+      const selection = options.find((option) => option.value === props.value);
+      if (selection) return [selection];
+    }
+    return [];
+  });
+
   const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
-  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(props.options);
+  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(options);
 
   // ========== REFS ==========
 
@@ -102,8 +112,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setExpandedClass('expanded');
   }
 
-  function disable(value: boolean) {
-    setComboboxDisabled(value);
+  function disable(shouldDisable: boolean) {
+    setComboboxDisabled(shouldDisable);
   }
 
   function elementIsVerticallyScrollable(parent: Element, child: Element) {
@@ -112,10 +122,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return childHeight > parentHeight;
   }
 
-  function filterDropdown(value: string) {
+  function filterDropdown(filter: string) {
     const newOptions = [...filteredOptions];
     newOptions?.forEach((option) => {
-      if (!value || option.label.toLowerCase().includes(value.toLowerCase())) {
+      if (!filter || option.label.toLowerCase().includes(filter.toLowerCase())) {
         option.hidden = false;
       } else {
         option.hidden = true;
@@ -178,6 +188,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return result;
   }
 
+  function getInputClassName(): string {
+    let className = 'usa-tooltip combo-box-input';
+    if (multiSelect !== true && selections.length) className += ' hide-input';
+    return className;
+  }
+
   function setListItemClass(index: number, option: ComboOption) {
     const classNames = [];
     if (option.hidden) {
@@ -226,6 +242,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setSelections(newSelections);
     if (onUpdateSelection && newSelections) {
       onUpdateSelection(newSelections);
+    }
+
+    if (multiSelect !== true) {
+      closeDropdown(true);
     }
   }
 
@@ -342,8 +362,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    setFilteredOptions(props.options);
-  }, [props.options]);
+    setFilteredOptions(options);
+  }, [options]);
 
   useEffect(() => {
     if (props.onUpdateSelection) {
@@ -418,28 +438,25 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 disabled={comboboxDisabled}
               ></Pill>
             )}
-            {!(multiSelect !== true && selections.length) && (
-              <input
-                {...otherProps}
-                id={`${props.id}-combo-box-input`}
-                data-testid="combo-box-input"
-                className={`usa-tooltip combo-box-input`}
-                onChange={handleInputFilter}
-                onKeyDown={(ev) => handleKeyDown(ev, 0)}
-                onClick={openDropdown}
-                onFocus={handleOnInputFocus}
-                value={value}
-                disabled={comboboxDisabled}
-                aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
-                aria-describedby={`${props.id}-aria-description`}
-                aria-live={props['aria-live'] ?? undefined}
-                aria-haspopup="listbox"
-                aria-expanded={expanded}
-                aria-controls={`${props.id}-item-list`}
-                role="combobox"
-                ref={filterRef}
-              />
-            )}
+            <input
+              {...otherProps}
+              id={`${props.id}-combo-box-input`}
+              data-testid="combo-box-input"
+              className={getInputClassName()}
+              onChange={handleInputFilter}
+              onKeyDown={(ev) => handleKeyDown(ev, 0)}
+              onClick={openDropdown}
+              onFocus={handleOnInputFocus}
+              disabled={comboboxDisabled}
+              aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+              aria-describedby={`${props.id}-aria-description`}
+              aria-live={props['aria-live'] ?? undefined}
+              aria-haspopup="listbox"
+              aria-expanded={expanded}
+              aria-controls={`${props.id}-item-list`}
+              role="combobox"
+              ref={filterRef}
+            />
           </div>
           <Button
             id={`${props.id}-expand`}
@@ -473,7 +490,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   <button
                     className="usa-button--unstyled"
                     data-value={option.value}
-                    data-testid={`combo-box-option-${option.label}`}
+                    data-testid={`${props.id}-option-item-${idx}`}
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}

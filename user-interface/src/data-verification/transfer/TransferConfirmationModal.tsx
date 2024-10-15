@@ -78,7 +78,7 @@ function TransferConfirmationModalComponent(
   };
 
   function show(options: ShowOptionParams) {
-    const title = options.status === 'approved' ? 'Approve' : 'Reject';
+    const title = options.status === 'approved' ? 'Verify' : 'Reject';
 
     setOptions({
       status: options.status,
@@ -111,27 +111,27 @@ function TransferConfirmationModalComponent(
       onClose={clearReason}
       content={
         <>
-          This will {options.status === 'approved' ? 'approve' : 'stop'} the transfer of case
-          <span className="transfer-highlight__span">{getCaseNumber(fromCaseId)}</span>
-          in
-          <span className="transfer-highlight__span">
+          This will {options.status === 'approved' ? 'verify' : 'stop'} the transfer of case{' '}
+          <strong>{getCaseNumber(fromCaseId)}</strong> in{' '}
+          <strong>
             {fromCourtName} ({fromDivisionName})
-          </span>
+          </strong>
           {toCaseId && (
             <>
-              to case
-              <span className="transfer-highlight__span">{getCaseNumber(toCaseId)}</span>
+              {' '}
+              to case <strong>{getCaseNumber(toCaseId)}</strong>
             </>
           )}
           {toCourtName && (
             <>
-              in
-              <span className="transfer-highlight__span">
+              {' '}
+              in{' '}
+              <strong>
                 {toCourtName} ({toDivisionName})
-              </span>
+              </strong>
             </>
           )}
-          .
+          {'.'}
           {options.status === 'rejected' && (
             <div>
               <label htmlFor={`rejection-reason-${id}`} className="usa-label">

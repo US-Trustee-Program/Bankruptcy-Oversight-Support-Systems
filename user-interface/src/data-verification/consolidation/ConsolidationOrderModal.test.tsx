@@ -15,8 +15,6 @@ import { Consolidation } from '@common/cams/events';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 
-vi.mock('../lib/components/CamsSelect', () => import('@/lib/components/CamsSelect.mock'));
-
 describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();
   const onConfirmSpy = vitest.fn();
@@ -128,7 +126,7 @@ describe('ConsolidationOrderModalComponent', () => {
 
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');
-    expect(firstHeading).toHaveTextContent('Approve Case Consolidation');
+    expect(firstHeading).toHaveTextContent('Verify Case Consolidation');
 
     await waitFor(() => {
       expect(verifyButton).toBeEnabled();
@@ -138,7 +136,7 @@ describe('ConsolidationOrderModalComponent', () => {
 
     await waitFor(() => {
       const heading = document.querySelector('.usa-modal__heading');
-      expect(heading).toHaveTextContent('Approve Case Consolidation');
+      expect(heading).toHaveTextContent('Verify Case Consolidation');
     });
 
     verifyButton = screen.getByTestId(`button-${id}-submit-button`);
