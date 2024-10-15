@@ -490,7 +490,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   <button
                     className="usa-button--unstyled"
                     data-value={option.value}
-                    data-testid={`combo-box-option-item-${idx}`}
+                    data-testid={`${props.id}-option-item-${idx}`}
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
