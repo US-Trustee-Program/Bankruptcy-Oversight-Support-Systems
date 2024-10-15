@@ -41,8 +41,8 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --allowedSubnet)
-        allowedSubnet="${2}"
+    --allowedNetworks)
+        allowedNetworks="${2}"
         shift 2
         ;;
 
@@ -90,10 +90,10 @@ fi
 # Provision and configure primary Webapp Azure CosmosDb resource
 az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks=${allowAllNetworks} createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks=${allowAllNetworks} createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
 az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos.bicep \
     -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
-    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedSubnet="${allowedSubnet}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks=${allowAllNetworks} createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
+    -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${database}" allowedNetworks="${allowedNetworks}" analyticsWorkspaceId="${analyticsWorkspaceId}" allowAllNetworks=${allowAllNetworks} createAlerts=${createAlerts} actionGroupResourceGroupName="${actionGroupResourceGroup}" actionGroupName="${actionGroupName}"
 
 # Provision and configure e2e CosmosDB databases and containers only if slot deployments occur and it doesnt already eist. Otherwise we do not need an e2e database.
 if [[ $e2eCosmosDbExists != 'true' && $e2eCosmosDbExists != true ]]; then
