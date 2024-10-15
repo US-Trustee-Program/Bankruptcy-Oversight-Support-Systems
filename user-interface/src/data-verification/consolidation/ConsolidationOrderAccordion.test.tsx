@@ -16,8 +16,6 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 
-//TODO: update testss with new combobox implementation
-
 function findAccordionHeading(id: string) {
   const heading = screen.getByTestId(`accordion-heading-${id}`);
   expect(heading).toBeInTheDocument();
@@ -419,7 +417,6 @@ describe('ConsolidationOrderAccordion tests', () => {
   test.skip('should show alert when no lead case can be found in search field, and error returned was not a 404', async () => {
     renderWithProps();
     openAccordion(order.id!);
-    // setupApiGetMock({ bCase: order.childCases[0] });
 
     await toggleEnableCaseListForm(order.id!);
 
@@ -449,13 +446,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '9900001');
-    // const alertContainer = document.querySelector('.usa-alert-container');
-    // screen.debug(alertContainer!);
 
     await waitFor(() => {
-      // TODO: Figure out why this never changes from the loading spinner... still waiting for result.
-      // screen.debug(document.querySelector('.lead-case-number-container')!);
-
       const alert = findValidCaseNumberAlert(order.id!);
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent(

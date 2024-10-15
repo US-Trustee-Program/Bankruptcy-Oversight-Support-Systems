@@ -746,10 +746,7 @@ describe('test cams combobox', () => {
     await waitFor(() => {
       const input = document.querySelector('.combo-box-input');
       expect(input).toBeInTheDocument();
-      // TODO: It remains a mystery as to why this isn't working...
-      //I don't believe this is testing the correct thing
       expect(input).toBeVisible();
-      // expect(input).toHaveStyle({ display: 'none' }); why was this here?
     });
 
     ref.current?.disable(true);
