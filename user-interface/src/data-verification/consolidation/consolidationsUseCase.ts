@@ -11,12 +11,12 @@ import { getCurrentLeadCaseId } from './consolidationOrderAccordionUtils';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { CamsSelectOptionList, SearchableSelectOption } from '@/lib/components/CamsSelect';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseAssignment } from '@common/cams/assignments';
 import { Consolidation } from '@common/cams/events';
 import { ResponseBody } from '@common/api/response';
+import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 
 type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
 type PreviousLeadConsolidationFacts = {
@@ -49,7 +49,7 @@ export interface ConsolidationsUseCase {
   handleOnExpand(): Promise<void>;
   handleRejectButtonClick(): void;
   handleSelectConsolidationType(value: string): void;
-  handleSelectLeadCaseCourt(option: CamsSelectOptionList): void;
+  handleSelectLeadCaseCourt(option: ComboOptionList): void;
   handleToggleLeadCaseForm(checked: boolean): void;
 }
 
@@ -135,6 +135,7 @@ const consolidationUseCase = (
       leadCaseCourt: store.leadCaseCourt,
       leadCaseNumber: store.leadCaseNumber,
     });
+    const currentInput = document.activeElement;
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
       controls.disableLeadCaseForm(true);
       store.setIsValidatingLeadCaseNumber(true);
@@ -161,9 +162,7 @@ const consolidationUseCase = (
           .getCaseAssociations(currentLeadCaseId)
           .then((response) => handleCaseAssociationResponse(response, currentLeadCaseId))
           .catch((error) => {
-            const message =
-              'Cannot verify lead case is not part of another consolidation. ' + error.message;
-            throw new Error(message);
+            throw new Error(error.message);
           }),
       );
       calls.push(
@@ -199,6 +198,11 @@ const consolidationUseCase = (
           store.setIsValidatingLeadCaseNumber(false);
           controls.disableLeadCaseForm(false);
           store.setFoundValidCaseNumber(false);
+        })
+        .finally(() => {
+          setTimeout(() => {
+            (currentInput as HTMLElement).focus();
+          }, 100);
         });
     }
   }
@@ -417,8 +421,9 @@ const consolidationUseCase = (
     store.setConsolidationType(value as ConsolidationType);
   }
 
-  function handleSelectLeadCaseCourt(option: CamsSelectOptionList): void {
-    store.setLeadCaseCourt((option as SearchableSelectOption)?.value || '');
+  function handleSelectLeadCaseCourt(option: ComboOption[]): void {
+    const court = option[0]?.value ?? '';
+    store.setLeadCaseCourt(court);
   }
 
   function handleToggleLeadCaseForm(checked: boolean): void {

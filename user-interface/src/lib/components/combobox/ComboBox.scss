@@ -59,6 +59,9 @@ $listItemSelectedBorderColor: #949494;
           outline-width: 0;
           outline-color: none;
         }
+        .combo-box-input.hide-input {
+          display: none;
+        }
       }
     }
     .input-container:has(.combo-box-input:focus) {

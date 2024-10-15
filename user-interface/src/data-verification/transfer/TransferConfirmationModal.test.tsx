@@ -80,7 +80,7 @@ describe('TransferConfirmationModal component', () => {
   });
 
   test('should display static text for confirmation modal', async () => {
-    const expectedText = `This will approve the transfer of case${getCaseNumber(fromCase.caseId)}in${fromCase.courtName} (${fromCase.courtDivisionName})to case${getCaseNumber(toCase.caseId)}in${toCase.courtName} (${toCase.courtDivisionName}).`;
+    const expectedText = `This will verify the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}) to case ${getCaseNumber(toCase.caseId)} in ${toCase.courtName} (${toCase.courtDivisionName}).`;
     const { modalRef } = renderWithProps();
 
     modalRef.current?.show({
@@ -89,7 +89,7 @@ describe('TransferConfirmationModal component', () => {
 
     await waitFor(() => {
       const titleBlock = document.querySelector('.usa-modal__heading');
-      expect(titleBlock).toHaveTextContent('Approve case transfer?');
+      expect(titleBlock).toHaveTextContent('Verify case transfer?');
     });
 
     const textBlock = document.querySelector('.usa-modal__main section');
@@ -97,7 +97,7 @@ describe('TransferConfirmationModal component', () => {
   });
 
   test('should display static text for rejection modal without destination court and case number', async () => {
-    const expectedText = `This will stop the transfer of case${getCaseNumber(fromCase.caseId)}in${fromCase.courtName} (${fromCase.courtDivisionName}).`;
+    const expectedText = `This will stop the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}).`;
     const { modalRef } = renderWithProps({
       toCaseId: undefined,
       toCourtName: undefined,
@@ -113,7 +113,7 @@ describe('TransferConfirmationModal component', () => {
   });
 
   test('should display static text for rejection modal with destination court and case number', async () => {
-    const expectedText = `This will stop the transfer of case${getCaseNumber(fromCase.caseId)}in${fromCase.courtName} (${fromCase.courtDivisionName})to case${getCaseNumber(toCase.caseId)}in${toCase.courtName} (${toCase.courtDivisionName}).`;
+    const expectedText = `This will stop the transfer of case ${getCaseNumber(fromCase.caseId)} in ${fromCase.courtName} (${fromCase.courtDivisionName}) to case ${getCaseNumber(toCase.caseId)} in ${toCase.courtName} (${toCase.courtDivisionName}).`;
     const { modalRef, onConfirm } = renderWithProps();
 
     modalRef.current?.show({

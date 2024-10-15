@@ -218,7 +218,7 @@ export default function DataVerificationScreen() {
                   {featureFlags[CONSOLIDATIONS_ENABLED] && (
                     <>
                       <div className="event-type-container">
-                        <div className="event-header">Event Type</div>
+                        <h4 className="event-header">Event Status</h4>
                         <div>
                           <Filter<OrderType>
                             label="Transfer"
@@ -237,7 +237,7 @@ export default function DataVerificationScreen() {
                     </>
                   )}
                   <div className="event-status-container">
-                    <div className="event-header">Event Status</div>
+                    <h4 className="event-header">Event Status</h4>
                     <div>
                       <Filter<OrderStatus>
                         label="Pending Review"
@@ -246,7 +246,7 @@ export default function DataVerificationScreen() {
                         callback={handleStatusFilter}
                       />
                       <Filter<OrderStatus>
-                        label="Approved"
+                        label="Verified"
                         filterType="approved"
                         filters={statusFilter}
                         callback={handleStatusFilter}
@@ -288,10 +288,12 @@ export default function DataVerificationScreen() {
                   <>
                     <div className="data-verification-accordion-header" data-testid="orders-header">
                       <div className="grid-row grid-gap-lg">
-                        <div className="grid-col-6 text-no-wrap">Court District</div>
-                        <div className="grid-col-2 text-no-wrap">Order Filed</div>
-                        <div className="grid-col-2 text-no-wrap">Event Type</div>
-                        <div className="grid-col-2 text-no-wrap">Event Status</div>
+                        <div className="grid-col-6 text-no-wrap">
+                          <h3>Court District</h3>
+                        </div>
+                        <h3 className="grid-col-2 text-no-wrap">Order Filed</h3>
+                        <h3 className="grid-col-2 text-no-wrap">Event Type</h3>
+                        <h3 className="grid-col-2 text-no-wrap">Event Status</h3>
                       </div>
                     </div>
                     <AccordionGroup>{...accordionItems}</AccordionGroup>
@@ -306,7 +308,6 @@ export default function DataVerificationScreen() {
     </MainContent>
   );
 }
-
 interface FilterProps<T extends string> {
   label: string;
   filterType: T;
@@ -320,6 +321,8 @@ function Filter<T extends string>(props: FilterProps<T>) {
     <button
       className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
       aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
+      role="switch"
+      aria-checked={filters.includes(filterType) ? true : false}
       onClick={() => callback(filterType)}
       data-testid={`order-status-filter-${filterType}`}
     >

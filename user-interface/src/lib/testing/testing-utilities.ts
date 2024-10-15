@@ -84,22 +84,41 @@ function spyOnUseState() {
   return vi.spyOn(UseStateModule, 'useState').mockImplementation(useStateMock);
 }
 
-function selectCheckbox(querySelector: string) {
-  const checkbox = document.querySelector(`#checkbox-${querySelector}`);
+function selectCheckbox(id: string) {
+  const checkbox = document.querySelector(`#checkbox-${id}`);
   if (checkbox) {
-    const checkboxLabelButton = document.querySelector(`#checkbox-${querySelector}-click-target`);
+    const checkboxLabelButton = document.querySelector(`#checkbox-${id}-click-target`);
     if (checkboxLabelButton) fireEvent.click(checkboxLabelButton);
   }
   return checkbox;
 }
 
-function selectRadio(querySelector: string) {
-  const radio = document.querySelector(`#radio-${querySelector}`);
+function selectRadio(id: string) {
+  const radio = document.querySelector(`#radio-${id}`);
   if (radio) {
-    const radioLabelButton = document.querySelector(`#radio-${querySelector}-click-target`);
+    const radioLabelButton = document.querySelector(`#radio-${id}-click-target`);
     if (radioLabelButton) fireEvent.click(radioLabelButton);
   }
   return radio;
+}
+
+async function selectComboBoxItem(id: string, itemIndex: number = 0) {
+  const itemListContainer = document.querySelector(`#${id}-item-list-container`);
+  if (!itemListContainer!.classList.contains('expanded')) {
+    const expandButton = document.querySelector(`#${id}-expand`);
+    fireEvent.click(expandButton!);
+  }
+
+  const listItem = document.querySelector(`[data-testid=${id}-item-${itemIndex}]`);
+  expect(listItem as HTMLElement).toBeVisible();
+
+  const listItemButton = document.querySelector(`[data-testid=${id}-option-item-${itemIndex}]`);
+  expect(listItemButton).toBeVisible();
+
+  fireEvent.click(listItemButton as Element);
+  await vi.waitFor(() => {
+    expect(listItem).toHaveClass('selected');
+  });
 }
 
 export const TestingUtilities = {
@@ -110,6 +129,7 @@ export const TestingUtilities = {
   spyOnUseState,
   selectCheckbox,
   selectRadio,
+  selectComboBoxItem,
 };
 
 export default TestingUtilities;

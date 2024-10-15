@@ -136,7 +136,7 @@ function ConsolidationOrderModalComponent(
       setLeadCase(options.leadCase);
       setOptions({
         status: options.status,
-        heading: 'Approve Case Consolidation',
+        heading: 'Verify Case Consolidation',
       });
     } else if (options.status === 'rejected') {
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
@@ -232,8 +232,7 @@ function ConsolidationOrderModalComponent(
     return (
       <div>
         <div className="modal-consolidation-type">
-          This will confirm the{' '}
-          <span className="text-bold">{consolidationTypeMap.get(consolidationType!)}</span> of
+          This will confirm the <strong>{consolidationTypeMap.get(consolidationType!)}</strong> of
         </div>
         <div
           data-testid="modal-case-list-container"
@@ -249,11 +248,11 @@ function ConsolidationOrderModalComponent(
           </ul>
         </div>
         <div className="modal-assignments-list">
-          with <span className="text-bold">{getCaseNumber(leadCase?.caseId)}</span> as the Lead
-          Case. All cases will be assigned to{' '}
-          <span className="text-bold">
+          with <strong>{getCaseNumber(leadCase?.caseId)}</strong> as the Lead Case. All cases will
+          be assigned to{' '}
+          <strong>
             {formatListForDisplay(getAssigneeNames(leadCase?.attorneyAssignments ?? []))}
-          </span>
+          </strong>
           .
         </div>
       </div>

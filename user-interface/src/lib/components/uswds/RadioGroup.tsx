@@ -14,7 +14,11 @@ export const RadioGroup = (props: RadioGroupProps) => {
 
   return (
     <fieldset className={`usa-fieldset radio-group ${classes}`}>
-      <legend className="usa-legend" data-required={required}>
+      <legend
+        className="usa-legend"
+        data-required={required}
+        aria-label={`${props.label}. ${required ? 'Required' : ''}`}
+      >
         {props.label}
       </legend>
       {props.children}

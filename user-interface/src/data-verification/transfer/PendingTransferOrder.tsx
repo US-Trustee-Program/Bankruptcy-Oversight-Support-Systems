@@ -69,7 +69,7 @@ function _PendingTransferOrder(
           {
             message: `Transfer of case to ${getCaseNumber(orderTransfer.newCase?.caseId)} in ${
               orderTransfer.newCase?.courtName
-            } (${orderTransfer.newCase?.courtDivisionName}) was ${orderTransfer.status}.`,
+            } (${orderTransfer.newCase?.courtDivisionName}) was ${orderTransfer.status === 'approved' ? 'verified' : 'rejected'}.`,
             type: UswdsAlertStyle.Success,
             timeOut: 8,
           },
@@ -197,7 +197,7 @@ function _PendingTransferOrder(
             disabled={true}
             ref={approveButtonRef}
           >
-            Approve
+            Verify
           </Button>
         </div>
         <div className="grid-col-1"></div>

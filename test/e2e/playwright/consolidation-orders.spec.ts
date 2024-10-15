@@ -145,7 +145,6 @@ test.describe('Consolidation Orders', () => {
 
     // Action fill form for selecting a lead case not listed in child cases
     await page.locator('#lead-case-court div').first().click();
-    await page.getByRole('option', { name: /Manhattan/ }).click();
 
     await page
       .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
