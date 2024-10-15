@@ -94,31 +94,29 @@ describe('search screen', () => {
       expect.objectContaining(divisionSearchPredicate),
     );
 
-    // Make second search request...
-    // testingUtilities.selectComboBoxItem('case-chapter-search', 3);
-    // fireEvent.click(expandButton!);
-    // fireEvent.click(searchButton);
+    testingUtilities.selectComboBoxItem('case-chapter-search', 3);
+    fireEvent.click(expandButton!);
+    fireEvent.click(searchButton);
 
-    // await waitFor(() => {
-    //   const listItemContainer = document.querySelector('#case-chapter-search-item-list-container');
-    //   screen.debug(listItemContainer!);
-    //   expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-    //   table = document.querySelector('.search-results table');
-    //   expect(table).not.toBeInTheDocument();
-    // });
+    await waitFor(() => {
+      const listItemContainer = document.querySelector('#case-chapter-search-item-list-container');
+      screen.debug(listItemContainer!);
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+      table = document.querySelector('.search-results table');
+      expect(table).not.toBeInTheDocument();
+    });
 
-    // await waitFor(() => {
-    //   // wait for loading to disappear
-    //   expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-    //   table = document.querySelector('.search-results table');
-    //   expect(table).toBeVisible();
-    // });
+    await waitFor(() => {
+      // wait for loading to disappear
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('.search-results table');
+      expect(table).toBeVisible();
+    });
 
-    // expect(searchCasesSpy).toHaveBeenLastCalledWith(
-    //   expect.objectContaining(divisionSearchPredicate),
-    // );
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining(divisionSearchPredicate),
+    );
 
-    // clear division selection
     const pillButton = document.querySelector('#case-chapter-search .pill-clear-button');
     expect(pillButton).toBeInTheDocument();
 
@@ -166,7 +164,7 @@ describe('search screen', () => {
 
     // Make first search request....
     await waitFor(() => {
-      testingUtilities.selectComboBoxItem('court-selections-search');
+      testingUtilities.selectComboBoxItem('court-selections-search', 1);
     });
 
     fireEvent.click(expandButton);
@@ -201,7 +199,7 @@ describe('search screen', () => {
     await waitFor(() => {
       fireEvent.click(expandButton);
     });
-    testingUtilities.selectComboBoxItem('court-selections-search', 1);
+    testingUtilities.selectComboBoxItem('court-selections-search', 2);
 
     fireEvent.click(expandButton);
     fireEvent.click(searchButton);
