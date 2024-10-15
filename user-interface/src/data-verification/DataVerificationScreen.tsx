@@ -218,9 +218,7 @@ export default function DataVerificationScreen() {
                   {featureFlags[CONSOLIDATIONS_ENABLED] && (
                     <>
                       <div className="event-type-container">
-                        <div className="event-header">
-                          <h4>Event Type</h4>
-                        </div>
+                        <h4 className="event-header">Event Status</h4>
                         <div>
                           <Filter<OrderType>
                             label="Transfer"
@@ -239,9 +237,7 @@ export default function DataVerificationScreen() {
                     </>
                   )}
                   <div className="event-status-container">
-                    <div className="event-header">
-                      <h4>Event Status</h4>
-                    </div>
+                    <h4 className="event-header">Event Status</h4>
                     <div>
                       <Filter<OrderStatus>
                         label="Pending Review"
@@ -295,15 +291,9 @@ export default function DataVerificationScreen() {
                         <div className="grid-col-6 text-no-wrap">
                           <h3>Court District</h3>
                         </div>
-                        <div className="grid-col-2 text-no-wrap">
-                          <h3>Order Filed</h3>
-                        </div>
-                        <div className="grid-col-2 text-no-wrap">
-                          <h3>Event Type</h3>
-                        </div>
-                        <div className="grid-col-2 text-no-wrap">
-                          <h3>Event Status</h3>
-                        </div>
+                        <h3 className="grid-col-2 text-no-wrap">Order Filed</h3>
+                        <h3 className="grid-col-2 text-no-wrap">Event Type</h3>
+                        <h3 className="grid-col-2 text-no-wrap">Event Status</h3>
                       </div>
                     </div>
                     <AccordionGroup>{...accordionItems}</AccordionGroup>
@@ -318,7 +308,6 @@ export default function DataVerificationScreen() {
     </MainContent>
   );
 }
-
 interface FilterProps<T extends string> {
   label: string;
   filterType: T;

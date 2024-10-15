@@ -99,8 +99,6 @@ describe('search screen', () => {
     fireEvent.click(searchButton);
 
     await waitFor(() => {
-      const listItemContainer = document.querySelector('#case-chapter-search-item-list-container');
-      screen.debug(listItemContainer!);
       expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
       table = document.querySelector('.search-results table');
       expect(table).not.toBeInTheDocument();
