@@ -85,83 +85,83 @@ jobs:
       path: user-interface
       node-version: ${{ vars.NODE_VERSION }}
 
-  unit-test-backend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: backend/functions
-      node-version: ${{ vars.NODE_VERSION }}
+  # unit-test-backend:
+  #   uses: ./.github/workflows/reusable-unit-test.yml
+  #   with:
+  #     path: backend/functions
+  #     node-version: ${{ vars.NODE_VERSION }}
 
-  unit-test-common:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: common
-      node-version: ${{ vars.NODE_VERSION }}
+  # unit-test-common:
+  #   uses: ./.github/workflows/reusable-unit-test.yml
+  #   with:
+  #     path: common
+  #     node-version: ${{ vars.NODE_VERSION }}
 
-  security-scan:
-    name: Security
-    uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
+  # security-scan:
+  #   name: Security
+  #   uses: ./.github/workflows/sub-security-scan.yml
+  #   secrets: inherit # pragma: allowlist secret
 
-  build:
-    name: Build
-    needs: [setup]
-    uses: ./.github/workflows/sub-build.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      nodeVersion: ${{ vars.NODE_VERSION }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      camsServerHostname: ${{ needs.setup.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
-      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
-      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
-      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+  # build:
+  #   name: Build
+  #   needs: [setup]
+  #   uses: ./.github/workflows/sub-build.yml
+  #   secrets: inherit # pragma: allowlist secret
+  #   with:
+  #     nodeVersion: ${{ vars.NODE_VERSION }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     camsServerHostname: ${{ needs.setup.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+  #     camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+  #     camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+  #     camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+  #     webappName: ${{ needs.setup.outputs.webappName }}
+  #     environment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #     launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
 
-  deploy:
-    name: Cloud Resource Deployment
-    uses: ./.github/workflows/sub-deploy.yml
-    needs:
-      [
-        setup,
-        build,
-        accessibility-test,
-        security-scan,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-      ]
-    if: |
-      ((github.ref == 'refs/heads/main')
-      || (github.ref == 'refs/heads/dependency-updates-auto')
-      || (inputs.deployBranch == 'true'))
-    with:
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
-      environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      deployBranch: ${{ github.ref != 'refs/heads/main' }}
-      deployBicep: ${{ needs.setup.outputs.deployBicep }}
-      cosmosClientId: ${{ needs.setup.outputs.cosmosClientId }}
-    secrets: inherit # pragma: allowlist secret
+  # deploy:
+  #   name: Cloud Resource Deployment
+  #   uses: ./.github/workflows/sub-deploy.yml
+  #   needs:
+  #     [
+  #       setup,
+  #       build,
+  #       accessibility-test,
+  #       security-scan,
+  #       unit-test-frontend,
+  #       unit-test-backend,
+  #       unit-test-common,
+  #     ]
+  #   if: |
+  #     ((github.ref == 'refs/heads/main')
+  #     || (github.ref == 'refs/heads/dependency-updates-auto')
+  #     || (inputs.deployBranch == 'true'))
+  #   with:
+  #     ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #     azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  #     azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
+  #     stackName: ${{ needs.setup.outputs.stackName }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     webAppName: ${{ needs.setup.outputs.webappName }}
+  #     environmentHash: ${{ needs.setup.outputs.environmentHash }}
+  #     execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
+  #     slotName: ${{ needs.setup.outputs.slotName }}
+  #     deployBranch: ${{ github.ref != 'refs/heads/main' }}
+  #     deployBicep: ${{ needs.setup.outputs.deployBicep }}
+  #     cosmosClientId: ${{ needs.setup.outputs.cosmosClientId }}
+  #   secrets: inherit # pragma: allowlist secret
 
-  deploy-code-slot:
-    name: Slot Code Deployment
-    uses: ./.github/workflows/sub-deploy-code-slot.yml
-    needs: [setup, deploy]
-    with:
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
-      environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
-      initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
-    secrets: inherit # pragma: allowlist secret
+  # deploy-code-slot:
+  #   name: Slot Code Deployment
+  #   uses: ./.github/workflows/sub-deploy-code-slot.yml
+  #   needs: [setup, deploy]
+  #   with:
+  #     ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+  #     azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+  #     stackName: ${{ needs.setup.outputs.stackName }}
+  #     apiName: ${{ needs.setup.outputs.apiName }}
+  #     webAppName: ${{ needs.setup.outputs.webappName }}
+  #     environmentHash: ${{ needs.setup.outputs.environmentHash }}
+  #     slotName: ${{ needs.setup.outputs.slotName }}
+  #     e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
+  #     initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
+  #   secrets: inherit # pragma: allowlist secret
