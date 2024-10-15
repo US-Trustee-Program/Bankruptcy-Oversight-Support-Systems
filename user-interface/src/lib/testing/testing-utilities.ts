@@ -108,10 +108,13 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
     const expandButton = document.querySelector(`#${id}-expand`);
     fireEvent.click(expandButton!);
   }
+
   const listItem = document.querySelector(`[data-testid=${id}-item-${itemIndex}]`);
-  const listItemButton = document.querySelector(`[data-testid=combo-box-option-item-${itemIndex}]`);
   expect(listItem).toBeInTheDocument();
+
+  const listItemButton = document.querySelector(`[data-testid=combo-box-option-item-${itemIndex}]`);
   expect(listItemButton).toBeInTheDocument();
+
   fireEvent.click(listItemButton as Element);
   await vi.waitFor(() => {
     expect(listItem).toHaveClass('selected');

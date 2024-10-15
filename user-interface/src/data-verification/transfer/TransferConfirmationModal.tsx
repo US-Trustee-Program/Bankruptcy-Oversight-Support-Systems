@@ -115,9 +115,10 @@ function TransferConfirmationModalComponent(
           <strong>{getCaseNumber(fromCaseId)}</strong> in{' '}
           <strong>
             {fromCourtName} ({fromDivisionName})
-          </strong>{' '}
+          </strong>
           {toCaseId && (
             <>
+              {' '}
               to case <strong>{getCaseNumber(toCaseId)}</strong>
             </>
           )}
@@ -130,7 +131,7 @@ function TransferConfirmationModalComponent(
               </strong>
             </>
           )}
-          .
+          {'.'}
           {options.status === 'rejected' && (
             <div>
               <label htmlFor={`rejection-reason-${id}`} className="usa-label">
