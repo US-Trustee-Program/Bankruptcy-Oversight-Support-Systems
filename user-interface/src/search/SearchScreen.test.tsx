@@ -4,10 +4,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
+import Api2 from '@/lib/models/api2';
 
 describe('search screen', () => {
   const caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
@@ -141,18 +141,24 @@ describe('search screen', () => {
       divisionCodes: expect.any(Array<string>),
     };
 
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      meta: {
+        self: '',
+      },
+      data: MockData.getCourts(),
+    });
+
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
-    const loadingSpinner = document.querySelector('.loading-spinner');
     const defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
 
     let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
-    const expandButton = screen.getByTestId('button-court-selections-search-expand');
 
+    const expandButton = screen.getByTestId('button-court-selections-search-expand');
     await waitFor(() => {
       expect(expandButton).toBeInTheDocument();
       fireEvent.click(expandButton);
@@ -164,12 +170,13 @@ describe('search screen', () => {
     });
 
     fireEvent.click(expandButton);
-    fireEvent.click(searchButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
       expect(expandedList).not.toBeInTheDocument();
     });
+
+    fireEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -204,6 +211,7 @@ describe('search screen', () => {
       expect(expandedList).not.toBeInTheDocument();
     });
 
+    const loadingSpinner = document.querySelector('.loading-spinner');
     await waitFor(() => {
       // wait for loading to disappear
       expect(loadingSpinner).not.toBeInTheDocument();

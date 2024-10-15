@@ -232,7 +232,7 @@ describe('audit history tests', () => {
 
     const newElement1 = screen.queryByTestId('new-order-0');
     expect(newElement1).toBeInTheDocument();
-    expect(newElement1).toHaveTextContent('Approved');
+    expect(newElement1).toHaveTextContent('Verified');
 
     const changeDate1 = screen.queryByTestId('change-date-0');
     expect(changeDate1).toHaveTextContent('01/31/2024');

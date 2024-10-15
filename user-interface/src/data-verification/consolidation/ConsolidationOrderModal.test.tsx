@@ -128,7 +128,7 @@ describe('ConsolidationOrderModalComponent', () => {
 
     // Check the first heading.
     const firstHeading = document.querySelector('.usa-modal__heading');
-    expect(firstHeading).toHaveTextContent('Approve Case Consolidation');
+    expect(firstHeading).toHaveTextContent('Verify Case Consolidation');
 
     await waitFor(() => {
       expect(verifyButton).toBeEnabled();
@@ -138,7 +138,7 @@ describe('ConsolidationOrderModalComponent', () => {
 
     await waitFor(() => {
       const heading = document.querySelector('.usa-modal__heading');
-      expect(heading).toHaveTextContent('Approve Case Consolidation');
+      expect(heading).toHaveTextContent('Verify Case Consolidation');
     });
 
     verifyButton = screen.getByTestId(`button-${id}-submit-button`);
