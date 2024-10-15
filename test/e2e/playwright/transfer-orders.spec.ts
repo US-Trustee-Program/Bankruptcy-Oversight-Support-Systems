@@ -55,7 +55,6 @@ test.describe('Transfer Orders', () => {
 
     // Wait on the offices to come back from API
     await officesRequestPromise;
-
     // Wait for the transfer orders.
     const request = await ordersRequestPromise;
     const response = await request.response();
@@ -72,8 +71,9 @@ test.describe('Transfer Orders', () => {
     await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
     await page.locator(`#court-selection-${orderId}-combo-box-input`).fill(court);
-    await page.locator(`[data-value='081']`).click();
-
+    await page
+      .locator(`[data-testid^='court-selection-${orderId}-option-item-'][data-value='081']`)
+      .click();
     await page.getByTestId(`new-case-input-${firstOrderId}`).fill('11-11111');
     await expect(page.getByTestId('alert-container-validation-not-found')).toBeVisible();
 
@@ -141,8 +141,9 @@ test.describe('Transfer Orders', () => {
     await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
     await page.locator(`#court-selection-${orderId}-combo-box-input`).fill(court);
-    // await page.getByTestId(`combo-box-option-Southern District of New York (Manhattan)`).click();
-    await page.locator(`[data-value='081']`).click();
+    await page
+      .locator(`[data-testid^='court-selection-${orderId}-option-item-'][data-value='081']`)
+      .click();
 
     await page.getByTestId(`new-case-input-${orderId}`).isEnabled();
 
