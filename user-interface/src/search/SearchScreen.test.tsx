@@ -414,7 +414,6 @@ describe('search screen', () => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
 
       const searchErrorAlert = document.querySelector('#search-error-alert');
-      screen.debug(searchErrorAlert!);
       expect(searchErrorAlert).not.toBeInTheDocument();
       expect(document.querySelector('.search-results table')).toBeInTheDocument();
     });
