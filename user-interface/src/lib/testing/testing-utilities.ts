@@ -112,7 +112,7 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   const listItem = document.querySelector(`[data-testid=${id}-item-${itemIndex}]`);
   expect(listItem).toBeInTheDocument();
 
-  const listItemButton = document.querySelector(`[data-testid=combo-box-option-item-${itemIndex}]`);
+  const listItemButton = document.querySelector(`[data-testid=${id}-option-item-${itemIndex}]`);
   expect(listItemButton).toBeInTheDocument();
 
   fireEvent.click(listItemButton as Element);
