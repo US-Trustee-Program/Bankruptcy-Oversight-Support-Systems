@@ -69,7 +69,7 @@ describe('search screen', () => {
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
     // Make first search request...
-    testingUtilities.selectComboBoxItem('case-chapter-search', 2);
+    await testingUtilities.selectComboBoxItem('case-chapter-search', 2);
     fireEvent.click(expandButton!);
     fireEvent.click(searchButton);
 
@@ -94,7 +94,7 @@ describe('search screen', () => {
       expect.objectContaining(divisionSearchPredicate),
     );
 
-    testingUtilities.selectComboBoxItem('case-chapter-search', 3);
+    await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
     fireEvent.click(expandButton!);
     fireEvent.click(searchButton);
 
@@ -199,7 +199,7 @@ describe('search screen', () => {
     await waitFor(() => {
       fireEvent.click(expandButton);
     });
-    testingUtilities.selectComboBoxItem('court-selections-search', 2);
+    await testingUtilities.selectComboBoxItem('court-selections-search', 2);
 
     fireEvent.click(expandButton);
     fireEvent.click(searchButton);

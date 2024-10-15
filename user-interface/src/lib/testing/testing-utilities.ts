@@ -110,10 +110,10 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   }
 
   const listItem = document.querySelector(`[data-testid=${id}-item-${itemIndex}]`);
-  expect(listItem).toBeInTheDocument();
+  expect(listItem).toBeVisible();
 
   const listItemButton = document.querySelector(`[data-testid=${id}-option-item-${itemIndex}]`);
-  expect(listItemButton).toBeInTheDocument();
+  expect(listItemButton).toBeVisible();
 
   fireEvent.click(listItemButton as Element);
   await vi.waitFor(() => {

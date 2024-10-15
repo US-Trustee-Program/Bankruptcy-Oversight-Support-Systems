@@ -328,7 +328,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(markAsLeadButton).toHaveClass('usa-button--outline');
     });
 
-    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 
@@ -354,7 +354,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(rejectButton).toBeEnabled();
     });
 
-    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     enterCaseNumber(caseNumberInput, validCaseNumber);
 
     await waitFor(() => {
@@ -381,7 +381,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '11111111');
@@ -400,7 +400,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
 
-    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     enterCaseNumber(caseNumberInput, getCaseNumber(order.childCases[0].caseId).replace('-', ''));
 
     await waitFor(() => {
@@ -423,7 +423,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     enterCaseNumber(caseNumberInput, '00000000');
@@ -444,7 +444,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    testingUtilities.selectComboBoxItem('lead-case-court', 0);
+    await testingUtilities.selectComboBoxItem('lead-case-court', 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 
