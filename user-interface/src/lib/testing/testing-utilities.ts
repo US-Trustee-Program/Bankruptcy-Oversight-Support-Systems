@@ -110,7 +110,7 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   }
 
   const listItem = document.querySelector(`[data-testid=${id}-item-${itemIndex}]`);
-  expect(listItem).toBeVisible();
+  expect(listItem as HTMLElement).toBeVisible();
 
   const listItemButton = document.querySelector(`[data-testid=${id}-option-item-${itemIndex}]`);
   expect(listItemButton).toBeVisible();
