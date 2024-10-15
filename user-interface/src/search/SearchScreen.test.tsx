@@ -159,8 +159,9 @@ describe('search screen', () => {
     const expandButton = screen.getByTestId('button-court-selections-search-expand');
     await waitFor(() => {
       expect(expandButton).toBeInTheDocument();
-      fireEvent.click(expandButton);
     });
+
+    fireEvent.click(expandButton);
 
     // Make first search request....
     await waitFor(() => {
@@ -196,12 +197,11 @@ describe('search screen', () => {
     );
 
     // Make second search request...
-    await waitFor(() => {
-      fireEvent.click(expandButton);
-    });
+    fireEvent.click(expandButton);
     await testingUtilities.selectComboBoxItem('court-selections-search', 2);
 
     fireEvent.click(expandButton);
+
     fireEvent.click(searchButton);
 
     await waitFor(() => {
