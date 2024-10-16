@@ -84,6 +84,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     <div className="usa-form-group">
       <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
         {props.label}
+        {props.required && <span className="required-form-field">{' *'}</span>}
       </label>
       {ariaDescription && (
         <div className="usa-hint" id={ariaDescribedBy()}>
@@ -109,6 +110,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
               id={`button-clear-${props.id}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={clearValue}
+              aria-label="clear text input."
             >
               <Icon name="close"></Icon>
             </Button>

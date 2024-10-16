@@ -320,7 +320,7 @@ function Filter<T extends string>(props: FilterProps<T>) {
   return (
     <button
       className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
-      aria-label={`Filter on ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} status`}
+      aria-label={`Filter on ${label} status`}
       role="switch"
       aria-checked={filters.includes(filterType) ? true : false}
       onClick={() => callback(filterType)}
