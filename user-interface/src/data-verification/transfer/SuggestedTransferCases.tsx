@@ -185,7 +185,8 @@ function _SuggestedTransferCases(
               className="select-destination-case--description"
               data-testid={'suggested-cases-not-found'}
             >
-              Select the new court division and enter the new case number.
+              Choose a new court division and enter a case number, and a case will be selected for
+              this case event automatically.
             </div>
           )}
         </div>
@@ -265,8 +266,8 @@ function _SuggestedTransferCases(
                     className="usa-input"
                     value={order.docketSuggestedCaseNumber}
                     onChange={handleCaseInputChange}
-                    allowPartialCaseNumber={true}
-                    aria-label="New case number"
+                    allowPartialCaseNumber={false}
+                    aria-label="New case number. This will automatically select the case for this case event."
                     ref={caseNumberRef}
                     disabled={true}
                     required={true}

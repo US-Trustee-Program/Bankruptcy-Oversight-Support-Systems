@@ -391,7 +391,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           id={props.id + '-label'}
           htmlFor={`${props.id}-combo-box-input`}
         >
-          {label}
+          {label} {props.required && <span className="required-form-field">*</span>}
         </label>
         <span id={`${props.id}-aria-description`} hidden>
           {ariaDescription ?? ''}
