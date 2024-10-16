@@ -45,6 +45,7 @@ function _SuggestedTransferCases(
     order.docketSuggestedCaseNumber || null,
   );
   const [enableCaseEntry, setEnableCaseEntry] = useState<boolean>(false);
+  // const [currentElement, setCurrentElement] = useState<Element | null>(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
   const [suggestedCases, setSuggestedCases] = useState<CaseSummary[] | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
@@ -56,6 +57,7 @@ function _SuggestedTransferCases(
   const api = useApi2();
 
   async function validateCaseNumber(caseId: string) {
+    const currentElement = document.activeElement;
     if (loadingCaseSummary) return false;
     setLoadingCaseSummary(true);
     disableEntryForm(true);
@@ -69,6 +71,11 @@ function _SuggestedTransferCases(
       })
       .catch((_reason) => {
         setValidationState(ValidationStates.notFound);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          (currentElement as HTMLElement).focus();
+        }, 100);
       });
 
     setLoadingCaseSummary(false);
