@@ -50,7 +50,7 @@ export class OfficesCosmosMongoDbRepository {
     const query: DocumentQuery = {
       and: [
         { documentType: { equals: 'OFFICE_STAFF' } },
-        { roles: { all: [CamsRole.TrialAttorney] } },
+        { roles: { contains: [CamsRole.TrialAttorney] } },
         { officeCode: { equals: officeCode } },
       ],
     };
