@@ -11,7 +11,7 @@ export function filterCourtByDivision(divisionCode: string, officeList: CourtDiv
 }
 
 export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisionDetails[] {
-  const courtOffices: CourtDivisionDetails[] = [];
+  const courtDivisions: CourtDivisionDetails[] = [];
   ustp.groups.reduce((acc, group) => {
     group.divisions.forEach((division) => {
       acc.push({
@@ -27,8 +27,8 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
       });
     });
     return acc;
-  }, courtOffices);
-  return courtOffices;
+  }, courtDivisions);
+  return courtDivisions;
 }
 
 export type CourtDivisionDetails = {
