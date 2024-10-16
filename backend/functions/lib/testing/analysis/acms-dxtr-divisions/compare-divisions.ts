@@ -79,7 +79,7 @@ const csv = `acmsRegion,acmsGroup,acmsJudicialDistrictName,acmsDivisionCode,acms
 06,DA,Northern District of Texas,396,San Angelo
 06,DA,Northern District of Texas,397,Wichita Falls
 06,TY,Eastern District of Texas,401,Beaumont
-06,TY,Eastern District of Texas,402,Marchall
+06,TY,Eastern District of Texas,402,Marshall
 06,TY,Eastern District of Texas,403,Paris
 06,TY,Eastern District of Texas,404,Sherman
 06,TY,Eastern District of Texas,405,Texarkana
