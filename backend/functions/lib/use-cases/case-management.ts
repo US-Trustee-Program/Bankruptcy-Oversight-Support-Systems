@@ -18,8 +18,8 @@ import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { buildOfficeCode } from './offices/offices';
+import { CaseAssignmentCosmosMongoDbRepository } from '../adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -39,7 +39,7 @@ export function getAction<T extends CaseBasics>(
 }
 
 export default class CaseManagement {
-  assignmentGateway: CaseAssignmentRepositoryInterface;
+  assignmentGateway: CaseAssignmentCosmosMongoDbRepository;
   casesGateway: CasesInterface;
   casesRepo: CasesRepository;
   officesGateway: OfficesGateway;
