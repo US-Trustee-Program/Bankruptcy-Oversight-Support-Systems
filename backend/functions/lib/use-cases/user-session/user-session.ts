@@ -85,16 +85,19 @@ export class UserSessionUseCase {
       await sessionCacheRepository.put(context, session);
 
       return session;
-    } catch (originalError) {
-      if (isConflictError(originalError)) {
+    } catch (error) {
+      const isConflict = error.originalError
+        ? isConflictError(error.originalError)
+        : isConflictError(error);
+      if (isConflict) {
         return await sessionCacheRepository.get(context, token);
       }
 
-      throw isCamsError(originalError)
-        ? originalError
+      throw isCamsError(error)
+        ? error
         : new UnauthorizedError(MODULE_NAME, {
-            message: originalError.message,
-            originalError,
+            message: error.message,
+            originalError: error,
           });
     }
   }

@@ -5,6 +5,8 @@ import { CamsSession } from '../../../../../common/src/cams/session';
 import { UserSessionCacheRepository } from './user-session-cache.repository';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { isConflictError } from '../../use-cases/user-session/user-session';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_USER_SESSION_CACHE';
 const CONTAINER_NAME: string = 'user-session-cache';
@@ -38,7 +40,14 @@ export class UserSessionCacheCosmosDbRepository implements UserSessionCacheRepos
       ],
     };
 
-    const cached = await this.repo.query(context, querySpec);
+    let cached;
+    try {
+      cached = await this.repo.query(context, querySpec);
+    } catch (error) {
+      if (isConflictError(error)) throw error;
+      throw getCamsError(error, MODULE_NAME);
+    }
+
     if (cached && cached.length === 1) {
       return toCamsSession(cached[0]);
     } else {
