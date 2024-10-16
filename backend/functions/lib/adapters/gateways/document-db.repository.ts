@@ -2,11 +2,11 @@ export type FilterOperation = {
   equals?: unknown;
   greaterThan?: unknown;
   greaterThanOrEqual?: unknown;
-  includedIn?: unknown;
+  contains?: unknown;
   lessThan?: unknown;
   lessThanOrEqual?: unknown;
   notEqual?: unknown;
-  notIncludedIn?: unknown;
+  notContains?: unknown;
   not?: unknown;
   exists?: boolean;
 };
@@ -33,11 +33,11 @@ const keyMapping: { [key: string]: string } = {
   equals: '$eq',
   greaterThan: '$gt',
   greaterThanOrEqual: '$gte',
-  includedIn: '$in',
+  contains: '$in',
   lessThan: '$lt',
   lessThanOrEqual: '$lte',
   notEqual: '$ne',
-  notIncludedIn: '$nin',
+  notContains: '$nin',
   not: '$not',
 };
 
