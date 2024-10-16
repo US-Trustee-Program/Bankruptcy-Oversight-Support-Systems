@@ -46,4 +46,5 @@ export interface CosmosConfig {
   endpoint: string;
   managedIdentity: string;
   databaseName: string;
+  mongoDbConnectionString: string;
 }

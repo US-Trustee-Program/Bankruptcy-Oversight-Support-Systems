@@ -18,8 +18,7 @@ export type OfficeStaff = CamsUserReference &
 export class OfficesCosmosMongoDbRepository {
   private documentClient: DocumentClient;
 
-  constructor() {
-    const connectionString = process.env.MONGO_CONNECTION_STRING;
+  constructor(connectionString: string) {
     this.documentClient = new DocumentClient(connectionString);
   }
 
@@ -48,7 +47,8 @@ export class OfficesCosmosMongoDbRepository {
     const collection = this.documentClient.database('cams').collection<OfficeStaff>('offices');
     const result = await collection.find(query);
 
-    if ((await collection.countDocuments(query)) === 0) {
+    const count = await collection.countDocuments(query);
+    if (count === 0) {
       context.logger.warn(MODULE_NAME, 'No documents found!');
     }
     for await (const doc of result) {

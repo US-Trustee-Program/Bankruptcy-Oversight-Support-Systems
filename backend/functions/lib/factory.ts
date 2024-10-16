@@ -122,9 +122,7 @@ export const getOfficesGateway = (applicationContext: ApplicationContext): Offic
 //   return new OfficesCosmosDbRepository(applicationContext);
 // };
 
-export const getOfficesRepository = (
-  _applicationContext: ApplicationContext,
-): OfficesRepository => {
+export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
   //if (applicationContext.config.authConfig.provider === 'mock') {
   //  return new MockOfficesRepository();
   //}
@@ -132,7 +130,9 @@ export const getOfficesRepository = (
   //repo.init().then(() => {
   //  return repo;
   //});
-  return new OfficesCosmosMongoDbRepository();
+  return new OfficesCosmosMongoDbRepository(
+    applicationContext.config.cosmosConfig.mongoDbConnectionString,
+  );
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
