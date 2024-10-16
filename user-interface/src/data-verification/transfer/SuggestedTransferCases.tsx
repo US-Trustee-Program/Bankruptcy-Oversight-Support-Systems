@@ -45,7 +45,6 @@ function _SuggestedTransferCases(
     order.docketSuggestedCaseNumber || null,
   );
   const [enableCaseEntry, setEnableCaseEntry] = useState<boolean>(false);
-  // const [currentElement, setCurrentElement] = useState<Element | null>(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState<boolean>(false);
   const [suggestedCases, setSuggestedCases] = useState<CaseSummary[] | null>(null);
   const [loadingCaseSummary, setLoadingCaseSummary] = useState<boolean>(false);
