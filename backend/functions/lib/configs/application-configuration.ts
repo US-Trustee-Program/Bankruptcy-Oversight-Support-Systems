@@ -83,6 +83,7 @@ export class ApplicationConfiguration {
       endpoint: process.env.COSMOS_ENDPOINT,
       managedIdentity: process.env.COSMOS_MANAGED_IDENTITY,
       databaseName: process.env.COSMOS_DATABASE_NAME,
+      mongoDbConnectionString: process.env.MONGO_CONNECTION_STRING,
     };
   }
 
