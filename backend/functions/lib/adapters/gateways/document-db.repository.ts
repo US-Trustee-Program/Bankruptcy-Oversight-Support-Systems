@@ -22,7 +22,7 @@ export type BooleanOperation = {
 };
 
 export type DocumentQuery = BooleanOperation & {
-  [key: string]: Filter[] | BooleanOperation;
+  [key: string]: Filter | Filter[] | BooleanOperation;
 };
 
 const keyMapping: { [key: string]: string } = {

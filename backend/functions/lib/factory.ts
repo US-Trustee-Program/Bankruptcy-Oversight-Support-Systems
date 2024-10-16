@@ -1,11 +1,11 @@
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { CasesInterface } from './use-cases/cases.interface';
-import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
+//import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { CosmosConfig, IDbConfig } from './adapters/types/database';
-import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
+//import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
@@ -43,6 +43,7 @@ import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gatew
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
 //import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repository';
 import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosmosdb.mongo.repository';
+import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -58,8 +59,11 @@ export const getCasesGateway = (applicationContext: ApplicationContext): CasesIn
 
 export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
-): CaseAssignmentRepositoryInterface => {
-  return new CaseAssignmentCosmosDbRepository(applicationContext);
+): CaseAssignmentCosmosMongoDbRepository => {
+  // return new CaseAssignmentCosmosDbRepository(applicationContext);
+  return new CaseAssignmentCosmosMongoDbRepository(
+    applicationContext.config.cosmosConfig.mongoDbConnectionString,
+  );
 };
 
 export const getAssignmentsCosmosDbClient = (
@@ -181,3 +185,5 @@ export const getStorageGateway = (_context: ApplicationContext): StorageGateway 
 export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGateway => {
   return OktaUserGroupGateway;
 };
+
+//TODO: We need some way to properly handle closing connections to the MongoDB instance when executing functions
