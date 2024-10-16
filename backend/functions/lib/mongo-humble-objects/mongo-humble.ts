@@ -10,7 +10,9 @@ export class CollectionHumble<T> {
   }
 
   public async find(query: DocumentQuery) {
-    return this.collection.find(transformQuery(query));
+    const transformed = transformQuery(query);
+    console.log(transformed);
+    return this.collection.find(transformed);
   }
 
   public async countDocuments(query: DocumentQuery) {
