@@ -4,6 +4,7 @@ import { Auditable } from '../../../../../common/src/cams/auditable';
 import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
 import { DocumentQuery } from './document-db.repository';
 import { CamsRole } from '../../../../../common/src/cams/roles';
+import { getCamsUserReference } from '../../../../../common/src/cams/session';
 
 const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
 //const CONTAINER_NAME: string = 'offices';
@@ -22,25 +23,17 @@ export class OfficesCosmosMongoDbRepository {
     this.documentClient = new DocumentClient(connectionString);
   }
 
-  async init() {
-    await this.documentClient.connect();
-  }
-
   async putOfficeStaff(): Promise<void> {}
 
   async getOfficeAttorneys(
     context: ApplicationContext,
-    _officeCode: string,
+    officeCode: string,
   ): Promise<AttorneyUser[]> {
-    //const docs: AttorneyUser[] = [];
-    //const docs = await this.officeStaffRepo.query(context, querySpec);
-
-    //await this.init();
-
     const query: DocumentQuery = {
       and: [
         { documentType: { equals: 'OFFICE_STAFF' } },
         { roles: { all: [CamsRole.TrialAttorney] } },
+        { officeCode: { equals: officeCode } },
       ],
     };
 
@@ -51,10 +44,15 @@ export class OfficesCosmosMongoDbRepository {
     if (count === 0) {
       context.logger.warn(MODULE_NAME, 'No documents found!');
     }
+    const officeStaff: OfficeStaff[] = [];
+
     for await (const doc of result) {
+      officeStaff.push(doc);
       context.logger.info(MODULE_NAME, 'result', doc);
     }
 
-    return [];
+    this.documentClient.close();
+
+    return officeStaff.map((doc) => getCamsUserReference(doc));
   }
 }

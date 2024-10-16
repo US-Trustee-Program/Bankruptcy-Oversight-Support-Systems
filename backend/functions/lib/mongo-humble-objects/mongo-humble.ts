@@ -39,11 +39,10 @@ export class DocumentClient {
     this.client = new MongoClient(connectionString);
   }
 
-  public connect() {
-    return this.client.connect();
-  }
-
   public database(databaseName: string): DatabaseHumble {
     return new DatabaseHumble(this.client, databaseName);
+  }
+  public close() {
+    return this.client.close();
   }
 }
