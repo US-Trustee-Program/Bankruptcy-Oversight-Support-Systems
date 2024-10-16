@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
-import { Auditable } from '../../../../../common/src/cams/auditable';
+import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
 import { DocumentQuery } from './document-db.repository';
 import { CamsRole } from '../../../../../common/src/cams/roles';
@@ -23,7 +23,25 @@ export class OfficesCosmosMongoDbRepository {
     this.documentClient = new DocumentClient(connectionString);
   }
 
-  async putOfficeStaff(): Promise<void> {}
+  async putOfficeStaff(
+    context: ApplicationContext,
+    officeCode: string,
+    user: CamsUserReference,
+  ): Promise<void> {
+    const ttl = 4500;
+
+    const staff = createAuditRecord<OfficeStaff>({
+      id: user.id,
+      documentType: 'OFFICE_STAFF',
+      officeCode,
+      ...user,
+      ttl,
+    });
+    const collection = this.documentClient.database('cams').collection<OfficeStaff>('offices');
+    const result = await collection.insertOne(staff);
+    context.logger.info(MODULE_NAME, 'result', result);
+    await this.documentClient.close();
+  }
 
   async getOfficeAttorneys(
     context: ApplicationContext,
@@ -50,8 +68,7 @@ export class OfficesCosmosMongoDbRepository {
       officeStaff.push(doc);
       context.logger.info(MODULE_NAME, 'result', doc);
     }
-
-    this.documentClient.close();
+    await this.documentClient.close();
 
     return officeStaff.map((doc) => getCamsUserReference(doc));
   }

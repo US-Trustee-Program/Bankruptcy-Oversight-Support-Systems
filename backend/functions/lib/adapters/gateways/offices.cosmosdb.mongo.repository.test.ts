@@ -1,8 +1,15 @@
 import { OfficesCosmosMongoDbRepository } from './offices.cosmosdb.mongo.repository';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
 
 describe('offices repo', () => {
-  test('getOfficeAttorneys', async () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test.only('getOfficeAttorneys', async () => {
     const context = await createMockApplicationContext();
     const repo = new OfficesCosmosMongoDbRepository(
       context.config.cosmosConfig.mongoDbConnectionString,
@@ -11,5 +18,17 @@ describe('offices repo', () => {
 
     console.log(attorneys);
     expect(attorneys).not.toBeNull();
-  }, 10000);
+  });
+
+  test('putOfficeStaff', async () => {
+    const context = await createMockApplicationContext();
+    const session = await createMockApplicationContextSession();
+    const repo = new OfficesCosmosMongoDbRepository(
+      context.config.cosmosConfig.mongoDbConnectionString,
+    );
+    const attorneys = await repo.putOfficeStaff(context, 'my_house', session.user);
+
+    console.log(attorneys);
+    expect(attorneys).not.toBeNull();
+  });
 });
