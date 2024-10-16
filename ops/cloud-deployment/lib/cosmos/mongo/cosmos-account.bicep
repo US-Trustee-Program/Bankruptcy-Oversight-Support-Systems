@@ -75,7 +75,7 @@ param backupRetentionIntervalInHours int = 8
 param backupStorageRedundancy string = 'Geo'
 
 @description('List of allowed subnet resource ids')
-param allowedSubnets array = []
+param allowedNetworks array = []
 
 @description('WARNING: Set CosmosDb account for public access for all. Should be only enable for development environment.')
 param allowAllNetworks bool = false
@@ -96,7 +96,7 @@ var azureIpRules = [
   }
 ]
 
-var allowedSubnetList = [for item in allowedSubnets: {
+var allowedNetworkList = [for item in allowedNetworks: {
   id: item
   ignoreMissingVNetServiceEndpoint: false
 }]
@@ -132,7 +132,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     ]
     publicNetworkAccess: 'Enabled'
     isVirtualNetworkFilterEnabled: allowAllNetworks ? false : true
-    virtualNetworkRules: allowAllNetworks ? [] : allowedSubnetList
+    virtualNetworkRules: allowAllNetworks ? [] : allowedNetworkList
     ipRules: allowAllNetworks ? [] : azureIpRules
     backupPolicy: {
       type: 'Periodic'
