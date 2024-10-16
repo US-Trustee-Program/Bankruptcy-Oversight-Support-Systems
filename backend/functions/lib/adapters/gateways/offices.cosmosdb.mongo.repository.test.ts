@@ -7,7 +7,7 @@ describe('offices repo', () => {
     const repo = new OfficesCosmosMongoDbRepository(
       context.config.cosmosConfig.mongoDbConnectionString,
     );
-    const attorneys = await repo.getOfficeAttorneys(undefined, undefined);
+    const attorneys = await repo.getOfficeAttorneys(context, 'my_house');
 
     console.log(attorneys);
     expect(attorneys).not.toBeNull();
