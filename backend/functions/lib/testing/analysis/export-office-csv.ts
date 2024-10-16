@@ -9,8 +9,8 @@ const MODULE_NAME = 'ITEST';
 
 function toCommaDelimitedString(record: string[]) {
   record.forEach((item, idx) => {
-    if (item.indexOf(',') !== -1) {
-      record[idx] = `"${item}"`;
+    if (item.includes(',')) {
+      record[idx] = '"' + item + '"';
     }
   });
   return record.join(',');
@@ -33,7 +33,7 @@ function officesToCsv(offices: UstpOfficeDetails[]) {
 async function exportCsv() {
   const context = await applicationContextCreator.getApplicationContext({
     invocationContext: new InvocationContext(),
-    logger: new LoggerImpl('test-invocation'),
+    logger: new LoggerImpl('analysis'),
   });
   try {
     context.logger.info(MODULE_NAME, 'Getting offices from DXTR.');
