@@ -3,7 +3,6 @@ import { Accordion } from '@/lib/components/uswds/Accordion';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
 import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
 import {
   PendingTransferOrder,
@@ -55,21 +54,21 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
       >
         <div
           className="grid-col-6 text-no-wrap"
-          aria-label={`Court district – ${getCaseNumber(order.courtName)}`}
+          aria-label={`Court district – ${order.courtName}.`}
         >
           {order.courtName}
         </div>
         <div
           className="grid-col-2 text-no-wrap"
           title="Event date"
-          aria-label={`Event date – ${formatDate(order.orderDate)}`}
+          aria-label={`Event date – ${formatDate(order.orderDate)}.`}
         >
           {formatDate(order.orderDate)}
         </div>
         <div className="grid-col-2 order-type text-no-wrap">
           <span
             className="event-type-label"
-            aria-label={`Event type ${orderType.get(order.orderType)}`}
+            aria-label={`Event type ${orderType.get(order.orderType)}.`}
           >
             {orderType.get(order.orderType)}
           </span>
@@ -77,7 +76,7 @@ export function TransferOrderAccordion(props: TransferOrderAccordionProps) {
         <div className="grid-col-2 order-status text-no-wrap">
           <span
             className={`${order.status} event-status-label`}
-            aria-label={`Event status ${statusType.get(order.status)}`}
+            aria-label={`Event status ${statusType.get(order.status)}.`}
           >
             {statusType.get(order.status)}
           </span>
