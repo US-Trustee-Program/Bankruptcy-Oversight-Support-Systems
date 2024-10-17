@@ -31,7 +31,7 @@ param createAlerts bool
 
 
 // CosmosDb
-module account './lib/cosmos/cosmos-account.bicep' = {
+module account './lib/cosmos/no-sql/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -42,7 +42,7 @@ module account './lib/cosmos/cosmos-account.bicep' = {
   }
 }
 
-module database './lib/cosmos/cosmos-database.bicep' = {
+module database './lib/cosmos/no-sql/cosmos-database.bicep' = {
   name: '${accountName}-cosmos-database-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -54,7 +54,7 @@ module database './lib/cosmos/cosmos-database.bicep' = {
   ]
 }
 
-module containers './lib/cosmos/cosmos-containers.bicep' = {
+module containers './lib/cosmos/no-sql/cosmos-containers.bicep' = {
   name: '${accountName}-cosmos-containers-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -68,7 +68,7 @@ module containers './lib/cosmos/cosmos-containers.bicep' = {
 }
 
 // Role definition for read and write access
-module customReadWriteRole './lib/cosmos/cosmos-custom-role.bicep' = {
+module customReadWriteRole './lib/cosmos/no-sql/cosmos-custom-role.bicep' = {
   name: '${accountName}-cosmos-roles-module'
   params: {
     accountName: accountName
@@ -95,7 +95,7 @@ module cosmosDbUserManagedIdentity './lib/identity/managed-identity.bicep' = {
 //   scope: resourceGroup(resourceGroupName)
 // }
 // Assign permissions (role) to Identity
-module cosmosDbRoleAssignment './lib/cosmos/cosmos-role-assignment.bicep' = {
+module cosmosDbRoleAssignment './lib/cosmos/no-sql/cosmos-role-assignment.bicep' = {
   name: '${accountName}-cosmos-role-assignment-module'
   params: {
     accountName: accountName
