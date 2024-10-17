@@ -17,15 +17,17 @@ const createAssignment = jest.fn().mockImplementation(randomId);
 const updateAssignment = jest.fn().mockImplementation(randomId);
 const createAssignmentHistory = jest.fn().mockImplementation(randomId);
 const findAssignmentsByCaseId = jest.fn();
+const close = jest.fn();
 
-jest.mock('../adapters/gateways/case.assignment.cosmosdb.repository', () => {
+jest.mock('../adapters/gateways/case.assignment.cosmosdb.mongo.repository', () => {
   return {
-    CaseAssignmentCosmosDbRepository: jest.fn().mockImplementation(() => {
+    CaseAssignmentCosmosMongoDbRepository: jest.fn().mockImplementation(() => {
       return {
         createAssignment,
         findAssignmentsByCaseId,
         updateAssignment,
         createAssignmentHistory,
+        close,
       };
     }),
   };
