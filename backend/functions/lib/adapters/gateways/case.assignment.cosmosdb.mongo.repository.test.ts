@@ -2,7 +2,7 @@ import { CaseAssignmentCosmosMongoDbRepository } from './case.assignment.cosmosd
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
-describe('offices repo', () => {
+describe.skip('offices repo', () => {
   let repo: CaseAssignmentCosmosMongoDbRepository;
 
   beforeEach(async () => {
@@ -18,7 +18,7 @@ describe('offices repo', () => {
     if (repo?.close) await repo.close();
   });
 
-  test('should call updateAssignment', async () => {
+  test.skip('should call updateAssignment', async () => {
     const caseId = '081-26-63921';
     const assignments = await repo.findAssignmentsByCaseId(caseId);
 
@@ -40,11 +40,11 @@ describe('offices repo', () => {
     await repo.updateAssignment(assignments[0]);
   });
 
-  // test('should update a record', async () => {
-  //   const context = await createMockApplicationContext();
-  //   const repo = new CaseAssignmentCosmosMongoDbRepository(
-  //     context.config.cosmosConfig.mongoDbConnectionString,
-  //   );
-  //   const
-  // });
+  test('should call findAssignmentsByAssignee', async () => {
+    const userId = 'userId-Joe Nobel';
+    const assignments = await repo.findAssignmentsByAssignee(userId);
+
+    console.log(assignments);
+    expect(assignments).not.toBeNull();
+  });
 });

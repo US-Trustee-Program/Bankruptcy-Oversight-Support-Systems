@@ -1,4 +1,3 @@
-import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
@@ -22,6 +21,7 @@ import { createMockApplicationContext } from './testing/testing-utilities';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
+import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 
 describe('Factory functions', () => {
   let dbContext: ApplicationContext;
@@ -52,7 +52,7 @@ describe('Factory functions', () => {
 
   test('getAssignmentRepository', async () => {
     const obj = getAssignmentRepository(dbContext);
-    expect(obj).toBeInstanceOf(CaseAssignmentCosmosDbRepository);
+    expect(obj).toBeInstanceOf(CaseAssignmentCosmosMongoDbRepository);
   });
 
   test('getAssignmentsCosmosDbClient', async () => {
