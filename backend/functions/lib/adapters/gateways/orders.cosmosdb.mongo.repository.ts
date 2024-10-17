@@ -10,10 +10,10 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 
 export class OrdersCosmosDbMongoRepository {
-  private client: DocumentClient;
+  private documentClient: DocumentClient;
 
   constructor(connectionString: string) {
-    this.client = new DocumentClient(connectionString);
+    this.documentClient = new DocumentClient(connectionString);
   }
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
@@ -23,7 +23,7 @@ export class OrdersCosmosDbMongoRepository {
     } else {
       query = { courtDivisionCode: { contains: predicate.divisionCodes } };
     }
-    const collection = this.client.database('cams').collection<Order>('orders');
+    const collection = this.documentClient.database('cams').collection<Order>('orders');
     const result = (await collection.find(query)).sort({ orderDate: 1 });
     const orders: Order[] = [];
 
@@ -39,7 +39,7 @@ export class OrdersCosmosDbMongoRepository {
       id: { equals: id },
     };
     try {
-      const collection = this.client.database('cams').collection<Order>('orders');
+      const collection = this.documentClient.database('cams').collection<Order>('orders');
       const result = await collection.findOne(query);
       return result;
     } catch (originalError) {
@@ -62,7 +62,9 @@ export class OrdersCosmosDbMongoRepository {
     const query: DocumentQuery = {
       id: { equals: id },
     };
-    const collection = this.client.database('cams').collection<TransferOrderAction>('orders');
+    const collection = this.documentClient
+      .database('cams')
+      .collection<TransferOrderAction>('orders');
     try {
       const existingOrder = await collection.findOne(query);
       if (!existingOrder) {
@@ -100,7 +102,7 @@ export class OrdersCosmosDbMongoRepository {
     try {
       for (const order of orders) {
         try {
-          const collection = this.client.database('cams').collection<Order>('orders');
+          const collection = this.documentClient.database('cams').collection<Order>('orders');
           const result = await collection.insertOne(order);
           if (result) writtenOrders.push(order);
         } catch (e) {
@@ -128,6 +130,6 @@ export class OrdersCosmosDbMongoRepository {
   }
 
   async close() {
-    this.client.close();
+    this.documentClient.close();
   }
 }
