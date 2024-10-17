@@ -12,7 +12,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   scope: resourceGroup(resourceGroupName)
 }
 
-module database './lib/cosmos/cosmos-database.bicep' = {
+module database './lib/cosmos/no-sql/cosmos-database.bicep' = {
   name: '${accountName}-cosmos-database-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -24,7 +24,7 @@ module database './lib/cosmos/cosmos-database.bicep' = {
   ]
 }
 
-module containers './lib/cosmos/cosmos-containers.bicep' = {
+module containers './lib/cosmos/no-sql/cosmos-containers.bicep' = {
   name: '${accountName}-cosmos-containers-module'
   scope: resourceGroup(resourceGroupName)
   params: {
