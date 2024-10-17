@@ -39,10 +39,10 @@ import LocalStorageGateway from './adapters/gateways/storage/local-storage-gatew
 import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
-import { OfficesCosmosDbRepository } from './adapters/gateways/offices.cosmosdb.repository';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
-import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repository';
+//import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repository';
+import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosmosdb.mongo.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -115,11 +115,24 @@ export const getOfficesGateway = (applicationContext: ApplicationContext): Offic
   }
 };
 
-export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
-  if (applicationContext.config.authConfig.provider === 'mock') {
-    return new MockOfficesRepository();
-  }
-  return new OfficesCosmosDbRepository(applicationContext);
+// export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
+//   if (applicationContext.config.authConfig.provider === 'mock') {
+//     return new MockOfficesRepository();
+//   }
+//   return new OfficesCosmosDbRepository(applicationContext);
+// };
+
+export const getOfficesRepository = (
+  _applicationContext: ApplicationContext,
+): OfficesRepository => {
+  //if (applicationContext.config.authConfig.provider === 'mock') {
+  //  return new MockOfficesRepository();
+  //}
+  //const repo = new OfficesCosmosMongoDbRepository();
+  //repo.init().then(() => {
+  //  return repo;
+  //});
+  return new OfficesCosmosMongoDbRepository();
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
