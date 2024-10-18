@@ -1,6 +1,5 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -20,6 +19,7 @@ import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-r
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { ResponseBody } from '../../../../../common/src/api/response';
+import { MockOrdersRepository } from '../../testing/mock-gateways/mock-orders.repository';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -86,11 +86,9 @@ describe('orders controller tests', () => {
 
   test('should get orders', async () => {
     const mockRead = jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValueOnce({
-        resources: mockTransferOrder,
-      })
-      .mockResolvedValueOnce({ resources: mockConsolidationOrder });
+      .spyOn(MockOrdersRepository.prototype, 'search')
+      .mockResolvedValueOnce(mockTransferOrder)
+      .mockResolvedValueOnce(mockConsolidationOrder);
 
     applicationContext.request = mockCamsHttpRequest();
     const controller = new OrdersController(applicationContext);

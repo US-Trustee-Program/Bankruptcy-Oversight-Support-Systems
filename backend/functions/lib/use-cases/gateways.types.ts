@@ -57,6 +57,7 @@ export interface OrdersRepository {
   getOrder(context: ApplicationContext, id: string, partitionKey: string): Promise<Order>;
   putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
   updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction);
+  close();
 }
 
 export interface CasesRepository {

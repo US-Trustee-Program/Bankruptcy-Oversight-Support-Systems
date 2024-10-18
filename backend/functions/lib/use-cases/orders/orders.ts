@@ -1,10 +1,10 @@
 import {
   OrderSyncState,
   OrdersGateway,
-  OrdersRepository,
   RuntimeStateRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
+  OrdersRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
@@ -46,6 +46,7 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
+
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
