@@ -116,11 +116,11 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
-@description('Name of the managed identity with read/write access to CosmosDB.')
-@secure()
-param cosmosIdentityName string
+// @description('Name of the managed identity with read/write access to CosmosDB.')
+// @secure()
+// param cosmosIdentityName string
 
-param cosmosClientId string
+// param cosmosClientId string
 
 param cosmosDatabaseName string
 
@@ -211,7 +211,6 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
-      cosmosIdentityName: cosmosIdentityName
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
       virtualNetworkResourceGroupName: networkResourceGroupName
       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
@@ -227,7 +226,6 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       cosmosDatabaseName: cosmosDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
-      cosmosClientId: cosmosClientId
     }
     dependsOn: [
       network

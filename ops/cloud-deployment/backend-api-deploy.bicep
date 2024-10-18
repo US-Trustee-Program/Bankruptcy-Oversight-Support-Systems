@@ -100,11 +100,11 @@ param allowVeracodeScan bool = false
 @secure()
 param idKeyvaultAppConfiguration string
 
-@description('Name of the managed identity with read/write access to CosmosDB')
-@secure()
-param cosmosIdentityName string
+// @description('Name of the managed identity with read/write access to CosmosDB')
+// @secure()
+// param cosmosIdentityName string
 
-param cosmosClientId string
+// param cosmosClientId string
 
 param cosmosAccountName string
 
@@ -137,10 +137,10 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: cosmosIdentityName
-  scope: resourceGroup(kvAppConfigResourceGroupName)
-}
+// resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+//   name: cosmosIdentityName
+//   scope: resourceGroup(kvAppConfigResourceGroupName)
+// }
 
 //
 /*
@@ -246,10 +246,17 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
 /*
   Create functionapp
 */
+// var userAssignedIdentities = union(
+//   {
+//     '${appConfigIdentity.id}': {}
+//     '${cosmosIdentity.id}': {}
+//   },
+//   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
+// )
+
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
-    '${cosmosIdentity.id}': {}
   },
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
@@ -309,10 +316,10 @@ var applicationSettings = concat(
       name: 'COSMOS_DATABASE_NAME'
       value: cosmosDatabaseName
     }
-    {
-      name: 'COSMOS_MANAGED_IDENTITY'
-      value: cosmosClientId
-    }
+    // {
+    //   name: 'COSMOS_MANAGED_IDENTITY'
+    //   value: cosmosClientId
+    // }
     {
       name: 'MONGO_CONNECTION_STRING'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
