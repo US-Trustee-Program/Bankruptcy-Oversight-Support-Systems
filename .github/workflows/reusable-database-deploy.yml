@@ -57,14 +57,14 @@ jobs:
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiName }}'].id" -o tsv)
+          allowedNetworks=$(az network vnet subnet list -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiName }}'].id" -o json)
 
           ./ops/scripts/pipeline/az-cosmos-mongo-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \
             --accountName ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
             --environmentName ${{ inputs.ghaEnvironment }} \
-            --allowedNetworks ${allowedNetworks} \
+            --allowedNetworks "${allowedNetworks}"" \
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \

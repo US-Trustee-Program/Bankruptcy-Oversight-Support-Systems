@@ -54,10 +54,6 @@ while [[ $# -gt 0 ]]; do
         sql_id_name="${2}"
         shift 2
         ;;
-    --cosmosIdName)
-        cosmos_id_name="${2}"
-        shift 2
-        ;;
     --storageAccName)
         storage_acc_name="${2}"
         shift 2
@@ -115,8 +111,8 @@ az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --al
 echo "Assigning managed Identities..."
 # Identities occasionally come through with improper id for usage here, this constructs that
 kv_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$kv_id_name'].id" -o tsv)
-cosmos_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$cosmos_id_name'].id" -o tsv)
-identities="$kv_ref_id $cosmos_ref_id"
+# cosmos_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$cosmos_id_name'].id" -o tsv)
+identities="$kv_ref_id"
 # In USTP we do not use managed ID for SQL, we might not have this
 if [[ ${sql_id_name} != null && ${sql_id_name} != '' ]]; then
     sql_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$sql_id_name'].id" -o tsv)
