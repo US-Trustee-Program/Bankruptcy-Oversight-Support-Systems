@@ -68,7 +68,7 @@ jobs:
             --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
             --actionGroupResourceGroup ${{ secrets.AZ_ANALYTICS_RG }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --keyVaultName ${{ secrets.AZ_APP_CONFIG_NAME }} \
-            --kvResourceGroup ${{ secrets.AZ_APP_CONFIG_RG_NAME }} \
+            --keyVaultName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
+            --kvResourceGroup ${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }} \
             --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }} \
             --e2eCosmosDbExists ${{ steps.e2eDbExists.outputs.e2eCosmosDbExists }}
