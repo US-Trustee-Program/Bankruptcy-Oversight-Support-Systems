@@ -39,7 +39,6 @@ export default class ConsolidationOrdersCosmosDbRepository
 
   put(context: ApplicationContext, data: ConsolidationOrder): Promise<ConsolidationOrder> {
     return this.repo.put(context, data);
-    throw new Error('Method not implemented.');
   }
 
   putAll(context: ApplicationContext, list: ConsolidationOrder[]): Promise<ConsolidationOrder[]> {
