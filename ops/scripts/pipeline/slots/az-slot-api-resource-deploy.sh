@@ -18,7 +18,7 @@ info_sha=''
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --storageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash"
+        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --storageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash"
         exit 0
         ;;
     --resourceGroup)
