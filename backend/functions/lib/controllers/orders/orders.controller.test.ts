@@ -19,7 +19,6 @@ import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-r
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { ResponseBody } from '../../../../../common/src/api/response';
-import { MockOrdersRepository } from '../../testing/mock-gateways/mock-orders.repository';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -85,10 +84,7 @@ describe('orders controller tests', () => {
   });
 
   test('should get orders', async () => {
-    const mockRead = jest
-      .spyOn(MockOrdersRepository.prototype, 'search')
-      .mockResolvedValueOnce(mockTransferOrder)
-      .mockResolvedValueOnce(mockConsolidationOrder);
+    const mockRead = jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockResolvedValue(mockOrders);
 
     applicationContext.request = mockCamsHttpRequest();
     const controller = new OrdersController(applicationContext);

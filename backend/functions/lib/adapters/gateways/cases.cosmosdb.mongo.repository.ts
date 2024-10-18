@@ -19,7 +19,7 @@ const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
 export class CasesCosmosMongoDbRepository {
   private documentClient: DocumentClient;
-  // private containerName = 'cases';
+  private containerName = 'cases';
 
   constructor(connectionString: string) {
     this.documentClient = new DocumentClient(connectionString);
@@ -32,8 +32,11 @@ export class CasesCosmosMongoDbRepository {
     const query: DocumentQuery = {
       and: [{ documentType: { $regex: '^TRANSFER_' } }, { caseId: { equals: caseId } }],
     };
-    const collection = this.documentClient.database('cams').collection<Transfer>('cases');
-    const result = await collection.find(query);
+    const result = await this.documentClient
+      .database('cams')
+      .collection<Transfer>(this.containerName)
+      .find(query);
+
     const transfers: Transfer[] = [];
 
     for await (const doc of result) {
@@ -50,7 +53,7 @@ export class CasesCosmosMongoDbRepository {
       try {
         const resource = await this.documentClient
           .database('cams')
-          .collection<T>('cases')
+          .collection<T>(this.containerName)
           .insertOne(itemToCreate);
         context.logger.info(MODULE_NAME, 'Created the following resource:', resource);
         return itemToCreate;
@@ -98,8 +101,10 @@ export class CasesCosmosMongoDbRepository {
     const query: DocumentQuery = {
       and: [{ documentType: { $regex: '^CONSOLIDATION_' } }, { caseId: { equals: caseId } }],
     };
-    const collection = this.documentClient.database('cams').collection<Consolidation>('cases');
-    const result = await collection.find(query);
+    const result = await this.documentClient
+      .database('cams')
+      .collection<Consolidation>(this.containerName)
+      .find(query);
     const consolidations: Consolidation[] = [];
 
     for await (const doc of result) {
@@ -129,8 +134,11 @@ export class CasesCosmosMongoDbRepository {
     const query: DocumentQuery = {
       and: [{ documentType: { $regex: '^AUDIT_' } }, { caseId: { equals: caseId } }],
     };
-    const collection = this.documentClient.database('cams').collection<CaseHistory>('cases');
-    const result = await collection.find(query);
+    const result = await this.documentClient
+      .database('cams')
+      .collection<CaseHistory>(this.containerName)
+      .find(query);
+
     const history: CaseHistory[] = [];
 
     for await (const doc of result) {

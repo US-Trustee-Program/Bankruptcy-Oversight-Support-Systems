@@ -22,7 +22,7 @@ describe.skip('orders repo', () => {
     const predicate = {
       divisionCodes: ['081'],
     };
-    const orders = await repo.search(predicate);
+    const orders = await repo.search(context, predicate);
 
     console.log(orders);
     expect(orders).not.toBeNull();
@@ -45,7 +45,7 @@ describe.skip('orders repo', () => {
 
   test('should get one order', async () => {
     const id = '6711336063a44b1ca097c8fj';
-    const result = await repo.getOrder(context, id);
+    const result = await repo.getOrder(context, id, 'some case id');
     expect(result).not.toBeNull();
   });
 

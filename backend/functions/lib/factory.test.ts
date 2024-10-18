@@ -22,6 +22,7 @@ import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
 import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
+import { MockOrdersRepository } from './testing/mock-gateways/mock-orders.repository';
 
 describe('Factory functions', () => {
   let dbContext: ApplicationContext;
@@ -88,6 +89,9 @@ describe('Factory functions', () => {
   });
 
   test('getOrdersRepository', async () => {
+    const mockObj = getOrdersRepository(mockDbContext);
+    expect(mockObj).toBeInstanceOf(MockOrdersRepository);
+
     const obj = getOrdersRepository(dbContext);
     expect(obj).toBeInstanceOf(OrdersCosmosDbMongoRepository);
   });
