@@ -1,7 +1,7 @@
-import { CamsSession } from '../../../../common/src/cams/session';
-
 export const QueryDialect = {
   MONGO: 'MONGO',
+  TSQL: 'TSQL',
+  COSMOS: 'COSMOS',
 } as const;
 
 class QueryBuilder {
@@ -59,9 +59,8 @@ function _comparisons<T, K, V>(builder: QueryBuilder, key: K): Comparisons<T, V>
   };
 }
 
-function _where<T, K = keyof T, V = unknown>(builder: QueryBuilder): (key: K) => Comparisons<T, V> {
-  // TODO: Need to get the type of K of T
-  return (key: K) => {
+function _where<T, K = keyof T>(builder: QueryBuilder) {
+  return <V>(key: K) => {
     return _comparisons<T, K, V>(builder, key);
   };
 }
@@ -80,5 +79,16 @@ export const Q = {
 
 export default Q;
 
+type Foo = {
+  uno: string;
+  two: number;
+  three: boolean;
+};
+
 // Test chaining
-Q.find<CamsSession>().where('accessToken').equals('');
+Q.find<Foo>().where<Foo['uno']>('two').equals('');
+
+// type _works = Foo['uno'];
+
+// const theKey = 'one';
+// type _noWork = Foo[theKey];
