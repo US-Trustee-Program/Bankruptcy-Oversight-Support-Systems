@@ -84,7 +84,6 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
           }
           options: {
             unique:true
-            expireAfterSeconds: 0
           }
         }
       ]
@@ -123,7 +122,7 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
             ]
           }
           options: {
-            expireAfterSeconds: 0
+            unique: true
           }
         }
       ]
