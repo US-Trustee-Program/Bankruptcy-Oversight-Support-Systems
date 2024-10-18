@@ -61,7 +61,6 @@ jobs:
               --slotName ${{ inputs.slotName }} \
               --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
               --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --cosmosIdName ${{ secrets.AZ_COSMOS_ID_NAME }} \
               --storageAccName ${slotStorageAccountName:0:24} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
               --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
