@@ -122,9 +122,9 @@ if [[ $e2eCosmosDbExists != 'true' && $e2eCosmosDbExists != true ]]; then
         e2eDatabaseName="${e2eDatabaseName}-${branchHashId}"
     fi
     az deployment group create -w -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-mongo-e2e.bicep \
-        -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
+        -p ./ops/cloud-deployment/params/ustp-cams-cosmos-mongo-containers.parameters.json \
         -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
     az deployment group create -g "${resourceGroup}" -f ./ops/cloud-deployment/ustp-cams-cosmos-mongo-e2e.bicep \
-        -p ./ops/cloud-deployment/params/ustp-cams-cosmos-containers.parameters.json \
+        -p ./ops/cloud-deployment/params/ustp-cams-cosmos-mongo-containers.parameters.json \
         -p resourceGroupName="${resourceGroup}" accountName="${account}" databaseName="${e2eDatabaseName}"
 fi
