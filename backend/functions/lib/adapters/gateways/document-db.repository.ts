@@ -39,6 +39,13 @@ const keyMapping: { [key: string]: string } = {
   notEqual: '$ne',
   notContains: '$nin',
   not: '$not',
+  regex: '$regex',
+};
+
+export type DocumentCollection<T> = {
+  upsert: (data: T) => T;
+  get: (id: string) => T;
+  query: (query: DocumentQuery) => T;
 };
 
 export function transformQuery(query: DocumentQuery | Filter[]) {
@@ -53,9 +60,3 @@ export function transformQuery(query: DocumentQuery | Filter[]) {
   }
   return query;
 }
-
-export type DocumentCollection<T> = {
-  upsert: (data: T) => T;
-  get: (id: string) => T;
-  query: (query: DocumentQuery) => T;
-};
