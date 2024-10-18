@@ -3,7 +3,7 @@ import { Collection, Db, MongoClient } from 'mongodb';
 import { DocumentQuery, transformQuery } from '../adapters/gateways/document-db.repository';
 
 export class CollectionHumble<T> {
-  //TODO: MOngo adds an _id index by default, it is suggested we use this instead of id. we need to switch
+  //TODO: Mongo adds an _id index by default, it is suggested we use this instead of id. we need to switch
   private collection: Collection<T>;
 
   constructor(database: Db, collectionName: string) {
@@ -13,6 +13,7 @@ export class CollectionHumble<T> {
   public async find(query: DocumentQuery) {
     return this.collection.find(transformQuery(query));
   }
+
   public async findOne(query: DocumentQuery) {
     return this.collection.findOne(transformQuery(query));
   }

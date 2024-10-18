@@ -6,17 +6,18 @@ import { ApplicationContext } from '../types/basic';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { OrdersRepository } from '../../use-cases/gateways.types';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 
-export class OrdersCosmosDbMongoRepository {
+export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   private documentClient: DocumentClient;
 
   constructor(connectionString: string) {
     this.documentClient = new DocumentClient(connectionString);
   }
 
-  async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
+  async search(_context: ApplicationContext, predicate: OrdersSearchPredicate): Promise<Order[]> {
     let query: DocumentQuery;
     if (!predicate) {
       query = {};
@@ -33,8 +34,7 @@ export class OrdersCosmosDbMongoRepository {
     return orders;
   }
 
-  async getOrder(context: ApplicationContext, id: string): Promise<Order> {
-    //partitionKey, do we still need this for unique itendifiers?
+  async getOrder(context: ApplicationContext, id: string, _unused: string): Promise<Order> {
     const query: DocumentQuery = {
       id: { equals: id },
     };
