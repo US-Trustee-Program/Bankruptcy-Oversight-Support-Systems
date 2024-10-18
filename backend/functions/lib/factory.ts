@@ -139,7 +139,7 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
   // return new OrdersCosmosDbRepository(applicationContext);
-  if (applicationContext.config.authConfig.provider === 'mock') return new MockOrdersRepository();
+  if (applicationContext.config.get('dbMock')) return new MockOrdersRepository();
   return new OrdersCosmosDbMongoRepository(
     applicationContext.config.cosmosConfig.mongoDbConnectionString,
   );
