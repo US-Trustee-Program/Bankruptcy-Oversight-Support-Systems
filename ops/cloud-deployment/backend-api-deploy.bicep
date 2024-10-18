@@ -100,12 +100,6 @@ param allowVeracodeScan bool = false
 @secure()
 param idKeyvaultAppConfiguration string
 
-// @description('Name of the managed identity with read/write access to CosmosDB')
-// @secure()
-// param cosmosIdentityName string
-
-// param cosmosClientId string
-
 param cosmosAccountName string
 
 param cosmosDatabaseName string
@@ -137,12 +131,6 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-// resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-//   name: cosmosIdentityName
-//   scope: resourceGroup(kvAppConfigResourceGroupName)
-// }
-
-//
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -246,13 +234,7 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
 /*
   Create functionapp
 */
-// var userAssignedIdentities = union(
-//   {
-//     '${appConfigIdentity.id}': {}
-//     '${cosmosIdentity.id}': {}
-//   },
-//   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
-// )
+
 
 var userAssignedIdentities = union(
   {

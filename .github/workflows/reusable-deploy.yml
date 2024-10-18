@@ -27,9 +27,6 @@ on:
       deployBicep:
         required: true
         type: string
-      cosmosClientId:
-        required: true
-        type: string
 
 jobs:
   deploy-azure-infrastructure:
