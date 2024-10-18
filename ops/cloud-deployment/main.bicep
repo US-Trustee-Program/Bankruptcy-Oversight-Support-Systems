@@ -116,12 +116,6 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
-// @description('Name of the managed identity with read/write access to CosmosDB.')
-// @secure()
-// param cosmosIdentityName string
-
-// param cosmosClientId string
-
 param cosmosDatabaseName string
 
 param cosmosAccountName string
