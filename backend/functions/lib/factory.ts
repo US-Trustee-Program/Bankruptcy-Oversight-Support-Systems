@@ -17,6 +17,7 @@ import {
   ConsolidationOrdersRepository,
   OfficesRepository,
   OrdersGateway,
+  OrdersRepository,
   RuntimeStateRepository,
 } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
@@ -44,6 +45,7 @@ import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repo
 import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosmosdb.mongo.repository';
 import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
+import { MockOrdersRepository } from './testing/mock-gateways/mock-orders.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -130,19 +132,14 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
   if (applicationContext.config.authConfig.provider === 'mock') {
     return new MockOfficesRepository();
   }
-  //const repo = new OfficesCosmosMongoDbRepository();
-  //repo.init().then(() => {
-  //  return repo;
-  //});
   return new OfficesCosmosMongoDbRepository(
     applicationContext.config.cosmosConfig.mongoDbConnectionString,
   );
 };
 
-export const getOrdersRepository = (
-  applicationContext: ApplicationContext,
-): OrdersCosmosDbMongoRepository => {
+export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
   // return new OrdersCosmosDbRepository(applicationContext);
+  if (applicationContext.config.authConfig.provider === 'mock') return new MockOrdersRepository();
   return new OrdersCosmosDbMongoRepository(
     applicationContext.config.cosmosConfig.mongoDbConnectionString,
   );
