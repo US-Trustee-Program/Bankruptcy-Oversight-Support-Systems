@@ -51,6 +51,7 @@ describe('offices use case tests', () => {
       return {
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        close: jest.fn(),
       };
     });
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
@@ -69,6 +70,7 @@ describe('offices use case tests', () => {
       return {
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        close: jest.fn(),
       };
     });
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');

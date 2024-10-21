@@ -33,6 +33,22 @@ jest.mock('../adapters/gateways/case.assignment.cosmosdb.mongo.repository', () =
   };
 });
 
+jest.mock('../adapters/gateways/cases.cosmosdb.mongo.repository', () => {
+  return {
+    CaseAssignmentCosmosMongoDbRepository: jest.fn().mockImplementation(() => {
+      return {
+        getTransfers: jest.fn(),
+        createTransferFrom: jest.fn(),
+        createTransferTo: jest.fn(),
+        getConsolidation: jest.fn(),
+        getCaseHistory: jest.fn(),
+        createCaseHistory: jest.fn(),
+        close: jest.fn(),
+      };
+    }),
+  };
+});
+
 describe('Case assignment tests', () => {
   let applicationContext: ApplicationContext;
   const userOffice = MockData.randomUstpOffice();

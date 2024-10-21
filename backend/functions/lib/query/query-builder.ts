@@ -29,7 +29,7 @@ export function isConjunction(obj: unknown): obj is Conjunction {
 
 export type ConditionOrConjunction = Condition | Conjunction;
 
-function find(query: ConditionOrConjunction) {
+function build(query: ConditionOrConjunction) {
   return query;
 }
 
@@ -118,15 +118,15 @@ function notContains<T>(attributeName: string, value: T): Condition {
   };
 }
 
-function exists<T>(attributeName: string, value: T): Condition {
+function exists<T>(attributeName: keyof T, value: boolean): Condition {
   return {
     condition: 'EXISTS',
-    attributeName,
+    attributeName: attributeName as string,
     value,
   };
 }
 
-function regex(attributeName: string, value: string | RegExp): Condition {
+function regex(attributeName: string, value: string): Condition {
   return {
     condition: 'REGEX',
     attributeName,
@@ -135,7 +135,7 @@ function regex(attributeName: string, value: string | RegExp): Condition {
 }
 
 const QueryBuilder = {
-  find,
+  build,
   equals,
   greaterThan,
   greaterThanOrEqual,

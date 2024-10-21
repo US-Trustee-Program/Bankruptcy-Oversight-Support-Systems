@@ -2,12 +2,16 @@ import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
-import { DocumentQuery } from './document-db.repository';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
+import QueryBuilder from '../../query/query-builder';
+import { toMongoQuery } from '../../query/mongo-query-renderer';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { Closable, deferClose } from '../../defer-close';
 
 const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
-//const CONTAINER_NAME: string = 'offices';
+
+const { and, equals, contains } = QueryBuilder;
 
 export type OfficeStaff = CamsUserReference &
   Auditable & {
@@ -16,11 +20,17 @@ export type OfficeStaff = CamsUserReference &
     ttl: number;
   };
 
-export class OfficesCosmosMongoDbRepository {
+export class OfficesCosmosMongoDbRepository implements Closable {
   private documentClient: DocumentClient;
+  private readonly containerName = 'offices';
 
-  constructor(connectionString: string) {
-    this.documentClient = new DocumentClient(connectionString);
+  constructor(context: ApplicationContext) {
+    this.documentClient = new DocumentClient(context.config.cosmosConfig.mongoDbConnectionString);
+    deferClose(context, this);
+  }
+
+  async close() {
+    await this.documentClient.close();
   }
 
   async putOfficeStaff(
@@ -37,38 +47,43 @@ export class OfficesCosmosMongoDbRepository {
       ...user,
       ttl,
     });
-    const collection = this.documentClient.database('cams').collection<OfficeStaff>('offices');
-    const result = await collection.insertOne(staff);
-    context.logger.info(MODULE_NAME, 'result', result);
-    await this.documentClient.close();
+    try {
+      const collection = this.documentClient
+        .database(context.config.documentDbConfig.databaseName)
+        .collection<OfficeStaff>(this.containerName);
+      collection.insertOne(staff);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   async getOfficeAttorneys(
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const query: DocumentQuery = {
-      and: [
-        { documentType: { equals: 'OFFICE_STAFF' } },
-        { roles: { contains: [CamsRole.TrialAttorney] } },
-        { officeCode: { equals: officeCode } },
-      ],
-    };
+    const query = toMongoQuery(
+      QueryBuilder.build(
+        and(
+          equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+          contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
+          equals<OfficeStaff['officeCode']>('officeCode', officeCode),
+        ),
+      ),
+    );
+    const collection = this.documentClient
+      .database(context.config.documentDbConfig.databaseName)
+      .collection<OfficeStaff>(this.containerName);
 
-    const collection = this.documentClient.database('cams').collection<OfficeStaff>('offices');
     const result = await collection.find(query);
 
-    const count = await collection.countDocuments(query);
-    if (count === 0) {
-      context.logger.warn(MODULE_NAME, 'No documents found!');
-    }
     const officeStaff: OfficeStaff[] = [];
-
-    for await (const doc of result) {
-      officeStaff.push(doc);
-      context.logger.info(MODULE_NAME, 'result', doc);
+    try {
+      for await (const doc of result) {
+        officeStaff.push(doc);
+      }
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
-    await this.documentClient.close();
 
     return officeStaff.map((doc) => getCamsUserReference(doc));
   }

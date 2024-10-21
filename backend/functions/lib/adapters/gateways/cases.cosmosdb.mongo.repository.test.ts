@@ -4,23 +4,19 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { CasesCosmosMongoDbRepository } from './cases.cosmosdb.mongo.repository';
 
-describe.skip('Cases repository', () => {
+describe('Cases repository', () => {
   let repo: CasesCosmosMongoDbRepository;
   let context: ApplicationContext;
   const caseId1 = '111-11-11111';
   const caseId2 = '222-22-22222';
-  // const transferIn: TransferFrom = {
-  //   caseId: caseId2,
-  //   otherCase: MockData.getCaseSummary({ override: { caseId: caseId1 } }),
-  //   orderDate: '01/01/2024',
-  //   documentType: 'TRANSFER_FROM',
-  // };
+
   const transferOut: TransferTo = {
     caseId: caseId1,
     otherCase: MockData.getCaseSummary({ override: { caseId: caseId2 } }),
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
+
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = new CasesCosmosMongoDbRepository(context.config.cosmosConfig.mongoDbConnectionString);
@@ -28,10 +24,14 @@ describe.skip('Cases repository', () => {
     jest.clearAllMocks();
   });
 
-  test.skip('should getTransfers', async () => {
+  afterEach(async () => {
+    if (repo) await repo.close();
+  });
+
+  test('should getTransfers', async () => {
     const caseId = '111-82-80331';
     const result = await repo.getTransfers(context, caseId);
-    expect(result).not.toBeNull();
+    expect(result.length).toBeGreaterThan(0);
   });
 
   test('should createTransferTo', async () => {
