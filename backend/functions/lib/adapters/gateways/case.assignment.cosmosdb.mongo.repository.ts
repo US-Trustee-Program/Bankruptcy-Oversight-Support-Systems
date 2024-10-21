@@ -9,7 +9,6 @@ const MODULE_NAME: string = 'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 
 export class CaseAssignmentCosmosMongoDbRepository {
   private documentClient: DocumentClient;
-  // private containerName = 'assignments';
 
   constructor(connectionString: string) {
     this.documentClient = new DocumentClient(connectionString);
@@ -20,7 +19,6 @@ export class CaseAssignmentCosmosMongoDbRepository {
       .database('cams')
       .collection<CaseAssignment>('assignments');
     const result = await collection.insertOne(caseAssignment);
-    //context.logger.info(MODULE_NAME, 'result', result);
     const id = result.insertedId.toString();
     return id;
   }
@@ -36,7 +34,6 @@ export class CaseAssignmentCosmosMongoDbRepository {
 
     try {
       const result = await collection.replaceOne(query, caseAssignment);
-      //context.logger.info(MODULE_NAME, 'result', result);
       if (result.modifiedCount === 0) {
         throw new NotFoundError(MODULE_NAME);
       }
@@ -63,24 +60,40 @@ export class CaseAssignmentCosmosMongoDbRepository {
       .collection<CaseAssignment>('assignments');
 
     const result = await collection.find(query);
-    //const count = await collection.countDocuments(query);
-
-    // if (count === 0) {
-    //   context.logger.warn(MODULE_NAME, 'No documents found!');
-    // }
 
     const assignments: CaseAssignment[] = [];
 
     for await (const doc of result) {
       assignments.push(doc);
-      // context.logger.info(MODULE_NAME, 'result', doc);
     }
 
     return assignments;
   }
 
-  async findAssignmentsByAssignee(_userId: string): Promise<CaseAssignment[]> {
-    throw new Error('Not Implented');
+  async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
+    //TODO: revisit to add an or clause with an empty string?
+
+    const query: DocumentQuery = {
+      and: [
+        { documentType: { equals: 'ASSIGNMENT' } },
+        { userId: { equals: userId } },
+        { unassignedOn: { exists: false } },
+      ],
+    };
+
+    const collection = this.documentClient
+      .database('cams')
+      .collection<CaseAssignment>('assignments');
+
+    const result = await collection.find(query);
+
+    const assignments: CaseAssignment[] = [];
+
+    for await (const doc of result) {
+      assignments.push(doc);
+    }
+
+    return assignments;
   }
 
   async close() {

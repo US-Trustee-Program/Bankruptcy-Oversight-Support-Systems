@@ -190,4 +190,8 @@ export class OrdersCosmosDbRepository implements OrdersRepository {
       }
     }
   }
+
+  async close() {
+    throw new Error('not implemented');
+  }
 }

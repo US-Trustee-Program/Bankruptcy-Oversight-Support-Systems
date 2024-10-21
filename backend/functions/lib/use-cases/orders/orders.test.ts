@@ -12,7 +12,6 @@ import {
   getCasesGateway,
   getConsolidationOrdersRepository,
 } from '../../factory';
-import { OrdersCosmosDbRepository } from '../../adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
@@ -40,6 +39,7 @@ import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import { CaseAssignmentUseCase } from '../case-assignment';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../../common/src/cams/users';
+import { MockOrdersRepository } from '../../testing/mock-gateways/mock-orders.repository';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -200,7 +200,7 @@ describe('Orders use case', () => {
     };
 
     const mockPutOrders = jest
-      .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
+      .spyOn(MockOrdersRepository.prototype, 'putOrders')
       .mockImplementation((_context, orders) => {
         return Promise.resolve(orders);
       });
@@ -295,7 +295,7 @@ describe('Orders use case', () => {
     };
 
     const mockPutOrders = jest
-      .spyOn(OrdersCosmosDbRepository.prototype, 'putOrders')
+      .spyOn(MockOrdersRepository.prototype, 'putOrders')
       .mockResolvedValueOnce(transfers)
       .mockResolvedValueOnce(consolidations);
 
