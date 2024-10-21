@@ -4,7 +4,7 @@ import { ApplicationContext } from '../types/basic';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { TransferOrderAction } from '../../../../../common/src/cams/orders';
 
-describe.skip('orders repo', () => {
+describe('orders repo', () => {
   let context: ApplicationContext;
   let repo: OrdersCosmosDbMongoRepository;
 
@@ -24,32 +24,24 @@ describe.skip('orders repo', () => {
     };
     const orders = await repo.search(context, predicate);
 
-    console.log(orders);
     expect(orders).not.toBeNull();
     expect(orders.length).toBeGreaterThan(0);
   });
 
-  test('should get one order', async () => {
+  test('should insert an array of transfer orders', async () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 4);
-    const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 4);
-    const result = repo.putOrders(context, [...transfers, ...consolidations]);
-    expect(result).toEqual([]);
-  });
-
-  test('should insert an order', async () => {
-    const transfers = MockData.buildArray(MockData.getTransferOrder, 4);
-    const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 4);
-    const result = repo.putOrders(context, [...transfers, ...consolidations]);
-    expect(result).toEqual([]);
+    const expectedOrders = [...transfers];
+    const actualOrders = await repo.putOrders(context, expectedOrders);
+    expect(actualOrders).toEqual(expectedOrders);
   });
 
   test('should get one order', async () => {
-    const id = '6711336063a44b1ca097c8fj';
+    const id = 'b2833fdb-110c-4a45-9a53-59b728243121';
     const result = await repo.getOrder(context, id, 'some case id');
     expect(result).not.toBeNull();
   });
 
-  test.only('should update one order', async () => {
+  test('should update one order', async () => {
     const id = '93ff688b-b865-4478-aa2f-e718de7116c5';
     const transferOrder = MockData.getTransferOrder();
 

@@ -1,5 +1,6 @@
 import { ErrorResponse } from '@azure/cosmos';
 
+// THIS is AZURE COSMOS specific. This is highly unlikely to be how mongo API returns an error.
 export const ID_ALREADY_EXISTS = 'Entity with the specified id already exists in the system.';
 
 export function isCosmosErrorResponse(e): e is ErrorResponse {

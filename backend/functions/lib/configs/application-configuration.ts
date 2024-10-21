@@ -12,6 +12,7 @@ export class ApplicationConfiguration {
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly cosmosConfig: CosmosConfig;
+  public readonly documentDbConfig: CosmosConfig;
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
@@ -21,6 +22,7 @@ export class ApplicationConfiguration {
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.cosmosConfig = this.getCosmosConfig();
+    this.documentDbConfig = this.getCosmosConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
     this.userGroupGatewayConfig = getUserGroupGatewayConfig();

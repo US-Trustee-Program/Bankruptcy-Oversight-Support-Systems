@@ -1,8 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
 import { AssignmentError } from '../../use-cases/assignment.exception';
-import { UnknownError } from '../../common-errors/unknown-error';
-import { CamsError } from '../../common-errors/cams-error';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsRole } from '../../../../../common/src/cams/roles';
@@ -10,6 +8,7 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { closeDeferred } from '../../defer-close';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -27,11 +26,36 @@ export class CaseAssignmentController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<CaseAssignment[]>> {
-    if (context.request.method === 'POST') {
-      this.validateRequestParameters(context.request.body['caseId'], context.request.body['role']);
-      return this.createTrialAttorneyAssignments(context);
-    } else {
-      return this.getTrialAttorneyAssignments(context);
+    try {
+      const assignmentUseCase = new CaseAssignmentUseCase(context);
+      if (context.request.method === 'POST') {
+        this.validateRequestParameters(
+          context.request.body['caseId'],
+          context.request.body['role'],
+        );
+        await assignmentUseCase.createTrialAttorneyAssignments(
+          context,
+          context.request.body['caseId'],
+          context.request.body['attorneyList'] as CamsUserReference[],
+          context.request.body['role'],
+        );
+        return httpSuccess({
+          statusCode: HttpStatusCodes.CREATED,
+        });
+      } else {
+        const assignments = await assignmentUseCase.findAssignmentsByCaseId(
+          context.request.params['id'],
+        );
+        return httpSuccess({
+          body: {
+            data: assignments,
+          },
+        });
+      }
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await closeDeferred(context);
     }
   }
 
@@ -55,49 +79,6 @@ export class CaseAssignmentController implements CamsController {
     }
     if (messages.length) {
       throw new AssignmentError(MODULE_NAME, { message: messages.join(' ') });
-    }
-  }
-
-  public async getTrialAttorneyAssignments(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<CaseAssignment[]>> {
-    try {
-      const assignmentUseCase = new CaseAssignmentUseCase(context);
-      const assignments = await assignmentUseCase.findAssignmentsByCaseId(
-        context.request.params['id'],
-      );
-      const success = httpSuccess({
-        body: {
-          data: assignments,
-        },
-      });
-      return success;
-    } catch (exception) {
-      context.logger.error(MODULE_NAME, exception.message);
-      if (exception instanceof CamsError) {
-        throw exception;
-      }
-      throw new UnknownError(MODULE_NAME, { originalError: exception });
-    }
-  }
-
-  public async createTrialAttorneyAssignments(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit> {
-    try {
-      const assignmentUseCase = new CaseAssignmentUseCase(context);
-      await assignmentUseCase.createTrialAttorneyAssignments(
-        context,
-        context.request.body['caseId'],
-        context.request.body['attorneyList'] as CamsUserReference[],
-        context.request.body['role'],
-      );
-      return httpSuccess({
-        statusCode: HttpStatusCodes.CREATED,
-      });
-    } catch (exception) {
-      context.logger.error(MODULE_NAME, exception.message);
-      throw getCamsError(exception, MODULE_NAME);
     }
   }
 }

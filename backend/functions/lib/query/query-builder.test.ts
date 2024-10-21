@@ -48,7 +48,7 @@ describe('Query Builder', () => {
       ],
     };
 
-    const actual = QueryBuilder.find(
+    const actual = QueryBuilder.build(
       or(
         equals<string>('uno', 'theValue'),
         and(
@@ -106,18 +106,18 @@ describe('Query Builder', () => {
     },
     {
       condition: 'REGEX',
-      query: () => regex('two', /45/),
-      result: { condition: 'REGEX', attributeName: 'two', value: /45/ },
+      query: () => regex('two', '45'),
+      result: { condition: 'REGEX', attributeName: 'two', value: '45' },
     },
     {
       condition: 'EXISTS',
-      query: () => exists('two', 45),
-      result: { condition: 'EXISTS', attributeName: 'two', value: 45 },
+      query: () => exists('two', true),
+      result: { condition: 'EXISTS', attributeName: 'two', value: true },
     },
   ];
 
   test.each(simpleQueryCases)('should handle $condition condition', (testQuery) => {
-    const query = QueryBuilder.find(testQuery.query());
+    const query = QueryBuilder.build(testQuery.query());
     expect(query).toEqual(testQuery.result);
   });
 
@@ -140,7 +140,7 @@ describe('Query Builder', () => {
   ];
 
   test.each(conjunctionCases)('should handle $conjunction conjunction', (conjunctionQuery) => {
-    const query = QueryBuilder.find(conjunctionQuery.query());
+    const query = QueryBuilder.build(conjunctionQuery.query());
     expect(query).toEqual(conjunctionQuery.result);
   });
 });

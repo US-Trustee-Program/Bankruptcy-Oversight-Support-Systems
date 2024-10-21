@@ -38,7 +38,7 @@ describe('Mongo Query Renderer', () => {
       ],
     };
 
-    const query = QueryBuilder.find(
+    const query = QueryBuilder.build(
       or(
         equals<string>('uno', 'theValue'),
         and(
@@ -101,8 +101,8 @@ describe('Mongo Query Renderer', () => {
     },
     {
       caseName: 'REGEX w/ regex',
-      func: () => regex('two', /45/),
-      expected: { two: { $regex: /45/ } },
+      func: () => regex('two', '45'),
+      expected: { two: { $regex: '45' } },
     },
     {
       caseName: 'REGEX w/ string',
@@ -112,7 +112,7 @@ describe('Mongo Query Renderer', () => {
   ];
 
   test.each(queries)('should render a mongo query for $caseName condition', (args) => {
-    const actual = toMongoQuery(QueryBuilder.find(args.func()));
+    const actual = toMongoQuery(QueryBuilder.build(args.func()));
     expect(actual).toEqual(args.expected);
   });
 
@@ -135,7 +135,7 @@ describe('Mongo Query Renderer', () => {
   ];
 
   test.each(conjunctions)('should render a mongo query for $caseName aggregation', (args) => {
-    const actual = toMongoQuery(QueryBuilder.find(args.func()));
+    const actual = toMongoQuery(QueryBuilder.build(args.func()));
     expect(actual).toEqual(args.expected);
   });
 });

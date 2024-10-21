@@ -2,6 +2,7 @@ import { ApplicationConfiguration } from '../../configs/application-configuratio
 import { CamsError } from '../../common-errors/cams-error';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsHttpRequest } from './http';
+import { Closable } from '../../defer-close';
 
 export interface LoggerHelper {
   debug: (moduleName: string, message: string, data?: unknown) => void;
@@ -18,6 +19,7 @@ export interface ApplicationContext {
   session?: CamsSession;
   invocationId: string;
   request?: CamsHttpRequest;
+  closables: Closable[];
 }
 
 export interface ObjectKeyVal {

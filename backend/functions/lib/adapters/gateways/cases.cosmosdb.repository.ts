@@ -181,4 +181,8 @@ export class CasesCosmosDbRepository implements CasesRepository {
       }
     }
   }
+
+  async close() {
+    throw new Error('Not implemented');
+  }
 }

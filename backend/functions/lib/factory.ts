@@ -25,7 +25,6 @@ import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 // import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
-import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
 import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
@@ -46,6 +45,8 @@ import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosm
 import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
 import { MockOrdersRepository } from './testing/mock-gateways/mock-orders.repository';
+import { CasesCosmosMongoDbRepository } from './adapters/gateways/cases.cosmosdb.mongo.repository';
+import { deferClose } from './defer-close';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -63,9 +64,7 @@ export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
 ): CaseAssignmentCosmosMongoDbRepository => {
   // return new CaseAssignmentCosmosDbRepository(applicationContext);
-  return new CaseAssignmentCosmosMongoDbRepository(
-    applicationContext.config.cosmosConfig.mongoDbConnectionString,
-  );
+  return new CaseAssignmentCosmosMongoDbRepository(applicationContext);
 };
 
 export const getAssignmentsCosmosDbClient = (
@@ -132,9 +131,9 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
   if (applicationContext.config.authConfig.provider === 'mock') {
     return new MockOfficesRepository();
   }
-  return new OfficesCosmosMongoDbRepository(
-    applicationContext.config.cosmosConfig.mongoDbConnectionString,
-  );
+  const instance = new OfficesCosmosMongoDbRepository(applicationContext);
+  deferClose(applicationContext, instance);
+  return instance;
 };
 
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
@@ -152,7 +151,9 @@ export const getConsolidationOrdersRepository = (
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  return new CasesCosmosDbRepository(applicationContext);
+  return new CasesCosmosMongoDbRepository(
+    applicationContext.config.documentDbConfig.mongoDbConnectionString,
+  );
 };
 
 export const getRuntimeStateRepository = (
@@ -187,5 +188,3 @@ export const getStorageGateway = (_context: ApplicationContext): StorageGateway 
 export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGateway => {
   return OktaUserGroupGateway;
 };
-
-//TODO: We need some way to properly handle closing connections to the MongoDB instance when executing functions

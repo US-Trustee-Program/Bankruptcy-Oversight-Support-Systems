@@ -7,24 +7,30 @@ import { ServerConfigError } from '../../common-errors/server-config-error';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
+import QueryBuilder from '../../query/query-builder';
+import { toMongoQuery } from '../../query/mongo-query-renderer';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 
 export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   private documentClient: DocumentClient;
+  private containerName = 'orders';
 
   constructor(connectionString: string) {
     this.documentClient = new DocumentClient(connectionString);
   }
 
-  async search(_context: ApplicationContext, predicate: OrdersSearchPredicate): Promise<Order[]> {
+  async search(context: ApplicationContext, predicate: OrdersSearchPredicate): Promise<Order[]> {
     let query: DocumentQuery;
     if (!predicate) {
       query = {};
     } else {
-      query = { courtDivisionCode: { contains: predicate.divisionCodes } };
+      query = toMongoQuery(QueryBuilder.contains('courtDivisionCode', predicate.divisionCodes));
     }
-    const collection = this.documentClient.database('cams').collection<Order>('orders');
+    console.log(query);
+    const collection = this.documentClient
+      .database(context.config.documentDbConfig.databaseName)
+      .collection<Order>(this.containerName);
     const result = (await collection.find(query)).sort({ orderDate: 1 });
     const orders: Order[] = [];
 
@@ -35,11 +41,12 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   }
 
   async getOrder(context: ApplicationContext, id: string, _unused: string): Promise<Order> {
-    const query: DocumentQuery = {
-      id: { equals: id },
-    };
+    const query = toMongoQuery(QueryBuilder.equals('id', id));
+
     try {
-      const collection = this.documentClient.database('cams').collection<Order>('orders');
+      const collection = this.documentClient
+        .database(context.config.documentDbConfig.databaseName)
+        .collection<Order>(this.containerName);
       const result = await collection.findOne(query);
       return result;
     } catch (originalError) {
@@ -59,12 +66,10 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   }
 
   async updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction) {
-    const query: DocumentQuery = {
-      id: { equals: id },
-    };
+    const query = toMongoQuery(QueryBuilder.equals('id', id));
     const collection = this.documentClient
-      .database('cams')
-      .collection<TransferOrderAction>('orders');
+      .database(context.config.documentDbConfig.databaseName)
+      .collection<TransferOrderAction>(this.containerName);
     try {
       const existingOrder = await collection.findOne(query);
       if (!existingOrder) {
@@ -102,11 +107,17 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
     try {
       for (const order of orders) {
         try {
-          const collection = this.documentClient.database('cams').collection<Order>('orders');
+          const collection = this.documentClient
+            .database(context.config.documentDbConfig.databaseName)
+            .collection<Order>(this.containerName);
           const result = await collection.insertOne(order);
-          if (result) writtenOrders.push(order);
+          if (result && result.acknowledged) {
+            // TODO: add _id: result.insertedId
+            writtenOrders.push(order);
+          }
         } catch (e) {
           // TODO: insert the same document twice to see what happens
+          // Is this error going to be the same through the mongo client? Probably not.
           // if (!isPreExistingDocumentError(e)) {
           //   throw e;
           // }
@@ -130,6 +141,6 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   }
 
   async close() {
-    this.documentClient.close();
+    await this.documentClient.close();
   }
 }
