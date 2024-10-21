@@ -53,7 +53,8 @@ export class DocumentClient {
   public database(databaseName: string): DatabaseHumble {
     return new DatabaseHumble(this.client, databaseName);
   }
-  public close() {
-    return this.client.close();
+
+  public async close() {
+    await this.client.close();
   }
 }

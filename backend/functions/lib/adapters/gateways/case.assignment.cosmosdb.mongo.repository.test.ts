@@ -2,14 +2,12 @@ import { CaseAssignmentCosmosMongoDbRepository } from './case.assignment.cosmosd
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
-describe.skip('offices repo', () => {
+describe('offices repo', () => {
   let repo: CaseAssignmentCosmosMongoDbRepository;
 
   beforeEach(async () => {
     const context = await createMockApplicationContext();
-    repo = new CaseAssignmentCosmosMongoDbRepository(
-      context.config.cosmosConfig.mongoDbConnectionString,
-    );
+    repo = new CaseAssignmentCosmosMongoDbRepository(context);
 
     jest.clearAllMocks();
   });
@@ -18,7 +16,7 @@ describe.skip('offices repo', () => {
     if (repo?.close) await repo.close();
   });
 
-  test.skip('should call updateAssignment', async () => {
+  test('should call updateAssignment', async () => {
     const caseId = '081-26-63921';
     const assignments = await repo.findAssignmentsByCaseId(caseId);
 

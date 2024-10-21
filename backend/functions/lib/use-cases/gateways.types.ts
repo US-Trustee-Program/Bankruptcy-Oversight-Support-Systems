@@ -57,7 +57,7 @@ export interface OrdersRepository {
   getOrder(context: ApplicationContext, id: string, partitionKey: string): Promise<Order>;
   putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
   updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction);
-  close();
+  close(): Promise<void>;
 }
 
 export interface CasesRepository {
@@ -81,6 +81,7 @@ export interface CasesRepository {
   ): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(context: ApplicationContext, history: CaseHistory);
+  close(): Promise<void>;
 }
 
 export interface OfficesRepository {
@@ -90,6 +91,8 @@ export interface OfficesRepository {
     officeCode: string,
     user: CamsUserReference,
   ): Promise<void>;
+  // TODO: Don't like this. See if we can close mongo clients differently. There is a ticket for this.
+  close?: () => void;
 }
 
 // TODO: Move these models to a top level models file?
