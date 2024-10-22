@@ -23,10 +23,9 @@ describe('Orders Sync Function tests', () => {
   test('Should call orders controller method handleTimer', async () => {
     jest.spyOn(factory, 'getOrdersRepository').mockReturnValue({
       search: jest.fn(),
-      getOrder: jest.fn(),
-      updateOrder: jest.fn(),
-      putOrders: jest.fn(),
-      close: jest.fn(),
+      read: jest.fn(),
+      update: jest.fn(),
+      createMany: jest.fn(),
     });
     const handleTimer = jest
       .spyOn(OrdersController.prototype, 'handleTimer')
@@ -38,10 +37,9 @@ describe('Orders Sync Function tests', () => {
   test('Should log a camsError if handleTimer throws a CamsError', async () => {
     jest.spyOn(factory, 'getOrdersRepository').mockReturnValue({
       search: jest.fn(),
-      getOrder: jest.fn(),
-      updateOrder: jest.fn(),
-      putOrders: jest.fn(),
-      close: jest.fn(),
+      read: jest.fn(),
+      update: jest.fn(),
+      createMany: jest.fn(),
     });
     const handleTimer = jest
       .spyOn(OrdersController.prototype, 'handleTimer')

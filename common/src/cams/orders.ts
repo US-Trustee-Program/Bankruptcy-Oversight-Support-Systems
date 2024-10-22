@@ -1,6 +1,7 @@
 import { CaseAssignment } from './assignments';
 import { CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
+import { CamsDocument } from './document';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
@@ -92,8 +93,7 @@ export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
   };
 }
 
-export type ConsolidationOrder = {
-  id?: string;
+export type ConsolidationOrder = CamsDocument & {
   deleted?: true;
   consolidationId: string;
   consolidationType: ConsolidationType;

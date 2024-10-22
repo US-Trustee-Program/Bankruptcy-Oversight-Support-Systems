@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../types/basic';
 import { getCosmosConfig, getCosmosDbClient } from '../../factory';
-import { CosmosConfig } from '../types/database';
+import { DocumentDbConfig } from '../types/database';
 import { AggregateAuthenticationError } from '@azure/identity';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import {
@@ -16,7 +16,7 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
   private cosmosDbClient;
 
   private containerName = 'runtime-state';
-  private cosmosConfig: CosmosConfig;
+  private cosmosConfig: DocumentDbConfig;
 
   constructor(applicationContext: ApplicationContext) {
     this.cosmosDbClient = getCosmosDbClient(applicationContext);

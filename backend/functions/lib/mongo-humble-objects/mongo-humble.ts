@@ -22,8 +22,20 @@ export class CollectionHumble<T> {
     return this.collection.insertOne(item);
   }
 
+  public async insertMany(items) {
+    return this.collection.insertMany(items);
+  }
+
   public async replaceOne(query: DocumentQuery, item) {
     return this.collection.replaceOne(transformQuery(query), item);
+  }
+
+  public async deleteOne(query: DocumentQuery) {
+    return this.collection.deleteOne(transformQuery(query));
+  }
+
+  public async deleteMany(query: DocumentQuery) {
+    return this.collection.deleteMany(transformQuery(query));
   }
 
   public async countDocuments(query: DocumentQuery) {

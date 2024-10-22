@@ -51,7 +51,7 @@ function setupConsolidationsRepoMock(repo: ConsolidationOrdersRepository) {
       return repo;
     });
   return {
-    put: jest.spyOn(repo, 'put'),
+    put: jest.spyOn(repo, 'create'),
     delete: jest.spyOn(repo, 'delete'),
   };
 }
@@ -117,7 +117,7 @@ async function setupConsolidationOrder(
   repo: ConsolidationOrdersRepository,
   order: ConsolidationOrder,
 ): Promise<ConsolidationOrdersRepository> {
-  await repo.put(context, order);
+  await repo.create(context, order);
   return repo;
 }
 

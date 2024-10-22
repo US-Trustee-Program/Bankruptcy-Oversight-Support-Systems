@@ -9,40 +9,35 @@ import {
 } from '../../../../../common/src/cams/events';
 import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
 import { ApplicationContext } from '../types/basic';
-import { isPreExistingDocumentError } from './cosmos/cosmos.helper';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { toMongoQuery } from '../../query/mongo-query-renderer';
 import QueryBuilder from '../../query/query-builder';
 import { Closable, deferClose } from '../../defer-close';
-import { BadRequestError } from '../../common-errors/bad-request';
+// import { BadRequestError } from '../../common-errors/bad-request';
+import { CasesRepository } from '../../use-cases/gateways.types';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 
 const { and, equals, regex } = QueryBuilder;
 
-export class CasesCosmosMongoDbRepository implements Closable {
+export class CasesCosmosMongoDbRepository implements Closable, CasesRepository {
   private documentClient: DocumentClient;
   private readonly containerName = 'cases';
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.cosmosConfig.mongoDbConnectionString);
+    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
     deferClose(context, this);
-  }
-
-  async close() {
-    await this.documentClient.close();
   }
 
   async getTransfers(
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<TransferFrom | TransferTo>> {
-    const query = toMongoQuery(
-      QueryBuilder.build(
-        and(regex('documentType', '^TRANSFER_'), equals<Transfer['caseId']>('caseId', caseId)),
-      ),
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(regex('documentType', '^TRANSFER_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
     const result = await this.documentClient
       .database(context.config.documentDbConfig.databaseName)
@@ -64,11 +59,11 @@ export class CasesCosmosMongoDbRepository implements Closable {
         .insertOne(itemToCreate);
       return itemToCreate;
     } catch (originalError) {
-      if (!isPreExistingDocumentError(originalError)) {
-        throw new BadRequestError(MODULE_NAME, {
-          message: 'Item already exists',
-        });
-      }
+      // if (!isPreExistingDocumentError(originalError)) {
+      //   throw new BadRequestError(MODULE_NAME, {
+      //     message: 'Item already exists',
+      //   });
+      // }
       if (originalError instanceof AggregateAuthenticationError) {
         throw new ServerConfigError(MODULE_NAME, {
           message: 'Failed to authenticate to Azure',
@@ -98,10 +93,9 @@ export class CasesCosmosMongoDbRepository implements Closable {
     context: ApplicationContext,
     caseId: string,
   ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
-    const query = toMongoQuery(
-      QueryBuilder.build(
-        and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
-      ),
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
     const result = await this.documentClient
       .database(context.config.documentDbConfig.databaseName)
@@ -115,11 +109,24 @@ export class CasesCosmosMongoDbRepository implements Closable {
     return consolidations;
   }
 
+  async createConsolidationFrom(
+    context: ApplicationContext,
+    consolidationFrom: ConsolidationFrom,
+  ): Promise<ConsolidationFrom> {
+    return this.create<ConsolidationFrom>(context, consolidationFrom);
+  }
+
+  async createConsolidationTo(
+    context: ApplicationContext,
+    consolidationOut: ConsolidationTo,
+  ): Promise<ConsolidationTo> {
+    return this.create<ConsolidationTo>(context, consolidationOut);
+  }
+
   async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
-    const query = toMongoQuery(
-      QueryBuilder.build(
-        and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
-      ),
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
     const result = await this.documentClient
       .database(context.config.documentDbConfig.databaseName)
@@ -147,5 +154,9 @@ export class CasesCosmosMongoDbRepository implements Closable {
         status: 500,
       });
     }
+  }
+
+  async close() {
+    await this.documentClient.close();
   }
 }

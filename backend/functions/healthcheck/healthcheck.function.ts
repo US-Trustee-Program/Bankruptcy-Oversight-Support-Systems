@@ -8,6 +8,7 @@ import HealthcheckInfo from './healthcheck.info';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import { closeDeferred } from '../lib/defer-close';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
@@ -53,7 +54,7 @@ export default async function handler(
   };
 
   // Add boolean flag for any other checks here
-  return checkResults(
+  const result = checkResults(
     checkCosmosDbWrite,
     checkCosmosDbRead,
     checkCosmosDbDelete,
@@ -74,6 +75,8 @@ export default async function handler(
           status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         }),
       );
+  closeDeferred(applicationContext);
+  return result;
 }
 
 export function checkResults(...results: boolean[]) {

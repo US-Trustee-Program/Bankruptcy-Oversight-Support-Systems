@@ -1,11 +1,9 @@
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { CasesInterface } from './use-cases/cases.interface';
-//import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { CosmosConfig, IDbConfig } from './adapters/types/database';
-//import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
+import { DocumentDbConfig, IDbConfig } from './adapters/types/database';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
@@ -23,9 +21,7 @@ import {
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
-// import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
-import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
@@ -44,9 +40,10 @@ import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repo
 import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosmosdb.mongo.repository';
 import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
-import { MockOrdersRepository } from './testing/mock-gateways/mock-orders.repository';
 import { CasesCosmosMongoDbRepository } from './adapters/gateways/cases.cosmosdb.mongo.repository';
 import { deferClose } from './defer-close';
+import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/consolidations.cosmosdb.mongo.repository';
+import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -87,7 +84,7 @@ export const getCosmosDbClient = (
   }
 };
 
-export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
+export const getCosmosConfig = (applicationContext: ApplicationContext): DocumentDbConfig => {
   return applicationContext.config.get('cosmosConfig');
 };
 
@@ -120,13 +117,6 @@ export const getOfficesGateway = (applicationContext: ApplicationContext): Offic
   }
 };
 
-// export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
-//   if (applicationContext.config.authConfig.provider === 'mock') {
-//     return new MockOfficesRepository();
-//   }
-//   return new OfficesCosmosDbRepository(applicationContext);
-// };
-
 export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
   if (applicationContext.config.authConfig.provider === 'mock') {
     return new MockOfficesRepository();
@@ -136,24 +126,21 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
   return instance;
 };
 
+// transfer orders
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  // return new OrdersCosmosDbRepository(applicationContext);
-  if (applicationContext.config.get('dbMock')) return new MockOrdersRepository();
-  return new OrdersCosmosDbMongoRepository(
-    applicationContext.config.cosmosConfig.mongoDbConnectionString,
-  );
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  return new OrdersCosmosDbMongoRepository(applicationContext);
 };
 
 export const getConsolidationOrdersRepository = (
   applicationContext: ApplicationContext,
 ): ConsolidationOrdersRepository => {
-  return new ConsolidationOrdersCosmosDbRepository(applicationContext);
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  return new ConsolidationOrdersCosmosMongoDbRepository(applicationContext);
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  return new CasesCosmosMongoDbRepository(
-    applicationContext.config.documentDbConfig.mongoDbConnectionString,
-  );
+  return new CasesCosmosMongoDbRepository(applicationContext);
 };
 
 export const getRuntimeStateRepository = (

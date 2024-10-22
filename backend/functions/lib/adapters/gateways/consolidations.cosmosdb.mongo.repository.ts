@@ -1,101 +1,117 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
-import { Closable } from '../../defer-close';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { Closable, deferClose } from '../../defer-close';
 import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
-import QueryBuilder from '../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../use-cases/gateways.types';
 import { ApplicationContext } from '../types/basic';
+import { DocumentQuery } from './document-db.repository';
+import { toMongoQuery } from '../../query/mongo-query-renderer';
 
-// const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
+const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
+
+const { and, contains, equals } = QueryBuilder;
 
 export default class ConsolidationOrdersCosmosMongoDbRepository
   implements ConsolidationOrdersRepository, Closable
 {
   private documentClient: DocumentClient;
-  private collectionName = 'consolidations';
+  private readonly collectionName = 'consolidations';
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.cosmosConfig.mongoDbConnectionString);
+    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
+    deferClose(context, this);
   }
 
   async close() {
     await this.documentClient.close();
   }
 
-  async get(context: ApplicationContext, id: string): Promise<ConsolidationOrder> {
+  async read(context: ApplicationContext, id: string): Promise<ConsolidationOrder> {
     const { equals } = QueryBuilder;
     const query = QueryBuilder.build(
+      toMongoQuery,
       equals<ConsolidationOrder['consolidationId']>('consolidationId', id),
     );
     const collection = this.documentClient
       .database(context.config.documentDbConfig.databaseName)
       .collection<ConsolidationOrder>(this.collectionName);
-    return await collection.findOne(query);
+    const response = await collection.findOne(query);
+    if (response === null) {
+      throw new NotFoundError(MODULE_NAME, {
+        message: `Consolidation with ${id} cannot be found.`,
+      });
+    }
+    return response;
   }
 
-  update(
-    _context: ApplicationContext,
-    _id: string,
-    _partitionKey: string,
-    _data: ConsolidationOrder,
-  ) {
-    throw new Error('Method not implemented.');
-  }
-
-  upsert(
-    _context: ApplicationContext,
-    _partitionKey: string,
-    _data: ConsolidationOrder,
-  ): Promise<ConsolidationOrder> {
-    throw new Error('Method not implemented.');
-  }
-
-  async put(context: ApplicationContext, data: ConsolidationOrder): Promise<ConsolidationOrder> {
+  async create(context: ApplicationContext, data: ConsolidationOrder): Promise<ConsolidationOrder> {
     const collection = this.documentClient
       .database(context.config.documentDbConfig.databaseName)
       .collection<ConsolidationOrder>(this.collectionName);
-    await collection.insertOne(data);
+    const response = await collection.insertOne(data);
+    if (!response.acknowledged) {
+      // TODO: then what??
+    }
+    data.id = response.insertedId.toString();
     return data;
   }
 
-  putAll(_context: ApplicationContext, _list: ConsolidationOrder[]): Promise<ConsolidationOrder[]> {
-    throw new Error('Method not implemented.');
+  public async createMany(context: ApplicationContext, list: ConsolidationOrder[]): Promise<void> {
+    const collection = this.documentClient
+      .database(context.config.documentDbConfig.databaseName)
+      .collection<ConsolidationOrder>(this.collectionName);
+    const response = await collection.insertMany(list);
 
-    // return this.repo.putAll(context, list);
+    if (!response.acknowledged) {
+      // TODO: then what??
+    }
+    if (response.insertedCount != list.length) {
+      // TODO: then what??
+    }
   }
 
-  delete(_context: ApplicationContext, _id: string, _partitionKey: string) {
-    throw new Error('Method not implemented.');
-
-    // return this.repo.delete(context, id, partitionKey);
+  public async delete(context: ApplicationContext, id: string, partitionKey: string) {
+    // TODO: How to handle the partitionKey? (shard)
+    // TODO: deleteOne returns a DeleteResult. This is different from the prior return.
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(
+        equals<ConsolidationOrder['id']>('id', id),
+        equals<ConsolidationOrder['consolidationId']>('consolidationId', partitionKey),
+      ),
+    );
+    await this.documentClient
+      .database(context.config.documentDbConfig.databaseName)
+      .collection(this.collectionName)
+      .deleteOne(query);
   }
 
   public async search(
-    _context: ApplicationContext,
-    _predicate?: OrdersSearchPredicate,
+    context: ApplicationContext,
+    predicate?: OrdersSearchPredicate,
   ): Promise<Array<ConsolidationOrder>> {
-    throw new Error('Method not implemented.');
+    const conditions: ConditionOrConjunction[] = [];
+    if (predicate.divisionCodes) {
+      conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+    }
+    if (predicate.consolidationId) {
+      conditions.push(equals<string>('consolidationId', predicate.consolidationId));
+    }
+    const query: DocumentQuery = predicate
+      ? QueryBuilder.build(toMongoQuery, and(...conditions))
+      : {};
 
-    // let querySpec;
-    // if (!predicate) {
-    //   querySpec = {
-    //     query: 'SELECT * FROM c ORDER BY c.orderDate ASC',
-    //     parameters: [],
-    //   };
-    // } else {
-    //   // TODO: Sanitize the inputs
-    //   // Group designator comes from local-storage-gateway and is store in the user session cache.
-    //   // We get associated division codes from DXTR and also store that in the session cache.
-    //   // We are not ever trusting the client with this information as of 9 Sept 2024.
-    //   const whereClause =
-    //     'WHERE ' +
-    //     predicate.divisionCodes.map((dCode) => `c.courtDivisionCode='${dCode}'`).join(' OR ') +
-    //     ' ORDER BY c.orderDate ASC';
-    //   querySpec = {
-    //     query: 'SELECT * FROM c ' + whereClause,
-    //     parameters: [],
-    //   };
-    // }
-    // return await this.repo.query(context, querySpec);
+    const collection = this.documentClient
+      .database(context.config.documentDbConfig.databaseName)
+      .collection<ConsolidationOrder>(this.collectionName);
+
+    const result = (await collection.find(query)).sort({ orderDate: 1 });
+    const orders: ConsolidationOrder[] = [];
+    for await (const doc of result) {
+      orders.push(doc);
+    }
+    return orders;
   }
 }

@@ -10,7 +10,7 @@ describe('orders repo', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new OrdersCosmosDbMongoRepository(context.config.cosmosConfig.mongoDbConnectionString);
+    repo = new OrdersCosmosDbMongoRepository(context);
     jest.clearAllMocks();
   });
 
@@ -31,13 +31,13 @@ describe('orders repo', () => {
   test('should insert an array of transfer orders', async () => {
     const transfers = MockData.buildArray(MockData.getTransferOrder, 4);
     const expectedOrders = [...transfers];
-    const actualOrders = await repo.putOrders(context, expectedOrders);
+    const actualOrders = await repo.createMany(context, expectedOrders);
     expect(actualOrders).toEqual(expectedOrders);
   });
 
   test('should get one order', async () => {
     const id = 'b2833fdb-110c-4a45-9a53-59b728243121';
-    const result = await repo.getOrder(context, id, 'some case id');
+    const result = await repo.read(context, id, 'some case id');
     expect(result).not.toBeNull();
   });
 
@@ -45,7 +45,7 @@ describe('orders repo', () => {
     const id = '93ff688b-b865-4478-aa2f-e718de7116c5';
     const transferOrder = MockData.getTransferOrder();
 
-    const result = await repo.updateOrder(context, id, transferOrder as TransferOrderAction);
+    const result = await repo.update(context, id, transferOrder as TransferOrderAction);
     expect(result).not.toBeNull();
   });
 });
