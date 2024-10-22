@@ -8,19 +8,15 @@ export class MockOrdersRepository implements OrdersRepository {
     throw new Error('mock this');
   }
 
-  async getOrder(_context: ApplicationContext, _id: string, _partitionKey: string): Promise<Order> {
+  async read(_context: ApplicationContext, _id: string, _partitionKey: string): Promise<Order> {
     throw new Error('mock this');
   }
 
-  async putOrders(_context: ApplicationContext, _orders: Order[]): Promise<Order[]> {
+  async createMany(_context: ApplicationContext, _orders: Order[]): Promise<Order[]> {
     throw new Error('mock this');
   }
 
-  async updateOrder(_context: ApplicationContext, _id: string, _data: TransferOrderAction) {
-    throw new Error('mock this');
-  }
-
-  async close() {
+  async update(_context: ApplicationContext, _id: string, _data: TransferOrderAction) {
     throw new Error('mock this');
   }
 }

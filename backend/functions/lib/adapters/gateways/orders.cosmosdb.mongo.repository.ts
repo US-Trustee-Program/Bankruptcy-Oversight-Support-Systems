@@ -9,15 +9,17 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import QueryBuilder from '../../query/query-builder';
 import { toMongoQuery } from '../../query/mongo-query-renderer';
+import { Closable, deferClose } from '../../defer-close';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 
-export class OrdersCosmosDbMongoRepository implements OrdersRepository {
+export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository {
   private documentClient: DocumentClient;
-  private containerName = 'orders';
+  private readonly containerName = 'orders';
 
-  constructor(connectionString: string) {
-    this.documentClient = new DocumentClient(connectionString);
+  constructor(context: ApplicationContext) {
+    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
+    deferClose(context, this);
   }
 
   async search(context: ApplicationContext, predicate: OrdersSearchPredicate): Promise<Order[]> {
@@ -40,7 +42,7 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
     return orders;
   }
 
-  async getOrder(context: ApplicationContext, id: string, _unused: string): Promise<Order> {
+  async read(context: ApplicationContext, id: string, _unused: string): Promise<Order> {
     const query = toMongoQuery(QueryBuilder.equals('id', id));
 
     try {
@@ -65,7 +67,7 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
     }
   }
 
-  async updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction) {
+  async update(context: ApplicationContext, id: string, data: TransferOrderAction) {
     const query = toMongoQuery(QueryBuilder.equals('id', id));
     const collection = this.documentClient
       .database(context.config.documentDbConfig.databaseName)
@@ -83,8 +85,6 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
       };
       const result = await collection.replaceOne(query, updatedOrder);
       context.logger.debug(MODULE_NAME, `Order updated ${id}, ${result}`);
-
-      return { id };
     } catch (originalError) {
       context.logger.error(
         MODULE_NAME,
@@ -101,7 +101,7 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
     }
   }
 
-  async putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
+  async createMany(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
     const writtenOrders: Order[] = [];
     if (!orders.length) return writtenOrders;
     try {

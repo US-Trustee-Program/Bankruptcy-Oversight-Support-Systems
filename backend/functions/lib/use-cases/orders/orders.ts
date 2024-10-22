@@ -114,11 +114,11 @@ export class OrdersUseCase {
     }
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
-    const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
+    const initialOrder = await this.ordersRepo.read(context, id, data.caseId);
     let order: Order;
     if (isTransferOrder(initialOrder)) {
-      await this.ordersRepo.updateOrder(context, id, data);
-      order = await this.ordersRepo.getOrder(context, id, data.caseId);
+      await this.ordersRepo.update(context, id, data);
+      order = await this.ordersRepo.read(context, id, data.caseId);
     }
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
@@ -202,7 +202,7 @@ export class OrdersUseCase {
       startingTxId,
     );
 
-    const writtenTransfers = await this.ordersRepo.putOrders(context, transfers);
+    const writtenTransfers = await this.ordersRepo.createMany(context, transfers);
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
@@ -225,7 +225,7 @@ export class OrdersUseCase {
     });
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    await this.consolidationsRepo.putAll(context, Array.from(consolidationsByJobId.values()));
+    await this.consolidationsRepo.createMany(context, Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
       const history: ConsolidationOrderSummary = {
@@ -380,8 +380,8 @@ export class OrdersUseCase {
         childCases: remainingChildCases,
         id: undefined,
       };
-      const updatedRemainingOrder = await this.consolidationsRepo.put(context, remainingOrder);
-      response.push(updatedRemainingOrder);
+      const updatedRemainingOrder = await this.consolidationsRepo.create(context, remainingOrder);
+      response.push(updatedRemainingOrder as ConsolidationOrder);
     }
 
     await this.consolidationsRepo.delete(
@@ -390,8 +390,8 @@ export class OrdersUseCase {
       provisionalOrder.consolidationId,
     );
 
-    const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
-    response.push(createdConsolidation);
+    const createdConsolidation = await this.consolidationsRepo.create(context, newConsolidation);
+    response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {
       if (!leadCase || childCase.caseId !== leadCase.caseId) {

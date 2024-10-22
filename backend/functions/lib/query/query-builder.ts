@@ -1,3 +1,5 @@
+import { DocumentQuery } from '../adapters/gateways/document-db.repository';
+
 export type Condition = {
   condition:
     | 'EQUALS'
@@ -29,8 +31,11 @@ export function isConjunction(obj: unknown): obj is Conjunction {
 
 export type ConditionOrConjunction = Condition | Conjunction;
 
-function build(query: ConditionOrConjunction) {
-  return query;
+function build(
+  transformer: (query: ConditionOrConjunction) => DocumentQuery,
+  query: ConditionOrConjunction,
+) {
+  return transformer(query);
 }
 
 function and(...values: ConditionOrConjunction[]): Conjunction {

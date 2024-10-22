@@ -19,7 +19,7 @@ describe('Cases repository', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new CasesCosmosMongoDbRepository(context.config.cosmosConfig.mongoDbConnectionString);
+    repo = new CasesCosmosMongoDbRepository(context);
 
     jest.clearAllMocks();
   });

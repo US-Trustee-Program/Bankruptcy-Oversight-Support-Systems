@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { ServerType } from '../adapters/types/basic';
-import { CosmosConfig, IDbConfig } from '../adapters/types/database';
+import { DocumentDbConfig, IDbConfig } from '../adapters/types/database';
 import { AuthorizationConfig, UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { getAuthorizationConfig } from './authorization-configuration';
 import { getUserGroupGatewayConfig } from './user-groups-gateway-configuration';
@@ -11,8 +11,8 @@ export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
-  public readonly cosmosConfig: CosmosConfig;
-  public readonly documentDbConfig: CosmosConfig;
+  public readonly cosmosConfig: DocumentDbConfig;
+  public readonly documentDbConfig: DocumentDbConfig;
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
@@ -80,12 +80,12 @@ export class ApplicationConfiguration {
     return config;
   }
 
-  private getCosmosConfig(): CosmosConfig {
+  private getCosmosConfig(): DocumentDbConfig {
     return {
       endpoint: process.env.COSMOS_ENDPOINT,
       managedIdentity: process.env.COSMOS_MANAGED_IDENTITY,
       databaseName: process.env.COSMOS_DATABASE_NAME,
-      mongoDbConnectionString: process.env.MONGO_CONNECTION_STRING,
+      connectionString: process.env.MONGO_CONNECTION_STRING,
     };
   }
 
