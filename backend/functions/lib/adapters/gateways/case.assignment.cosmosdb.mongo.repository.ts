@@ -13,9 +13,12 @@ const { and, equals, exists } = QueryBuilder;
 
 export class CaseAssignmentCosmosMongoDbRepository implements Closable {
   private documentClient: DocumentClient;
-
+  private readonly collectionName = 'assignments';
+  private context: ApplicationContext;
+  //TODO: do we want to use this instantiation of ApplicationContext across all repos? or the implementation in cases.cosmosdb.mongo
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.cosmosConfig.mongoDbConnectionString);
+    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
+    this.context = context;
     deferClose(context, this);
   }
 
@@ -23,8 +26,8 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
     let result;
     try {
       const collection = this.documentClient
-        .database('cams')
-        .collection<CaseAssignment>('assignments');
+        .database(this.context.config.documentDbConfig.databaseName)
+        .collection<CaseAssignment>(this.collectionName);
       result = await collection.insertOne(caseAssignment);
     } catch (error) {
       throw new UnknownError(MODULE_NAME, {
@@ -38,8 +41,8 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
 
   async updateAssignment(caseAssignment: CaseAssignment): Promise<string> {
     const collection = this.documentClient
-      .database('cams')
-      .collection<CaseAssignment>('assignments');
+      .database(this.context.config.documentDbConfig.databaseName)
+      .collection<CaseAssignment>(this.collectionName);
     const query = toMongoQuery(QueryBuilder.equals('id', caseAssignment.id));
 
     try {
@@ -64,19 +67,18 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
     // context: ApplicationContext,
     caseId: string,
   ): Promise<CaseAssignment[]> {
-    const query = toMongoQuery(
-      QueryBuilder.build(
-        and(
-          equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-          equals<CaseAssignment['caseId']>('caseId', caseId),
-        ),
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(
+        equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
+        equals<CaseAssignment['caseId']>('caseId', caseId),
       ),
     );
     const assignments: CaseAssignment[] = [];
     try {
       const collection = this.documentClient
-        .database('cams')
-        .collection<CaseAssignment>('assignments');
+        .database(this.context.config.documentDbConfig.databaseName)
+        .collection<CaseAssignment>(this.collectionName);
 
       const result = await collection.find(query);
 
@@ -95,21 +97,20 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
 
   async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
     //TODO: revisit to add an or clause with an empty string?
-    const query = toMongoQuery(
-      QueryBuilder.build(
-        and(
-          equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-          equals<CaseAssignment['userId']>('userId', userId),
-          exists<CaseAssignment>('unassignedOn', false),
-        ),
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(
+        equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
+        equals<CaseAssignment['userId']>('userId', userId),
+        exists<CaseAssignment>('unassignedOn', false),
       ),
     );
 
     const assignments: CaseAssignment[] = [];
     try {
       const collection = this.documentClient
-        .database('cams')
-        .collection<CaseAssignment>('assignments');
+        .database(this.context.config.documentDbConfig.databaseName)
+        .collection<CaseAssignment>(this.collectionName);
 
       const result = await collection.find(query);
 

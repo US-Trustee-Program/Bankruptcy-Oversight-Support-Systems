@@ -11,7 +11,7 @@ function isClosable(obj: unknown): obj is Closable {
 }
 
 function isDeferCloseAccumulator(obj: unknown): obj is DeferCloseAccumulator {
-  return typeof obj === 'object' && 'toBeClosed' in obj;
+  return typeof obj === 'object' && 'closables' in obj;
 }
 
 export function deferClose(accumulator: unknown, closable: unknown): boolean {

@@ -38,7 +38,8 @@ describe('Mongo Query Renderer', () => {
       ],
     };
 
-    const query = QueryBuilder.build(
+    const actual = QueryBuilder.build(
+      toMongoQuery,
       or(
         equals<string>('uno', 'theValue'),
         and(
@@ -49,7 +50,6 @@ describe('Mongo Query Renderer', () => {
       ),
     );
 
-    const actual = toMongoQuery(query);
     expect(actual).toEqual(expected);
   });
 
@@ -112,7 +112,7 @@ describe('Mongo Query Renderer', () => {
   ];
 
   test.each(queries)('should render a mongo query for $caseName condition', (args) => {
-    const actual = toMongoQuery(QueryBuilder.build(args.func()));
+    const actual = QueryBuilder.build(toMongoQuery, args.func());
     expect(actual).toEqual(args.expected);
   });
 
@@ -135,7 +135,7 @@ describe('Mongo Query Renderer', () => {
   ];
 
   test.each(conjunctions)('should render a mongo query for $caseName aggregation', (args) => {
-    const actual = toMongoQuery(QueryBuilder.build(args.func()));
+    const actual = QueryBuilder.build(toMongoQuery, args.func());
     expect(actual).toEqual(args.expected);
   });
 });

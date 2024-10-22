@@ -29,8 +29,6 @@ import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.repository';
-import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
@@ -40,6 +38,8 @@ import { CaseAssignmentUseCase } from '../case-assignment';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../../common/src/cams/users';
 import { MockOrdersRepository } from '../../testing/mock-gateways/mock-orders.repository';
+import ConsolidationOrdersCosmosMongoDbRepository from '../../adapters/gateways/consolidations.cosmosdb.mongo.repository';
+import { CasesCosmosMongoDbRepository } from '../../adapters/gateways/cases.cosmosdb.mongo.repository';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -139,10 +139,8 @@ describe('Orders use case', () => {
       documentType: 'TRANSFER_TO',
     };
 
-    const updateOrderFn = jest
-      .spyOn(ordersRepo, 'updateOrder')
-      .mockResolvedValue({ id: 'mock-guid' });
-    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+    const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'read').mockResolvedValue(order);
     const transferToFn = jest.spyOn(casesRepo, 'createTransferTo');
     const transferFromFn = jest.spyOn(casesRepo, 'createTransferFrom');
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
@@ -150,8 +148,14 @@ describe('Orders use case', () => {
     await useCase.updateTransferOrder(mockContext, order.id, action);
     expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, action);
     expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
-    expect(transferToFn).toHaveBeenCalledWith(mockContext, transferOut);
-    expect(transferFromFn).toHaveBeenCalledWith(mockContext, transferIn);
+    expect(transferToFn).toHaveBeenCalledWith(mockContext, {
+      ...transferOut,
+      _id: expect.anything(),
+    });
+    expect(transferFromFn).toHaveBeenCalledWith(mockContext, {
+      ...transferIn,
+      _id: expect.anything(),
+    });
     expect(auditFn).toHaveBeenCalled();
   });
 
@@ -164,10 +168,8 @@ describe('Orders use case', () => {
       status: 'rejected',
     };
 
-    const updateOrderFn = jest
-      .spyOn(ordersRepo, 'updateOrder')
-      .mockResolvedValue({ id: 'mock-guid' });
-    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+    const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'read').mockResolvedValue(order);
 
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
 
@@ -200,7 +202,7 @@ describe('Orders use case', () => {
     };
 
     const mockPutOrders = jest
-      .spyOn(MockOrdersRepository.prototype, 'putOrders')
+      .spyOn(MockOrdersRepository.prototype, 'createMany')
       .mockImplementation((_context, orders) => {
         return Promise.resolve(orders);
       });
@@ -295,7 +297,7 @@ describe('Orders use case', () => {
     };
 
     const mockPutOrders = jest
-      .spyOn(MockOrdersRepository.prototype, 'putOrders')
+      .spyOn(MockOrdersRepository.prototype, 'createMany')
       .mockResolvedValueOnce(transfers)
       .mockResolvedValueOnce(consolidations);
 
@@ -343,8 +345,8 @@ describe('Orders use case', () => {
       },
     });
     const mockDelete = jest
-      .spyOn(CosmosDbRepository.prototype, 'delete')
-      .mockResolvedValue(pendingConsolidation);
+      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'delete')
+      .mockResolvedValue();
     const leadCaseSummary = MockData.getCaseSummary();
 
     const rejectionReason = 'test';
@@ -359,7 +361,7 @@ describe('Orders use case', () => {
       id: crypto.randomUUID(),
     };
     const mockPut = jest
-      .spyOn(CosmosDbRepository.prototype, 'put')
+      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
     const before: ConsolidationOrderSummary = {
       status: 'pending',
@@ -384,12 +386,12 @@ describe('Orders use case', () => {
       updatedBy: authorizedUser,
     };
     const mockGetHistory = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
+      .spyOn(CasesCosmosMongoDbRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
     const mockCreateHistory = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
+      .spyOn(CasesCosmosMongoDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
@@ -485,10 +487,8 @@ describe('Orders use case', () => {
       status: 'approved',
     };
 
-    const updateOrderFn = jest
-      .spyOn(ordersRepo, 'updateOrder')
-      .mockResolvedValue({ id: 'mock-guid' });
-    const getOrderFn = jest.spyOn(ordersRepo, 'getOrder').mockResolvedValue(order);
+    const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'read').mockResolvedValue(order);
     const transferToFn = jest.spyOn(casesRepo, 'createTransferTo');
     const transferFromFn = jest.spyOn(casesRepo, 'createTransferFrom');
     const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
@@ -558,7 +558,7 @@ describe('Orders use case', () => {
       status: 'approved',
     };
     const mockCreateCaseHistory = jest.spyOn(
-      CasesCosmosDbRepository.prototype,
+      CasesCosmosMongoDbRepository.prototype,
       'createCaseHistory',
     );
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
@@ -585,7 +585,7 @@ describe('Orders use case', () => {
       status: 'approved',
     };
     const mockCreateCaseHistory = jest.spyOn(
-      CasesCosmosDbRepository.prototype,
+      CasesCosmosMongoDbRepository.prototype,
       'createCaseHistory',
     );
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});

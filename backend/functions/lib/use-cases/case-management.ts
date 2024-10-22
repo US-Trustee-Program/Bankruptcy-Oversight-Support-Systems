@@ -109,7 +109,6 @@ export default class CaseManagement {
     caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
     const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
-    await this.casesRepo.close();
     return { ...caseDetails, _actions };
   }
 

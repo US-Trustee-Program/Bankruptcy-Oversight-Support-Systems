@@ -25,7 +25,7 @@ export class OfficesCosmosMongoDbRepository implements Closable {
   private readonly containerName = 'offices';
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.cosmosConfig.mongoDbConnectionString);
+    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
     deferClose(context, this);
   }
 
@@ -61,13 +61,12 @@ export class OfficesCosmosMongoDbRepository implements Closable {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const query = toMongoQuery(
-      QueryBuilder.build(
-        and(
-          equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-          contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
-          equals<OfficeStaff['officeCode']>('officeCode', officeCode),
-        ),
+    const query = QueryBuilder.build(
+      toMongoQuery,
+      and(
+        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+        contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
+        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
       ),
     );
     const collection = this.documentClient

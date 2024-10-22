@@ -48,14 +48,12 @@ describe('Query Builder', () => {
       ],
     };
 
-    const actual = QueryBuilder.build(
-      or(
-        equals<string>('uno', 'theValue'),
-        and(
-          equals<Foo['two']>('two', 45),
-          equals('three', true),
-          or(equals('uno', 'hello'), equals('uno', 'something')),
-        ),
+    const actual = or(
+      equals<string>('uno', 'theValue'),
+      and(
+        equals<Foo['two']>('two', 45),
+        equals('three', true),
+        or(equals('uno', 'hello'), equals('uno', 'something')),
       ),
     );
 
@@ -117,7 +115,7 @@ describe('Query Builder', () => {
   ];
 
   test.each(simpleQueryCases)('should handle $condition condition', (testQuery) => {
-    const query = QueryBuilder.build(testQuery.query());
+    const query = testQuery.query();
     expect(query).toEqual(testQuery.result);
   });
 
@@ -140,7 +138,14 @@ describe('Query Builder', () => {
   ];
 
   test.each(conjunctionCases)('should handle $conjunction conjunction', (conjunctionQuery) => {
-    const query = QueryBuilder.build(conjunctionQuery.query());
+    const query = conjunctionQuery.query();
     expect(query).toEqual(conjunctionQuery.result);
+  });
+
+  test('should execute the transformer passed to the build function', () => {
+    const query = or();
+    const transformer = jest.fn();
+    QueryBuilder.build(transformer, query);
+    expect(transformer).toHaveBeenCalledWith(query);
   });
 });

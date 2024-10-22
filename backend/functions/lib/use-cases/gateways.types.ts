@@ -16,27 +16,79 @@ import { CaseDocket } from '../../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { CamsDocument } from '../../../../common/src/cams/document';
 
 export interface RepositoryResource {
   id?: string;
 }
 
 export interface DocumentRepository<T extends RepositoryResource> {
-  get(context: ApplicationContext, id: string, partitionKey: string): Promise<T>;
-  update(context: ApplicationContext, id: string, partitionKey: string, data: T);
-  upsert(context: ApplicationContext, partitionKey: string, data: T): Promise<T>;
-  put(context: ApplicationContext, data: T): Promise<T>;
-  putAll(context: ApplicationContext, list: T[]): Promise<T[]>;
-  delete(context: ApplicationContext, id: string, partitionKey: string);
+  create(context: ApplicationContext, data: T): Promise<T | void>;
+  createMany(context: ApplicationContext, list: T[]): Promise<T[] | void>;
+  read(context: ApplicationContext, id: string, partitionKey: string): Promise<T>;
+  update(context: ApplicationContext, id: string, partitionKey: string, data: T): Promise<T | void>;
+  upsert(context: ApplicationContext, partitionKey: string, data: T): Promise<T | void>;
+  delete(context: ApplicationContext, id: string, partitionKey: string): Promise<void>;
 }
 
-export interface ConsolidationOrdersRepository extends DocumentRepository<ConsolidationOrder> {
-  search(
+interface Creates<T, R = void> {
+  create(context: ApplicationContext, data: T): Promise<R>;
+}
+
+interface CreatesMany<T, R = void> {
+  createMany(context: ApplicationContext, data: T[]): Promise<R>;
+}
+
+interface Reads<R> {
+  read(context: ApplicationContext, id: string, partitionKey: string): Promise<R>;
+}
+
+interface Updates<T, R = void> {
+  update(context: ApplicationContext, id: string, data: T): Promise<R>;
+}
+
+interface Deletes {
+  delete(context: ApplicationContext, id: string, partitionKey: string): Promise<void>;
+}
+
+interface Searches<P, R> {
+  search(context: ApplicationContext, predicate?: P): Promise<R[]>;
+}
+
+///////////////////////
+// Composite interfaces from Atoms
+///////////////////////
+
+export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
+  extends Searches<OrdersSearchPredicate, T>,
+    Creates<T, T>,
+    CreatesMany<T>,
+    Reads<T>,
+    Deletes {}
+
+export interface OrdersRepository<T = Order>
+  extends Searches<OrdersSearchPredicate, T>,
+    CreatesMany<T, T[]>,
+    Reads<T>,
+    Updates<TransferOrderAction> {}
+
+export interface RuntimeStateRepository {
+  getState<T extends RuntimeState>(
     context: ApplicationContext,
-    predicate?: OrdersSearchPredicate,
-  ): Promise<ConsolidationOrder[]>;
+    documentType: RuntimeStateDocumentType,
+  ): Promise<T>;
+  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T);
+  createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T>;
 }
 
+export interface LocalDocumentRepository<T extends CamsDocument, S>
+  extends Searches<S, T>,
+    Creates<T, T>,
+    Deletes {}
+
+///////////////////////
+// TODO Refactor below this line
+///////////////////////
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
 }
@@ -50,14 +102,6 @@ export interface CaseHistoryGateway {
 
 export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
-}
-
-export interface OrdersRepository {
-  search(context: ApplicationContext, predicate?: OrdersSearchPredicate): Promise<Order[]>;
-  getOrder(context: ApplicationContext, id: string, partitionKey: string): Promise<Order>;
-  putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
-  updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction);
-  close(): Promise<void>;
 }
 
 export interface CasesRepository {
@@ -81,7 +125,6 @@ export interface CasesRepository {
   ): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(context: ApplicationContext, history: CaseHistory);
-  close(): Promise<void>;
 }
 
 export interface OfficesRepository {
@@ -91,8 +134,6 @@ export interface OfficesRepository {
     officeCode: string,
     user: CamsUserReference,
   ): Promise<void>;
-  // TODO: Don't like this. See if we can close mongo clients differently. There is a ticket for this.
-  close?: () => void;
 }
 
 // TODO: Move these models to a top level models file?
@@ -114,12 +155,3 @@ export type OfficeStaffSyncState = RuntimeState & {
   users: CamsUserReference[];
   officesWithUsers: UstpOfficeDetails[];
 };
-
-export interface RuntimeStateRepository {
-  getState<T extends RuntimeState>(
-    context: ApplicationContext,
-    documentType: RuntimeStateDocumentType,
-  ): Promise<T>;
-  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T);
-  createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T>;
-}

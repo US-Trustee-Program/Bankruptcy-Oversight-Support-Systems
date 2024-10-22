@@ -22,7 +22,7 @@ describe('offices repo', () => {
     if (repo) await repo.close();
   });
 
-  test.only('getOfficeAttorneys', async () => {
+  test('getOfficeAttorneys', async () => {
     const attorneys = await repo.getOfficeAttorneys(context, 'my_house');
 
     expect(attorneys).not.toBeNull();
