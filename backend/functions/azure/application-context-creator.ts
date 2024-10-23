@@ -46,6 +46,7 @@ async function getApplicationContext(args: {
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest(request) : undefined,
     session: undefined,
+    closables: [],
   } satisfies ApplicationContext;
 }
 

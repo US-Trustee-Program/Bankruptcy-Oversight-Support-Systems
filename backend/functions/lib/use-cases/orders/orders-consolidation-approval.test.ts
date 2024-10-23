@@ -17,14 +17,14 @@ import {
 } from '../../../../../common/src/cams/orders';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CosmosDbRepository } from '../../adapters/gateways/cosmos/cosmos.repository';
-import { CasesCosmosDbRepository } from '../../adapters/gateways/cases.cosmosdb.repository';
 import * as crypto from 'crypto';
 import { CaseHistory, ConsolidationOrderSummary } from '../../../../../common/src/cams/history';
 import { CaseAssignmentUseCase } from '../case-assignment';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
+import ConsolidationOrdersCosmosMongoDbRepository from '../../adapters/gateways/consolidations.cosmosdb.mongo.repository';
+import { CasesCosmosMongoDbRepository } from '../../adapters/gateways/cases.cosmosdb.mongo.repository';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -71,8 +71,8 @@ describe('Orders use case', () => {
     });
 
     const mockDelete = jest
-      .spyOn(CosmosDbRepository.prototype, 'delete')
-      .mockResolvedValue(pendingConsolidation);
+      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'delete')
+      .mockResolvedValue();
 
     const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
@@ -90,7 +90,7 @@ describe('Orders use case', () => {
     };
 
     const mockPut = jest
-      .spyOn(CosmosDbRepository.prototype, 'put')
+      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
 
     const leadCaseBefore: ConsolidationOrderSummary = {
@@ -142,13 +142,13 @@ describe('Orders use case', () => {
     };
 
     const mockGetHistory = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
+      .spyOn(CasesCosmosMongoDbRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
 
     const mockCreateHistory = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
+      .spyOn(CasesCosmosMongoDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
 
     const mockCreateAssignment = jest
@@ -186,8 +186,8 @@ describe('Orders use case', () => {
       },
     });
     const mockDelete = jest
-      .spyOn(CosmosDbRepository.prototype, 'delete')
-      .mockResolvedValue(originalConsolidation);
+      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'delete')
+      .mockResolvedValue();
     const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...originalConsolidation,
@@ -208,7 +208,7 @@ describe('Orders use case', () => {
     };
 
     const mockPut = jest
-      .spyOn(CosmosDbRepository.prototype, 'put')
+      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'create')
       .mockResolvedValueOnce(newPendingConsolidation)
       .mockResolvedValueOnce(approvedConsolidation);
     const leadCaseBefore: ConsolidationOrderSummary = {
@@ -252,12 +252,12 @@ describe('Orders use case', () => {
       updatedBy: SYSTEM_USER_REFERENCE,
     };
     const mockGetHistory = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'getCaseHistory')
+      .spyOn(CasesCosmosMongoDbRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
     const mockCreateHistory = jest
-      .spyOn(CasesCosmosDbRepository.prototype, 'createCaseHistory')
+      .spyOn(CasesCosmosMongoDbRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 

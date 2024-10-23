@@ -72,4 +72,8 @@ export class LocalCasesRepository implements CasesRepository {
   async createCaseHistory(_context: ApplicationContext, history: CaseHistory) {
     this.caseHistoryContainer.push(history);
   }
+
+  async close() {
+    return;
+  }
 }

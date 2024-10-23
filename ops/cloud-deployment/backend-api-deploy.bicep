@@ -141,6 +141,8 @@ resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-0
   name: cosmosIdentityName
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
+
+//
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -310,6 +312,10 @@ var applicationSettings = concat(
     {
       name: 'COSMOS_MANAGED_IDENTITY'
       value: cosmosClientId
+    }
+    {
+      name: 'MONGO_CONNECTION_STRING'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
     }
     {
       name: 'INFO_SHA'

@@ -42,8 +42,9 @@ export interface IDbConfig {
   };
 }
 
-export interface CosmosConfig {
+export interface DocumentDbConfig {
   endpoint: string;
   managedIdentity: string;
   databaseName: string;
+  connectionString: string;
 }

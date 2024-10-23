@@ -1,4 +1,4 @@
-import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
+//import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CasesRepository } from './gateways.types';
@@ -9,11 +9,12 @@ import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import { CaseAssignmentCosmosMongoDbRepository } from '../adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
-  private assignmentRepository: CaseAssignmentRepositoryInterface;
+  private assignmentRepository: CaseAssignmentCosmosMongoDbRepository;
   private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
@@ -56,6 +57,8 @@ export class CaseAssignmentUseCase {
     for (const childCaseId of childCaseIds) {
       await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
     }
+
+    await this.assignmentRepository.close();
   }
 
   private async assignTrialAttorneys(

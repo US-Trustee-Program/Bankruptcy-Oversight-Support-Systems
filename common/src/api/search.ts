@@ -25,5 +25,6 @@ export type CasesSearchPredicate = SearchPredicate & {
 };
 
 export type OrdersSearchPredicate = {
-  divisionCodes: string[];
+  divisionCodes?: string[];
+  consolidationId?: string;
 };

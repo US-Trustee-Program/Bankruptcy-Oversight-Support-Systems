@@ -1,11 +1,9 @@
 import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
 import { CasesInterface } from './use-cases/cases.interface';
-import { CaseAssignmentRepositoryInterface } from './interfaces/case.assignment.repository.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { CosmosConfig, IDbConfig } from './adapters/types/database';
-import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
+import { DocumentDbConfig, IDbConfig } from './adapters/types/database';
 import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
 import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
@@ -23,10 +21,7 @@ import {
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
-import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
 import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
-import { CasesCosmosDbRepository } from './adapters/gateways/cases.cosmosdb.repository';
-import ConsolidationOrdersCosmosDbRepository from './adapters/gateways/consolidations.cosmosdb.repository';
 import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
@@ -39,10 +34,15 @@ import LocalStorageGateway from './adapters/gateways/storage/local-storage-gatew
 import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
-import { OfficesCosmosDbRepository } from './adapters/gateways/offices.cosmosdb.repository';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
 import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repository';
+import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosmosdb.mongo.repository';
+import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
+import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
+import { CasesCosmosMongoDbRepository } from './adapters/gateways/cases.cosmosdb.mongo.repository';
+import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/consolidations.cosmosdb.mongo.repository';
+import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -58,8 +58,9 @@ export const getCasesGateway = (applicationContext: ApplicationContext): CasesIn
 
 export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
-): CaseAssignmentRepositoryInterface => {
-  return new CaseAssignmentCosmosDbRepository(applicationContext);
+): CaseAssignmentCosmosMongoDbRepository => {
+  // return new CaseAssignmentCosmosDbRepository(applicationContext);
+  return new CaseAssignmentCosmosMongoDbRepository(applicationContext);
 };
 
 export const getAssignmentsCosmosDbClient = (
@@ -82,7 +83,7 @@ export const getCosmosDbClient = (
   }
 };
 
-export const getCosmosConfig = (applicationContext: ApplicationContext): CosmosConfig => {
+export const getCosmosConfig = (applicationContext: ApplicationContext): DocumentDbConfig => {
   return applicationContext.config.get('cosmosConfig');
 };
 
@@ -119,26 +120,31 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
   if (applicationContext.config.authConfig.provider === 'mock') {
     return new MockOfficesRepository();
   }
-  return new OfficesCosmosDbRepository(applicationContext);
+  return new OfficesCosmosMongoDbRepository(applicationContext);
 };
 
+// transfer orders
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  return new OrdersCosmosDbRepository(applicationContext);
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  return new OrdersCosmosDbMongoRepository(applicationContext);
 };
 
 export const getConsolidationOrdersRepository = (
   applicationContext: ApplicationContext,
 ): ConsolidationOrdersRepository => {
-  return new ConsolidationOrdersCosmosDbRepository(applicationContext);
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  return new ConsolidationOrdersCosmosMongoDbRepository(applicationContext);
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  return new CasesCosmosDbRepository(applicationContext);
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  return new CasesCosmosMongoDbRepository(applicationContext);
 };
 
 export const getRuntimeStateRepository = (
   applicationContext: ApplicationContext,
 ): RuntimeStateRepository => {
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
   return new RuntimeStateCosmosDbRepository(applicationContext);
 };
 
@@ -158,6 +164,7 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
 export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
+  if (context.config.get('dbMock')) return new MockMongoRepository();
   return new UserSessionCacheCosmosDbRepository(context);
 };
 
