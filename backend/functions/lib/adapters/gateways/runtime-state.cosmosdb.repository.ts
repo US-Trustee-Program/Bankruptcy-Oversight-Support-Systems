@@ -55,7 +55,10 @@ export class RuntimeStateCosmosDbRepository implements RuntimeStateRepository {
     }
   }
 
-  async updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T) {
+  async updateState<T extends RuntimeState>(
+    context: ApplicationContext,
+    syncState: T,
+  ): Promise<void> {
     try {
       await this.cosmosDbClient
         .database(this.cosmosConfig.databaseName)

@@ -10,10 +10,10 @@ import { CamsSession } from '../../../../../common/src/cams/session';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
-import { UserSessionCacheCosmosDbRepository } from '../../adapters/gateways/user-session-cache.cosmosdb.repository';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -68,9 +68,9 @@ describe('user-session.gateway test', () => {
   });
 
   test('should return valid session and add to cache when cache miss is encountered', async () => {
-    jest.spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
     const createSpy = jest
-      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'put')
+      .spyOn(MockMongoRepository.prototype, 'put')
       .mockResolvedValue(mockCamsSession);
     const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
@@ -82,11 +82,9 @@ describe('user-session.gateway test', () => {
   });
 
   test('should return valid session on cache hit', async () => {
-    jest
-      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get')
-      .mockResolvedValue(expectedSession);
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(expectedSession);
     const createSpy = jest
-      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'put')
+      .spyOn(MockMongoRepository.prototype, 'put')
       .mockRejectedValue('We should not call this function.');
     const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
@@ -146,7 +144,7 @@ describe('user-session.gateway test', () => {
       activityId: 'activity',
     };
     jest
-      .spyOn(UserSessionCacheCosmosDbRepository.prototype, 'get')
+      .spyOn(MockMongoRepository.prototype, 'get')
       .mockResolvedValueOnce(null)
       .mockResolvedValue(mockCamsSession);
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(conflictError);
