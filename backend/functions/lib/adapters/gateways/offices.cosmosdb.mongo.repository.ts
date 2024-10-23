@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
+import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../query/query-builder';
@@ -52,7 +52,7 @@ export class OfficesCosmosMongoDbRepository implements Closable, OfficesReposito
       const collection = this.documentClient
         .database(context.config.documentDbConfig.databaseName)
         .collection<OfficeStaff>(this.containerName);
-      collection.insertOne(staff);
+      await collection.insertOne(staff);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

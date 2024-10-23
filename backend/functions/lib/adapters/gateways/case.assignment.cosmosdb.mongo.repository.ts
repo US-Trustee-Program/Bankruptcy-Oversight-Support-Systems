@@ -1,17 +1,18 @@
 import { ApplicationContext } from '../types/basic';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
+import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { toMongoQuery } from '../../query/mongo-query-renderer';
 import QueryBuilder from '../../query/query-builder';
 import { Closable, deferClose } from '../../defer-close';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { CaseAssignmentRepository } from '../../use-cases/gateways.types';
 
 // TODO: Better name???
 const MODULE_NAME: string = 'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 const { and, equals, exists } = QueryBuilder;
 
-export class CaseAssignmentCosmosMongoDbRepository implements Closable {
+export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepository, Closable {
   private documentClient: DocumentClient;
   private readonly collectionName = 'assignments';
   private context: ApplicationContext;
@@ -22,7 +23,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
     deferClose(context, this);
   }
 
-  async createAssignment(caseAssignment: CaseAssignment): Promise<string> {
+  async create(_context: ApplicationContext, caseAssignment: CaseAssignment): Promise<string> {
     let result;
     try {
       const collection = this.documentClient
@@ -39,11 +40,15 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
     return id;
   }
 
-  async updateAssignment(caseAssignment: CaseAssignment): Promise<string> {
+  async update(
+    _context: ApplicationContext,
+    id: string,
+    caseAssignment: CaseAssignment,
+  ): Promise<string> {
     const collection = this.documentClient
       .database(this.context.config.documentDbConfig.databaseName)
       .collection<CaseAssignment>(this.collectionName);
-    const query = toMongoQuery(QueryBuilder.equals('id', caseAssignment.id));
+    const query = toMongoQuery(QueryBuilder.equals('id', id));
 
     try {
       const result = await collection.replaceOne(query, caseAssignment);
@@ -59,14 +64,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements Closable {
     }
   }
 
-  getAssignment(_assignmentId: string): Promise<CaseAssignment> {
-    throw new Error('Method not implemented.');
-  }
-
-  async findAssignmentsByCaseId(
-    // context: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseAssignment[]> {
+  async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
     const query = QueryBuilder.build(
       toMongoQuery,
       and(

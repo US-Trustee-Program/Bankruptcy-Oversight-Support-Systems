@@ -17,6 +17,7 @@ import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CamsDocument } from '../../../../common/src/cams/document';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 export interface RepositoryResource {
   id?: string;
@@ -66,20 +67,23 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Reads<T>,
     Deletes {}
 
+export interface CaseAssignmentRepository<T = CaseAssignment>
+  extends Creates<T, string>,
+    Updates<CaseAssignment, string> {
+  findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]>;
+  findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
+}
+
 export interface OrdersRepository<T = Order>
   extends Searches<OrdersSearchPredicate, T>,
     CreatesMany<T, T[]>,
     Reads<T>,
     Updates<TransferOrderAction> {}
 
-export interface RuntimeStateRepository {
-  getState<T extends RuntimeState>(
-    context: ApplicationContext,
-    documentType: RuntimeStateDocumentType,
-  ): Promise<T>;
-  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<void>;
-  createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T>;
-}
+export interface RuntimeStateRepository<T = RuntimeState, R = string>
+  extends Reads<T>,
+    Creates<T, R>,
+    Updates<RuntimeState> {}
 
 export interface LocalDocumentRepository<T extends CamsDocument, S>
   extends Searches<S, T>,

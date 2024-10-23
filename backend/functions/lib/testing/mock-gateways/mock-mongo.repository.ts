@@ -7,6 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import {
+  CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
   OfficesRepository,
@@ -19,6 +20,7 @@ import { CamsSession } from '../../../../../common/src/cams/session';
 
 export class MockMongoRepository
   implements
+    CaseAssignmentRepository,
     CasesRepository,
     ConsolidationOrdersRepository,
     OrdersRepository,
@@ -26,6 +28,14 @@ export class MockMongoRepository
     RuntimeStateRepository,
     UserSessionCacheRepository
 {
+  findAssignmentsByCaseId(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  findAssignmentsByAssignee(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   getOfficeAttorneys(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -82,7 +92,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  update(..._ignore): Promise<void> {
+  update(..._ignore): Promise<any | void> {
     throw new Error('Method not implemented.');
   }
 

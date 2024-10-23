@@ -12,7 +12,7 @@ import {
   getCasesGateway,
   getConsolidationOrdersRepository,
 } from '../../factory';
-import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
+import { RuntimeStateCosmosMongoDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.mongo.repository';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
@@ -223,7 +223,7 @@ describe('Orders use case', () => {
       });
 
     const mockUpdateState = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
+      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'updateState')
       .mockImplementation(jest.fn());
 
     await useCase.syncOrders(mockContext);
@@ -271,7 +271,7 @@ describe('Orders use case', () => {
     const initialState: OrderSyncState = { documentType: 'ORDERS_SYNC_STATE', txId };
 
     const mockGetState = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'getState')
+      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'getState')
       .mockRejectedValue(
         new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
           message: 'Initial state was not found or was ambiguous.',
@@ -279,7 +279,7 @@ describe('Orders use case', () => {
       );
 
     const mockCreateState = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'createState')
+      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'createState')
       .mockResolvedValue({ ...initialState, id });
 
     const mockGetOrderSync = jest
@@ -302,7 +302,7 @@ describe('Orders use case', () => {
       .mockResolvedValueOnce(consolidations);
 
     const mockUpdateState = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
+      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'updateState')
       .mockImplementation(jest.fn());
 
     await useCase.syncOrders(mockContext, { txIdOverride: txId });
@@ -316,7 +316,7 @@ describe('Orders use case', () => {
 
   test('should throw an error with a missing order runtime state and no starting transaction ID is provided', async () => {
     const mockGetState = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'getState')
+      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'getState')
       .mockRejectedValue(
         new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
           message: 'Initial state was not found or was ambiguous.',
@@ -331,7 +331,7 @@ describe('Orders use case', () => {
 
   test('should throw any other error when attempting to retrieve initial runtime state', async () => {
     const mockGetState = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'getState')
+      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'getState')
       .mockRejectedValue(new Error('TEST'));
 
     await expect(useCase.syncOrders(mockContext)).rejects.toThrow('TEST');
