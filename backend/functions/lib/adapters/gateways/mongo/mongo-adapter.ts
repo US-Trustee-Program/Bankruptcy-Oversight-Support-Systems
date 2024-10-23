@@ -3,6 +3,7 @@ import { UnknownError } from '../../../common-errors/unknown-error';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { DocumentQuery } from '../document-db.repository';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { CamsError } from '../../../common-errors/cams-error';
 
 export class MongoCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -34,7 +35,7 @@ export class MongoCollectionAdapter<T> {
 
   public async findOne(query: DocumentQuery) {
     try {
-      return this.collectionHumble.findOne(query);
+      return await this.collectionHumble.findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -67,8 +68,14 @@ export class MongoCollectionAdapter<T> {
       const result = await this.collectionHumble.insertMany(items);
       // TODO: Is this mapping correct? Are we returning string representations of inserted object IDs?
       this.testAcknowledged(result);
-      // When insertedCount != items.length?
-      return Object.keys(result.insertedIds).map((item) => item.toString());
+      const insertedIds = Object.keys(result.insertedIds).map((item) => item.toString());
+      if (insertedIds.length !== items.length) {
+        throw new CamsError(this.moduleName, {
+          message: 'Not all items inserted',
+          data: insertedIds,
+        });
+      }
+      return insertedIds;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -104,7 +111,7 @@ export class MongoCollectionAdapter<T> {
 
   public async countDocuments(query: DocumentQuery) {
     try {
-      return this.collectionHumble.countDocuments(query);
+      return await this.collectionHumble.countDocuments(query);
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
