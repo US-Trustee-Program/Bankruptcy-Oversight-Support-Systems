@@ -2,17 +2,15 @@ import { MongoCollectionAdapter } from './mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { toMongoQuery } from '../../../query/mongo-query-renderer';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
-import { Collection, Db } from 'mongodb';
 import { UnknownError } from '../../../common-errors/unknown-error';
 
 const { and } = QueryBuilder;
 
+const MODULE_NAME = 'TEST_ADAPTER';
+
 const find = jest.fn();
 const findOne = jest.fn();
-const replaceOne = jest.fn().mockImplementation(() => {
-  console.log('We executed the original mock.');
-  throw new Error('hello');
-});
+const replaceOne = jest.fn();
 const insertOne = jest.fn();
 const insertMany = jest.fn();
 const deleteOne = jest.fn();
@@ -20,7 +18,6 @@ const deleteMany = jest.fn();
 const countDocuments = jest.fn();
 
 const spies = {
-  collection: {} as Collection,
   find,
   findOne,
   replaceOne,
@@ -38,13 +35,8 @@ type TestType = {
 
 describe('Mongo adapter', () => {
   const testQuery = QueryBuilder.build(toMongoQuery, and());
-  let adapter: MongoCollectionAdapter<TestType>;
-  const humbleDb = { name: 'testDb', collection: jest.fn() } as unknown as Db;
-  const collectionHumble = spies as unknown as CollectionHumble<TestType>;
-
-  beforeAll(() => {
-    adapter = new MongoCollectionAdapter<TestType>('TEST_ADAPTER', collectionHumble);
-  });
+  const humbleCollection = spies as unknown as CollectionHumble<TestType>;
+  const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
   afterEach(() => {
     jest.resetAllMocks();
@@ -54,40 +46,36 @@ describe('Mongo adapter', () => {
 
   test('should return a and empty list of items if', async () => {});
 
-  test.only('should handle acknowledged == false', async () => {
+  test('should handle acknowledged == false', async () => {
     const response = { acknowledged: false };
-    // spies.forEach((spy) => {
-    //   spy.mockResolvedValue(response);
-    // });
+    const error = new UnknownError(MODULE_NAME, {
+      message: 'Operation returned Not Acknowledged.',
+    });
+    Object.values(spies).forEach((spy) => {
+      spy.mockResolvedValue(response);
+    });
 
-    // const insertOne = jest.spyOn(CollectionHumble.prototype, 'insertOne');
-    // const insertMany = jest.spyOn(CollectionHumble.prototype, 'insertMany');
-    // const deleteOne = jest.spyOn(CollectionHumble.prototype, 'deleteOne');
-    // const deleteMany = jest.spyOn(CollectionHumble.prototype, 'deleteMany');
-    // const countDocuments = jest.spyOn(CollectionHumble.prototype, 'countDocuments');
-
-    replaceOne.mockResolvedValue(response);
-    await replaceOne();
-    await adapter.replaceOne(testQuery, {});
-    await expect(adapter.replaceOne(testQuery, {})).rejects.toThrow();
-    // await adapter.insertOne({});
-    // await adapter.insertMany([{}]);
-    // await adapter.deleteOne(testQuery);
-    // await adapter.deleteMany(testQuery);
+    await expect(adapter.replaceOne(testQuery, {})).rejects.toThrow(error);
+    await expect(adapter.insertOne({})).rejects.toThrow(error);
+    await expect(adapter.insertMany([{}])).rejects.toThrow(error);
+    await expect(adapter.deleteOne(testQuery)).rejects.toThrow(error);
+    await expect(adapter.deleteMany(testQuery)).rejects.toThrow(error);
   });
 
-  test.skip('should handle errors', async () => {
-    const error = new Error('Test Exception');
-    // spies.forEach((spy) => {
-    //   spy.mockImplementation(() => Promise.reject(error));
-    // });
-    await expect(adapter.replaceOne(testQuery, {})).rejects.toThrow(error);
-    // expect(await adapter.insertOne({})).rejects.toThrow(error);
-    // expect(await adapter.insertMany([{}])).rejects.toThrow(error);
-    // expect(await adapter.deleteOne(testQuery)).rejects.toThrow(error);
-    // expect(await adapter.deleteMany(testQuery)).rejects.toThrow(error);
-    // expect(await adapter.find(testQuery)).rejects.toThrow(error);
-    // expect(await adapter.findOne(testQuery)).rejects.toThrow(error);
-    // expect(await adapter.countDocuments(testQuery)).rejects.toThrow(error);
+  test('should handle errors', async () => {
+    const originalError = new Error('Test Exception');
+    const expectedError = new UnknownError(MODULE_NAME, { originalError });
+    Object.values(spies).forEach((spy) => {
+      spy.mockRejectedValue(expectedError);
+    });
+
+    await expect(adapter.replaceOne(testQuery, {})).rejects.toThrow(expectedError);
+    await expect(adapter.insertOne({})).rejects.toThrow(expectedError);
+    await expect(adapter.insertMany([{}])).rejects.toThrow(expectedError);
+    await expect(adapter.deleteOne(testQuery)).rejects.toThrow(expectedError);
+    await expect(adapter.deleteMany(testQuery)).rejects.toThrow(expectedError);
+    await expect(adapter.find(testQuery)).rejects.toThrow(expectedError);
+    await expect(adapter.findOne(testQuery)).rejects.toThrow(expectedError);
+    await expect(adapter.countDocuments(testQuery)).rejects.toThrow(expectedError);
   });
 });
