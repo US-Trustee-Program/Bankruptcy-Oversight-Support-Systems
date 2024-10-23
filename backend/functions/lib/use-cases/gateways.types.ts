@@ -77,7 +77,7 @@ export interface RuntimeStateRepository {
     context: ApplicationContext,
     documentType: RuntimeStateDocumentType,
   ): Promise<T>;
-  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T);
+  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<void>;
   createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T>;
 }
 

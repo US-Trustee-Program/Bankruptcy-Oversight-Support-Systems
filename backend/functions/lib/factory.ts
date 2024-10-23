@@ -41,7 +41,6 @@ import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosm
 import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
 import { CasesCosmosMongoDbRepository } from './adapters/gateways/cases.cosmosdb.mongo.repository';
-import { deferClose } from './defer-close';
 import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/consolidations.cosmosdb.mongo.repository';
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 
@@ -121,9 +120,7 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
   if (applicationContext.config.authConfig.provider === 'mock') {
     return new MockOfficesRepository();
   }
-  const instance = new OfficesCosmosMongoDbRepository(applicationContext);
-  deferClose(applicationContext, instance);
-  return instance;
+  return new OfficesCosmosMongoDbRepository(applicationContext);
 };
 
 // transfer orders
@@ -140,12 +137,14 @@ export const getConsolidationOrdersRepository = (
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
   return new CasesCosmosMongoDbRepository(applicationContext);
 };
 
 export const getRuntimeStateRepository = (
   applicationContext: ApplicationContext,
 ): RuntimeStateRepository => {
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
   return new RuntimeStateCosmosDbRepository(applicationContext);
 };
 
@@ -165,6 +164,7 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
 export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
+  if (context.config.get('dbMock')) return new MockMongoRepository();
   return new UserSessionCacheCosmosDbRepository(context);
 };
 
