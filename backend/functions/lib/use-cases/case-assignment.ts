@@ -1,7 +1,7 @@
 //import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CasesRepository } from './gateways.types';
+import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
@@ -9,12 +9,11 @@ import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
-import { CaseAssignmentCosmosMongoDbRepository } from '../adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
-  private assignmentRepository: CaseAssignmentCosmosMongoDbRepository;
+  private assignmentRepository: CaseAssignmentRepository;
   private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
@@ -57,8 +56,6 @@ export class CaseAssignmentUseCase {
     for (const childCaseId of childCaseIds) {
       await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
     }
-
-    await this.assignmentRepository.close();
   }
 
   private async assignTrialAttorneys(
@@ -99,7 +96,7 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        await this.assignmentRepository.updateAssignment({
+        await this.assignmentRepository.update(context, existingAssignment.id, {
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
         });
@@ -111,7 +108,7 @@ export class CaseAssignmentUseCase {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
-        const assignmentId = await this.assignmentRepository.createAssignment(assignment);
+        const assignmentId = await this.assignmentRepository.create(context, assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }

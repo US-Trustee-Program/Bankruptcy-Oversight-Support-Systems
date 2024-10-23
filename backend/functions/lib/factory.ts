@@ -4,13 +4,12 @@ import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import { DocumentDbConfig, IDbConfig } from './adapters/types/database';
-import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
-import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
 import {
+  CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
   OfficesRepository,
@@ -21,12 +20,9 @@ import {
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
-import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
-import { MockHumbleClient } from './testing/mock.cosmos-client-humble';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
 import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
-import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';
@@ -36,13 +32,14 @@ import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
 import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
-import { MockOfficesRepository } from './testing/mock-gateways/mock-offices.repository';
 import { OfficesCosmosMongoDbRepository } from './adapters/gateways/offices.cosmosdb.mongo.repository';
 import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
 import { CasesCosmosMongoDbRepository } from './adapters/gateways/cases.cosmosdb.mongo.repository';
 import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/consolidations.cosmosdb.mongo.repository';
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
+import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
+import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -58,29 +55,9 @@ export const getCasesGateway = (applicationContext: ApplicationContext): CasesIn
 
 export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
-): CaseAssignmentCosmosMongoDbRepository => {
-  // return new CaseAssignmentCosmosDbRepository(applicationContext);
+): CaseAssignmentRepository => {
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
   return new CaseAssignmentCosmosMongoDbRepository(applicationContext);
-};
-
-export const getAssignmentsCosmosDbClient = (
-  applicationContext: ApplicationContext,
-): CosmosClientHumble | FakeAssignmentsCosmosClientHumble => {
-  if (applicationContext.config.get('dbMock')) {
-    return new FakeAssignmentsCosmosClientHumble();
-  } else {
-    return new CosmosClientHumble(applicationContext.config);
-  }
-};
-
-export const getCosmosDbClient = (
-  applicationContext: ApplicationContext,
-): CosmosClientHumble | MockHumbleClient => {
-  if (applicationContext.config.get('dbMock')) {
-    return new MockHumbleClient();
-  } else {
-    return new CosmosClientHumble(applicationContext.config);
-  }
 };
 
 export const getCosmosConfig = (applicationContext: ApplicationContext): DocumentDbConfig => {
@@ -118,7 +95,7 @@ export const getOfficesGateway = (applicationContext: ApplicationContext): Offic
 
 export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
   if (applicationContext.config.authConfig.provider === 'mock') {
-    return new MockOfficesRepository();
+    return new MockMongoRepository();
   }
   return new OfficesCosmosMongoDbRepository(applicationContext);
 };
@@ -145,7 +122,7 @@ export const getRuntimeStateRepository = (
   applicationContext: ApplicationContext,
 ): RuntimeStateRepository => {
   if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new RuntimeStateCosmosDbRepository(applicationContext);
+  return new RuntimeStateCosmosMongoDbRepository(applicationContext);
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {

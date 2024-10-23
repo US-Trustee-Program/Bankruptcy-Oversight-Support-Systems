@@ -1,19 +1,20 @@
 import { CaseAssignmentCosmosMongoDbRepository } from './case.assignment.cosmosdb.mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { ApplicationContext } from '../types/basic';
 
 describe('offices repo', () => {
+  let context: ApplicationContext;
   let repo: CaseAssignmentCosmosMongoDbRepository;
 
   beforeEach(async () => {
-    const context = await createMockApplicationContext();
+    context = await createMockApplicationContext();
     repo = new CaseAssignmentCosmosMongoDbRepository(context);
-
-    jest.clearAllMocks();
   });
 
   afterEach(async () => {
     if (repo?.close) await repo.close();
+    jest.restoreAllMocks();
   });
 
   test('should call updateAssignment', async () => {
@@ -27,7 +28,7 @@ describe('offices repo', () => {
     delete fakeAttorney.id;
     let assignmentOne = assignments[0];
     assignmentOne = { ...assignmentOne, ...fakeAttorney };
-    await repo.updateAssignment(assignmentOne);
+    await repo.update(context, assignmentOne.id, assignmentOne);
 
     const updatedAssignments = await repo.findAssignmentsByCaseId(caseId);
     const updatedAssignment = updatedAssignments.filter(
@@ -35,7 +36,7 @@ describe('offices repo', () => {
     )[0];
     expect(updatedAssignment).toBeTruthy();
 
-    await repo.updateAssignment(assignments[0]);
+    await repo.update(context, assignments[0].id, assignments[0]);
   });
 
   test('should call findAssignmentsByAssignee', async () => {

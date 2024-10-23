@@ -2,7 +2,7 @@ import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { Closable, deferClose } from '../../defer-close';
-import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
+import { DocumentClient } from '../../humble-objects/mongo-humble';
 import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../use-cases/gateways.types';
 import { ApplicationContext } from '../types/basic';

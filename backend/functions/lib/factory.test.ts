@@ -2,13 +2,10 @@ import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
-import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
+import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
 import { ApplicationContext } from './adapters/types/basic';
-import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
-import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import {
   getAssignmentRepository,
-  getAssignmentsCosmosDbClient,
   getCaseDocketUseCase,
   getCasesGateway,
   getOfficesGateway,
@@ -56,14 +53,6 @@ describe('Factory functions', () => {
     expect(obj).toBeInstanceOf(CaseAssignmentCosmosMongoDbRepository);
   });
 
-  test('getAssignmentsCosmosDbClient', async () => {
-    const mockObj = getAssignmentsCosmosDbClient(mockDbContext);
-    expect(mockObj).toBeInstanceOf(FakeAssignmentsCosmosClientHumble);
-
-    const obj = getAssignmentsCosmosDbClient(dbContext);
-    expect(obj).toBeInstanceOf(CosmosClientHumble);
-  });
-
   test('getCaseDocketUseCase', async () => {
     const mockObj = getCaseDocketUseCase(mockDbContext);
     expect(mockObj).toBeInstanceOf(CaseDocketUseCase);
@@ -98,6 +87,6 @@ describe('Factory functions', () => {
 
   test('getRuntimeStateRepository', async () => {
     const obj = getRuntimeStateRepository(dbContext);
-    expect(obj).toBeInstanceOf(RuntimeStateCosmosDbRepository);
+    expect(obj).toBeInstanceOf(RuntimeStateCosmosMongoDbRepository);
   });
 });
