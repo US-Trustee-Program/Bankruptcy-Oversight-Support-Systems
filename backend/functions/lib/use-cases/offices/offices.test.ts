@@ -6,11 +6,10 @@ import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-g
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock-offices.repository';
 import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -115,11 +114,10 @@ describe('offices use case tests', () => {
         },
       );
 
-    const putSpy = jest
-      .spyOn(MockOfficesRepository.prototype, 'putOfficeStaff')
-      .mockResolvedValue();
+    // TODO: Figure out why this spy is not working.
+    const putSpy = jest.spyOn(MockMongoRepository.prototype, 'putOfficeStaff').mockResolvedValue();
     const stateRepoSpy = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
+      .spyOn(MockMongoRepository.prototype, 'updateState')
       .mockResolvedValue();
 
     const useCase = new OfficesUseCase();

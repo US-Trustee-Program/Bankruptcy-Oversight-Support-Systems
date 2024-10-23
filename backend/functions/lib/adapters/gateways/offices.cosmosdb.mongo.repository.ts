@@ -8,6 +8,7 @@ import QueryBuilder from '../../query/query-builder';
 import { toMongoQuery } from '../../query/mongo-query-renderer';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { Closable, deferClose } from '../../defer-close';
+import { OfficesRepository } from '../../use-cases/gateways.types';
 
 const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
 
@@ -20,7 +21,7 @@ export type OfficeStaff = CamsUserReference &
     ttl: number;
   };
 
-export class OfficesCosmosMongoDbRepository implements Closable {
+export class OfficesCosmosMongoDbRepository implements Closable, OfficesRepository {
   private documentClient: DocumentClient;
   private readonly containerName = 'offices';
 
