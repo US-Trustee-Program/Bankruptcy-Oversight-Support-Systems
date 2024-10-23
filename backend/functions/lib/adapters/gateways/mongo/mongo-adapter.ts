@@ -27,16 +27,16 @@ export class MongoCollectionAdapter<T> {
     try {
       const result = await this.collectionHumble.find(query);
       return result.toArray();
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
   public async findOne(query: DocumentQuery) {
     try {
       return this.collectionHumble.findOne(query);
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
@@ -46,8 +46,8 @@ export class MongoCollectionAdapter<T> {
       this.testAcknowledged(result);
 
       return result.upsertedId.toString();
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
@@ -57,8 +57,8 @@ export class MongoCollectionAdapter<T> {
       this.testAcknowledged(result);
 
       return result.insertedId.toString();
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
@@ -69,8 +69,8 @@ export class MongoCollectionAdapter<T> {
       this.testAcknowledged(result);
       // When insertedCount != items.length?
       return Object.keys(result.insertedIds).map((item) => item.toString());
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
@@ -83,8 +83,8 @@ export class MongoCollectionAdapter<T> {
       }
 
       return result.deletedCount;
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
@@ -97,16 +97,16 @@ export class MongoCollectionAdapter<T> {
       }
 
       return result.deletedCount;
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 
   public async countDocuments(query: DocumentQuery) {
     try {
       return this.collectionHumble.countDocuments(query);
-    } catch (e) {
-      getCamsError(e.message, this.moduleName);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
     }
   }
 }
