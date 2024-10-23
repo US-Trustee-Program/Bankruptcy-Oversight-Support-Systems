@@ -103,7 +103,7 @@ export class OfficesUseCase {
 
     const runtimeStateRepo = getRuntimeStateRepository(context);
 
-    await runtimeStateRepo.updateState<OfficeStaffSyncState>(context, result);
+    await runtimeStateRepo.update(context, result.id, result);
 
     return result;
   }

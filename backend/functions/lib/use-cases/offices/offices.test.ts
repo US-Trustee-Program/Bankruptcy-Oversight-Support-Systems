@@ -114,7 +114,6 @@ describe('offices use case tests', () => {
         },
       );
 
-    // TODO: Figure out why this spy is not working.
     const putSpy = jest.spyOn(MockMongoRepository.prototype, 'putOfficeStaff').mockResolvedValue();
     const stateRepoSpy = jest
       .spyOn(MockMongoRepository.prototype, 'updateState')

@@ -12,7 +12,7 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { isCamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
 import { OfficesGateway } from './offices/offices.types';
-import { CasesRepository } from './gateways.types';
+import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
@@ -39,7 +39,7 @@ export function getAction<T extends CaseBasics>(
 }
 
 export default class CaseManagement {
-  assignmentGateway: CaseAssignmentCosmosMongoDbRepository;
+  assignmentGateway: CaseAssignmentRepository;
   casesGateway: CasesInterface;
   casesRepo: CasesRepository;
   officesGateway: OfficesGateway;

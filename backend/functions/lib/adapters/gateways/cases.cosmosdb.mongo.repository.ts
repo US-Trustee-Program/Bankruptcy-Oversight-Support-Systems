@@ -7,7 +7,7 @@ import {
   TransferFrom,
   TransferTo,
 } from '../../../../../common/src/cams/events';
-import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
+import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { ApplicationContext } from '../types/basic';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';

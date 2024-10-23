@@ -1,6 +1,6 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
-import { DocumentClient } from '../../mongo-humble-objects/mongo-humble';
+import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { DocumentQuery } from './document-db.repository';
 import { ApplicationContext } from '../types/basic';
 import { ServerConfigError } from '../../common-errors/server-config-error';
