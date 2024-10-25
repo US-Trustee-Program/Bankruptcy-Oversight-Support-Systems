@@ -8,6 +8,7 @@ import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder'
 import { Closable, deferClose } from '../../defer-close';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { getDocumentCollectionAdapter } from '../../factory';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 
@@ -22,7 +23,7 @@ export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository
   constructor(context: ApplicationContext) {
     const client = new DocumentClient(context.config.documentDbConfig.connectionString);
     this.context = context;
-    this.dbAdapter = new MongoCollectionAdapter<Order>(
+    this.dbAdapter = getDocumentCollectionAdapter<Order>(
       MODULE_NAME,
       client
         .database(context.config.documentDbConfig.connectionString)

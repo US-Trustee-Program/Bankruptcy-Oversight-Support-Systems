@@ -5,6 +5,7 @@ import QueryBuilder from '../lib/query/query-builder';
 import { deferClose } from '../lib/defer-close';
 import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/mongo-adapter';
 import { CamsDocument } from '../../../common/src/cams/document';
+import { getDocumentCollectionAdapter } from '../lib/factory';
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ export default class HealthcheckCosmosDb {
       const client = new DocumentClient(
         this.applicationContext.config.documentDbConfig.connectionString,
       );
-      this.adapter = new MongoCollectionAdapter<CamsDocument>(
+      this.adapter = getDocumentCollectionAdapter<CamsDocument>(
         MODULE_NAME,
         client.database(this.databaseName).collection(CONTAINER_NAME),
       );
