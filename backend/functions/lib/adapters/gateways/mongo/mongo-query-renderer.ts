@@ -1,11 +1,13 @@
-import { DocumentQuery } from '../adapters/gateways/document-db.repository';
+import { Sort as MongoSort } from 'mongodb';
+import { DocumentQuery } from '../document-db.repository';
 import {
   Condition,
   ConditionOrConjunction,
   Conjunction,
   isCondition,
   isConjunction,
-} from './query-builder';
+  Sort,
+} from '../../../query/query-builder';
 
 const isArray = Array.isArray;
 
@@ -48,4 +50,11 @@ function renderQuery(query: ConditionOrConjunction | ConditionOrConjunction[]) {
 
 export function toMongoQuery(query: ConditionOrConjunction): DocumentQuery {
   return renderQuery(query);
+}
+
+export function toMongoSort(sort: Sort): MongoSort {
+  return sort.directions.reduce((acc, direction) => {
+    acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
+    return acc;
+  }, {});
 }

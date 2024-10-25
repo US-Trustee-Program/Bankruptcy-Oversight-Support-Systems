@@ -1,5 +1,5 @@
-import { toMongoQuery } from './mongo-query-renderer';
-import QueryBuilder from './query-builder';
+import QueryBuilder from '../../../query/query-builder';
+import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
   uno: string;
@@ -22,6 +22,7 @@ describe('Mongo Query Renderer', () => {
     or,
     not,
     regex,
+    orderBy,
   } = QueryBuilder;
 
   test('should render a mongo query JSON', () => {
@@ -38,8 +39,7 @@ describe('Mongo Query Renderer', () => {
       ],
     };
 
-    const actual = QueryBuilder.build(
-      toMongoQuery,
+    const actual = toMongoQuery(
       or(
         equals<string>('uno', 'theValue'),
         and(
@@ -112,7 +112,7 @@ describe('Mongo Query Renderer', () => {
   ];
 
   test.each(queries)('should render a mongo query for $caseName condition', (args) => {
-    const actual = QueryBuilder.build(toMongoQuery, args.func());
+    const actual = toMongoQuery(args.func());
     expect(actual).toEqual(args.expected);
   });
 
@@ -135,7 +135,19 @@ describe('Mongo Query Renderer', () => {
   ];
 
   test.each(conjunctions)('should render a mongo query for $caseName aggregation', (args) => {
-    const actual = QueryBuilder.build(toMongoQuery, args.func());
+    const actual = toMongoQuery(args.func());
     expect(actual).toEqual(args.expected);
+  });
+
+  test('sort renders ascending and descending', () => {
+    expect(toMongoSort(orderBy(['foo', 'ASCENDING']))).toEqual({ foo: 1 });
+    expect(toMongoSort(orderBy(['foo', 'DESCENDING']))).toEqual({ foo: -1 });
+  });
+
+  test('sort renders multiple sort expressions', () => {
+    expect(toMongoSort(orderBy(['foo', 'ASCENDING'], ['bar', 'DESCENDING']))).toEqual({
+      foo: 1,
+      bar: -1,
+    });
   });
 });
