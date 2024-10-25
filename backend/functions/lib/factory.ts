@@ -41,6 +41,7 @@ import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/cons
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
 import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
+import { CollectionHumble } from './humble-objects/mongo-humble';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -152,4 +153,11 @@ export const getStorageGateway = (_context: ApplicationContext): StorageGateway 
 
 export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGateway => {
   return OktaUserGroupGateway;
+};
+
+export const getDocumentCollectionAdapter = <T>(
+  moduleName: string,
+  collection: CollectionHumble<T>,
+) => {
+  return getDocumentCollectionAdapter<T>(moduleName, collection);
 };
