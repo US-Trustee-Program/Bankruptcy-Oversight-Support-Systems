@@ -1,35 +1,37 @@
 import { ApplicationContext } from '../types/basic';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
-import { NotFoundError } from '../../common-errors/not-found-error';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
-import { toMongoQuery } from '../../query/mongo-query-renderer';
 import QueryBuilder from '../../query/query-builder';
-import { Closable, deferClose } from '../../defer-close';
+import { deferClose } from '../../defer-close';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseAssignmentRepository } from '../../use-cases/gateways.types';
+import { DocumentCollectionAdapter } from './document-collection.adapter';
+import { getDocumentCollectionAdapter } from '../../factory';
 
 // TODO: Better name???
 const MODULE_NAME: string = 'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS';
 const { and, equals, exists } = QueryBuilder;
 
-export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepository, Closable {
-  private documentClient: DocumentClient;
+export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepository {
   private readonly collectionName = 'assignments';
   private context: ApplicationContext;
+  private readonly adapter: DocumentCollectionAdapter<CaseAssignment>;
+
   //TODO: do we want to use this instantiation of ApplicationContext across all repos? or the implementation in cases.cosmosdb.mongo
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
+    const client = new DocumentClient(context.config.documentDbConfig.connectionString);
     this.context = context;
-    deferClose(context, this);
+    this.adapter = getDocumentCollectionAdapter<CaseAssignment>(
+      MODULE_NAME,
+      client.database(context.config.documentDbConfig.databaseName).collection(this.collectionName),
+    );
+    deferClose(context, client);
   }
 
   async create(caseAssignment: CaseAssignment): Promise<string> {
     let result;
     try {
-      const collection = this.documentClient
-        .database(this.context.config.documentDbConfig.databaseName)
-        .collection<CaseAssignment>(this.collectionName);
-      result = await collection.insertOne(caseAssignment);
+      result = await this.adapter.insertOne(caseAssignment);
     } catch (error) {
       throw new UnknownError(MODULE_NAME, {
         originalError: error,
@@ -41,17 +43,10 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
   }
 
   async update(caseAssignment: CaseAssignment): Promise<string> {
-    const collection = this.documentClient
-      .database(this.context.config.documentDbConfig.databaseName)
-      .collection<CaseAssignment>(this.collectionName);
-    const query = toMongoQuery(QueryBuilder.equals('id', caseAssignment.id));
+    const query = QueryBuilder.equals('id', caseAssignment.id);
 
     try {
-      const result = await collection.replaceOne(query, caseAssignment);
-      if (result.modifiedCount === 0) {
-        throw new NotFoundError(MODULE_NAME);
-      }
-      return caseAssignment.id;
+      return await this.adapter.replaceOne(query, caseAssignment);
     } catch (error) {
       throw new UnknownError(MODULE_NAME, {
         originalError: error,
@@ -69,11 +64,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
     );
     const assignments: CaseAssignment[] = [];
     try {
-      const collection = this.documentClient
-        .database(this.context.config.documentDbConfig.databaseName)
-        .collection<CaseAssignment>(this.collectionName);
-
-      const result = await collection.find(query);
+      const result = await this.adapter.find(query);
 
       for await (const doc of result) {
         assignments.push(doc);
@@ -100,11 +91,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
 
     const assignments: CaseAssignment[] = [];
     try {
-      const collection = this.documentClient
-        .database(this.context.config.documentDbConfig.databaseName)
-        .collection<CaseAssignment>(this.collectionName);
-
-      const result = await collection.find(query);
+      const result = await this.adapter.find(query);
 
       for await (const doc of result) {
         assignments.push(doc);
@@ -117,9 +104,5 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
     }
 
     return assignments;
-  }
-
-  async close() {
-    await this.documentClient.close();
   }
 }

@@ -17,6 +17,9 @@ import {
 } from '../../../../common/src/cams/test-utilities/mock-user';
 import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 import { buildOfficeCode } from './offices/offices';
+import { MockMongoRepository } from '../testing/mock-gateways/mock-mongo.repository';
+import { TransferOrder } from '../../../../common/src/cams/orders';
+import { ConsolidationTo } from '../../../../common/src/cams/events';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -75,7 +78,16 @@ describe('Case management tests', () => {
     offices: [userOffice],
     roles: [CamsRole.CaseAssignmentManager],
   };
-
+  let mockTransfers: TransferOrder[];
+  let mockConsolidations: ConsolidationTo[];
+  beforeEach(() => {
+    mockTransfers = MockData.buildArray(MockData.getTransferOrder, 2);
+    mockConsolidations = [MockData.getConsolidationTo()];
+    jest.spyOn(MockMongoRepository.prototype, 'getTransfers').mockResolvedValue(mockTransfers);
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getConsolidation')
+      .mockResolvedValue(mockConsolidations);
+  });
   beforeAll(async () => {
     applicationContext = await createMockApplicationContext({
       env: {
@@ -221,6 +233,7 @@ describe('Case management tests', () => {
           caseId: '999-' + caseNumber,
         },
       });
+
       jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
       const _actions = [
         {
@@ -230,7 +243,13 @@ describe('Case management tests', () => {
         },
       ];
 
-      const expected = { ...bCase, officeName, _actions };
+      const expected = {
+        ...bCase,
+        officeName,
+        _actions,
+        transfers: mockTransfers,
+        consolidation: mockConsolidations,
+      };
 
       jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
       const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
