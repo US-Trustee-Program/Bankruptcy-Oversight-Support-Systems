@@ -53,7 +53,7 @@ export function toMongoQuery(query: ConditionOrConjunction): DocumentQuery {
 }
 
 export function toMongoSort(sort: Sort): MongoSort {
-  return sort.directions.reduce((acc, direction) => {
+  return sort.attributes.reduce((acc, direction) => {
     acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
     return acc;
   }, {});

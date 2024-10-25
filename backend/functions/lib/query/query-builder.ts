@@ -134,18 +134,18 @@ function regex(attributeName: string, value: string): Condition {
   };
 }
 
-export type SortDirection = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
+export type SortedAttribute = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
 
 export type Sort = {
-  directions: SortDirection[];
+  attributes: SortedAttribute[];
 };
 
 export function isSort(obj: unknown): obj is Sort {
-  return typeof obj === 'object' && 'directions' in obj;
+  return typeof obj === 'object' && 'attributes' in obj;
 }
 
-function orderBy(...directions: SortDirection[]): Sort {
-  return { directions };
+function orderBy(...attributes: SortedAttribute[]): Sort {
+  return { attributes };
 }
 
 const QueryBuilder = {

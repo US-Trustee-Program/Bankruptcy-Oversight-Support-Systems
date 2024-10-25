@@ -5,7 +5,7 @@ import QueryBuilder, {
   isConjunction,
   isSort,
   Sort,
-  SortDirection,
+  SortedAttribute,
 } from './query-builder';
 
 describe('Query Builder', () => {
@@ -157,11 +157,11 @@ describe('Query Builder', () => {
   });
 
   test('should proxy a list of SortDirection when orderBy is called', () => {
-    const directionFoo: SortDirection = ['foo', 'ASCENDING'];
-    const directionBar: SortDirection = ['bar', 'DESCENDING'];
-    expect(orderBy(directionFoo)).toEqual({ directions: [directionFoo] });
-    expect(orderBy(directionFoo, directionBar)).toEqual({
-      directions: [directionFoo, directionBar],
+    const attributeFoo: SortedAttribute = ['foo', 'ASCENDING'];
+    const attributeBar: SortedAttribute = ['bar', 'DESCENDING'];
+    expect(orderBy(attributeFoo)).toEqual({ attributes: [attributeFoo] });
+    expect(orderBy(attributeFoo, attributeBar)).toEqual({
+      attributes: [attributeFoo, attributeBar],
     });
   });
 
@@ -186,7 +186,7 @@ describe('Query Builder', () => {
 
   test('isSort', () => {
     const sort: Sort = {
-      directions: [['foo', 'ASCENDING']],
+      attributes: [['foo', 'ASCENDING']],
     };
     expect(isSort(sort)).toBeTruthy();
     expect(isSort({})).toBeFalsy();
