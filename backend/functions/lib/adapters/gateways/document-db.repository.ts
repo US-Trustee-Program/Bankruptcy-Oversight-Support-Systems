@@ -42,12 +42,6 @@ const keyMapping: { [key: string]: string } = {
   regex: '$regex',
 };
 
-export type DocumentCollection<T> = {
-  upsert: (data: T) => T;
-  get: (id: string) => T;
-  query: (query: DocumentQuery) => T;
-};
-
 export function transformQuery(query: DocumentQuery | Filter[]) {
   if (Array.isArray(query)) {
     return query.map((item) => transformQuery(item));

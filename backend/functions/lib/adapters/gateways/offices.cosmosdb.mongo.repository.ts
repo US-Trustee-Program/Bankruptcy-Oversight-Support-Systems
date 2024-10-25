@@ -6,10 +6,13 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../query/query-builder';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { Closable, deferClose } from '../../defer-close';
+import { deferClose } from '../../defer-close';
 import { OfficesRepository } from '../../use-cases/gateways.types';
+import { getDocumentCollectionAdapter } from '../../factory';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 
 const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
+const COLLECTION_NAME = 'offices';
 
 const { and, equals, contains } = QueryBuilder;
 
@@ -20,24 +23,22 @@ export type OfficeStaff = CamsUserReference &
     ttl: number;
   };
 
-export class OfficesCosmosMongoDbRepository implements Closable, OfficesRepository {
-  private documentClient: DocumentClient;
-  private readonly containerName = 'offices';
+export class OfficesCosmosMongoDbRepository<T extends CamsUserReference = OfficeStaff>
+  implements OfficesRepository
+{
+  private dbAdapter: MongoCollectionAdapter<T>;
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
-    deferClose(context, this);
+    const { connectionString, databaseName } = context.config.documentDbConfig;
+    const client = new DocumentClient(connectionString);
+    this.dbAdapter = getDocumentCollectionAdapter<T>(
+      MODULE_NAME,
+      client.database(databaseName).collection(COLLECTION_NAME),
+    );
+    deferClose(context, client);
   }
 
-  async close() {
-    await this.documentClient.close();
-  }
-
-  async putOfficeStaff(
-    context: ApplicationContext,
-    officeCode: string,
-    user: CamsUserReference,
-  ): Promise<void> {
+  async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {
     const ttl = 4500;
 
     const staff = createAuditRecord<OfficeStaff>({
@@ -48,19 +49,13 @@ export class OfficesCosmosMongoDbRepository implements Closable, OfficesReposito
       ttl,
     });
     try {
-      const collection = this.documentClient
-        .database(context.config.documentDbConfig.databaseName)
-        .collection<OfficeStaff>(this.containerName);
-      await collection.insertOne(staff);
+      await this.dbAdapter.insertOne(staff);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  async getOfficeAttorneys(
-    context: ApplicationContext,
-    officeCode: string,
-  ): Promise<AttorneyUser[]> {
+  async getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]> {
     const query = QueryBuilder.build(
       and(
         equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
@@ -68,21 +63,12 @@ export class OfficesCosmosMongoDbRepository implements Closable, OfficesReposito
         equals<OfficeStaff['officeCode']>('officeCode', officeCode),
       ),
     );
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<OfficeStaff>(this.containerName);
 
-    const result = await collection.find(query);
-
-    const officeStaff: OfficeStaff[] = [];
     try {
-      for await (const doc of result) {
-        officeStaff.push(doc);
-      }
+      const result = await this.dbAdapter.find(query);
+      return result.map((doc) => getCamsUserReference(doc));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
-
-    return officeStaff.map((doc) => getCamsUserReference(doc));
   }
 }

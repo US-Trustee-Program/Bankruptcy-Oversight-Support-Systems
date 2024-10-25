@@ -102,8 +102,8 @@ export default class CaseManagement {
     caseId: string,
   ): Promise<ResourceActions<CaseDetail>> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
-    caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
-    caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
+    caseDetails.transfers = await this.casesRepo.getTransfers(caseId);
+    caseDetails.consolidation = await this.casesRepo.getConsolidation(caseId);
     caseDetails.assignments = await this.getCaseAssignments(applicationContext, caseDetails);
     caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
     const _actions = getAction<CaseDetail>(applicationContext, caseDetails);

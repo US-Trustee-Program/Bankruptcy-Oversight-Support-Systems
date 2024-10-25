@@ -97,35 +97,19 @@ export interface OrdersGateway {
 }
 
 export interface CasesRepository {
-  createTransferFrom(context: ApplicationContext, reference: TransferFrom): Promise<TransferFrom>;
-  createTransferTo(context: ApplicationContext, reference: TransferTo): Promise<TransferTo>;
-  getTransfers(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<TransferFrom | TransferTo>>;
-  createConsolidationTo(
-    context: ApplicationContext,
-    reference: ConsolidationTo,
-  ): Promise<ConsolidationTo>;
-  createConsolidationFrom(
-    context: ApplicationContext,
-    reference: ConsolidationFrom,
-  ): Promise<ConsolidationFrom>;
-  getConsolidation(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
-  getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]>;
-  createCaseHistory(context: ApplicationContext, history: CaseHistory);
+  createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
+  createTransferTo(reference: TransferTo): Promise<TransferTo>;
+  getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>>;
+  createConsolidationTo(reference: ConsolidationTo): Promise<ConsolidationTo>;
+  createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
+  getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
+  getCaseHistory(caseId: string): Promise<CaseHistory[]>;
+  createCaseHistory(history: CaseHistory);
 }
 
 export interface OfficesRepository {
-  getOfficeAttorneys(context: ApplicationContext, officeCode: string): Promise<AttorneyUser[]>;
-  putOfficeStaff(
-    context: ApplicationContext,
-    officeCode: string,
-    user: CamsUserReference,
-  ): Promise<void>;
+  getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
+  putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void>;
 }
 
 // TODO: Move these models to a top level models file?

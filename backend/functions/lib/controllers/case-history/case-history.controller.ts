@@ -17,7 +17,7 @@ export class CaseHistoryController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseHistory[]>> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(context, context.request.params.id);
+      const caseHistory = await this.useCase.getCaseHistory(context.request.params.id);
       const success = httpSuccess({
         body: {
           meta: {

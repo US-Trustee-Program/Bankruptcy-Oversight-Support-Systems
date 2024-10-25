@@ -176,6 +176,9 @@ describe('Case Assignment Creation Tests', () => {
       params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
       body: testCaseAssignment,
     });
+    //jest
+    //  .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+    //  .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
       .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
@@ -193,7 +196,7 @@ describe('Case Assignment Creation Tests', () => {
     const assignmentController = new CaseAssignmentController(applicationContext);
 
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
-      'Unknown error',
+      'Unknown Error',
     );
   });
 

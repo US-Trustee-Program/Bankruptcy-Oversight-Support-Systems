@@ -45,7 +45,7 @@ export class CaseAssignmentUseCase {
     await this.assignTrialAttorneys(context, caseId, newAssignments, role);
 
     // Reassign all child cases if this is a joint administration lead case.
-    const consolidationReferences = await this.casesRepository.getConsolidation(context, caseId);
+    const consolidationReferences = await this.casesRepository.getConsolidation(caseId);
     const childCaseIds = consolidationReferences
       .filter(
         (reference) =>
@@ -125,7 +125,7 @@ export class CaseAssignmentUseCase {
       context.session?.user,
     );
     history.updatedOn = currentDate;
-    await this.casesRepository.createCaseHistory(context, history);
+    await this.casesRepository.createCaseHistory(history);
 
     context.logger.info(
       MODULE_NAME,

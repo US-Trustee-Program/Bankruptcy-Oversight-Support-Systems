@@ -152,10 +152,10 @@ describe('Orders use case', () => {
     await useCase.updateTransferOrder(mockContext, order.id, action);
     expect(updateOrderFn).toHaveBeenCalledWith(action);
     expect(getOrderFn).toHaveBeenCalledWith(order.id, order.caseId);
-    expect(transferToFn).toHaveBeenCalledWith(mockContext, {
+    expect(transferToFn).toHaveBeenCalledWith({
       ...transferOut,
     });
-    expect(transferFromFn).toHaveBeenCalledWith(mockContext, {
+    expect(transferFromFn).toHaveBeenCalledWith({
       ...transferIn,
     });
     expect(auditFn).toHaveBeenCalled();
@@ -398,13 +398,13 @@ describe('Orders use case', () => {
     expect(mockGetConsolidation).toHaveBeenCalledTimes(0);
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
-    expect(mockCreateHistory.mock.calls[0][1]).toEqual(
+    expect(mockCreateHistory.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         ...childCaseHistory,
         caseId: pendingConsolidation.childCases[0].caseId,
       }),
     );
-    expect(mockCreateHistory.mock.calls[1][1]).toEqual(
+    expect(mockCreateHistory.mock.calls[1][0]).toEqual(
       expect.objectContaining({
         ...childCaseHistory,
         caseId: pendingConsolidation.childCases[1].caseId,
@@ -437,6 +437,7 @@ describe('Orders use case', () => {
         }),
       ])
       .mockResolvedValue([]);
+    jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
 
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Cannot consolidate order. A child case has already been consolidated.',
@@ -457,7 +458,7 @@ describe('Orders use case', () => {
     };
     const mockGetConsolidation = jest
       .spyOn(casesRepo, 'getConsolidation')
-      .mockImplementation((_context, caseId: string) => {
+      .mockImplementation((caseId: string) => {
         if (caseId === leadCase.caseId) {
           return Promise.resolve([
             MockData.getConsolidationReference({
@@ -468,6 +469,7 @@ describe('Orders use case', () => {
           return Promise.resolve([]);
         }
       });
+    jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
 
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
       'Cannot consolidate order. The lead case is a child case of another consolidation.',
@@ -607,7 +609,6 @@ describe('Orders use case', () => {
     await useCase.approveConsolidation(mockContext, approval);
     expect(mockGetConsolidation).toHaveBeenCalled();
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
-      mockContext,
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
   });
@@ -639,7 +640,6 @@ describe('Orders use case', () => {
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     await useCase.rejectConsolidation(mockContext, rejection);
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
-      mockContext,
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
   });

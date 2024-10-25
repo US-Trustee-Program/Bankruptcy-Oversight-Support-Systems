@@ -3,55 +3,45 @@ import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
 import QueryBuilder from '../../query/query-builder';
 import { deferClose } from '../../defer-close';
-import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseAssignmentRepository } from '../../use-cases/gateways.types';
 import { DocumentCollectionAdapter } from './document-collection.adapter';
 import { getDocumentCollectionAdapter } from '../../factory';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 // TODO: Better name???
 const MODULE_NAME: string = 'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS';
+const COLLECTION_NAME = 'assignments';
+
 const { and, equals, exists } = QueryBuilder;
 
 export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepository {
-  private readonly collectionName = 'assignments';
-  private context: ApplicationContext;
-  private readonly adapter: DocumentCollectionAdapter<CaseAssignment>;
+  private readonly dbAdapter: DocumentCollectionAdapter<CaseAssignment>;
 
   //TODO: do we want to use this instantiation of ApplicationContext across all repos? or the implementation in cases.cosmosdb.mongo
   constructor(context: ApplicationContext) {
     const client = new DocumentClient(context.config.documentDbConfig.connectionString);
-    this.context = context;
-    this.adapter = getDocumentCollectionAdapter<CaseAssignment>(
+    this.dbAdapter = getDocumentCollectionAdapter<CaseAssignment>(
       MODULE_NAME,
-      client.database(context.config.documentDbConfig.databaseName).collection(this.collectionName),
+      client.database(context.config.documentDbConfig.databaseName).collection(COLLECTION_NAME),
     );
     deferClose(context, client);
   }
 
   async create(caseAssignment: CaseAssignment): Promise<string> {
-    let result;
     try {
-      result = await this.adapter.insertOne(caseAssignment);
-    } catch (error) {
-      throw new UnknownError(MODULE_NAME, {
-        originalError: error,
-        message: 'Unable to create assignment.',
-      });
+      return await this.dbAdapter.insertOne(caseAssignment);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to create assignment.');
     }
-    const id = result.insertedId.toString();
-    return id;
   }
 
   async update(caseAssignment: CaseAssignment): Promise<string> {
     const query = QueryBuilder.equals('id', caseAssignment.id);
 
     try {
-      return await this.adapter.replaceOne(query, caseAssignment);
-    } catch (error) {
-      throw new UnknownError(MODULE_NAME, {
-        originalError: error,
-        message: 'Unable to update assignment.',
-      });
+      return await this.dbAdapter.replaceOne(query, caseAssignment);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to update assignment.');
     }
   }
 
@@ -62,21 +52,11 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
         equals<CaseAssignment['caseId']>('caseId', caseId),
       ),
     );
-    const assignments: CaseAssignment[] = [];
     try {
-      const result = await this.adapter.find(query);
-
-      for await (const doc of result) {
-        assignments.push(doc);
-      }
-    } catch (error) {
-      throw new UnknownError(MODULE_NAME, {
-        originalError: error,
-        message: 'Unable to retrieve assignments.',
-      });
+      return await this.dbAdapter.find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignment.');
     }
-
-    return assignments;
   }
 
   async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
@@ -89,20 +69,10 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
       ),
     );
 
-    const assignments: CaseAssignment[] = [];
     try {
-      const result = await this.adapter.find(query);
-
-      for await (const doc of result) {
-        assignments.push(doc);
-      }
-    } catch (error) {
-      throw new UnknownError(MODULE_NAME, {
-        originalError: error,
-        message: 'Unable to retrieve assignments.',
-      });
+      return await this.dbAdapter.find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignment.');
     }
-
-    return assignments;
   }
 }

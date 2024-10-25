@@ -10,7 +10,7 @@ export class CaseHistoryUseCase {
     this.casesRepository = getCasesRepository(applicationContext);
   }
 
-  public async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
-    return this.casesRepository.getCaseHistory(context, caseId);
+  public async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
+    return this.casesRepository.getCaseHistory(caseId);
   }
 }

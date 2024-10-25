@@ -28,7 +28,7 @@ export class OfficesUseCase {
     let attorneys: AttorneyUser[] = [];
     if (context.featureFlags['restrict-case-assignment']) {
       const repository = getOfficesRepository(context);
-      attorneys = await repository.getOfficeAttorneys(context, officeCode);
+      attorneys = await repository.getOfficeAttorneys(officeCode);
     } else {
       const attorneysUseCase = new AttorneysList();
       attorneys = await attorneysUseCase.getAttorneyList(context);
@@ -83,7 +83,7 @@ export class OfficesUseCase {
         }
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
         office.staff.push(userWithRoles);
-        await repository.putOfficeStaff(context, office.officeCode, userWithRoles);
+        await repository.putOfficeStaff(office.officeCode, userWithRoles);
       }
 
       context.logger.info(
