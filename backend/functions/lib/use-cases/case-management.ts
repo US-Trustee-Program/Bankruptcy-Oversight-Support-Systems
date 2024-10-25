@@ -19,7 +19,6 @@ import Actions, { Action, ResourceActions } from '../../../../common/src/cams/ac
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { buildOfficeCode } from './offices/offices';
-import { CaseAssignmentCosmosMongoDbRepository } from '../adapters/gateways/case.assignment.cosmosdb.mongo.repository';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 

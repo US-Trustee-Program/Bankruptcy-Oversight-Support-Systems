@@ -42,6 +42,7 @@ import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.reposito
 import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
 import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
 import { CollectionHumble } from './humble-objects/mongo-humble';
+import { MongoCollectionAdapter } from './adapters/gateways/mongo/mongo-adapter';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -159,5 +160,5 @@ export const getDocumentCollectionAdapter = <T>(
   moduleName: string,
   collection: CollectionHumble<T>,
 ) => {
-  return getDocumentCollectionAdapter<T>(moduleName, collection);
+  return new MongoCollectionAdapter<T>(moduleName, collection);
 };
