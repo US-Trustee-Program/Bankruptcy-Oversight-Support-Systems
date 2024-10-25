@@ -2,28 +2,32 @@ import * as dotenv from 'dotenv';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { DocumentClient } from '../lib/humble-objects/mongo-humble';
 import QueryBuilder from '../lib/query/query-builder';
-import { toMongoQuery } from '../lib/query/mongo-query-renderer';
-import { Closable, deferClose } from '../lib/defer-close';
+import { deferClose } from '../lib/defer-close';
+import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/mongo-adapter';
+import { CamsDocument } from '../../../common/src/cams/document';
 
 dotenv.config();
 
 const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
+const CONTAINER_NAME = 'healthcheck';
 
-export default class HealthcheckCosmosDb implements Closable {
+export default class HealthcheckCosmosDb {
   private readonly databaseName = process.env.COSMOS_DATABASE_NAME;
-
-  private CONTAINER_NAME = 'healthcheck';
+  private readonly adapter: MongoCollectionAdapter<CamsDocument>;
 
   private readonly applicationContext: ApplicationContext;
-  private readonly documentClient: DocumentClient;
 
   constructor(applicationContext: ApplicationContext) {
     try {
       this.applicationContext = applicationContext;
-      this.documentClient = new DocumentClient(
+      const client = new DocumentClient(
         this.applicationContext.config.documentDbConfig.connectionString,
       );
-      deferClose(applicationContext, this);
+      this.adapter = new MongoCollectionAdapter<CamsDocument>(
+        MODULE_NAME,
+        client.database(this.databaseName).collection(CONTAINER_NAME),
+      );
+      deferClose(applicationContext, client);
     } catch (e) {
       applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
@@ -37,10 +41,7 @@ export default class HealthcheckCosmosDb implements Closable {
 
   public async checkDbRead() {
     try {
-      const result = await this.documentClient
-        .database(this.databaseName)
-        .collection(this.CONTAINER_NAME)
-        .find({});
+      const result = await this.adapter.find(null);
 
       const items = [];
       for await (const doc of result) {
@@ -55,12 +56,9 @@ export default class HealthcheckCosmosDb implements Closable {
 
   public async checkDbWrite() {
     try {
-      const resource = await this.documentClient
-        .database(this.databaseName)
-        .collection(this.CONTAINER_NAME)
-        .insertOne({ id: 'test' });
-      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${resource.insertedId}`);
-      return resource.acknowledged;
+      const resource = await this.adapter.insertOne({ id: 'test' });
+      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${resource}`);
+      return !!resource;
     } catch (e) {
       this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
@@ -70,10 +68,7 @@ export default class HealthcheckCosmosDb implements Closable {
   public async checkDbDelete() {
     const { equals } = QueryBuilder;
     try {
-      const result = await this.documentClient
-        .database(this.databaseName)
-        .collection(this.CONTAINER_NAME)
-        .find({});
+      const result = await this.adapter.find(null);
 
       const items = [];
       for await (const doc of result) {
@@ -87,10 +82,7 @@ export default class HealthcheckCosmosDb implements Closable {
             `Invoking delete on item ${resource._id}`,
           );
 
-          await this.documentClient
-            .database(this.databaseName)
-            .collection(this.CONTAINER_NAME)
-            .deleteOne(QueryBuilder.build(toMongoQuery, equals('id', resource.id)));
+          await this.adapter.deleteOne(QueryBuilder.build(equals('id', resource.id)));
         }
       }
       return true;
@@ -98,9 +90,5 @@ export default class HealthcheckCosmosDb implements Closable {
       this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
-  }
-
-  async close() {
-    await this.documentClient.close();
   }
 }
