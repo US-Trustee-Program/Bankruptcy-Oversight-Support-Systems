@@ -18,19 +18,15 @@ describe('offices repo', () => {
     jest.clearAllMocks();
   });
 
-  afterAll(async () => {
-    if (repo) await repo.close();
-  });
-
   test('getOfficeAttorneys', async () => {
-    const attorneys = await repo.getOfficeAttorneys(context, 'my_house');
+    const attorneys = await repo.getOfficeAttorneys('my_house');
 
     expect(attorneys).not.toBeNull();
   });
 
   test('putOfficeStaff', async () => {
     const session = await createMockApplicationContextSession();
-    const attorneys = await repo.putOfficeStaff(context, 'my_house', session.user);
+    const attorneys = await repo.putOfficeStaff('my_house', session.user);
 
     expect(attorneys).not.toBeNull();
   });

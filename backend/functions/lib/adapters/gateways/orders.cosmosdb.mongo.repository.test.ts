@@ -3,6 +3,9 @@ import { OrdersCosmosDbMongoRepository } from './orders.cosmosdb.mongo.repositor
 import { ApplicationContext } from '../types/basic';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import QueryBuilder from '../../query/query-builder';
+import { closeDeferred } from '../../defer-close';
 
 describe('orders repo', () => {
   let context: ApplicationContext;
@@ -14,38 +17,56 @@ describe('orders repo', () => {
     jest.clearAllMocks();
   });
 
+  // TODO: Make sure each repo test has this following `afterEach`:
   afterEach(async () => {
-    if (repo) await repo.close();
+    closeDeferred(context);
   });
 
   test('search function', async () => {
     const predicate = {
       divisionCodes: ['081'],
     };
-    const orders = await repo.search(context, predicate);
+    const orders = await repo.search(predicate);
 
     expect(orders).not.toBeNull();
     expect(orders.length).toBeGreaterThan(0);
   });
 
   test('should insert an array of transfer orders', async () => {
+    const commonTestId = 'testId';
     const transfers = MockData.buildArray(MockData.getTransferOrder, 4);
-    const expectedOrders = [...transfers];
-    const actualOrders = await repo.createMany(context, expectedOrders);
+    const expectedOrders = [...transfers].map((order) => {
+      return { ...order, id: commonTestId };
+    });
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
+      .mockResolvedValue(expectedOrders.map((order) => order.id));
+    const actualOrders = await repo.createMany(expectedOrders);
     expect(actualOrders).toEqual(expectedOrders);
   });
 
   test('should get one order', async () => {
-    const id = 'b2833fdb-110c-4a45-9a53-59b728243121';
-    const result = await repo.read(context, id, 'some case id');
-    expect(result).not.toBeNull();
+    const expected = MockData.getTransferOrder();
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
+    const actual = await repo.read(expected.id);
+    expect(actual).toEqual(expected);
   });
 
   test('should update one order', async () => {
-    const id = '93ff688b-b865-4478-aa2f-e718de7116c5';
-    const transferOrder = MockData.getTransferOrder();
-
-    const result = await repo.update(context, id, transferOrder as TransferOrderAction);
-    expect(result).not.toBeNull();
+    const existing = MockData.getTransferOrder({
+      override: { docketSuggestedCaseNumber: undefined },
+    });
+    const expected: TransferOrderAction = {
+      ...existing,
+      newCase: MockData.getCaseSummary(),
+      orderType: 'transfer',
+      status: 'approved',
+    };
+    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(existing);
+    const replaceOne = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue(undefined);
+    await repo.update(expected);
+    expect(replaceOne).toHaveBeenCalledWith(QueryBuilder.equals('id', existing.id), expected);
   });
 });

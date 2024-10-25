@@ -18,7 +18,7 @@ export class CaseAssociatedUseCase {
 
   public async getAssociatedCases(context: ApplicationContext): Promise<EventCaseReference[]> {
     const caseId = context.request.params.caseId;
-    const consolidation = await this.casesRepository.getConsolidation(context, caseId);
+    const consolidation = await this.casesRepository.getConsolidation(caseId);
     if (!consolidation.length) return [];
 
     let leadCaseRef: EventCaseReference;
@@ -30,15 +30,12 @@ export class CaseAssociatedUseCase {
     if (thisIsTheLeadCase) {
       childCaseRefs = consolidation;
       const leadCaseId = childCaseRefs[0].otherCase.caseId;
-      const childCaseConsolidation = await this.casesRepository.getConsolidation(
-        context,
-        leadCaseId,
-      );
+      const childCaseConsolidation = await this.casesRepository.getConsolidation(leadCaseId);
       leadCaseRef = childCaseConsolidation[0];
     } else {
       leadCaseRef = consolidation[0];
       const leadCaseId = leadCaseRef.otherCase.caseId;
-      childCaseRefs = await this.casesRepository.getConsolidation(context, leadCaseId);
+      childCaseRefs = await this.casesRepository.getConsolidation(leadCaseId);
     }
     leadCaseRef.orderDate = getEarliestDate(childCaseRefs);
     return [leadCaseRef, ...childCaseRefs];

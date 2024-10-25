@@ -136,8 +136,8 @@ export class OrdersUseCase {
           documentType: 'TRANSFER_TO',
         };
 
-        await this.casesRepo.createTransferFrom(context, transferFrom);
-        await this.casesRepo.createTransferTo(context, transferTo);
+        await this.casesRepo.createTransferFrom(transferFrom);
+        await this.casesRepo.createTransferTo(transferTo);
       }
       const caseHistory = createAuditRecord<CaseHistory>(
         {
@@ -148,7 +148,7 @@ export class OrdersUseCase {
         },
         context.session?.user,
       );
-      await this.casesRepo.createCaseHistory(context, caseHistory);
+      await this.casesRepo.createCaseHistory(caseHistory);
     }
   }
 
@@ -212,7 +212,7 @@ export class OrdersUseCase {
           },
           context.session?.user,
         );
-        await this.casesRepo.createCaseHistory(context, caseHistory);
+        await this.casesRepo.createCaseHistory(caseHistory);
       }
     }
 
@@ -238,7 +238,7 @@ export class OrdersUseCase {
         },
         context.session?.user,
       );
-      await this.casesRepo.createCaseHistory(context, caseHistory);
+      await this.casesRepo.createCaseHistory(caseHistory);
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
@@ -293,7 +293,7 @@ export class OrdersUseCase {
     if (leadCase) after.leadCase = leadCase;
     let before;
     try {
-      const fullHistory = await this.casesRepo.getCaseHistory(context, bCase.caseId);
+      const fullHistory = await this.casesRepo.getCaseHistory(bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
         .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
@@ -334,14 +334,14 @@ export class OrdersUseCase {
 
     if (status === 'approved') {
       for (const caseId of includedCases) {
-        const references = await this.casesRepo.getConsolidation(context, caseId);
+        const references = await this.casesRepo.getConsolidation(caseId);
         if (references.length > 0) {
           throw new BadRequestError(MODULE_NAME, {
             message: `Cannot consolidate order. A child case has already been consolidated.`,
           });
         }
       }
-      const leadCaseReferences = await this.casesRepo.getConsolidation(context, leadCase.caseId);
+      const leadCaseReferences = await this.casesRepo.getConsolidation(leadCase.caseId);
       const isLeadCaseAChildCase = leadCaseReferences
         .filter((reference) => reference.caseId === leadCase.caseId)
         .reduce((isChildCase, reference) => {
@@ -389,7 +389,7 @@ export class OrdersUseCase {
     for (const childCase of newConsolidation.childCases) {
       if (!leadCase || childCase.caseId !== leadCase.caseId) {
         const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
-        await this.casesRepo.createCaseHistory(context, caseHistory);
+        await this.casesRepo.createCaseHistory(caseHistory);
       }
     }
 
@@ -411,7 +411,7 @@ export class OrdersUseCase {
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_TO',
           };
-          await this.casesRepo.createConsolidationTo(context, consolidationTo);
+          await this.casesRepo.createConsolidationTo(consolidationTo);
 
           // Add the reference to the child case to the lead case.
           const consolidationFrom: ConsolidationFrom = {
@@ -421,7 +421,7 @@ export class OrdersUseCase {
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_FROM',
           };
-          await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
+          await this.casesRepo.createConsolidationFrom(consolidationFrom);
 
           // Assign lead case attorneys to the child case.
           await assignmentUseCase.createTrialAttorneyAssignments(
@@ -445,7 +445,7 @@ export class OrdersUseCase {
         status,
         childCaseSummaries,
       );
-      await this.casesRepo.createCaseHistory(context, leadCaseHistory);
+      await this.casesRepo.createCaseHistory(leadCaseHistory);
     }
 
     return response;

@@ -1,6 +1,4 @@
-import { AggregateAuthenticationError } from '@azure/identity';
 import {
-  Consolidation,
   ConsolidationFrom,
   ConsolidationTo,
   Transfer,
@@ -9,37 +7,42 @@ import {
 } from '../../../../../common/src/cams/events';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { ApplicationContext } from '../types/basic';
-import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { UnknownError } from '../../common-errors/unknown-error';
 import QueryBuilder from '../../query/query-builder';
-import { Closable, deferClose } from '../../defer-close';
+import { deferClose } from '../../defer-close';
 import { CasesRepository } from '../../use-cases/gateways.types';
+import { getDocumentCollectionAdapter } from '../../factory';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
+const COLLECTION_NAME = 'cases';
 
 const { and, equals, regex } = QueryBuilder;
 
-export class CasesCosmosMongoDbRepository implements Closable, CasesRepository {
-  private documentClient: DocumentClient;
-  private readonly containerName = 'cases';
+export class CasesCosmosMongoDbRepository implements CasesRepository {
+  private readonly client: DocumentClient;
+  private readonly databaseName: string;
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
-    deferClose(context, this);
+    const { connectionString, databaseName } = context.config.documentDbConfig;
+    this.databaseName = databaseName;
+    const client = new DocumentClient(connectionString);
+    deferClose(context, client);
   }
 
-  async getTransfers(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<TransferFrom | TransferTo>> {
+  getAdapter<T>() {
+    return getDocumentCollectionAdapter<T>(
+      MODULE_NAME,
+      this.client.database(this.databaseName).collection<T>(COLLECTION_NAME),
+    );
+  }
+
+  async getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>> {
     const query = QueryBuilder.build(
       and(regex('documentType', '^TRANSFER_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
-    const result = await this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<Transfer>(this.containerName)
-      .find(query);
+    const adapter = this.getAdapter<Transfer>();
+    const result = await adapter.find(query);
 
     const transfers: Transfer[] = [];
     for await (const doc of result) {
@@ -48,110 +51,71 @@ export class CasesCosmosMongoDbRepository implements Closable, CasesRepository {
     return transfers;
   }
 
-  private async create<T>(context: ApplicationContext, itemToCreate: T): Promise<T> {
+  private async create<T>(itemToCreate: T): Promise<T> {
     try {
-      await this.documentClient
-        .database(context.config.documentDbConfig.databaseName)
-        .collection<T>(this.containerName)
-        .insertOne(itemToCreate);
-      return itemToCreate;
+      const adapter = this.getAdapter<T>();
+      const id = await adapter.insertOne(itemToCreate);
+      return { ...itemToCreate, id };
     } catch (originalError) {
       // if (!isPreExistingDocumentError(originalError)) {
       //   throw new BadRequestError(MODULE_NAME, {
       //     message: 'Item already exists',
       //   });
       // }
-      if (originalError instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Failed to authenticate to Azure',
-          originalError,
-        });
-      } else {
-        throw originalError;
-      }
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  async createTransferFrom(
-    context: ApplicationContext,
-    transferFrom: TransferFrom,
-  ): Promise<TransferFrom> {
-    return this.create<TransferFrom>(context, transferFrom);
+  async createTransferFrom(transferFrom: TransferFrom): Promise<TransferFrom> {
+    return this.create<TransferFrom>(transferFrom);
   }
 
-  async createTransferTo(
-    context: ApplicationContext,
-    transferOut: TransferTo,
-  ): Promise<TransferTo> {
-    return this.create<TransferTo>(context, transferOut);
+  async createTransferTo(transferOut: TransferTo): Promise<TransferTo> {
+    return this.create<TransferTo>(transferOut);
   }
 
-  async getConsolidation(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+  async getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
     const query = QueryBuilder.build(
       and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
-    const result = await this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<Consolidation>(this.containerName)
-      .find(query);
-    const consolidations: Consolidation[] = [];
-
-    for await (const doc of result) {
-      consolidations.push(doc);
+    try {
+      const adapter = this.getAdapter<ConsolidationTo | ConsolidationFrom>();
+      return await adapter.find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
-    return consolidations;
   }
 
-  async createConsolidationFrom(
-    context: ApplicationContext,
-    consolidationFrom: ConsolidationFrom,
-  ): Promise<ConsolidationFrom> {
-    return this.create<ConsolidationFrom>(context, consolidationFrom);
+  async createConsolidationFrom(consolidationFrom: ConsolidationFrom): Promise<ConsolidationFrom> {
+    return this.create<ConsolidationFrom>(consolidationFrom);
   }
 
-  async createConsolidationTo(
-    context: ApplicationContext,
-    consolidationOut: ConsolidationTo,
-  ): Promise<ConsolidationTo> {
-    return this.create<ConsolidationTo>(context, consolidationOut);
+  async createConsolidationTo(consolidationOut: ConsolidationTo): Promise<ConsolidationTo> {
+    return this.create<ConsolidationTo>(consolidationOut);
   }
 
-  async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
+  async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
     const query = QueryBuilder.build(
       and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
-    const result = await this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<CaseHistory>(this.containerName)
-      .find(query);
 
-    const history: CaseHistory[] = [];
-
-    for await (const doc of result) {
-      history.push(doc);
-    }
-    return history;
-  }
-
-  async createCaseHistory(context: ApplicationContext, history: CaseHistory): Promise<string> {
     try {
-      const result = await this.create<CaseHistory>(context, history);
-
-      return result.id;
-    } catch (e) {
-      throw new UnknownError(MODULE_NAME, {
-        message:
-          'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-        originalError: e,
-        status: 500,
-      });
+      const adapter = this.getAdapter<CaseHistory>();
+      return await adapter.find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  async close() {
-    await this.documentClient.close();
+  async createCaseHistory(history: CaseHistory) {
+    try {
+      await this.create<CaseHistory>(history);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+      );
+    }
   }
 }

@@ -88,7 +88,6 @@ async function setupConsolidationCaseReferences(
 ): Promise<CasesRepository> {
   for (const childCase of order.childCases) {
     await repo.createConsolidationTo(
-      context,
       MockData.getConsolidationReference({
         override: {
           documentType: 'CONSOLIDATION_TO',
@@ -98,7 +97,6 @@ async function setupConsolidationCaseReferences(
       }) as ConsolidationTo,
     );
     await repo.createConsolidationFrom(
-      context,
       MockData.getConsolidationReference({
         override: {
           documentType: 'CONSOLIDATION_FROM',
@@ -117,7 +115,7 @@ async function setupConsolidationOrder(
   repo: ConsolidationOrdersRepository,
   order: ConsolidationOrder,
 ): Promise<ConsolidationOrdersRepository> {
-  await repo.create(context, order);
+  await repo.create(order);
   return repo;
 }
 
