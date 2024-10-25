@@ -1,6 +1,4 @@
 import { ApplicationContext } from '../types/basic';
-import { AggregateAuthenticationError } from '@azure/identity';
-import { ServerConfigError } from '../../common-errors/server-config-error';
 import {
   RuntimeStateRepository,
   RuntimeState,
@@ -8,40 +6,35 @@ import {
 } from '../../use-cases/gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
-import { Closable, deferClose } from '../../defer-close';
+import { deferClose } from '../../defer-close';
 import QueryBuilder from '../../query/query-builder';
-import { toMongoQuery } from '../../query/mongo-query-renderer';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 
-const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
+const MODULE_NAME = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
+const COLLECTION_NAME = 'runtime-state';
+
 const { equals } = QueryBuilder;
 
-export class RuntimeStateCosmosMongoDbRepository implements RuntimeStateRepository, Closable {
-  private documentClient: DocumentClient;
-  private context: ApplicationContext;
-  private readonly collectionName = 'runtime-state';
+export class RuntimeStateCosmosMongoDbRepository<T extends RuntimeState>
+  implements RuntimeStateRepository<T>
+{
+  private dbAdapter: MongoCollectionAdapter<T>;
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
-    this.context = context;
-    deferClose(context, this);
+    const { connectionString, databaseName } = context.config.documentDbConfig;
+    const client = new DocumentClient(connectionString);
+    this.dbAdapter = new MongoCollectionAdapter<T>(
+      MODULE_NAME,
+      client.database(databaseName).collection(COLLECTION_NAME),
+    );
+    deferClose(context, client);
   }
 
-  async read<T extends RuntimeState>(
-    _context: ApplicationContext,
-    id: RuntimeStateDocumentType,
-  ): Promise<T> {
-    // TODO: parameterize the documentType
-    const query = QueryBuilder.build(toMongoQuery, equals('documentType', id));
-    const state = [];
+  async read(id: RuntimeStateDocumentType): Promise<T> {
+    const query = QueryBuilder.build(equals('documentType', id));
     try {
-      const result = await this.documentClient
-        .database(this.context.config.documentDbConfig.databaseName)
-        .collection(this.collectionName)
-        .find(query);
-      for await (const doc of result) {
-        state.push(doc);
-      }
+      const state = await this.dbAdapter.find(query);
       if (state.length !== 1) {
         throw new CamsError(MODULE_NAME, {
           message: 'Initial state was not found or was ambiguous.',
@@ -53,49 +46,13 @@ export class RuntimeStateCosmosMongoDbRepository implements RuntimeStateReposito
     }
   }
 
-  async update<T extends RuntimeState>(
-    _context: ApplicationContext,
-    _id: string | undefined,
-    data: T,
-  ): Promise<void> {
-    const query = QueryBuilder.build(toMongoQuery, equals('documentType', data.documentType));
+  async upsert(data: RuntimeState): Promise<T> {
     try {
-      await this.documentClient
-        .database(this.context.config.documentDbConfig.databaseName)
-        .collection(this.collectionName)
-        .replaceOne(query, data);
+      const query = QueryBuilder.build(equals('documentType', data.documentType));
+      const id = await this.dbAdapter.replaceOne(query, data, true);
+      return { ...data, id } as T;
     } catch (e) {
-      if (e instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Failed to authenticate to Azure',
-          originalError: e,
-        });
-      } else {
-        throw e;
-      }
+      throw getCamsError(e, MODULE_NAME);
     }
-  }
-
-  async create(_context: ApplicationContext, data: RuntimeState): Promise<string> {
-    try {
-      const result = await this.documentClient
-        .database(this.context.config.documentDbConfig.databaseName)
-        .collection(this.collectionName)
-        .insertOne(data);
-      return result.insertedId.toString();
-    } catch (e) {
-      if (e instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Failed to authenticate to Azure',
-          originalError: e,
-        });
-      } else {
-        throw e;
-      }
-    }
-  }
-
-  async close() {
-    await this.documentClient.close();
   }
 }

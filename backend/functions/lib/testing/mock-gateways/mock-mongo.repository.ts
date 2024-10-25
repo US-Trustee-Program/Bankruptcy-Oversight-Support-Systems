@@ -96,6 +96,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  upsert(..._ignore): Promise<any | void> {
+    throw new Error('Method not implemented.');
+  }
+
   search(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

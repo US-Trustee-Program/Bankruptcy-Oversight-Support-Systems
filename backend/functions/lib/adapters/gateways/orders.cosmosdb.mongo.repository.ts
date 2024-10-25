@@ -1,39 +1,46 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { Order, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
-import { DocumentQuery } from './document-db.repository';
 import { ApplicationContext } from '../types/basic';
-import { ServerConfigError } from '../../common-errors/server-config-error';
-import { AggregateAuthenticationError } from '@azure/identity';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
-import QueryBuilder from '../../query/query-builder';
-import { toMongoQuery } from '../../query/mongo-query-renderer';
+import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
 import { Closable, deferClose } from '../../defer-close';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 
+const { contains, equals } = QueryBuilder;
+
 export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository {
   private documentClient: DocumentClient;
-  private readonly containerName = 'orders';
+  private readonly collectionName = 'orders';
+  private context: ApplicationContext;
+  private dbAdapter: MongoCollectionAdapter<Order>;
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
+    const client = new DocumentClient(context.config.documentDbConfig.connectionString);
+    this.context = context;
+    this.dbAdapter = new MongoCollectionAdapter<Order>(
+      MODULE_NAME,
+      client
+        .database(context.config.documentDbConfig.connectionString)
+        .collection(this.collectionName),
+    );
     deferClose(context, this);
   }
 
-  async search(context: ApplicationContext, predicate: OrdersSearchPredicate): Promise<Order[]> {
-    let query: DocumentQuery;
+  async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
+    let query: ConditionOrConjunction;
     if (!predicate) {
-      query = {};
+      query = null;
     } else {
-      query = toMongoQuery(QueryBuilder.contains('courtDivisionCode', predicate.divisionCodes));
+      query = QueryBuilder.build(contains('courtDivisionCode', predicate.divisionCodes));
     }
-    console.log(query);
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<Order>(this.containerName);
-    const result = (await collection.find(query)).sort({ orderDate: 1 });
+    const result = await this.dbAdapter.find(query);
+    //TODO: how do we want to handle sorting now that we have an adapter?
+    // const result = (await collection.find(query)).sort({ orderDate: 1 });
     const orders: Order[] = [];
 
     for await (const doc of result) {
@@ -42,79 +49,44 @@ export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository
     return orders;
   }
 
-  async read(context: ApplicationContext, id: string, _unused: string): Promise<Order> {
-    const query = toMongoQuery(QueryBuilder.equals('id', id));
-
+  async read(id: string, _unused: string): Promise<Order> {
     try {
-      const collection = this.documentClient
-        .database(context.config.documentDbConfig.databaseName)
-        .collection<Order>(this.containerName);
-      const result = await collection.findOne(query);
-      return result;
+      const query = QueryBuilder.build(equals<string>('_id', id));
+      const result = await this.dbAdapter.findOne(query);
+      return result as Order;
     } catch (originalError) {
-      context.logger.error(
-        MODULE_NAME,
-        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
-      );
-      if (originalError instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Failed to authenticate to Azure',
-          originalError,
-        });
-      } else {
-        throw originalError;
-      }
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  async update(context: ApplicationContext, id: string, data: TransferOrderAction) {
-    const query = toMongoQuery(QueryBuilder.equals('id', id));
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<TransferOrderAction>(this.containerName);
+  async update(data: TransferOrderAction) {
+    const query = QueryBuilder.build(equals('id', data.id));
     try {
-      const existingOrder = await collection.findOne(query);
+      const existingOrder = await this.dbAdapter.findOne(query);
       if (!existingOrder) {
-        throw new NotFoundError(MODULE_NAME, { message: `Order not found with id ${id}` });
+        throw new NotFoundError(MODULE_NAME, { message: `Order not found with id ${data.id}` });
       }
       const { id: _id, orderType: _orderType, caseId: _caseId, ...mutableProperties } = data;
       const updatedOrder = {
-        ...existingOrder,
+        ...(existingOrder as unknown as Order),
         ...mutableProperties,
         docketSuggestedCaseNumber: undefined,
       };
-      const result = await collection.replaceOne(query, updatedOrder);
-      context.logger.debug(MODULE_NAME, `Order updated ${id}, ${result}`);
+      await this.dbAdapter.replaceOne(query, updatedOrder);
     } catch (originalError) {
-      context.logger.error(
-        MODULE_NAME,
-        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
-      );
-      if (originalError instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Failed to authenticate to Azure',
-          originalError,
-        });
-      } else {
-        throw originalError;
-      }
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  async createMany(context: ApplicationContext, orders: Order[]): Promise<Order[]> {
+  async createMany(orders: Order[]): Promise<Order[]> {
     const writtenOrders: Order[] = [];
     if (!orders.length) return writtenOrders;
     try {
       for (const order of orders) {
         try {
-          const collection = this.documentClient
-            .database(context.config.documentDbConfig.databaseName)
-            .collection<Order>(this.containerName);
-          const result = await collection.insertOne(order);
-          if (result && result.acknowledged) {
-            // TODO: add _id: result.insertedId
-            writtenOrders.push(order);
-          }
+          const writtenId = await this.dbAdapter.insertOne(order);
+          const tempOrder = { ...order, id: writtenId };
+          writtenOrders.push(tempOrder);
         } catch (e) {
           // TODO: insert the same document twice to see what happens
           // Is this error going to be the same through the mongo client? Probably not.
@@ -124,18 +96,7 @@ export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository
         }
       }
     } catch (originalError) {
-      context.logger.error(
-        MODULE_NAME,
-        `${originalError.status} : ${originalError.name} : ${originalError.message}`,
-      );
-      if (originalError instanceof AggregateAuthenticationError) {
-        throw new ServerConfigError(MODULE_NAME, {
-          message: 'Failed to authenticate to Azure',
-          originalError,
-        });
-      } else {
-        throw originalError;
-      }
+      throw getCamsError(originalError, MODULE_NAME);
     }
     return writtenOrders;
   }

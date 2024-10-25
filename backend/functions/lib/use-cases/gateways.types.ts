@@ -16,44 +16,38 @@ import { CaseDocket } from '../../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { CamsDocument } from '../../../../common/src/cams/document';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 export interface RepositoryResource {
   id?: string;
 }
 
-export interface DocumentRepository<T extends RepositoryResource> {
-  create(context: ApplicationContext, data: T): Promise<T | void>;
-  createMany(context: ApplicationContext, list: T[]): Promise<T[] | void>;
-  read(context: ApplicationContext, id: string, partitionKey: string): Promise<T>;
-  update(context: ApplicationContext, id: string, partitionKey: string, data: T): Promise<T | void>;
-  upsert(context: ApplicationContext, partitionKey: string, data: T): Promise<T | void>;
-  delete(context: ApplicationContext, id: string, partitionKey: string): Promise<void>;
-}
-
 interface Creates<T, R = void> {
-  create(context: ApplicationContext, data: T): Promise<R>;
+  create(data: T): Promise<R>;
 }
 
 interface CreatesMany<T, R = void> {
-  createMany(context: ApplicationContext, data: T[]): Promise<R>;
+  createMany(data: T[]): Promise<R>;
 }
 
 interface Reads<R> {
-  read(context: ApplicationContext, id: string, partitionKey: string): Promise<R>;
+  read(id: string, key?: string): Promise<R>;
 }
 
 interface Updates<T, R = void> {
-  update(context: ApplicationContext, id: string, data: T): Promise<R>;
+  update(data: T): Promise<R>;
+}
+
+interface Upserts<T, R = void> {
+  upsert(data: T): Promise<R>;
 }
 
 interface Deletes {
-  delete(context: ApplicationContext, id: string, partitionKey: string): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 interface Searches<P, R> {
-  search(context: ApplicationContext, predicate?: P): Promise<R[]>;
+  search(predicate?: P): Promise<R[]>;
 }
 
 ///////////////////////
@@ -80,15 +74,9 @@ export interface OrdersRepository<T = Order>
     Reads<T>,
     Updates<TransferOrderAction> {}
 
-export interface RuntimeStateRepository<T = RuntimeState, R = string>
+export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   extends Reads<T>,
-    Creates<T, R>,
-    Updates<RuntimeState> {}
-
-export interface LocalDocumentRepository<T extends CamsDocument, S>
-  extends Searches<S, T>,
-    Creates<T, T>,
-    Deletes {}
+    Upserts<T, T> {}
 
 ///////////////////////
 // TODO Refactor below this line

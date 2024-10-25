@@ -96,7 +96,7 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        await this.assignmentRepository.update(context, existingAssignment.id, {
+        await this.assignmentRepository.update({
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
         });
@@ -108,7 +108,7 @@ export class CaseAssignmentUseCase {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
-        const assignmentId = await this.assignmentRepository.create(context, assignment);
+        const assignmentId = await this.assignmentRepository.create(assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }

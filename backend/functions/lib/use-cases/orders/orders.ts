@@ -68,14 +68,14 @@ export class OrdersUseCase {
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
   private readonly consolidationsRepo: ConsolidationOrdersRepository;
-  private readonly runtimeStateRepo: RuntimeStateRepository;
+  private readonly runtimeStateRepo: RuntimeStateRepository<OrderSyncState>;
 
   constructor(
     casesRepo: CasesRepository,
     casesGateway: CasesInterface,
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
-    runtimeRepo: RuntimeStateRepository,
+    runtimeRepo: RuntimeStateRepository<OrderSyncState>,
     consolidationRepo: ConsolidationOrdersRepository,
   ) {
     this.casesRepo = casesRepo;
@@ -92,8 +92,8 @@ export class OrdersUseCase {
       const divisionCodes = getCourtDivisionCodes(context.session.user);
       predicate = { divisionCodes };
     }
-    const transferOrders = await this.ordersRepo.search(context, predicate);
-    const consolidationOrders = await this.consolidationsRepo.search(context, predicate);
+    const transferOrders = await this.ordersRepo.search(predicate);
+    const consolidationOrders = await this.consolidationsRepo.search(predicate);
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
@@ -114,11 +114,11 @@ export class OrdersUseCase {
     }
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
-    const initialOrder = await this.ordersRepo.read(context, id, data.caseId);
+    const initialOrder = await this.ordersRepo.read(id, data.caseId);
     let order: Order;
     if (isTransferOrder(initialOrder)) {
-      await this.ordersRepo.update(context, id, data);
-      order = await this.ordersRepo.read(context, id, data.caseId);
+      await this.ordersRepo.update(data);
+      order = await this.ordersRepo.read(id, data.caseId);
     }
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
@@ -159,10 +159,7 @@ export class OrdersUseCase {
     let initialSyncState: OrderSyncState;
 
     try {
-      initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
-        context,
-        'ORDERS_SYNC_STATE',
-      );
+      initialSyncState = await this.runtimeStateRepo.read('ORDERS_SYNC_STATE', '');
       context.logger.info(
         MODULE_NAME,
         'Got initial runtime state from repo (Cosmos).',
@@ -185,7 +182,7 @@ export class OrdersUseCase {
           documentType: 'ORDERS_SYNC_STATE',
           txId: options.txIdOverride,
         };
-        initialSyncState = await this.runtimeStateRepo.createState(context, initialSyncState);
+        initialSyncState = await this.runtimeStateRepo.upsert(initialSyncState);
         context.logger.info(
           MODULE_NAME,
           'Wrote new runtime state to repo (Cosmos).',
@@ -202,7 +199,7 @@ export class OrdersUseCase {
       startingTxId,
     );
 
-    const writtenTransfers = await this.ordersRepo.createMany(context, transfers);
+    const writtenTransfers = await this.ordersRepo.createMany(transfers);
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
@@ -225,7 +222,7 @@ export class OrdersUseCase {
     });
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    await this.consolidationsRepo.createMany(context, Array.from(consolidationsByJobId.values()));
+    await this.consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
       const history: ConsolidationOrderSummary = {
@@ -245,7 +242,7 @@ export class OrdersUseCase {
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
-    await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
+    await this.runtimeStateRepo.upsert(finalSyncState);
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
 
     return {
@@ -380,17 +377,13 @@ export class OrdersUseCase {
         childCases: remainingChildCases,
         id: undefined,
       };
-      const updatedRemainingOrder = await this.consolidationsRepo.create(context, remainingOrder);
+      const updatedRemainingOrder = await this.consolidationsRepo.create(remainingOrder);
       response.push(updatedRemainingOrder as ConsolidationOrder);
     }
 
-    await this.consolidationsRepo.delete(
-      context,
-      provisionalOrder.id,
-      provisionalOrder.consolidationId,
-    );
+    await this.consolidationsRepo.delete(provisionalOrder.id);
 
-    const createdConsolidation = await this.consolidationsRepo.create(context, newConsolidation);
+    const createdConsolidation = await this.consolidationsRepo.create(newConsolidation);
     response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {
@@ -431,7 +424,7 @@ export class OrdersUseCase {
           await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
 
           // Assign lead case attorneys to the child case.
-          assignmentUseCase.createTrialAttorneyAssignments(
+          await assignmentUseCase.createTrialAttorneyAssignments(
             context,
             childCase.caseId,
             leadCaseAttorneys,
