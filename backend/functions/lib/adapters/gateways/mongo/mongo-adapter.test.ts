@@ -5,7 +5,7 @@ import { UnknownError } from '../../../common-errors/unknown-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 
-const { and } = QueryBuilder;
+const { and, orderBy } = QueryBuilder;
 
 const MODULE_NAME = 'TEST_ADAPTER';
 
@@ -47,6 +47,21 @@ describe('Mongo adapter', () => {
     find.mockResolvedValue([{}, {}, {}]);
     const item = await adapter.find(testQuery);
     expect(item).toEqual([{}, {}, {}]);
+    expect(find).toHaveBeenCalled();
+  });
+
+  test('should return a sorted list of items from a find', async () => {
+    function* generator() {
+      yield Promise.resolve({});
+      yield Promise.resolve({});
+      yield Promise.resolve({});
+    }
+    const sort = jest.fn().mockImplementation(generator);
+    find.mockResolvedValue({ sort });
+    const item = await adapter.find(testQuery, orderBy(['name', 'ASCENDING']));
+    expect(item).toEqual([{}, {}, {}]);
+    expect(find).toHaveBeenCalled();
+    expect(sort).toHaveBeenCalled();
   });
 
   test('should return an empty list of items if find returns nothing', async () => {
@@ -59,6 +74,25 @@ describe('Mongo adapter', () => {
     findOne.mockResolvedValue({ one: 'foo' });
     const item = await adapter.findOne(testQuery);
     expect(item).toEqual({ one: 'foo' });
+  });
+
+  test('should throw NotFound from findOne when a doc is not returned', async () => {
+    findOne.mockResolvedValue(null);
+    await expect(adapter.findOne(testQuery)).rejects.toThrow(
+      new NotFoundError(expect.anything(), { message: 'No matching item found.' }),
+    );
+  });
+
+  test('should handle null queries for find and countDocuments', async () => {
+    find.mockResolvedValue([{}, {}, {}]);
+    const item = await adapter.find(null);
+    expect(find).toHaveBeenCalledWith({});
+    expect(item).toEqual([{}, {}, {}]);
+
+    countDocuments.mockResolvedValue(3);
+    const count = await adapter.countDocuments(null);
+    expect(countDocuments).toHaveBeenCalledWith({});
+    expect(count).toEqual(3);
   });
 
   test('should return a single Id from a replaceOne', async () => {
