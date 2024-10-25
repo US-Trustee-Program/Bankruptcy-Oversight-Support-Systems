@@ -162,3 +162,25 @@ export const getDocumentCollectionAdapter = <T>(
 ) => {
   return new MongoCollectionAdapter<T>(moduleName, collection);
 };
+
+export const Factory = {
+  getAttorneyGateway,
+  getCasesGateway,
+  getAssignmentRepository,
+  getCosmosConfig,
+  getCaseDocketUseCase,
+  getSqlConnection,
+  getOrdersGateway,
+  getOfficesGateway,
+  getOfficesRepository,
+  getOrdersRepository,
+  getConsolidationOrdersRepository,
+  getCasesRepository,
+  getRuntimeStateRepository,
+  getAuthorizationGateway,
+  getUserSessionUseCase,
+  getUserSessionCacheRepository,
+  getStorageGateway,
+  getUserGroupGateway,
+  getDocumentCollectionAdapter,
+};
