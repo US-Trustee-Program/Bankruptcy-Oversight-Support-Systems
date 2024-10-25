@@ -3,7 +3,6 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
-import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import {
   getOrdersGateway,
   getOrdersRepository,
@@ -12,17 +11,22 @@ import {
   getCasesGateway,
   getConsolidationOrdersRepository,
 } from '../../factory';
-import { RuntimeStateCosmosMongoDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.mongo.repository';
 import { OrderSyncState } from '../gateways.types';
 import { CamsError } from '../../common-errors/cams-error';
 import {
+  ConsolidationOrder,
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
   getCaseSummaryFromTransferOrder,
   TransferOrder,
   TransferOrderAction,
 } from '../../../../../common/src/cams/orders';
-import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from '../../../../../common/src/cams/events';
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
@@ -37,9 +41,7 @@ import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import { CaseAssignmentUseCase } from '../case-assignment';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../../common/src/cams/users';
-import { MockOrdersRepository } from '../../testing/mock-gateways/mock-orders.repository';
-import ConsolidationOrdersCosmosMongoDbRepository from '../../adapters/gateways/consolidations.cosmosdb.mongo.repository';
-import { CasesCosmosMongoDbRepository } from '../../adapters/gateways/cases.cosmosdb.mongo.repository';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -101,8 +103,8 @@ describe('Orders use case', () => {
     const expectedResult = [mockTransfer1, mockConsolidation1, mockTransfer2, mockConsolidation2];
     const result = await useCase.getOrders(mockContext);
     expect(result).toEqual(expectedResult);
-    expect(orderRepoMock).toHaveBeenCalledWith(mockContext, { divisionCodes });
-    expect(consolidationsRepoMock).toHaveBeenCalledWith(mockContext, { divisionCodes });
+    expect(orderRepoMock).toHaveBeenCalledWith({ divisionCodes });
+    expect(consolidationsRepoMock).toHaveBeenCalledWith({ divisionCodes });
   });
 
   test('should return list of suggested cases for an order', async () => {
@@ -141,20 +143,20 @@ describe('Orders use case', () => {
 
     const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
     const getOrderFn = jest.spyOn(ordersRepo, 'read').mockResolvedValue(order);
-    const transferToFn = jest.spyOn(casesRepo, 'createTransferTo');
-    const transferFromFn = jest.spyOn(casesRepo, 'createTransferFrom');
-    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
+    const transferToFn = jest.spyOn(casesRepo, 'createTransferTo').mockResolvedValue(transferOut);
+    const transferFromFn = jest
+      .spyOn(casesRepo, 'createTransferFrom')
+      .mockResolvedValue(transferIn);
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory').mockResolvedValue({});
 
     await useCase.updateTransferOrder(mockContext, order.id, action);
-    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, action);
-    expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
+    expect(updateOrderFn).toHaveBeenCalledWith(action);
+    expect(getOrderFn).toHaveBeenCalledWith(order.id, order.caseId);
     expect(transferToFn).toHaveBeenCalledWith(mockContext, {
       ...transferOut,
-      _id: expect.anything(),
     });
     expect(transferFromFn).toHaveBeenCalledWith(mockContext, {
       ...transferIn,
-      _id: expect.anything(),
     });
     expect(auditFn).toHaveBeenCalled();
   });
@@ -171,11 +173,11 @@ describe('Orders use case', () => {
     const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
     const getOrderFn = jest.spyOn(ordersRepo, 'read').mockResolvedValue(order);
 
-    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory').mockResolvedValue({});
 
     await useCase.updateTransferOrder(mockContext, order.id, orderTransfer);
-    expect(updateOrderFn).toHaveBeenCalledWith(mockContext, order.id, orderTransfer);
-    expect(getOrderFn).toHaveBeenCalledWith(mockContext, order.id, order.caseId);
+    expect(updateOrderFn).toHaveBeenCalledWith(orderTransfer);
+    expect(getOrderFn).toHaveBeenCalledWith(order.id, order.caseId);
     expect(auditFn).toHaveBeenCalled();
   });
 
@@ -186,8 +188,9 @@ describe('Orders use case', () => {
     const rawConsolidationOrders = MockData.buildArray(MockData.getRawConsolidationOrder, 3);
     const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
 
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [startState],
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      id: 'guid-1',
+      documentType: 'ORDERS_SYNC_STATE',
     });
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
@@ -201,11 +204,14 @@ describe('Orders use case', () => {
       txId: '3000',
     };
 
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory').mockResolvedValue({});
+
     const mockPutOrders = jest
-      .spyOn(MockOrdersRepository.prototype, 'createMany')
-      .mockImplementation((_context, orders) => {
-        return Promise.resolve(orders);
-      });
+      .spyOn(MockMongoRepository.prototype, 'createMany')
+      .mockResolvedValue([...transfers, ...consolidations]);
+    // .mockImplementation((orders) => {
+    //   return Promise.resolve(orders);
+    // });
 
     const caseSummaries: Array<CaseSummary> = [
       consolidations[0].leadCase,
@@ -223,13 +229,14 @@ describe('Orders use case', () => {
       });
 
     const mockUpdateState = jest
-      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'updateState')
+      .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockImplementation(jest.fn());
 
     await useCase.syncOrders(mockContext);
 
-    expect(mockPutOrders.mock.calls[0][1]).toEqual(transfers);
-    expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
+    expect(auditFn).toHaveBeenCalled();
+    expect(mockPutOrders).toHaveBeenCalledWith(transfers);
+    expect(mockUpdateState).toHaveBeenCalledWith(endState);
   });
 
   test('mapConsolidations should fetch a lead case if a case ID is found in an raw record in DXTR', async () => {
@@ -270,17 +277,23 @@ describe('Orders use case', () => {
     const txId = '1234';
     const initialState: OrderSyncState = { documentType: 'ORDERS_SYNC_STATE', txId };
 
-    const mockGetState = jest
-      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'getState')
-      .mockRejectedValue(
-        new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
-          message: 'Initial state was not found or was ambiguous.',
-        }),
-      );
+    const mockGetState = jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+      new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
+        message: 'Initial state was not found or was ambiguous.',
+      }),
+    );
+    jest.spyOn(casesRepo, 'createCaseHistory').mockResolvedValue({});
 
-    const mockCreateState = jest
-      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'createState')
-      .mockResolvedValue({ ...initialState, id });
+    const endState = {
+      ...initialState,
+      txId: '3000',
+      id,
+    };
+
+    const mockUpsertState = jest
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValueOnce({ ...initialState, id })
+      .mockResolvedValueOnce(endState);
 
     const mockGetOrderSync = jest
       .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
@@ -290,38 +303,26 @@ describe('Orders use case', () => {
         maxTxId: '3000',
       });
 
-    const endState = {
-      ...initialState,
-      txId: '3000',
-      id,
-    };
-
     const mockPutOrders = jest
-      .spyOn(MockOrdersRepository.prototype, 'createMany')
+      .spyOn(MockMongoRepository.prototype, 'createMany')
       .mockResolvedValueOnce(transfers)
       .mockResolvedValueOnce(consolidations);
-
-    const mockUpdateState = jest
-      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'updateState')
-      .mockImplementation(jest.fn());
 
     await useCase.syncOrders(mockContext, { txIdOverride: txId });
 
     expect(mockGetState).toHaveBeenCalled();
-    expect(mockCreateState).toHaveBeenCalledWith(mockContext, initialState);
+    expect(mockUpsertState).toHaveBeenCalledWith(initialState);
     expect(mockGetOrderSync).toHaveBeenCalled();
     expect(mockPutOrders).toHaveBeenCalled();
-    expect(mockUpdateState).toHaveBeenCalledWith(mockContext, endState);
+    expect(mockUpsertState).toHaveBeenCalledWith(endState);
   });
 
   test('should throw an error with a missing order runtime state and no starting transaction ID is provided', async () => {
-    const mockGetState = jest
-      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'getState')
-      .mockRejectedValue(
-        new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
-          message: 'Initial state was not found or was ambiguous.',
-        }),
-      );
+    const mockGetState = jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+      new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
+        message: 'Initial state was not found or was ambiguous.',
+      }),
+    );
 
     await expect(useCase.syncOrders(mockContext)).rejects.toThrow(
       'A transaction ID is required to seed the order sync run. Aborting.',
@@ -331,7 +332,7 @@ describe('Orders use case', () => {
 
   test('should throw any other error when attempting to retrieve initial runtime state', async () => {
     const mockGetState = jest
-      .spyOn(RuntimeStateCosmosMongoDbRepository.prototype, 'getState')
+      .spyOn(MockMongoRepository.prototype, 'read')
       .mockRejectedValue(new Error('TEST'));
 
     await expect(useCase.syncOrders(mockContext)).rejects.toThrow('TEST');
@@ -344,9 +345,7 @@ describe('Orders use case', () => {
         status: 'rejected',
       },
     });
-    const mockDelete = jest
-      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'delete')
-      .mockResolvedValue();
+    const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
     const leadCaseSummary = MockData.getCaseSummary();
 
     const rejectionReason = 'test';
@@ -361,7 +360,7 @@ describe('Orders use case', () => {
       id: crypto.randomUUID(),
     };
     const mockPut = jest
-      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'create')
+      .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
     const before: ConsolidationOrderSummary = {
       status: 'pending',
@@ -386,12 +385,12 @@ describe('Orders use case', () => {
       updatedBy: authorizedUser,
     };
     const mockGetHistory = jest
-      .spyOn(CasesCosmosMongoDbRepository.prototype, 'getCaseHistory')
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
     const mockCreateHistory = jest
-      .spyOn(CasesCosmosMongoDbRepository.prototype, 'createCaseHistory')
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue(crypto.randomUUID());
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
@@ -557,16 +556,56 @@ describe('Orders use case', () => {
       leadCase,
       status: 'approved',
     };
-    const mockCreateCaseHistory = jest.spyOn(
-      CasesCosmosMongoDbRepository.prototype,
-      'createCaseHistory',
+    const consolidation = MockData.buildArray(
+      () => MockData.getConsolidationFrom({ override: { otherCase: leadCase } }),
+      5,
     );
+    const mockGetConsolidation = jest
+      .spyOn(casesRepo, 'getConsolidation')
+      .mockImplementation((_context: ApplicationContext, caseId: string) => {
+        if (caseId === leadCase.caseId) {
+          return Promise.resolve(consolidation);
+        } else {
+          return Promise.resolve([]);
+        }
+      });
+    const mockCreateCaseHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue('');
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockImplementation(() => Promise.resolve());
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'create')
+      .mockImplementation((consolidationOrder: ConsolidationOrder) => {
+        return Promise.resolve(
+          MockData.getConsolidationOrder({ override: { ...consolidationOrder } }),
+        );
+      });
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+      .mockResolvedValue(MockData.buildArray(MockData.getAttorneyAssignment, 3));
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
+      .mockImplementation((_context: ApplicationContext, consolidationTo: ConsolidationTo) => {
+        return Promise.resolve(MockData.getConsolidationTo({ override: { ...consolidationTo } }));
+      });
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
+      .mockImplementation((_context: ApplicationContext, consolidationFrom: ConsolidationFrom) => {
+        return Promise.resolve(
+          MockData.getConsolidationFrom({ override: { ...consolidationFrom } }),
+        );
+      });
+
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
     await useCase.approveConsolidation(mockContext, approval);
+    expect(mockGetConsolidation).toHaveBeenCalled();
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
       mockContext,
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
@@ -584,10 +623,15 @@ describe('Orders use case', () => {
       leadCase,
       status: 'approved',
     };
-    const mockCreateCaseHistory = jest.spyOn(
-      CasesCosmosMongoDbRepository.prototype,
-      'createCaseHistory',
-    );
+    const newConsolidation = {
+      ...pendingConsolidation,
+      leadCase: leadCase,
+      id: crypto.randomUUID(),
+    };
+    jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
+    const mockCreateCaseHistory = jest
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue('123');
     jest.spyOn(consolidationRepo, 'delete').mockResolvedValue({});
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')

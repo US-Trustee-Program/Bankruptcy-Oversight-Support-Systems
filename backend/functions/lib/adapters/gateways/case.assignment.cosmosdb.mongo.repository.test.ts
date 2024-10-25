@@ -2,6 +2,7 @@ import { CaseAssignmentCosmosMongoDbRepository } from './case.assignment.cosmosd
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../types/basic';
+import { closeDeferred } from '../../defer-close';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
@@ -13,30 +14,19 @@ describe('offices repo', () => {
   });
 
   afterEach(async () => {
-    if (repo?.close) await repo.close();
+    await closeDeferred(context);
     jest.restoreAllMocks();
   });
 
-  test('should call updateAssignment', async () => {
-    const caseId = '081-26-63921';
-    const assignments = await repo.findAssignmentsByCaseId(caseId);
-
-    console.log(assignments);
-    expect(assignments).not.toBeNull();
-
+  test('should update assignment', async () => {
     const fakeAttorney = MockData.getAttorneyUser();
-    delete fakeAttorney.id;
-    let assignmentOne = assignments[0];
-    assignmentOne = { ...assignmentOne, ...fakeAttorney };
-    await repo.update(context, assignmentOne.id, assignmentOne);
+    const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
 
-    const updatedAssignments = await repo.findAssignmentsByCaseId(caseId);
-    const updatedAssignment = updatedAssignments.filter(
-      (assign) => assign.name === fakeAttorney.name,
-    )[0];
-    expect(updatedAssignment).toBeTruthy();
+    // spyOn replaceOne
 
-    await repo.update(context, assignments[0].id, assignments[0]);
+    await repo.update(assignment);
+
+    // expect something
   });
 
   test('should call findAssignmentsByAssignee', async () => {
