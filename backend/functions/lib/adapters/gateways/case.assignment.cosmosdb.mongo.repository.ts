@@ -23,7 +23,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
     deferClose(context, this);
   }
 
-  async create(_context: ApplicationContext, caseAssignment: CaseAssignment): Promise<string> {
+  async create(caseAssignment: CaseAssignment): Promise<string> {
     let result;
     try {
       const collection = this.documentClient
@@ -40,15 +40,11 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
     return id;
   }
 
-  async update(
-    _context: ApplicationContext,
-    id: string,
-    caseAssignment: CaseAssignment,
-  ): Promise<string> {
+  async update(caseAssignment: CaseAssignment): Promise<string> {
     const collection = this.documentClient
       .database(this.context.config.documentDbConfig.databaseName)
       .collection<CaseAssignment>(this.collectionName);
-    const query = toMongoQuery(QueryBuilder.equals('id', id));
+    const query = toMongoQuery(QueryBuilder.equals('id', caseAssignment.id));
 
     try {
       const result = await collection.replaceOne(query, caseAssignment);
@@ -66,7 +62,6 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
 
   async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
     const query = QueryBuilder.build(
-      toMongoQuery,
       and(
         equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
         equals<CaseAssignment['caseId']>('caseId', caseId),
@@ -96,7 +91,6 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
   async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
     //TODO: revisit to add an or clause with an empty string?
     const query = QueryBuilder.build(
-      toMongoQuery,
       and(
         equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
         equals<CaseAssignment['userId']>('userId', userId),

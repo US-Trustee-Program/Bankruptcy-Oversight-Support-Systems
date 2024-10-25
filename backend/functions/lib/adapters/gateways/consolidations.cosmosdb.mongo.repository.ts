@@ -1,97 +1,75 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
-import { NotFoundError } from '../../common-errors/not-found-error';
-import { Closable, deferClose } from '../../defer-close';
+import { deferClose } from '../../defer-close';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
 import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../use-cases/gateways.types';
 import { ApplicationContext } from '../types/basic';
-import { DocumentQuery } from './document-db.repository';
-import { toMongoQuery } from '../../query/mongo-query-renderer';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsDocument } from '../../../../../common/src/cams/document';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
+const COLLECTION_NAME = 'consolidations';
 
 const { and, contains, equals } = QueryBuilder;
 
-export default class ConsolidationOrdersCosmosMongoDbRepository
-  implements ConsolidationOrdersRepository, Closable
+export default class ConsolidationOrdersCosmosMongoDbRepository<
+  T extends CamsDocument = ConsolidationOrder,
+> implements ConsolidationOrdersRepository<T>
 {
-  private documentClient: DocumentClient;
-  private readonly collectionName = 'consolidations';
+  private dbAdapter: MongoCollectionAdapter<T>;
 
   constructor(context: ApplicationContext) {
-    this.documentClient = new DocumentClient(context.config.documentDbConfig.connectionString);
-    deferClose(context, this);
-  }
-
-  async close() {
-    await this.documentClient.close();
-  }
-
-  async read(context: ApplicationContext, id: string): Promise<ConsolidationOrder> {
-    const { equals } = QueryBuilder;
-    const query = QueryBuilder.build(
-      toMongoQuery,
-      equals<ConsolidationOrder['consolidationId']>('consolidationId', id),
+    const { connectionString, databaseName } = context.config.documentDbConfig;
+    const client = new DocumentClient(connectionString);
+    this.dbAdapter = new MongoCollectionAdapter<T>(
+      MODULE_NAME,
+      client.database(databaseName).collection(COLLECTION_NAME),
     );
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<ConsolidationOrder>(this.collectionName);
-    const response = await collection.findOne(query);
-    if (response === null) {
-      throw new NotFoundError(MODULE_NAME, {
-        message: `Consolidation with ${id} cannot be found.`,
-      });
-    }
-    return response;
+    deferClose(context, client);
   }
 
-  async create(context: ApplicationContext, data: ConsolidationOrder): Promise<ConsolidationOrder> {
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<ConsolidationOrder>(this.collectionName);
-    const response = await collection.insertOne(data);
-    if (!response.acknowledged) {
-      // TODO: then what??
-    }
-    data.id = response.insertedId.toString();
-    return data;
-  }
-
-  public async createMany(context: ApplicationContext, list: ConsolidationOrder[]): Promise<void> {
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<ConsolidationOrder>(this.collectionName);
-    const response = await collection.insertMany(list);
-
-    if (!response.acknowledged) {
-      // TODO: then what??
-    }
-    if (response.insertedCount != list.length) {
-      // TODO: then what??
+  async read(id: string): Promise<T> {
+    try {
+      const query = QueryBuilder.build(
+        equals<ConsolidationOrder['consolidationId']>('consolidationId', id),
+      );
+      // TODO: WTH? Awaited<T>
+      return await this.dbAdapter.findOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  public async delete(context: ApplicationContext, id: string, partitionKey: string) {
-    // TODO: How to handle the partitionKey? (shard)
-    // TODO: deleteOne returns a DeleteResult. This is different from the prior return.
-    const query = QueryBuilder.build(
-      toMongoQuery,
-      and(
-        equals<ConsolidationOrder['id']>('id', id),
-        equals<ConsolidationOrder['consolidationId']>('consolidationId', partitionKey),
-      ),
-    );
-    await this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection(this.collectionName)
-      .deleteOne(query);
+  async create(data: T): Promise<T> {
+    try {
+      const response = await this.dbAdapter.insertOne(data);
+      data.id = response;
+      return data;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
-  public async search(
-    context: ApplicationContext,
-    predicate?: OrdersSearchPredicate,
-  ): Promise<Array<ConsolidationOrder>> {
+  public async createMany(list: T[]): Promise<void> {
+    try {
+      await this.dbAdapter.insertMany(list);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async delete(id: string) {
+    try {
+      const query = QueryBuilder.build(equals<ConsolidationOrder['id']>('id', id));
+      await this.dbAdapter.deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async search(predicate?: OrdersSearchPredicate): Promise<Array<T>> {
     const conditions: ConditionOrConjunction[] = [];
     if (predicate.divisionCodes) {
       conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
@@ -99,19 +77,9 @@ export default class ConsolidationOrdersCosmosMongoDbRepository
     if (predicate.consolidationId) {
       conditions.push(equals<string>('consolidationId', predicate.consolidationId));
     }
-    const query: DocumentQuery = predicate
-      ? QueryBuilder.build(toMongoQuery, and(...conditions))
-      : {};
+    const query = predicate ? QueryBuilder.build(and(...conditions)) : null;
 
-    const collection = this.documentClient
-      .database(context.config.documentDbConfig.databaseName)
-      .collection<ConsolidationOrder>(this.collectionName);
-
-    const result = (await collection.find(query)).sort({ orderDate: 1 });
-    const orders: ConsolidationOrder[] = [];
-    for await (const doc of result) {
-      orders.push(doc);
-    }
-    return orders;
+    // TODO: We need to apply good fences to the sort parameter.
+    return await this.dbAdapter.find(query, { orderDate: 1 });
   }
 }

@@ -1,9 +1,10 @@
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
-import { DocumentQuery } from '../document-db.repository';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
+import { ConditionOrConjunction } from '../../../query/query-builder';
+import { toMongoQuery } from '../../../query/mongo-query-renderer';
 
 export class MongoCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -24,26 +25,43 @@ export class MongoCollectionAdapter<T> {
     });
   }
 
-  public async find(query: DocumentQuery) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public async find(query: ConditionOrConjunction | null, sort?: any): Promise<T[]> {
+    const mongoQuery = query ? toMongoQuery(query) : {};
     try {
-      const result = await this.collectionHumble.find(query);
-      return result.toArray();
+      let results;
+      if (sort) {
+        results = (await this.collectionHumble.find(mongoQuery)).sort(sort);
+      } else {
+        results = await this.collectionHumble.find(mongoQuery);
+      }
+      const items: T[] = [];
+      for await (const doc of results) {
+        items.push(doc as T);
+      }
+      return items;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
   }
 
-  public async findOne(query: DocumentQuery) {
+  public async findOne(query: ConditionOrConjunction): Promise<T> {
+    const mongoQuery = toMongoQuery(query);
     try {
-      return await this.collectionHumble.findOne(query);
+      const result = await this.collectionHumble.findOne<T>(mongoQuery);
+      if (!result) {
+        throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
+      }
+      return result;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
   }
 
-  public async replaceOne(query: DocumentQuery, item: unknown) {
+  public async replaceOne(query: ConditionOrConjunction, item: unknown, upsert: boolean = false) {
+    const mongoQuery = toMongoQuery(query);
     try {
-      const result = await this.collectionHumble.replaceOne(query, item);
+      const result = await this.collectionHumble.replaceOne(mongoQuery, item, upsert);
       this.testAcknowledged(result);
 
       return result.upsertedId.toString();
@@ -81,9 +99,10 @@ export class MongoCollectionAdapter<T> {
     }
   }
 
-  public async deleteOne(query: DocumentQuery) {
+  public async deleteOne(query: ConditionOrConjunction) {
+    const mongoQuery = toMongoQuery(query);
     try {
-      const result = await this.collectionHumble.deleteOne(query);
+      const result = await this.collectionHumble.deleteOne(mongoQuery);
       this.testAcknowledged(result);
       if (result.deletedCount !== 1) {
         throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
@@ -95,9 +114,10 @@ export class MongoCollectionAdapter<T> {
     }
   }
 
-  public async deleteMany(query: DocumentQuery) {
+  public async deleteMany(query: ConditionOrConjunction) {
+    const mongoQuery = toMongoQuery(query);
     try {
-      const result = await this.collectionHumble.deleteMany(query);
+      const result = await this.collectionHumble.deleteMany(mongoQuery);
       this.testAcknowledged(result);
       if (result.deletedCount < 1) {
         throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
@@ -109,9 +129,10 @@ export class MongoCollectionAdapter<T> {
     }
   }
 
-  public async countDocuments(query: DocumentQuery) {
+  public async countDocuments(query: ConditionOrConjunction | null) {
+    const mongoQuery = query ? toMongoQuery(query) : {};
     try {
-      return await this.collectionHumble.countDocuments(query);
+      return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }

@@ -1,6 +1,7 @@
 // https://cosmos-ustp-cams-mongo.mongo.cosmos.azure.us:443/
 import { Collection, Db, MongoClient } from 'mongodb';
 import { DocumentQuery, transformQuery } from '../adapters/gateways/document-db.repository';
+import { Closable } from '../defer-close';
 
 export class CollectionHumble<T> {
   //TODO: Mongo adds an _id index by default, it is suggested we use this instead of id. we need to switch
@@ -10,34 +11,41 @@ export class CollectionHumble<T> {
     this.collection = database.collection<T>(collectionName);
   }
 
+  // TODO: Confirm and explicitly type the return
   public async find(query: DocumentQuery) {
     return this.collection.find(transformQuery(query));
   }
 
-  public async findOne(query: DocumentQuery) {
-    return this.collection.findOne(transformQuery(query));
+  public async findOne<T>(query: DocumentQuery): Promise<T | null> {
+    return this.collection.findOne<T>(transformQuery(query));
   }
 
+  // TODO: Confirm and explicitly type the return
   public async insertOne(item) {
     return this.collection.insertOne(item);
   }
 
+  // TODO: Confirm and explicitly type the return
   public async insertMany(items) {
     return this.collection.insertMany(items);
   }
 
-  public async replaceOne(query: DocumentQuery, item) {
-    return this.collection.replaceOne(transformQuery(query), item);
+  // TODO: Confirm and explicitly type the return
+  public async replaceOne(query: DocumentQuery, item, upsert: boolean = false) {
+    return this.collection.replaceOne(transformQuery(query), item, { upsert });
   }
 
+  // TODO: Confirm and explicitly type the return
   public async deleteOne(query: DocumentQuery) {
     return this.collection.deleteOne(transformQuery(query));
   }
 
+  // TODO: Confirm and explicitly type the return
   public async deleteMany(query: DocumentQuery) {
     return this.collection.deleteMany(transformQuery(query));
   }
 
+  // TODO: Confirm and explicitly type the return
   public async countDocuments(query: DocumentQuery) {
     return this.collection.countDocuments(transformQuery(query));
   }
@@ -55,7 +63,7 @@ export class DatabaseHumble {
   }
 }
 
-export class DocumentClient {
+export class DocumentClient implements Closable {
   protected client: MongoClient;
 
   constructor(connectionString: string) {

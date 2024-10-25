@@ -1,14 +1,12 @@
-import { AggregateAuthenticationError } from '@azure/identity';
-import { ServerConfigError } from '../../common-errors/server-config-error';
-import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OrderSyncState } from '../../use-cases/gateways.types';
 import { ApplicationContext } from '../types/basic';
 import { RuntimeStateCosmosMongoDbRepository } from './runtime-state.cosmosdb.mongo.repository';
 import * as crypto from 'crypto';
-import { CollectionHumble } from '../../humble-objects/mongo-humble';
-import { FindCursor } from 'mongodb';
-import { Order } from '../../../../../common/src/cams/orders';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { CamsError } from '../../common-errors/cams-error';
+import { closeDeferred } from '../../defer-close';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 describe('Runtime State Repo', () => {
   const expected: OrderSyncState = {
@@ -16,12 +14,8 @@ describe('Runtime State Repo', () => {
     documentType: 'ORDERS_SYNC_STATE',
     txId: '0',
   };
-  const findCursor: FindCursor<OrderSyncState> = expected;
   let context: ApplicationContext;
-  let repo: RuntimeStateCosmosMongoDbRepository;
-  function toFindCursor(obj: object) {
-    const cursor = new FindCursor<OrderSyncState>();
-  }
+  let repo: RuntimeStateCosmosMongoDbRepository<OrderSyncState>;
   beforeEach(async () => {
     context = await createMockApplicationContext();
     repo = new RuntimeStateCosmosMongoDbRepository(context);
@@ -30,88 +24,69 @@ describe('Runtime State Repo', () => {
 
   afterEach(async () => {
     jest.restoreAllMocks();
-    if (repo) await repo.close();
+    await closeDeferred(context);
   });
+
   test('should get a runtime state document', async () => {
-    const fetchAll = jest.spyOn(CollectionHumble.prototype, 'find').mockResolvedValue([expected]);
-    const actual = await repo.read(context, 'ORDERS_SYNC_STATE');
-    expect(fetchAll).toHaveBeenCalled();
+    const find = jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([expected]);
+    const actual = await repo.read('ORDERS_SYNC_STATE');
+    expect(find).toHaveBeenCalled();
     expect(actual).toEqual(expected);
   });
 
   test('should throw an error if a runtime state document cannot be found or more than one is found', async () => {
-    const fetchAll = jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
+    const find = jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+    const expectedError = new CamsError('', {
+      message: 'Initial state was not found or was ambiguous.',
     });
-    await expect(await repo.read(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(
-      'Initial state was not found or was ambiguous.',
-    );
-    expect(fetchAll).toHaveBeenCalled();
+    await expect(repo.read('ORDERS_SYNC_STATE')).rejects.toThrow(expectedError);
+    expect(find).toHaveBeenCalled();
   });
 
-  test('should create a runtime state document', async () => {
-    const create = jest
-      .spyOn(MockHumbleItems.prototype, 'create')
+  test('should upsert a runtime state document', async () => {
+    const replaceOne = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockImplementation((_resource) => {
-        return Promise.resolve({
-          resource: expected,
-        });
+        return Promise.resolve(expected.id);
       });
     const toCreate = { ...expected };
     delete toCreate.id;
-    const actualId = await repo.create(context, toCreate);
-    console.log(actualId);
-    expect(create).toHaveBeenCalled();
-    expect(actualId).toEqual(toCreate.id);
+    await repo.upsert(toCreate);
+    expect(replaceOne).toHaveBeenCalledWith(expect.anything(), expect.anything(), true);
+    // expect(actual.documentType).toEqual(expected.documentType);
   });
 
   test('should update a runtime state document', async () => {
     const stateToCreate = { ...expected };
     delete stateToCreate.id;
-    const createdId = await repo.create(context, stateToCreate);
-
-    const upsert = jest.spyOn(MockHumbleItems.prototype, 'upsert');
-    await repo.update(context, createdId, stateToCreate);
-    expect(upsert).toHaveBeenCalled();
-  });
-
-  test('should throw a ServerConfigError if AggregateAuthenticationError is encountered', async () => {
-    const cosmosdbAggregateError = new AggregateAuthenticationError([], 'Mocked Test Error');
-    const serverConfigError = new ServerConfigError('TEST', {
-      message: 'Failed to authenticate to Azure',
-      originalError: cosmosdbAggregateError,
+    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation((_resource) => {
+      return Promise.resolve(expected.id);
     });
-    const fetchAllSpy = jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockRejectedValue(cosmosdbAggregateError);
-    const upsertSpy = jest
-      .spyOn(MockHumbleItems.prototype, 'upsert')
-      .mockRejectedValue(cosmosdbAggregateError);
-    const createSpy = jest
-      .spyOn(MockHumbleItems.prototype, 'create')
-      .mockRejectedValue(cosmosdbAggregateError);
+    const replaceOne = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockImplementation((_resource) => {
+        return Promise.resolve(expected.id);
+      });
+    await repo.upsert(stateToCreate);
 
-    await expect(repo.read(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(serverConfigError);
-    expect(fetchAllSpy).toHaveBeenCalled();
-    await expect(repo.update(context, expected.id, expected)).rejects.toThrow(serverConfigError);
-    expect(upsertSpy).toHaveBeenCalled();
-    await expect(repo.create(context, expected)).rejects.toThrow(serverConfigError);
-    expect(createSpy).toHaveBeenCalled();
+    await repo.upsert(stateToCreate);
+    expect(replaceOne).toHaveBeenCalled();
   });
 
   test('should throw any other error encountered', async () => {
     const someError = new Error('Some other unknown error');
-    const fetchAllSpy = jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockRejectedValue(someError);
-    const upsertSpy = jest.spyOn(MockHumbleItems.prototype, 'upsert').mockRejectedValue(someError);
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create').mockRejectedValue(someError);
+    const replaceSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockRejectedValue(someError);
 
-    await expect(repo.read(context, 'ORDERS_SYNC_STATE')).rejects.toThrow(someError);
-    expect(fetchAllSpy).toHaveBeenCalled();
-    await expect(repo.update(context, expected.id, expected)).rejects.toThrow(someError);
-    expect(upsertSpy).toHaveBeenCalled();
-    await expect(repo.create(context, expected)).rejects.toThrow(someError);
-    expect(createSpy).toHaveBeenCalled();
+    const expectedError = new UnknownError(expect.anything(), { originalError: someError });
+
+    await expect(repo.read('ORDERS_SYNC_STATE')).rejects.toThrow(expectedError);
+    expect(findSpy).toHaveBeenCalled();
+    await expect(repo.upsert(expected)).rejects.toThrow(expectedError);
+    expect(replaceSpy).toHaveBeenCalled();
   });
 });
