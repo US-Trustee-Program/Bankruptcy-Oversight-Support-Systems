@@ -3,9 +3,9 @@ import { UnknownError } from '../../../common-errors/unknown-error';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
-import { ConditionOrConjunction } from '../../../query/query-builder';
-import { toMongoQuery } from '../../../query/mongo-query-renderer';
+import { ConditionOrConjunction, Sort } from '../../../query/query-builder';
 import { DocumentCollectionAdapter } from '../document-collection.adapter';
+import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -26,16 +26,13 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async find(query: ConditionOrConjunction | null, sort?: any): Promise<T[]> {
+  public async find(query: ConditionOrConjunction | null, sort?: Sort): Promise<T[]> {
     const mongoQuery = query ? toMongoQuery(query) : {};
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
-      let results;
-      if (sort) {
-        results = (await this.collectionHumble.find(mongoQuery)).sort(sort);
-      } else {
-        results = await this.collectionHumble.find(mongoQuery);
-      }
+      const findPromise = this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+
       const items: T[] = [];
       for await (const doc of results) {
         items.push(doc as T);

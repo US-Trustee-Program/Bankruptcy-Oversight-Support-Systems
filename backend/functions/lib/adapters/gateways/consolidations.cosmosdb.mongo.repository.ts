@@ -13,7 +13,7 @@ import { getDocumentCollectionAdapter } from '../../factory';
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
 const COLLECTION_NAME = 'consolidations';
 
-const { and, contains, equals } = QueryBuilder;
+const { and, contains, equals, orderBy } = QueryBuilder;
 
 export default class ConsolidationOrdersCosmosMongoDbRepository<
   T extends CamsDocument = ConsolidationOrder,
@@ -80,7 +80,6 @@ export default class ConsolidationOrdersCosmosMongoDbRepository<
     }
     const query = predicate ? QueryBuilder.build(and(...conditions)) : null;
 
-    // TODO: We need to apply good fences to the sort parameter.
-    return await this.dbAdapter.find(query, { orderDate: 1 });
+    return await this.dbAdapter.find(query, orderBy(['orderDate', 'ASCENDING']));
   }
 }
