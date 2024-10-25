@@ -5,31 +5,28 @@ import { ApplicationContext } from '../types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
-import { Closable, deferClose } from '../../defer-close';
+import { deferClose } from '../../defer-close';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { getDocumentCollectionAdapter } from '../../factory';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
+const COLLECTION_NAME = 'orders';
 
-const { contains, equals } = QueryBuilder;
+const { contains, equals, orderBy } = QueryBuilder;
 
-export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository {
-  private documentClient: DocumentClient;
-  private readonly collectionName = 'orders';
-  private context: ApplicationContext;
+export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   private dbAdapter: MongoCollectionAdapter<Order>;
 
   constructor(context: ApplicationContext) {
-    const client = new DocumentClient(context.config.documentDbConfig.connectionString);
-    this.context = context;
+    const { connectionString, databaseName } = context.config.documentDbConfig;
+
+    const client = new DocumentClient(connectionString);
     this.dbAdapter = getDocumentCollectionAdapter<Order>(
       MODULE_NAME,
-      client
-        .database(context.config.documentDbConfig.connectionString)
-        .collection(this.collectionName),
+      client.database(databaseName).collection(COLLECTION_NAME),
     );
-    deferClose(context, this);
+    deferClose(context, client);
   }
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
@@ -39,18 +36,15 @@ export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository
     } else {
       query = QueryBuilder.build(contains('courtDivisionCode', predicate.divisionCodes));
     }
-    const result = await this.dbAdapter.find(query);
-    //TODO: how do we want to handle sorting now that we have an adapter?
-    // const result = (await collection.find(query)).sort({ orderDate: 1 });
-    const orders: Order[] = [];
 
-    for await (const doc of result) {
-      orders.push(doc);
+    try {
+      return await this.dbAdapter.find(query, orderBy(['orderDate', 'ASCENDING']));
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
-    return orders;
   }
 
-  async read(id: string, _unused: string): Promise<Order> {
+  async read(id: string): Promise<Order> {
     try {
       const query = QueryBuilder.build(equals<string>('_id', id));
       const result = await this.dbAdapter.findOne(query);
@@ -80,29 +74,16 @@ export class OrdersCosmosDbMongoRepository implements Closable, OrdersRepository
   }
 
   async createMany(orders: Order[]): Promise<Order[]> {
-    const writtenOrders: Order[] = [];
-    if (!orders.length) return writtenOrders;
     try {
-      for (const order of orders) {
-        try {
-          const writtenId = await this.dbAdapter.insertOne(order);
-          const tempOrder = { ...order, id: writtenId };
-          writtenOrders.push(tempOrder);
-        } catch (e) {
-          // TODO: insert the same document twice to see what happens
-          // Is this error going to be the same through the mongo client? Probably not.
-          // if (!isPreExistingDocumentError(e)) {
-          //   throw e;
-          // }
-        }
-      }
+      if (!orders.length) return [];
+
+      const ids = await this.dbAdapter.insertMany(orders);
+      const ordersWithIds = orders.map((order, idx) => {
+        return { ...order, id: ids[idx] };
+      });
+      return ordersWithIds;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
-    return writtenOrders;
-  }
-
-  async close() {
-    await this.documentClient.close();
   }
 }

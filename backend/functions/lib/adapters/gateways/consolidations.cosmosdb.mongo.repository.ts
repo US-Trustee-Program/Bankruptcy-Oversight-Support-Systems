@@ -36,7 +36,6 @@ export default class ConsolidationOrdersCosmosMongoDbRepository<
       const query = QueryBuilder.build(
         equals<ConsolidationOrder['consolidationId']>('consolidationId', id),
       );
-      // TODO: WTH? Awaited<T>
       return await this.dbAdapter.findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

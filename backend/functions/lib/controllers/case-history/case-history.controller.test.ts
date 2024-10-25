@@ -27,7 +27,7 @@ describe('Test case-history controller', () => {
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
-    const expectedMessage = 'Unknown error';
+    const expectedMessage = 'Unknown Error';
     const controller = new CaseHistoryController(applicationContext);
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockImplementation(async () => {
       throw Error(expectedMessage);

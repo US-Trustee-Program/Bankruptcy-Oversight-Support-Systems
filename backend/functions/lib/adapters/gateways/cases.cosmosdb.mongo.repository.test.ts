@@ -24,20 +24,16 @@ describe('Cases repository', () => {
     jest.clearAllMocks();
   });
 
-  afterEach(async () => {
-    if (repo) await repo.close();
-  });
-
   test('should getTransfers', async () => {
     const caseId = '111-82-80331';
-    const result = await repo.getTransfers(context, caseId);
+    const result = await repo.getTransfers(caseId);
     expect(result.length).toBeGreaterThan(0);
   });
 
   test('should createTransferTo', async () => {
-    const result = await repo.createTransferTo(context, transferOut);
+    const result = await repo.createTransferTo(transferOut);
     expect(result).not.toBeNull();
-    const response = await repo.getTransfers(context, caseId1);
+    const response = await repo.getTransfers(caseId1);
     expect(response).not.toBeNull();
   });
 });

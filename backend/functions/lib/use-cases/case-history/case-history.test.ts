@@ -10,7 +10,7 @@ describe('Test case-history use case', () => {
     const mockContext = await createMockApplicationContext();
     const caseId = NORMAL_CASE_ID;
     const useCase = new CaseHistoryUseCase(mockContext);
-    const result = await useCase.getCaseHistory(mockContext, caseId);
+    const result = await useCase.getCaseHistory(caseId);
     expect(result).toEqual(CASE_HISTORY);
   });
 });

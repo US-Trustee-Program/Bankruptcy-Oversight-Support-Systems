@@ -15,7 +15,6 @@ describe('Consolidations Repository tests', () => {
 
   afterEach(async () => {
     jest.restoreAllMocks();
-    if (repo) await repo.close();
   });
 
   /*
@@ -67,8 +66,8 @@ describe('Consolidations Repository tests', () => {
   test('should create a consolidation and then delete it', async () => {
     const consolidationOrder = MockData.getConsolidationOrder();
 
-    await repo.create(context, consolidationOrder);
-    const results = await repo.search(context, {
+    await repo.create(consolidationOrder);
+    const results = await repo.search({
       consolidationId: consolidationOrder.consolidationId,
     });
 
@@ -77,16 +76,16 @@ describe('Consolidations Repository tests', () => {
 
     const inserted = results[0];
 
-    await repo.delete(context, inserted.id, consolidationOrder.consolidationId);
+    await repo.delete(inserted.id);
     const predicate: OrdersSearchPredicate = {
       consolidationId: consolidationOrder.consolidationId,
     };
-    const record = await repo.search(context, predicate);
+    const record = await repo.search(predicate);
     expect(record).toEqual([]);
   });
 
   test('should get a consolidation by consolidationId', async () => {
-    const results = await repo.search(context, {
+    const results = await repo.search({
       consolidationId: '823688b3-9e0f-4a02-a7cb-89380e6ad19e',
     });
 
