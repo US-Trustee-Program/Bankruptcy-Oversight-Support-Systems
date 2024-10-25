@@ -5,8 +5,9 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ConditionOrConjunction } from '../../../query/query-builder';
 import { toMongoQuery } from '../../../query/mongo-query-renderer';
+import { DocumentCollectionAdapter } from '../document-collection.adapter';
 
-export class MongoCollectionAdapter<T> {
+export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
   private readonly notAcknowledged: UnknownError;
   private readonly moduleName: string;

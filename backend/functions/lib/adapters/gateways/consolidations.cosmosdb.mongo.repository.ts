@@ -8,6 +8,7 @@ import { ApplicationContext } from '../types/basic';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsDocument } from '../../../../../common/src/cams/document';
+import { getDocumentCollectionAdapter } from '../../factory';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
 const COLLECTION_NAME = 'consolidations';
@@ -23,7 +24,7 @@ export default class ConsolidationOrdersCosmosMongoDbRepository<
   constructor(context: ApplicationContext) {
     const { connectionString, databaseName } = context.config.documentDbConfig;
     const client = new DocumentClient(connectionString);
-    this.dbAdapter = new MongoCollectionAdapter<T>(
+    this.dbAdapter = getDocumentCollectionAdapter<T>(
       MODULE_NAME,
       client.database(databaseName).collection(COLLECTION_NAME),
     );

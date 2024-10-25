@@ -10,6 +10,7 @@ import { deferClose } from '../../defer-close';
 import QueryBuilder from '../../query/query-builder';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { getDocumentCollectionAdapter } from '../../factory';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
 const COLLECTION_NAME = 'runtime-state';
@@ -24,7 +25,7 @@ export class RuntimeStateCosmosMongoDbRepository<T extends RuntimeState>
   constructor(context: ApplicationContext) {
     const { connectionString, databaseName } = context.config.documentDbConfig;
     const client = new DocumentClient(connectionString);
-    this.dbAdapter = new MongoCollectionAdapter<T>(
+    this.dbAdapter = getDocumentCollectionAdapter<T>(
       MODULE_NAME,
       client.database(databaseName).collection(COLLECTION_NAME),
     );
