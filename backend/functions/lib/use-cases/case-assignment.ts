@@ -1,4 +1,3 @@
-//import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
 import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
