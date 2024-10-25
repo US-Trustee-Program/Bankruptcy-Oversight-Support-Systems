@@ -134,7 +134,7 @@ function regex(attributeName: string, value: string): Condition {
   };
 }
 
-type SortDirection = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
+export type SortDirection = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
 
 export type Sort = {
   directions: SortDirection[];
