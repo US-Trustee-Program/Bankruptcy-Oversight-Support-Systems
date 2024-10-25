@@ -134,6 +134,20 @@ function regex(attributeName: string, value: string): Condition {
   };
 }
 
+type SortDirection = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
+
+export type Sort = {
+  directions: SortDirection[];
+};
+
+export function isSort(obj: unknown): obj is Sort {
+  return typeof obj === 'object' && 'directions' in obj;
+}
+
+function orderBy(...directions: SortDirection[]): Sort {
+  return { directions };
+}
+
 const QueryBuilder = {
   build,
   equals,
@@ -149,6 +163,7 @@ const QueryBuilder = {
   and,
   or,
   regex,
+  orderBy,
 };
 
 export default QueryBuilder;
