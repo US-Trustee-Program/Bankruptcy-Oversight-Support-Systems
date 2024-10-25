@@ -15,6 +15,7 @@ import {
   OfficesRepository,
   OrdersGateway,
   OrdersRepository,
+  RuntimeState,
   RuntimeStateRepository,
 } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
@@ -118,11 +119,11 @@ export const getCasesRepository = (applicationContext: ApplicationContext): Case
   return new CasesCosmosMongoDbRepository(applicationContext);
 };
 
-export const getRuntimeStateRepository = (
+export const getRuntimeStateRepository = <T extends RuntimeState>(
   applicationContext: ApplicationContext,
-): RuntimeStateRepository => {
+): RuntimeStateRepository<T> => {
   if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new RuntimeStateCosmosMongoDbRepository(applicationContext);
+  return new RuntimeStateCosmosMongoDbRepository<T>(applicationContext);
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {

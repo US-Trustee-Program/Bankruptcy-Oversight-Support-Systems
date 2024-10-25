@@ -23,8 +23,7 @@ import { CaseAssignmentUseCase } from '../case-assignment';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
-import ConsolidationOrdersCosmosMongoDbRepository from '../../adapters/gateways/consolidations.cosmosdb.mongo.repository';
-import { CasesCosmosMongoDbRepository } from '../../adapters/gateways/cases.cosmosdb.mongo.repository';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -70,9 +69,7 @@ describe('Orders use case', () => {
       },
     });
 
-    const mockDelete = jest
-      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'delete')
-      .mockResolvedValue();
+    const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
 
     const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
@@ -90,7 +87,7 @@ describe('Orders use case', () => {
     };
 
     const mockPut = jest
-      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'create')
+      .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
 
     const leadCaseBefore: ConsolidationOrderSummary = {
@@ -142,20 +139,28 @@ describe('Orders use case', () => {
     };
 
     const mockGetHistory = jest
-      .spyOn(CasesCosmosMongoDbRepository.prototype, 'getCaseHistory')
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
 
     const mockCreateHistory = jest
-      .spyOn(CasesCosmosMongoDbRepository.prototype, 'createCaseHistory')
-      .mockResolvedValue(crypto.randomUUID());
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockImplementation(() => {});
 
     const mockCreateAssignment = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockResolvedValue();
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
+
+    jest.spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId').mockResolvedValue([]);
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
+      .mockResolvedValue(MockData.getConsolidationTo());
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
+      .mockResolvedValue(MockData.getConsolidationFrom());
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length + 1);
@@ -185,9 +190,7 @@ describe('Orders use case', () => {
         status: 'approved',
       },
     });
-    const mockDelete = jest
-      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'delete')
-      .mockResolvedValue();
+    const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
     const leadCaseSummary = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
       ...originalConsolidation,
@@ -208,7 +211,7 @@ describe('Orders use case', () => {
     };
 
     const mockPut = jest
-      .spyOn(ConsolidationOrdersCosmosMongoDbRepository.prototype, 'create')
+      .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValueOnce(newPendingConsolidation)
       .mockResolvedValueOnce(approvedConsolidation);
     const leadCaseBefore: ConsolidationOrderSummary = {
@@ -252,14 +255,22 @@ describe('Orders use case', () => {
       updatedBy: SYSTEM_USER_REFERENCE,
     };
     const mockGetHistory = jest
-      .spyOn(CasesCosmosMongoDbRepository.prototype, 'getCaseHistory')
+      .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
       .mockImplementation((_context: ApplicationContext, caseId: string) => {
         return Promise.resolve([{ ...initialCaseHistory, caseId }]);
       });
     const mockCreateHistory = jest
-      .spyOn(CasesCosmosMongoDbRepository.prototype, 'createCaseHistory')
-      .mockResolvedValue(crypto.randomUUID());
+      .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+      .mockImplementation(() => {});
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
+
+    jest.spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId').mockResolvedValue([]);
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
+      .mockResolvedValue(MockData.getConsolidationTo());
+    jest
+      .spyOn(MockMongoRepository.prototype, 'createConsolidationFrom')
+      .mockResolvedValue(MockData.getConsolidationFrom());
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length);

@@ -24,6 +24,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { OrderSyncState } from '../../use-cases/gateways.types';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -42,7 +43,7 @@ export class OrdersController implements CamsController, CamsTimerController {
       getCasesGateway(context),
       getOrdersRepository(context),
       getOrdersGateway(context),
-      getRuntimeStateRepository(context),
+      getRuntimeStateRepository<OrderSyncState>(context),
       getConsolidationOrdersRepository(context),
     );
   }

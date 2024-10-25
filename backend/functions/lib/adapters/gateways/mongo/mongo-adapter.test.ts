@@ -1,6 +1,5 @@
 import { MongoCollectionAdapter } from './mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
-import { toMongoQuery } from '../../../query/mongo-query-renderer';
 import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -36,7 +35,7 @@ type TestType = {
 };
 
 describe('Mongo adapter', () => {
-  const testQuery = QueryBuilder.build(toMongoQuery, and());
+  const testQuery = QueryBuilder.build(and());
   const humbleCollection = spies as unknown as CollectionHumble<TestType>;
   const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
@@ -45,13 +44,13 @@ describe('Mongo adapter', () => {
   });
 
   test('should return a list of items from a find', async () => {
-    find.mockResolvedValue({ toArray: () => [{}, {}, {}] });
+    find.mockResolvedValue([{}, {}, {}]);
     const item = await adapter.find(testQuery);
     expect(item).toEqual([{}, {}, {}]);
   });
 
   test('should return an empty list of items if find returns nothing', async () => {
-    find.mockResolvedValue({ toArray: () => [] });
+    find.mockResolvedValue([]);
     const item = await adapter.find(testQuery);
     expect(item).toEqual([]);
   });

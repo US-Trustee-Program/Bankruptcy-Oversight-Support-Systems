@@ -358,6 +358,20 @@ function getConsolidationReference(
   };
 }
 
+function getConsolidationTo(options: Options<ConsolidationTo> = { override: {} }): ConsolidationTo {
+  return getConsolidationReference({
+    override: { ...options.override, documentType: 'CONSOLIDATION_TO' },
+  }) as ConsolidationTo;
+}
+
+function getConsolidationFrom(
+  options: Options<ConsolidationFrom> = { override: {} },
+): ConsolidationFrom {
+  return getConsolidationReference({
+    override: { ...options.override, documentType: 'CONSOLIDATION_FROM' },
+  }) as ConsolidationFrom;
+}
+
 function getParty(options: Options<Party> = { override: {} }): Party {
   const { entityType, override } = options;
   const party: Party = {
@@ -574,6 +588,8 @@ export const MockData = {
   getSortedOrders,
   getConsolidatedOrderCase,
   getConsolidationReference,
+  getConsolidationTo,
+  getConsolidationFrom,
   getRawConsolidationOrder,
   buildArray,
   getTrialAttorneys,

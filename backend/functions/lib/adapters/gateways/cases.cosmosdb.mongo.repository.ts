@@ -12,10 +12,8 @@ import { ApplicationContext } from '../types/basic';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { toMongoQuery } from '../../query/mongo-query-renderer';
 import QueryBuilder from '../../query/query-builder';
 import { Closable, deferClose } from '../../defer-close';
-// import { BadRequestError } from '../../common-errors/bad-request';
 import { CasesRepository } from '../../use-cases/gateways.types';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
@@ -36,7 +34,6 @@ export class CasesCosmosMongoDbRepository implements Closable, CasesRepository {
     caseId: string,
   ): Promise<Array<TransferFrom | TransferTo>> {
     const query = QueryBuilder.build(
-      toMongoQuery,
       and(regex('documentType', '^TRANSFER_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
     const result = await this.documentClient
@@ -94,7 +91,6 @@ export class CasesCosmosMongoDbRepository implements Closable, CasesRepository {
     caseId: string,
   ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
     const query = QueryBuilder.build(
-      toMongoQuery,
       and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
     const result = await this.documentClient
@@ -125,7 +121,6 @@ export class CasesCosmosMongoDbRepository implements Closable, CasesRepository {
 
   async getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]> {
     const query = QueryBuilder.build(
-      toMongoQuery,
       and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
     );
     const result = await this.documentClient

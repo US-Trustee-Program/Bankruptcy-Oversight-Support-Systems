@@ -103,7 +103,7 @@ export class OfficesUseCase {
 
     const runtimeStateRepo = getRuntimeStateRepository(context);
 
-    await runtimeStateRepo.update(context, result.id, result);
+    await runtimeStateRepo.upsert(result);
 
     return result;
   }

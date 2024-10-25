@@ -5,7 +5,6 @@ import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../query/query-builder';
-import { toMongoQuery } from '../../query/mongo-query-renderer';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { Closable, deferClose } from '../../defer-close';
 import { OfficesRepository } from '../../use-cases/gateways.types';
@@ -63,7 +62,6 @@ export class OfficesCosmosMongoDbRepository implements Closable, OfficesReposito
     officeCode: string,
   ): Promise<AttorneyUser[]> {
     const query = QueryBuilder.build(
-      toMongoQuery,
       and(
         equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
         contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
