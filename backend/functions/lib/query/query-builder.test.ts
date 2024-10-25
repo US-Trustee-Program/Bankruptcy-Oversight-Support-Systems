@@ -1,8 +1,15 @@
-import QueryBuilder, { Condition } from './query-builder';
+import QueryBuilder, {
+  Condition,
+  Conjunction,
+  isCondition,
+  isConjunction,
+  isSort,
+  Sort,
+  SortDirection,
+} from './query-builder';
 
 describe('Query Builder', () => {
   const {
-    //find,
     equals,
     greaterThan,
     greaterThanOrEqual,
@@ -16,6 +23,7 @@ describe('Query Builder', () => {
     and,
     or,
     regex,
+    orderBy,
   } = QueryBuilder;
 
   test('should build correct query tree', () => {
@@ -142,10 +150,45 @@ describe('Query Builder', () => {
     expect(query).toEqual(conjunctionQuery.result);
   });
 
-  test('should execute the transformer passed to the build function', () => {
+  test('should proxy a query passed to the build function', () => {
     const query = or();
-    const transformer = jest.fn();
-    QueryBuilder.build(transformer, query);
-    expect(transformer).toHaveBeenCalledWith(query);
+    const actual = QueryBuilder.build(query);
+    expect(actual).toEqual(query);
+  });
+
+  test('should proxy a list of SortDirection when orderBy is called', () => {
+    const directionFoo: SortDirection = ['foo', 'ASCENDING'];
+    const directionBar: SortDirection = ['bar', 'DESCENDING'];
+    expect(orderBy(directionFoo)).toEqual({ directions: [directionFoo] });
+    expect(orderBy(directionFoo, directionBar)).toEqual({
+      directions: [directionFoo, directionBar],
+    });
+  });
+
+  test('isCondition', () => {
+    const condition: Condition = {
+      condition: 'REGEX',
+      attributeName: '',
+      value: '',
+    };
+    expect(isCondition(condition)).toBeTruthy();
+    expect(isCondition({})).toBeFalsy();
+  });
+
+  test('isConjunction', () => {
+    const conjunction: Conjunction = {
+      conjunction: 'AND',
+      values: [],
+    };
+    expect(isConjunction(conjunction)).toBeTruthy();
+    expect(isConjunction({})).toBeFalsy();
+  });
+
+  test('isSort', () => {
+    const sort: Sort = {
+      directions: [['foo', 'ASCENDING']],
+    };
+    expect(isSort(sort)).toBeTruthy();
+    expect(isSort({})).toBeFalsy();
   });
 });
