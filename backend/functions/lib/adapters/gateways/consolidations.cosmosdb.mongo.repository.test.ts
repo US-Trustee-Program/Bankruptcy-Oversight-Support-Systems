@@ -5,6 +5,7 @@ import ConsolidationOrdersCosmosMongoDbRepository from './consolidations.cosmosd
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import QueryBuilder from '../../query/query-builder';
 import { closeDeferred } from '../../defer-close';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
@@ -45,6 +46,17 @@ describe('Consolidations Repository tests', () => {
     expect(findSpy).toHaveBeenCalledWith(query, orderBy(['orderDate', 'ASCENDING']));
   });
 
+  test('should search on consolidations with an empty query', async () => {
+    const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 5);
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue(consolidationOrders);
+    const results = await repo.search();
+
+    expect(results).toEqual(consolidationOrders);
+    expect(findSpy).toHaveBeenCalledWith(null, orderBy(['orderDate', 'ASCENDING']));
+  });
+
   test('should call delete on a consolidation order', async () => {
     const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
     const deleteSpy = jest
@@ -53,7 +65,6 @@ describe('Consolidations Repository tests', () => {
 
     await repo.delete(consolidationId);
     expect(deleteSpy).toHaveBeenCalled();
-    // expect(resultCount).toEqual(1);
   });
 
   test('should call read and get consolidation by consolidationId', async () => {
@@ -90,9 +101,56 @@ describe('Consolidations Repository tests', () => {
     const createManySpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
       .mockResolvedValue(consolidationIds);
-    const results = await repo.createMany(consolidationOrders);
+    await repo.createMany(consolidationOrders);
 
-    expect(results).toEqual(consolidationIds);
     expect(createManySpy).toHaveBeenCalledWith(consolidationOrders);
+  });
+
+  describe('error handling', () => {
+    const error = new Error('some error');
+    const camsError = getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS');
+
+    test('should properly handle error when calling search', async () => {
+      const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+      const consolidationOrder = MockData.getConsolidationOrder({
+        override: { consolidationId, courtDivisionCode: '081' },
+      });
+      jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      expect(
+        async () =>
+          await repo.search({
+            divisionCodes: ['081'],
+            consolidationId: consolidationOrder.consolidationId,
+          }),
+      ).rejects.toThrow(camsError);
+    });
+
+    test('should properly handle error when calling delete ', async () => {
+      const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
+
+      expect(async () => await repo.delete(consolidationId)).rejects.toThrow(
+        getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS'),
+      );
+    });
+
+    test('should properly handle error when calling read', async () => {
+      const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
+      expect(async () => await repo.read(consolidationId)).rejects.toThrow(camsError);
+    });
+
+    test('should properly handle error when calling create', async () => {
+      const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+      const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
+      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(camsError);
+      expect(async () => await repo.create(consolidationOrder)).rejects.toThrow(camsError);
+    });
+
+    test('should properly handle Error when calling createMany ', async () => {
+      const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 3);
+      jest.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(error);
+      expect(async () => await repo.createMany(consolidationOrders)).rejects.toThrow(camsError);
+    });
   });
 });
