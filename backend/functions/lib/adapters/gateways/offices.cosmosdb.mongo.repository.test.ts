@@ -49,10 +49,6 @@ describe('offices repo', () => {
     const session = await createMockApplicationContextSession();
     const officeCode = 'test_office_code';
 
-    const insertOneSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockResolvedValue('inserted-id');
-
     const ttl = 4500;
     const staff = createAuditRecord<OfficeStaff>({
       id: session.user.id,
@@ -61,6 +57,10 @@ describe('offices repo', () => {
       ...session.user,
       ttl,
     });
+
+    const insertOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockResolvedValue('inserted-id');
 
     await repo.putOfficeStaff(officeCode, session.user);
     expect(insertOneSpy).toHaveBeenCalledWith(staff);
