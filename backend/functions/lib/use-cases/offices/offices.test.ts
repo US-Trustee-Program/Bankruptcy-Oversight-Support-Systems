@@ -77,7 +77,7 @@ describe('offices use case tests', () => {
     const officeCode = 'new-york';
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
     expect(officeAttorneys).toEqual([]);
-    expect(repoSpy).toHaveBeenCalledWith(applicationContext, officeCode);
+    expect(repoSpy).toHaveBeenCalledWith(officeCode);
     expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
@@ -115,15 +115,13 @@ describe('offices use case tests', () => {
       );
 
     const putSpy = jest.spyOn(MockMongoRepository.prototype, 'putOfficeStaff').mockResolvedValue();
-    const stateRepoSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'updateState')
-      .mockResolvedValue();
+    const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
 
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
     expect(putSpy).toHaveBeenCalledTimes(seattleUsers.length);
     seattleUsers.forEach((_, idx) => {
-      expect(putSpy).toHaveBeenCalledWith(expect.anything(), seattleOfficeCode, seattleUsers[idx]);
+      expect(putSpy).toHaveBeenCalledWith(seattleOfficeCode, seattleUsers[idx]);
     });
     expect(stateRepoSpy).toHaveBeenCalled();
   });

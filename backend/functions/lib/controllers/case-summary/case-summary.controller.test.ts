@@ -36,6 +36,6 @@ describe('Test case-summary controller', () => {
   test('should throw any other error', async () => {
     const error = new Error('TestError');
     jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockRejectedValue(error);
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
   });
 });

@@ -90,6 +90,11 @@ function randomOffice() {
   return COURT_DIVISIONS[randomInt(COURT_DIVISIONS.length - 1)];
 }
 
+function getOffice(courtDivisionCode?: string) {
+  if (!courtDivisionCode) return null;
+  return COURT_DIVISIONS.find((office) => office.courtDivisionCode === courtDivisionCode);
+}
+
 function randomUstpOffice() {
   return USTP_OFFICES_ARRAY[randomInt(USTP_OFFICES_ARRAY.length - 1)];
 }
@@ -140,7 +145,7 @@ function getConsolidatedOrderCase(
   const { entityType, override } = options;
   const docketEntries = [getDocketEntry()];
   const consolidatedCaseSummary: ConsolidationOrderCase = {
-    ...getCaseSummary({ entityType: entityType }),
+    ...getCaseSummary({ entityType, override }),
     orderDate: docketEntries[0].dateFiled,
     docketEntries,
     attorneyAssignments: override.attorneyAssignments ?? [getAttorneyAssignment()],
@@ -157,7 +162,7 @@ function getCaseBasics(
   const debtor = getParty({ entityType });
   const debtorTypeCode = entityType === 'person' ? 'IC' : 'CB';
   const debtorTypeLabel = debtorTypeLabelMap.get(debtorTypeCode);
-  const office = randomOffice();
+  const office = getOffice(override?.courtDivisionCode) ?? randomOffice();
   const caseSummary: CaseBasics = {
     ...office,
     dxtrId: '0', // NEED TO REFACTOR THIS OUT OF THE MODEL AND STOP LEAKING FROM THE API
@@ -290,7 +295,7 @@ function getConsolidationOrder(
   options: Options<ConsolidationOrder> = { override: {} },
 ): ConsolidationOrder {
   const { entityType, override } = options;
-  const summary = getCaseSummary({ entityType });
+  const summary = getCaseSummary({ entityType, override });
 
   const consolidationOrder: ConsolidationOrder = {
     consolidationId: faker.string.uuid(),
@@ -302,7 +307,7 @@ function getConsolidationOrder(
     status: override.status || 'pending',
     courtDivisionCode: summary.courtDivisionCode,
     jobId: faker.number.int(),
-    childCases: [getConsolidatedOrderCase(), getConsolidatedOrderCase()],
+    childCases: [getConsolidatedOrderCase({ override }), getConsolidatedOrderCase({ override })],
   };
 
   return { ...consolidationOrder, ...override };
