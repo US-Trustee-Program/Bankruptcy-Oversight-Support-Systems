@@ -38,6 +38,6 @@ describe('Attorneys Controller Tests', () => {
   test('should throw any other error', async () => {
     const error = new Error('TestError');
     jest.spyOn(AttorneysList.prototype, 'getAttorneyList').mockRejectedValue(error);
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
   });
 });

@@ -25,7 +25,7 @@ describe('Test case-docket controller', () => {
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
-    const expectedMessage = 'Unknown error';
+    const expectedMessage = 'Unknown Error';
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     const mockContext = await createMockApplicationContext({ request: { params: { caseId } } });
     const controller = new CaseDocketController(mockContext);

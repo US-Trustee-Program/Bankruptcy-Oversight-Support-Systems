@@ -26,8 +26,8 @@ export class CasesCosmosMongoDbRepository implements CasesRepository {
   constructor(context: ApplicationContext) {
     const { connectionString, databaseName } = context.config.documentDbConfig;
     this.databaseName = databaseName;
-    const client = new DocumentClient(connectionString);
-    deferClose(context, client);
+    this.client = new DocumentClient(connectionString);
+    deferClose(context, this.client);
   }
 
   getAdapter<T>() {
