@@ -71,14 +71,18 @@ export default class ConsolidationOrdersCosmosMongoDbRepository<
 
   public async search(predicate?: OrdersSearchPredicate): Promise<Array<T>> {
     const conditions: ConditionOrConjunction[] = [];
-    if (predicate.divisionCodes) {
-      conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
-    }
-    if (predicate.consolidationId) {
-      conditions.push(equals<string>('consolidationId', predicate.consolidationId));
-    }
-    const query = predicate ? QueryBuilder.build(and(...conditions)) : null;
 
-    return await this.dbAdapter.find(query, orderBy(['orderDate', 'ASCENDING']));
+    try {
+      if (predicate?.divisionCodes) {
+        conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+      }
+      if (predicate?.consolidationId) {
+        conditions.push(equals<string>('consolidationId', predicate.consolidationId));
+      }
+      const query = predicate ? QueryBuilder.build(and(...conditions)) : null;
+      return await this.dbAdapter.find(query, orderBy(['orderDate', 'ASCENDING']));
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 }
