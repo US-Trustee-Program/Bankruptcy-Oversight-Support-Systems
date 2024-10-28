@@ -11,35 +11,13 @@ import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilitie
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
-export interface ConflictError {
-  code: 409;
-  body: {
-    code: 'Conflict';
-    message: string;
-  };
-  headers: {
-    [key: string]: unknown;
-  };
-  activityId: string;
-}
-
-export function isConflictError(error: ConflictError | unknown): error is ConflictError {
-  return (
-    (<ConflictError>error).code === 409 &&
-    (<ConflictError>error).body.code === 'Conflict' &&
-    (<ConflictError>error).body.message.includes(
-      'Entity with the specified id already exists in the system.',
-    )
-  );
-}
-
 function getRoles(groups: string[]): CamsRole[] {
   const rolesMap = LocalStorageGateway.getRoleMapping();
   return groups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
 }
 
 async function getOffices(
-  context: ApplicationContext,
+  _context: ApplicationContext,
   idpGroups: string[],
 ): Promise<UstpOfficeDetails[]> {
   const ustpOffices = LocalStorageGateway.getUstpOffices();
@@ -49,7 +27,7 @@ async function getOffices(
 export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
-    const cached = await sessionCacheRepository.get(context, token);
+    const cached = await sessionCacheRepository.read(token);
 
     if (cached) {
       return cached;
@@ -82,17 +60,10 @@ export class UserSessionUseCase {
         issuer: jwt.claims.iss,
       };
 
-      await sessionCacheRepository.put(context, session);
+      await sessionCacheRepository.upsert(session);
 
       return session;
     } catch (error) {
-      const isConflict = error.originalError
-        ? isConflictError(error.originalError)
-        : isConflictError(error);
-      if (isConflict) {
-        return await sessionCacheRepository.get(context, token);
-      }
-
       throw isCamsError(error)
         ? error
         : new UnauthorizedError(MODULE_NAME, {
