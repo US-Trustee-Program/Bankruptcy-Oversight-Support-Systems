@@ -40,7 +40,7 @@ import { CasesCosmosMongoDbRepository } from './adapters/gateways/cases.cosmosdb
 import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/consolidations.cosmosdb.mongo.repository';
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
-import { UserSessionCacheCosmosDbRepository } from './adapters/gateways/user-session-cache.cosmosdb.repository';
+import { UserSessionCacheMongoRepository } from './adapters/gateways/user-session-cache.mongo.repository';
 import { CollectionHumble } from './humble-objects/mongo-humble';
 import { MongoCollectionAdapter } from './adapters/gateways/mongo/mongo-adapter';
 
@@ -145,7 +145,7 @@ export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
   if (context.config.get('dbMock')) return new MockMongoRepository();
-  return new UserSessionCacheCosmosDbRepository(context);
+  return new UserSessionCacheMongoRepository(context);
 };
 
 export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
