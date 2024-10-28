@@ -180,12 +180,12 @@ describe('Case Assignment Creation Tests', () => {
     //  .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
     //  .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
     jest
-      .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
 
     const assignmentController = new CaseAssignmentController(mockContext);
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
-      'User does not have appropriate access to create assignments for this office.',
+      'forbidden',
     );
   });
 

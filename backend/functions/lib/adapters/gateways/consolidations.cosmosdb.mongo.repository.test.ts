@@ -1,12 +1,15 @@
 import { ApplicationContext } from '../types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import ConsolidationOrdersCosmosMongoDbRepository from './consolidations.cosmosdb.mongo.repository';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import QueryBuilder from '../../query/query-builder';
+import { closeDeferred } from '../../defer-close';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
   let repo: ConsolidationOrdersCosmosMongoDbRepository;
+  const { and, contains, equals, orderBy } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -14,82 +17,82 @@ describe('Consolidations Repository tests', () => {
   });
 
   afterEach(async () => {
+    await closeDeferred(context);
     jest.restoreAllMocks();
   });
 
-  /*
-  test('should find all', async () => {
-    const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 5);
-    const fetchAllSpy = jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValue({ resources: consolidationOrders });
-    const querySpy = jest.spyOn(CosmosDbRepository.prototype, 'query');
-
-    const actual = await repo.search(context);
-
-    expect(actual).toEqual(consolidationOrders);
-    expect(fetchAllSpy).toHaveBeenCalled();
-    expect(querySpy).toHaveBeenCalledWith(
-      context,
-      expect.objectContaining({ query: expect.any(String), parameters: [] }),
+  test('should search on consolidations by court division code or consolidationId', async () => {
+    const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+    const consolidationOrder = MockData.getConsolidationOrder({
+      override: { consolidationId, courtDivisionCode: '081' },
+    });
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue([consolidationOrder]);
+    const query = QueryBuilder.build(
+      and(
+        contains<string[]>('courtDivisionCode', [consolidationOrder.courtDivisionCode]),
+        equals<string>('consolidationId', consolidationOrder.consolidationId),
+      ),
     );
-    expect(querySpy.mock.calls[0][1]['query']).not.toContain('WHERE');
-    expect(querySpy.mock.calls[0][1]['query']).toContain('ORDER BY');
-  });
-
-  test('should query by predicate', async () => {
-    const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 5);
-    jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValue({ resources: consolidationOrders });
-    const querySpy = jest.spyOn(CosmosDbRepository.prototype, 'query');
-
-    const predicate: OrdersSearchPredicate = {
-      divisionCodes: ['one', 'two'],
-    };
-
-    const actual = await repo.search(context, predicate);
-
-    expect(actual).toEqual(consolidationOrders);
-    expect(querySpy).toHaveBeenCalledWith(
-      context,
-      expect.objectContaining({ query: expect.any(String), parameters: [] }),
-    );
-    expect(querySpy.mock.calls[0][1]['query']).toContain('WHERE');
-    expect(querySpy.mock.calls[0][1]['query']).toContain('one');
-    expect(querySpy.mock.calls[0][1]['query']).toContain('OR');
-    expect(querySpy.mock.calls[0][1]['query']).toContain('two');
-    expect(querySpy.mock.calls[0][1]['query']).toContain('ORDER BY');
-  });
-  */
-
-  test('should create a consolidation and then delete it', async () => {
-    const consolidationOrder = MockData.getConsolidationOrder();
-
-    await repo.create(consolidationOrder);
     const results = await repo.search({
+      divisionCodes: ['081'],
       consolidationId: consolidationOrder.consolidationId,
     });
 
-    expect(results).toBeDefined();
+    expect(results).toEqual([consolidationOrder]);
     expect(results.length).toEqual(1);
-
-    const inserted = results[0];
-
-    await repo.delete(inserted.id);
-    const predicate: OrdersSearchPredicate = {
-      consolidationId: consolidationOrder.consolidationId,
-    };
-    const record = await repo.search(predicate);
-    expect(record).toEqual([]);
+    expect(findSpy).toHaveBeenCalledWith(query, orderBy(['orderDate', 'ASCENDING']));
   });
 
-  test('should get a consolidation by consolidationId', async () => {
-    const results = await repo.search({
-      consolidationId: '823688b3-9e0f-4a02-a7cb-89380e6ad19e',
-    });
+  test('should call delete on a consolidation order', async () => {
+    const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+    const deleteSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+      .mockResolvedValue(1);
 
-    expect(results).toBeDefined();
-    expect(results.length).toEqual(1);
+    await repo.delete(consolidationId);
+    expect(deleteSpy).toHaveBeenCalled();
+    // expect(resultCount).toEqual(1);
+  });
+
+  test('should call read and get consolidation by consolidationId', async () => {
+    const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+    const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
+    const findOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockResolvedValue(consolidationOrder);
+    const results = await repo.read(consolidationId);
+
+    expect(results).toEqual(consolidationOrder);
+    expect(findOneSpy).toHaveBeenCalled();
+  });
+
+  test('should call insertOne when calling create on the repo', async () => {
+    const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
+    const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
+    const insertOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockResolvedValue(consolidationOrder.id);
+    const results = await repo.create(consolidationOrder);
+
+    expect(results).toEqual(consolidationOrder);
+    expect(insertOneSpy).toHaveBeenCalledWith(consolidationOrder);
+  });
+
+  test('should call insertMany when calling createMany on the repo', async () => {
+    const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 3);
+    const consolidationIds = [
+      consolidationOrders[0].id,
+      consolidationOrders[1].id,
+      consolidationOrders[2].id,
+    ];
+    const createManySpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
+      .mockResolvedValue(consolidationIds);
+    const results = await repo.createMany(consolidationOrders);
+
+    expect(results).toEqual(consolidationIds);
+    expect(createManySpy).toHaveBeenCalledWith(consolidationOrders);
   });
 });

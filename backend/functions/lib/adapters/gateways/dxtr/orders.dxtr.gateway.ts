@@ -290,7 +290,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         maxTxId: maxTxId.toString(),
       };
     } catch (originalError) {
-      throw new CamsError(MODULE_NAME, { originalError });
+      throw new CamsError(MODULE_NAME, { message: originalError.message });
     }
   }
 

@@ -1,5 +1,6 @@
 import { ErrorResponse } from '@azure/cosmos';
-import { ID_ALREADY_EXISTS } from '../adapters/gateways/cosmos/cosmos.helper';
+
+export const ID_ALREADY_EXISTS = 'Entity with the specified id already exists in the system.';
 
 export function createPreExistingDocumentError() {
   const error = new ErrorResponse(ID_ALREADY_EXISTS);
