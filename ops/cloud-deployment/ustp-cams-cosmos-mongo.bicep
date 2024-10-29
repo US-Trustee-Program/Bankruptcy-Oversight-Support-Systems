@@ -30,6 +30,9 @@ param actionGroupResourceGroupName string = 'rg-analytics'
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = true
 
+@description('List of allowed IP ranges on the USTP side')
+param allowedIps array = []
+
 // CosmosDb for MongoDB
 module account './lib/cosmos/mongo/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -41,6 +44,7 @@ module account './lib/cosmos/mongo/cosmos-account.bicep' = {
     allowAllNetworks: allowAllNetworks
     keyVaultName: keyVaultName
     kvResourceGroup: kvResourceGroup
+    allowedIps: allowedIps
   }
 }
 
