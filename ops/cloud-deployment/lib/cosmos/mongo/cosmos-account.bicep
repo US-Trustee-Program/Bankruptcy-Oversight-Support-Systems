@@ -80,8 +80,14 @@ param allowedNetworks array = []
 @description('WARNING: Set CosmosDb account for public access for all. Should be only enable for development environment.')
 param allowAllNetworks bool = false
 
+@description('List of allowed IP ranges on the USTP side')
+param allowedIps array = []
+
+var azureIpArray = [for item in allowedIps:{
+  ipAddressOrRange: item
+}]
 // Enable Azure Portal access
-var azureIpRules = [
+var azureIpRules = concat(azureIpArray,[
   {
     ipAddressOrRange: '52.244.48.71'
   }
@@ -94,7 +100,7 @@ var azureIpRules = [
   {
     ipAddressOrRange: '52.187.184.26'
   }
-]
+])
 
 var allowedNetworkList = [for item in allowedNetworks: {
   id: item
