@@ -16,7 +16,6 @@ import {
   RuntimeStateRepository,
   UserSessionCacheRepository,
 } from '../../use-cases/gateways.types';
-import { CamsSession } from '../../../../../common/src/cams/session';
 
 export class MockMongoRepository
   implements
@@ -42,14 +41,6 @@ export class MockMongoRepository
 
   putOfficeStaff(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
-  }
-
-  async get(..._ignore): Promise<CamsSession> {
-    throw new Error('Method not implemented');
-  }
-
-  async put(..._ignore): Promise<CamsSession> {
-    throw new Error('Method not implemented');
   }
 
   getState<T extends RuntimeState>(..._ignore): Promise<T> {
