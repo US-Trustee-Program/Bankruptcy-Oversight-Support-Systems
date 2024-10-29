@@ -1,4 +1,5 @@
 import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
+import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/mongo-adapter';
 import handler, { checkResults } from './healthcheck.function';
 
 const mockRequestFunc = jest.fn().mockImplementation(() => ({
@@ -28,7 +29,12 @@ test('Healthcheck endpoint should return an ALIVE status', async () => {
   /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
   const request = createMockAzureFunctionRequest({ query: {} });
-
+  jest
+    .spyOn(MongoCollectionAdapter.prototype, 'find')
+    .mockResolvedValueOnce(null)
+    .mockResolvedValue([{}]);
+  jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('id');
+  jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(1);
   await handler(request, context);
 
   expect(context.res.body).not.toBeNull(); // Check for any response.
