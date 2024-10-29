@@ -9,11 +9,13 @@ import { MockData } from '../../../../../common/src/cams/test-utilities/mock-dat
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { closeDeferred } from '../../defer-close';
+import QueryBuilder from '../../query/query-builder';
 
 describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;
   let repo: UserSessionCacheMongoRepository;
   const expected = MockData.getCamsSession();
+  const { equals } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -60,18 +62,23 @@ describe('User session cache Cosmos repository tests', () => {
     const newSession = { ...expected };
     const camsJwtClaims = jwt.decode(newSession.accessToken) as CamsJwtClaims;
     const insertOne = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue('oid-guid');
+    const tokenParts = newSession.accessToken.split('.');
+    const signature = tokenParts[2];
+    const expectedQuery = QueryBuilder.build(equals('signature', signature));
 
     const actual = await repo.upsert(newSession);
-
     expect(actual).toEqual(newSession);
-    const argument = insertOne.mock.calls[0][0] as CachedCamsSession;
-    expect(insertOne).toHaveBeenCalledWith({
-      ...newSession,
-      signature: expect.any(String),
-      ttl: expect.any(Number),
-    });
+    const argument = insertOne.mock.calls[0][1] as CachedCamsSession;
+    expect(insertOne).toHaveBeenCalledWith(
+      expectedQuery,
+      expect.objectContaining({
+        ...newSession,
+        signature: expect.anything(),
+        ttl: expect.any(Number),
+      }),
+    );
     const maxTtl = Math.floor(camsJwtClaims.exp - Date.now() / 1000);
     expect(argument.ttl).toBeLessThan(maxTtl + 1);
   });

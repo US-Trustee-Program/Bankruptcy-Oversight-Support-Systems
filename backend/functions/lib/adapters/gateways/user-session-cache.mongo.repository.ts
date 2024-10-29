@@ -77,7 +77,8 @@ export class UserSessionCacheMongoRepository implements UserSessionCacheReposito
         signature,
         ttl,
       };
-      return toCamsSession(await this.dbAdapter.replaceOne(query, cached));
+      await this.dbAdapter.replaceOne(query, cached);
+      return session;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

@@ -1,4 +1,4 @@
-import { ConflictError, isConflictError, UserSessionUseCase } from './user-session';
+import { UserSessionUseCase } from './user-session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
@@ -13,6 +13,7 @@ import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-ga
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -68,9 +69,9 @@ describe('user-session.gateway test', () => {
   });
 
   test('should return valid session and add to cache when cache miss is encountered', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     const createSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'put')
+      .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(mockCamsSession);
     const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
@@ -82,21 +83,22 @@ describe('user-session.gateway test', () => {
   });
 
   test('should return valid session on cache hit', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(expectedSession);
-    const createSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'put')
-      .mockRejectedValue('We should not call this function.');
-    const session = await gateway.lookup(context, jwtString, provider);
-    expect(session).toEqual({
+    const expected = {
       ...expectedSession,
       expires: expect.any(Number),
       issuer: expect.stringMatching(urlRegex),
-    });
+    };
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(expected);
+    const createSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockRejectedValue('We should not call this function.');
+    const session = await gateway.lookup(context, jwtString, provider);
+    expect(session).toEqual(expected);
     expect(createSpy).not.toHaveBeenCalled();
   });
 
   test('should not add anything to cache if token is invalid', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
       .mockRejectedValue(new UnauthorizedError('test-module'));
@@ -106,7 +108,7 @@ describe('user-session.gateway test', () => {
   });
 
   test('should handle null jwt from authGateway', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
       user: mockUser,
       jwt: null,
@@ -115,7 +117,7 @@ describe('user-session.gateway test', () => {
   });
 
   test('should handle undefined jwt from authGateway', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
       user: mockUser,
       jwt: undefined,
@@ -123,54 +125,8 @@ describe('user-session.gateway test', () => {
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
   });
 
-  test('should return valid session and NOT add to cache when Conflict error is received', async () => {
-    const conflictError: ConflictError = {
-      code: 409,
-      body: {
-        code: 'Conflict',
-        message:
-          'Entity with the specified id already exists in the system. Other unimportant text...',
-      },
-      headers: {
-        one: 1,
-        two: 'two',
-      },
-      activityId: 'activity',
-    };
-    jest
-      .spyOn(MockMongoRepository.prototype, 'get')
-      .mockResolvedValueOnce(null)
-      .mockResolvedValue(mockCamsSession);
-    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(conflictError);
-    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
-    const session = await gateway.lookup(context, jwtString, provider);
-    expect(session).toEqual({
-      ...mockCamsSession,
-      expires: expect.any(Number),
-      issuer: expect.stringMatching(urlRegex),
-    });
-    expect(createSpy).not.toHaveBeenCalled();
-  });
-
-  test('should properly identify Conflict error', () => {
-    const error: ConflictError = {
-      code: 409,
-      body: {
-        code: 'Conflict',
-        message:
-          'Entity with the specified id already exists in the system. Other unimportant text...',
-      },
-      headers: {
-        one: 1,
-        two: 'two',
-      },
-      activityId: 'activity',
-    };
-    expect(isConflictError(error)).toBeTruthy();
-  });
-
   test('should throw UnauthorizedError if unknown error is encountered', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new UnauthorizedError(''));
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(new Error('Test error'));
     const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
@@ -178,15 +134,15 @@ describe('user-session.gateway test', () => {
   });
 
   test('should throw ServerConfigError if factory does not return an OidcConnectGateway', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(ServerConfigError);
   });
 
   test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
     jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
-      put: jest.fn(),
-      get: jest.fn().mockResolvedValue(null),
+      upsert: jest.fn(),
+      read: jest.fn().mockRejectedValue(new NotFoundError('')),
     });
 
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(MockOpenIdConnectGateway);
