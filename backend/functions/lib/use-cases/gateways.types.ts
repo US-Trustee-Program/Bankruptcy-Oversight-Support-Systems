@@ -17,6 +17,7 @@ import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CamsSession } from '../../../../common/src/cams/session';
 
 export interface RepositoryResource {
   id?: string;
@@ -61,6 +62,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Reads<T>,
     Deletes {}
 
+export interface UserSessionCacheRepository<T = CamsSession> extends Reads<T>, Upserts<T, T> {}
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>,
     Updates<CaseAssignment, string> {
