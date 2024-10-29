@@ -4,7 +4,6 @@ import { ApplicationContext } from '../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../lib/testing/testing-utilities';
 import { closeDeferred } from '../lib/defer-close';
 import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/mongo-adapter';
-import { getCamsError } from '../lib/common-errors/error-utilities';
 
 describe('healthcheck db tests', () => {
   let context: ApplicationContext;
@@ -40,7 +39,6 @@ describe('healthcheck db tests', () => {
   });
   describe('error handling', () => {
     const error = new Error('some error');
-    const camsError = getCamsError(error, 'HEALTHCHECK-COSMOS-DB');
 
     test('should handle error properly on read, write, and delete check', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
@@ -52,9 +50,6 @@ describe('healthcheck db tests', () => {
       expect(writeResult).toEqual(false);
       expect(readResult).toEqual(false);
       expect(deleteResult).toEqual(false);
-      expect(async () => await healthcheckRepository.checkDbWrite()).rejects.toThrow(camsError);
-      expect(async () => await healthcheckRepository.checkDbRead()).rejects.toThrow(camsError);
-      expect(async () => await healthcheckRepository.checkDbDelete()).rejects.toThrow(camsError);
     });
   });
 });
