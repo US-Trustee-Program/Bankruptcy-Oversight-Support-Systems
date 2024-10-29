@@ -8,6 +8,7 @@ import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-g
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -27,10 +28,16 @@ async function getOffices(
 export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
-    const cached = await sessionCacheRepository.read(token);
 
-    if (cached) {
-      return cached;
+    try {
+      const session = await sessionCacheRepository.read(token);
+      return session;
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        // This is a cache miss. Continue.
+      } else {
+        throw originalError;
+      }
     }
 
     try {
