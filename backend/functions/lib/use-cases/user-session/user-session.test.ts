@@ -1,7 +1,6 @@
 import { ConflictError, isConflictError, UserSessionUseCase } from './user-session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { MockHumbleItems, MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
@@ -32,6 +31,7 @@ describe('user-session.gateway test', () => {
     accessToken: jwtString,
     provider,
   });
+
   const mockCamsSession: CamsSession = {
     user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
     accessToken: jwtString,
@@ -96,21 +96,17 @@ describe('user-session.gateway test', () => {
   });
 
   test('should not add anything to cache if token is invalid', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
       .mockRejectedValue(new UnauthorizedError('test-module'));
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
+    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow();
     expect(createSpy).not.toHaveBeenCalled();
   });
 
   test('should handle null jwt from authGateway', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
       user: mockUser,
       jwt: null,
@@ -119,9 +115,7 @@ describe('user-session.gateway test', () => {
   });
 
   test('should handle undefined jwt from authGateway', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
       user: mockUser,
       jwt: undefined,
@@ -148,7 +142,7 @@ describe('user-session.gateway test', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValue(mockCamsSession);
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(conflictError);
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
+    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
     const session = await gateway.lookup(context, jwtString, provider);
     expect(session).toEqual({
       ...mockCamsSession,
@@ -176,19 +170,15 @@ describe('user-session.gateway test', () => {
   });
 
   test('should throw UnauthorizedError if unknown error is encountered', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockRejectedValue(new Error('Test error'));
-    const createSpy = jest.spyOn(MockHumbleItems.prototype, 'create');
+    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create');
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
     expect(createSpy).not.toHaveBeenCalled();
   });
 
   test('should throw ServerConfigError if factory does not return an OidcConnectGateway', async () => {
-    jest.spyOn(MockHumbleQuery.prototype, 'fetchAll').mockResolvedValue({
-      resources: [],
-    });
+    jest.spyOn(MockMongoRepository.prototype, 'get').mockResolvedValue(null);
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(ServerConfigError);
   });

@@ -14,8 +14,8 @@ import {
   OrdersRepository,
   RuntimeState,
   RuntimeStateRepository,
+  UserSessionCacheRepository,
 } from '../../use-cases/gateways.types';
-import { UserSessionCacheRepository } from '../../adapters/gateways/user-session-cache.repository';
 import { CamsSession } from '../../../../../common/src/cams/session';
 
 export class MockMongoRepository
