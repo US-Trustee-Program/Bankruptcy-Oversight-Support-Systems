@@ -129,9 +129,7 @@ describe('Consolidations Repository tests', () => {
       const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
       jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
 
-      expect(async () => await repo.delete(consolidationId)).rejects.toThrow(
-        getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS'),
-      );
+      expect(async () => await repo.delete(consolidationId)).rejects.toThrow(camsError);
     });
 
     test('should properly handle error when calling read', async () => {
