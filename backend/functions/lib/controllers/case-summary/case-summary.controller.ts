@@ -4,6 +4,7 @@ import CaseManagement from '../../use-cases/case-management';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
+import { closeDeferred } from '../../defer-close';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
 
@@ -32,6 +33,8 @@ export class CaseSummaryController implements CamsController {
       return success;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await closeDeferred(context);
     }
   }
 }

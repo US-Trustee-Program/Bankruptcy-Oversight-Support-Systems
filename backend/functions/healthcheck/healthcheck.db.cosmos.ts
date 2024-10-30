@@ -4,36 +4,32 @@ import { DocumentClient } from '../lib/humble-objects/mongo-humble';
 import QueryBuilder from '../lib/query/query-builder';
 import { deferClose } from '../lib/defer-close';
 import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/mongo-adapter';
-import { CamsDocument } from '../../../common/src/cams/document';
-import { getDocumentCollectionAdapter } from '../lib/factory';
 
 dotenv.config();
 
 const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
-const CONTAINER_NAME = 'healthcheck';
+const COLLECTION_NAME = 'healthcheck';
 
 export default class HealthcheckCosmosDb {
-  private readonly databaseName = process.env.COSMOS_DATABASE_NAME;
-  private readonly adapter: MongoCollectionAdapter<CamsDocument>;
+  private readonly client: DocumentClient;
+  private readonly databaseName: string;
+  private readonly context: ApplicationContext;
 
-  private readonly applicationContext: ApplicationContext;
-
-  constructor(applicationContext: ApplicationContext) {
-    try {
-      this.applicationContext = applicationContext;
-      const client = new DocumentClient(
-        this.applicationContext.config.documentDbConfig.connectionString,
-      );
-      this.adapter = getDocumentCollectionAdapter<CamsDocument>(
-        MODULE_NAME,
-        client.database(this.databaseName).collection(CONTAINER_NAME),
-      );
-      deferClose(applicationContext, client);
-    } catch (e) {
-      applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
-    }
+  constructor(context: ApplicationContext) {
+    this.context = context;
+    const { connectionString, databaseName } = this.context.config.documentDbConfig;
+    this.databaseName = databaseName;
+    this.client = new DocumentClient(connectionString);
+    deferClose(context, this.client);
   }
-
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
+      MODULE_NAME,
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
+    );
+  }
   public dbConfig() {
     return {
       databaseName: this.databaseName,
@@ -42,7 +38,7 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbRead() {
     try {
-      const result = await this.adapter.find(null);
+      const result = await this.getAdapter().find(null);
 
       const items = [];
       for await (const doc of result) {
@@ -50,26 +46,26 @@ export default class HealthcheckCosmosDb {
       }
       return items.length > 0;
     } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
 
   public async checkDbWrite() {
     try {
-      const resource = await this.adapter.insertOne({ id: 'test' });
-      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${resource}`);
+      const resource = await this.getAdapter().insertOne({ id: 'test' });
+      this.context.logger.debug(MODULE_NAME, `New item created ${resource}`);
       return !!resource;
     } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
 
   public async checkDbDelete() {
-    const { equals } = QueryBuilder;
+    const { id } = QueryBuilder;
     try {
-      const result = await this.adapter.find(null);
+      const result = await this.getAdapter().find(null);
 
       const items = [];
       for await (const doc of result) {
@@ -78,17 +74,14 @@ export default class HealthcheckCosmosDb {
 
       if (items.length > 0) {
         for (const resource of items) {
-          this.applicationContext.logger.debug(
-            MODULE_NAME,
-            `Invoking delete on item ${resource._id}`,
-          );
+          this.context.logger.debug(MODULE_NAME, `Invoking delete on item ${resource._id}`);
 
-          await this.adapter.deleteOne(QueryBuilder.build(equals('id', resource.id)));
+          await this.getAdapter().deleteOne(QueryBuilder.build(id(resource.id)));
         }
       }
       return true;
     } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }

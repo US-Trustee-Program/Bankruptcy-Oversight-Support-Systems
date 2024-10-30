@@ -29,10 +29,7 @@ const spies = {
   countDocuments,
 };
 
-type TestType = {
-  id: string;
-  name: string;
-};
+type TestType = object;
 
 describe('Mongo adapter', () => {
   const testQuery = QueryBuilder.build(and());

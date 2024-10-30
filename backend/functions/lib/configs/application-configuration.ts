@@ -21,7 +21,6 @@ export class ApplicationConfiguration {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
-    this.cosmosConfig = this.getCosmosConfig();
     this.documentDbConfig = this.getCosmosConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
