@@ -22,12 +22,10 @@ const matchCondition: { [key: string]: string } = {
   NOT_EQUAL: '$ne',
   NOT_CONTAINS: '$nin',
   REGEX: '$regex',
-  ID: '$oid',
 };
 
 function translateCondition(query: Condition) {
-  const attributeName = query.attributeName === 'id' ? '_id' : query.attributeName;
-  return { [attributeName]: { [matchCondition[query.condition]]: query.value } };
+  return { [query.attributeName]: { [matchCondition[query.condition]]: query.value } };
 }
 
 const matchConjunction: { [key: string]: string } = {

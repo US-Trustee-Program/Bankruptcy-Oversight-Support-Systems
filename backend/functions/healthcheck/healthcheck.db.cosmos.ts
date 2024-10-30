@@ -11,8 +11,9 @@ const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
 const COLLECTION_NAME = 'healthcheck';
 
 type HealthCheckDocument = {
-  id: string;
+  id?: string;
   healtchCheckId: string;
+  documentType: 'HEALTH_CHECK';
 };
 
 export default class HealthcheckCosmosDb {
@@ -59,8 +60,8 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbWrite() {
     const healthCheckDocument: HealthCheckDocument = {
-      id: 'main-id',
       healtchCheckId: 'arbitrary-id',
+      documentType: 'HEALTH_CHECK',
     };
     try {
       const resource = await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
