@@ -10,7 +10,7 @@ import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
-const { and, equals, exists, id } = QueryBuilder;
+const { and, equals, exists } = QueryBuilder;
 
 export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepository {
   private readonly client: DocumentClient;
@@ -41,7 +41,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
   }
 
   async update(caseAssignment: CaseAssignment): Promise<string> {
-    const query = id(caseAssignment.id);
+    const query = equals<CaseAssignment['id']>('id', caseAssignment.id);
 
     // TODO: This is where the attorney assignment goes BOOM.
     try {
@@ -56,6 +56,7 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
       and(
         equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
         equals<CaseAssignment['caseId']>('caseId', caseId),
+        exists<CaseAssignment>('unassignedOn', false),
       ),
     );
     try {
