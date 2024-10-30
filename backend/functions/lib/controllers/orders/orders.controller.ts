@@ -66,13 +66,13 @@ export class OrdersController implements CamsController, CamsTimerController {
     try {
       switch (simplePath) {
         case 'consolidations':
-          return this.handleConsolidations(context);
+          return await this.handleConsolidations(context);
         case 'orders':
-          return this.handleOrders(context);
+          return await this.handleOrders(context);
         case 'orders-sync':
-          return this.handleOrderSync(context);
+          return await this.handleOrderSync(context);
         case 'orders-suggestions':
-          return this.handleOrdersSuggestions(context);
+          return await this.handleOrdersSuggestions(context);
         default:
           throw new NotFoundError(MODULE_NAME, {
             message: 'Could not map requested path to action ' + context.request.url,
