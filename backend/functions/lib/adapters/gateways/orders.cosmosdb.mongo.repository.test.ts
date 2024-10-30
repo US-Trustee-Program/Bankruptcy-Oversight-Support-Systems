@@ -19,9 +19,8 @@ describe('orders repo', () => {
     jest.clearAllMocks();
   });
 
-  // TODO: Make sure each repo test has this following `afterEach`:
   afterEach(async () => {
-    closeDeferred(context);
+    await closeDeferred(context);
   });
 
   test('search function happy path should return orders when a predicate is supplied', async () => {
@@ -59,7 +58,7 @@ describe('orders repo', () => {
     const predicate = {
       divisionCodes: ['081'],
     };
-    expect(async () => await repo.search(predicate)).rejects.toThrow(UnknownError);
+    await expect(async () => await repo.search(predicate)).rejects.toThrow(UnknownError);
   });
 
   test('should insert an array of transfer orders', async () => {
@@ -86,7 +85,7 @@ describe('orders repo', () => {
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'findOne')
       .mockRejectedValue(new Error('some error'));
-    expect(async () => await repo.read('123')).rejects.toThrow(UnknownError);
+    await expect(async () => await repo.read('123')).rejects.toThrow(UnknownError);
   });
 
   test('should throw NotFound error during update when dbAdapter findOne returns no results', async () => {
@@ -99,8 +98,10 @@ describe('orders repo', () => {
       orderType: 'transfer',
       status: 'approved',
     };
-    jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(undefined);
-    expect(async () => await repo.update(transferOrder)).rejects.toThrow(NotFoundError);
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockRejectedValue(new NotFoundError('test-module'));
+    await expect(async () => await repo.update(transferOrder)).rejects.toThrow(NotFoundError);
   });
 
   test('should throw CamsError error during update when dbAdapter throws error on replaceOne', async () => {
@@ -117,7 +118,7 @@ describe('orders repo', () => {
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockRejectedValue(new Error('some error'));
-    expect(async () => await repo.update(transferOrder)).rejects.toThrow(UnknownError);
+    await expect(async () => await repo.update(transferOrder)).rejects.toThrow(UnknownError);
   });
 
   test('should update one order', async () => {
@@ -135,7 +136,7 @@ describe('orders repo', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(undefined);
     await repo.update(expected);
-    expect(replaceOne).toHaveBeenCalledWith(QueryBuilder.equals('id', existing.id), expected);
+    expect(replaceOne).toHaveBeenCalledWith(QueryBuilder.id(existing.id), expected);
   });
 
   test('should throw CamsError error during createMany when dbAdapter throws error on insertMany', async () => {
@@ -143,7 +144,7 @@ describe('orders repo', () => {
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
       .mockRejectedValue(new Error('some value'));
-    expect(async () => await repo.createMany(newOrders)).rejects.toThrow(UnknownError);
+    await expect(async () => await repo.createMany(newOrders)).rejects.toThrow(UnknownError);
   });
 
   test('should return empty array when createMany is supplied with an empty array', async () => {

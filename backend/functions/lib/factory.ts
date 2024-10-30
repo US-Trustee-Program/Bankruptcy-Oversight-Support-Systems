@@ -41,8 +41,7 @@ import ConsolidationOrdersCosmosMongoDbRepository from './adapters/gateways/cons
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
 import { UserSessionCacheMongoRepository } from './adapters/gateways/user-session-cache.mongo.repository';
-import { CollectionHumble } from './humble-objects/mongo-humble';
-import { MongoCollectionAdapter } from './adapters/gateways/mongo/mongo-adapter';
+import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -98,7 +97,7 @@ export const getOfficesGateway = (applicationContext: ApplicationContext): Offic
 
 export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
   if (applicationContext.config.authConfig.provider === 'mock') {
-    return new MockMongoRepository();
+    return MockOfficesRepository;
   }
   return new OfficesCosmosMongoDbRepository(applicationContext);
 };
@@ -156,13 +155,6 @@ export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGate
   return OktaUserGroupGateway;
 };
 
-export const getDocumentCollectionAdapter = <T>(
-  moduleName: string,
-  collection: CollectionHumble<T>,
-) => {
-  return new MongoCollectionAdapter<T>(moduleName, collection);
-};
-
 export const Factory = {
   getAttorneyGateway,
   getCasesGateway,
@@ -182,5 +174,4 @@ export const Factory = {
   getUserSessionCacheRepository,
   getStorageGateway,
   getUserGroupGateway,
-  getDocumentCollectionAdapter,
 };

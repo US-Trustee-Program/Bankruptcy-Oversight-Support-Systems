@@ -24,7 +24,6 @@ export async function executeQuery(
     }
     const results = await sqlRequest.query(query);
 
-    // TODO : May want to refactor to just return results without the message and success
     const queryResult: QueryResults = {
       results,
       message: '',

@@ -1,17 +1,27 @@
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { closeDeferred } from '../../defer-close';
 import { CamsController } from '../controller';
+
+const MODULE_NAME = 'ME-CONTROLLER';
 
 export class MeController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CamsSession>> {
-    const response = httpSuccess({
-      body: {
-        data: context.session,
-      },
-    });
-    return response;
+    try {
+      const response = httpSuccess({
+        body: {
+          data: context.session,
+        },
+      });
+      return response;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await closeDeferred(context);
+    }
   }
 }

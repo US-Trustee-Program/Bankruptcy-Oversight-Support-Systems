@@ -10,7 +10,6 @@ import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
-// TODO: Do we want to lock this down further?
 const key = 'mock-secret'; //pragma: allowlist secret
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
