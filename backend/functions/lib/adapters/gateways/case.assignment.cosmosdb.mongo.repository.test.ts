@@ -81,7 +81,7 @@ describe('offices repo', () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
       jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
-      expect(async () => await repo.update(assignment)).rejects.toThrow(
+      await expect(async () => await repo.update(assignment)).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
@@ -93,7 +93,7 @@ describe('offices repo', () => {
     test('should call findAssignmentsByAssignee', async () => {
       const userId = 'userId-Joe Nobel';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-      expect(async () => await repo.findAssignmentsByAssignee(userId)).rejects.toThrow(
+      await expect(async () => await repo.findAssignmentsByAssignee(userId)).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
@@ -105,7 +105,7 @@ describe('offices repo', () => {
     test('should findAssignmentsByCaseId', async () => {
       const caseId = '111-22-33333';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-      expect(async () => await repo.findAssignmentsByCaseId(caseId)).rejects.toThrow(
+      await expect(async () => await repo.findAssignmentsByCaseId(caseId)).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',

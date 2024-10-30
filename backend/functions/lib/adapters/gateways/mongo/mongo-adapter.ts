@@ -6,7 +6,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { ConditionOrConjunction, Sort } from '../../../query/query-builder';
 import { DocumentCollectionAdapter } from '../document-collection.adapter';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
-import { ObjectId } from 'mongodb';
+import { randomUUID } from 'crypto';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -36,7 +36,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       const items: T[] = [];
       for await (const doc of results) {
-        items.push(toCamsItem<T>(doc as MongoItem<T>));
+        items.push(doc as CamsItem<T>);
       }
       return items;
     } catch (originalError) {
@@ -51,7 +51,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       if (!result) {
         throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
       }
-      return toCamsItem<T>(result);
+      return result;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -59,15 +59,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async replaceOne(query: ConditionOrConjunction, item: T, upsert: boolean = false) {
     const mongoQuery = toMongoQuery(query);
+    const mongoItem = createOrGetId<T>(item);
     try {
-      const result = await this.collectionHumble.replaceOne(
-        mongoQuery,
-        toMongoItem<T>(item),
-        upsert,
-      );
+      const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
       this.testAcknowledged(result);
 
-      return result.upsertedId.toString();
+      return result.upsertedId?.toString();
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -75,7 +72,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async insertOne(item: T) {
     try {
-      const result = await this.collectionHumble.insertOne(toMongoItem<T>(item));
+      const result = await this.collectionHumble.insertOne(createOrGetId<T>(item));
       this.testAcknowledged(result);
 
       return result.insertedId.toString();
@@ -86,7 +83,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async insertMany(items: T[]) {
     try {
-      const mongoItems = items.map((item) => toMongoItem<T>(item));
+      const mongoItems = items.map((item) => createOrGetId<T>(item));
       const result = await this.collectionHumble.insertMany(mongoItems);
       this.testAcknowledged(result);
       const insertedIds = Object.keys(result.insertedIds).map((insertedId) =>
@@ -156,30 +153,15 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 }
 
-function toMongoItem<T>(item: CamsItem<T>): MongoItem<T> {
-  const _id = new ObjectId(item.id);
+function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
   const mongoItem = {
+    id: randomUUID(),
     ...item,
-    _id,
   };
-  delete mongoItem.id;
   return mongoItem;
 }
 
-function toCamsItem<T>(item: MongoItem<T>): CamsItem<T> {
-  const id = item._id?.toString();
-  const camsItem = {
-    ...item,
-    id,
-  };
-  delete camsItem._id;
-  return camsItem;
-}
-
-type MongoItem<T> = T & {
-  _id?: unknown;
-};
-
 type CamsItem<T> = T & {
+  _id?: unknown;
   id?: string;
 };
