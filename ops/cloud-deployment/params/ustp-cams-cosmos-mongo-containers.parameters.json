@@ -21,8 +21,8 @@
         },
         {
           "name": "healthcheck",
-          "partitionKey1": "id",
-          "partitionKeys": ["/id"]
+          "partitionKey1": "healthcheckId",
+          "partitionKeys": ["/healthcheckId"]
         },
         {
           "name": "orders",
