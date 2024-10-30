@@ -62,7 +62,7 @@ module database './lib/cosmos/mongo/cosmos-database.bicep' = {
 }
 
 module collections './lib/cosmos/mongo/cosmos-collections.bicep' = {
-  name: '${accountName}-cosmos-containers-module'
+  name: '${accountName}-cosmos-collections-module'
   scope: resourceGroup(resourceGroupName)
   params: {
     accountName: accountName
