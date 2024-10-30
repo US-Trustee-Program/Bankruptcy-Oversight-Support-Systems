@@ -106,6 +106,7 @@ export default class CaseManagement {
     caseDetails.consolidation = await this.casesRepo.getConsolidation(caseId);
     caseDetails.assignments = await this.getCaseAssignments(applicationContext, caseDetails);
     caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
+    caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
     const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
     return { ...caseDetails, _actions };
