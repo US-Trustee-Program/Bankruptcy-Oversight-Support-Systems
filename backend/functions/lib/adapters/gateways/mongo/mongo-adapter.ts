@@ -6,6 +6,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { ConditionOrConjunction, Sort } from '../../../query/query-builder';
 import { DocumentCollectionAdapter } from '../document-collection.adapter';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
+import { ObjectId } from 'mongodb';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -156,7 +157,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 }
 
 function toMongoItem<T>(item: CamsItem<T>): MongoItem<T> {
-  const _id = item.id;
+  const _id = new ObjectId(item.id);
   const mongoItem = {
     ...item,
     _id,
