@@ -75,7 +75,7 @@ export default async function handler(
           status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         }),
       );
-  closeDeferred(applicationContext);
+  await closeDeferred(applicationContext);
   return result;
 }
 

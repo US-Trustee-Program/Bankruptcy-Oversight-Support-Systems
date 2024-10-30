@@ -8,7 +8,6 @@ import QueryBuilder from '../../query/query-builder';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { deferClose } from '../../defer-close';
 import { OfficesRepository } from '../../use-cases/gateways.types';
-import { getDocumentCollectionAdapter } from '../../factory';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 
 const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
@@ -23,24 +22,28 @@ export type OfficeStaff = CamsUserReference &
     ttl: number;
   };
 
-export class OfficesCosmosMongoDbRepository<T extends CamsUserReference = OfficeStaff>
-  implements OfficesRepository
-{
-  private dbAdapter: MongoCollectionAdapter<T>;
+export class OfficesCosmosMongoDbRepository implements OfficesRepository {
+  private readonly client: DocumentClient;
+  private readonly databaseName: string;
 
   constructor(context: ApplicationContext) {
     const { connectionString, databaseName } = context.config.documentDbConfig;
-    const client = new DocumentClient(connectionString);
-    this.dbAdapter = getDocumentCollectionAdapter<T>(
+    this.databaseName = databaseName;
+    this.client = new DocumentClient(connectionString);
+    deferClose(context, this.client);
+  }
+
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
       MODULE_NAME,
-      client.database(databaseName).collection(COLLECTION_NAME),
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
     );
-    deferClose(context, client);
   }
 
   async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {
     const ttl = 4500;
-
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
@@ -49,7 +52,7 @@ export class OfficesCosmosMongoDbRepository<T extends CamsUserReference = Office
       ttl,
     });
     try {
-      await this.dbAdapter.insertOne(staff);
+      await this.getAdapter<OfficeStaff>().insertOne(staff);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -65,7 +68,7 @@ export class OfficesCosmosMongoDbRepository<T extends CamsUserReference = Office
     );
 
     try {
-      const result = await this.dbAdapter.find(query);
+      const result = await this.getAdapter<AttorneyUser>().find(query);
       return result.map((doc) => getCamsUserReference(doc));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

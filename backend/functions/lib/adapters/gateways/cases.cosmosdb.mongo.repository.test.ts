@@ -9,6 +9,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
 import { CasesCosmosMongoDbRepository } from './cases.cosmosdb.mongo.repository';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import * as crypto from 'crypto';
 
 describe('Cases repository', () => {
   let repo: CasesCosmosMongoDbRepository;

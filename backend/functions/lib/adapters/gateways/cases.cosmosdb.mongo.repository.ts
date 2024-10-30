@@ -11,8 +11,8 @@ import { CaseHistory } from '../../../../../common/src/cams/history';
 import QueryBuilder from '../../query/query-builder';
 import { deferClose } from '../../defer-close';
 import { CasesRepository } from '../../use-cases/gateways.types';
-import { getDocumentCollectionAdapter } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
 const COLLECTION_NAME = 'cases';
@@ -30,10 +30,12 @@ export class CasesCosmosMongoDbRepository implements CasesRepository {
     deferClose(context, this.client);
   }
 
-  getAdapter<T>() {
-    return getDocumentCollectionAdapter<T>(
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
       MODULE_NAME,
-      this.client.database(this.databaseName).collection<T>(COLLECTION_NAME),
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
     );
   }
 

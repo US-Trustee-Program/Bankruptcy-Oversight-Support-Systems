@@ -10,7 +10,6 @@ import { deferClose } from '../../defer-close';
 import QueryBuilder from '../../query/query-builder';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
-import { getDocumentCollectionAdapter } from '../../factory';
 
 const MODULE_NAME = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
 const COLLECTION_NAME = 'runtime-state';
@@ -20,22 +19,30 @@ const { equals } = QueryBuilder;
 export class RuntimeStateCosmosMongoDbRepository<T extends RuntimeState>
   implements RuntimeStateRepository<T>
 {
-  private dbAdapter: MongoCollectionAdapter<T>;
+  private readonly client: DocumentClient;
+  private readonly databaseName: string;
 
   constructor(context: ApplicationContext) {
     const { connectionString, databaseName } = context.config.documentDbConfig;
-    const client = new DocumentClient(connectionString);
-    this.dbAdapter = getDocumentCollectionAdapter<T>(
+    this.databaseName = databaseName;
+    this.client = new DocumentClient(connectionString);
+    deferClose(context, this.client);
+  }
+
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
       MODULE_NAME,
-      client.database(databaseName).collection(COLLECTION_NAME),
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
     );
-    deferClose(context, client);
   }
 
   async read(id: RuntimeStateDocumentType): Promise<T> {
     const query = QueryBuilder.build(equals('documentType', id));
     try {
-      const state = await this.dbAdapter.find(query);
+      const adapter = this.getAdapter<T>();
+      const state = await adapter.find(query);
       if (state.length !== 1) {
         throw new CamsError(MODULE_NAME, {
           message: 'Initial state was not found or was ambiguous.',
@@ -47,10 +54,11 @@ export class RuntimeStateCosmosMongoDbRepository<T extends RuntimeState>
     }
   }
 
-  async upsert(data: RuntimeState): Promise<T> {
+  async upsert(data: T): Promise<T> {
     try {
       const query = QueryBuilder.build(equals('documentType', data.documentType));
-      const id = await this.dbAdapter.replaceOne(query, data, true);
+      const adapter = this.getAdapter<T>();
+      const id = await adapter.replaceOne(query, data, true);
       return { ...data, id } as T;
     } catch (e) {
       throw getCamsError(e, MODULE_NAME);

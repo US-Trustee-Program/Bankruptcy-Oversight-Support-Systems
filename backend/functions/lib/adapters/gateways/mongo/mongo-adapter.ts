@@ -1,6 +1,6 @@
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { CollectionHumble } from '../../../humble-objects/mongo-humble';
+import { CollectionHumble, DocumentClient } from '../../../humble-objects/mongo-humble';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ConditionOrConjunction, Sort } from '../../../query/query-builder';
@@ -35,7 +35,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       const items: T[] = [];
       for await (const doc of results) {
-        items.push(doc as T);
+        items.push(toCamsItem<T>(doc as MongoItem<T>));
       }
       return items;
     } catch (originalError) {
@@ -50,16 +50,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       if (!result) {
         throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
       }
-      return result;
+      return toCamsItem<T>(result);
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
   }
 
-  public async replaceOne(query: ConditionOrConjunction, item: unknown, upsert: boolean = false) {
+  public async replaceOne(query: ConditionOrConjunction, item: T, upsert: boolean = false) {
     const mongoQuery = toMongoQuery(query);
     try {
-      const result = await this.collectionHumble.replaceOne(mongoQuery, item, upsert);
+      const result = await this.collectionHumble.replaceOne(
+        mongoQuery,
+        toMongoItem<T>(item),
+        upsert,
+      );
       this.testAcknowledged(result);
 
       return result.upsertedId.toString();
@@ -68,9 +72,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async insertOne(item: unknown) {
+  public async insertOne(item: T) {
     try {
-      const result = await this.collectionHumble.insertOne(item);
+      const result = await this.collectionHumble.insertOne(toMongoItem<T>(item));
       this.testAcknowledged(result);
 
       return result.insertedId.toString();
@@ -79,12 +83,14 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async insertMany(items: unknown[]) {
+  public async insertMany(items: T[]) {
     try {
-      const result = await this.collectionHumble.insertMany(items);
-      // TODO: Is this mapping correct? Are we returning string representations of inserted object IDs?
+      const mongoItems = items.map((item) => toMongoItem<T>(item));
+      const result = await this.collectionHumble.insertMany(mongoItems);
       this.testAcknowledged(result);
-      const insertedIds = Object.keys(result.insertedIds).map((item) => item.toString());
+      const insertedIds = Object.keys(result.insertedIds).map((insertedId) =>
+        insertedId.toString(),
+      );
       if (insertedIds.length !== items.length) {
         throw new CamsError(this.moduleName, {
           message: 'Not all items inserted',
@@ -135,4 +141,44 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       throw getCamsError(originalError, this.moduleName);
     }
   }
+
+  public static newAdapter<T>(
+    moduleName: string,
+    collection: string,
+    database: string,
+    client: DocumentClient,
+  ) {
+    return new MongoCollectionAdapter<T>(
+      moduleName,
+      client.database(database).collection<T>(collection),
+    );
+  }
 }
+
+function toMongoItem<T>(item: CamsItem<T>): MongoItem<T> {
+  const _id = item.id;
+  const mongoItem = {
+    ...item,
+    _id,
+  };
+  delete mongoItem.id;
+  return mongoItem;
+}
+
+function toCamsItem<T>(item: MongoItem<T>): CamsItem<T> {
+  const id = item._id?.toString();
+  const camsItem = {
+    ...item,
+    id,
+  };
+  delete camsItem._id;
+  return camsItem;
+}
+
+type MongoItem<T> = T & {
+  _id?: unknown;
+};
+
+type CamsItem<T> = T & {
+  id?: string;
+};

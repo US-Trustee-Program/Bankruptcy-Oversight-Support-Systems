@@ -7,13 +7,12 @@ import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { DocumentClient } from '../../humble-objects/mongo-humble';
-import { getDocumentCollectionAdapter } from '../../factory';
 import QueryBuilder from '../../query/query-builder';
 import { deferClose } from '../../defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME: string = 'USER_SESSION_CACHE_MONGO_REPOSITORY';
-const CONTAINER_NAME: string = 'user-session-cache';
+const COLLECTION_NAME: string = 'user-session-cache';
 
 const { equals } = QueryBuilder;
 
@@ -24,16 +23,23 @@ export type CachedCamsSession = CamsSession & {
 };
 
 export class UserSessionCacheMongoRepository implements UserSessionCacheRepository {
-  private dbAdapter: MongoCollectionAdapter<CachedCamsSession>;
+  private readonly client: DocumentClient;
+  private readonly databaseName: string;
 
   constructor(context: ApplicationContext) {
     const { connectionString, databaseName } = context.config.documentDbConfig;
-    const client = new DocumentClient(connectionString);
-    this.dbAdapter = getDocumentCollectionAdapter<CachedCamsSession>(
+    this.databaseName = databaseName;
+    this.client = new DocumentClient(connectionString);
+    deferClose(context, this.client);
+  }
+
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
       MODULE_NAME,
-      client.database(databaseName).collection(CONTAINER_NAME),
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
     );
-    deferClose(context, client);
   }
 
   public async read(token: string): Promise<CamsSession> {
@@ -45,7 +51,8 @@ export class UserSessionCacheMongoRepository implements UserSessionCacheReposito
     const query = QueryBuilder.build(equals('signature', signature));
 
     try {
-      const cached = await this.dbAdapter.find(query);
+      const adapter = this.getAdapter<CachedCamsSession>();
+      const cached = await adapter.find(query);
       if (cached.length !== 1) {
         throw new CamsError(MODULE_NAME, {
           message: 'Session not found or is ambiguous.',
@@ -77,7 +84,8 @@ export class UserSessionCacheMongoRepository implements UserSessionCacheReposito
         signature,
         ttl,
       };
-      await this.dbAdapter.replaceOne(query, cached);
+      const adapter = this.getAdapter<CachedCamsSession>();
+      await adapter.replaceOne(query, cached);
       return session;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

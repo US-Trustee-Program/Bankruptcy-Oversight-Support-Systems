@@ -19,10 +19,6 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 
-export interface RepositoryResource {
-  id?: string;
-}
-
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
 }
@@ -51,10 +47,6 @@ interface Searches<P, R> {
   search(predicate?: P): Promise<R[]>;
 }
 
-///////////////////////
-// Composite interfaces from Atoms
-///////////////////////
-
 export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
   extends Searches<OrdersSearchPredicate, T>,
     Creates<T, T>,
@@ -80,9 +72,6 @@ export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   extends Reads<T>,
     Upserts<T, T> {}
 
-///////////////////////
-// TODO Refactor below this line
-///////////////////////
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
 }

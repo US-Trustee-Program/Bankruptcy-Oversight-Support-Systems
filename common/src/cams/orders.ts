@@ -55,7 +55,7 @@ export function isConsolidationOrderApproval(
   );
 }
 
-// TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
+// TODO: TransferOrder needs to NOT extend CaseSummary!! However this is currently mapped from a flat SQL query response from DXTR.
 export type TransferOrder = CaseSummary & {
   id: string;
   orderType: 'transfer';
@@ -169,14 +169,14 @@ type TransferOrderActionApproval = {
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
 
-type OrderActionRejection<T = TransferOrder> = {
+export type OrderActionRejection<T = TransferOrder> = {
   id: string;
   status: 'rejected';
   reason?: string;
   order: T;
 };
 
-type OrderActionApproval<T = TransferOrder> = {
+export type OrderActionApproval<T = TransferOrder> = {
   id: string;
   status: 'approved';
   order: T;

@@ -10,6 +10,7 @@ import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -114,7 +115,7 @@ describe('offices use case tests', () => {
         },
       );
 
-    const putSpy = jest.spyOn(MockMongoRepository.prototype, 'putOfficeStaff').mockResolvedValue();
+    const putSpy = jest.spyOn(MockOfficesRepository, 'putOfficeStaff').mockResolvedValue();
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
 
     const useCase = new OfficesUseCase();
