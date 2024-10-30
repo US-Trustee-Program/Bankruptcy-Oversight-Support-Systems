@@ -10,6 +10,11 @@ dotenv.config();
 const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
 const COLLECTION_NAME = 'healthcheck';
 
+type HealthCheckDocument = {
+  id: string;
+  healtchCheckId: string;
+};
+
 export default class HealthcheckCosmosDb {
   private readonly client: DocumentClient;
   private readonly databaseName: string;
@@ -22,6 +27,7 @@ export default class HealthcheckCosmosDb {
     this.client = new DocumentClient(connectionString);
     deferClose(context, this.client);
   }
+
   private getAdapter<T>() {
     return MongoCollectionAdapter.newAdapter<T>(
       MODULE_NAME,
@@ -52,8 +58,12 @@ export default class HealthcheckCosmosDb {
   }
 
   public async checkDbWrite() {
+    const healthCheckDocument: HealthCheckDocument = {
+      id: 'test-id',
+      healtchCheckId: 'arbitrary-id',
+    };
     try {
-      const resource = await this.getAdapter().insertOne({ id: 'test' });
+      const resource = await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
       this.context.logger.debug(MODULE_NAME, `New item created ${resource}`);
       return !!resource;
     } catch (e) {
@@ -74,7 +84,7 @@ export default class HealthcheckCosmosDb {
 
       if (items.length > 0) {
         for (const resource of items) {
-          this.context.logger.debug(MODULE_NAME, `Invoking delete on item ${resource._id}`);
+          this.context.logger.debug(MODULE_NAME, `Invoking delete on item ${resource.id}`);
 
           await this.getAdapter().deleteOne(QueryBuilder.build(id(resource.id)));
         }
