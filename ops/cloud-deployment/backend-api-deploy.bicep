@@ -291,17 +291,9 @@ var applicationSettings = concat(
       value: '-70'
     }
     {
-      name: 'COSMOS_ENDPOINT'
-      value: 'https://${cosmosAccountName}.documents.azure.us:443/'
-    }
-    {
       name: 'COSMOS_DATABASE_NAME'
       value: cosmosDatabaseName
     }
-    // {
-    //   name: 'COSMOS_MANAGED_IDENTITY'
-    //   value: cosmosClientId
-    // }
     {
       name: 'MONGO_CONNECTION_STRING'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
