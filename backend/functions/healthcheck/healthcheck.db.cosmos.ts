@@ -44,7 +44,7 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbRead() {
     try {
-      const result = await this.getAdapter().find(null);
+      const result = await this.getAdapter<HealthCheckDocument>().find(null);
 
       const items = [];
       for await (const doc of result) {
@@ -59,7 +59,7 @@ export default class HealthcheckCosmosDb {
 
   public async checkDbWrite() {
     const healthCheckDocument: HealthCheckDocument = {
-      id: 'test-id',
+      id: 'main-id',
       healtchCheckId: 'arbitrary-id',
     };
     try {
@@ -73,7 +73,7 @@ export default class HealthcheckCosmosDb {
   }
 
   public async checkDbDelete() {
-    const { id } = QueryBuilder;
+    const { equals } = QueryBuilder;
     try {
       const result = await this.getAdapter().find(null);
 
@@ -86,7 +86,14 @@ export default class HealthcheckCosmosDb {
         for (const resource of items) {
           this.context.logger.debug(MODULE_NAME, `Invoking delete on item ${resource.id}`);
 
-          await this.getAdapter().deleteOne(QueryBuilder.build(id(resource.id)));
+          await this.getAdapter().deleteOne(
+            QueryBuilder.build(
+              equals<HealthCheckDocument['healtchCheckId']>(
+                'healthCheckId',
+                resource.healthCheckId,
+              ),
+            ),
+          );
         }
       }
       return true;
