@@ -64,7 +64,7 @@ describe('offices repo', () => {
   describe('handle errors', () => {
     const error = new Error('some error');
 
-    test('should create assignment', async () => {
+    test('should handle error on create assignment', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
@@ -90,7 +90,7 @@ describe('offices repo', () => {
       );
     });
 
-    test('should call findAssignmentsByAssignee', async () => {
+    test('should handle error on findAssignmentsByAssignee', async () => {
       const userId = 'userId-Joe Nobel';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(async () => await repo.findAssignmentsByAssignee(userId)).rejects.toThrow(
@@ -102,7 +102,7 @@ describe('offices repo', () => {
       );
     });
 
-    test('should findAssignmentsByCaseId', async () => {
+    test('should handle error on findAssignmentsByCaseId', async () => {
       const caseId = '111-22-33333';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(async () => await repo.findAssignmentsByCaseId(caseId)).rejects.toThrow(
