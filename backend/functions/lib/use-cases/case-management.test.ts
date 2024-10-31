@@ -242,11 +242,13 @@ describe('Case management tests', () => {
           path: `/case-assignments/${bCase.caseId}`,
         },
       ];
+      const builtOfficeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
 
       const expected = {
         ...bCase,
         officeName,
         _actions,
+        officeCode: builtOfficeCode,
         transfers: mockTransfers,
         consolidation: mockConsolidations,
       };
