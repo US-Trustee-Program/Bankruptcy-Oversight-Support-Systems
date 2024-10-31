@@ -14,7 +14,7 @@ export class CollectionHumble<T> {
   }
 
   public async findOne<T>(query: DocumentQuery): Promise<T | null> {
-    return await this.collection.findOne<T>(transformQuery(query));
+    return this.collection.findOne<T>(transformQuery(query));
   }
 
   public async insertOne(item) {

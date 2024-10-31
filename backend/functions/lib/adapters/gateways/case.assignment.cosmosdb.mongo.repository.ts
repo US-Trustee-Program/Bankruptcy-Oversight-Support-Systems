@@ -42,8 +42,6 @@ export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepo
 
   async update(caseAssignment: CaseAssignment): Promise<string> {
     const query = equals<CaseAssignment['id']>('id', caseAssignment.id);
-
-    // TODO: This is where the attorney assignment goes BOOM.
     try {
       return await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
     } catch (originalError) {
