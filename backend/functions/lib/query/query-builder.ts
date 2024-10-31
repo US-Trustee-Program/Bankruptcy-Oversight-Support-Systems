@@ -9,8 +9,7 @@ export type Condition = {
     | 'NOT_EQUAL'
     | 'NOT_CONTAINS'
     | 'EXISTS'
-    | 'REGEX'
-    | 'ID';
+    | 'REGEX';
   attributeName: string;
   value: unknown;
 };
@@ -52,14 +51,6 @@ function not(...values: ConditionOrConjunction[]): Conjunction {
   return {
     conjunction: 'NOT',
     values,
-  };
-}
-
-function id(value: string): Condition {
-  return {
-    condition: 'ID',
-    attributeName: 'id',
-    value,
   };
 }
 
@@ -164,7 +155,6 @@ const QueryBuilder = {
   exists,
   greaterThan,
   greaterThanOrEqual,
-  id,
   lessThan,
   lessThanOrEqual,
   notEqual,

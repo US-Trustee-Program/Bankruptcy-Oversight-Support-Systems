@@ -136,7 +136,7 @@ describe('orders repo', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(undefined);
     await repo.update(expected);
-    expect(replaceOne).toHaveBeenCalledWith(QueryBuilder.id(existing.id), expected);
+    expect(replaceOne).toHaveBeenCalledWith(QueryBuilder.equals('id', existing.id), expected);
   });
 
   test('should throw CamsError error during createMany when dbAdapter throws error on insertMany', async () => {

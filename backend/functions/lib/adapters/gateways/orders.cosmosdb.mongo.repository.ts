@@ -12,7 +12,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
-const { contains, equals, id, orderBy } = QueryBuilder;
+const { contains, equals, orderBy } = QueryBuilder;
 
 export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   private readonly client: DocumentClient;
@@ -51,7 +51,7 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
 
   async read(id: string): Promise<Order> {
     try {
-      const query = QueryBuilder.build(equals<string>('_id', id));
+      const query = QueryBuilder.build(equals<string>('id', id));
       const result = await this.getAdapter<Order>().findOne(query);
       return result as Order;
     } catch (originalError) {
@@ -60,7 +60,7 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   }
 
   async update(data: TransferOrderAction) {
-    const query = QueryBuilder.build(id(data.id));
+    const query = QueryBuilder.build(equals<string>('id', data.id));
     try {
       const adapter = this.getAdapter<TransferOrder>();
       const { docketSuggestedCaseNumber: _docketSuggestedCaseNumber, ...existingOrder } =

@@ -72,7 +72,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async insertOne(item: T) {
     try {
-      const result = await this.collectionHumble.insertOne(createOrGetId<T>(item));
+      const cleanItem = removeIds(item);
+      const result = await this.collectionHumble.insertOne(createOrGetId<T>(cleanItem));
       this.testAcknowledged(result);
 
       return result.insertedId.toString();
@@ -83,7 +84,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async insertMany(items: T[]) {
     try {
-      const mongoItems = items.map((item) => createOrGetId<T>(item));
+      const mongoItems = items.map((item) => {
+        const cleanItem = removeIds(item);
+        createOrGetId<T>(cleanItem);
+      });
       const result = await this.collectionHumble.insertMany(mongoItems);
       this.testAcknowledged(result);
       const insertedIds = Object.keys(result.insertedIds).map((insertedId) =>
@@ -159,6 +163,13 @@ function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
     ...item,
   };
   return mongoItem;
+}
+
+function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
+  const cleanItem = { ...item };
+  delete cleanItem?._id;
+  delete cleanItem?.id;
+  return cleanItem;
 }
 
 type CamsItem<T> = T & {

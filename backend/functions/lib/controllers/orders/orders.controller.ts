@@ -159,7 +159,6 @@ export class OrdersController implements CamsController, CamsTimerController {
     id: string,
     data: TransferOrderAction,
   ): Promise<UpdateOrderResponse> {
-    // TODO: Need to sanitize id and data.
     try {
       const bodyId = data['id'];
       const orderType = data['orderType'];

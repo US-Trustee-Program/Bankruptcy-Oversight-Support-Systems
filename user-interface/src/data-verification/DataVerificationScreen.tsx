@@ -18,7 +18,7 @@ import {
 } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
-import { sortDates } from '@/lib/utils/datetime';
+import { sortByDate } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
@@ -161,7 +161,7 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
-    .sort((a, b) => sortDates(a.orderDate, b.orderDate))
+    .sort((a, b) => sortByDate(a.orderDate, b.orderDate))
     .map((order) => {
       const isHidden =
         !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);

@@ -278,7 +278,6 @@ export class OrdersUseCase {
     return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
 
-  // TODO: Revisit whether the after state is actually what we want
   private async buildHistory(
     context: ApplicationContext,
     bCase: CaseSummary,
