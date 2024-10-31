@@ -29,7 +29,7 @@ export async function closeDeferred(accumulator: unknown): Promise<boolean> {
     for (const closable of accumulator.closables) {
       try {
         await closable.close();
-      } catch (e) {
+      } catch {
         success = false;
       }
     }
