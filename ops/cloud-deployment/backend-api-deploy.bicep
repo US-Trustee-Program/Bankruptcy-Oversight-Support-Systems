@@ -100,8 +100,6 @@ param allowVeracodeScan bool = false
 @secure()
 param idKeyvaultAppConfiguration string
 
-param cosmosAccountName string
-
 param cosmosDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
