@@ -118,7 +118,6 @@ param camsReactSelectHash string
 
 param cosmosDatabaseName string
 
-param cosmosAccountName string
 
 //TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
@@ -216,7 +215,6 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
-      cosmosAccountName: cosmosAccountName
       cosmosDatabaseName: cosmosDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
