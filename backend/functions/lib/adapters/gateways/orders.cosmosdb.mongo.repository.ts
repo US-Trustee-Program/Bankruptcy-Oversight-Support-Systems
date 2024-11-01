@@ -1,37 +1,20 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { Order, TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
-import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { ApplicationContext } from '../types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrdersRepository } from '../../use-cases/gateways.types';
 import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
-import { deferClose } from '../../defer-close';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { BaseMongoRepository } from './mongo/base-mongo-repository';
 
 const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
 const { contains, equals, orderBy } = QueryBuilder;
 
-export class OrdersCosmosDbMongoRepository implements OrdersRepository {
-  private readonly client: DocumentClient;
-  private readonly databaseName: string;
-
+export class OrdersCosmosDbMongoRepository extends BaseMongoRepository implements OrdersRepository {
   constructor(context: ApplicationContext) {
-    const { connectionString, databaseName } = context.config.documentDbConfig;
-    this.databaseName = databaseName;
-    this.client = new DocumentClient(connectionString);
-    deferClose(context, this.client);
-  }
-
-  private getAdapter<T>() {
-    return MongoCollectionAdapter.newAdapter<T>(
-      MODULE_NAME,
-      COLLECTION_NAME,
-      this.databaseName,
-      this.client,
-    );
+    super(context, MODULE_NAME, COLLECTION_NAME);
   }
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
@@ -52,8 +35,7 @@ export class OrdersCosmosDbMongoRepository implements OrdersRepository {
   async read(id: string): Promise<Order> {
     try {
       const query = QueryBuilder.build(equals<string>('id', id));
-      const result = await this.getAdapter<Order>().findOne(query);
-      return result as Order;
+      return await this.getAdapter<Order>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

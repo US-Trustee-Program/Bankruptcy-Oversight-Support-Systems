@@ -161,7 +161,6 @@ describe('Orders use case', () => {
       );
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
-    // expect(mockGetConsolidation).toHaveBeenCalledTimes(approval.childCases.length + 1); // +1 from CaseAssignment use case.
     expect(mockDelete).toHaveBeenCalled();
     expect(mockPut).toHaveBeenCalled();
     expect(mockCreateHistory.mock.calls[0][0]).toEqual(
@@ -174,8 +173,7 @@ describe('Orders use case', () => {
       expect.objectContaining({
         caseId: originalConsolidation.childCases[0].caseId,
         documentType: 'AUDIT_ASSIGNMENT',
-        // TODO: Are we concerned about the contents of updatedBy?
-        //updatedBy: SYSTEM_USER_REFERENCE,
+        updatedBy: expect.anything(),
         before: [],
         after: [],
       }),

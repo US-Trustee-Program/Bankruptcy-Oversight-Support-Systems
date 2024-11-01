@@ -1,5 +1,4 @@
 import { Collection, Db, MongoClient } from 'mongodb';
-import { DocumentQuery, transformQuery } from '../adapters/gateways/document-db.repository';
 import { Closable } from '../defer-close';
 
 export class CollectionHumble<T> {
@@ -10,11 +9,11 @@ export class CollectionHumble<T> {
   }
 
   public async find(query: DocumentQuery) {
-    return this.collection.find(transformQuery(query));
+    return this.collection.find(query);
   }
 
   public async findOne<T>(query: DocumentQuery): Promise<T | null> {
-    return this.collection.findOne<T>(transformQuery(query));
+    return this.collection.findOne<T>(query);
   }
 
   public async insertOne(item) {
@@ -26,19 +25,19 @@ export class CollectionHumble<T> {
   }
 
   public async replaceOne(query: DocumentQuery, item, upsert: boolean = false) {
-    return this.collection.replaceOne(transformQuery(query), item, { upsert });
+    return this.collection.replaceOne(query, item, { upsert });
   }
 
   public async deleteOne(query: DocumentQuery) {
-    return this.collection.deleteOne(transformQuery(query));
+    return this.collection.deleteOne(query);
   }
 
   public async deleteMany(query: DocumentQuery) {
-    return this.collection.deleteMany(transformQuery(query));
+    return this.collection.deleteMany(query);
   }
 
   public async countDocuments(query: DocumentQuery) {
-    return this.collection.countDocuments(transformQuery(query));
+    return this.collection.countDocuments(query);
   }
 }
 
@@ -69,3 +68,21 @@ export class DocumentClient implements Closable {
     await this.client.close();
   }
 }
+
+export type Filter = {
+  [key: string]: unknown;
+  $where?: undefined;
+  $lookup?: undefined;
+};
+
+//TODO: Why is this boolean operation required to have this function?
+export type BooleanOperation = {
+  and?: Filter[];
+  or?: Filter[];
+  $where?: undefined;
+  $lookup?: undefined;
+};
+
+export type DocumentQuery = BooleanOperation & {
+  [key: string]: Filter | Filter[] | BooleanOperation;
+};

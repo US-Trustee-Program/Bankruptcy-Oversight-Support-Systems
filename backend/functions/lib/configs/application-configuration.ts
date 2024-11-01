@@ -11,7 +11,6 @@ export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
-  public readonly cosmosConfig: DocumentDbConfig;
   public readonly documentDbConfig: DocumentDbConfig;
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
@@ -21,7 +20,7 @@ export class ApplicationConfiguration {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
-    this.documentDbConfig = this.getCosmosConfig();
+    this.documentDbConfig = this.getDocumentDbConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
     this.userGroupGatewayConfig = getUserGroupGatewayConfig();
@@ -79,10 +78,8 @@ export class ApplicationConfiguration {
     return config;
   }
 
-  private getCosmosConfig(): DocumentDbConfig {
+  private getDocumentDbConfig(): DocumentDbConfig {
     return {
-      endpoint: process.env.COSMOS_ENDPOINT,
-      managedIdentity: process.env.COSMOS_MANAGED_IDENTITY,
       databaseName: process.env.COSMOS_DATABASE_NAME,
       connectionString: process.env.MONGO_CONNECTION_STRING,
     };

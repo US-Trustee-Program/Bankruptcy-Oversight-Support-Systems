@@ -1,35 +1,21 @@
 import { ApplicationContext } from '../types/basic';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
-import { DocumentClient } from '../../humble-objects/mongo-humble';
 import QueryBuilder from '../../query/query-builder';
-import { deferClose } from '../../defer-close';
 import { CaseAssignmentRepository } from '../../use-cases/gateways.types';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { BaseMongoRepository } from './mongo/base-mongo-repository';
 
 const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
 const { and, equals, exists } = QueryBuilder;
 
-export class CaseAssignmentCosmosMongoDbRepository implements CaseAssignmentRepository {
-  private readonly client: DocumentClient;
-  private readonly databaseName: string;
-
+export class CaseAssignmentCosmosMongoDbRepository
+  extends BaseMongoRepository
+  implements CaseAssignmentRepository
+{
   constructor(context: ApplicationContext) {
-    const { connectionString, databaseName } = context.config.documentDbConfig;
-    this.databaseName = databaseName;
-    this.client = new DocumentClient(connectionString);
-    deferClose(context, this.client);
-  }
-
-  private getAdapter<T>() {
-    return MongoCollectionAdapter.newAdapter<T>(
-      MODULE_NAME,
-      COLLECTION_NAME,
-      this.databaseName,
-      this.client,
-    );
+    super(context, MODULE_NAME, COLLECTION_NAME);
   }
 
   async create(caseAssignment: CaseAssignment): Promise<string> {

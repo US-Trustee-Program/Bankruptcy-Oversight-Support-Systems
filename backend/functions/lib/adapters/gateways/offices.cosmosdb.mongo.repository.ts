@@ -1,14 +1,12 @@
 import { ApplicationContext } from '../types/basic';
 import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { DocumentClient } from '../../humble-objects/mongo-humble';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../query/query-builder';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { deferClose } from '../../defer-close';
 import { OfficesRepository } from '../../use-cases/gateways.types';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { BaseMongoRepository } from './mongo/base-mongo-repository';
 
 const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
 const COLLECTION_NAME = 'offices';
@@ -22,24 +20,12 @@ export type OfficeStaff = CamsUserReference &
     ttl: number;
   };
 
-export class OfficesCosmosMongoDbRepository implements OfficesRepository {
-  private readonly client: DocumentClient;
-  private readonly databaseName: string;
-
+export class OfficesCosmosMongoDbRepository
+  extends BaseMongoRepository
+  implements OfficesRepository
+{
   constructor(context: ApplicationContext) {
-    const { connectionString, databaseName } = context.config.documentDbConfig;
-    this.databaseName = databaseName;
-    this.client = new DocumentClient(connectionString);
-    deferClose(context, this.client);
-  }
-
-  private getAdapter<T>() {
-    return MongoCollectionAdapter.newAdapter<T>(
-      MODULE_NAME,
-      COLLECTION_NAME,
-      this.databaseName,
-      this.client,
-    );
+    super(context, MODULE_NAME, COLLECTION_NAME);
   }
 
   async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {

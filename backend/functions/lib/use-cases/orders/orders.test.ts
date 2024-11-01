@@ -12,7 +12,6 @@ import {
   getConsolidationOrdersRepository,
 } from '../../factory';
 import { OrderSyncState } from '../gateways.types';
-import { CamsError } from '../../common-errors/cams-error';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -209,9 +208,6 @@ describe('Orders use case', () => {
     const mockPutOrders = jest
       .spyOn(MockMongoRepository.prototype, 'createMany')
       .mockResolvedValue([...transfers, ...consolidations]);
-    // .mockImplementation((orders) => {
-    //   return Promise.resolve(orders);
-    // });
 
     const caseSummaries: Array<CaseSummary> = [
       consolidations[0].leadCase,
@@ -277,11 +273,9 @@ describe('Orders use case', () => {
     const txId = '1234';
     const initialState: OrderSyncState = { documentType: 'ORDERS_SYNC_STATE', txId };
 
-    const mockGetState = jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
-        message: 'Initial state was not found or was ambiguous.',
-      }),
-    );
+    const mockGetState = jest
+      .spyOn(MockMongoRepository.prototype, 'read')
+      .mockRejectedValue(new NotFoundError('COSMOS_DB_REPOSITORY_RUNTIME_STATE'));
     jest.spyOn(casesRepo, 'createCaseHistory').mockResolvedValue({});
 
     const endState = {
@@ -318,11 +312,9 @@ describe('Orders use case', () => {
   });
 
   test('should throw an error with a missing order runtime state and no starting transaction ID is provided', async () => {
-    const mockGetState = jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
-      new CamsError('COSMOS_DB_REPOSITORY_RUNTIME_STATE', {
-        message: 'Initial state was not found or was ambiguous.',
-      }),
-    );
+    const mockGetState = jest
+      .spyOn(MockMongoRepository.prototype, 'read')
+      .mockRejectedValue(new NotFoundError('COSMOS_DB_REPOSITORY_RUNTIME_STATE'));
 
     await expect(useCase.syncOrders(mockContext)).rejects.toThrow(
       'A transaction ID is required to seed the order sync run. Aborting.',

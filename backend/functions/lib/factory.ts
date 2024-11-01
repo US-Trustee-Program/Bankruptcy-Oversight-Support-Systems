@@ -17,13 +17,13 @@ import {
   OrdersRepository,
   RuntimeState,
   RuntimeStateRepository,
+  UserSessionCacheRepository,
 } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
 import OktaGateway from './adapters/gateways/okta/okta-gateway';
-import { UserSessionCacheRepository } from './adapters/gateways/user-session-cache.repository';
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
 import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
 import { StorageGateway } from './adapters/types/storage';

@@ -1,13 +1,11 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
-import { deferClose } from '../../defer-close';
-import { DocumentClient } from '../../humble-objects/mongo-humble';
 import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../use-cases/gateways.types';
 import { ApplicationContext } from '../types/basic';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsDocument } from '../../../../../common/src/cams/document';
+import { BaseMongoRepository } from './mongo/base-mongo-repository';
 
 const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
 const COLLECTION_NAME = 'consolidations';
@@ -15,26 +13,13 @@ const COLLECTION_NAME = 'consolidations';
 const { and, contains, equals, orderBy } = QueryBuilder;
 
 export default class ConsolidationOrdersCosmosMongoDbRepository<
-  T extends CamsDocument = ConsolidationOrder,
-> implements ConsolidationOrdersRepository<T>
+    T extends CamsDocument = ConsolidationOrder,
+  >
+  extends BaseMongoRepository
+  implements ConsolidationOrdersRepository<T>
 {
-  private readonly client: DocumentClient;
-  private readonly databaseName: string;
-
   constructor(context: ApplicationContext) {
-    const { connectionString, databaseName } = context.config.documentDbConfig;
-    this.databaseName = databaseName;
-    this.client = new DocumentClient(connectionString);
-    deferClose(context, this.client);
-  }
-
-  private getAdapter<T>() {
-    return MongoCollectionAdapter.newAdapter<T>(
-      MODULE_NAME,
-      COLLECTION_NAME,
-      this.databaseName,
-      this.client,
-    );
+    super(context, MODULE_NAME, COLLECTION_NAME);
   }
 
   async read(id: string): Promise<T> {

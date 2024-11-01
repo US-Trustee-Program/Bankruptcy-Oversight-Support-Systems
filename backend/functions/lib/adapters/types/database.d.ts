@@ -43,8 +43,6 @@ export interface IDbConfig {
 }
 
 export interface DocumentDbConfig {
-  endpoint: string;
-  managedIdentity: string;
   databaseName: string;
   connectionString: string;
 }

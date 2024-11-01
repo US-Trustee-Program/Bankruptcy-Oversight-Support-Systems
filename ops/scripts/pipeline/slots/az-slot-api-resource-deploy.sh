@@ -111,7 +111,6 @@ az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --al
 echo "Assigning managed Identities..."
 # Identities occasionally come through with improper id for usage here, this constructs that
 kv_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$kv_id_name'].id" -o tsv)
-# cosmos_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$cosmos_id_name'].id" -o tsv)
 identities="$kv_ref_id"
 # In USTP we do not use managed ID for SQL, we might not have this
 if [[ ${sql_id_name} != null && ${sql_id_name} != '' ]]; then

@@ -10,9 +10,9 @@ dotenv.config();
 const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
 const COLLECTION_NAME = 'healthcheck';
 
-type HealthCheckDocument = {
+export type HealthCheckDocument = {
   id?: string;
-  healtchCheckId: string;
+  healthCheckId: string;
   documentType: 'HEALTH_CHECK';
 };
 
@@ -37,20 +37,31 @@ export default class HealthcheckCosmosDb {
       this.client,
     );
   }
+
   public dbConfig() {
     return {
       databaseName: this.databaseName,
     };
   }
 
-  public async checkDbRead() {
-    try {
-      const result = await this.getAdapter<HealthCheckDocument>().find(null);
+  public async checkDocumentDb() {
+    const status = {
+      cosmosDbWriteStatus: false,
+      cosmosDbReadStatus: undefined,
+      cosmosDbDeleteStatus: undefined,
+    };
 
-      const items = [];
-      for await (const doc of result) {
-        items.push(doc);
-      }
+    status.cosmosDbWriteStatus = await this.checkDbWrite();
+    status.cosmosDbReadStatus = await this.checkDbRead();
+    status.cosmosDbDeleteStatus = await this.checkDbDelete();
+
+    return status;
+  }
+
+  private async checkDbRead() {
+    try {
+      const items = await this.getAdapter<HealthCheckDocument>().getAll();
+
       return items.length > 0;
     } catch (e) {
       this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
@@ -58,30 +69,24 @@ export default class HealthcheckCosmosDb {
     return false;
   }
 
-  public async checkDbWrite() {
+  private async checkDbWrite() {
     const healthCheckDocument: HealthCheckDocument = {
-      healtchCheckId: 'arbitrary-id',
+      healthCheckId: 'arbitrary-id',
       documentType: 'HEALTH_CHECK',
     };
     try {
-      const resource = await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
-      this.context.logger.debug(MODULE_NAME, `New item created ${resource}`);
-      return !!resource;
+      await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
+      return true;
     } catch (e) {
       this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
 
-  public async checkDbDelete() {
+  private async checkDbDelete() {
     const { equals } = QueryBuilder;
     try {
-      const result = await this.getAdapter().find(null);
-
-      const items = [];
-      for await (const doc of result) {
-        items.push(doc);
-      }
+      const items = await this.getAdapter<HealthCheckDocument>().getAll();
 
       if (items.length > 0) {
         for (const resource of items) {
@@ -89,15 +94,12 @@ export default class HealthcheckCosmosDb {
 
           await this.getAdapter().deleteOne(
             QueryBuilder.build(
-              equals<HealthCheckDocument['healtchCheckId']>(
-                'healthCheckId',
-                resource.healthCheckId,
-              ),
+              equals<HealthCheckDocument['healthCheckId']>('healthCheckId', resource.healthCheckId),
             ),
           );
         }
+        return true;
       }
-      return true;
     } catch (e) {
       this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }

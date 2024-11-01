@@ -176,9 +176,6 @@ describe('Case Assignment Creation Tests', () => {
       params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
       body: testCaseAssignment,
     });
-    //jest
-    //  .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
-    //  .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
       .mockRejectedValue(new ForbiddenError('TEST_MODULE', { message: 'forbidden' }));
