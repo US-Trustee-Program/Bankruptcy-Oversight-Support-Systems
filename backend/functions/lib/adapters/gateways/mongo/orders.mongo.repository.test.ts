@@ -1,21 +1,21 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { OrdersCosmosDbMongoRepository } from './orders.cosmosdb.mongo.repository';
-import { ApplicationContext } from '../types/basic';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { TransferOrderAction } from '../../../../../common/src/cams/orders';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
-import QueryBuilder from '../../query/query-builder';
-import { closeDeferred } from '../../defer-close';
-import { UnknownError } from '../../common-errors/unknown-error';
-import { NotFoundError } from '../../common-errors/not-found-error';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { OrdersMongoRepository } from './orders.mongo.repository';
+import { ApplicationContext } from '../../types/basic';
+import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
+import { TransferOrderAction } from '../../../../../../common/src/cams/orders';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import QueryBuilder from '../../../query/query-builder';
+import { closeDeferred } from '../../../defer-close';
+import { UnknownError } from '../../../common-errors/unknown-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 describe('orders repo', () => {
   let context: ApplicationContext;
-  let repo: OrdersCosmosDbMongoRepository;
+  let repo: OrdersMongoRepository;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new OrdersCosmosDbMongoRepository(context);
+    repo = new OrdersMongoRepository(context);
     jest.clearAllMocks();
   });
 

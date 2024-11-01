@@ -1,20 +1,18 @@
-import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
-import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
-import { ConsolidationOrdersRepository } from '../../use-cases/gateways.types';
-import { ApplicationContext } from '../types/basic';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsDocument } from '../../../../../common/src/cams/document';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+import { OrdersSearchPredicate } from '../../../../../../common/src/api/search';
+import { ConsolidationOrder } from '../../../../../../common/src/cams/orders';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { CamsDocument } from '../../../../../../common/src/cams/document';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS';
+const MODULE_NAME: string = 'CONSOLIDATIONS_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
 
 const { and, contains, equals, orderBy } = QueryBuilder;
 
-export default class ConsolidationOrdersCosmosMongoDbRepository<
-    T extends CamsDocument = ConsolidationOrder,
-  >
+export default class ConsolidationOrdersMongoRepository<T extends CamsDocument = ConsolidationOrder>
   extends BaseMongoRepository
   implements ConsolidationOrdersRepository<T>
 {

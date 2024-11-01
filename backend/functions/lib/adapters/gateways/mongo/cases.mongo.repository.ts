@@ -4,20 +4,20 @@ import {
   Transfer,
   TransferFrom,
   TransferTo,
-} from '../../../../../common/src/cams/events';
-import { ApplicationContext } from '../types/basic';
-import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder from '../../query/query-builder';
-import { CasesRepository } from '../../use-cases/gateways.types';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+} from '../../../../../../common/src/cams/events';
+import { ApplicationContext } from '../../types/basic';
+import { CaseHistory } from '../../../../../../common/src/cams/history';
+import QueryBuilder from '../../../query/query-builder';
+import { CasesRepository } from '../../../use-cases/gateways.types';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME: string = 'COSMOS_DB_REPOSITORY_CASES';
+const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, equals, regex } = QueryBuilder;
 
-export class CasesCosmosMongoDbRepository extends BaseMongoRepository implements CasesRepository {
+export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
   }

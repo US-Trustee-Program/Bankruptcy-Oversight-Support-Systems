@@ -1,25 +1,25 @@
-import { OfficesCosmosMongoDbRepository, OfficeStaff } from './offices.cosmosdb.mongo.repository';
+import { OfficesMongoRepository, OfficeStaff } from './offices.mongo.repository';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
-} from '../../testing/testing-utilities';
-import { ApplicationContext } from '../types/basic';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import QueryBuilder from '../../query/query-builder';
-import { CamsRole } from '../../../../../common/src/cams/roles';
-import { closeDeferred } from '../../defer-close';
-import { createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { getCamsError } from '../../common-errors/error-utilities';
+} from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
+import QueryBuilder from '../../../query/query-builder';
+import { CamsRole } from '../../../../../../common/src/cams/roles';
+import { closeDeferred } from '../../../defer-close';
+import { createAuditRecord } from '../../../../../../common/src/cams/auditable';
+import { getCamsError } from '../../../common-errors/error-utilities';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
-  let repo: OfficesCosmosMongoDbRepository;
+  let repo: OfficesMongoRepository;
   const { and, equals, contains } = QueryBuilder;
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
-    repo = new OfficesCosmosMongoDbRepository(context);
+    repo = new OfficesMongoRepository(context);
   });
 
   afterEach(async () => {

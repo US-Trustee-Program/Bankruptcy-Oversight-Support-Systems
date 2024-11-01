@@ -1,19 +1,19 @@
-import { ApplicationContext } from '../types/basic';
+import { ApplicationContext } from '../../types/basic';
 import {
   RuntimeStateRepository,
   RuntimeState,
   RuntimeStateDocumentType,
-} from '../../use-cases/gateways.types';
-import QueryBuilder from '../../query/query-builder';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+} from '../../../use-cases/gateways.types';
+import QueryBuilder from '../../../query/query-builder';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME = 'COSMOS_DB_REPOSITORY_RUNTIME_STATE';
+const MODULE_NAME = 'RUNTIME_STATE_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';
 
 const { equals } = QueryBuilder;
 
-export class RuntimeStateCosmosMongoDbRepository<T extends RuntimeState>
+export class RuntimeStateMongoRepository<T extends RuntimeState>
   extends BaseMongoRepository
   implements RuntimeStateRepository<T>
 {

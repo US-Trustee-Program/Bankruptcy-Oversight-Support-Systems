@@ -1,11 +1,11 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { OrderSyncState } from '../../use-cases/gateways.types';
-import { ApplicationContext } from '../types/basic';
-import { RuntimeStateCosmosMongoDbRepository } from './runtime-state.cosmosdb.mongo.repository';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { OrderSyncState } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { RuntimeStateMongoRepository } from './runtime-state.mongo.repository';
 import * as crypto from 'crypto';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
-import { closeDeferred } from '../../defer-close';
-import { UnknownError } from '../../common-errors/unknown-error';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import { closeDeferred } from '../../../defer-close';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('Runtime State Repo', () => {
   const expected: OrderSyncState = {
@@ -14,10 +14,10 @@ describe('Runtime State Repo', () => {
     txId: '0',
   };
   let context: ApplicationContext;
-  let repo: RuntimeStateCosmosMongoDbRepository<OrderSyncState>;
+  let repo: RuntimeStateMongoRepository<OrderSyncState>;
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new RuntimeStateCosmosMongoDbRepository(context);
+    repo = new RuntimeStateMongoRepository(context);
     jest.clearAllMocks();
   });
 

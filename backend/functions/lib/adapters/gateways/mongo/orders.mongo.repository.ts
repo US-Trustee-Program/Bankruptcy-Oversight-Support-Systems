@@ -1,18 +1,22 @@
-import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
-import { Order, TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
-import { ApplicationContext } from '../types/basic';
-import { NotFoundError } from '../../common-errors/not-found-error';
-import { OrdersRepository } from '../../use-cases/gateways.types';
-import QueryBuilder, { ConditionOrConjunction } from '../../query/query-builder';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+import { OrdersSearchPredicate } from '../../../../../../common/src/api/search';
+import {
+  Order,
+  TransferOrder,
+  TransferOrderAction,
+} from '../../../../../../common/src/cams/orders';
+import { ApplicationContext } from '../../types/basic';
+import { NotFoundError } from '../../../common-errors/not-found-error';
+import { OrdersRepository } from '../../../use-cases/gateways.types';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME = 'ORDERS_DOCUMENT_REPOSITORY';
+const MODULE_NAME = 'ORDERS_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
 const { contains, equals, orderBy } = QueryBuilder;
 
-export class OrdersCosmosDbMongoRepository extends BaseMongoRepository implements OrdersRepository {
+export class OrdersMongoRepository extends BaseMongoRepository implements OrdersRepository {
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
   }

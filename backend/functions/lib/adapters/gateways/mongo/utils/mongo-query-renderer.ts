@@ -6,8 +6,8 @@ import {
   isCondition,
   isConjunction,
   Sort,
-} from '../../../query/query-builder';
-import { DocumentQuery } from '../../../humble-objects/mongo-humble';
+} from '../../../../query/query-builder';
+import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
 const isArray = Array.isArray;
 

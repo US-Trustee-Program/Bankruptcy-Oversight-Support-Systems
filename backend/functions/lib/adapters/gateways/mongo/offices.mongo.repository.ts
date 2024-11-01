@@ -1,14 +1,14 @@
-import { ApplicationContext } from '../types/basic';
-import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
-import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
-import { CamsRole } from '../../../../../common/src/cams/roles';
-import { getCamsUserReference } from '../../../../../common/src/cams/session';
-import QueryBuilder from '../../query/query-builder';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { OfficesRepository } from '../../use-cases/gateways.types';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+import { ApplicationContext } from '../../types/basic';
+import { AttorneyUser, CamsUserReference } from '../../../../../../common/src/cams/users';
+import { Auditable, createAuditRecord } from '../../../../../../common/src/cams/auditable';
+import { CamsRole } from '../../../../../../common/src/cams/roles';
+import { getCamsUserReference } from '../../../../../../common/src/cams/session';
+import QueryBuilder from '../../../query/query-builder';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { OfficesRepository } from '../../../use-cases/gateways.types';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME: string = 'COSMOS_MONGO_DB_REPOSITORY_OFFICES';
+const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
 
 const { and, equals, contains } = QueryBuilder;
@@ -20,10 +20,7 @@ export type OfficeStaff = CamsUserReference &
     ttl: number;
   };
 
-export class OfficesCosmosMongoDbRepository
-  extends BaseMongoRepository
-  implements OfficesRepository
-{
+export class OfficesMongoRepository extends BaseMongoRepository implements OfficesRepository {
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
   }

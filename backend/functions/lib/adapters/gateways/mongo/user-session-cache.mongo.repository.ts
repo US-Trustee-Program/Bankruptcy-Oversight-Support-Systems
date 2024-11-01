@@ -1,12 +1,12 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../types/basic';
-import { CamsSession } from '../../../../../common/src/cams/session';
-import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
-import { getCamsError } from '../../common-errors/error-utilities';
-import QueryBuilder from '../../query/query-builder';
-import { UserSessionCacheRepository } from '../../use-cases/gateways.types';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+import { ApplicationContext } from '../../types/basic';
+import { CamsSession } from '../../../../../../common/src/cams/session';
+import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
+import { CamsJwtClaims } from '../../../../../../common/src/cams/jwt';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import QueryBuilder from '../../../query/query-builder';
+import { UserSessionCacheRepository } from '../../../use-cases/gateways.types';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME: string = 'USER_SESSION_CACHE_MONGO_REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';

@@ -1,9 +1,9 @@
-import { deferClose } from '../../../defer-close';
-import { DocumentClient } from '../../../humble-objects/mongo-humble';
-import { ApplicationContext } from '../../types/basic';
+import { deferClose } from '../../../../defer-close';
+import { DocumentClient } from '../../../../humble-objects/mongo-humble';
+import { ApplicationContext } from '../../../types/basic';
 import { MongoCollectionAdapter } from './mongo-adapter';
 
-export class BaseMongoRepository {
+export abstract class BaseMongoRepository {
   protected readonly moduleName: string = '';
   protected readonly collectionName: string;
   protected readonly client: DocumentClient;

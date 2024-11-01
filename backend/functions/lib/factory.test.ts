@@ -2,7 +2,7 @@ import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
-import { RuntimeStateCosmosMongoDbRepository } from './adapters/gateways/runtime-state.cosmosdb.mongo.repository';
+import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { ApplicationContext } from './adapters/types/basic';
 import {
   getAssignmentRepository,
@@ -17,8 +17,8 @@ import { createMockApplicationContext } from './testing/testing-utilities';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
-import { CaseAssignmentCosmosMongoDbRepository } from './adapters/gateways/case.assignment.cosmosdb.mongo.repository';
-import { OrdersCosmosDbMongoRepository } from './adapters/gateways/orders.cosmosdb.mongo.repository';
+import { CaseAssignmentMongoRepository } from './adapters/gateways/mongo/case-assignment.mongo.repository';
+import { OrdersMongoRepository } from './adapters/gateways/mongo/orders.mongo.repository';
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 
 describe('Factory functions', () => {
@@ -50,7 +50,7 @@ describe('Factory functions', () => {
 
   test('getAssignmentRepository', async () => {
     const obj = getAssignmentRepository(dbContext);
-    expect(obj).toBeInstanceOf(CaseAssignmentCosmosMongoDbRepository);
+    expect(obj).toBeInstanceOf(CaseAssignmentMongoRepository);
   });
 
   test('getCaseDocketUseCase', async () => {
@@ -82,11 +82,11 @@ describe('Factory functions', () => {
     expect(mockObj).toBeInstanceOf(MockMongoRepository);
 
     const obj = getOrdersRepository(dbContext);
-    expect(obj).toBeInstanceOf(OrdersCosmosDbMongoRepository);
+    expect(obj).toBeInstanceOf(OrdersMongoRepository);
   });
 
   test('getRuntimeStateRepository', async () => {
     const obj = getRuntimeStateRepository(dbContext);
-    expect(obj).toBeInstanceOf(RuntimeStateCosmosMongoDbRepository);
+    expect(obj).toBeInstanceOf(RuntimeStateMongoRepository);
   });
 });

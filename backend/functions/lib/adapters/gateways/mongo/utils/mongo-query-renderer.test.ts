@@ -1,4 +1,4 @@
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {

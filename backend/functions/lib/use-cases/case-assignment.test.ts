@@ -32,9 +32,9 @@ const updateAssignment = jest
   .mockResolvedValue(randomId);
 const close = jest.fn();
 
-jest.mock('../adapters/gateways/case.assignment.cosmosdb.mongo.repository', () => {
+jest.mock('../adapters/gateways/mongo/case-assignment.mongo.repository', () => {
   return {
-    CaseAssignmentCosmosMongoDbRepository: jest.fn().mockImplementation(() => {
+    CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {
         createAssignment,
         findAssignmentsByCaseId,
@@ -46,9 +46,9 @@ jest.mock('../adapters/gateways/case.assignment.cosmosdb.mongo.repository', () =
   };
 });
 
-jest.mock('../adapters/gateways/cases.cosmosdb.mongo.repository', () => {
+jest.mock('../adapters/gateways/mongo/cases.mongo.repository', () => {
   return {
-    CaseAssignmentCosmosMongoDbRepository: jest.fn().mockImplementation(() => {
+    CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {
         getTransfers: jest.fn(),
         createTransferFrom: jest.fn(),

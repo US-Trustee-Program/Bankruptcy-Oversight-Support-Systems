@@ -1,18 +1,18 @@
-import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
-import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
-import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { CamsError } from '../../common-errors/cams-error';
-import { closeDeferred } from '../../defer-close';
-import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../types/basic';
-import { CasesCosmosMongoDbRepository } from './cases.cosmosdb.mongo.repository';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
+import { SYSTEM_USER_REFERENCE } from '../../../../../../common/src/cams/auditable';
+import { TransferFrom, TransferTo } from '../../../../../../common/src/cams/events';
+import { CaseAssignmentHistory } from '../../../../../../common/src/cams/history';
+import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
+import { CamsError } from '../../../common-errors/cams-error';
+import { closeDeferred } from '../../../defer-close';
+import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
+import { CasesMongoRepository } from './cases.mongo.repository';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 
 describe('Cases repository', () => {
-  let repo: CasesCosmosMongoDbRepository;
+  let repo: CasesMongoRepository;
   let context: ApplicationContext;
   const caseId1 = '111-11-11111';
   const caseId2 = '222-22-22222';
@@ -33,7 +33,7 @@ describe('Cases repository', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new CasesCosmosMongoDbRepository(context);
+    repo = new CasesMongoRepository(context);
   });
 
   afterEach(async () => {
