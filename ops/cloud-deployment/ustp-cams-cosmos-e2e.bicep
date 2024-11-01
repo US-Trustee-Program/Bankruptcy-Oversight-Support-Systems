@@ -5,14 +5,14 @@ param accountName string
 @description('CosmosDb database name')
 param databaseName string
 @description('List of container name and keys')
-param databaseContainers array = [] // See parameters.json file
+param databaseCollections array = [] // See parameters.json file
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
   scope: resourceGroup(resourceGroupName)
 }
 
-module database './lib/cosmos/no-sql/cosmos-database.bicep' = {
+module database './lib/cosmos/mongo/cosmos-database.bicep' = {
   name: '${accountName}-cosmos-database-module'
   scope: resourceGroup(resourceGroupName)
   params: {
@@ -24,13 +24,13 @@ module database './lib/cosmos/no-sql/cosmos-database.bicep' = {
   ]
 }
 
-module containers './lib/cosmos/no-sql/cosmos-containers.bicep' = {
+module containers './lib/cosmos/mongo/cosmos-collections.bicep' = {
   name: '${accountName}-cosmos-containers-module'
   scope: resourceGroup(resourceGroupName)
   params: {
     accountName: accountName
     databaseName: databaseName
-    databaseContainers: databaseContainers
+    databaseCollections: databaseCollections
   }
   dependsOn: [
     database
