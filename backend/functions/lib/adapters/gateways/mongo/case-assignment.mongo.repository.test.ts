@@ -1,18 +1,18 @@
-import { CaseAssignmentCosmosMongoDbRepository } from './case.assignment.cosmosdb.mongo.repository';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../types/basic';
-import { closeDeferred } from '../../defer-close';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
-import { getCamsError } from '../../common-errors/error-utilities';
+import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { closeDeferred } from '../../../defer-close';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
+import { CaseAssignmentMongoRepository } from './case-assignment.mongo.repository';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
-  let repo: CaseAssignmentCosmosMongoDbRepository;
+  let repo: CaseAssignmentMongoRepository;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new CaseAssignmentCosmosMongoDbRepository(context);
+    repo = new CaseAssignmentMongoRepository(context);
   });
 
   afterEach(async () => {

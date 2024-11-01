@@ -1,10 +1,10 @@
-import { NotFoundError } from '../../../common-errors/not-found-error';
-import { UnknownError } from '../../../common-errors/unknown-error';
-import { CollectionHumble, DocumentClient } from '../../../humble-objects/mongo-humble';
-import { getCamsError } from '../../../common-errors/error-utilities';
-import { CamsError } from '../../../common-errors/cams-error';
-import { ConditionOrConjunction, Sort } from '../../../query/query-builder';
-import { DocumentCollectionAdapter } from '../document-collection.adapter';
+import { CamsError } from '../../../../common-errors/cams-error';
+import { getCamsError } from '../../../../common-errors/error-utilities';
+import { NotFoundError } from '../../../../common-errors/not-found-error';
+import { UnknownError } from '../../../../common-errors/unknown-error';
+import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
+import { ConditionOrConjunction, Sort } from '../../../../query/query-builder';
+import { DocumentCollectionAdapter } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 

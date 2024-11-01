@@ -18,6 +18,7 @@ import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../comm
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
+import { ConditionOrConjunction, Sort } from '../query/query-builder';
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -123,3 +124,16 @@ export type OfficeStaffSyncState = RuntimeState & {
   users: CamsUserReference[];
   officesWithUsers: UstpOfficeDetails[];
 };
+
+export interface DocumentCollectionAdapter<T> {
+  find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
+  findOne: (query: ConditionOrConjunction) => Promise<T>;
+  getAll: (sort?: Sort) => Promise<T[]>;
+  replaceOne: (query: ConditionOrConjunction, item: unknown, upsert?: boolean) => Promise<string>;
+  insertOne: (item: unknown) => Promise<string>;
+  insertMany: (items: unknown[]) => Promise<string[]>;
+  deleteOne: (query: ConditionOrConjunction) => Promise<number>;
+  deleteMany: (query: ConditionOrConjunction) => Promise<number>;
+  countDocuments: (query: ConditionOrConjunction) => Promise<number>;
+  countAllDocuments: () => Promise<number>;
+}

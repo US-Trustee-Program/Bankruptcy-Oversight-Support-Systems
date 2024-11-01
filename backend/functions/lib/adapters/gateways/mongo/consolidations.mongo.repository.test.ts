@@ -1,21 +1,21 @@
-import { ApplicationContext } from '../types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import ConsolidationOrdersCosmosMongoDbRepository from './consolidations.cosmosdb.mongo.repository';
-import { MongoCollectionAdapter } from './mongo/mongo-adapter';
-import QueryBuilder from '../../query/query-builder';
-import { closeDeferred } from '../../defer-close';
-import { getCamsError } from '../../common-errors/error-utilities';
+import { ApplicationContext } from '../../types/basic';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
+import ConsolidationOrdersMongoRepository from './consolidations.mongo.repository';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import QueryBuilder from '../../../query/query-builder';
+import { closeDeferred } from '../../../defer-close';
+import { getCamsError } from '../../../common-errors/error-utilities';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
-  let repo: ConsolidationOrdersCosmosMongoDbRepository;
+  let repo: ConsolidationOrdersMongoRepository;
   const { and, contains, equals, orderBy } = QueryBuilder;
   const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new ConsolidationOrdersCosmosMongoDbRepository(context);
+    repo = new ConsolidationOrdersMongoRepository(context);
   });
 
   afterEach(async () => {

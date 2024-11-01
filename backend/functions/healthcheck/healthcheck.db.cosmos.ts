@@ -3,7 +3,7 @@ import { ApplicationContext } from '../lib/adapters/types/basic';
 import { DocumentClient } from '../lib/humble-objects/mongo-humble';
 import QueryBuilder from '../lib/query/query-builder';
 import { deferClose } from '../lib/defer-close';
-import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/mongo-adapter';
+import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
 dotenv.config();
 

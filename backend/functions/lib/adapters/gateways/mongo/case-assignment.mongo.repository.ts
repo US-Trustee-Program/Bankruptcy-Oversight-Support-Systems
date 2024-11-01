@@ -1,16 +1,16 @@
-import { ApplicationContext } from '../types/basic';
-import { CaseAssignment } from '../../../../../common/src/cams/assignments';
-import QueryBuilder from '../../query/query-builder';
-import { CaseAssignmentRepository } from '../../use-cases/gateways.types';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { BaseMongoRepository } from './mongo/base-mongo-repository';
+import { ApplicationContext } from '../../types/basic';
+import { CaseAssignment } from '../../../../../../common/src/cams/assignments';
+import QueryBuilder from '../../../query/query-builder';
+import { CaseAssignmentRepository } from '../../../use-cases/gateways.types';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
 const { and, equals, exists } = QueryBuilder;
 
-export class CaseAssignmentCosmosMongoDbRepository
+export class CaseAssignmentMongoRepository
   extends BaseMongoRepository
   implements CaseAssignmentRepository
 {
