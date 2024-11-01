@@ -27,8 +27,25 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     });
   }
 
-  public async find(query: ConditionOrConjunction | null, sort?: Sort): Promise<T[]> {
-    const mongoQuery = query ? toMongoQuery(query) : {};
+  public async find(query: ConditionOrConjunction, sort?: Sort): Promise<T[]> {
+    const mongoQuery = toMongoQuery(query);
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
+    try {
+      const findPromise = this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+
+      const items: T[] = [];
+      for await (const doc of results) {
+        items.push(doc as CamsItem<T>);
+      }
+      return items;
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
+    }
+  }
+
+  public async getAll(sort?: Sort): Promise<T[]> {
+    const mongoQuery = {};
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       const findPromise = this.collectionHumble.find(mongoQuery);
@@ -73,10 +90,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   public async insertOne(item: T) {
     try {
       const cleanItem = removeIds(item);
-      const result = await this.collectionHumble.insertOne(createOrGetId<T>(cleanItem));
+      const identifiableItem = createOrGetId<T>(cleanItem);
+      const result = await this.collectionHumble.insertOne(identifiableItem);
       this.testAcknowledged(result);
 
-      return result.insertedId.toString();
+      return identifiableItem.id;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -86,14 +104,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const mongoItems = items.map((item) => {
         const cleanItem = removeIds(item);
-        createOrGetId<T>(cleanItem);
+        return createOrGetId<T>(cleanItem);
       });
       const result = await this.collectionHumble.insertMany(mongoItems);
       this.testAcknowledged(result);
-      const insertedIds = Object.keys(result.insertedIds).map((insertedId) =>
-        insertedId.toString(),
-      );
-      if (insertedIds.length !== items.length) {
+      const insertedIds = mongoItems.map((item) => item.id);
+      if (insertedIds.length !== result.insertedCount) {
         throw new CamsError(this.moduleName, {
           message: 'Not all items inserted',
           data: insertedIds,
@@ -135,8 +151,17 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async countDocuments(query: ConditionOrConjunction | null) {
-    const mongoQuery = query ? toMongoQuery(query) : {};
+  public async countDocuments(query: ConditionOrConjunction) {
+    const mongoQuery = toMongoQuery(query);
+    try {
+      return await this.collectionHumble.countDocuments(mongoQuery);
+    } catch (originalError) {
+      throw getCamsError(originalError, this.moduleName);
+    }
+  }
+
+  public async countAllDocuments() {
+    const mongoQuery = {};
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {

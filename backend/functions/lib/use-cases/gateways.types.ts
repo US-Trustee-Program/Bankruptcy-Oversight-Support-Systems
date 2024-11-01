@@ -55,6 +55,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Deletes {}
 
 export interface UserSessionCacheRepository<T = CamsSession> extends Reads<T>, Upserts<T, T> {}
+
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>,
     Updates<CaseAssignment, string> {

@@ -40,6 +40,27 @@ describe('Mongo adapter', () => {
     jest.resetAllMocks();
   });
 
+  test('should return items from a getAll', async () => {
+    find.mockResolvedValue([{}, {}, {}]);
+    const item = await adapter.getAll();
+    expect(item).toEqual([{}, {}, {}]);
+    expect(find).toHaveBeenCalled();
+  });
+
+  test('should return a sorted list of items from a getAll', async () => {
+    function* generator() {
+      yield Promise.resolve({});
+      yield Promise.resolve({});
+      yield Promise.resolve({});
+    }
+    const sort = jest.fn().mockImplementation(generator);
+    find.mockResolvedValue({ sort });
+    const item = await adapter.getAll(orderBy(['name', 'ASCENDING']));
+    expect(item).toEqual([{}, {}, {}]);
+    expect(find).toHaveBeenCalled();
+    expect(sort).toHaveBeenCalled();
+  });
+
   test('should return a list of items from a find', async () => {
     find.mockResolvedValue([{}, {}, {}]);
     const item = await adapter.find(testQuery);
@@ -80,18 +101,6 @@ describe('Mongo adapter', () => {
     );
   });
 
-  test('should handle null queries for find and countDocuments', async () => {
-    find.mockResolvedValue([{}, {}, {}]);
-    const item = await adapter.find(null);
-    expect(find).toHaveBeenCalledWith({});
-    expect(item).toEqual([{}, {}, {}]);
-
-    countDocuments.mockResolvedValue(3);
-    const count = await adapter.countDocuments(null);
-    expect(countDocuments).toHaveBeenCalledWith({});
-    expect(count).toEqual(3);
-  });
-
   test('should return a single Id from a replaceOne', async () => {
     const id = '123456';
     replaceOne.mockResolvedValue({ acknowdledged: true, upsertedId: id });
@@ -103,14 +112,18 @@ describe('Mongo adapter', () => {
     const id = '123456';
     insertOne.mockResolvedValue({ acknowdledged: true, insertedId: id });
     const result = await adapter.insertOne({});
-    expect(result).toEqual(id);
+    expect(result.split('-').length).toEqual(5);
   });
 
   test('should return a list of Ids from insertMany', async () => {
     const ids = ['0', '1', '2', '3', '4'];
-    insertMany.mockResolvedValue({ acknowdledged: true, insertedIds: ids });
+    insertMany.mockResolvedValue({
+      acknowdledged: true,
+      insertedIds: ids,
+      insertedCount: ids.length,
+    });
     const result = await adapter.insertMany([{}, {}, {}, {}, {}]);
-    expect(result).toEqual(ids);
+    expect(result.length).toEqual(ids.length);
   });
 
   test('should return a count of 1 for 1 item deleted', async () => {
@@ -149,23 +162,18 @@ describe('Mongo adapter', () => {
     insertMany.mockResolvedValue({
       insertedIds: {
         one: 'one',
-        two: 'one',
-        three: 'one',
+        two: 'two',
+        three: 'three',
       },
+      insertedCount: 3,
     });
-    try {
-      await adapter.insertMany([{}, {}, {}, {}]);
-      expect(true).toBeFalsy();
-    } catch (e) {
-      const expectedData = ['one', 'two', 'three'];
-      expect(e).toEqual(
-        new CamsError(MODULE_NAME, {
-          message: 'Not all items inserted',
-          data: expectedData,
-        }),
-      );
-      expect(e.data).toEqual(expectedData);
-    }
+
+    const error = new CamsError(MODULE_NAME, {
+      message: 'Not all items inserted',
+      data: expect.anything(),
+    });
+
+    expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(error);
   });
 
   test('should handle acknowledged == false', async () => {

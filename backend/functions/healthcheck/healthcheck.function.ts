@@ -27,27 +27,25 @@ export default async function handler(
 
   applicationContext.logger.debug(MODULE_NAME, 'Health check endpoint invoked');
 
-  const checkCosmosDbWrite = await healthcheckCosmosDbClient.checkDbWrite();
-  applicationContext.logger.debug(MODULE_NAME, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
-  const checkCosmosDbRead = await healthcheckCosmosDbClient.checkDbRead();
-  applicationContext.logger.debug(MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
-  const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
+  const cosmosStatus = await healthcheckCosmosDbClient.checkDocumentDb();
 
+  Object.keys(cosmosStatus).forEach((key) => {
+    applicationContext.logger.debug(MODULE_NAME, key + ': ' + cosmosStatus[key]);
+  });
   const checkSqlDbReadAccess = await healthCheckSqlDbClient.checkDxtrDbRead();
   applicationContext.logger.debug(
     MODULE_NAME,
     'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,
   );
-
   const healthcheckInfo = new HealthcheckInfo(applicationContext);
   const info = healthcheckInfo.getServiceInfo();
 
   const respBody = {
     database: {
       metadata: healthcheckCosmosDbClient.dbConfig(),
-      cosmosDbWriteStatus: checkCosmosDbWrite,
-      cosmosDbReadStatus: checkCosmosDbRead,
-      cosmosDbDeleteStatus: checkCosmosDbDelete,
+      cosmosDbWriteStatus: cosmosStatus.cosmosDbWriteStatus,
+      cosmosDbReadStatus: cosmosStatus.cosmosDbReadStatus,
+      cosmosDbDeleteStatus: cosmosStatus.cosmosDbDeleteStatus,
       sqlDbReadStatus: checkSqlDbReadAccess,
     },
     info,
@@ -55,9 +53,9 @@ export default async function handler(
 
   // Add boolean flag for any other checks here
   const result = checkResults(
-    checkCosmosDbWrite,
-    checkCosmosDbRead,
-    checkCosmosDbDelete,
+    cosmosStatus.cosmosDbDeleteStatus,
+    cosmosStatus.cosmosDbReadStatus,
+    cosmosStatus.cosmosDbWriteStatus,
     checkSqlDbReadAccess,
   )
     ? toAzureSuccess(

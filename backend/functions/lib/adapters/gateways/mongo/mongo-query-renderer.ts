@@ -1,5 +1,4 @@
 import { Sort as MongoSort } from 'mongodb';
-import { DocumentQuery } from '../document-db.repository';
 import {
   Condition,
   ConditionOrConjunction,
@@ -8,6 +7,7 @@ import {
   isConjunction,
   Sort,
 } from '../../../query/query-builder';
+import { DocumentQuery } from '../../../humble-objects/mongo-humble';
 
 const isArray = Array.isArray;
 

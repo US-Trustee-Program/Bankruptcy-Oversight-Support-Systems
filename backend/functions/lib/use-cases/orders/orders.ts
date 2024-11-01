@@ -46,6 +46,7 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -171,7 +172,7 @@ export class OrdersUseCase {
         'Failed to get initial runtime state from repo (Cosmos).',
         error,
       );
-      if (error.message === 'Initial state was not found or was ambiguous.') {
+      if (isNotFoundError(error)) {
         if (options?.txIdOverride === undefined) {
           throw new CamsError(MODULE_NAME, {
             message: 'A transaction ID is required to seed the order sync run. Aborting.',
