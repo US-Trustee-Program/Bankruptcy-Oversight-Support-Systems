@@ -16,7 +16,8 @@ export class CamsError extends Error {
 
   constructor(module: string, options: CamsErrorOptions = {}) {
     super();
-    this.message = options.message || options.originalError?.message || 'Unknown CAMS Error';
+    this.message = options.message || 'Unknown CAMS Error';
+
     this.status = options.status ?? HttpStatusCodes.INTERNAL_SERVER_ERROR;
     this.module = module;
     this.originalError = options.originalError;

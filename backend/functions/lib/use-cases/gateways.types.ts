@@ -16,26 +16,63 @@ import { CaseDocket } from '../../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CamsSession } from '../../../../common/src/cams/session';
+import { ConditionOrConjunction, Sort } from '../query/query-builder';
 
-export interface RepositoryResource {
-  id?: string;
+interface Creates<T, R = void> {
+  create(data: T): Promise<R>;
 }
 
-export interface DocumentRepository<T extends RepositoryResource> {
-  get(context: ApplicationContext, id: string, partitionKey: string): Promise<T>;
-  update(context: ApplicationContext, id: string, partitionKey: string, data: T);
-  upsert(context: ApplicationContext, partitionKey: string, data: T): Promise<T>;
-  put(context: ApplicationContext, data: T): Promise<T>;
-  putAll(context: ApplicationContext, list: T[]): Promise<T[]>;
-  delete(context: ApplicationContext, id: string, partitionKey: string);
+interface CreatesMany<T, R = void> {
+  createMany(data: T[]): Promise<R>;
 }
 
-export interface ConsolidationOrdersRepository extends DocumentRepository<ConsolidationOrder> {
-  search(
-    context: ApplicationContext,
-    predicate?: OrdersSearchPredicate,
-  ): Promise<ConsolidationOrder[]>;
+interface Reads<R> {
+  read(id: string, key?: string): Promise<R>;
 }
+
+interface Updates<T, R = void> {
+  update(data: T): Promise<R>;
+}
+
+interface Upserts<T, R = void> {
+  upsert(data: T): Promise<R>;
+}
+
+interface Deletes {
+  delete(id: string): Promise<void>;
+}
+
+interface Searches<P, R> {
+  search(predicate?: P): Promise<R[]>;
+}
+
+export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
+  extends Searches<OrdersSearchPredicate, T>,
+    Creates<T, T>,
+    CreatesMany<T>,
+    Reads<T>,
+    Deletes {}
+
+export interface UserSessionCacheRepository<T = CamsSession> extends Reads<T>, Upserts<T, T> {}
+
+export interface CaseAssignmentRepository<T = CaseAssignment>
+  extends Creates<T, string>,
+    Updates<CaseAssignment, string> {
+  findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]>;
+  findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
+}
+
+export interface OrdersRepository<T = Order>
+  extends Searches<OrdersSearchPredicate, T>,
+    CreatesMany<T, T[]>,
+    Reads<T>,
+    Updates<TransferOrderAction> {}
+
+export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
+  extends Reads<T>,
+    Upserts<T, T> {}
 
 export interface CaseDocketGateway {
   getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket>;
@@ -52,43 +89,20 @@ export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
-export interface OrdersRepository {
-  search(context: ApplicationContext, predicate?: OrdersSearchPredicate): Promise<Order[]>;
-  getOrder(context: ApplicationContext, id: string, partitionKey: string): Promise<Order>;
-  putOrders(context: ApplicationContext, orders: Order[]): Promise<Order[]>;
-  updateOrder(context: ApplicationContext, id: string, data: TransferOrderAction);
-}
-
 export interface CasesRepository {
-  createTransferFrom(context: ApplicationContext, reference: TransferFrom): Promise<TransferFrom>;
-  createTransferTo(context: ApplicationContext, reference: TransferTo): Promise<TransferTo>;
-  getTransfers(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<TransferFrom | TransferTo>>;
-  createConsolidationTo(
-    context: ApplicationContext,
-    reference: ConsolidationTo,
-  ): Promise<ConsolidationTo>;
-  createConsolidationFrom(
-    context: ApplicationContext,
-    reference: ConsolidationFrom,
-  ): Promise<ConsolidationFrom>;
-  getConsolidation(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
-  getCaseHistory(context: ApplicationContext, caseId: string): Promise<CaseHistory[]>;
-  createCaseHistory(context: ApplicationContext, history: CaseHistory);
+  createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
+  createTransferTo(reference: TransferTo): Promise<TransferTo>;
+  getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>>;
+  createConsolidationTo(reference: ConsolidationTo): Promise<ConsolidationTo>;
+  createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
+  getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
+  getCaseHistory(caseId: string): Promise<CaseHistory[]>;
+  createCaseHistory(history: CaseHistory);
 }
 
 export interface OfficesRepository {
-  getOfficeAttorneys(context: ApplicationContext, officeCode: string): Promise<AttorneyUser[]>;
-  putOfficeStaff(
-    context: ApplicationContext,
-    officeCode: string,
-    user: CamsUserReference,
-  ): Promise<void>;
+  getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
+  putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void>;
 }
 
 // TODO: Move these models to a top level models file?
@@ -111,11 +125,15 @@ export type OfficeStaffSyncState = RuntimeState & {
   officesWithUsers: UstpOfficeDetails[];
 };
 
-export interface RuntimeStateRepository {
-  getState<T extends RuntimeState>(
-    context: ApplicationContext,
-    documentType: RuntimeStateDocumentType,
-  ): Promise<T>;
-  updateState<T extends RuntimeState>(context: ApplicationContext, syncState: T);
-  createState<T extends RuntimeState>(context: ApplicationContext, syncState: T): Promise<T>;
+export interface DocumentCollectionAdapter<T> {
+  find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
+  findOne: (query: ConditionOrConjunction) => Promise<T>;
+  getAll: (sort?: Sort) => Promise<T[]>;
+  replaceOne: (query: ConditionOrConjunction, item: unknown, upsert?: boolean) => Promise<string>;
+  insertOne: (item: unknown) => Promise<string>;
+  insertMany: (items: unknown[]) => Promise<string[]>;
+  deleteOne: (query: ConditionOrConjunction) => Promise<number>;
+  deleteMany: (query: ConditionOrConjunction) => Promise<number>;
+  countDocuments: (query: ConditionOrConjunction) => Promise<number>;
+  countAllDocuments: () => Promise<number>;
 }

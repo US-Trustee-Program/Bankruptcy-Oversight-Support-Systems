@@ -1,10 +1,10 @@
 import {
   OrderSyncState,
   OrdersGateway,
-  OrdersRepository,
   RuntimeStateRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
+  OrdersRepository,
 } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
@@ -46,6 +46,8 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
+import { isNotFoundError } from '../../common-errors/not-found-error';
+
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
 export interface SyncOrdersOptions {
@@ -67,14 +69,14 @@ export class OrdersUseCase {
   private readonly ordersGateway: OrdersGateway;
   private readonly ordersRepo: OrdersRepository;
   private readonly consolidationsRepo: ConsolidationOrdersRepository;
-  private readonly runtimeStateRepo: RuntimeStateRepository;
+  private readonly runtimeStateRepo: RuntimeStateRepository<OrderSyncState>;
 
   constructor(
     casesRepo: CasesRepository,
     casesGateway: CasesInterface,
     ordersRepo: OrdersRepository,
     ordersGateway: OrdersGateway,
-    runtimeRepo: RuntimeStateRepository,
+    runtimeRepo: RuntimeStateRepository<OrderSyncState>,
     consolidationRepo: ConsolidationOrdersRepository,
   ) {
     this.casesRepo = casesRepo;
@@ -91,8 +93,8 @@ export class OrdersUseCase {
       const divisionCodes = getCourtDivisionCodes(context.session.user);
       predicate = { divisionCodes };
     }
-    const transferOrders = await this.ordersRepo.search(context, predicate);
-    const consolidationOrders = await this.consolidationsRepo.search(context, predicate);
+    const transferOrders = await this.ordersRepo.search(predicate);
+    const consolidationOrders = await this.consolidationsRepo.search(predicate);
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
@@ -113,11 +115,11 @@ export class OrdersUseCase {
     }
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
-    const initialOrder = await this.ordersRepo.getOrder(context, id, data.caseId);
+    const initialOrder = await this.ordersRepo.read(id, data.caseId);
     let order: Order;
     if (isTransferOrder(initialOrder)) {
-      await this.ordersRepo.updateOrder(context, id, data);
-      order = await this.ordersRepo.getOrder(context, id, data.caseId);
+      await this.ordersRepo.update(data);
+      order = await this.ordersRepo.read(id, data.caseId);
     }
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
@@ -135,8 +137,8 @@ export class OrdersUseCase {
           documentType: 'TRANSFER_TO',
         };
 
-        await this.casesRepo.createTransferFrom(context, transferFrom);
-        await this.casesRepo.createTransferTo(context, transferTo);
+        await this.casesRepo.createTransferFrom(transferFrom);
+        await this.casesRepo.createTransferTo(transferTo);
       }
       const caseHistory = createAuditRecord<CaseHistory>(
         {
@@ -147,7 +149,7 @@ export class OrdersUseCase {
         },
         context.session?.user,
       );
-      await this.casesRepo.createCaseHistory(context, caseHistory);
+      await this.casesRepo.createCaseHistory(caseHistory);
     }
   }
 
@@ -158,10 +160,7 @@ export class OrdersUseCase {
     let initialSyncState: OrderSyncState;
 
     try {
-      initialSyncState = await this.runtimeStateRepo.getState<OrderSyncState>(
-        context,
-        'ORDERS_SYNC_STATE',
-      );
+      initialSyncState = await this.runtimeStateRepo.read('ORDERS_SYNC_STATE', '');
       context.logger.info(
         MODULE_NAME,
         'Got initial runtime state from repo (Cosmos).',
@@ -173,7 +172,7 @@ export class OrdersUseCase {
         'Failed to get initial runtime state from repo (Cosmos).',
         error,
       );
-      if (error.message === 'Initial state was not found or was ambiguous.') {
+      if (isNotFoundError(error)) {
         if (options?.txIdOverride === undefined) {
           throw new CamsError(MODULE_NAME, {
             message: 'A transaction ID is required to seed the order sync run. Aborting.',
@@ -184,7 +183,7 @@ export class OrdersUseCase {
           documentType: 'ORDERS_SYNC_STATE',
           txId: options.txIdOverride,
         };
-        initialSyncState = await this.runtimeStateRepo.createState(context, initialSyncState);
+        initialSyncState = await this.runtimeStateRepo.upsert(initialSyncState);
         context.logger.info(
           MODULE_NAME,
           'Wrote new runtime state to repo (Cosmos).',
@@ -201,7 +200,7 @@ export class OrdersUseCase {
       startingTxId,
     );
 
-    const writtenTransfers = await this.ordersRepo.putOrders(context, transfers);
+    const writtenTransfers = await this.ordersRepo.createMany(transfers);
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
@@ -214,7 +213,7 @@ export class OrdersUseCase {
           },
           context.session?.user,
         );
-        await this.casesRepo.createCaseHistory(context, caseHistory);
+        await this.casesRepo.createCaseHistory(caseHistory);
       }
     }
 
@@ -224,7 +223,7 @@ export class OrdersUseCase {
     });
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    await this.consolidationsRepo.putAll(context, Array.from(consolidationsByJobId.values()));
+    await this.consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
       const history: ConsolidationOrderSummary = {
@@ -240,11 +239,11 @@ export class OrdersUseCase {
         },
         context.session?.user,
       );
-      await this.casesRepo.createCaseHistory(context, caseHistory);
+      await this.casesRepo.createCaseHistory(caseHistory);
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
-    await this.runtimeStateRepo.updateState<OrderSyncState>(context, finalSyncState);
+    await this.runtimeStateRepo.upsert(finalSyncState);
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
 
     return {
@@ -280,7 +279,6 @@ export class OrdersUseCase {
     return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
 
-  // TODO: Revisit whether the after state is actually what we want
   private async buildHistory(
     context: ApplicationContext,
     bCase: CaseSummary,
@@ -295,7 +293,7 @@ export class OrdersUseCase {
     if (leadCase) after.leadCase = leadCase;
     let before;
     try {
-      const fullHistory = await this.casesRepo.getCaseHistory(context, bCase.caseId);
+      const fullHistory = await this.casesRepo.getCaseHistory(bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
         .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
@@ -336,14 +334,14 @@ export class OrdersUseCase {
 
     if (status === 'approved') {
       for (const caseId of includedCases) {
-        const references = await this.casesRepo.getConsolidation(context, caseId);
+        const references = await this.casesRepo.getConsolidation(caseId);
         if (references.length > 0) {
           throw new BadRequestError(MODULE_NAME, {
             message: `Cannot consolidate order. A child case has already been consolidated.`,
           });
         }
       }
-      const leadCaseReferences = await this.casesRepo.getConsolidation(context, leadCase.caseId);
+      const leadCaseReferences = await this.casesRepo.getConsolidation(leadCase.caseId);
       const isLeadCaseAChildCase = leadCaseReferences
         .filter((reference) => reference.caseId === leadCase.caseId)
         .reduce((isChildCase, reference) => {
@@ -379,23 +377,19 @@ export class OrdersUseCase {
         childCases: remainingChildCases,
         id: undefined,
       };
-      const updatedRemainingOrder = await this.consolidationsRepo.put(context, remainingOrder);
-      response.push(updatedRemainingOrder);
+      const updatedRemainingOrder = await this.consolidationsRepo.create(remainingOrder);
+      response.push(updatedRemainingOrder as ConsolidationOrder);
     }
 
-    await this.consolidationsRepo.delete(
-      context,
-      provisionalOrder.id,
-      provisionalOrder.consolidationId,
-    );
+    await this.consolidationsRepo.delete(provisionalOrder.id);
 
-    const createdConsolidation = await this.consolidationsRepo.put(context, newConsolidation);
-    response.push(createdConsolidation);
+    const createdConsolidation = await this.consolidationsRepo.create(newConsolidation);
+    response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {
       if (!leadCase || childCase.caseId !== leadCase.caseId) {
         const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
-        await this.casesRepo.createCaseHistory(context, caseHistory);
+        await this.casesRepo.createCaseHistory(caseHistory);
       }
     }
 
@@ -417,7 +411,7 @@ export class OrdersUseCase {
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_TO',
           };
-          await this.casesRepo.createConsolidationTo(context, consolidationTo);
+          await this.casesRepo.createConsolidationTo(consolidationTo);
 
           // Add the reference to the child case to the lead case.
           const consolidationFrom: ConsolidationFrom = {
@@ -427,10 +421,10 @@ export class OrdersUseCase {
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_FROM',
           };
-          await this.casesRepo.createConsolidationFrom(context, consolidationFrom);
+          await this.casesRepo.createConsolidationFrom(consolidationFrom);
 
           // Assign lead case attorneys to the child case.
-          assignmentUseCase.createTrialAttorneyAssignments(
+          await assignmentUseCase.createTrialAttorneyAssignments(
             context,
             childCase.caseId,
             leadCaseAttorneys,
@@ -451,7 +445,7 @@ export class OrdersUseCase {
         status,
         childCaseSummaries,
       );
-      await this.casesRepo.createCaseHistory(context, leadCaseHistory);
+      await this.casesRepo.createCaseHistory(leadCaseHistory);
     }
 
     return response;

@@ -1,16 +1,11 @@
-import { CaseAssignmentCosmosDbRepository } from './adapters/gateways/case.assignment.cosmosdb.repository';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
 import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
-import { OrdersCosmosDbRepository } from './adapters/gateways/orders.cosmosdb.repository';
-import { RuntimeStateCosmosDbRepository } from './adapters/gateways/runtime-state.cosmosdb.repository';
+import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { ApplicationContext } from './adapters/types/basic';
-import CosmosClientHumble from './cosmos-humble-objects/cosmos-client-humble';
-import FakeAssignmentsCosmosClientHumble from './cosmos-humble-objects/fake.assignments.cosmos-client-humble';
 import {
   getAssignmentRepository,
-  getAssignmentsCosmosDbClient,
   getCaseDocketUseCase,
   getCasesGateway,
   getOfficesGateway,
@@ -22,6 +17,9 @@ import { createMockApplicationContext } from './testing/testing-utilities';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
 import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
+import { CaseAssignmentMongoRepository } from './adapters/gateways/mongo/case-assignment.mongo.repository';
+import { OrdersMongoRepository } from './adapters/gateways/mongo/orders.mongo.repository';
+import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 
 describe('Factory functions', () => {
   let dbContext: ApplicationContext;
@@ -52,15 +50,7 @@ describe('Factory functions', () => {
 
   test('getAssignmentRepository', async () => {
     const obj = getAssignmentRepository(dbContext);
-    expect(obj).toBeInstanceOf(CaseAssignmentCosmosDbRepository);
-  });
-
-  test('getAssignmentsCosmosDbClient', async () => {
-    const mockObj = getAssignmentsCosmosDbClient(mockDbContext);
-    expect(mockObj).toBeInstanceOf(FakeAssignmentsCosmosClientHumble);
-
-    const obj = getAssignmentsCosmosDbClient(dbContext);
-    expect(obj).toBeInstanceOf(CosmosClientHumble);
+    expect(obj).toBeInstanceOf(CaseAssignmentMongoRepository);
   });
 
   test('getCaseDocketUseCase', async () => {
@@ -88,12 +78,15 @@ describe('Factory functions', () => {
   });
 
   test('getOrdersRepository', async () => {
+    const mockObj = getOrdersRepository(mockDbContext);
+    expect(mockObj).toBeInstanceOf(MockMongoRepository);
+
     const obj = getOrdersRepository(dbContext);
-    expect(obj).toBeInstanceOf(OrdersCosmosDbRepository);
+    expect(obj).toBeInstanceOf(OrdersMongoRepository);
   });
 
   test('getRuntimeStateRepository', async () => {
     const obj = getRuntimeStateRepository(dbContext);
-    expect(obj).toBeInstanceOf(RuntimeStateCosmosDbRepository);
+    expect(obj).toBeInstanceOf(RuntimeStateMongoRepository);
   });
 });

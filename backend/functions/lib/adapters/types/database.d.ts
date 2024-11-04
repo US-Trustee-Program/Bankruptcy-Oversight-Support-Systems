@@ -40,10 +40,10 @@ export interface IDbConfig {
     encrypt: boolean;
     trustServerCertificate: boolean;
   };
+  requestTimeout?: number;
 }
 
-export interface CosmosConfig {
-  endpoint: string;
-  managedIdentity: string;
+export interface DocumentDbConfig {
   databaseName: string;
+  connectionString: string;
 }

@@ -24,6 +24,8 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { OrderSyncState } from '../../use-cases/gateways.types';
+import { closeDeferred } from '../../defer-close';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -42,7 +44,7 @@ export class OrdersController implements CamsController, CamsTimerController {
       getCasesGateway(context),
       getOrdersRepository(context),
       getOrdersGateway(context),
-      getRuntimeStateRepository(context),
+      getRuntimeStateRepository<OrderSyncState>(context),
       getConsolidationOrdersRepository(context),
     );
   }
@@ -52,6 +54,8 @@ export class OrdersController implements CamsController, CamsTimerController {
       await this.useCase.syncOrders(context);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await closeDeferred(context);
     }
   }
 
@@ -59,20 +63,23 @@ export class OrdersController implements CamsController, CamsTimerController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseSummary[] | Order[] | SyncOrdersStatus | undefined>> {
     const simplePath = new URL(context.request.url).pathname.split('/')[2];
-
-    switch (simplePath) {
-      case 'consolidations':
-        return this.handleConsolidations(context);
-      case 'orders':
-        return this.handleOrders(context);
-      case 'orders-sync':
-        return this.handleOrderSync(context);
-      case 'orders-suggestions':
-        return this.handleOrdersSuggestions(context);
-      default:
-        throw new NotFoundError(MODULE_NAME, {
-          message: 'Could not map requested path to action ' + context.request.url,
-        });
+    try {
+      switch (simplePath) {
+        case 'consolidations':
+          return await this.handleConsolidations(context);
+        case 'orders':
+          return await this.handleOrders(context);
+        case 'orders-sync':
+          return await this.handleOrderSync(context);
+        case 'orders-suggestions':
+          return await this.handleOrdersSuggestions(context);
+        default:
+          throw new NotFoundError(MODULE_NAME, {
+            message: 'Could not map requested path to action ' + context.request.url,
+          });
+      }
+    } finally {
+      await closeDeferred(context);
     }
   }
 
@@ -152,7 +159,6 @@ export class OrdersController implements CamsController, CamsTimerController {
     id: string,
     data: TransferOrderAction,
   ): Promise<UpdateOrderResponse> {
-    // TODO: Need to sanitize id and data.
     try {
       const bodyId = data['id'];
       const orderType = data['orderType'];

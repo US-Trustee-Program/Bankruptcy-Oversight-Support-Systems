@@ -16,12 +16,12 @@ deployment_parameters=''
 is_ustp_deployment=false
 inputParams=()
 
-requiredUSTPParams=("--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosIdentityName" "--cosmosDatabaseName" "--cosmosAccountName" "--cosmosClientId" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
+requiredUSTPParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
 
-requiredFlexionParams=("--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosIdentityName" "--cosmosDatabaseName" "--cosmosAccountName" "--cosmosClientId" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
+requiredFlexionParams=("--mssqlRequestTimeout" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosIdentityName" "--cosmosDatabaseName" "--cosmosAccountName" "--cosmosClientId" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
+allParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
 
 
 function az_vnet_exists_func() {
@@ -58,6 +58,7 @@ function validateParameters() {
         exit 11
     fi
 }
+
 function az_deploy_func() {
     local rg=$1
     local templateFile=$2
@@ -211,28 +212,10 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${kv_app_config_rg_name_param}"
         shift 2
         ;;
-    --cosmosIdentityName)
-        inputParams+=("${1}")
-        cosmos_id_name_param="cosmosIdentityName=${2}"
-        deployment_parameters="${deployment_parameters} ${cosmos_id_name_param}"
-        shift 2
-        ;;
     --cosmosDatabaseName)
         inputParams+=("${1}")
         cosmos_database_name_param="cosmosDatabaseName=${2}"
         deployment_parameters="${deployment_parameters} ${cosmos_database_name_param}"
-        shift 2
-        ;;
-    --cosmosAccountName)
-        inputParams+=("${1}")
-        cosmos_account_name_param="cosmosAccountName=${2}"
-        deployment_parameters="${deployment_parameters} ${cosmos_account_name_param}"
-        shift 2
-        ;;
-    --cosmosClientId)
-        inputParams+=("${1}")
-        cosmos_client_id_param="cosmosClientId=${2}"
-        deployment_parameters="${deployment_parameters} ${cosmos_client_id_param}"
         shift 2
         ;;
     --sqlServerName)
@@ -257,6 +240,12 @@ while [[ $# -gt 0 ]]; do
         inputParams+=("${1}")
         sql_server_id_name_param="sqlServerIdentityName=${2}"
         deployment_parameters="${deployment_parameters} ${sql_server_id_name_param}"
+        shift 2
+        ;;
+    --mssqlRequestTimeout)
+        inputParams+=("${1}")
+        mssql_request_timeout="mssqlRequestTimeout=${2}"
+        deployment_parameters="${deployment_parameters} ${mssql_request_timeout}"
         shift 2
         ;;
     --camsReactSelectHash)

@@ -42,7 +42,7 @@ describe('Common errors', () => {
     const error = new UnknownError(testModuleName);
     expect(error.status).toBe(HttpStatusCodes.INTERNAL_SERVER_ERROR);
     expect(error.module).toBe(testModuleName);
-    expect(error.message).toBe('Unknown error');
+    expect(error.message).toBe('Unknown Error');
   });
 
   test('NotFoundError constructor', async () => {

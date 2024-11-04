@@ -8,24 +8,55 @@ import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import CaseManagement from './case-management';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { MockMongoRepository } from '../testing/mock-gateways/mock-mongo.repository';
+import { ConsolidationOrder } from '../../../../common/src/cams/orders';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
 };
 
-const createAssignment = jest.fn().mockImplementation(randomId);
-const updateAssignment = jest.fn().mockImplementation(randomId);
-const createAssignmentHistory = jest.fn().mockImplementation(randomId);
-const findAssignmentsByCaseId = jest.fn();
+const createAssignment = jest
+  .spyOn(MockMongoRepository.prototype, 'create')
+  .mockImplementation((consolidationOrder: ConsolidationOrder) => {
+    return Promise.resolve(MockData.getConsolidationOrder({ override: { ...consolidationOrder } }));
+  });
+const findAssignmentsByCaseId = jest
+  .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+  .mockResolvedValue([]);
+const createAssignmentHistory = jest
+  .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
+  .mockResolvedValue('123');
+jest.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+const updateAssignment = jest
+  .spyOn(MockMongoRepository.prototype, 'update')
+  .mockResolvedValue(randomId);
+const close = jest.fn();
 
-jest.mock('../adapters/gateways/case.assignment.cosmosdb.repository', () => {
+jest.mock('../adapters/gateways/mongo/case-assignment.mongo.repository', () => {
   return {
-    CaseAssignmentCosmosDbRepository: jest.fn().mockImplementation(() => {
+    CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {
         createAssignment,
         findAssignmentsByCaseId,
         updateAssignment,
         createAssignmentHistory,
+        close,
+      };
+    }),
+  };
+});
+
+jest.mock('../adapters/gateways/mongo/cases.mongo.repository', () => {
+  return {
+    CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
+      return {
+        getTransfers: jest.fn(),
+        createTransferFrom: jest.fn(),
+        createTransferTo: jest.fn(),
+        getConsolidation: jest.fn(),
+        getCaseHistory: jest.fn(),
+        createCaseHistory: jest.fn(),
+        close: jest.fn(),
       };
     }),
   };
@@ -85,15 +116,13 @@ describe('Case assignment tests', () => {
     const role = CamsRole.TrialAttorney;
 
     test('should create new case assignments when none exist on the case', async () => {
-      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       jest.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
         MockData.getCaseDetail({
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
 
-      findAssignmentsByCaseId.mockResolvedValue([]);
-
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
@@ -127,7 +156,6 @@ describe('Case assignment tests', () => {
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
-
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
       const assignmentOne = {
@@ -144,7 +172,9 @@ describe('Case assignment tests', () => {
         role,
       };
 
-      findAssignmentsByCaseId.mockResolvedValue([assignmentOne]);
+      jest
+        .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+        .mockResolvedValue([assignmentOne]);
 
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,

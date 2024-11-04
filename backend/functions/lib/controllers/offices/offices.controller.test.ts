@@ -89,7 +89,7 @@ describe('offices controller tests', () => {
       const camsHttpRequest = mockCamsHttpRequest();
       applicationContext.request = camsHttpRequest;
       await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Unknown error');
+    }).rejects.toThrow('Unknown Error');
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
 

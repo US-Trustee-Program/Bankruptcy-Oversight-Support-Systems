@@ -95,8 +95,7 @@ of that file must be:
 ```
 APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 COSMOS_DATABASE_NAME={the name of the CosmosDb database}
-COSMOS_ENDPOINT={the URI to the CosmosDb endpoint}
-COSMOS_MANAGED_IDENTITY=
+MONGO_CONNECTION_STRING={MongoDb connection string}
 SERVER_PORT=7071
 
 ## LOGIN_PROVIDER and CONFIG must match the frontend to function locally

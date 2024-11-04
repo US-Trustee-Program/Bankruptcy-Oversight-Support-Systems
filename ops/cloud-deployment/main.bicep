@@ -108,6 +108,8 @@ param loginProvider string = ''
 
 param isUstpDeployment bool = false
 
+param mssqlRequestTimeout string = '15000'
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -116,15 +118,8 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
-@description('Name of the managed identity with read/write access to CosmosDB.')
-@secure()
-param cosmosIdentityName string
-
-param cosmosClientId string
-
 param cosmosDatabaseName string
 
-param cosmosAccountName string
 
 //TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
@@ -161,6 +156,7 @@ module network './lib//network/ustp-cams-network.bicep' = {
     virtualNetworkName: virtualNetworkName
   }
 }
+
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
@@ -211,7 +207,6 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
-      cosmosIdentityName: cosmosIdentityName
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
       virtualNetworkResourceGroupName: networkResourceGroupName
       privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
@@ -223,11 +218,10 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
       loginProviderConfig: loginProviderConfig
       loginProvider: loginProvider
-      cosmosAccountName: cosmosAccountName
       cosmosDatabaseName: cosmosDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
-      cosmosClientId: cosmosClientId
+      mssqlRequestTimeout: mssqlRequestTimeout
     }
     dependsOn: [
       network

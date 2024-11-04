@@ -1,5 +1,5 @@
 import './CaseDetailAuditHistory.scss';
-import { formatDate } from '@/lib/utils/datetime';
+import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { orderStatusType } from '@/lib/utils/labels';
@@ -27,7 +27,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
       .getCaseHistory(props.caseId)
       .then((response) => {
         if (response) {
-          setCaseHistory(response.data);
+          setCaseHistory(response.data.sort((a, b) => sortByDateReverse(a.updatedOn, b.updatedOn)));
           setIsAuditHistoryLoading(false);
         }
       })
