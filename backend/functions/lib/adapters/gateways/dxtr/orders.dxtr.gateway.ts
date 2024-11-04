@@ -45,8 +45,14 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
 
 export class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync> {
+    context.logger.debug(MODULE_NAME, `Querying for orders later than txId ${txId}.`);
     const transfers = await this.getTransferOrderSync(context, txId);
+    context.logger.debug(MODULE_NAME, `Found ${transfers.transfers.length} transfers.`);
     const consolidations = await this.getConsolidationOrderSync(context, txId);
+    context.logger.debug(
+      MODULE_NAME,
+      `Found ${consolidations.consolidations.length} consolidations.`,
+    );
     return {
       consolidations: consolidations.consolidations,
       transfers: transfers.transfers,
@@ -79,6 +85,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
       // Get raw order which are a subset of case detail associated with a transfer order
       const rawOrders = await this.getConsolidationOrders(context, txId, chapters, regions);
+      context.logger.debug(MODULE_NAME, `Found ${rawOrders.length} raw consolidation orders.`);
 
       // Get the docket entries for transfer orders
       const rawDocketEntries = await this.getConsolidationOrderDocketEntries(
@@ -197,6 +204,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
       // Get raw order which are a subset of case detail associated with a transfer order
       const rawOrders = await this.getTransferOrders(context, txId, chapters, regions);
+      context.logger.debug(MODULE_NAME, `Found ${rawOrders.length} raw transfer orders.`);
 
       // Get the docket entries for transfer orders
       const rawDocketEntries = await this.getTransferOrderDocketEntries(
@@ -513,6 +521,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
       ORDER BY TX.TX_ID ASC
       `;
 
+    context.logger.debug(MODULE_NAME, 'Querying for docket entries:', query);
     const queryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
