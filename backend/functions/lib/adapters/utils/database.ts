@@ -14,10 +14,6 @@ export async function executeQuery(
   // we should do some sanitization here to eliminate sql injection issues
   try {
     const sqlConnectionPool = getSqlConnection(databaseConfig);
-    // const sqlConnectionPool = getSqlConnection({
-    //   ...databaseConfig,
-    //   pool: { idleTimeoutMillis: 30000, max: 30000, min: 15000 },
-    // });
     const sqlConnection = await sqlConnectionPool.connect();
     const sqlRequest = sqlConnection.request();
 
