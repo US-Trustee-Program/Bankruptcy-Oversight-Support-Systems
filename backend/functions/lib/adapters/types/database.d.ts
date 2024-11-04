@@ -40,6 +40,7 @@ export interface IDbConfig {
     encrypt: boolean;
     trustServerCertificate: boolean;
   };
+  requestTimeout?: number;
 }
 
 export interface DocumentDbConfig {

@@ -42,11 +42,13 @@ export class ApplicationConfiguration {
     const user = process.env.MSSQL_USER;
     const password = process.env.MSSQL_PASS;
     const identityClientId = process.env.MSSQL_CLIENT_ID;
+    const requestTimeout = parseInt(process.env.MSSQL_REQUEST_TIMEOUT ?? '15000');
 
     const config: IDbConfig = {
       server,
       port,
       database,
+      requestTimeout,
     };
 
     const useSqlAuth = user && password;
