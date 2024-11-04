@@ -1,6 +1,5 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { MockHumbleQuery } from '../../testing/mock.cosmos-client-humble';
 import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -85,12 +84,7 @@ describe('orders controller tests', () => {
   });
 
   test('should get orders', async () => {
-    const mockRead = jest
-      .spyOn(MockHumbleQuery.prototype, 'fetchAll')
-      .mockResolvedValueOnce({
-        resources: mockTransferOrder,
-      })
-      .mockResolvedValueOnce({ resources: mockConsolidationOrder });
+    const mockRead = jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockResolvedValue(mockOrders);
 
     applicationContext.request = mockCamsHttpRequest();
     const controller = new OrdersController(applicationContext);

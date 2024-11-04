@@ -4,6 +4,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { CourtsUseCase } from '../../use-cases/courts/courts';
 import { CourtDivisionDetails } from '../../../../../common/src/cams/courts';
+import { closeDeferred } from '../../defer-close';
 
 const MODULE_NAME = 'COURTS-CONTROLLER';
 
@@ -29,6 +30,8 @@ export class CourtsController implements CamsController {
       });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await closeDeferred(context);
     }
   }
 }

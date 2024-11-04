@@ -8,30 +8,9 @@ import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-g
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
-
-export interface ConflictError {
-  code: 409;
-  body: {
-    code: 'Conflict';
-    message: string;
-  };
-  headers: {
-    [key: string]: unknown;
-  };
-  activityId: string;
-}
-
-export function isConflictError(error: ConflictError | unknown): error is ConflictError {
-  return (
-    (<ConflictError>error).code === 409 &&
-    (<ConflictError>error).body.code === 'Conflict' &&
-    (<ConflictError>error).body.message.includes(
-      'Entity with the specified id already exists in the system.',
-    )
-  );
-}
 
 function getRoles(groups: string[]): CamsRole[] {
   const rolesMap = LocalStorageGateway.getRoleMapping();
@@ -39,7 +18,7 @@ function getRoles(groups: string[]): CamsRole[] {
 }
 
 async function getOffices(
-  context: ApplicationContext,
+  _context: ApplicationContext,
   idpGroups: string[],
 ): Promise<UstpOfficeDetails[]> {
   const ustpOffices = LocalStorageGateway.getUstpOffices();
@@ -49,10 +28,16 @@ async function getOffices(
 export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
-    const cached = await sessionCacheRepository.get(context, token);
 
-    if (cached) {
-      return cached;
+    try {
+      const session = await sessionCacheRepository.read(token);
+      return session;
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        // This is a cache miss. Continue.
+      } else {
+        throw originalError;
+      }
     }
 
     try {
@@ -82,17 +67,10 @@ export class UserSessionUseCase {
         issuer: jwt.claims.iss,
       };
 
-      await sessionCacheRepository.put(context, session);
+      await sessionCacheRepository.upsert(session);
 
       return session;
     } catch (error) {
-      const isConflict = error.originalError
-        ? isConflictError(error.originalError)
-        : isConflictError(error);
-      if (isConflict) {
-        return await sessionCacheRepository.get(context, token);
-      }
-
       throw isCamsError(error)
         ? error
         : new UnauthorizedError(MODULE_NAME, {

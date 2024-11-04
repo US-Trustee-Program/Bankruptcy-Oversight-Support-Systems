@@ -27,9 +27,6 @@ on:
       deployBicep:
         required: true
         type: string
-      cosmosClientId:
-        required: true
-        type: string
 
 jobs:
   deploy-azure-infrastructure:
@@ -81,10 +78,7 @@ jobs:
             --idKeyvaultAppConfiguration ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }}  \
             --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
             --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
-            --cosmosIdentityName ${{secrets.AZ_COSMOS_ID_NAME }}  \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            --cosmosAccountName ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
-            --cosmosClientId ${{ inputs.cosmosClientId }} \
             --deployVnet ${{ inputs.execVnetDeploy }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
@@ -98,4 +92,5 @@ jobs:
             --sqlServerResourceGroupName ${{ secrets.AZURE_RG }} \
             --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --oktaUrl ${{ vars.OKTA_URL }}
+            --oktaUrl ${{ vars.OKTA_URL }} \
+            --mssqlRequestTimeout ${{ vars.MSSQL_REQUEST_TIMEOUT }}

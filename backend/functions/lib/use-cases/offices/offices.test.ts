@@ -6,11 +6,11 @@ import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-g
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { RuntimeStateCosmosDbRepository } from '../../adapters/gateways/runtime-state.cosmosdb.repository';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock-offices.repository';
 import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -51,6 +51,7 @@ describe('offices use case tests', () => {
       return {
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        close: jest.fn(),
       };
     });
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
@@ -69,6 +70,7 @@ describe('offices use case tests', () => {
       return {
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        close: jest.fn(),
       };
     });
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
@@ -76,7 +78,7 @@ describe('offices use case tests', () => {
     const officeCode = 'new-york';
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
     expect(officeAttorneys).toEqual([]);
-    expect(repoSpy).toHaveBeenCalledWith(applicationContext, officeCode);
+    expect(repoSpy).toHaveBeenCalledWith(officeCode);
     expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
@@ -113,18 +115,14 @@ describe('offices use case tests', () => {
         },
       );
 
-    const putSpy = jest
-      .spyOn(MockOfficesRepository.prototype, 'putOfficeStaff')
-      .mockResolvedValue();
-    const stateRepoSpy = jest
-      .spyOn(RuntimeStateCosmosDbRepository.prototype, 'updateState')
-      .mockResolvedValue();
+    const putSpy = jest.spyOn(MockOfficesRepository, 'putOfficeStaff').mockResolvedValue();
+    const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
 
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
     expect(putSpy).toHaveBeenCalledTimes(seattleUsers.length);
     seattleUsers.forEach((_, idx) => {
-      expect(putSpy).toHaveBeenCalledWith(expect.anything(), seattleOfficeCode, seattleUsers[idx]);
+      expect(putSpy).toHaveBeenCalledWith(seattleOfficeCode, seattleUsers[idx]);
     });
     expect(stateRepoSpy).toHaveBeenCalled();
   });

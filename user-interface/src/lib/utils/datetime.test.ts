@@ -1,4 +1,4 @@
-import { formatDate, formatDateTime, sortDates, sortDatesReverse } from './datetime';
+import { formatDate, formatDateTime, sortByDate, sortByDateReverse } from './datetime';
 
 describe('Date/Time utilities', () => {
   describe('formatDate', () => {
@@ -60,7 +60,7 @@ describe('Date/Time utilities', () => {
       const newest = new Date(2024, 1, 1);
       const oldest = new Date(2023, 11, 1);
       const dates = [middle, newest, newest, oldest];
-      dates.sort(sortDatesReverse);
+      dates.sort(sortByDateReverse);
       expect(dates[0]).toEqual(newest);
       expect(dates[1]).toEqual(newest);
       expect(dates[2]).toEqual(middle);
@@ -72,7 +72,7 @@ describe('Date/Time utilities', () => {
       const newest = new Date(2024, 1, 1);
       const oldest = new Date(2023, 11, 1);
       const dates = [middle, newest, newest, oldest];
-      dates.sort(sortDates);
+      dates.sort(sortByDate);
       expect(dates[0]).toEqual(oldest);
       expect(dates[1]).toEqual(middle);
       expect(dates[2]).toEqual(newest);

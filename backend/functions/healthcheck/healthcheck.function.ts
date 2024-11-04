@@ -8,6 +8,7 @@ import HealthcheckInfo from './healthcheck.info';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import { closeDeferred } from '../lib/defer-close';
 
 const MODULE_NAME = 'HEALTHCHECK';
 
@@ -26,37 +27,35 @@ export default async function handler(
 
   applicationContext.logger.debug(MODULE_NAME, 'Health check endpoint invoked');
 
-  const checkCosmosDbWrite = await healthcheckCosmosDbClient.checkDbWrite();
-  applicationContext.logger.debug(MODULE_NAME, 'CosmosDb Write Check return ' + checkCosmosDbWrite);
-  const checkCosmosDbRead = await healthcheckCosmosDbClient.checkDbRead();
-  applicationContext.logger.debug(MODULE_NAME, 'CosmosDb Read Check return ' + checkCosmosDbRead);
-  const checkCosmosDbDelete = await healthcheckCosmosDbClient.checkDbDelete();
+  const cosmosStatus = await healthcheckCosmosDbClient.checkDocumentDb();
 
+  Object.keys(cosmosStatus).forEach((key) => {
+    applicationContext.logger.debug(MODULE_NAME, key + ': ' + cosmosStatus[key]);
+  });
   const checkSqlDbReadAccess = await healthCheckSqlDbClient.checkDxtrDbRead();
   applicationContext.logger.debug(
     MODULE_NAME,
     'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,
   );
-
   const healthcheckInfo = new HealthcheckInfo(applicationContext);
   const info = healthcheckInfo.getServiceInfo();
 
   const respBody = {
     database: {
       metadata: healthcheckCosmosDbClient.dbConfig(),
-      cosmosDbWriteStatus: checkCosmosDbWrite,
-      cosmosDbReadStatus: checkCosmosDbRead,
-      cosmosDbDeleteStatus: checkCosmosDbDelete,
+      cosmosDbWriteStatus: cosmosStatus.cosmosDbWriteStatus,
+      cosmosDbReadStatus: cosmosStatus.cosmosDbReadStatus,
+      cosmosDbDeleteStatus: cosmosStatus.cosmosDbDeleteStatus,
       sqlDbReadStatus: checkSqlDbReadAccess,
     },
     info,
   };
 
   // Add boolean flag for any other checks here
-  return checkResults(
-    checkCosmosDbWrite,
-    checkCosmosDbRead,
-    checkCosmosDbDelete,
+  const result = checkResults(
+    cosmosStatus.cosmosDbDeleteStatus,
+    cosmosStatus.cosmosDbReadStatus,
+    cosmosStatus.cosmosDbWriteStatus,
     checkSqlDbReadAccess,
   )
     ? toAzureSuccess(
@@ -74,6 +73,8 @@ export default async function handler(
           status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         }),
       );
+  await closeDeferred(applicationContext);
+  return result;
 }
 
 export function checkResults(...results: boolean[]) {

@@ -1,26 +1,41 @@
 import * as dotenv from 'dotenv';
 import { ApplicationContext } from '../lib/adapters/types/basic';
-import { getAssignmentsCosmosDbClient } from '../lib/factory';
+import { DocumentClient } from '../lib/humble-objects/mongo-humble';
+import QueryBuilder from '../lib/query/query-builder';
+import { deferClose } from '../lib/defer-close';
+import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
 dotenv.config();
 
 const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
+const COLLECTION_NAME = 'healthcheck';
+
+export type HealthCheckDocument = {
+  id?: string;
+  healthCheckId: string;
+  documentType: 'HEALTH_CHECK';
+};
 
 export default class HealthcheckCosmosDb {
-  private readonly databaseName = process.env.COSMOS_DATABASE_NAME;
+  private readonly client: DocumentClient;
+  private readonly databaseName: string;
+  private readonly context: ApplicationContext;
 
-  private CONTAINER_NAME = 'healthcheck';
+  constructor(context: ApplicationContext) {
+    this.context = context;
+    const { connectionString, databaseName } = this.context.config.documentDbConfig;
+    this.databaseName = databaseName;
+    this.client = new DocumentClient(connectionString);
+    deferClose(context, this.client);
+  }
 
-  private readonly applicationContext: ApplicationContext;
-  private readonly cosmosDbClient;
-
-  constructor(applicationContext: ApplicationContext) {
-    try {
-      this.applicationContext = applicationContext;
-      this.cosmosDbClient = getAssignmentsCosmosDbClient(this.applicationContext);
-    } catch (e) {
-      applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
-    }
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
+      MODULE_NAME,
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
+    );
   }
 
   public dbConfig() {
@@ -29,59 +44,64 @@ export default class HealthcheckCosmosDb {
     };
   }
 
-  public async checkDbRead() {
+  public async checkDocumentDb() {
+    const status = {
+      cosmosDbWriteStatus: false,
+      cosmosDbReadStatus: undefined,
+      cosmosDbDeleteStatus: undefined,
+    };
+
+    status.cosmosDbWriteStatus = await this.checkDbWrite();
+    status.cosmosDbReadStatus = await this.checkDbRead();
+    status.cosmosDbDeleteStatus = await this.checkDbDelete();
+
+    return status;
+  }
+
+  private async checkDbRead() {
     try {
-      const { resources: results } = await this.cosmosDbClient
-        .database(this.databaseName)
-        .container(this.CONTAINER_NAME)
-        .items.readAll()
-        .fetchAll();
-      return results.length > 0;
+      const items = await this.getAdapter<HealthCheckDocument>().getAll();
+
+      return items.length > 0;
     } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }
 
-  public async checkDbWrite() {
+  private async checkDbWrite() {
+    const healthCheckDocument: HealthCheckDocument = {
+      healthCheckId: 'arbitrary-id',
+      documentType: 'HEALTH_CHECK',
+    };
     try {
-      const { resource } = await this.cosmosDbClient
-        .database(this.databaseName)
-        .container(this.CONTAINER_NAME)
-        .items.create({});
-      this.applicationContext.logger.debug(MODULE_NAME, `New item created ${resource.id}`);
-      return resource.id != undefined;
-    } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
-    }
-    return false;
-  }
-
-  public async checkDbDelete() {
-    try {
-      const { resources: results } = await this.cosmosDbClient
-        .database(this.databaseName)
-        .container(this.CONTAINER_NAME)
-        .items.readAll()
-        .fetchAll();
-
-      if (results.length > 0) {
-        for (const resource of results) {
-          this.applicationContext.logger.debug(
-            MODULE_NAME,
-            `Invoking delete on item ${resource.id}`,
-          );
-
-          await this.cosmosDbClient
-            .database(this.databaseName)
-            .container(this.CONTAINER_NAME)
-            .item(resource.id, resource.id)
-            .delete();
-        }
-      }
+      await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
       return true;
     } catch (e) {
-      this.applicationContext.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+    }
+    return false;
+  }
+
+  private async checkDbDelete() {
+    const { equals } = QueryBuilder;
+    try {
+      const items = await this.getAdapter<HealthCheckDocument>().getAll();
+
+      if (items.length > 0) {
+        for (const resource of items) {
+          this.context.logger.debug(MODULE_NAME, `Invoking delete on item ${resource.id}`);
+
+          await this.getAdapter().deleteOne(
+            QueryBuilder.build(
+              equals<HealthCheckDocument['healthCheckId']>('healthCheckId', resource.healthCheckId),
+            ),
+          );
+        }
+        return true;
+      }
+    } catch (e) {
+      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
     }
     return false;
   }

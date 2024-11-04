@@ -1,6 +1,7 @@
 import { CaseAssignment } from './assignments';
 import { CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
+import { CamsDocument } from './document';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
@@ -54,7 +55,7 @@ export function isConsolidationOrderApproval(
   );
 }
 
-// TODO: TransferOrder needs to NOT extend CaseSummary!! HOwever this is currently mapped from a flat SQL query response from DXTR.
+// TODO: TransferOrder needs to NOT extend CaseSummary!! However this is currently mapped from a flat SQL query response from DXTR.
 export type TransferOrder = CaseSummary & {
   id: string;
   orderType: 'transfer';
@@ -92,8 +93,7 @@ export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
   };
 }
 
-export type ConsolidationOrder = {
-  id?: string;
+export type ConsolidationOrder = CamsDocument & {
   deleted?: true;
   consolidationId: string;
   consolidationType: ConsolidationType;
@@ -169,14 +169,14 @@ type TransferOrderActionApproval = {
 
 export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
 
-type OrderActionRejection<T = TransferOrder> = {
+export type OrderActionRejection<T = TransferOrder> = {
   id: string;
   status: 'rejected';
   reason?: string;
   order: T;
 };
 
-type OrderActionApproval<T = TransferOrder> = {
+export type OrderActionApproval<T = TransferOrder> = {
   id: string;
   status: 'approved';
   order: T;

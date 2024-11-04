@@ -4,7 +4,7 @@ import {
   calculateDifferenceInMonths,
   getYearMonthDayStringFromDate,
   getMonthDayYearStringFromDate,
-  sortDates,
+  sortListOfDates,
 } from './date-helper';
 
 describe('date-helper tests', () => {
@@ -221,7 +221,7 @@ describe('date-helper tests', () => {
       const dates = [date1, date2, date3];
       const sorted = [date2, date1, date3];
 
-      sortDates(dates, 'chronological');
+      sortListOfDates(dates, 'chronological');
       expect(dates).toEqual(sorted);
     });
 
@@ -233,10 +233,10 @@ describe('date-helper tests', () => {
       const datesWithDefault = [date1, date2, date3];
       const sorted = [date3, date1, date2];
 
-      sortDates(datesWithParameter, 'reverse');
+      sortListOfDates(datesWithParameter, 'reverse');
       expect(datesWithParameter).toEqual(sorted);
 
-      sortDates(datesWithDefault);
+      sortListOfDates(datesWithDefault);
       expect(datesWithDefault).toEqual(sorted);
     });
   });

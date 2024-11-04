@@ -1,5 +1,5 @@
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { formatDate, sortDatesReverse } from '@/lib/utils/datetime';
+import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
@@ -34,7 +34,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
 
   function sortTransfers(a: Transfer, b: Transfer) {
-    return sortDatesReverse(a.orderDate, b.orderDate);
+    return sortByDateReverse(a.orderDate, b.orderDate);
   }
 
   function handleCaseAssignment(props: CallbackProps) {

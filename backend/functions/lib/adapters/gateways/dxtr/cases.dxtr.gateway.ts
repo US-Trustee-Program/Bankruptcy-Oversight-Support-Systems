@@ -2,7 +2,7 @@ import * as mssql from 'mssql';
 import { CasesInterface } from '../../../use-cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
-import { getMonthDayYearStringFromDate, sortDates } from '../../utils/date-helper';
+import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
 import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { handleQueryResult } from '../gateway-helper';
@@ -709,9 +709,9 @@ export default class CasesDxtrGateway implements CasesInterface {
       }
     });
 
-    sortDates(closedDates);
-    sortDates(dismissedDates);
-    sortDates(reopenedDates);
+    sortListOfDates(closedDates);
+    sortListOfDates(dismissedDates);
+    sortListOfDates(reopenedDates);
 
     return { closedDates, dismissedDates, reopenedDates } as TransactionDates;
   }

@@ -20,7 +20,7 @@ module.exports = {
     'dist/',
     'coverage/',
     'lib/adapters/gateways/cases.local.gateway.ts',
-    'lib/cosmos-humble-objects/',
+    'lib/humble-objects/',
     'lib/testing/mock-data/index.ts',
     'lib/testing/local-data/',
     'lib/testing/analysis/',

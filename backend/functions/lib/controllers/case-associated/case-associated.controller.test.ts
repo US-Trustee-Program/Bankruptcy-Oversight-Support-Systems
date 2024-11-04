@@ -42,7 +42,7 @@ describe('Test case-history controller', () => {
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
-    const expectedMessage = 'Unknown error';
+    const expectedMessage = 'Unknown Error';
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     applicationContext.request.params.caseId = caseId;
     const controller = new CaseAssociatedController(applicationContext);

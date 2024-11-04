@@ -24,7 +24,6 @@ export async function executeQuery(
     }
     const results = await sqlRequest.query(query);
 
-    // TODO : May want to refactor to just return results without the message and success
     const queryResult: QueryResults = {
       results,
       message: '',
@@ -33,7 +32,7 @@ export async function executeQuery(
 
     applicationContext.logger.info(MODULE_NAME, 'Closing connection.');
 
-    sqlConnection.close();
+    await sqlConnection.close();
 
     return queryResult;
   } catch (error) {
@@ -57,8 +56,8 @@ export async function executeQuery(
     } else if (isMssqlError(error)) {
       applicationContext.logger.error(MODULE_NAME, 'MssqlError', {
         error: {
-          name: error.name,
-          description: error.message,
+          name: error.name, // RequestError
+          description: error.message, // Timeout: Request failed to complete in 15000ms
         },
         originalError: {
           name: error.originalError.name,

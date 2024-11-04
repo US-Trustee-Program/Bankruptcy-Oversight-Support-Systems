@@ -28,12 +28,6 @@ on:
       azResourceGrpNetworkEncrypted:
         description: ""
         value: ${{ jobs.build-info.outputs.azResourceGrpNetworkEncrypted }}
-      cosmosClientId:
-        description: ""
-        value: ${{ jobs.build-info.outputs.cosmosClientId }}
-      cosmosPrincipalId:
-        description: ""
-        value: ${{ jobs.build-info.outputs.cosmosPrincipalId }}
       environmentHash:
         description: ""
         value: ${{ jobs.build-info.outputs.environmentHash }}
@@ -65,8 +59,6 @@ jobs:
       apiName: ${{ steps.build-info.outputs.apiName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
-      cosmosClientId: ${{ steps.get-cosmos-ids.outputs.cosmosClientId }}
-      cosmosPrincipalId: ${{ steps.get-cosmos-ids.outputs.cosmosPrincipalId }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
@@ -147,15 +139,6 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ steps.rgApp.outputs.out }}
-
-      - name: Get Cosmos Client ID
-        id: get-cosmos-ids
-        run: |
-          cosmosClientId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].clientId" -o tsv)
-          echo "cosmosClientId=${cosmosClientId}" >> $GITHUB_OUTPUT
-          cosmosPrincipalId=$(az identity list -g ${{ secrets.AZURE_RG }} --query "[?name=='id-${{ secrets.AZ_COSMOS_ACCOUNT_NAME }}-user'].principalId" -o tsv)
-          echo "cosmosPrincipalId=${cosmosPrincipalId}" >> $GITHUB_OUTPUT
-          echo "CosmosClientId: ${cosmosClientId}"
 
       - name: Check Initial Deployment
         id: check-initial-deployment

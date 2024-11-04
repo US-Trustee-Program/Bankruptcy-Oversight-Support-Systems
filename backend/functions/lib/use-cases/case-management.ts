@@ -12,13 +12,12 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { isCamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
 import { OfficesGateway } from './offices/offices.types';
-import { CasesRepository } from './gateways.types';
+import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { buildOfficeCode } from './offices/offices';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
@@ -39,7 +38,7 @@ export function getAction<T extends CaseBasics>(
 }
 
 export default class CaseManagement {
-  assignmentGateway: CaseAssignmentRepositoryInterface;
+  assignmentGateway: CaseAssignmentRepository;
   casesGateway: CasesInterface;
   casesRepo: CasesRepository;
   officesGateway: OfficesGateway;
@@ -103,10 +102,11 @@ export default class CaseManagement {
     caseId: string,
   ): Promise<ResourceActions<CaseDetail>> {
     const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
-    caseDetails.transfers = await this.casesRepo.getTransfers(applicationContext, caseId);
-    caseDetails.consolidation = await this.casesRepo.getConsolidation(applicationContext, caseId);
+    caseDetails.transfers = await this.casesRepo.getTransfers(caseId);
+    caseDetails.consolidation = await this.casesRepo.getConsolidation(caseId);
     caseDetails.assignments = await this.getCaseAssignments(applicationContext, caseDetails);
     caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
+    caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
     const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
     return { ...caseDetails, _actions };

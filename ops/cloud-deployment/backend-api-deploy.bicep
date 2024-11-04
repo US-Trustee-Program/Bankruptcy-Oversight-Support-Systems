@@ -45,6 +45,8 @@ param functionSubnetId string
 
 param privateEndpointSubnetId string
 
+param mssqlRequestTimeout string
+
 
 @description('Azure functions runtime environment')
 @allowed([
@@ -100,14 +102,6 @@ param allowVeracodeScan bool = false
 @secure()
 param idKeyvaultAppConfiguration string
 
-@description('Name of the managed identity with read/write access to CosmosDB')
-@secure()
-param cosmosIdentityName string
-
-param cosmosClientId string
-
-param cosmosAccountName string
-
 param cosmosDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
@@ -137,10 +131,6 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-resource cosmosIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: cosmosIdentityName
-  scope: resourceGroup(kvAppConfigResourceGroupName)
-}
 /*
   App service plan (hosting plan) for Azure functions instances
 */
@@ -244,10 +234,11 @@ module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
 /*
   Create functionapp
 */
+
+
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
-    '${cosmosIdentity.id}': {}
   },
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
@@ -300,16 +291,12 @@ var applicationSettings = concat(
       value: '-70'
     }
     {
-      name: 'COSMOS_ENDPOINT'
-      value: 'https://${cosmosAccountName}.documents.azure.us:443/'
-    }
-    {
       name: 'COSMOS_DATABASE_NAME'
       value: cosmosDatabaseName
     }
     {
-      name: 'COSMOS_MANAGED_IDENTITY'
-      value: cosmosClientId
+      name: 'MONGO_CONNECTION_STRING'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
     }
     {
       name: 'INFO_SHA'
@@ -354,6 +341,10 @@ var applicationSettings = concat(
     {
       name: 'OKTA_API_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
+    }
+    {
+      name: 'MSSQL_REQUEST_TIMEOUT'
+      value: mssqlRequestTimeout
     }
   ],
   createApplicationInsights

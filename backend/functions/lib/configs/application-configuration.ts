@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { ServerType } from '../adapters/types/basic';
-import { CosmosConfig, IDbConfig } from '../adapters/types/database';
+import { DocumentDbConfig, IDbConfig } from '../adapters/types/database';
 import { AuthorizationConfig, UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { getAuthorizationConfig } from './authorization-configuration';
 import { getUserGroupGatewayConfig } from './user-groups-gateway-configuration';
@@ -11,7 +11,7 @@ export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly dbMock: boolean;
-  public readonly cosmosConfig: CosmosConfig;
+  public readonly documentDbConfig: DocumentDbConfig;
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
@@ -20,7 +20,7 @@ export class ApplicationConfiguration {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
-    this.cosmosConfig = this.getCosmosConfig();
+    this.documentDbConfig = this.getDocumentDbConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
     this.userGroupGatewayConfig = getUserGroupGatewayConfig();
@@ -42,11 +42,13 @@ export class ApplicationConfiguration {
     const user = process.env.MSSQL_USER;
     const password = process.env.MSSQL_PASS;
     const identityClientId = process.env.MSSQL_CLIENT_ID;
+    const requestTimeout = parseInt(process.env.MSSQL_REQUEST_TIMEOUT ?? '15000');
 
     const config: IDbConfig = {
       server,
       port,
       database,
+      requestTimeout,
     };
 
     const useSqlAuth = user && password;
@@ -78,11 +80,10 @@ export class ApplicationConfiguration {
     return config;
   }
 
-  private getCosmosConfig(): CosmosConfig {
+  private getDocumentDbConfig(): DocumentDbConfig {
     return {
-      endpoint: process.env.COSMOS_ENDPOINT,
-      managedIdentity: process.env.COSMOS_MANAGED_IDENTITY,
       databaseName: process.env.COSMOS_DATABASE_NAME,
+      connectionString: process.env.MONGO_CONNECTION_STRING,
     };
   }
 

@@ -47,6 +47,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync> {
     const transfers = await this.getTransferOrderSync(context, txId);
     const consolidations = await this.getConsolidationOrderSync(context, txId);
+
     return {
       consolidations: consolidations.consolidations,
       transfers: transfers.transfers,
@@ -290,7 +291,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         maxTxId: maxTxId.toString(),
       };
     } catch (originalError) {
-      throw new CamsError(MODULE_NAME, { originalError });
+      throw new CamsError(MODULE_NAME, { message: originalError.message });
     }
   }
 

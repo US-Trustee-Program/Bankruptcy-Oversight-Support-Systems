@@ -1,7 +1,6 @@
-import { CaseAssignmentRepositoryInterface } from '../interfaces/case.assignment.repository.interface';
 import { getAssignmentRepository, getCasesRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CasesRepository } from './gateways.types';
+import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
@@ -13,7 +12,7 @@ import { createAuditRecord } from '../../../../common/src/cams/auditable';
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
-  private assignmentRepository: CaseAssignmentRepositoryInterface;
+  private assignmentRepository: CaseAssignmentRepository;
   private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
@@ -45,7 +44,7 @@ export class CaseAssignmentUseCase {
     await this.assignTrialAttorneys(context, caseId, newAssignments, role);
 
     // Reassign all child cases if this is a joint administration lead case.
-    const consolidationReferences = await this.casesRepository.getConsolidation(context, caseId);
+    const consolidationReferences = await this.casesRepository.getConsolidation(caseId);
     const childCaseIds = consolidationReferences
       .filter(
         (reference) =>
@@ -96,7 +95,7 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        await this.assignmentRepository.updateAssignment({
+        await this.assignmentRepository.update({
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
         });
@@ -108,7 +107,7 @@ export class CaseAssignmentUseCase {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
-        const assignmentId = await this.assignmentRepository.createAssignment(assignment);
+        const assignmentId = await this.assignmentRepository.create(assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }
@@ -125,7 +124,7 @@ export class CaseAssignmentUseCase {
       context.session?.user,
     );
     history.updatedOn = currentDate;
-    await this.casesRepository.createCaseHistory(context, history);
+    await this.casesRepository.createCaseHistory(history);
 
     context.logger.info(
       MODULE_NAME,

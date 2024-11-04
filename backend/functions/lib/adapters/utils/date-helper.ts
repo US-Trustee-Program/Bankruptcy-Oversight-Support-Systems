@@ -56,7 +56,7 @@ function padDateElement(value: number) {
   return value.toString();
 }
 
-export function sortDates(dates: Date[], order: 'chronological' | 'reverse' = 'reverse') {
+export function sortListOfDates(dates: Date[], order: 'chronological' | 'reverse' = 'reverse') {
   dates.sort((a: Date, b: Date) => {
     if (order === 'chronological') {
       return a.valueOf() - b.valueOf();

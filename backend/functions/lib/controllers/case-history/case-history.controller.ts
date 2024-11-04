@@ -4,6 +4,7 @@ import { CaseHistory } from '../../../../../common/src/cams/history';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
+import { closeDeferred } from '../../defer-close';
 
 const MODULE_NAME = 'CASE-HISTORY-CONTROLLER';
 
@@ -17,7 +18,7 @@ export class CaseHistoryController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<CaseHistory[]>> {
     try {
-      const caseHistory = await this.useCase.getCaseHistory(context, context.request.params.id);
+      const caseHistory = await this.useCase.getCaseHistory(context.request.params.id);
       const success = httpSuccess({
         body: {
           meta: {
@@ -29,6 +30,8 @@ export class CaseHistoryController implements CamsController {
       return success;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await closeDeferred(context);
     }
   }
 }
