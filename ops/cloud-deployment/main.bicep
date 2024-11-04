@@ -108,6 +108,8 @@ param loginProvider string = ''
 
 param isUstpDeployment bool = false
 
+param mssqlRequestTimeout string = '15000'
+
 @description('Used to set Content-Security-Policy for USTP.')
 @secure()
 param ustpIssueCollectorHash string = ''
@@ -154,6 +156,7 @@ module network './lib//network/ustp-cams-network.bicep' = {
     virtualNetworkName: virtualNetworkName
   }
 }
+
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
@@ -218,6 +221,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       cosmosDatabaseName: cosmosDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
+      mssqlRequestTimeout: mssqlRequestTimeout
     }
     dependsOn: [
       network

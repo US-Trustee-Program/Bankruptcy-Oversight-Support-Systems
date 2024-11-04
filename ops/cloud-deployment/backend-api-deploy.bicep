@@ -45,6 +45,8 @@ param functionSubnetId string
 
 param privateEndpointSubnetId string
 
+param mssqlRequestTimeout string
+
 
 @description('Azure functions runtime environment')
 @allowed([
@@ -342,7 +344,7 @@ var applicationSettings = concat(
     }
     {
       name: 'MSSQL_REQUEST_TIMEOUT'
-      value: '30000'
+      value: mssqlRequestTimeout
     }
   ],
   createApplicationInsights
