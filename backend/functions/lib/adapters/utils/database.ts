@@ -99,15 +99,3 @@ type AggregateError = Error & {
 function isAggregateError(e: unknown): e is AggregateError {
   return e && 'errors' in (e as object);
 }
-
-// export class SqlDatabase implements Closable {
-//
-//
-//   constructor() {
-//
-//   }
-//
-//   close() {
-//
-//   }
-// }
