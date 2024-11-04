@@ -340,6 +340,10 @@ var applicationSettings = concat(
       name: 'OKTA_API_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     }
+    {
+      name: 'MSSQL_REQUEST_TIMEOUT'
+      value: '30000'
+    }
   ],
   createApplicationInsights
     ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
