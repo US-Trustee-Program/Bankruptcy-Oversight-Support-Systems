@@ -77,15 +77,15 @@ export const Header = () => {
               <div className="cams-user-container">
                 {session?.user && (
                   <>
-                    <span className="user-info">
+                    <div className="user-info">
                       <span className="user-icon">
                         <Icon name="person"></Icon>
                       </span>
                       <span className="user-name">{session.user.name} </span>
-                    </span>
-                    <span className="logout-link">
-                      <a href={LOGOUT_PATH}>logout</a>
-                    </span>
+                      <span className="logout-link">
+                        <a href={LOGOUT_PATH}>logout</a>
+                      </span>
+                    </div>
                   </>
                 )}
               </div>
