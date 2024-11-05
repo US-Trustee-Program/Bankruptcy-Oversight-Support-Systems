@@ -1,5 +1,5 @@
-import { test as setup } from '@playwright/test';
 import { Page, expect } from '@playwright/test';
+import { test } from './fixture/urlQueryString';
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config();
 
@@ -10,7 +10,7 @@ const TARGET_HOST = process.env.TARGET_HOST;
 const LOGIN_PATH = '/login';
 const timeoutOption = { timeout: 30000 };
 
-setup('authenticate', async ({ page }) => {
+test('authenticate', async ({ page }) => {
   const { login } = usingAuthenticationProvider();
   await login(page);
 });
