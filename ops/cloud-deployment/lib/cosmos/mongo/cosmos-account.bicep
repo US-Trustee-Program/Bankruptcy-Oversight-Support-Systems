@@ -135,6 +135,9 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
       {
         name: 'EnableMongoRoleBasedAccessControl'
       }
+      {
+        name: 'EnableUniqueCompoundNestedDocs'
+      }
     ]
     publicNetworkAccess: 'Enabled'
     isVirtualNetworkFilterEnabled: allowAllNetworks ? false : true
