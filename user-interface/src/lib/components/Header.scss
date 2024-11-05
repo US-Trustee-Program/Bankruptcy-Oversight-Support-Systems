@@ -47,14 +47,17 @@
       .usa-navbar {
         border-bottom: none;
         height: auto;
-        min-width: 100px;
+        min-width: 125px;
 
         .cams-logo.usa-logo {
           flex: 0 0 auto;
           margin: 0px;
           .doj-logo {
+            padding: 0;
             height: 125px;
-            width: 120px;
+            min-height: 125px;
+            width: 125px;
+            min-width: 125px;
           }
         }
       }
