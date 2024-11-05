@@ -157,6 +157,35 @@ export const Header = () => {
                     </NavLink>
                   </li>
                 )}
+
+                {session && (
+                  <li className="usa-nav__primary-item">
+                    <button
+                      type="button"
+                      className="usa-accordion__button usa-nav__link"
+                      aria-expanded="false"
+                      aria-controls="user-submenu"
+                    >
+                      <span className="user-info">
+                        <span className="user-icon">
+                          <Icon name="person"></Icon>
+                        </span>
+                        <span className="user-name">{session.user.name} </span>
+                      </span>
+                    </button>
+                    <ul id="user-submenu" className="usa-nav__submenu">
+                      <li className="usa-nav__submenu-item">
+                        <NavLink
+                          to={LOGOUT_PATH}
+                          data-testid="header-logout-link"
+                          className={'usa-nav-link'}
+                        >
+                          Logout
+                        </NavLink>
+                      </li>
+                    </ul>
+                  </li>
+                )}
               </ul>
             </nav>
           </div>
