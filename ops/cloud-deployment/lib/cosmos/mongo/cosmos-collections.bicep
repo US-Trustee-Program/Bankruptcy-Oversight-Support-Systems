@@ -121,9 +121,6 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
               'officeCode'
             ]
           }
-          options: {
-            unique: true
-          }
         }
       ]
     }
