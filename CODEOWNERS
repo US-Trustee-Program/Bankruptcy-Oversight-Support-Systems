@@ -2,12 +2,3 @@
 
 CODEOWNERS @US-Trustee-Program/ustp-team
 LICENSE.md @US-Trustee-Program/ustp-team
-
-# Inclusion of Enterprise Architecture team for anything that includes networking or permissions
-ops/cloud-deployment/lib/network @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/keyvault/keyvault.bicep @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/cosmos/mongo @US-Trustee-Program/enterprise-architecture
-ops/cloud-deployment/lib/identity @US-Trustee-Program/enterprise-architecture
-ops/scripts/pipeline/slots/az-config-pep.sh @US-Trustee-Program/enterprise-architecture
-ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh @US-Trustee-Program/enterprise-architecture
-ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh @US-Trustee-Program/enterprise-architecture
