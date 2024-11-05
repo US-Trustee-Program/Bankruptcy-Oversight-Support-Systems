@@ -36,16 +36,6 @@ resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
         {
           key: {
             keys: [
-              'id'
-            ]
-          }
-          options: {
-            unique:true
-          }
-        }
-        {
-          key: {
-            keys: [
               '$**'
             ]
           }
@@ -87,16 +77,6 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
           }
        }
        {
-        key: {
-          keys: [
-            'id'
-          ]
-        }
-        options: {
-          unique:true
-        }
-      }
-       {
           key: {
             keys: [
               'signature'
@@ -126,16 +106,6 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
             keys: [
               '_id'
             ]
-          }
-        }
-        {
-          key: {
-            keys: [
-              'id'
-            ]
-          }
-          options: {
-            unique:true
           }
         }
         {
