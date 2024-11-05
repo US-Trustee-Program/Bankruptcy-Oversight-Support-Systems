@@ -1,34 +1,11 @@
-@use '@/styles/abstracts/colors';
-
 .cams-banner {
   .usa-banner__inner {
     max-width: none;
   }
 
-  a,
-  a:visited,
-  a:hover {
-    color: rgb(27, 27, 27);
-    text-decoration: none;
-  }
-  a:hover {
-    text-decoration: underline;
-  }
-
   .development {
     background-color: #207bc0;
     color: white;
-
-    .header-container {
-      .login-info {
-        a, a:visited, a:active {
-          color: white;
-        }
-        a:hover {
-          color: colors.$gold;
-        }
-      }
-    }
   }
 
   .test {
@@ -64,39 +41,17 @@
       text-transform: uppercase;
       text-align: center;
     }
+  }
+}
 
-    .login-info {
-      display: inline-block;
-      position: absolute;
-      top: 0;
-      right: 0;
-      text-align: right;
-      padding: 0 1rem;
-
-      a, a:visited, a:active {
-        color: black;
-      }
-      a:hover {
-        color: colors.$eagle;
-        text-decoration: underline;
-      }
-
-      .user-icon {
+@media screen and (max-width: 850px) {
+  .cams-banner {
+    .header-container {
+      .header-flag-container {
         position: relative;
-        padding-right: 0.25rem;
-        svg {
-          height: 1rem;
-          width: 1rem;
-        }
       }
-      .user-name {
-        position: relative;
-        padding-right: 0.5rem;
-        vertical-align: top;
-      }
-      .logout-link {
-        position: relative;
-        vertical-align: top;
+      .environment-text-container.usa-banner__header-text {
+        margin: 0 1rem;
       }
     }
   }
