@@ -106,10 +106,12 @@
         .user-info {
           display: inline-block;
           height: 1.5rem;
-          vertical-align: top;
 
           .user-icon {
+            vertical-align: bottom;
+            display: inline-block;
             position: relative;
+            line-height: 1.5rem;
             padding-right: 0.25rem;
             top: 2px;
             svg {
@@ -119,18 +121,23 @@
             }
           }
           .user-name {
+            vertical-align: bottom;
+            display: inline-block;
             position: relative;
+            line-height: 1.5rem;
+            font-size: 1rem;
             padding-right: 0.5rem;
             color: white;
           }
-        }
-        .logout-link {
-          display: inline-block;
-          height: 1.5rem;
-          position: relative;
-          vertical-align: top;
-          a {
-            padding-right: 0;
+          .logout-link {
+            vertical-align: bottom;
+            display: inline-block;
+            position: relative;
+            line-height: 1.5rem;
+            font-size: 1rem;
+            a {
+              padding-right: 0;
+            }
           }
         }
       }
