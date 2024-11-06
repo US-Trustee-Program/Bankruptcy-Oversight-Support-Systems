@@ -33,7 +33,7 @@ param privateEndpointSubnetName string = 'snet-${stackName}-private-endpoints'
 param privateEndpointSubnetAddressPrefix string = '10.10.12.0/28'
 
 @description('Private DNS Zone Name')
-param privateDnsZoneName string = 'privatelink.azurewebsites.us'
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
 @description('Private DNS Zone Resource Group')
 param privateDnsZoneResourceGroup string = networkResourceGroupName
