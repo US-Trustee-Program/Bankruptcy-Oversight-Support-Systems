@@ -275,8 +275,11 @@ async function putConsolidationOrderRejection(
   return put<ConsolidationOrder[]>('/consolidations/reject', data);
 }
 
-async function searchCases(predicate: CasesSearchPredicate): Promise<ResponseBody<CaseBasics[]>> {
-  return post<CaseBasics[]>('/cases', predicate, {});
+async function searchCases(
+  predicate: CasesSearchPredicate,
+  options: { includeAssignments?: boolean } = {},
+): Promise<ResponseBody<CaseBasics[]>> {
+  return post<CaseBasics[]>('/cases', predicate, options);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction): Promise<ResponseBody> {

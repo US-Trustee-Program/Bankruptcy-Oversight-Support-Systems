@@ -1,6 +1,7 @@
 import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
-import { AttorneyUser, CamsUserReference } from './users';
+import { CamsUserReference } from './users';
+import { CaseAssignment } from './assignments';
 
 export interface LegacyOfficeDetails {
   officeName: string;
@@ -29,7 +30,7 @@ export interface CaseBasics extends LegacyOfficeDetails {
   petitionLabel?: string;
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
-  assignments?: AttorneyUser[];
+  assignments?: CaseAssignment[];
 }
 
 export interface CaseSummary extends CaseBasics {
@@ -41,7 +42,6 @@ export interface CaseDetail extends CaseSummary {
   dismissedDate?: string;
   reopenedDate?: string;
   courtId: string;
-  assignments?: AttorneyUser[];
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;

@@ -29,6 +29,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async find(query: ConditionOrConjunction, sort?: Sort): Promise<T[]> {
     const mongoQuery = toMongoQuery(query);
+    console.log(mongoQuery);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       const findPromise = this.collectionHumble.find(mongoQuery);
