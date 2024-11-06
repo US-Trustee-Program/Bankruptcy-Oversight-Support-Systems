@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
+import DropdownMenu, { MenuItem } from './cams/DropdownMenu/DropdownMenu';
 
 export enum NavState {
   DEFAULT,
@@ -18,6 +19,7 @@ export enum NavState {
   MY_CASES,
   SEARCH,
   STAFF_ASSIGNMENT,
+  USER,
 }
 
 function mapNavState(path: string) {
@@ -37,6 +39,14 @@ function mapNavState(path: string) {
       return NavState.DEFAULT;
   }
 }
+
+const userMenuItems: MenuItem[] = [
+  {
+    id: 'user-logout',
+    label: 'Logout',
+    address: LOGOUT_PATH,
+  },
+];
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
   return activeNav === stateToCheck ? 'usa-current current' : '';
@@ -73,23 +83,6 @@ export const Header = () => {
             </div>
           </div>
           <div className="cams-main-navigation">
-            <nav className="usa-nav cams-user-nav">
-              <div className="cams-user-container">
-                {session?.user && (
-                  <>
-                    <div className="user-info">
-                      <span className="user-icon">
-                        <Icon name="person"></Icon>
-                      </span>
-                      <span className="user-name">{session.user.name} </span>
-                      <span className="logout-link">
-                        <a href={LOGOUT_PATH}>logout</a>
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </nav>
             <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
               <ul className="usa-nav__primary">
                 <li className="usa-nav__primary-item">
@@ -160,30 +153,15 @@ export const Header = () => {
 
                 {session && (
                   <li className="usa-nav__primary-item">
-                    <button
-                      type="button"
-                      className="usa-accordion__button usa-nav__link"
-                      aria-expanded="false"
-                      aria-controls="user-submenu"
+                    <DropdownMenu
+                      id={'user-menu'}
+                      menuItems={userMenuItems}
+                      className={'header-menu ' + setCurrentNav(activeNav, NavState.USER)}
+                      onClick={() => setActiveNav(NavState.USER)}
                     >
-                      <span className="user-info">
-                        <span className="user-icon">
-                          <Icon name="person"></Icon>
-                        </span>
-                        <span className="user-name">{session.user.name} </span>
-                      </span>
-                    </button>
-                    <ul id="user-submenu" className="usa-nav__submenu">
-                      <li className="usa-nav__submenu-item">
-                        <NavLink
-                          to={LOGOUT_PATH}
-                          data-testid="header-logout-link"
-                          className={'usa-nav-link'}
-                        >
-                          Logout
-                        </NavLink>
-                      </li>
-                    </ul>
+                      <Icon name="person"></Icon>
+                      {session.user.name}
+                    </DropdownMenu>
                   </li>
                 )}
               </ul>
