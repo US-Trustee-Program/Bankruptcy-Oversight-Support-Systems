@@ -140,9 +140,9 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   sku: planTypeToSkuMap[planType]
   kind: 'linux'
   properties: {
-    perSiteScaling: true
-    elasticScaleEnabled: true
-    maximumElasticWorkerCount: 2
+    perSiteScaling: false
+    elasticScaleEnabled: false
+    maximumElasticWorkerCount: 1
     isSpot: false
     reserved: true // set true for Linux
     isXenon: false
@@ -388,7 +388,7 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
-    functionAppScaleLimit: 2
+    functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: ipSecurityRestrictionsRules
