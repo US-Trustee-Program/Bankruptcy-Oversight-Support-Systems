@@ -117,7 +117,7 @@ param actionGroupResourceGroupName string = ''
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 
