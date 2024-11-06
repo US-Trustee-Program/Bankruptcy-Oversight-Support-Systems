@@ -7,7 +7,6 @@ export type AuthorizationConfig = {
   issuer: string | null;
   audience: string | null;
   userInfoUri: string | null;
-  authorizeUri: string | null;
 };
 
 export interface OpenIdConnectGateway {

@@ -15,7 +15,6 @@ describe('Okta gateway tests', () => {
       provider: 'okta',
       audience: 'something',
       userInfoUri: 'something',
-      authorizeUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
   });
@@ -30,7 +29,6 @@ describe('Okta gateway tests', () => {
       provider: 'mock',
       audience: 'something',
       userInfoUri: 'something',
-      authorizeUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
     await expect(gateway.getUser('test')).rejects.toThrow('Invalid provider.');
@@ -42,7 +40,6 @@ describe('Okta gateway tests', () => {
       provider: 'okta',
       audience: 'something',
       userInfoUri: 'something',
-      authorizeUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
     await expect(gateway.getUser('test')).rejects.toThrow('Issuer not provided.');
@@ -54,7 +51,6 @@ describe('Okta gateway tests', () => {
       provider: 'okta',
       audience: null,
       userInfoUri: 'something',
-      authorizeUri: 'something',
     };
     jest.spyOn(AuthorizationConfiguration, 'getAuthorizationConfig').mockReturnValue(authConfig);
     await expect(gateway.getUser('test')).rejects.toThrow('Audience not provided.');

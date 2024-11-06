@@ -16,11 +16,10 @@ const config = doMockAuth
 const issuer = URL.canParse(config.issuer) ? config.issuer : null;
 
 const authorizationConfig = doMockAuth
-  ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null, authorizeUri: null } as const)
+  ? ({ issuer, audience: null, provider: 'mock', userInfoUri: null } as const)
   : ({
       issuer,
       provider,
-      authorizeUri: getAuthorizeUriFromIssuer(issuer),
       audience: getAudienceFromIssuer(issuer),
       userInfoUri: getUserInfoUriFromIssuer(issuer),
     } as const);
@@ -38,10 +37,6 @@ function getAudienceFromIssuer(issuer: string) {
   return `api://${serverName}`;
 }
 
-function getAuthorizeUriFromIssuer(issuer: string) {
-  if (!issuer) return null;
-  return issuer + '/v1/authorize';
-}
 function getUserInfoUriFromIssuer(issuer: string) {
   if (!issuer) return null;
   return issuer + '/v1/userinfo';
