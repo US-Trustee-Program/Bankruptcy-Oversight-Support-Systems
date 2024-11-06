@@ -19,7 +19,9 @@ const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
 const NEW_CASE_ID = '222-24-00001';
 const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
+const TEST_ASSIGNMENT_1 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_1 });
 const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
+const TEST_ASSIGNMENT_2 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_2 });
 const TEST_JUDGE_NAME = 'Rick B Hart';
 const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
@@ -27,7 +29,7 @@ const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
     caseId: TEST_CASE_ID,
     chapter: '15',
     judgeName: TEST_JUDGE_NAME,
-    assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
+    assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
     debtorAttorney: TEST_DEBTOR_ATTORNEY,
     _actions: [Actions.ManageAssignments],
   },
@@ -118,7 +120,7 @@ describe('Case detail basic information panel', () => {
           caseId: TEST_CASE_ID,
           chapter: '15',
           judgeName: TEST_JUDGE_NAME,
-          assignments: [TEST_TRIAL_ATTORNEY_1, TEST_TRIAL_ATTORNEY_2],
+          assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
           debtorAttorney: TEST_DEBTOR_ATTORNEY,
         },
       });
