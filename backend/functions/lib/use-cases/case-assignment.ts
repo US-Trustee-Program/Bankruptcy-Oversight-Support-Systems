@@ -85,8 +85,10 @@ export class CaseAssignmentUseCase {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
-    const existingAssignmentRecords =
-      await this.assignmentRepository.findAssignmentsByCaseId(caseId);
+    const existingAssignmentRecordsMap = await this.assignmentRepository.findAssignmentsByCaseId([
+      caseId,
+    ]);
+    const existingAssignmentRecords = existingAssignmentRecordsMap.get(caseId) ?? [];
     for (const existingAssignment of existingAssignmentRecords) {
       const stillAssigned = listOfAssignments.find((newAssignment) => {
         return (
@@ -113,7 +115,10 @@ export class CaseAssignmentUseCase {
       }
     }
 
-    const newAssignmentRecords = await this.assignmentRepository.findAssignmentsByCaseId(caseId);
+    const newAssignmentRecordsMap = await this.assignmentRepository.findAssignmentsByCaseId([
+      caseId,
+    ]);
+    const newAssignmentRecords = newAssignmentRecordsMap.get(caseId);
     const history = createAuditRecord<CaseAssignmentHistory>(
       {
         caseId,
@@ -135,8 +140,8 @@ export class CaseAssignmentUseCase {
     return listOfAssignmentIdsCreated;
   }
 
-  public async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
-    return await this.assignmentRepository.findAssignmentsByCaseId(caseId);
+  public async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
+    return await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
   }
 
   public async getCaseLoad(userId: string): Promise<number> {

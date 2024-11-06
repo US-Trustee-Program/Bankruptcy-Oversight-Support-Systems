@@ -73,6 +73,7 @@ interface GenericApiClient {
     body: U,
     options?: ObjectKeyVal,
   ): Promise<ResponseBody<T> | void>;
+
   put<T extends object = object, U extends object = object>(
     path: string,
     body: U,
@@ -125,6 +126,7 @@ export function useGenericApi(): GenericApiClient {
       const body = await api.get(uriOrPathSubstring, options);
       return body as ResponseBody<T>;
     },
+
     async patch<T extends object = object, U extends object = object>(
       path: string,
       body: U,
@@ -138,6 +140,7 @@ export function useGenericApi(): GenericApiClient {
       }
       return responseBody as ResponseBody<T>;
     },
+
     async post<T extends object = object, U extends object = object>(
       path: string,
       body: U,
@@ -151,6 +154,7 @@ export function useGenericApi(): GenericApiClient {
       }
       return responseBody as ResponseBody<T>;
     },
+
     async put<T extends object = object, U extends object = object>(
       path: string,
       body: U,
@@ -267,8 +271,11 @@ async function putConsolidationOrderRejection(data: ConsolidationOrderActionReje
   );
 }
 
-async function searchCases(predicate: CasesSearchPredicate) {
-  return api().post<CaseBasics[], CasesSearchPredicate>('/cases', predicate);
+async function searchCases(
+  predicate: CasesSearchPredicate,
+  options: { includeAssignments?: boolean } = {},
+) {
+  return api().post<CaseBasics[], CasesSearchPredicate>('/cases', predicate, options);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction): Promise<void> {

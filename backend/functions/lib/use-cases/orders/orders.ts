@@ -395,7 +395,10 @@ export class OrdersUseCase {
 
     if (status === 'approved') {
       const assignmentUseCase = new CaseAssignmentUseCase(context);
-      const leadCaseAssignments = await assignmentUseCase.findAssignmentsByCaseId(leadCase.caseId);
+      const leadCaseAssignmentsMap = await assignmentUseCase.findAssignmentsByCaseId([
+        leadCase.caseId,
+      ]);
+      const leadCaseAssignments = leadCaseAssignmentsMap.get(leadCase.caseId) ?? [];
       const leadCaseAttorneys: CamsUserReference[] = leadCaseAssignments.map((assignment) => {
         return { id: assignment.caseId, name: assignment.name };
       });

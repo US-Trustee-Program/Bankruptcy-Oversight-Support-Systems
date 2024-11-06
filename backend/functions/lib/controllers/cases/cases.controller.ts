@@ -32,7 +32,7 @@ export class CasesController implements CamsController {
       if (context.request.method === 'GET' && context.request.params.caseId) {
         data = await this.getCaseDetails({ caseId: context.request.params.caseId });
       } else {
-        data = await this.searchCases(context.request);
+        data = await this.searchCases(context.request, context.request.query ?? {});
       }
       return httpSuccess({ body: data });
     } catch (originalError) {
@@ -50,23 +50,36 @@ export class CasesController implements CamsController {
     return { data };
   }
 
-  public async searchCases(request: CamsHttpRequest) {
+  public async searchCases(
+    request: CamsHttpRequest,
+    options: { includeAssignments?: boolean } = {},
+  ) {
     const predicate = request.body as CasesSearchPredicate;
-    const body = await this.paginateSearchCases(predicate, request.url);
+    const body = await this.paginateSearchCases(
+      predicate,
+      request.url,
+      options.includeAssignments ?? false,
+    );
     return body;
   }
 
   async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
+    includeAssignments: boolean,
   ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
-    const cases = await this.caseManagement.searchCases(this.applicationContext, predicate);
+    const cases = await this.caseManagement.searchCases(
+      this.applicationContext,
+      predicate,
+      includeAssignments,
+    );
 
     const pagination: Pagination = {
       count: cases.length,
       limit: predicate.limit,
       currentPage: getCurrentPage(cases.length, predicate),
     };
+
     if (cases.length > predicate.limit) {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
@@ -75,12 +88,14 @@ export class CasesController implements CamsController {
       cases.pop();
       pagination.count = cases.length;
     }
+
     if (predicate.offset > 0) {
       const previous = new URL(url);
       previous.searchParams.set('limit', predicate.limit.toString());
       previous.searchParams.set('offset', (predicate.offset - predicate.limit).toString());
       pagination.previous = previous.href;
     }
+
     return {
       meta: {
         self: url,
