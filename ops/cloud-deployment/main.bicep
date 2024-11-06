@@ -19,7 +19,7 @@ param linkVnetIds array = []
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.us'
+param privateDnsZoneName string = 'privatelink.azurewebsites.net'
 
 param privateDnsZoneResourceGroup string = networkResourceGroupName
 
