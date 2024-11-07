@@ -216,9 +216,7 @@ describe('Case management tests', () => {
         return Promise.resolve(caseDetail);
       });
 
-      jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
-        return Promise.resolve(caseDetail);
-      });
+      jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockResolvedValue(caseDetail);
 
       const actualCaseDetail = await chapterCaseList.getCaseDetail(applicationContext, caseId);
 
