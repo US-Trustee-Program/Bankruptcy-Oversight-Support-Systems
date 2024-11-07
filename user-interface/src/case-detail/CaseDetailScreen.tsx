@@ -325,7 +325,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         userId: attorney.id,
         name: attorney.name,
         role: CamsRole.TrialAttorney,
-        assignedOn: new Date().toString(),
       } as CaseAssignment);
     });
     const updatedCaseBasicInfo: CaseDetail = {
