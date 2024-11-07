@@ -8,11 +8,14 @@ import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const caseId = '101-23-12345';
 
 const brianWilson = MockAttorneys.Brian;
+const brianAssignment = MockData.getAttorneyAssignment({ ...brianWilson });
 const carlWilson = MockAttorneys.Carl;
+const carlAssignment = MockData.getAttorneyAssignment({ ...carlWilson });
 
 const rickBHartName = 'Rick B Hart';
 
@@ -59,7 +62,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
         address1: '123 Rabbithole Lane',
@@ -102,7 +105,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
         address1: '123 Rabbithole Lane',
@@ -214,7 +217,7 @@ describe('Case Detail screen tests', () => {
         petitionLabel: 'Voluntary',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilson, carlWilson],
+        assignments: [brianAssignment, carlAssignment],
         debtor: {
           name: 'Roger Rabbit',
         },
@@ -274,7 +277,7 @@ describe('Case Detail screen tests', () => {
         petitionLabel: 'Voluntary',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilson, carlWilson],
+        assignments: [brianAssignment, carlAssignment],
         debtor: {
           name: 'Roger Rabbit',
           address1,
@@ -345,7 +348,7 @@ describe('Case Detail screen tests', () => {
         petitionLabel: 'Voluntary',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilson, carlWilson],
+        assignments: [brianAssignment, carlAssignment],
         debtor: {
           name: 'Roger Rabbit',
           ssn,
@@ -406,7 +409,7 @@ describe('Case Detail screen tests', () => {
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -445,7 +448,7 @@ describe('Case Detail screen tests', () => {
       dateFiled: '01-04-1962',
       closedDate: '01-08-1963',
       dismissedDate: '01-08-1964',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       judgeName: 'Honorable Jason Smith',
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
@@ -489,7 +492,7 @@ describe('Case Detail screen tests', () => {
       debtorTypeLabel: 'Corporate Business',
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -532,7 +535,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       closedDate: '01-08-1963',
       reopenedDate: '04-15-1969',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -581,7 +584,7 @@ describe('Case Detail screen tests', () => {
       petitionLabel: 'Voluntary',
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
-      assignments: [brianWilson, carlWilson],
+      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -712,7 +715,7 @@ describe('Case Detail screen tests', () => {
         dateFiled: '01-04-1962',
         closedDate: '01-08-1963',
         dismissedDate: '01-08-1964',
-        assignments: [brianWilson, carlWilson],
+        assignments: [brianAssignment, carlAssignment],
         debtor: {
           name: 'Roger Rabbit',
         },

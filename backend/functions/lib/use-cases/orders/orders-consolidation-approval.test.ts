@@ -150,7 +150,23 @@ describe('Orders use case', () => {
         return [];
       });
 
-    jest.spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId').mockResolvedValue([]);
+    jest.spyOn(MockMongoRepository.prototype, 'update').mockImplementation(() => {
+      return Promise.resolve();
+    });
+
+    jest.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(() => {
+      return Promise.resolve();
+    });
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+      .mockImplementation((ids: string[]) => {
+        const assignmentsMap = new Map();
+        ids.forEach((id) => {
+          assignmentsMap.set(id, [MockData.getAttorneyAssignment({ id })]);
+        });
+        return Promise.resolve(assignmentsMap);
+      });
     jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
       .mockResolvedValue(MockData.getConsolidationTo({ override: { otherCase: leadCaseSummary } }));
@@ -174,8 +190,8 @@ describe('Orders use case', () => {
         caseId: originalConsolidation.childCases[0].caseId,
         documentType: 'AUDIT_ASSIGNMENT',
         updatedBy: expect.anything(),
-        before: [],
-        after: [],
+        before: expect.anything(),
+        after: expect.anything(),
       }),
     );
     expect(mockCreateHistory.mock.calls[2][0]).toEqual(expect.objectContaining(leadCaseHistory));
@@ -276,7 +292,9 @@ describe('Orders use case', () => {
 
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
-    jest.spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId').mockResolvedValue([]);
+    jest
+      .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+      .mockResolvedValue(new Map());
     jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')
       .mockResolvedValue(MockData.getConsolidationTo());

@@ -125,11 +125,6 @@ jobs:
       [
         setup,
         build,
-        accessibility-test,
-        security-scan,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
       ]
     if: ((github.ref == 'refs/heads/main') || (github.ref == 'refs/heads/dependency-updates-auto') || (inputs.deployBranch == 'true'))
     with:

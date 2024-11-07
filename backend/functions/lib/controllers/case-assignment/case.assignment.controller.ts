@@ -43,9 +43,10 @@ export class CaseAssignmentController implements CamsController {
           statusCode: HttpStatusCodes.CREATED,
         });
       } else {
-        const assignments = await assignmentUseCase.findAssignmentsByCaseId(
+        const assignmentsMap = await assignmentUseCase.findAssignmentsByCaseId([
           context.request.params['id'],
-        );
+        ]);
+        const assignments = assignmentsMap.get(context.request.params['id']);
         return httpSuccess({
           body: {
             data: assignments,
