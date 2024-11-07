@@ -150,9 +150,9 @@ describe('Orders use case', () => {
         return [];
       });
 
-    jest.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue();
+    jest.spyOn(MockMongoRepository.prototype, 'update').mockResolvedValue(undefined);
 
-    jest.spyOn(MockMongoRepository.prototype, 'create')..mockResolvedValue();
+    jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined);
 
     jest
       .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
