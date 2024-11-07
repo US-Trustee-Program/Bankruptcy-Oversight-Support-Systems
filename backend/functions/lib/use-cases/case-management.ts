@@ -91,7 +91,6 @@ export default class CaseManagement {
 
       if (includeAssignments) {
         const assignmentsMap = await this.assignmentGateway.findAssignmentsByCaseId(caseIds);
-        console.log('Assignments', JSON.stringify(assignmentsMap));
         for (const casesKey in cases) {
           const assignments = assignmentsMap.get(cases[casesKey].caseId) ?? [];
           cases[casesKey] = {
