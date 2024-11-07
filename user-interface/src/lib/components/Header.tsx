@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import { LOGOUT_PATH } from '@/login/login-library';
 import './Header.scss';
 import useFeatureFlags, {
   CASE_SEARCH_ENABLED,
@@ -8,6 +9,8 @@ import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
+import Icon from './uswds/Icon';
+import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
 
 export enum NavState {
   DEFAULT,
@@ -16,6 +19,7 @@ export enum NavState {
   MY_CASES,
   SEARCH,
   STAFF_ASSIGNMENT,
+  USER,
 }
 
 function mapNavState(path: string) {
@@ -35,6 +39,13 @@ function mapNavState(path: string) {
       return NavState.DEFAULT;
   }
 }
+
+const userMenuItems: MenuItem[] = [
+  {
+    label: 'Logout',
+    address: LOGOUT_PATH,
+  },
+];
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
   return activeNav === stateToCheck ? 'usa-current current' : '';
@@ -70,75 +81,90 @@ export const Header = () => {
               <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
             </div>
           </div>
-          <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
-            <ul className="usa-nav__primary">
-              <li className="usa-nav__primary-item">
-                <NavLink
-                  to="/my-cases"
-                  data-testid="header-my-cases-link"
-                  className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
-                  onClick={() => setActiveNav(NavState.MY_CASES)}
-                  title="view a list of cases assigned to your account"
-                >
-                  My Cases
-                </NavLink>
-              </li>
-
-              {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
+          <div className="cams-main-navigation">
+            <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
+              <ul className="usa-nav__primary">
                 <li className="usa-nav__primary-item">
                   <NavLink
-                    to="/staff-assignment"
-                    data-testid="header-staff-assignment-link"
-                    className={
-                      'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
-                    }
-                    onClick={() => {
-                      return setActiveNav(NavState.STAFF_ASSIGNMENT);
-                    }}
-                    title="view or edit staff assignments for cases"
+                    to="/my-cases"
+                    data-testid="header-my-cases-link"
+                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
+                    onClick={() => setActiveNav(NavState.MY_CASES)}
+                    title="view a list of cases assigned to your account"
                   >
-                    Staff Assignment
+                    My Cases
                   </NavLink>
                 </li>
-              )}
 
-              {session &&
-                session.user.roles?.includes(CamsRole.DataVerifier) &&
-                transferOrdersFlag && (
+                {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
                   <li className="usa-nav__primary-item">
                     <NavLink
-                      to="/data-verification"
-                      data-testid="header-data-verification-link"
+                      to="/staff-assignment"
+                      data-testid="header-staff-assignment-link"
                       className={
-                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                        'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
                       }
                       onClick={() => {
-                        return setActiveNav(NavState.DATA_VERIFICATION);
+                        return setActiveNav(NavState.STAFF_ASSIGNMENT);
                       }}
-                      title="view status of, approve, or reject case events"
+                      title="view or edit staff assignments for cases"
                     >
-                      Data Verification
+                      Staff Assignment
                     </NavLink>
                   </li>
                 )}
 
-              {caseSearchFlag && (
-                <li className="usa-nav__primary-item">
-                  <NavLink
-                    to="/search"
-                    data-testid="header-search-link"
-                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                    onClick={() => {
-                      return setActiveNav(NavState.SEARCH);
-                    }}
-                    title="search for cases"
-                  >
-                    Case Search
-                  </NavLink>
-                </li>
-              )}
-            </ul>
-          </nav>
+                {session &&
+                  session.user.roles?.includes(CamsRole.DataVerifier) &&
+                  transferOrdersFlag && (
+                    <li className="usa-nav__primary-item">
+                      <NavLink
+                        to="/data-verification"
+                        data-testid="header-data-verification-link"
+                        className={
+                          'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
+                        }
+                        onClick={() => {
+                          return setActiveNav(NavState.DATA_VERIFICATION);
+                        }}
+                        title="view status of, approve, or reject case events"
+                      >
+                        Data Verification
+                      </NavLink>
+                    </li>
+                  )}
+
+                {caseSearchFlag && (
+                  <li className="usa-nav__primary-item">
+                    <NavLink
+                      to="/search"
+                      data-testid="header-search-link"
+                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                      onClick={() => {
+                        return setActiveNav(NavState.SEARCH);
+                      }}
+                      title="search for cases"
+                    >
+                      Case Search
+                    </NavLink>
+                  </li>
+                )}
+
+                {session && (
+                  <li className="usa-nav__primary-item">
+                    <DropdownMenu
+                      id={'user-menu'}
+                      menuItems={userMenuItems}
+                      className="header-menu"
+                    >
+                      <Icon name="person"></Icon>
+                      {session.user.name}
+                    </DropdownMenu>
+                  </li>
+                )}
+              </ul>
+            </nav>
+          </div>
         </div>
       </header>
     </>

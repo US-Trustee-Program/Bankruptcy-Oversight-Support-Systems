@@ -6,6 +6,15 @@
 @use 'styles/abstracts/colors';
 @use 'styles/abstracts/tables';
 
+/* Overriding USWDS Grid row large gap negative margins because they force
+   the screen width overall to overflow and create scrollbars where there
+   should not be any.
+*/
+.grid-row.grid-gap-lg {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 body {
   overflow-y: hidden;
 }
@@ -15,7 +24,7 @@ body {
   position: absolute;
   padding: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
   top: 0;
   bottom: 0;
   left: 0;
