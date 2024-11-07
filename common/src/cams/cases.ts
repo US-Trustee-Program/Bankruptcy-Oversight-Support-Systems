@@ -1,9 +1,8 @@
 import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
-import { CamsUserReference } from './users';
 import { CaseAssignment } from './assignments';
 
-export interface LegacyOfficeDetails {
+export type FlatOfficeDetail = {
   officeName: string;
   officeCode: string;
   courtId: string;
@@ -14,13 +13,9 @@ export interface LegacyOfficeDetails {
   regionId: string;
   regionName: string;
   state?: string;
-  staff?: CamsUserReference[];
-}
+};
 
-// TODO: Decouple the case model from office details.
-// Why do we couple to office details anyhow? It's because we flatten office details
-// into case detail in DXTR SQL JOINs.
-export interface CaseBasics extends LegacyOfficeDetails {
+export type CaseBasics = FlatOfficeDetail & {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
   caseId: string;
   chapter: string;
@@ -31,13 +26,13 @@ export interface CaseBasics extends LegacyOfficeDetails {
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
   assignments?: CaseAssignment[];
-}
+};
 
-export interface CaseSummary extends CaseBasics {
+export type CaseSummary = CaseBasics & {
   debtor: Party;
-}
+};
 
-export interface CaseDetail extends CaseSummary {
+export type CaseDetail = CaseSummary & {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
@@ -46,7 +41,7 @@ export interface CaseDetail extends CaseSummary {
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
   judgeName?: string;
-}
+};
 
 export type CaseDocketEntryDocument = {
   fileUri: string;

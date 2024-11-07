@@ -169,15 +169,15 @@ describe('Test Assign Attorney Modal Component', () => {
         if (a.name > b.name) return 1;
         return 0;
       })
-      .slice(1, 3)
+      .slice(1, 4)
       .map((attorney) => {
-        return { id: attorney.id, name: attorney.name, roles: [] };
+        return { id: attorney.id, name: attorney.name };
       });
 
     await waitFor(() => {
       expect(postSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          attorneyList: expect.arrayContaining(expectedAttorneys),
+          attorneyList: expectedAttorneys,
           caseId: '123',
           role: 'TrialAttorney',
         }),

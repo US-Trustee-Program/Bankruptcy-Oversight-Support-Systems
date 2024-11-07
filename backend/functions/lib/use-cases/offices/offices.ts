@@ -1,5 +1,5 @@
 import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
-import { AttorneyUser, CamsUserReference } from '../../../../../common/src/cams/users';
+import { AttorneyUser, Staff } from '../../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
@@ -57,7 +57,7 @@ export class OfficesUseCase {
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 
     // Map roles to users.
-    const userMap = new Map<string, CamsUserReference>();
+    const userMap = new Map<string, Staff>();
     for (const roleGroup of roleGroups) {
       const users = await userGroupSource.getUserGroupUsers(context, config, roleGroup);
       const role = groupToRoleMap.get(roleGroup.name);
@@ -65,8 +65,7 @@ export class OfficesUseCase {
         if (userMap.has(user.id)) {
           userMap.get(user.id).roles.push(role);
         } else {
-          user.roles = [role];
-          userMap.set(user.id, user);
+          userMap.set(user.id, { ...user, roles: [role] });
         }
       }
     }

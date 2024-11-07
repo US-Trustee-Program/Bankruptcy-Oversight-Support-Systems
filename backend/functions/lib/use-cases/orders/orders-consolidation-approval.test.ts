@@ -190,8 +190,8 @@ describe('Orders use case', () => {
         caseId: originalConsolidation.childCases[0].caseId,
         documentType: 'AUDIT_ASSIGNMENT',
         updatedBy: expect.anything(),
-        before: [],
-        after: [],
+        before: expect.anything(),
+        after: expect.anything(),
       }),
     );
     expect(mockCreateHistory.mock.calls[2][0]).toEqual(expect.objectContaining(leadCaseHistory));

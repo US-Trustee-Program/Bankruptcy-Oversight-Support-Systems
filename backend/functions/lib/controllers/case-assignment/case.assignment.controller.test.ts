@@ -140,11 +140,18 @@ describe('Case Assignment Creation Tests', () => {
   });
 
   test('should fetch a list of assignments when a GET request is called', async () => {
-    const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 3);
+    const caseId = '111-22-33333';
+    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
     const camsHttpResponse = httpSuccess({ body: { data: assignments } });
+    const expectedMap = new Map([[caseId, assignments]]);
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { id: caseId },
+    });
+
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId')
-      .mockResolvedValue(assignments);
+      .mockResolvedValue(expectedMap);
 
     const assignmentController = new CaseAssignmentController(applicationContext);
     const result = await assignmentController.handleRequest(applicationContext);
