@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
-import DropdownMenu, { MenuItem } from './cams/DropdownMenu/DropdownMenu';
+import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
 
 export enum NavState {
   DEFAULT,
@@ -156,8 +156,7 @@ export const Header = () => {
                     <DropdownMenu
                       id={'user-menu'}
                       menuItems={userMenuItems}
-                      className={'header-menu ' + setCurrentNav(activeNav, NavState.USER)}
-                      onClick={() => setActiveNav(NavState.USER)}
+                      className="header-menu"
                     >
                       <Icon name="person"></Icon>
                       {session.user.name}

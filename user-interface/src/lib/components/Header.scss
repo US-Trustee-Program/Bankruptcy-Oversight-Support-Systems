@@ -131,6 +131,18 @@
                 background-color: white;
               }
             }
+            #user-menu:hover {
+              color: colors.$gold;
+              span {
+                text-decoration: underline;
+              }
+              svg {
+                color: colors.$gold;
+              }
+            }
+            #user-menu:hover::after {
+              background-color: transparent;
+            }
             #user-submenu {
               li {
                 background-color: #207bc0;
