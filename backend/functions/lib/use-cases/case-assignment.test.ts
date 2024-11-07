@@ -98,14 +98,16 @@ describe('Case assignment tests', () => {
           assignedOn: new Date().toISOString(),
         },
       ];
-      findAssignmentsByCaseId.mockResolvedValue(assignments);
+
+      const expectedMap = new Map([[caseId, assignments]]);
+      findAssignmentsByCaseId.mockResolvedValue(expectedMap);
 
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
 
-      const actualAssignments = await assignmentUseCase.findAssignmentsByCaseId(caseId);
+      const actualAssignments = await assignmentUseCase.findAssignmentsByCaseId([caseId]);
 
-      expect(actualAssignments.length).toEqual(2);
-      expect(actualAssignments).toEqual(expect.arrayContaining(assignments));
+      expect(actualAssignments.get(caseId).length).toEqual(2);
+      expect(actualAssignments).toEqual(expectedMap);
     });
   });
 
@@ -145,6 +147,8 @@ describe('Case assignment tests', () => {
         role,
       };
 
+      findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, []]]));
+
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(createAssignment.mock.calls[1][0]).toEqual(expect.objectContaining(assignmentTwo));
     });
@@ -172,9 +176,7 @@ describe('Case assignment tests', () => {
         role,
       };
 
-      jest
-        .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
-        .mockResolvedValue([assignmentOne]);
+      findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
 
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,
@@ -205,7 +207,7 @@ describe('Case assignment tests', () => {
         role,
       };
 
-      findAssignmentsByCaseId.mockResolvedValue([assignmentOne]);
+      findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
 
       await assignmentUseCase.createTrialAttorneyAssignments(
         applicationContext,

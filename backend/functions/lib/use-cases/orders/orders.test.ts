@@ -579,9 +579,13 @@ describe('Orders use case', () => {
         );
       });
 
+    const caseId = '111-22-33333';
+    const assignments = MockData.buildArray(() => MockData.getAttorneyAssignment({ caseId }), 3);
+    const expectedMap = new Map([[caseId, assignments]]);
+
     jest
       .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
-      .mockResolvedValue(MockData.buildArray(MockData.getAttorneyAssignment, 3));
+      .mockResolvedValue(expectedMap);
 
     jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')

@@ -60,7 +60,7 @@ export interface UserSessionCacheRepository<T = CamsSession> extends Reads<T>, U
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>,
     Updates<CaseAssignment, string> {
-  findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]>;
+  findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>>;
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
 }
 

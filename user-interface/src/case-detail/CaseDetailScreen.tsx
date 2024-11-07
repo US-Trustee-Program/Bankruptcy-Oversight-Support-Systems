@@ -24,6 +24,8 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { CaseAssignment } from '@common/cams/assignments';
+import { CamsRole } from '@common/cams/roles';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailOverview'));
@@ -317,9 +319,18 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   }
 
   function handleCaseAssignment(assignment: CallbackProps) {
+    const assignments: CaseAssignment[] = [];
+    assignment.selectedAttorneyList.forEach((attorney) => {
+      assignments.push({
+        userId: attorney.id,
+        name: attorney.name,
+        role: CamsRole.TrialAttorney,
+        assignedOn: new Date().toString(),
+      } as CaseAssignment);
+    });
     const updatedCaseBasicInfo: CaseDetail = {
       ...caseBasicInfo!,
-      assignments: assignment.selectedAttorneyList,
+      assignments,
     };
     setCaseBasicInfo(updatedCaseBasicInfo);
   }
