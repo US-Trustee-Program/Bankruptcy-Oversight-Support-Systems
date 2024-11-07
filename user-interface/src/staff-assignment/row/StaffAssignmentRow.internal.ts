@@ -8,13 +8,13 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 
 type State = {
+  // TODO: Make assignments a partial of CaseAssignment?? Include on the fields the UI needs to render and the modal needs to make assignments.
   assignments: CaseAssignment[];
   isLoading: boolean;
   bCase: CaseBasics;
 };
 
 type Actions = {
-  getCaseAssignments: () => void;
   updateAssignmentsCallback: (props: CallbackProps) => Promise<void>;
 };
 
@@ -60,7 +60,6 @@ function useStateActions(initialState: State): {
           documentType: 'ASSIGNMENT',
           caseId: bCase.caseId,
           role: CamsRole.TrialAttorney,
-          assignedOn: new Date().toString(),
         } as CaseAssignment;
       });
       setState({ ...state, assignments });
@@ -68,11 +67,7 @@ function useStateActions(initialState: State): {
     }
   }
 
-  async function getCaseAssignments() {
-    setState({ ...state, assignments: state.bCase.assignments ?? [], isLoading: false });
-  }
-
-  const actions = { updateAssignmentsCallback, getCaseAssignments };
+  const actions = { updateAssignmentsCallback };
 
   return { state, actions };
 }

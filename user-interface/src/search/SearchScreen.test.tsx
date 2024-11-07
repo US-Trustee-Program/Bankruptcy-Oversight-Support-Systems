@@ -29,7 +29,7 @@ describe('search screen', () => {
     },
     data: [],
   };
-
+  const includeAssignments = { includeAssignments: true };
   let searchCasesSpy: MockInstance;
 
   beforeEach(async () => {
@@ -92,6 +92,7 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
+      includeAssignments,
     );
 
     await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
@@ -113,6 +114,7 @@ describe('search screen', () => {
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
+      includeAssignments,
     );
 
     const pillButton = document.querySelector('#case-chapter-search .pill-clear-button');
@@ -192,6 +194,7 @@ describe('search screen', () => {
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
+      includeAssignments,
     );
 
     // Make second search request...
@@ -217,6 +220,7 @@ describe('search screen', () => {
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
+      includeAssignments,
     );
 
     // clear division selection
@@ -286,7 +290,7 @@ describe('search screen', () => {
       expect(table).not.toBeInTheDocument();
     });
 
-    expect(searchCasesSpy).toHaveBeenCalledWith(casesSearchPredicate);
+    expect(searchCasesSpy).toHaveBeenCalledWith(casesSearchPredicate, includeAssignments);
   });
 
   test('should only search for full case number', async () => {

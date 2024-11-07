@@ -1,4 +1,4 @@
-import { CamsUserReference } from './users';
+import { Staff } from './users';
 
 //TODO: Some of these probably do not belong here
 export type UstpOfficeDetails = {
@@ -9,7 +9,7 @@ export type UstpOfficeDetails = {
   regionId: string; // DXTR AO_REGION
   regionName: string; // DXTR AO_REGION
   state?: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices
-  staff?: CamsUserReference[];
+  staff?: Staff[];
 };
 
 export type UstpGroup = {

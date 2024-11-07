@@ -25,7 +25,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
 
   const initialState = {
-    assignments: [],
+    assignments: bCase.assignments ?? [],
     isLoading: true,
     bCase,
     modalRef,
@@ -33,10 +33,6 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
   const openAssignmentsModalButtonRef = useRef<OpenModalButtonRef>(null);
   const { state, actions } = Internal.useStateActions(initialState);
-
-  // useEffect(() => {
-  //   actions.getCaseAssignments();
-  // }, []);
 
   function handleCallback(props: CallbackProps) {
     actions.updateAssignmentsCallback(props).then(() => {
@@ -76,9 +72,9 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     }
   }
 
-  function buildAssignmentList(assignments: CaseAssignment[] | undefined) {
+  function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
     if (assignments && assignments.length > 0) {
-      return bCase.assignments?.map((attorney, key: number) => (
+      return state.assignments?.map((attorney, key: number) => (
         <span key={key} data-testid={`staff-name-${key}`}>
           {attorney.name}
           <br />
@@ -101,22 +97,13 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
-        {/*{state.isLoading && (*/}
-        {/*  <div className="table-flex-container">*/}
-        {/*    <div className="attorney-list-container">*/}
-        {/*      <LoadingSpinner caption="Loading..." />*/}
-        {/*    </div>*/}
-        {/*  </div>*/}
-        {/*)}*/}
-        {/*{!state.isLoading && (*/}
         <div className="table-flex-container">
-          <div className="attorney-list-container">{buildAssignmentList(bCase.assignments)}</div>
+          <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
           <div className="table-column-toolbar">
             {Actions.contains(bCase, Actions.ManageAssignments) &&
-              buildActionButton(bCase.assignments)}
+              buildActionButton(state.assignments)}
           </div>
         </div>
-        {/*)}*/}
       </TableRowData>
     </TableRow>
   );

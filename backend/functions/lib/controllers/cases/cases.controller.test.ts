@@ -310,7 +310,7 @@ describe('cases controller test', () => {
         body: expected,
       });
       await controller.searchCases(camsHttpRequest);
-      expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected);
+      expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected, false);
     });
 
     test('should return an error if an error is encountered', async () => {
