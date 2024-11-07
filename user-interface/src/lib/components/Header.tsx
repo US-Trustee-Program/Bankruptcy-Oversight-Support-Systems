@@ -45,14 +45,6 @@ const userMenuItems: MenuItem[] = [
     label: 'Logout',
     address: LOGOUT_PATH,
   },
-  {
-    label: 'Logout 1',
-    address: LOGOUT_PATH,
-  },
-  {
-    label: 'Logout 2',
-    address: LOGOUT_PATH,
-  },
 ];
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
