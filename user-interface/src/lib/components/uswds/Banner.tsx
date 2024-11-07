@@ -1,7 +1,4 @@
-import { LOGOUT_PATH } from '@/login/login-library';
-import Icon from './Icon';
 import './Banner.scss';
-import { LocalStorage } from '@/lib/utils/local-storage';
 import { SkipToMainContentLink } from '../cams/SkipToMainContentLink/SkipToMainContentLink';
 
 export const Banner = () => {
@@ -9,8 +6,6 @@ export const Banner = () => {
   const environmentClass =
     launchDarklyEnvironment === 'production' ? '' : `${launchDarklyEnvironment}`;
   const envHeaderClassName = 'usa-banner__header ' + environmentClass;
-
-  const session = LocalStorage.getSession();
 
   return (
     <section
@@ -36,24 +31,6 @@ export const Banner = () => {
               <span className="environment-text">{launchDarklyEnvironment} ENVIRONMENT</span>
             )}
           </div>
-
-          <nav className="cams-banner-nav">
-            <div className="login-info">
-              {session?.user && (
-                <>
-                  <span className="user-info">
-                    <span className="user-icon">
-                      <Icon name="person"></Icon>
-                    </span>
-                    <span className="user-name">{session.user.name} </span>
-                  </span>
-                  <span className="logout-link">
-                    <a href={LOGOUT_PATH}>logout</a>
-                  </span>
-                </>
-              )}
-            </div>
-          </nav>
         </div>
       </header>
     </section>
