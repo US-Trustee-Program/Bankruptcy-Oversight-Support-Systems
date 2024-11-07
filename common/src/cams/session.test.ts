@@ -13,9 +13,8 @@ describe('session', () => {
 
   describe('getCamsUserReference', () => {
     test('should return a CamsUserReference with expected properties', () => {
-      const roles = [CamsRole.CaseAssignmentManager];
-      const user = MockData.getCamsUser({ roles });
-      const expected = { id: user.id, name: user.name, roles };
+      const user = MockData.getCamsUser();
+      const expected = { id: user.id, name: user.name };
       const actual = getCamsUserReference(user);
       expect(actual).toEqual(expected);
     });
