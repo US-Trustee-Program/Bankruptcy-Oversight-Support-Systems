@@ -100,48 +100,6 @@
       border-right: none;
       z-index: auto;
 
-      .cams-user-nav {
-        padding: 0 1rem;
-
-        .user-info {
-          display: inline-block;
-          height: 1.5rem;
-
-          .user-icon {
-            vertical-align: bottom;
-            display: inline-block;
-            position: relative;
-            line-height: 1.5rem;
-            padding-right: 0.25rem;
-            top: 2px;
-            svg {
-              height: 1rem;
-              width: 1rem;
-              color: white;
-            }
-          }
-          .user-name {
-            vertical-align: bottom;
-            display: inline-block;
-            position: relative;
-            line-height: 1.5rem;
-            font-size: 1rem;
-            padding-right: 0.5rem;
-            color: white;
-          }
-          .logout-link {
-            vertical-align: bottom;
-            display: inline-block;
-            position: relative;
-            line-height: 1.5rem;
-            font-size: 1rem;
-            a {
-              padding-right: 0;
-            }
-          }
-        }
-      }
-
       .cams-nav-bar {
         @include header-links;
         a {
@@ -156,6 +114,43 @@
             a {
               white-space: nowrap;
               font-size: 1.06rem;
+            }
+
+            #user-menu {
+              color: white;
+              font-size: 1.06rem;
+              top: -2px;
+
+              svg {
+                top: 3px;
+                margin-right: 0.25rem;
+                color: white;
+              }
+
+              span::after {
+                background-color: white;
+              }
+            }
+            #user-menu:hover {
+              color: colors.$gold;
+              span {
+                text-decoration: underline;
+              }
+              svg {
+                color: colors.$gold;
+              }
+            }
+            #user-menu:hover::after {
+              background-color: transparent;
+            }
+            #user-menu-item-list {
+              li {
+                background-color: #207bc0;
+                color: white;
+              }
+              li a:focus {
+                background-color: colors.$navy;
+              }
             }
           }
         }
@@ -177,9 +172,6 @@
           flex-flow: row;
           width: 120px;
         }
-      }
-      .cams-nav-bar {
-        color: blue;
       }
     }
   }
