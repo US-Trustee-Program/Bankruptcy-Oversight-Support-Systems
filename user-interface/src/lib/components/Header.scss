@@ -1,5 +1,18 @@
 @use '@/styles/abstracts/colors';
 
+@mixin header-links {
+  a {
+    vertical-align: middle;
+    color: white;
+    text-decoration: none;
+    padding-right: 15px;
+  }
+  a:hover {
+    color: colors.$gold;
+    text-decoration: underline;
+  }
+}
+
 .usa-header > * {
   background-color: colors.$navy;
 }
@@ -16,30 +29,35 @@
   padding: 15px 50px;
   position: relative;
 
+  @include header-links;
+
   .usa-nav-container {
-    display: flex;
+    display: block;
+    padding-left: 0;
+    padding-right: 0;
     flex-flow: row;
     justify-content: space-between;
     max-width: none;
     margin: 0;
-    padding-left: 20px;
-    padding-right: 20px;
 
     .cams-logo-and-title {
       display: flex;
       justify-content: left;
 
       .usa-navbar {
-        display: flex;
-        flex-flow: row;
-        width: 120px;
+        border-bottom: none;
+        height: auto;
+        min-width: 125px;
 
         .cams-logo.usa-logo {
           flex: 0 0 auto;
           margin: 0px;
           .doj-logo {
+            padding: 0;
             height: 125px;
-            width: 120px;
+            min-height: 125px;
+            width: 125px;
+            min-width: 125px;
           }
         }
       }
@@ -63,28 +81,96 @@
       }
     }
 
-    .cams-nav-bar {
-      a {
-        vertical-align: middle;
-        color: white;
-        font-weight: bold;
-        text-decoration: none;
-        padding-right: 15px;
-      }
-      a:hover {
-        color: colors.$gold;
-        text-decoration: underline;
-      }
-      .usa-current::after {
-        background-color: colors.$gold;
-      }
-      ul.usa-nav__primary {
-        list-style-type: none;
-        li {
-          a {
-            white-space: nowrap;
-            font-size: 1.06rem;
+    .cams-main-navigation {
+      display: flex;
+      position: relative;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-start;
+      width: 100%;
+      padding: 0.25rem 0 1rem 0.5rem;
+      float: left;
+
+      top: auto;
+      right: auto;
+      bottom: auto;
+      left: auto;
+
+      background: transparent;
+      border-right: none;
+      z-index: auto;
+
+      .cams-nav-bar {
+        @include header-links;
+        a {
+          font-weight: bold;
+        }
+        .usa-current::after {
+          background-color: colors.$gold;
+        }
+        ul.usa-nav__primary {
+          list-style-type: none;
+          li {
+            a {
+              white-space: nowrap;
+              font-size: 1.06rem;
+            }
+
+            #user-menu {
+              color: white;
+              font-size: 1.06rem;
+              top: -2px;
+
+              svg {
+                top: 3px;
+                margin-right: 0.25rem;
+                color: white;
+              }
+
+              span::after {
+                background-color: white;
+              }
+            }
+            #user-menu:hover {
+              color: colors.$gold;
+              span {
+                text-decoration: underline;
+              }
+              svg {
+                color: colors.$gold;
+              }
+            }
+            #user-menu:hover::after {
+              background-color: transparent;
+            }
+            #user-menu-item-list {
+              li {
+                background-color: #207bc0;
+                color: white;
+              }
+              li a:focus {
+                background-color: colors.$navy;
+              }
+            }
           }
+        }
+      }
+    }
+  }
+}
+
+@media screen and (min-width: 1024px) {
+  .cams-header {
+    .usa-nav-container {
+      display: flex;
+      padding-left: 20px;
+      padding-right: 20px;
+
+      .cams-logo-and-title {
+        .usa-navbar {
+          display: flex;
+          flex-flow: row;
+          width: 120px;
         }
       }
     }
@@ -94,64 +180,61 @@
 /* below 1024px width, switch to vertically layered view */
 @media screen and (max-width: 63.99em) {
   .cams-header {
+    padding: 15px 15px 15px 50px;
+
     .usa-nav-container {
-      display: block;
-      padding-left: 0;
-      padding-right: 0;
+      .cams-main-navigation {
+        .cams-nav-bar, .cams-user-nav {
+          display: flex;
+          position: relative;
+          flex-direction: row;
+          align-items: center;
+          justify-content: flex-start;
+          width: 100%;
+          padding: 0.25rem 0 1rem 0.5rem;
+          float: left;
 
-      .cams-logo-and-title {
-        .usa-navbar {
-          border-bottom: none;
-          height: auto;
-        }
-      }
+          top: auto;
+          right: auto;
+          bottom: auto;
+          left: auto;
 
-      .usa-nav {
-        display: flex;
-        position: relative;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start;
-        width: 100%;
-        padding: 0 0 1rem 0.5rem;
-        float: left;
+          background: transparent;
+          border-right: none;
+          z-index: auto;
 
-        top: auto;
-        right: auto;
-        bottom: auto;
-        left: auto;
-
-        background: transparent;
-        border-right: none;
-        z-index: auto;
-
-        ul.usa-nav__primary {
-          display: inline-block;
-
-          li.usa-nav__primary-item {
+          ul.usa-nav__primary {
             display: inline-block;
-            border-top: none;
-          }
 
-          a:not(.usa-button):hover {
-            background-color: transparent;
-          }
-          a:not(.usa-button):not(.usa-current) {
-            color: white;
-          }
-          .usa-current::after {
-            width: auto;
-            height: 0.25rem;
-            top: auto;
-            left: 1rem;
-            right: 1rem;
-            bottom: -0.25rem;
+            li.usa-nav__primary-item {
+              display: inline-block;
+              border-top: none;
+            }
 
-            border-radius: 0;
-            content: "";
-            display: block;
-            position: absolute;
+            a:not(.usa-button):hover {
+              background-color: transparent;
+            }
+            a:not(.usa-button):not(.usa-current) {
+              color: white;
+            }
+            .usa-current::after {
+              width: auto;
+              height: 0.25rem;
+              top: auto;
+              left: 1rem;
+              right: 1rem;
+              bottom: -0.25rem;
+
+              border-radius: 0;
+              content: "";
+              display: block;
+              position: absolute;
+            }
           }
+        }
+        .cams-user-nav {
+          justify-content: flex-end;
+          padding-right: 0;
         }
       }
     }
