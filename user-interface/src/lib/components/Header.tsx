@@ -42,8 +42,15 @@ function mapNavState(path: string) {
 
 const userMenuItems: MenuItem[] = [
   {
-    id: 'user-logout',
     label: 'Logout',
+    address: LOGOUT_PATH,
+  },
+  {
+    label: 'Logout 1',
+    address: LOGOUT_PATH,
+  },
+  {
+    label: 'Logout 2',
     address: LOGOUT_PATH,
   },
 ];

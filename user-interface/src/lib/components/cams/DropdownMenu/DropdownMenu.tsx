@@ -1,8 +1,8 @@
+import './DropdownMenu.scss';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
 export type MenuItem = {
-  id?: string;
   label: string;
   address: string;
   title?: string;
@@ -19,7 +19,7 @@ export type DropdownMenuProps = {
 
 export function DropdownMenu(props: DropdownMenuProps) {
   const { id, menuItems, className, children } = props;
-  const submenuItemCount = menuItems.length - 1;
+  const submenuItemCount = menuItems.length;
 
   const [expanded, setExpanded] = useState<boolean>(false);
   const [focus, setFocus] = useState<boolean>(false);
@@ -33,7 +33,7 @@ export function DropdownMenu(props: DropdownMenuProps) {
 
   function handleMenuKeyDown(ev: React.KeyboardEvent) {
     if (ev.key === 'ArrowDown' && expanded === true) {
-      const firstItem = document.querySelector(`#menu-item-${id}-0`);
+      const firstItem = document.querySelector(`#menu-link-${id}-0`);
       if (firstItem) (firstItem as HTMLLIElement).focus();
     } else if (expanded === true && ev.key === 'Tab' && ev.shiftKey === true) {
       handleToggleExpand();
@@ -45,14 +45,23 @@ export function DropdownMenu(props: DropdownMenuProps) {
       handleToggleExpand();
       setFocus(true);
     } else {
-      const lastItem = document.querySelector(`#menu-item-${id}-${submenuItemCount}`);
+      const firstItem = document.querySelector(`#menu-link-${id}-0`);
+      const lastItem = document.querySelector(`#menu-link-${id}-${submenuItemCount - 1}`);
       if (ev.key === 'ArrowDown') {
-        if (ev.target === lastItem) {
+        if (ev.currentTarget === lastItem) {
           handleToggleExpand();
           setFocus(true);
         } else {
-          const nextItem = document.querySelector(`#menu-item-${id}-${submenuItemCount + 1}`);
-          if (nextItem) (nextItem as HTMLLIElement).focus();
+          const nextItem = ev.currentTarget.parentElement?.nextElementSibling;
+          if (nextItem) (nextItem.children[0] as HTMLLIElement).focus();
+        }
+      } else if (ev.key === 'ArrowUp') {
+        if (ev.currentTarget === firstItem) {
+          handleToggleExpand();
+          setFocus(true);
+        } else {
+          const previousItem = ev.currentTarget.parentElement?.previousElementSibling;
+          if (previousItem) (previousItem.children[0] as HTMLLIElement).focus();
         }
       } else if (ev.key === 'Tab' && ev.shiftKey === false) {
         handleToggleExpand();
@@ -68,7 +77,7 @@ export function DropdownMenu(props: DropdownMenuProps) {
   }, [focus]);
 
   return (
-    <>
+    <div className="cams-dropdown-menu">
       <button
         id={id}
         type="button"
@@ -81,11 +90,15 @@ export function DropdownMenu(props: DropdownMenuProps) {
       >
         <span>{children}</span>
       </button>
-      <ul id="user-submenu" className={`usa-nav__submenu ${className}`} hidden={!expanded}>
+      <ul id={`${id}-item-list`} className={`usa-nav__submenu ${className}`} hidden={!expanded}>
         {menuItems.map((item, idx) => (
-          <li id={item.id ?? ''} className={`usa-nav__submenu-item ${item.className}`} key={idx}>
+          <li
+            id={`li-${id}-${idx}`}
+            className={`usa-nav__submenu-item ${item.className ?? ''}`}
+            key={idx}
+          >
             <NavLink
-              id={`menu-item-${id}-${idx}`}
+              id={`menu-link-${id}-${idx}`}
               to={item.address}
               data-testid={`menu-item-${id}-${idx}`}
               className="usa-nav-link"
@@ -97,6 +110,6 @@ export function DropdownMenu(props: DropdownMenuProps) {
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }
