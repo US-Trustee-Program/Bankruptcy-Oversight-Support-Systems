@@ -70,8 +70,7 @@
     ]
   },
   "overrides": {
-    "semver": "^7.5.4",
-    "jsonpath-plus": "^10.0.0"
+    "semver": "^7.5.4"
   },
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
