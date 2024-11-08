@@ -5,7 +5,6 @@ import {
   TransferOrderAction,
 } from '../../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../types/basic';
-import { NotFoundError } from '../../../common-errors/not-found-error';
 import { OrdersRepository } from '../../../use-cases/gateways.types';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
@@ -51,9 +50,6 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
       const adapter = this.getAdapter<TransferOrder>();
       const { docketSuggestedCaseNumber: _docketSuggestedCaseNumber, ...existingOrder } =
         (await adapter.findOne(query)) as TransferOrder;
-      if (!existingOrder) {
-        throw new NotFoundError(MODULE_NAME, { message: `Order not found with id ${data.id}` });
-      }
       const { id: _id, orderType: _orderType, caseId: _caseId, ...mutableProperties } = data;
       const updatedOrder = {
         ...existingOrder,
