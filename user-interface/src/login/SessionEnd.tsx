@@ -5,6 +5,7 @@ import Button from '@/lib/components/uswds/Button';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 import { BlankPage } from './BlankPage';
+import { broadcastLogout } from '@/login/broadcast-logout';
 
 export function SessionEnd() {
   const location = useLocation();
@@ -16,6 +17,7 @@ export function SessionEnd() {
 
   LocalStorage.removeSession();
   LocalStorage.removeAck();
+  broadcastLogout();
 
   useEffect(() => {
     if (location.pathname !== LOGOUT_SESSION_END_PATH) {
