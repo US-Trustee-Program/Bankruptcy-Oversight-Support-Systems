@@ -79,7 +79,7 @@ jobs:
           echo "Adding suffix to database name.."
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e-${{ needs.check.outputs.targetBranchHashId }}"
 
-          az cosmosdb sql database delete \
+          az cosmosdb mongodb database delete \
           --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
           --name "${e2eDatabaseName}" \
           --resource-group  ${{ secrets.AZURE_RG }} \
