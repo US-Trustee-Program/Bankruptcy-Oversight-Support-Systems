@@ -11,7 +11,6 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { CaseBasics } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
-import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('StaffAssignmentRow tests', () => {
   const bCase: ResourceActions<CaseBasics> = {
@@ -59,11 +58,8 @@ describe('StaffAssignmentRow tests', () => {
 
   test('should render a row', async () => {
     const assignedAttorney = MockData.getAttorneyAssignment();
-    const caseAssignmentSpy = vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({
-      data: [assignedAttorney],
-    });
 
-    renderWithProps();
+    renderWithProps({ bCase: { ...bCase, assignments: [assignedAttorney] } });
 
     await waitFor(() => {
       const firstTable = document.querySelector('table');
@@ -76,13 +72,10 @@ describe('StaffAssignmentRow tests', () => {
       expect(rows?.[3]).toHaveTextContent(formatDate(bCase.dateFiled));
       expect(rows?.[4]).toHaveTextContent(assignedAttorney.name);
       expect(screen.getByTestId('attorney-list-0')).toBeVisible();
-      expect(caseAssignmentSpy).toHaveBeenCalledWith(bCase.caseId);
     });
   });
 
   test('should show "unassigned" if there is not an assigned attorney', async () => {
-    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: [] });
-
     renderWithProps();
 
     await waitFor(() => {
@@ -98,10 +91,12 @@ describe('StaffAssignmentRow tests', () => {
   });
 
   test('should show assigned attorney names for assigned attorneys', async () => {
-    const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 2);
-    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: assignments });
+    const assignments = MockData.buildArray(
+      () => MockData.getAttorneyAssignment({ caseId: bCase.caseId }),
+      2,
+    );
 
-    renderWithProps();
+    renderWithProps({ bCase: { ...bCase, assignments } });
 
     await waitFor(() => {
       const firstTable = document.querySelector('table');
@@ -118,10 +113,12 @@ describe('StaffAssignmentRow tests', () => {
   });
 
   test('should not show assign/edit button', async () => {
-    const assignments = MockData.buildArray(MockData.getAttorneyAssignment, 2);
-    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: assignments });
+    const assignments = MockData.buildArray(
+      () => MockData.getAttorneyAssignment({ caseId: bCase.caseId }),
+      2,
+    );
 
-    const myCase = { ...bCase, _actions: [] };
+    const myCase = { ...bCase, _actions: [], assignments };
     renderWithProps({ bCase: myCase });
 
     await waitFor(() => {
@@ -135,30 +132,15 @@ describe('StaffAssignmentRow tests', () => {
     });
   });
 
-  test('should show error alert when an error is thrown by api.getCaseAssignments', async () => {
-    vi.spyOn(Api2, 'getCaseAssignments').mockRejectedValue('some error');
-    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
-
-    renderWithProps();
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith(
-        expect.stringContaining('Could not get staff assignments for case '),
-      );
-    });
-  });
-
   test('should render a list of assigned attorneys', async () => {
     const assignments = [MockData.getAttorneyAssignment()];
-    vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue({ data: assignments });
 
-    renderWithProps();
+    renderWithProps({ bCase: { ...bCase, assignments } });
 
     let staffList;
     await waitFor(
       () => {
         staffList = document.querySelector('.attorney-list-container');
-        expect(staffList?.querySelector('.loading-spinner')).not.toBeInTheDocument();
       },
       { timeout: 2000 },
     );

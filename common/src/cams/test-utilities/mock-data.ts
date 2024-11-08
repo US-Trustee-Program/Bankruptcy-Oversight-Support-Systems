@@ -499,7 +499,7 @@ function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
 
 function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   return {
-    ...getCamsUser(),
+    ...getCamsUser({ roles: [CamsRole.TrialAttorney] }),
     ...override,
   };
 }

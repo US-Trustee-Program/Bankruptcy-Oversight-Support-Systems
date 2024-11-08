@@ -4,11 +4,15 @@ import { CamsRole } from './roles';
 export type CamsUserReference = {
   id: string;
   name: string;
+};
+
+export type Staff = CamsUserReference & {
   roles?: CamsRole[];
 };
 
 export type CamsUser = CamsUserReference & {
   offices?: UstpOfficeDetails[];
+  roles?: CamsRole[];
 };
 
 export type AttorneyUser = CamsUser & {

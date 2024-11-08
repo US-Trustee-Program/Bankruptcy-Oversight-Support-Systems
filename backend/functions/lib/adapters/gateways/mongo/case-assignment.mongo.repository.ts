@@ -8,7 +8,7 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
-const { and, equals, exists } = QueryBuilder;
+const { and, equals, exists, contains } = QueryBuilder;
 
 export class CaseAssignmentMongoRepository
   extends BaseMongoRepository
@@ -35,16 +35,28 @@ export class CaseAssignmentMongoRepository
     }
   }
 
-  async findAssignmentsByCaseId(caseId: string): Promise<CaseAssignment[]> {
+  async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
     const query = QueryBuilder.build(
       and(
         equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-        equals<CaseAssignment['caseId']>('caseId', caseId),
+        contains<string[]>('caseId', caseIds),
         exists<CaseAssignment>('unassignedOn', false),
       ),
     );
     try {
-      return await this.getAdapter<CaseAssignment>().find(query);
+      const assignments = await this.getAdapter<CaseAssignment>().find(query);
+      const assignmentsMap = new Map();
+      assignments.forEach((assignment) => {
+        if (assignmentsMap.has(assignment.caseId)) {
+          assignmentsMap.set(assignment.caseId, [
+            ...assignmentsMap.get(assignment.caseId),
+            assignment,
+          ]);
+        } else {
+          assignmentsMap.set(assignment.caseId, [assignment]);
+        }
+      });
+      return assignmentsMap;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignment.');
     }

@@ -50,15 +50,17 @@ const assignments: CaseAssignment[] = [
 ];
 
 const caseIdWithAssignments = '081-23-01176';
+const assignmentMap = new Map([[caseIdWithAssignments, assignments]]);
+
 jest.mock('./case-assignment', () => {
   return {
     CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {
-        findAssignmentsByCaseId: (caseId: string) => {
-          if (caseId === 'ThrowError') {
+        findAssignmentsByCaseId: (caseIds: string[]) => {
+          if (caseIds[0] === 'ThrowError') {
             throw new Error('TestError');
-          } else if (caseId === caseIdWithAssignments) {
-            return Promise.resolve(assignments);
+          } else if (caseIds[0] === caseIdWithAssignments) {
+            return Promise.resolve(assignmentMap);
           } else {
             return Promise.resolve([]);
           }
@@ -200,10 +202,10 @@ describe('Case management tests', () => {
       const caseId = caseIdWithAssignments;
       const dateFiled = '2018-11-16';
       const closedDate = '2019-06-21';
-      const assignments = [attorneyJaneSmith, attorneyJoeNobel];
+
       const caseDetail = MockData.getCaseDetail({
         override: {
-          caseId: caseId,
+          caseId,
           dateFiled,
           closedDate,
         },
@@ -213,6 +215,8 @@ describe('Case management tests', () => {
       jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockImplementation(async () => {
         return Promise.resolve(caseDetail);
       });
+
+      jest.spyOn(chapterCaseList.casesGateway, 'getCaseDetail').mockResolvedValue(caseDetail);
 
       const actualCaseDetail = await chapterCaseList.getCaseDetail(applicationContext, caseId);
 
@@ -226,11 +230,11 @@ describe('Case management tests', () => {
       const officeName = 'Test Office';
       const courtOffices = ustpOfficeToCourtDivision(applicationContext.session.user.offices[0]);
       const officeDetail = courtOffices[0];
-      const caseNumber = '00-00000';
+
       const bCase = MockData.getCaseDetail({
         override: {
           ...officeDetail,
-          caseId: '999-' + caseNumber,
+          caseId: caseIdWithAssignments,
         },
       });
 
@@ -246,6 +250,7 @@ describe('Case management tests', () => {
 
       const expected = {
         ...bCase,
+        assignments,
         officeName,
         _actions,
         officeCode: builtOfficeCode,
@@ -284,15 +289,44 @@ describe('Case management tests', () => {
 
     test('should return an empty array for no matches', async () => {
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
-      const actual = await useCase.searchCases(applicationContext, { caseNumber });
+      const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
       expect(actual).toEqual([]);
     });
 
-    test('should return a match', async () => {
+    const optionsCases = [
+      { caseName: 'NOT get case assignments', includeCaseAssignments: false },
+      { caseName: 'GET case assignments', includeCaseAssignments: true },
+    ];
+    test.each(optionsCases)(`should return a match and $caseName`, async (args) => {
       const caseList = [MockData.getCaseSummary({ override: { caseId: '999-' + caseNumber } })];
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(caseList);
-      const actual = await useCase.searchCases(applicationContext, { caseNumber });
+      const assignmentsSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+        .mockImplementation(() => {
+          if (args.includeCaseAssignments) {
+            return Promise.resolve(
+              new Map([
+                [
+                  caseList[0].caseId,
+                  [MockData.getAttorneyAssignment({ caseId: caseList[0].caseId })],
+                ],
+              ]),
+            );
+          } else {
+            return Promise.reject('We should not have retrieved assignments.');
+          }
+        });
+      const actual = await useCase.searchCases(
+        applicationContext,
+        { caseNumber },
+        args.includeCaseAssignments,
+      );
       expect(actual).toEqual(caseList);
+      if (args.includeCaseAssignments) {
+        expect(assignmentsSpy).toHaveBeenCalled();
+      } else {
+        expect(assignmentsSpy).not.toHaveBeenCalled();
+      }
     });
 
     test('should return cases and actions for the user', async () => {
@@ -315,7 +349,7 @@ describe('Case management tests', () => {
 
       const expected = [{ ...bCase, officeCode, _actions }];
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([bCase]);
-      const actual = await useCase.searchCases(applicationContext, { caseNumber });
+      const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
       expect(actual).toEqual(expected);
     });
 
@@ -331,7 +365,7 @@ describe('Case management tests', () => {
         .mockResolvedValue(assignments);
       const searchCases = jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(cases);
 
-      const actual = await useCase.searchCases(applicationContext, { assignments: [user] });
+      const actual = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
 
       expect(actual).toEqual(cases);
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
@@ -349,7 +383,7 @@ describe('Case management tests', () => {
         originalError: error,
       });
       jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
-      await expect(useCase.searchCases(applicationContext, { caseNumber })).rejects.toThrow(
+      await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         expectedError,
       );
     });
@@ -357,7 +391,9 @@ describe('Case management tests', () => {
     test('should throw CamsError', async () => {
       const error = new CamsError('TEST', { message: 'test error' });
       jest.spyOn(useCase.casesGateway, 'searchCases').mockRejectedValue(error);
-      await expect(useCase.searchCases(applicationContext, { caseNumber })).rejects.toThrow(error);
+      await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
+        error,
+      );
     });
   });
 });

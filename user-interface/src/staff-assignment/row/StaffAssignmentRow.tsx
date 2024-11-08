@@ -1,16 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { AssignAttorneyModalRef, CallbackProps } from '../modal/AssignAttorneyModal';
-import { AttorneyUser } from '@common/cams/users';
 import Internal from './StaffAssignmentRow.internal';
-import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import { CaseAssignment } from '@common/cams/assignments';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -26,7 +25,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
 
   const initialState = {
-    assignments: [],
+    assignments: bCase.assignments ?? [],
     isLoading: true,
     bCase,
     modalRef,
@@ -35,17 +34,13 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const openAssignmentsModalButtonRef = useRef<OpenModalButtonRef>(null);
   const { state, actions } = Internal.useStateActions(initialState);
 
-  useEffect(() => {
-    actions.getCaseAssignments();
-  }, []);
-
   function handleCallback(props: CallbackProps) {
     actions.updateAssignmentsCallback(props).then(() => {
       modalRef.current?.hide();
     });
   }
 
-  function buildActionButton(assignments: AttorneyUser[]) {
+  function buildActionButton(assignments: CaseAssignment[] | undefined) {
     const commonModalButtonProps = {
       className: 'case-assignment-modal-toggle',
       buttonIndex: `${idx}`,
@@ -58,7 +53,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       ref: openAssignmentsModalButtonRef,
     };
 
-    if (assignments.length > 0) {
+    if (assignments && assignments.length > 0) {
       return (
         <OpenModalButton
           {...commonModalButtonProps}
@@ -77,8 +72,8 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     }
   }
 
-  function buildAssignmentList(assignments: AttorneyUser[]) {
-    if (assignments.length > 0) {
+  function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
+    if (assignments && assignments.length > 0) {
       return state.assignments?.map((attorney, key: number) => (
         <span key={key} data-testid={`staff-name-${key}`}>
           {attorney.name}
@@ -102,22 +97,13 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
-        {state.isLoading && (
-          <div className="table-flex-container">
-            <div className="attorney-list-container">
-              <LoadingSpinner caption="Loading..." />
-            </div>
+        <div className="table-flex-container">
+          <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
+          <div className="table-column-toolbar">
+            {Actions.contains(bCase, Actions.ManageAssignments) &&
+              buildActionButton(state.assignments)}
           </div>
-        )}
-        {!state.isLoading && (
-          <div className="table-flex-container">
-            <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
-            <div className="table-column-toolbar">
-              {Actions.contains(bCase, Actions.ManageAssignments) &&
-                buildActionButton(state.assignments)}
-            </div>
-          </div>
-        )}
+        </div>
       </TableRowData>
     </TableRow>
   );

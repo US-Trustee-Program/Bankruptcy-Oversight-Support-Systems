@@ -13,12 +13,12 @@ import { isCamsError } from '../common-errors/cams-error';
 import { AssignmentError } from './assignment.exception';
 import { OfficesGateway } from './offices/offices.types';
 import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { buildOfficeCode } from './offices/offices';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -57,6 +57,7 @@ export default class CaseManagement {
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
+    includeAssignments: boolean,
   ): Promise<ResourceActions<CaseBasics>[]> {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
@@ -69,19 +70,36 @@ export default class CaseManagement {
         }
         predicate.caseIds = Array.from(caseIdSet);
         // if we're requesting cases with specific assignments, and none are found, return [] early
+
         if (predicate.caseIds.length == 0) {
           return [];
         }
       }
+
       const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
         context,
         predicate,
       );
+
+      const caseIds = [];
       for (const casesKey in cases) {
+        caseIds.push(cases[casesKey].caseId);
         const bCase = cases[casesKey];
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
       }
+
+      if (includeAssignments) {
+        const assignmentsMap = await this.assignmentGateway.findAssignmentsByCaseId(caseIds);
+        for (const casesKey in cases) {
+          const assignments = assignmentsMap.get(cases[casesKey].caseId) ?? [];
+          cases[casesKey] = {
+            ...cases[casesKey],
+            assignments,
+          };
+        }
+      }
+
       return cases;
     } catch (originalError) {
       if (!isCamsError(originalError)) {
@@ -123,15 +141,11 @@ export default class CaseManagement {
   private async getCaseAssignments(
     context: ApplicationContext,
     bCase: CaseDetail,
-  ): Promise<CamsUserReference[]> {
+  ): Promise<CaseAssignment[]> {
     const caseAssignment = new CaseAssignmentUseCase(context);
     try {
-      const assignments: CaseAssignment[] = await caseAssignment.findAssignmentsByCaseId(
-        bCase.caseId,
-      );
-      return assignments.map((a) => {
-        return { id: a.userId, name: a.name };
-      });
+      const assignmentsMap = await caseAssignment.findAssignmentsByCaseId([bCase.caseId]);
+      return assignmentsMap.get(bCase.caseId);
     } catch (e) {
       throw new AssignmentError(MODULE_NAME, {
         message:

@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../types/basic';
-import { AttorneyUser, CamsUserReference } from '../../../../../../common/src/cams/users';
+import { AttorneyUser, CamsUserReference, Staff } from '../../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../../common/src/cams/auditable';
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../../common/src/cams/session';
@@ -13,7 +13,7 @@ const COLLECTION_NAME = 'offices';
 
 const { and, equals, contains } = QueryBuilder;
 
-export type OfficeStaff = CamsUserReference &
+export type OfficeStaff = Staff &
   Auditable & {
     documentType: 'OFFICE_STAFF';
     officeCode: string;
