@@ -62,7 +62,11 @@ describe('offices repo', () => {
       .mockResolvedValue('inserted-id');
 
     await repo.putOfficeStaff(officeCode, session.user);
-    expect(replaceOneSpy).toHaveBeenCalledWith(expect.anything(), staff, true);
+    expect(replaceOneSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      { ...staff, updatedOn: expect.anything() },
+      true,
+    );
   });
 
   describe('error handling', () => {
