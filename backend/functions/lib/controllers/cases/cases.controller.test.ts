@@ -289,29 +289,50 @@ describe('cases controller test', () => {
       expect(actual).toEqual(expected);
     });
 
-    test('should properly search for a list of division codes', async () => {
-      const data = [MockData.getCaseBasics()];
+    const optionsCases = [
+      {
+        caseName: 'SHOULD NOT search for case assignments WITH options',
+        options: { includeAssignments: 'false' },
+        result: false,
+      },
+      {
+        caseName: 'SHOULD NOT search for case assignments WITHOUT options',
+        options: undefined,
+        result: false,
+      },
+      {
+        caseName: 'SHOULD search for case assignments',
+        options: { includeAssignments: 'true' },
+        result: true,
+      },
+    ];
+    test.each(optionsCases)(
+      'should properly search for a list of division codes and $caseName',
+      async (args) => {
+        const data = [MockData.getCaseBasics()];
 
-      const divisionCodeOne = 'hello';
-      const divisionCodeTwo = 'world';
+        const divisionCodeOne = 'hello';
+        const divisionCodeTwo = 'world';
 
-      const expected = {
-        divisionCodes: [divisionCodeOne, divisionCodeTwo],
-        limit: 25,
-        offset: 0,
-      };
+        const expected = {
+          divisionCodes: [divisionCodeOne, divisionCodeTwo],
+          limit: 25,
+          offset: 0,
+        };
 
-      const useCaseSpy = jest
-        .spyOn(CaseManagement.prototype, 'searchCases')
-        .mockResolvedValue(data);
+        const useCaseSpy = jest
+          .spyOn(CaseManagement.prototype, 'searchCases')
+          .mockResolvedValue(data);
 
-      const camsHttpRequest = mockCamsHttpRequest({
-        method: 'POST',
-        body: expected,
-      });
-      await controller.searchCases(camsHttpRequest);
-      expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected, false);
-    });
+        const camsHttpRequest = mockCamsHttpRequest({
+          method: 'POST',
+          body: expected,
+          query: args.options,
+        });
+        await controller.searchCases(camsHttpRequest);
+        expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected, args.result);
+      },
+    );
 
     test('should return an error if an error is encountered', async () => {
       const caseNumber = '00-00000';
