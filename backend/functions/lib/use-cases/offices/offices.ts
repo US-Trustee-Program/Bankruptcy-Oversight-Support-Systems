@@ -80,6 +80,7 @@ export class OfficesUseCase {
         if (!userMap.has(user.id)) {
           userMap.set(user.id, user);
         }
+        // TODO: the following line is partially covered and I cannot see how we would reach the negative case
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
         office.staff.push(userWithRoles);
         await repository.putOfficeStaff(office.officeCode, userWithRoles);
