@@ -1,9 +1,9 @@
 import { CamsError } from '../../../../common-errors/cams-error';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
-import { CollectionHumble } from '../../../../humble-objects/mongo-humble';
+import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import QueryBuilder from '../../../../query/query-builder';
-import { MongoCollectionAdapter } from './mongo-adapter';
+import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 
 const { and, orderBy } = QueryBuilder;
 
@@ -29,7 +29,11 @@ const spies = {
   countDocuments,
 };
 
-type TestType = object;
+type TestType = {
+  _id?: unknown;
+  id?: string;
+  foo?: string;
+};
 
 describe('Mongo adapter', () => {
   const testQuery = QueryBuilder.build(and());
@@ -40,11 +44,35 @@ describe('Mongo adapter', () => {
     jest.resetAllMocks();
   });
 
+  test('should return an instance of the adapter from newAdapter', () => {
+    const mockClient: DocumentClient = {
+      database: () => {
+        return {
+          collection: <_t>() => {},
+        };
+      },
+    } as unknown as DocumentClient;
+    const adapter = MongoCollectionAdapter.newAdapter<TestType>(
+      'module',
+      'collection',
+      'database',
+      mockClient,
+    );
+    expect(adapter).toBeInstanceOf(MongoCollectionAdapter);
+  });
+
   test('should return items from a getAll', async () => {
     find.mockResolvedValue([{}, {}, {}]);
     const item = await adapter.getAll();
     expect(item).toEqual([{}, {}, {}]);
     expect(find).toHaveBeenCalled();
+  });
+
+  // TODO: maybe remove this?
+  test('should remove Ids from an item', async () => {
+    const expectedItem = { arbitraryValue: 'arbitrary-value' };
+    const item = { _id: 'some_id', id: 'someId', ...expectedItem };
+    expect(removeIds(item)).toEqual(expectedItem);
   });
 
   test('should return a sorted list of items from a getAll', async () => {
@@ -101,24 +129,77 @@ describe('Mongo adapter', () => {
     );
   });
 
-  test('should return a single Id from a replaceOne', async () => {
-    const id = '123456';
-    replaceOne.mockResolvedValue({ acknowdledged: true, upsertedId: id });
-    const result = await adapter.replaceOne(testQuery, {});
-    expect(result).toEqual(id);
+  test('should return a single Id from replaceOne', async () => {
+    const testObject: TestType = { id: '12345', foo: 'bar' };
+    const _id = 'mongoGeneratedId';
+    replaceOne.mockResolvedValue({
+      acknowledged: true,
+      matchedCount: 1,
+      modifiedCount: 1,
+      upsertedId: _id,
+    });
+    const result = await adapter.replaceOne(testQuery, testObject);
+    expect(result).not.toEqual(_id);
+    expect(result).toEqual(testObject.id);
+  });
+
+  test('should throw an error calling replaceOne for a nonexistant record and upsert=false', async () => {
+    const testObject: TestType = { id: '12345', foo: 'bar' };
+    replaceOne.mockResolvedValue({
+      acknowledged: false,
+      matchedCount: 0,
+      modifiedCount: 0,
+      upsertedId: null,
+    });
+    await expect(adapter.replaceOne(testQuery, testObject)).rejects.toThrow(
+      'No matching item found.',
+    );
+  });
+
+  test('should return a single Id from replaceOne when upsert = true', async () => {
+    const testObject: TestType = { id: '12345', foo: 'bar' };
+    const _id = 'mongoGeneratedId';
+
+    replaceOne.mockResolvedValue({
+      acknowledged: true,
+      matchedCount: 0,
+      modifiedCount: 1,
+      upsertedId: _id,
+    });
+    const result = await adapter.replaceOne(testQuery, testObject, true);
+    expect(result).toEqual(testObject.id);
+    expect(result).not.toEqual(_id);
+  });
+
+  test('should throw an error if replaceOne does not match.', async () => {
+    const testObject: TestType = { id: '12345', foo: 'bar' };
+    replaceOne.mockResolvedValue({
+      acknowledged: false,
+      matchedCount: 0,
+      modifiedCount: 0,
+      upsertedId: null,
+    });
+    await expect(adapter.replaceOne(testQuery, testObject, true)).rejects.toThrow(
+      'Failed to insert document into database.',
+    );
   });
 
   test('should return a single Id from insertOne', async () => {
     const id = '123456';
-    insertOne.mockResolvedValue({ acknowdledged: true, insertedId: id });
+    insertOne.mockResolvedValue({ acknowledged: true, insertedId: id });
     const result = await adapter.insertOne({});
     expect(result.split('-').length).toEqual(5);
+  });
+
+  test('should throw an error if insertOne does not insert.', async () => {
+    insertOne.mockResolvedValue({ acknowledged: false });
+    await expect(adapter.insertOne({})).rejects.toThrow('Failed to insert document into database.');
   });
 
   test('should return a list of Ids from insertMany', async () => {
     const ids = ['0', '1', '2', '3', '4'];
     insertMany.mockResolvedValue({
-      acknowdledged: true,
+      acknowledged: true,
       insertedIds: ids,
       insertedCount: ids.length,
     });
@@ -127,7 +208,7 @@ describe('Mongo adapter', () => {
   });
 
   test('should return a count of 1 for 1 item deleted', async () => {
-    deleteOne.mockResolvedValue({ acknowdledged: true, deletedCount: 1 });
+    deleteOne.mockResolvedValue({ acknowledged: true, deletedCount: 1 });
     const result = await adapter.deleteOne(testQuery);
     expect(result).toEqual(1);
   });
@@ -140,7 +221,7 @@ describe('Mongo adapter', () => {
   });
 
   test('should return a count of 5 for 5 items deleted', async () => {
-    deleteMany.mockResolvedValue({ acknowdledged: true, deletedCount: 5 });
+    deleteMany.mockResolvedValue({ acknowledged: true, deletedCount: 5 });
     const result = await adapter.deleteMany(testQuery);
     expect(result).toEqual(5);
   });
@@ -158,8 +239,15 @@ describe('Mongo adapter', () => {
     expect(result).toEqual(5);
   });
 
+  test('should return a count of 6 when countAllDocuments is called and there are 6 documents', async () => {
+    countDocuments.mockResolvedValue(6);
+    const result = await adapter.countAllDocuments();
+    expect(result).toEqual(6);
+  });
+
   test('should throw CamsError when some but not all items are inserted', async () => {
     insertMany.mockResolvedValue({
+      acknowledged: true,
       insertedIds: {
         one: 'one',
         two: 'two',
@@ -176,22 +264,6 @@ describe('Mongo adapter', () => {
     expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(error);
   });
 
-  test('should handle acknowledged == false', async () => {
-    const response = { acknowledged: false };
-    const error = new UnknownError(MODULE_NAME, {
-      message: 'Operation returned Not Acknowledged.',
-    });
-    Object.values(spies).forEach((spy) => {
-      spy.mockResolvedValue(response);
-    });
-
-    await expect(adapter.replaceOne(testQuery, {})).rejects.toThrow(error);
-    await expect(adapter.insertOne({})).rejects.toThrow(error);
-    await expect(adapter.insertMany([{}])).rejects.toThrow(error);
-    await expect(adapter.deleteOne(testQuery)).rejects.toThrow(error);
-    await expect(adapter.deleteMany(testQuery)).rejects.toThrow(error);
-  });
-
   test('should handle errors', async () => {
     const originalError = new Error('Test Exception');
     const expectedError = new UnknownError(MODULE_NAME, { originalError });
@@ -206,6 +278,8 @@ describe('Mongo adapter', () => {
     await expect(adapter.deleteMany(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.find(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.countDocuments(testQuery)).rejects.toThrow(expectedError);
+    await expect(adapter.countAllDocuments()).rejects.toThrow(expectedError);
     await expect(adapter.findOne(testQuery)).rejects.toThrow(expectedError);
+    await expect(adapter.getAll()).rejects.toThrow(expectedError);
   });
 });

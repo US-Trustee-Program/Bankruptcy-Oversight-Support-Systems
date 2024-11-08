@@ -19,6 +19,8 @@ import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-r
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { ResponseBody } from '../../../../../common/src/api/response';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -110,6 +112,19 @@ describe('orders controller tests', () => {
     expect(updateOrderSpy).toHaveBeenCalledWith(applicationContext, id, orderTransfer);
   });
 
+  test('should throw BadRequestError when updating an order and the id does not match data.id', async () => {
+    applicationContext.request = mockCamsHttpRequest();
+    const expectedError = new BadRequestError('ORDERS-CONTROLLER', {
+      message: 'Cannot update order. ID of order does not match ID of request.',
+    });
+    const failTransfer = { ...orderTransfer };
+    failTransfer.id = crypto.randomUUID().toString();
+    const controller = new OrdersController(applicationContext);
+    expect(
+      async () => await controller.updateOrder(applicationContext, id, failTransfer),
+    ).rejects.toThrow(expectedError);
+  });
+
   test('should get suggested cases', async () => {
     const suggestedCases = [CASE_SUMMARIES[0]];
 
@@ -162,28 +177,22 @@ describe('orders controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
     await expect(controller.getSuggestedCases(applicationContext)).rejects.toThrow(unknownError);
   });
+  test('should throw UnknownError if any other error is encountered', async () => {
+    const originalError = new Error('Test');
+    const unknownError = new UnknownError('TEST', { originalError });
+    jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(originalError);
+    jest.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(originalError);
+    jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(originalError);
+    jest.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(originalError);
 
-  test('should call reject consolidation', async () => {
-    const mockConsolidationOrder = MockData.getConsolidationOrder();
-    const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
-      ...mockConsolidationOrder,
-      rejectedCases: [mockConsolidationOrder.childCases[0].caseId],
-      leadCase: undefined,
-    };
-    const request = mockCamsHttpRequest({ body: mockConsolidationOrderActionRejection });
-    applicationContext.request = request;
-    const expectedBody: ResponseBody<ConsolidationOrder[]> = { data: [mockConsolidationOrder] };
-    jest
-      .spyOn(OrdersUseCase.prototype, 'rejectConsolidation')
-      .mockResolvedValue([mockConsolidationOrder]);
     const controller = new OrdersController(applicationContext);
-
-    const actualResult = await controller.rejectConsolidation(applicationContext);
-    expect(actualResult).toEqual({
-      headers: commonHeaders,
-      statusCode: HttpStatusCodes.OK,
-      body: expectedBody,
-    });
+    await expect(controller.getOrders(applicationContext)).rejects.toThrow(unknownError);
+    await expect(controller.updateOrder(applicationContext, id, orderTransfer)).rejects.toThrow(
+      unknownError,
+    );
+    await expect(controller.syncOrders(applicationContext)).rejects.toThrow(unknownError);
+    applicationContext.request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
+    await expect(controller.getSuggestedCases(applicationContext)).rejects.toThrow(unknownError);
   });
 
   test('should call reject consolidation and handle error', async () => {
@@ -252,8 +261,13 @@ describe('orders controller tests', () => {
     await expect(controller.approveConsolidation(applicationContext)).rejects.toThrow(CamsError);
 
     // setup missing lead case
-    mockConsolidationOrderActionApproval.approvedCases = ['11-11111'];
-    mockConsolidationOrderActionApproval.leadCase = undefined;
+    const mockConsolidationOrderActionApproval3: ConsolidationOrderActionApproval = {
+      ...mockConsolidationOrder,
+      approvedCases: [mockConsolidationOrder.childCases[0].caseId],
+      leadCase: undefined,
+    };
+    const request3 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval3 });
+    applicationContext.request = request3;
 
     await expect(controller.approveConsolidation(applicationContext)).rejects.toThrow(CamsError);
   });
@@ -264,6 +278,20 @@ describe('orders controller exception tests', () => {
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
+  });
+
+  test('should throw unknown error when path is invalid', async () => {
+    const expectedUrl = 'http://mockhost/api/failure';
+    const expectedError = new NotFoundError('ORDERS-CONTROLLER', {
+      message: 'Could not map requested path to action ' + expectedUrl,
+    });
+    const request = mockCamsHttpRequest({ url: expectedUrl });
+    applicationContext.request = request;
+    const controller = new OrdersController(applicationContext);
+
+    expect(async () => await controller.handleRequest(applicationContext)).rejects.toThrow(
+      expectedError,
+    );
   });
 
   test('should wrap unexpected errors with CamsError', async () => {

@@ -94,8 +94,10 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getCaseDocket, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseHistory, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseSummary, 'some-id', api);
+    await callApiFunction(api2.Api2.getCourts, null, api);
     await callApiFunction(api2.Api2.getMe, null, api);
     await callApiFunction(api2.Api2.getOffices, null, api);
+    await callApiFunction(api2.Api2.getOfficeAttorneys, null, api);
     await callApiFunction(api2.Api2.getOrders, null, api);
     await callApiFunction(api2.Api2.getOrderSuggestions, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);

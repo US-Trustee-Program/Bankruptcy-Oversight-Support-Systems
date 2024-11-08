@@ -4,13 +4,14 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import * as factory from '../../factory';
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
-import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUserGroup, Staff } from '../../../../../common/src/cams/users';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
 import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
+import { CamsRole } from '../../../../../common/src/cams/roles';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -86,9 +87,12 @@ describe('offices use case tests', () => {
     const seattleGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
     const seattleOfficeCode = 'USTP_CAMS_Region_18_Office_Seattle';
     const trialAttorneyGroup: CamsUserGroup = { id: 'four', name: 'USTP CAMS Trial Attorney' };
-    const users: CamsUserReference[] = MockData.buildArray(MockData.getAttorneyUser, 4);
+    const dataVerifierGroup: CamsUserGroup = { id: 'five', name: 'USTP CAMS Data Verifier' };
+    const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 4);
     const seattleUsers = [users[0], users[1], users[3]];
     const attorneyUsers = [users[1], users[2], users[3]];
+    const dataVerifierUsers = [users[3]];
+    users[3].roles.push(CamsRole.DataVerifier);
     jest
       .spyOn(OktaUserGroupGateway, 'getUserGroups')
       .mockResolvedValue([
@@ -96,6 +100,7 @@ describe('offices use case tests', () => {
         { id: 'two', name: 'group-b' },
         seattleGroup,
         trialAttorneyGroup,
+        dataVerifierGroup,
       ]);
     jest
       .spyOn(OktaUserGroupGateway, 'getUserGroupUsers')
@@ -109,6 +114,8 @@ describe('offices use case tests', () => {
             return Promise.resolve(seattleUsers);
           } else if (group.name === 'USTP CAMS Trial Attorney') {
             return Promise.resolve(attorneyUsers);
+          } else if (group.name === 'USTP CAMS Data Verifier') {
+            return Promise.resolve(dataVerifierUsers);
           } else if (group.name === 'group-a' || group.name === 'group-b') {
             throw new Error('Tried to retrieve users for invalid group.');
           }
