@@ -10,6 +10,7 @@ import {
 } from '../../testing/mock-data/cams-http-request-helper';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ResourceActions } from '../../../../../common/src/cams/actions';
+import { CamsError } from '../../common-errors/cams-error';
 
 describe('cases controller test', () => {
   const caseId1 = '081-11-06541';
@@ -31,7 +32,7 @@ describe('cases controller test', () => {
   });
 
   describe('handleRequest test', () => {
-    test('should call getCaseDetails', () => {
+    test('should call getCaseDetails', async () => {
       const spy = jest
         .spyOn(CasesController.prototype, 'getCaseDetails')
         .mockResolvedValue({ data: MockData.getCaseDetail() });
@@ -43,8 +44,36 @@ describe('cases controller test', () => {
         params: { caseId: caseId1 },
       };
 
-      controller.handleRequest(context);
+      await controller.handleRequest(context);
       expect(spy).toHaveBeenCalledWith({ caseId: caseId1 });
+    });
+
+    test('should search for cases', async () => {
+      const searchSpy = jest
+        .spyOn(CasesController.prototype, 'searchCases')
+        .mockResolvedValue({ data: MockData.buildArray(MockData.getCaseBasics, 4) });
+      context.request = {
+        method: 'GET',
+        url: 'http://localhost:3000',
+        headers: {},
+        query: {},
+        params: {},
+      };
+      await controller.handleRequest(context);
+      expect(searchSpy).toHaveBeenCalledWith(context.request);
+    });
+
+    test('should throw CamsError', async () => {
+      const error = new CamsError('test', { message: 'some CAMS error' });
+      jest.spyOn(CasesController.prototype, 'searchCases').mockRejectedValue(error);
+      context.request = {
+        method: 'GET',
+        url: 'http://localhost:3000',
+        headers: {},
+        query: {},
+        params: {},
+      };
+      await expect(controller.handleRequest(context)).rejects.toThrow(error);
     });
   });
 
