@@ -17,6 +17,10 @@ function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
   return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
 }
 
+type SearchOptions = {
+  includeAssignments?: string;
+};
+
 export class CasesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
   private readonly caseManagement: CaseManagement;
@@ -32,7 +36,7 @@ export class CasesController implements CamsController {
       if (context.request.method === 'GET' && context.request.params.caseId) {
         data = await this.getCaseDetails({ caseId: context.request.params.caseId });
       } else {
-        data = await this.searchCases(context.request, context.request.query ?? {});
+        data = await this.searchCases(context.request);
       }
       return httpSuccess({ body: data });
     } catch (originalError) {
@@ -50,16 +54,11 @@ export class CasesController implements CamsController {
     return { data };
   }
 
-  public async searchCases(
-    request: CamsHttpRequest,
-    options: { includeAssignments?: boolean } = {},
-  ) {
+  public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
-    const body = await this.paginateSearchCases(
-      predicate,
-      request.url,
-      options.includeAssignments ?? false,
-    );
+    const options = request.query as SearchOptions;
+    const includeAssignments = options?.includeAssignments === 'true';
+    const body = await this.paginateSearchCases(predicate, request.url, !!includeAssignments);
     return body;
   }
 
