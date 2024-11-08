@@ -1,6 +1,7 @@
 import { CamsSession } from '@common/cams/session';
 
 export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
+export const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
 export const LAST_INTERACTION_KEY = 'cams:last-interaction';
@@ -27,8 +28,17 @@ function setSession(session: CamsSession) {
 }
 
 function removeSession() {
+  const keysToDelete = [LOGIN_LOCAL_STORAGE_SESSION_KEY];
   if (window.localStorage) {
-    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(LOGIN_LOCAL_STORAGE_CACHE_KEY)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach((key) => {
+      window.localStorage.removeItem(key);
+    });
   }
 }
 
