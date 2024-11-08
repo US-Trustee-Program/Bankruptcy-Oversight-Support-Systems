@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as reactRouter from 'react-router';
 import { CamsSession } from '@common/cams/session';
@@ -6,12 +6,15 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { Session, SessionProps } from './Session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import Api2 from '@/lib/models/api2';
+import { USTP_OFFICE_DATA_MAP } from '@common/cams/offices';
 
 describe('Session', () => {
   const testSession: CamsSession = {
     user: {
       id: 'mockId',
       name: 'Mock User',
+      offices: [USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!],
     },
     provider: 'mock',
     accessToken: MockData.getJwt(),
@@ -33,6 +36,14 @@ describe('Session', () => {
       </BrowserRouter>,
     );
   }
+
+  test('should prefetch office staff for each division the user is assigned to', () => {
+    const getOfficeAttorneys = vi.spyOn(Api2, 'getOfficeAttorneys');
+    renderWithProps();
+    waitFor(() => {
+      expect(getOfficeAttorneys).toHaveBeenCalledTimes(testSession.user.offices!.length);
+    });
+  });
 
   test('should write the session to local storage', () => {
     const setSession = vi.spyOn(LocalStorage, 'setSession');
