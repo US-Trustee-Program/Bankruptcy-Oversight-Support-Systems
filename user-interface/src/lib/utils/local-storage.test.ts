@@ -3,6 +3,7 @@ import {
   LAST_INTERACTION_KEY,
   LocalStorage,
   LOGIN_LOCAL_STORAGE_ACK_KEY,
+  LOGIN_LOCAL_STORAGE_CACHE_KEY,
   LOGIN_LOCAL_STORAGE_SESSION_KEY,
 } from './local-storage';
 
@@ -73,13 +74,29 @@ describe('Local storage', () => {
   });
 
   describe('removeSession', () => {
-    test('should remove a session from local storage', () => {
+    test('should remove a session from local storage', async () => {
       window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(testSession));
+      window.localStorage.setItem(
+        LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test',
+        JSON.stringify({ foo: 'bar' }),
+      );
+      window.localStorage.setItem(
+        LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test2',
+        JSON.stringify({ foo: 'bar' }),
+      );
       expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY)).toEqual(
         JSON.stringify(testSession),
       );
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test')).toEqual(
+        JSON.stringify({ foo: 'bar' }),
+      );
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test2')).toEqual(
+        JSON.stringify({ foo: 'bar' }),
+      );
       LocalStorage.removeSession();
       expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY)).toBeNull();
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test')).toBeNull();
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test2')).toBeNull();
     });
   });
 
