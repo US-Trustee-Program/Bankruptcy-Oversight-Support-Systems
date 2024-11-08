@@ -119,7 +119,7 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
           key: {
             keys: [
               'officeCode'
-              'id'
+              'userId'
             ]
           }
           options: {
