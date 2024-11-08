@@ -74,7 +74,7 @@ describe('Local storage', () => {
   });
 
   describe('removeSession', () => {
-    test('should remove a session from local storage', async () => {
+    test('should remove a session from local storage', () => {
       window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(testSession));
       window.localStorage.setItem(
         LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test',
