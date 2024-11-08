@@ -21,6 +21,12 @@ export function useStateAndActions() {
     errorMessage: '',
   });
 
+  function postLoginTasks(session: CamsSession) {
+    session.user.offices?.forEach((office) => {
+      Api2.getOfficeAttorneys(office.officeCode);
+    });
+  }
+
   function getMe() {
     if (state.isLoaded) return;
     const newState = { ...state };
@@ -28,6 +34,7 @@ export function useStateAndActions() {
       .then((response) => {
         const session = response.data;
         LocalStorage.setSession(session);
+        postLoginTasks(session);
         newState.isLoaded = true;
       })
       .catch((error) => {
