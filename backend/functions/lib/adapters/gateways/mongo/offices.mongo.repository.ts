@@ -34,8 +34,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       ...user,
       ttl,
     });
+    const query = QueryBuilder.build(
+      and(equals<string>('id', staff.id), equals<string>('officeCode', officeCode)),
+    );
     try {
-      await this.getAdapter<OfficeStaff>().insertOne(staff);
+      await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

@@ -57,13 +57,12 @@ describe('offices repo', () => {
       ...session.user,
       ttl,
     });
-
-    const insertOneSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue('inserted-id');
 
     await repo.putOfficeStaff(officeCode, session.user);
-    expect(insertOneSpy).toHaveBeenCalledWith({ ...staff, updatedOn: expect.anything() });
+    expect(replaceOneSpy).toHaveBeenCalledWith(expect.anything(), staff, true);
   });
 
   describe('error handling', () => {
