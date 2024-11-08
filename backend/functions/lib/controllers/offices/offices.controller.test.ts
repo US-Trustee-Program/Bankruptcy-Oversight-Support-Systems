@@ -115,6 +115,23 @@ describe('offices controller tests', () => {
     expect(getOfficeAttorneys).toHaveBeenCalledWith(applicationContext, officeCode);
   });
 
+  test('should call getOffices', async () => {
+    getOffices = jest.fn().mockResolvedValue([]);
+
+    const camsHttpRequest = mockCamsHttpRequest();
+    applicationContext.request = camsHttpRequest;
+
+    const controller = new OfficesController();
+    const attorneys = await controller.handleRequest(applicationContext);
+    expect(attorneys).toEqual(
+      expect.objectContaining({
+        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: [] },
+      }),
+    );
+    expect(getOfficeAttorneys).not.toHaveBeenCalled();
+    expect(getOffices).toHaveBeenCalledWith(applicationContext);
+  });
+
   test('should throw error for unsupported subResource', async () => {
     getOffices = jest
       .fn()
