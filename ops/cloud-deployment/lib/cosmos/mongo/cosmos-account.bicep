@@ -89,6 +89,9 @@ var azureIpArray = [for item in allowedIps:{
 // Enable Azure Portal access
 var azureIpRules = concat(azureIpArray,[
   {
+    ipAddressOrRange: '0.0.0.0'
+  }
+  {
     ipAddressOrRange: '52.247.148.42'
   }
   {
