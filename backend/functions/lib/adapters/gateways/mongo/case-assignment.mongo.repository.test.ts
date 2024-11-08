@@ -55,9 +55,9 @@ describe('offices repo', () => {
         MockData.getAttorneyAssignment({ caseId }),
       ];
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockAssignments);
-      const actualAssignment = await repo.findAssignmentsByCaseId(caseId);
+      const actualAssignment = await repo.findAssignmentsByCaseId([caseId]);
 
-      expect(actualAssignment).toEqual(mockAssignments);
+      expect(actualAssignment).toEqual(new Map([[caseId, mockAssignments]]));
     });
   });
 
@@ -105,7 +105,7 @@ describe('offices repo', () => {
     test('should handle error on findAssignmentsByCaseId', async () => {
       const caseId = '111-22-33333';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-      await expect(async () => await repo.findAssignmentsByCaseId(caseId)).rejects.toThrow(
+      await expect(async () => await repo.findAssignmentsByCaseId([caseId])).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',

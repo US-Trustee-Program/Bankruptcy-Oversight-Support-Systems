@@ -17,6 +17,10 @@ function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
   return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
 }
 
+type SearchOptions = {
+  includeAssignments?: string;
+};
+
 export class CasesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
   private readonly caseManagement: CaseManagement;
@@ -52,21 +56,29 @@ export class CasesController implements CamsController {
 
   public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
-    const body = await this.paginateSearchCases(predicate, request.url);
+    const options = request.query as SearchOptions;
+    const includeAssignments = options?.includeAssignments === 'true';
+    const body = await this.paginateSearchCases(predicate, request.url, !!includeAssignments);
     return body;
   }
 
   async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
+    includeAssignments: boolean,
   ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
-    const cases = await this.caseManagement.searchCases(this.applicationContext, predicate);
+    const cases = await this.caseManagement.searchCases(
+      this.applicationContext,
+      predicate,
+      includeAssignments,
+    );
 
     const pagination: Pagination = {
       count: cases.length,
       limit: predicate.limit,
       currentPage: getCurrentPage(cases.length, predicate),
     };
+
     if (cases.length > predicate.limit) {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
@@ -75,12 +87,14 @@ export class CasesController implements CamsController {
       cases.pop();
       pagination.count = cases.length;
     }
+
     if (predicate.offset > 0) {
       const previous = new URL(url);
       previous.searchParams.set('limit', predicate.limit.toString());
       previous.searchParams.set('offset', (predicate.offset - predicate.limit).toString());
       pagination.previous = previous.href;
     }
+
     return {
       meta: {
         self: url,

@@ -90,8 +90,12 @@ function _AssignAttorneyModal(
       if (showProps.bCase) {
         setBCase(showProps.bCase);
         if (showProps.bCase.assignments) {
-          setCheckListValues([...showProps.bCase.assignments]);
-          setPreviouslySelectedList([...showProps.bCase.assignments]);
+          const attorneys: AttorneyUser[] = [];
+          showProps.bCase.assignments.forEach((assignment) => {
+            attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
+          });
+          setCheckListValues(attorneys);
+          setPreviouslySelectedList(attorneys);
         }
         if (showProps.callback) {
           submitCallbackRef.current = showProps.callback;
