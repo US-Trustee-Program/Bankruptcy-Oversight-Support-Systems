@@ -10,21 +10,11 @@ import { randomUUID } from 'crypto';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
-  private readonly notAcknowledged: UnknownError;
   private readonly moduleName: string;
-
-  private testAcknowledged(result: { acknowledged?: boolean }) {
-    if (result.acknowledged === false) {
-      throw this.notAcknowledged;
-    }
-  }
 
   constructor(moduleName: string, collection: CollectionHumble<T>) {
     this.collectionHumble = collection;
     this.moduleName = moduleName;
-    this.notAcknowledged = new UnknownError(this.moduleName, {
-      message: 'Operation returned Not Acknowledged.',
-    });
   }
 
   public async find(query: ConditionOrConjunction, sort?: Sort): Promise<T[]> {
@@ -79,9 +69,16 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoItem = createOrGetId<T>(item);
     try {
       const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
-      this.testAcknowledged(result);
-
-      return result.upsertedId?.toString();
+      if (!result.acknowledged) {
+        if (upsert) {
+          throw new UnknownError(this.moduleName, {
+            message: 'Failed to insert document into database.',
+          });
+        } else {
+          throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
+        }
+      }
+      return mongoItem.id;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -90,11 +87,15 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   public async insertOne(item: T) {
     try {
       const cleanItem = removeIds(item);
-      const identifiableItem = createOrGetId<T>(cleanItem);
-      const result = await this.collectionHumble.insertOne(identifiableItem);
-      this.testAcknowledged(result);
+      const mongoItem = createOrGetId<T>(cleanItem);
+      const result = await this.collectionHumble.insertOne(mongoItem);
+      if (!result.acknowledged) {
+        throw new UnknownError(this.moduleName, {
+          message: 'Failed to insert document into database.',
+        });
+      }
 
-      return identifiableItem.id;
+      return mongoItem.id;
     } catch (originalError) {
       throw getCamsError(originalError, this.moduleName);
     }
@@ -107,7 +108,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         return createOrGetId<T>(cleanItem);
       });
       const result = await this.collectionHumble.insertMany(mongoItems);
-      this.testAcknowledged(result);
       const insertedIds = mongoItems.map((item) => item.id);
       if (insertedIds.length !== result.insertedCount) {
         throw new CamsError(this.moduleName, {
@@ -125,7 +125,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.deleteOne(mongoQuery);
-      this.testAcknowledged(result);
       if (result.deletedCount !== 1) {
         throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
       }
@@ -140,7 +139,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.deleteMany(mongoQuery);
-      this.testAcknowledged(result);
       if (result.deletedCount < 1) {
         throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
       }
@@ -190,10 +188,11 @@ function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
   return mongoItem;
 }
 
-function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
+// TODO: sus.
+export function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
   const cleanItem = { ...item };
-  delete cleanItem?._id;
-  delete cleanItem?.id;
+  delete cleanItem._id;
+  delete cleanItem.id;
   return cleanItem;
 }
 
