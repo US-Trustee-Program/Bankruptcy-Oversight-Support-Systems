@@ -1,8 +1,9 @@
+import { BroadcastChannelHumble } from '@/lib/humble/broadcast-channel-humble';
 import { LOGOUT_PATH } from '@/login/login-library';
 
-let channel: BroadcastChannel;
+let channel: BroadcastChannelHumble;
 
-function handleLogout() {
+export function handleLogout() {
   const { host, protocol } = window.location;
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
   window.location.assign(logoutUri);
@@ -10,10 +11,10 @@ function handleLogout() {
 }
 
 export function initializeBroadcastLogout() {
-  channel = new BroadcastChannel('CAMS_logout');
-  channel.onmessage = handleLogout;
+  channel = new BroadcastChannelHumble('CAMS_logout');
+  channel.onMessage(handleLogout);
 }
 
 export function broadcastLogout() {
-  channel?.postMessage('');
+  channel?.postMessage('I am testing this');
 }
