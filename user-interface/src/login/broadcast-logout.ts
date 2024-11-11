@@ -16,5 +16,5 @@ export function initializeBroadcastLogout() {
 }
 
 export function broadcastLogout() {
-  channel?.postMessage('I am testing this');
+  channel?.postMessage('Logout all windows');
 }
