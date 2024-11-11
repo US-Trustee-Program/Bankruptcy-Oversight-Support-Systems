@@ -1,5 +1,5 @@
 import { BroadcastChannelHumble } from '@/lib/humble/broadcast-channel-humble';
-import { broadcastLogout, initializeBroadcastLogout } from '@/login/broadcast-logout';
+import { broadcastLogout, handleLogout, initializeBroadcastLogout } from '@/login/broadcast-logout';
 
 describe('Broadcast Logout', () => {
   test('should handle broadcast-logout properly', () => {
@@ -16,48 +16,29 @@ describe('Broadcast Logout', () => {
 
     const closeSpy = vi.spyOn(BroadcastChannelHumble.prototype, 'close').mockReturnValue();
 
-    global.window = Object.create(window);
+    Object.defineProperty(global, 'window', Object.create(window));
     global.window.location = {
-      ancestorOrigins: {
-        length: 1,
-        contains: vi.fn(),
-        item: vi.fn(() => ''),
-        [Symbol.iterator]: function (): ArrayIterator<string> {
-          throw new Error('Function not implemented.');
-        },
-      },
-      hash: '',
       host: 'some-host',
-      hostname: '',
-      href: '',
-      origin: 'http://dummy.com',
-      pathname: '',
-      port: '',
       protocol: 'http:',
-      search: '',
-      assign: function (url: string | URL): void {
-        console.log('URL::::::: ' + url);
-        return;
-      },
-      reload: function (): void {
-        throw new Error('Function not implemented.');
-      },
-      replace: function (_url: string | URL): void {
-        throw new Error('Function not implemented.');
-      },
-    };
-    vi.spyOn(global.window.location, 'assign');
+      assign: function (_url: string | URL): void {},
+    } as unknown as Location;
+    const assignSpy = vi.spyOn(global.window.location, 'assign');
     const expectedUrl =
       global.window.location.protocol + '//' + global.window.location.host + '/logout';
 
     initializeBroadcastLogout();
     broadcastLogout();
-    expect(postMessageSpy).toHaveBeenCalledWith('I am testing this');
-    expect(onMessageSpy).toHaveBeenCalledWith(expect.any(Function));
-    expect(onMessageFn).toEqual(expect.any(Function));
+
+    // Validate broadcastLogout function
+    expect(postMessageSpy).toHaveBeenCalledWith('Logout all windows');
+
+    // Validate initializeBroadcastLogout function
+    expect(onMessageSpy).toHaveBeenCalledWith(handleLogout);
+    expect(onMessageFn).toEqual(handleLogout);
+
+    // Validate handleLogout function
     onMessageFn();
     expect(closeSpy).toHaveBeenCalled();
-    expect(global.window.location.assign).toHaveBeenCalledWith(expectedUrl);
-    //TODO: find a way to actually have the postMessage event be handled
+    expect(assignSpy).toHaveBeenCalledWith(expectedUrl);
   });
 });
