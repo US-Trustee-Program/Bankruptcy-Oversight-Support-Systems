@@ -116,6 +116,15 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
           }
        }
        {
+          key:  {
+            keys:['_ts']
+
+          }
+          options: {
+            expireAfterSeconds: -1
+          }
+       }
+       {
           key: {
             keys: [
               'officeCode'

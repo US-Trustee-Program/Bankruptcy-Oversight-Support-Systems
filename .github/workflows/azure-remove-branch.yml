@@ -80,7 +80,7 @@ jobs:
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e-${{ needs.check.outputs.targetBranchHashId }}"
 
           az cosmosdb mongodb database delete \
-          --account-name ${{ secrets.AZ_COSMOS_ACCOUNT_NAME }} \
+          --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
           --name "${e2eDatabaseName}" \
           --resource-group  ${{ secrets.AZURE_RG }} \
           --yes

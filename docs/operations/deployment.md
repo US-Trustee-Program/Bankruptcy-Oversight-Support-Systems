@@ -66,7 +66,7 @@ Note required environment variables and secrets defined in build tool for pipeli
 | --- | --- | --- | --- |
 | **Azure CosmosDb** | --- | --- | --- |
 | AZ_COSMOS_DATABASE_NAME | Secret | --- | --- |
-| AZ_COSMOS_ACCOUNT_NAME | Secret | --- | --- |
+| AZ_COSMOS_MONGO_ACCOUNT_NAME | Secret | --- | --- |
 | AZ_COSMOS_ID_NAME | Secret | --- | Name of Managed Identity accessing cosmos |
 | --- | --- | --- | --- |
 | **Veracode** | | | |
