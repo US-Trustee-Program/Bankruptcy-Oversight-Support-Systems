@@ -10,7 +10,7 @@ describe('Broadcast Logout', () => {
     const postMessageSpy = vi
       .spyOn(BroadcastChannelHumble.prototype, 'postMessage')
       .mockReturnValue();
-    // eslint-disable-next-line @typescript-eslint/ban-types
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     let onMessageFn: Function = vi.fn();
     const onMessageSpy = vi
       .spyOn(BroadcastChannelHumble.prototype, 'onMessage')
