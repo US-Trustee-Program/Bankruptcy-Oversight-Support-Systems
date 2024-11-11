@@ -27,6 +27,7 @@ export default defineConfig({
         '**/data-verification/consolidation/ConsolidationOrderAccordionView.tsx',
         '**/data-verification/consolidation/*Mock.ts',
         '**/*.d.ts',
+        '**/**humble.ts',
         ...coverageConfigDefaults.exclude,
       ],
       thresholds: {
