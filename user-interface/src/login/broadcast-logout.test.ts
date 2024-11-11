@@ -1,5 +1,9 @@
 import { BroadcastChannelHumble } from '@/lib/humble/broadcast-channel-humble';
-import { broadcastLogout, handleLogout, initializeBroadcastLogout } from '@/login/broadcast-logout';
+import {
+  broadcastLogout,
+  handleLogoutBroadcast,
+  initializeBroadcastLogout,
+} from '@/login/broadcast-logout';
 
 describe('Broadcast Logout', () => {
   test('should handle broadcast-logout properly', () => {
@@ -33,8 +37,8 @@ describe('Broadcast Logout', () => {
     expect(postMessageSpy).toHaveBeenCalledWith('Logout all windows');
 
     // Validate initializeBroadcastLogout function
-    expect(onMessageSpy).toHaveBeenCalledWith(handleLogout);
-    expect(onMessageFn).toEqual(handleLogout);
+    expect(onMessageSpy).toHaveBeenCalledWith(handleLogoutBroadcast);
+    expect(onMessageFn).toEqual(handleLogoutBroadcast);
 
     // Validate handleLogout function
     onMessageFn();

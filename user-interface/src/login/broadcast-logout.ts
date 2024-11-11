@@ -3,7 +3,7 @@ import { LOGOUT_PATH } from '@/login/login-library';
 
 let channel: BroadcastChannelHumble;
 
-export function handleLogout() {
+export function handleLogoutBroadcast() {
   const { host, protocol } = window.location;
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
   window.location.assign(logoutUri);
@@ -12,7 +12,7 @@ export function handleLogout() {
 
 export function initializeBroadcastLogout() {
   channel = new BroadcastChannelHumble('CAMS_logout');
-  channel.onMessage(handleLogout);
+  channel.onMessage(handleLogoutBroadcast);
 }
 
 export function broadcastLogout() {
