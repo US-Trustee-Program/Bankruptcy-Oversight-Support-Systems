@@ -179,6 +179,7 @@ export default class CasesDxtrGateway implements CasesInterface {
               PY_GENERATION
             )) = @debtorName
           )
+          AND C1.CS_CLOSED != 'Y'
           AND C1.CS_CHAPTER = @chapter
           AND C1.CS_DATE_FILED >= @datefiled
           AND (C1.COURT_ID != @originalCourt

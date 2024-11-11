@@ -363,7 +363,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
-      WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
+      WHERE CS.CS_CLOSED != 'Y'
+      AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
       AND G.REGION_ID IN ('${regions.join("','")}')
       `;
     const queryResult: QueryResults = await executeQuery(
@@ -434,7 +435,8 @@ export class DxtrOrdersGateway implements OrdersGateway {
         ON CS.COURT_ID = O.COURT_ID
         AND CSD.OFFICE_CODE = O.OFFICE_CODE
       JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
-      WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
+      WHERE CS.CS_CLOSED != 'Y'
+      AND CS.CS_CHAPTER IN ('${chapters.join("','")}')
       AND G.REGION_ID IN ('${regions.join("','")}')
       `;
 
