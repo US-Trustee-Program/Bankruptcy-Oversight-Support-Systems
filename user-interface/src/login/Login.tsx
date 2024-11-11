@@ -21,6 +21,7 @@ import ApiConfiguration from '@/configuration/apiConfiguration';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
+import { initializeBroadcastLogout } from '@/login/broadcast-logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -42,6 +43,7 @@ export function Login(props: LoginProps): React.ReactNode {
 
   addApiAfterHook(http401Hook);
   initializeInactiveLogout();
+  initializeBroadcastLogout();
 
   const session: CamsSession | null = LocalStorage.getSession();
   if (session) {
