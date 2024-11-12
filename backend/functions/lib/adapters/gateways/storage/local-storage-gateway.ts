@@ -27,6 +27,9 @@ const OFFICE_MAPPING =
   'USTP_CAMS_Region_2_Office_New_Haven,USTP CAMS Region 2 Office New Haven,NH\n' +
   'USTP_CAMS_Region_18_Office_Seattle,USTP CAMS Region 18 Office Seattle,SE|AK\n';
 
+let metaMapping: Map<string, UstpDivisionMeta>;
+const LEGACY_DIVISION_CODES = [];
+
 const storage = new Map<string, string>();
 storage.set(ROLE_MAPPING_PATH, ROLE_MAPPING);
 storage.set(OFFICE_MAPPING_PATH, OFFICE_MAPPING);
@@ -57,10 +60,6 @@ function getRoleMapping(): Map<string, CamsRole> {
 
   return roleMapping;
 }
-
-const LEGACY_DIVISION_CODES = ['070'];
-
-let metaMapping: Map<string, UstpDivisionMeta>;
 
 function addUstpDivisionMetaToMap(
   map: Map<string, UstpDivisionMeta>,
