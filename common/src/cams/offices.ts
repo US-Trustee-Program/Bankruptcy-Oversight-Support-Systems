@@ -23,7 +23,8 @@ export type UstpDivision = {
   divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
   court: Court;
   courtOffice: CourtOffice;
-  tags?: UstpDivisionTag[];
+  isLegacy?: true;
+  isInvalid?: true;
 };
 
 export type Court = {

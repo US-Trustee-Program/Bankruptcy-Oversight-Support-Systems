@@ -27,7 +27,13 @@ export class OfficesUseCase {
       ustpOffice.groups.forEach((group) => {
         group.divisions.forEach((division) => {
           if (tags.has(division.divisionCode)) {
-            division.tags = tags.get(division.divisionCode);
+            const divisionTags = tags.get(division.divisionCode);
+            if (divisionTags.includes('LEGACY')) {
+              division.isLegacy = true;
+            }
+            if (divisionTags.includes('INVALID')) {
+              division.isLegacy = true;
+            }
           }
         });
       });
