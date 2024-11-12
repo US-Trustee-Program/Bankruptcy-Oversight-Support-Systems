@@ -17,10 +17,13 @@ export type UstpGroup = {
   divisions: UstpDivision[];
 };
 
+export type UstpDivisionTag = 'LEGACY' | 'INVALID';
+
 export type UstpDivision = {
   divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
   court: Court;
   courtOffice: CourtOffice;
+  tags?: UstpDivisionTag[];
 };
 
 export type Court = {
