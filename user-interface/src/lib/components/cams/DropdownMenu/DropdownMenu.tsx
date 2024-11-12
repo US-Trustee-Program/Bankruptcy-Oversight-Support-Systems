@@ -34,7 +34,9 @@ export function DropdownMenu(props: DropdownMenuProps) {
   }
 
   function handleClickOutside(ev: MouseEvent) {
-    if (buttonRef.current && !buttonRef.current.contains(ev.target as Node)) {
+    const itemList = document.getElementById(`${id}-item-list`);
+    //if (buttonRef.current && !buttonRef.current.contains(ev.target as Node)) {
+    if (itemList && !itemList.contains(ev.target as Node)) {
       setExpanded(false);
     }
   }

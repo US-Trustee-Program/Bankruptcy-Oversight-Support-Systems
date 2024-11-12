@@ -4,14 +4,17 @@ import Button from './uswds/Button';
 import Icon from './uswds/Icon';
 
 export default function ScrollToTopButton() {
-  function documentScroll(ev: Event) {
-    const scrollButton = document.querySelector('.scroll-to-top-button');
-    if (window.scrollY > 100) {
-      (ev.target as HTMLElement).className = 'App header-scrolled-out';
-      if (scrollButton) scrollButton.classList.add('show');
-    } else {
-      (ev.target as HTMLElement).className = 'App';
-      if (scrollButton) scrollButton.classList.remove('show');
+  function documentScroll(_ev: Event) {
+    const app = document.querySelector('.App');
+    if (app) {
+      const scrollButton = document.querySelector('.scroll-to-top-button');
+      if (window.scrollY > 100) {
+        app.className = 'App header-scrolled-out';
+        if (scrollButton) scrollButton.classList.add('show');
+      } else {
+        app.className = 'App';
+        if (scrollButton) scrollButton.classList.remove('show');
+      }
     }
   }
 
