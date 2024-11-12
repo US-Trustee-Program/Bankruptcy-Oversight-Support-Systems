@@ -1,4 +1,4 @@
-import { UstpDivisionTag, UstpOfficeDetails } from './offices';
+import { UstpOfficeDetails } from './offices';
 import { CamsUserReference } from './users';
 
 export function filterCourtByDivision(divisionCode: string, officeList: CourtDivisionDetails[]) {
@@ -24,7 +24,8 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         groupDesignator: group.groupDesignator,
         regionId: ustp.regionId,
         regionName: ustp.regionName,
-        tags: division.tags,
+        isLegacy: division.isLegacy,
+        isInvalid: division.isInvalid,
       });
     });
     return acc;
@@ -44,5 +45,6 @@ export type CourtDivisionDetails = {
   regionName: string;
   state?: string;
   staff?: CamsUserReference[];
-  tags?: UstpDivisionTag[];
+  isLegacy?: true;
+  isInvalid?: true;
 };
