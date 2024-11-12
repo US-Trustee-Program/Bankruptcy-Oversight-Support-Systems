@@ -35,7 +35,6 @@ export function DropdownMenu(props: DropdownMenuProps) {
 
   function handleClickOutside(ev: MouseEvent) {
     const itemList = document.getElementById(`${id}-item-list`);
-    //if (buttonRef.current && !buttonRef.current.contains(ev.target as Node)) {
     if (itemList && !itemList.contains(ev.target as Node)) {
       setExpanded(false);
     }
@@ -53,7 +52,6 @@ export function DropdownMenu(props: DropdownMenuProps) {
       if (ev.key === 'ArrowDown') {
         if (ev.currentTarget === lastItem) {
           if (firstItem) firstItem.focus();
-          ev.preventDefault();
         } else {
           const nextItem = ev.currentTarget.parentElement?.nextElementSibling;
           if (nextItem) (nextItem.children[0] as HTMLLIElement).focus();
@@ -62,7 +60,6 @@ export function DropdownMenu(props: DropdownMenuProps) {
       } else if (ev.key === 'ArrowUp') {
         if (ev.currentTarget === firstItem) {
           if (lastItem) lastItem.focus();
-          ev.preventDefault();
         } else {
           const previousItem = ev.currentTarget.parentElement?.previousElementSibling;
           if (previousItem) (previousItem.children[0] as HTMLLIElement).focus();
