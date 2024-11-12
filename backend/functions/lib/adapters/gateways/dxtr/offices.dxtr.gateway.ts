@@ -15,7 +15,7 @@ import { buildOfficeCode, getOfficeName } from '../../../use-cases/offices/offic
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
 // Remove invalid divisions at the gateway rather than forcing the
-// more important use case code to include logic to removing them.
+// more important use case code to include logic to remove them.
 const INVALID_DIVISION_CODES = ['070', '990', '991', '992', '993', '994', '995', '996', '999'];
 const INVALID_DIVISION_CODES_SQL = INVALID_DIVISION_CODES.map((code) => "'" + code + "'").join(',');
 
