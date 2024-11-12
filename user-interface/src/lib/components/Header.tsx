@@ -76,9 +76,15 @@ export const Header = () => {
                 <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
               </div>
             </div>
-            <div className="site-title">
+            <div className="site-title wide-screen">
               <span className="text-no-wrap">U.S. Trustee Program</span>
               <span className="sub-title text-no-wrap">CAse Management System (CAMS)</span>
+            </div>
+            <div className="site-title small-screen">
+              <span className="text-no-wrap" title="U.S. Trustee Program, Case Management System">
+                USTP CAMS
+              </span>
+              <span className="sub-title text-no-wrap"></span>
             </div>
           </div>
           <div className="cams-main-navigation">
@@ -156,6 +162,7 @@ export const Header = () => {
                       id={'user-menu'}
                       menuItems={userMenuItems}
                       className="header-menu"
+                      ariaLabel={`user menu for ${session.user.name}`}
                     >
                       <Icon name="person"></Icon>
                       {session.user.name}

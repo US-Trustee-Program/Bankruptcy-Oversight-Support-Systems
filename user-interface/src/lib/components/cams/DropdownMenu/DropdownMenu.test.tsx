@@ -1,8 +1,8 @@
 import { render } from '@testing-library/react';
 import { DropdownMenu, MenuItem } from './DropdownMenu';
-import { faker } from '@faker-js/faker';
 import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
+import LinkUtils from '../linkUtils';
 
 describe('DropdownMenu component tests', () => {
   const menuId = 'test-menu';
@@ -16,20 +16,20 @@ describe('DropdownMenu component tests', () => {
   const clickFn = vi.fn();
   const menuItems: MenuItem[] = [
     {
-      label: 'Item 0',
-      address: faker.internet.url(),
+      label: 'A Item 0',
+      address: '/test-address-0',
     },
     {
-      label: 'Item 1',
-      address: faker.internet.url(),
+      label: 'b Item 1',
+      address: '/test-address-1',
     },
     {
-      label: 'Item 2',
-      address: faker.internet.url(),
+      label: 'c Item 2',
+      address: '/test-address-2',
     },
     {
-      label: 'Item 3',
-      address: faker.internet.url(),
+      label: '3 Item 3',
+      address: '/test-address-3',
     },
   ];
 
@@ -37,7 +37,12 @@ describe('DropdownMenu component tests', () => {
     render(
       <BrowserRouter>
         <button id="test-button-0">Test Button 0</button>
-        <DropdownMenu id={menuId} menuItems={menuItems} onClick={clickFn}>
+        <DropdownMenu
+          id={menuId}
+          menuItems={menuItems}
+          onClick={clickFn}
+          ariaLabel={'Test Aria Label'}
+        >
           Test Menu
         </DropdownMenu>
         <button id="test-button-1">Test Button 1</button>
@@ -60,15 +65,60 @@ describe('DropdownMenu component tests', () => {
     vi.clearAllMocks();
   });
 
-  test('Menu should expand when pressing Enter key', async () => {
+  test('Menu should expand when clicking menu button, and focused item should be first menu item in list', async () => {
     menu.focus();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
     await userEvent.click(menu);
     expect(menu.getAttribute('aria-expanded')).toBe('true');
+    const firstItem: HTMLLinkElement | null = document.querySelector('ul li a');
+    expect(firstItem).toHaveFocus();
   });
 
-  test('If expanded, then pressing Tab should focus on first menu item.  Pressing tab again should focus on next item outside of menu and close menu.', async () => {
+  test('Menu should expand when pressing Enter key, and focused item should be first menu item in list', async () => {
+    menu.focus();
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+
+    await userEvent.keyboard('{Enter}');
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    const firstItem: HTMLLinkElement | null = document.querySelector('ul li a');
+    expect(firstItem).toHaveFocus();
+  });
+
+  test('Menu should expand when pressing Space key, and focused item should be first menu item in list', async () => {
+    menu.focus();
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+
+    await userEvent.keyboard(' ');
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    const firstItem: HTMLLinkElement | null = document.querySelector('ul li a');
+    expect(firstItem).toHaveFocus();
+  });
+
+  test('Menu should have aria-controls="test-menu-item-list", aria-label, and aria-haspopup="menu" and UL should have role="menu", and LI should have role="menuitem"', () => {
+    expect(menu).toHaveAttribute('aria-controls', `${menuId}-item-list`);
+    expect(menu).toHaveAttribute('aria-label', 'Test Aria Label');
+    expect(menu).toHaveAttribute('aria-haspopup', 'menu');
+    const ul = document.querySelector('ul');
+    expect(ul).toHaveAttribute('id', `${menuId}-item-list`);
+    expect(ul).toHaveAttribute('role', 'menu');
+    const menuItems = ul!.querySelectorAll('li');
+    expect(menuItems.length).toEqual(4);
+    if (menuItems)
+      menuItems.forEach((item) => {
+        expect(item).toHaveAttribute('role', 'menuitem');
+      });
+  });
+
+  test('Menu should close when clicking outside of menu', async () => {
+    await userEvent.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+
+    await userEvent.click(button0);
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('If expanded, then pressing Tab should focus on next item outside of menu and close menu.', async () => {
     const user = userEvent.setup();
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
@@ -77,15 +127,11 @@ describe('DropdownMenu component tests', () => {
     expect(menu.getAttribute('aria-expanded')).toBe('true');
 
     await user.tab();
-    expect(menu.getAttribute('aria-expanded')).toBe('true');
-    expect(document.activeElement).toBe(item1);
-
-    await user.tab();
     expect(document.activeElement).toBe(button1);
     expect(menu.getAttribute('aria-expanded')).toBe('false');
   });
 
-  test('If expanded, then pressing Shift-Tab should close menu and focus on previous item on page.', async () => {
+  test('If expanded, then pressing Shift-Tab should close menu and focus on menu.', async () => {
     expect(menu.getAttribute('aria-expanded')).toBe('false');
 
     await userEvent.click(menu);
@@ -93,10 +139,10 @@ describe('DropdownMenu component tests', () => {
 
     await userEvent.tab({ shift: true });
     expect(menu.getAttribute('aria-expanded')).toBe('false');
-    expect(document.activeElement).toBe(button0);
+    expect(document.activeElement).toBe(menu);
   });
 
-  test('If expanded, then pressing Down Arrow should focus on first menu item.  Pressing down arrow again should focus on each menu item in turn. If the last item was already focused, then the menu should close and closed menu, being the parent of items, should receive focus.', async () => {
+  test('If expanded, then pressing Down Arrow should focus on each menu item in turn. If the last item was already focused, then the first menu item should receive focus.', async () => {
     const user = userEvent.setup();
 
     expect(menu.getAttribute('aria-expanded')).toBe('false');
@@ -104,8 +150,6 @@ describe('DropdownMenu component tests', () => {
 
     await user.keyboard('{Enter}');
     expect(menu!.getAttribute('aria-expanded')).toBe('true');
-
-    await user.keyboard('{ArrowDown}');
     expect(document.activeElement).toBe(item1);
 
     await user.keyboard('{ArrowDown}');
@@ -118,11 +162,10 @@ describe('DropdownMenu component tests', () => {
     expect(document.activeElement).toBe(item4);
 
     await user.keyboard('{ArrowDown}');
-    expect(document.activeElement).toBe(menu);
-    expect(menu!.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(item1);
   });
 
-  test('If expanded, and last item is focused, then pressing Up Arrow should focus on each item above in sequence until reaching the top.  Pressing up arrow again should close menu, and focus on the menu.', async () => {
+  test('If expanded, and last item is focused, then pressing Up Arrow should focus on each item above in sequence until reaching the top.  Pressing up arrow again should focus on the last menu item in the list.', async () => {
     const user = userEvent.setup();
 
     await user.click(menu);
@@ -139,9 +182,41 @@ describe('DropdownMenu component tests', () => {
     expect(document.activeElement).toBe(item1);
 
     await user.keyboard('{ArrowUp}');
-    expect(document.activeElement).toBe(menu);
+    expect(document.activeElement).toBe(item4);
+  });
 
-    expect(menu.getAttribute('aria-expanded')).toBe('false');
+  test('If expanded, End key should jump to last item in list and Home key should jump to first item in list.', async () => {
+    const user = userEvent.setup();
+
+    menu.focus();
+    await user.keyboard('{Enter}');
+    expect(document.activeElement).toBe(item1);
+
+    await user.keyboard('{End}');
+    expect(document.activeElement).toBe(item4);
+
+    await user.keyboard('{Home}');
+    expect(document.activeElement).toBe(item1);
+  });
+
+  test('If expanded, pressing a letter or number should jump to the first menu item that starts with that letter', async () => {
+    const user = userEvent.setup();
+
+    menu.focus();
+    await user.keyboard('{Enter}');
+    expect(document.activeElement).toBe(item1);
+
+    await user.keyboard('3');
+    expect(document.activeElement).toBe(item4);
+
+    await user.keyboard('b');
+    expect(document.activeElement).toBe(item2);
+
+    await user.keyboard('a');
+    expect(document.activeElement).toBe(item1);
+
+    await user.keyboard('c');
+    expect(document.activeElement).toBe(item3);
   });
 
   test('If expanded, and menu item is focused, then pressing Escape should close menu and closed menu, being the parent of items, should receive focus.', async () => {
@@ -150,8 +225,6 @@ describe('DropdownMenu component tests', () => {
     menu.focus();
     await userEvent.keyboard('{Enter}');
     expect(menu!.getAttribute('aria-expanded')).toBe('true');
-
-    await userEvent.tab();
     expect(document.activeElement).toBe(item1);
 
     await userEvent.keyboard('{Escape}');
@@ -162,5 +235,34 @@ describe('DropdownMenu component tests', () => {
   test('Should call click function onClick', async () => {
     await userEvent.click(menu);
     expect(clickFn).toHaveBeenCalled();
+  });
+
+  describe('Test link activation', () => {
+    beforeEach(() => {
+      vi.spyOn(LinkUtils, 'executeLinkClick').mockImplementation((link: HTMLAnchorElement) => {
+        const url = new URL(link.href);
+        return url.pathname;
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('Should follow link when Enter key is pressed', async () => {
+      await userEvent.click(menu);
+      expect(item1).toHaveFocus();
+      await userEvent.keyboard('{Enter}');
+
+      expect(LinkUtils.executeLinkClick).toHaveReturnedWith(menuItems[0].address);
+    });
+
+    test('Should follow link when Space key is pressed', async () => {
+      await userEvent.click(menu);
+      expect(item1).toHaveFocus();
+      await userEvent.keyboard(' ');
+
+      expect(LinkUtils.executeLinkClick).toHaveReturnedWith(menuItems[0].address);
+    });
   });
 });

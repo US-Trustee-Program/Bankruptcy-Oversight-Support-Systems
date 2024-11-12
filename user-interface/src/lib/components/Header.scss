@@ -69,7 +69,6 @@
         color: white;
         padding: 0 30px;
         min-height: 125px;
-        min-width: 420px;
         margin-top: 0;
         margin-bottom: 0;
         font-size: 2.5rem;
@@ -235,6 +234,36 @@
         .cams-user-nav {
           justify-content: flex-end;
           padding-right: 0;
+        }
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 74em) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
+          display: none;
+        }
+        .site-title.small-screen {
+          display: flex;
+        }
+      }
+    }
+  }
+}
+
+@media (min-width: 73em) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
+          display: flex;
+        }
+        .site-title.small-screen {
+          display: none;
         }
       }
     }

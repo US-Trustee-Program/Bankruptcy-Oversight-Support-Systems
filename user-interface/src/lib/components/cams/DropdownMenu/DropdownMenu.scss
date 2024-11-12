@@ -1,5 +1,37 @@
 .cams-dropdown-menu {
+  position: relative;
+
+  button.usa-accordion__button {
+    white-space: nowrap;
+  }
   ul {
+    position: absolute;
+    z-index: 10;
     padding: 0;
+    width: auto;
+    min-width: 100%;
+    overflow: visible;
+  }
+}
+
+@media screen and (max-width: 63.99em) {
+  .cams-dropdown-menu {
+    button.usa-accordion__button[aria-expanded=false] {
+      span::after {
+        mask-image: url(/assets/styles/img/usa-icons/expand_more.svg);
+        mask-position: center center;
+        mask-repeat: no-repeat;
+        right: -0.5rem;
+      }
+    }
+    button.usa-accordion__button[aria-expanded=true] {
+      span::after {
+        mask-image: url(/assets/styles/img/usa-icons/expand_less.svg);
+        right: 0.5rem;
+      }
+    }
+    button.usa-accordion__button:hover {
+      background-color: transparent;
+    }
   }
 }
