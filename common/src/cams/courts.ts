@@ -1,4 +1,4 @@
-import { UstpOfficeDetails } from './offices';
+import { UstpDivisionMeta, UstpOfficeDetails } from './offices';
 import { CamsUserReference } from './users';
 
 export function filterCourtByDivision(divisionCode: string, officeList: CourtDivisionDetails[]) {
@@ -33,7 +33,7 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
   return courtDivisions;
 }
 
-export type CourtDivisionDetails = {
+export type CourtDivisionDetails = UstpDivisionMeta & {
   officeName: string;
   officeCode: string;
   courtId: string;
@@ -45,6 +45,4 @@ export type CourtDivisionDetails = {
   regionName: string;
   state?: string;
   staff?: CamsUserReference[];
-  isLegacy?: true;
-  isInvalid?: true;
 };
