@@ -1,9 +1,12 @@
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/offices';
+import {
+  USTP_OFFICES_ARRAY,
+  UstpDivisionTag,
+  UstpOfficeDetails,
+} from '../../../../../../common/src/cams/offices';
 
-let roleMapping;
-
+let roleMapping: Map<string, CamsRole>;
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
@@ -55,10 +58,39 @@ function getRoleMapping(): Map<string, CamsRole> {
   return roleMapping;
 }
 
+const INVALID_DIVISION_CODES = ['990', '991', '992', '993', '994', '995', '996', '999'];
+const LEGACY_DIVISION_CODES = ['070'];
+
+let tagMapping: Map<string, UstpDivisionTag[]>;
+
+function addUstpDivisionTagsToMap(
+  map: Map<string, string[]>,
+  tag: UstpDivisionTag,
+  divisionCodes: string[],
+) {
+  divisionCodes.forEach((divisionCode) => {
+    if (map.has(divisionCode)) {
+      map.get(divisionCode).push(tag);
+    } else {
+      map.set(divisionCode, [tag]);
+    }
+  });
+}
+
+function getUstpDivisionTags(): Map<string, UstpDivisionTag[]> {
+  if (!tagMapping) {
+    tagMapping = new Map<string, UstpDivisionTag[]>();
+    addUstpDivisionTagsToMap(tagMapping, 'INVALID', INVALID_DIVISION_CODES);
+    addUstpDivisionTagsToMap(tagMapping, 'LEGACY', LEGACY_DIVISION_CODES);
+  }
+  return tagMapping;
+}
+
 export const LocalStorageGateway: StorageGateway = {
   get,
   getUstpOffices,
   getRoleMapping,
+  getUstpDivisionTags,
 };
 
 export default LocalStorageGateway;

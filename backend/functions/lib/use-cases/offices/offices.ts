@@ -17,8 +17,23 @@ const MODULE_NAME = 'OFFICES_USE_CASE';
 
 export class OfficesUseCase {
   public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
-    const gateway = getOfficesGateway(context);
-    return gateway.getOffices(context);
+    const officesGateway = getOfficesGateway(context);
+    const offices = await officesGateway.getOffices(context);
+
+    const storageGateway = getStorageGateway(context);
+    const tags = storageGateway.getUstpDivisionTags();
+
+    offices.forEach((ustpOffice) => {
+      ustpOffice.groups.forEach((group) => {
+        group.divisions.forEach((division) => {
+          if (tags.has(division.divisionCode)) {
+            division.tags = tags.get(division.divisionCode);
+          }
+        });
+      });
+    });
+
+    return offices;
   }
 
   public async getOfficeAttorneys(
