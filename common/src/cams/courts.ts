@@ -25,7 +25,6 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
         regionId: ustp.regionId,
         regionName: ustp.regionName,
         isLegacy: division.isLegacy,
-        isInvalid: division.isInvalid,
       });
     });
     return acc;

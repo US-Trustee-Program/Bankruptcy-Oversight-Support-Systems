@@ -58,7 +58,6 @@ function getRoleMapping(): Map<string, CamsRole> {
   return roleMapping;
 }
 
-const INVALID_DIVISION_CODES = ['990', '991', '992', '993', '994', '995', '996', '999'];
 const LEGACY_DIVISION_CODES = ['070'];
 
 let metaMapping: Map<string, UstpDivisionMeta>;
@@ -80,7 +79,6 @@ function addUstpDivisionMetaToMap(
 function getUstpDivisionMeta(): Map<string, UstpDivisionMeta> {
   if (!metaMapping) {
     metaMapping = new Map<string, UstpDivisionMeta>();
-    addUstpDivisionMetaToMap(metaMapping, { isInvalid: true }, INVALID_DIVISION_CODES);
     addUstpDivisionMetaToMap(metaMapping, { isLegacy: true }, LEGACY_DIVISION_CODES);
   }
   return metaMapping;
