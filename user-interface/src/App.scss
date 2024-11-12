@@ -16,15 +16,17 @@
 }
 
 body {
-  overflow-y: hidden;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+#root {
+  min-width: fit-content;
 }
 .App {
   display: flex;
   flex-direction: column;
-  position: absolute;
+  position: relative;
   padding: 0;
-  overflow-y: auto;
-  overflow-x: auto;
   top: 0;
   bottom: 0;
   left: 0;
