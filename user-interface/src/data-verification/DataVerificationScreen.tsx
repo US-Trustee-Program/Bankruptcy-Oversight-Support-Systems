@@ -80,7 +80,7 @@ export default function DataVerificationScreen() {
       .getCourts()
       .then((response) => {
         const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
-        setCourts(courts.sort(courtSorter));
+        setCourts(courts.filter((division) => !division.isLegacy).sort(courtSorter));
         setRegionsMap(
           courts.reduce((regionsMap, court) => {
             if (!regionsMap.has(court.regionId)) {
