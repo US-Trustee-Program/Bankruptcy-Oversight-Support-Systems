@@ -21,6 +21,7 @@ import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-h
 import { ResponseBody } from '../../../../../common/src/api/response';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
+import * as crypto from 'crypto';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
