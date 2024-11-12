@@ -17,6 +17,10 @@ export type UstpGroup = {
   divisions: UstpDivision[];
 };
 
+/**
+ * LEGACY   - Show the division for historical purposes, but do not use it going forward.
+ * INVALID  - Do not show the division in CAMS. Used to filter divisions from upstream systems.
+ */
 export type UstpDivisionTag = 'LEGACY' | 'INVALID';
 
 export type UstpDivision = {
