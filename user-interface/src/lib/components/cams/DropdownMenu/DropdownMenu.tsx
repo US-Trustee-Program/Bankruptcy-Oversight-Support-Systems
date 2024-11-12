@@ -74,13 +74,11 @@ export function DropdownMenu(props: DropdownMenuProps) {
       } else if (ev.key === 'Tab') {
         handleToggleExpand();
       } else if (ev.key === ' ' || ev.key === 'Enter') {
-        ev.preventDefault();
         LinkUtils.executeLinkClick(ev.currentTarget as HTMLAnchorElement);
       } else if (ev.key.length === 1) {
         const key = ev.key.toUpperCase();
         menuItems.forEach((item, index) => {
           if (item.label[0].toUpperCase() === key) {
-            ev.preventDefault();
             const menuItem: HTMLLinkElement | null = document.querySelector(
               `#menu-link-${id}-${index}`,
             );
