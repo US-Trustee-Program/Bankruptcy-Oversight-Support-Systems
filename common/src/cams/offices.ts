@@ -19,7 +19,6 @@ export type UstpGroup = {
 
 export type UstpDivisionMeta = {
   isLegacy?: true;
-  isInvalid?: true;
 };
 
 export type UstpDivision = UstpDivisionMeta & {
