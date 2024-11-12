@@ -2,7 +2,7 @@ import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
 import {
   USTP_OFFICES_ARRAY,
-  UstpDivisionTag,
+  UstpDivisionMeta,
   UstpOfficeDetails,
 } from '../../../../../../common/src/cams/offices';
 
@@ -61,36 +61,36 @@ function getRoleMapping(): Map<string, CamsRole> {
 const INVALID_DIVISION_CODES = ['990', '991', '992', '993', '994', '995', '996', '999'];
 const LEGACY_DIVISION_CODES = ['070'];
 
-let tagMapping: Map<string, UstpDivisionTag[]>;
+let metaMapping: Map<string, UstpDivisionMeta>;
 
-function addUstpDivisionTagsToMap(
-  map: Map<string, string[]>,
-  tag: UstpDivisionTag,
+function addUstpDivisionMetaToMap(
+  map: Map<string, UstpDivisionMeta>,
+  meta: UstpDivisionMeta,
   divisionCodes: string[],
 ) {
   divisionCodes.forEach((divisionCode) => {
     if (map.has(divisionCode)) {
-      map.get(divisionCode).push(tag);
+      map.set(divisionCode, { ...map.get(divisionCode), ...meta });
     } else {
-      map.set(divisionCode, [tag]);
+      map.set(divisionCode, meta);
     }
   });
 }
 
-function getUstpDivisionTags(): Map<string, UstpDivisionTag[]> {
-  if (!tagMapping) {
-    tagMapping = new Map<string, UstpDivisionTag[]>();
-    addUstpDivisionTagsToMap(tagMapping, 'INVALID', INVALID_DIVISION_CODES);
-    addUstpDivisionTagsToMap(tagMapping, 'LEGACY', LEGACY_DIVISION_CODES);
+function getUstpDivisionMeta(): Map<string, UstpDivisionMeta> {
+  if (!metaMapping) {
+    metaMapping = new Map<string, UstpDivisionMeta>();
+    addUstpDivisionMetaToMap(metaMapping, { isInvalid: true }, INVALID_DIVISION_CODES);
+    addUstpDivisionMetaToMap(metaMapping, { isLegacy: true }, LEGACY_DIVISION_CODES);
   }
-  return tagMapping;
+  return metaMapping;
 }
 
 export const LocalStorageGateway: StorageGateway = {
   get,
   getUstpOffices,
   getRoleMapping,
-  getUstpDivisionTags,
+  getUstpDivisionMeta,
 };
 
 export default LocalStorageGateway;

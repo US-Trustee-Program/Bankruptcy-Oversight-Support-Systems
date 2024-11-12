@@ -21,19 +21,15 @@ export class OfficesUseCase {
     const offices = await officesGateway.getOffices(context);
 
     const storageGateway = getStorageGateway(context);
-    const tags = storageGateway.getUstpDivisionTags();
+    const metas = storageGateway.getUstpDivisionMeta();
 
     offices.forEach((ustpOffice) => {
       ustpOffice.groups.forEach((group) => {
         group.divisions.forEach((division) => {
-          if (tags.has(division.divisionCode)) {
-            const divisionTags = tags.get(division.divisionCode);
-            if (divisionTags.includes('LEGACY')) {
-              division.isLegacy = true;
-            }
-            if (divisionTags.includes('INVALID')) {
-              division.isLegacy = true;
-            }
+          if (metas.has(division.divisionCode)) {
+            const meta = metas.get(division.divisionCode);
+            division.isInvalid = meta.isInvalid;
+            division.isLegacy = meta.isLegacy;
           }
         });
       });
