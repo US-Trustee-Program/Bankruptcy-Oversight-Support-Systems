@@ -156,6 +156,11 @@
       }
     }
   }
+  .usa-nav-container::after {
+    clear: none;
+    content: none;
+    display: none;
+  }
 }
 
 @media screen and (min-width: 1024px) {
@@ -265,16 +270,6 @@
           display: none;
         }
       }
-    }
-  }
-}
-
-@media (min-width: 64em) {
-  .cams-header {
-    .usa-nav-container::after {
-      clear: none;
-      content: none;
-      display: none;
     }
   }
 }
