@@ -121,7 +121,7 @@ describe('orders controller tests', () => {
     const failTransfer = { ...orderTransfer };
     failTransfer.id = crypto.randomUUID().toString();
     const controller = new OrdersController(applicationContext);
-    expect(
+    await expect(
       async () => await controller.updateOrder(applicationContext, id, failTransfer),
     ).rejects.toThrow(expectedError);
   });
@@ -161,23 +161,6 @@ describe('orders controller tests', () => {
     await expect(controller.getSuggestedCases(applicationContext)).rejects.toThrow(camsError);
   });
 
-  test('should throw UnknownError if any other error is encountered', async () => {
-    const originalError = new Error('Test');
-    const unknownError = new UnknownError('TEST', { originalError });
-    jest.spyOn(OrdersUseCase.prototype, 'getOrders').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'updateTransferOrder').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'syncOrders').mockRejectedValue(originalError);
-    jest.spyOn(OrdersUseCase.prototype, 'getSuggestedCases').mockRejectedValue(originalError);
-
-    const controller = new OrdersController(applicationContext);
-    await expect(controller.getOrders(applicationContext)).rejects.toThrow(unknownError);
-    await expect(controller.updateOrder(applicationContext, id, orderTransfer)).rejects.toThrow(
-      unknownError,
-    );
-    await expect(controller.syncOrders(applicationContext)).rejects.toThrow(unknownError);
-    applicationContext.request = mockCamsHttpRequest({ params: { caseId: 'mockId' } });
-    await expect(controller.getSuggestedCases(applicationContext)).rejects.toThrow(unknownError);
-  });
   test('should throw UnknownError if any other error is encountered', async () => {
     const originalError = new Error('Test');
     const unknownError = new UnknownError('TEST', { originalError });
@@ -290,7 +273,7 @@ describe('orders controller exception tests', () => {
     applicationContext.request = request;
     const controller = new OrdersController(applicationContext);
 
-    expect(async () => await controller.handleRequest(applicationContext)).rejects.toThrow(
+    await expect(async () => await controller.handleRequest(applicationContext)).rejects.toThrow(
       expectedError,
     );
   });
