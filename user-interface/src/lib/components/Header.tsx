@@ -42,6 +42,11 @@ function mapNavState(path: string) {
 
 const userMenuItems: MenuItem[] = [
   {
+    label: 'Help',
+    address: 'https://doj365.sharepoint.us/sites/USTP-OIT/SitePages/CAMS.aspx',
+    target: 'cams_help',
+  },
+  {
     label: 'Logout',
     address: LOGOUT_PATH,
   },
