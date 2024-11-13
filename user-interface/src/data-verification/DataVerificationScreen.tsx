@@ -26,13 +26,7 @@ import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-
-export function courtSorter(a: CourtDivisionDetails, b: CourtDivisionDetails) {
-  const aKey = a.courtName + '-' + a.courtDivisionName;
-  const bKey = b.courtName + '-' + b.courtDivisionName;
-  if (aKey === bKey) return 0;
-  return aKey > bKey ? 1 : -1;
-}
+import { courtSorter } from './dataVerificationHelper';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
