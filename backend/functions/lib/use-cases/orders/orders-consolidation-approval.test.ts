@@ -10,6 +10,7 @@ import {
   getCasesRepository,
   getCasesGateway,
   getConsolidationOrdersRepository,
+  getStorageGateway,
 } from '../../factory';
 import {
   ConsolidationOrderActionApproval,
@@ -56,6 +57,7 @@ describe('Orders use case', () => {
       ordersGateway,
       runtimeStateRepo,
       consolidationRepo,
+      getStorageGateway(mockContext),
     );
   });
 

@@ -6,7 +6,7 @@ import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-g
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { CamsUserGroup, Staff } from '../../../../../common/src/cams/users';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { USTP_OFFICES_ARRAY } from '../../../../../common/src/cams/offices';
+import { USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../../common/src/cams/offices';
 import { TRIAL_ATTORNEYS } from '../../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -37,6 +37,44 @@ describe('offices use case tests', () => {
     const offices = await useCase.getOffices(applicationContext);
 
     expect(offices).toEqual(USTP_OFFICES_ARRAY);
+  });
+
+  test('should flag legacy offices', async () => {
+    const useCase = new OfficesUseCase();
+    const manhattanOffice = USTP_OFFICES_ARRAY.find(
+      (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
+    );
+
+    const legacyDivisionCode = '087';
+    const officeWithLegacyFlag = { ...manhattanOffice };
+    officeWithLegacyFlag.groups[0].divisions.find(
+      (d) => d.divisionCode === legacyDivisionCode,
+    ).isLegacy = true;
+    const expectedOffices = [officeWithLegacyFlag];
+
+    jest.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
+      return {
+        getOfficeName: jest.fn(),
+        getOffices: jest.fn().mockResolvedValue([manhattanOffice]),
+      };
+    });
+
+    jest.spyOn(factory, 'getStorageGateway').mockImplementation(() => {
+      return {
+        get: jest.fn(),
+        getRoleMapping: jest.fn(),
+        getUstpOffices: jest.fn(),
+        getUstpDivisionMeta: jest
+          .fn()
+          .mockReturnValue(
+            new Map<string, UstpDivisionMeta>([[legacyDivisionCode, { isLegacy: true }]]),
+          ),
+      };
+    });
+
+    const offices = await useCase.getOffices(applicationContext);
+
+    expect(offices).toEqual(expectedOffices);
   });
 
   test('should return default attorneys with feature flag off', async () => {

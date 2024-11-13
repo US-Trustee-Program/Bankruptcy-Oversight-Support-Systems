@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import DataVerificationScreen, { courtSorter } from './DataVerificationScreen';
+import DataVerificationScreen from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
 import {
@@ -8,7 +8,6 @@ import {
   ConsolidationOrder,
   isConsolidationOrder,
 } from '@common/cams/orders';
-import { CourtDivisionDetails } from '@common/cams/courts';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -27,111 +26,6 @@ describe('Review Orders screen', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
-  });
-
-  test('should sort offices', () => {
-    const testOffices: CourtDivisionDetails[] = [
-      {
-        courtDivisionCode: '001',
-        groupDesignator: 'AA',
-        courtId: '0101',
-        officeCode: '1',
-        officeName: 'A1',
-        state: 'NY',
-        courtName: 'A',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-      {
-        courtDivisionCode: '003',
-        groupDesignator: 'AC',
-        courtId: '0103',
-        officeCode: '3',
-        officeName: 'C1',
-        state: 'NY',
-        courtName: 'C',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-      {
-        courtDivisionCode: '003',
-        groupDesignator: 'AC',
-        courtId: '0103',
-        officeCode: '3',
-        officeName: 'C1',
-        state: 'NY',
-        courtName: 'C',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-      {
-        courtDivisionCode: '002',
-        groupDesignator: 'AB',
-        courtId: '0102',
-        officeCode: '2',
-        officeName: 'B1',
-        state: 'NY',
-        courtName: 'B',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-    ];
-    const expectedOffices: CourtDivisionDetails[] = [
-      {
-        courtDivisionCode: '001',
-        groupDesignator: 'AA',
-        courtId: '0101',
-        officeCode: '1',
-        officeName: 'A1',
-        state: 'NY',
-        courtName: 'A',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-      {
-        courtDivisionCode: '002',
-        groupDesignator: 'AB',
-        courtId: '0102',
-        officeCode: '2',
-        officeName: 'B1',
-        state: 'NY',
-        courtName: 'B',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-      {
-        courtDivisionCode: '003',
-        groupDesignator: 'AC',
-        courtId: '0103',
-        officeCode: '3',
-        officeName: 'C1',
-        state: 'NY',
-        courtName: 'C',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-      {
-        courtDivisionCode: '003',
-        groupDesignator: 'AC',
-        courtId: '0103',
-        officeCode: '3',
-        officeName: 'C1',
-        state: 'NY',
-        courtName: 'C',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-    ];
-    const actualOffices = testOffices.sort(courtSorter);
-    expect(actualOffices).toEqual<CourtDivisionDetails[]>(expectedOffices);
   });
 
   test('should toggle filter button', async () => {

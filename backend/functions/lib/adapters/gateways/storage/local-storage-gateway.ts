@@ -1,9 +1,12 @@
 import { CamsRole } from '../../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../../common/src/cams/offices';
+import {
+  USTP_OFFICES_ARRAY,
+  UstpDivisionMeta,
+  UstpOfficeDetails,
+} from '../../../../../../common/src/cams/offices';
 
-let roleMapping;
-
+let roleMapping: Map<string, CamsRole>;
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
@@ -23,6 +26,9 @@ const OFFICE_MAPPING =
   'USTP_CAMS_Region_2_Office_Rochester,USTP CAMS Region 2 Office Rochester,RO\n' +
   'USTP_CAMS_Region_2_Office_New_Haven,USTP CAMS Region 2 Office New Haven,NH\n' +
   'USTP_CAMS_Region_18_Office_Seattle,USTP CAMS Region 18 Office Seattle,SE|AK\n';
+
+let metaMapping: Map<string, UstpDivisionMeta>;
+const LEGACY_DIVISION_CODES = [];
 
 const storage = new Map<string, string>();
 storage.set(ROLE_MAPPING_PATH, ROLE_MAPPING);
@@ -55,10 +61,33 @@ function getRoleMapping(): Map<string, CamsRole> {
   return roleMapping;
 }
 
+function addUstpDivisionMetaToMap(
+  map: Map<string, UstpDivisionMeta>,
+  meta: UstpDivisionMeta,
+  divisionCodes: string[],
+) {
+  divisionCodes.forEach((divisionCode) => {
+    if (map.has(divisionCode)) {
+      map.set(divisionCode, { ...map.get(divisionCode), ...meta });
+    } else {
+      map.set(divisionCode, meta);
+    }
+  });
+}
+
+function getUstpDivisionMeta(): Map<string, UstpDivisionMeta> {
+  if (!metaMapping) {
+    metaMapping = new Map<string, UstpDivisionMeta>();
+    addUstpDivisionMetaToMap(metaMapping, { isLegacy: true }, LEGACY_DIVISION_CODES);
+  }
+  return metaMapping;
+}
+
 export const LocalStorageGateway: StorageGateway = {
   get,
   getUstpOffices,
   getRoleMapping,
+  getUstpDivisionMeta,
 };
 
 export default LocalStorageGateway;
