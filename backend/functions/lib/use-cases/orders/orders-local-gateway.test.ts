@@ -13,6 +13,7 @@ import {
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
+  getStorageGateway,
 } from '../../factory';
 import { CasesRepository, ConsolidationOrdersRepository } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -125,6 +126,8 @@ describe('orders use case tests', () => {
   let ordersRepo;
   let runtimeStateRepo;
   let casesGateway;
+  let storageGateway;
+
   const authorizedUser = MockData.getCamsUser({
     roles: [CamsRole.DataVerifier],
     offices: [REGION_02_GROUP_NY],
@@ -137,6 +140,7 @@ describe('orders use case tests', () => {
     runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
     casesGateway = getCasesGateway(mockContext);
+    storageGateway = getStorageGateway(mockContext);
   });
 
   test('should not create a second lead case for an existing consolidation', async () => {
@@ -159,6 +163,7 @@ describe('orders use case tests', () => {
       ordersGateway,
       runtimeStateRepo,
       localConsolidationsRepo,
+      storageGateway,
     );
 
     // attempt to set up a consolidation with a different lead case

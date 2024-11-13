@@ -26,13 +26,7 @@ import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-
-export function courtSorter(a: CourtDivisionDetails, b: CourtDivisionDetails) {
-  const aKey = a.courtName + '-' + a.courtDivisionName;
-  const bKey = b.courtName + '-' + b.courtDivisionName;
-  if (aKey === bKey) return 0;
-  return aKey > bKey ? 1 : -1;
-}
+import { courtSorter } from './dataVerificationHelper';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
@@ -80,7 +74,7 @@ export default function DataVerificationScreen() {
       .getCourts()
       .then((response) => {
         const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
-        setCourts(courts.sort(courtSorter));
+        setCourts(courts.filter((division) => !division.isLegacy).sort(courtSorter));
         setRegionsMap(
           courts.reduce((regionsMap, court) => {
             if (!regionsMap.has(court.regionId)) {
