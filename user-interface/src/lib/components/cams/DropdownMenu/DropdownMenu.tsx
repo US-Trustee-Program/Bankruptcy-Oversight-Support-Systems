@@ -1,6 +1,7 @@
 import './DropdownMenu.scss';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+import LinkUtils from '../linkUtils';
 
 export type MenuItem = {
   label: string;
@@ -14,11 +15,12 @@ export type DropdownMenuProps = {
   children: React.ReactNode;
   menuItems: MenuItem[];
   className?: string;
+  ariaLabel: string;
   onClick?: () => void;
 };
 
 export function DropdownMenu(props: DropdownMenuProps) {
-  const { id, menuItems, className, children } = props;
+  const { id, menuItems, className, children, ariaLabel } = props;
   const submenuItemCount = menuItems.length;
 
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -31,12 +33,10 @@ export function DropdownMenu(props: DropdownMenuProps) {
     if (props.onClick) props.onClick();
   }
 
-  function handleMenuKeyDown(ev: React.KeyboardEvent) {
-    if (ev.key === 'ArrowDown' && expanded === true) {
-      const firstItem = document.querySelector(`#menu-link-${id}-0`);
-      if (firstItem) (firstItem as HTMLLIElement).focus();
-    } else if (expanded === true && ev.key === 'Tab' && ev.shiftKey === true) {
-      handleToggleExpand();
+  function handleClickOutside(ev: MouseEvent) {
+    const itemList = document.getElementById(`${id}-item-list`);
+    if (itemList && !itemList.contains(ev.target as Node)) {
+      setExpanded(false);
     }
   }
 
@@ -45,26 +45,46 @@ export function DropdownMenu(props: DropdownMenuProps) {
       handleToggleExpand();
       setFocus(true);
     } else {
-      const firstItem = document.querySelector(`#menu-link-${id}-0`);
-      const lastItem = document.querySelector(`#menu-link-${id}-${submenuItemCount - 1}`);
+      const firstItem: HTMLLinkElement | null = document.querySelector(`#menu-link-${id}-0`);
+      const lastItem: HTMLLinkElement | null = document.querySelector(
+        `#menu-link-${id}-${submenuItemCount - 1}`,
+      );
       if (ev.key === 'ArrowDown') {
         if (ev.currentTarget === lastItem) {
-          handleToggleExpand();
-          setFocus(true);
+          if (firstItem) firstItem.focus();
         } else {
           const nextItem = ev.currentTarget.parentElement?.nextElementSibling;
           if (nextItem) (nextItem.children[0] as HTMLLIElement).focus();
         }
+        ev.preventDefault();
       } else if (ev.key === 'ArrowUp') {
         if (ev.currentTarget === firstItem) {
-          handleToggleExpand();
-          setFocus(true);
+          if (lastItem) lastItem.focus();
         } else {
           const previousItem = ev.currentTarget.parentElement?.previousElementSibling;
           if (previousItem) (previousItem.children[0] as HTMLLIElement).focus();
         }
-      } else if (ev.key === 'Tab' && ev.shiftKey === false) {
+        ev.preventDefault();
+      } else if (ev.key === 'Home') {
+        ev.preventDefault();
+        if (firstItem) firstItem.focus();
+      } else if (ev.key === 'End') {
+        ev.preventDefault();
+        if (lastItem) lastItem.focus();
+      } else if (ev.key === 'Tab') {
         handleToggleExpand();
+      } else if (ev.key === ' ' || ev.key === 'Enter') {
+        LinkUtils.executeLinkClick(ev.currentTarget as HTMLAnchorElement);
+      } else if (ev.key.length === 1) {
+        const key = ev.key.toUpperCase();
+        menuItems.forEach((item, index) => {
+          if (item.label[0].toUpperCase() === key) {
+            const menuItem: HTMLLinkElement | null = document.querySelector(
+              `#menu-link-${id}-${index}`,
+            );
+            if (menuItem) menuItem.focus();
+          }
+        });
       }
     }
   }
@@ -76,6 +96,21 @@ export function DropdownMenu(props: DropdownMenuProps) {
     }
   }, [focus]);
 
+  useEffect(() => {
+    if (expanded) {
+      document.addEventListener('mousedown', handleClickOutside);
+
+      // move focus to first item in list
+      const firstItem: HTMLElement | null = document.querySelector(`#menu-link-${id}-0`);
+      if (firstItem) firstItem.focus();
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [expanded]);
+
   return (
     <div className="cams-dropdown-menu">
       <button
@@ -84,17 +119,24 @@ export function DropdownMenu(props: DropdownMenuProps) {
         className={`usa-accordion__button usa-nav__link ${className ?? ''}`}
         onClick={handleToggleExpand}
         aria-expanded={expanded}
-        aria-controls="user-submenu"
-        onKeyDown={handleMenuKeyDown}
+        aria-haspopup="menu"
+        aria-controls={`${id}-item-list`}
+        aria-label={ariaLabel}
         ref={buttonRef}
       >
         <span>{children}</span>
       </button>
-      <ul id={`${id}-item-list`} className={`usa-nav__submenu ${className}`} hidden={!expanded}>
+      <ul
+        id={`${id}-item-list`}
+        className={`usa-nav__submenu ${className}`}
+        hidden={!expanded}
+        role="menu"
+      >
         {menuItems.map((item, idx) => (
           <li
             id={`li-${id}-${idx}`}
             className={`usa-nav__submenu-item ${item.className ?? ''}`}
+            role="menuitem"
             key={idx}
           >
             <NavLink

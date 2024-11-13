@@ -4,33 +4,31 @@ import Button from './uswds/Button';
 import Icon from './uswds/Icon';
 
 export default function ScrollToTopButton() {
-  function documentScroll(ev: Event) {
-    const scrollButton = document.querySelector('.scroll-to-top-button');
-    if ((ev.currentTarget as Element).scrollTop > 100) {
-      (ev.target as HTMLElement).className = 'App header-scrolled-out';
-      if (scrollButton) scrollButton.classList.add('show');
-    } else {
-      (ev.target as HTMLElement).className = 'App';
-      if (scrollButton) scrollButton.classList.remove('show');
+  function documentScroll(_ev: Event) {
+    const app = document.querySelector('.App');
+    if (app) {
+      const scrollButton = document.querySelector('.scroll-to-top-button');
+      if (window.scrollY > 100) {
+        app.className = 'App header-scrolled-out';
+        if (scrollButton) scrollButton.classList.add('show');
+      } else {
+        app.className = 'App';
+        if (scrollButton) scrollButton.classList.remove('show');
+      }
     }
   }
 
   function scrollElement() {
-    const appRoot = document.getElementById('app-root');
-    if (appRoot) {
-      appRoot.scrollTop = 0;
-      const scrollEvent = new CustomEvent('scroll');
-      appRoot.dispatchEvent(scrollEvent);
-    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const scrollEvent = new CustomEvent('scroll');
+    window.dispatchEvent(scrollEvent);
   }
 
   useEffect(() => {
-    const appRoot = document.getElementById('app-root');
-    appRoot?.addEventListener('scroll', documentScroll);
+    window.addEventListener('scroll', documentScroll);
 
     return () => {
-      const appRoot = document.getElementById('app-root');
-      appRoot?.removeEventListener('scroll', documentScroll);
+      window.removeEventListener('scroll', documentScroll);
     };
   }, []);
 

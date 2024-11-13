@@ -38,6 +38,7 @@
     flex-flow: row;
     justify-content: space-between;
     max-width: none;
+    min-width: calc(100vw - 100px);
     margin: 0;
 
     .cams-logo-and-title {
@@ -69,7 +70,6 @@
         color: white;
         padding: 0 30px;
         min-height: 125px;
-        min-width: 420px;
         margin-top: 0;
         margin-bottom: 0;
         font-size: 2.5rem;
@@ -87,7 +87,6 @@
       flex-direction: column;
       align-items: flex-end;
       justify-content: flex-start;
-      width: 100%;
       padding: 0.25rem 0 1rem 0.5rem;
       float: left;
 
@@ -191,7 +190,6 @@
           align-items: center;
           justify-content: flex-start;
           width: 100%;
-          padding: 0.25rem 0 1rem 0.5rem;
           float: left;
 
           top: auto;
@@ -235,6 +233,36 @@
         .cams-user-nav {
           justify-content: flex-end;
           padding-right: 0;
+        }
+      }
+    }
+  }
+}
+
+@media screen and (max-width: 73.9em) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
+          display: none;
+        }
+        .site-title.small-screen {
+          display: flex;
+        }
+      }
+    }
+  }
+}
+
+@media (min-width: 74em) {
+  .cams-header.usa-header--basic {
+    .usa-nav-container {
+      .cams-logo-and-title {
+        .site-title.wide-screen {
+          display: flex;
+        }
+        .site-title.small-screen {
+          display: none;
         }
       }
     }
