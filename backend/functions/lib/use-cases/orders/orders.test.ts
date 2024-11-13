@@ -10,7 +10,9 @@ import {
   getCasesRepository,
   getCasesGateway,
   getConsolidationOrdersRepository,
+  getStorageGateway,
 } from '../../factory';
+import * as factory from '../../factory';
 import { OrderSyncState } from '../gateways.types';
 import {
   ConsolidationOrder,
@@ -41,6 +43,7 @@ import { CaseAssignmentUseCase } from '../case-assignment';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../../common/src/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { UstpDivisionMeta } from '../../../../../common/src/cams/offices';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -51,6 +54,8 @@ describe('Orders use case', () => {
   let runtimeStateRepo;
   let casesGateway;
   let consolidationRepo;
+  let storageGateway;
+
   let useCase: OrdersUseCase;
   const authorizedUser = MockData.getCamsUser({
     roles: [CamsRole.DataVerifier],
@@ -67,6 +72,7 @@ describe('Orders use case', () => {
     casesRepo = getCasesRepository(mockContext);
     casesGateway = getCasesGateway(mockContext);
     consolidationRepo = getConsolidationOrdersRepository(mockContext);
+    storageGateway = getStorageGateway(mockContext);
     useCase = new OrdersUseCase(
       casesRepo,
       casesGateway,
@@ -74,6 +80,7 @@ describe('Orders use case', () => {
       ordersGateway,
       runtimeStateRepo,
       consolidationRepo,
+      storageGateway,
     );
   });
 
@@ -638,5 +645,56 @@ describe('Orders use case', () => {
     expect(mockCreateCaseHistory).toHaveBeenCalledWith(
       expect.objectContaining({ updatedBy: getCamsUserReference(authorizedUser) }),
     );
+  });
+
+  test('should fail to update to a legacy office', async () => {
+    const courtDivisionCode = '000';
+    jest.spyOn(factory, 'getStorageGateway').mockImplementation(() => {
+      return {
+        get: jest.fn(),
+        getRoleMapping: jest.fn(),
+        getUstpOffices: jest.fn(),
+        getUstpDivisionMeta: jest.fn().mockImplementation(() => {
+          return new Map<string, UstpDivisionMeta>([[courtDivisionCode, { isLegacy: true }]]);
+        }),
+      };
+    });
+
+    const localUseCase = new OrdersUseCase(
+      casesRepo,
+      casesGateway,
+      ordersRepo,
+      ordersGateway,
+      runtimeStateRepo,
+      consolidationRepo,
+      factory.getStorageGateway(mockContext),
+    );
+
+    const newCase = MockData.getCaseSummary({ override: { courtDivisionCode } });
+    const order: TransferOrder = MockData.getTransferOrder({
+      override: { status: 'approved', newCase },
+    });
+
+    const action: TransferOrderAction = {
+      id: order.id,
+      orderType: 'transfer',
+      caseId: order.caseId,
+      newCase: order.newCase,
+      status: 'approved',
+    };
+
+    const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
+    const getOrderFn = jest.spyOn(ordersRepo, 'read').mockResolvedValue(order);
+    const transferToFn = jest.spyOn(casesRepo, 'createTransferTo');
+    const transferFromFn = jest.spyOn(casesRepo, 'createTransferFrom');
+    const auditFn = jest.spyOn(casesRepo, 'createCaseHistory');
+    mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
+
+    await expect(localUseCase.updateTransferOrder(mockContext, order.id, action)).rejects.toThrow();
+    expect(updateOrderFn).not.toHaveBeenCalled();
+    expect(getOrderFn).not.toHaveBeenCalled();
+    expect(transferToFn).not.toHaveBeenCalled();
+    expect(transferFromFn).not.toHaveBeenCalled();
+    expect(auditFn).not.toHaveBeenCalled();
   });
 });

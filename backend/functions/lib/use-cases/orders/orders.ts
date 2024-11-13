@@ -47,6 +47,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { StorageGateway } from '../../adapters/types/storage';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -70,6 +71,7 @@ export class OrdersUseCase {
   private readonly ordersRepo: OrdersRepository;
   private readonly consolidationsRepo: ConsolidationOrdersRepository;
   private readonly runtimeStateRepo: RuntimeStateRepository<OrderSyncState>;
+  private readonly storageGateway: StorageGateway;
 
   constructor(
     casesRepo: CasesRepository,
@@ -78,6 +80,7 @@ export class OrdersUseCase {
     ordersGateway: OrdersGateway,
     runtimeRepo: RuntimeStateRepository<OrderSyncState>,
     consolidationRepo: ConsolidationOrdersRepository,
+    storageGateway: StorageGateway,
   ) {
     this.casesRepo = casesRepo;
     this.casesGateway = casesGateway;
@@ -85,6 +88,7 @@ export class OrdersUseCase {
     this.ordersGateway = ordersGateway;
     this.runtimeStateRepo = runtimeRepo;
     this.consolidationsRepo = consolidationRepo;
+    this.storageGateway = storageGateway;
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
@@ -112,6 +116,18 @@ export class OrdersUseCase {
   ): Promise<void> {
     if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
       throw new UnauthorizedError(MODULE_NAME);
+    }
+
+    const divisionMeta = this.storageGateway.getUstpDivisionMeta();
+    const divisionCodeMaybe = data['newCase'] ? data['newCase'].courtDivisionCode : null;
+    if (
+      divisionCodeMaybe &&
+      divisionMeta.has(divisionCodeMaybe) &&
+      divisionMeta.get(divisionCodeMaybe).isLegacy
+    ) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Cannot transfer to legacy division.',
+      });
     }
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);

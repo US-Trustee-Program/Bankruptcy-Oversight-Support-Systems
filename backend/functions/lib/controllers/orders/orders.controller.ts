@@ -8,6 +8,7 @@ import {
   getOrdersGateway,
   getOrdersRepository,
   getRuntimeStateRepository,
+  getStorageGateway,
 } from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import {
@@ -46,6 +47,7 @@ export class OrdersController implements CamsController, CamsTimerController {
       getOrdersGateway(context),
       getRuntimeStateRepository<OrderSyncState>(context),
       getConsolidationOrdersRepository(context),
+      getStorageGateway(context),
     );
   }
 
