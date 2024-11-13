@@ -8,6 +8,7 @@ export type MenuItem = {
   address: string;
   title?: string;
   className?: string;
+  target?: string;
 };
 
 export type DropdownMenuProps = {
@@ -145,6 +146,7 @@ export function DropdownMenu(props: DropdownMenuProps) {
               data-testid={`menu-item-${id}-${idx}`}
               className="usa-nav-link"
               title={item.title ?? ''}
+              target={item.target}
               onKeyDown={handleSubItemKeyDown}
             >
               {item.label}
