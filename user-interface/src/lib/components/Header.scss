@@ -13,13 +13,8 @@
   }
 }
 
-.usa-header > * {
+.cams-header.usa-header > * {
   background-color: colors.$navy;
-}
-
-.cams-header .usa-banner > * {
-  vertical-align: middle;
-  line-height: normal;
 }
 
 .cams-header {
@@ -30,6 +25,11 @@
   position: relative;
 
   @include header-links;
+
+  .usa-banner > * {
+    vertical-align: middle;
+    line-height: normal;
+  }
 
   .usa-nav-container {
     display: block;
@@ -265,6 +265,16 @@
           display: none;
         }
       }
+    }
+  }
+}
+
+@media (min-width: 64em) {
+  .cams-header {
+    .usa-nav-container::after {
+      clear: none;
+      content: none;
+      display: none;
     }
   }
 }
