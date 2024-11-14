@@ -4,9 +4,6 @@ import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
 
-// Alias for readability.
-//const debounce = setTimeout;
-
 export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   label?: string;
   autoComplete?: 'off';

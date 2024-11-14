@@ -98,7 +98,11 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                 <div className="grid-row">
                   <div
                     className="grid-col-1 document-number-column"
-                    aria-label={`Docket Number ${docketEntry.documentNumber}`}
+                    aria-label={
+                      docketEntry.documentNumber
+                        ? `Docket Number ${docketEntry.documentNumber}`
+                        : undefined
+                    }
                   >
                     {docketEntry.documentNumber}
                   </div>
