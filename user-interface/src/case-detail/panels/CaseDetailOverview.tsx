@@ -110,7 +110,11 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                   Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
                 </div>
               )}
-              {caseDetail.assignments?.length && caseDetail.assignments.length > 0 && (
+              {(typeof caseDetail.assignments === 'undefined' ||
+                caseDetail.assignments.length === 0) && (
+                <span className="unassigned-placeholder">(unassigned)</span>
+              )}
+              {caseDetail.assignments && caseDetail.assignments.length > 0 && (
                 <ul className="usa-list usa-list--unstyled">
                   {caseDetail.assignments &&
                     caseDetail.assignments.length > 0 &&
@@ -126,9 +130,6 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                       },
                     )}
                 </ul>
-              )}
-              {caseDetail.assignments?.length && caseDetail.assignments.length === 0 && (
-                <span className="unassigned-placeholder">(unassigned)</span>
               )}
             </div>
           </div>

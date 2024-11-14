@@ -61,6 +61,35 @@ describe('Tests for USWDS Input component.', () => {
   });
 });
 
+describe('Test error handling', () => {
+  test('Should have error attributes set properly when an error occurs', async () => {
+    const errorMessageId = 'input-1-input__error-message';
+    const { rerender } = render(
+      <div>
+        <Input id="input-1" errorMessage={undefined}></Input>
+      </div>,
+    );
+
+    const inputEl = screen.getByTestId('input-1');
+    expect(inputEl).not.toHaveAttribute('aria-invalid');
+    expect(inputEl).not.toHaveAttribute('aria-errorMessage');
+
+    rerender(
+      <div>
+        <Input id="input-1" errorMessage="TEST MESSAGE"></Input>
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(inputEl).toHaveAttribute('aria-invalid', 'true');
+      expect(inputEl).toHaveAttribute('aria-errorMessage', errorMessageId);
+    });
+
+    const errorMessageDiv = document.getElementById(errorMessageId);
+    expect(errorMessageDiv).toHaveTextContent('TEST MESSAGE');
+  });
+});
+
 describe('Tests for USWDS Input component when no value is initially set.', () => {
   const ref = React.createRef<InputRef>();
 
