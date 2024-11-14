@@ -206,6 +206,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
+  const [documentNumberError, setDocumentNumberError] = useState<boolean>(false);
   const findInDocketRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
@@ -279,8 +280,10 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     const newDocumentNumber = parseInt(ev.target.value.trim());
     if (isNaN(newDocumentNumber)) {
       setDocumentNumber(null);
+      setDocumentNumberError(ev.target.value.trim().length !== 0);
       return;
     }
+    setDocumentNumberError(false);
     setDocumentNumber(newDocumentNumber);
   }
 
@@ -461,6 +464,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           aria-label="Find text in Docket entries. Results will be updated while you type."
                           aria-live="polite"
                           icon="search"
+                          position="right"
                           autoComplete="off"
                           onChange={searchDocketText}
                           ref={findInDocketRef}
@@ -499,17 +503,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="in-docket-search form-field" data-testid="docket-number-search">
                       <div className="usa-search usa-search--small">
                         <Input
-                          pattern="^[0-9]*$"
-                          inputMode="numeric"
+                          id="document-number-search-field"
                           title="Enter numbers only"
                           className="search-icon"
-                          id="document-number-search-field"
-                          type="number"
+                          type="text"
+                          errorMessage={
+                            documentNumberError === true ? 'Please enter a number.' : undefined
+                          }
                           name="search-by-document-number"
                           label="Go to Document Number"
                           aria-label="Go to specific Document Number.  Results will be updated while you type."
                           aria-live="polite"
                           icon="search"
+                          position="right"
                           autoComplete="off"
                           onChange={searchDocumentNumber}
                           min={documentRange.first}
