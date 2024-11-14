@@ -1,4 +1,6 @@
 $secondary-dark: #B50909;
+$warning-light: #FFFFCA;
+$warning-text: #990000;
 
 button.unstyled-button {
   margin-left: 1rem;
@@ -29,6 +31,28 @@ button.unstyled-button {
   .usa-input-suffix {
     z-index: 1;
   }
+  .usa-input[data-position=right] + .usa-input-prefix {
+    position: absolute;
+    right: 0;
+  }
+  .usa-input[data-position=left] {
+    padding-right: 0;
+    padding-left: 2.5rem;
+  }
+  .usa-input[data-position=left] + .usa-input-prefix {
+    position: absolute;
+    left: 0;
+    right: auto;
+  }
+}
+.usa-input-group.usa-input-group--error {
+  .usa-input {
+    background-color: $warning-light;
+  }
+}
+.usa-input__error-message {
+  padding: 0.25rem 0;
+  color: $warning-text;
 }
 
 .usa-radio__input + label {
