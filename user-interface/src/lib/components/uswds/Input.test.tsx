@@ -96,7 +96,18 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       const inputEl = screen.getByTestId('input-1');
       expect(inputEl).toHaveClass(expectedClassName);
     });
-    test('should have a default classes if not className provided', () => {
+
+    test('should have data-position="left" if position is set to "left"', () => {
+      render(
+        <div>
+          <Input id="input-1" position="left"></Input>
+        </div>,
+      );
+      const inputEl = screen.getByTestId('input-1');
+      expect(inputEl).toHaveAttribute('data-position', 'left');
+    });
+
+    test('should have a default classes and data-position="right" if neither className nor position are provided', () => {
       render(
         <div>
           <Input id="input-1"></Input>
@@ -105,6 +116,7 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       const inputEl = screen.getByTestId('input-1');
       expect(inputEl).toHaveClass('usa-input');
       expect(inputEl).toHaveClass('usa-tooltip');
+      expect(inputEl).toHaveAttribute('data-position', 'right');
     });
   });
 });
