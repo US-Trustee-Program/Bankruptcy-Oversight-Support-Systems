@@ -98,6 +98,37 @@ describe('court docket panel tests', () => {
     );
   });
 
+  test('should not render docket number if no docket number exists and aria-label should only be present if there is a docket number', () => {
+    const document1Number = docketEntries[firstIndex].documentNumber;
+    const document3Number = docketEntries[firstIndex + 2].documentNumber;
+    render(
+      <BrowserRouter>
+        <CaseDetailCourtDocket
+          caseId="081-12-12345"
+          docketEntries={docketEntries}
+          searchString=""
+          hasDocketEntries={true}
+          isDocketLoading={false}
+        />
+      </BrowserRouter>,
+    );
+
+    const docketEntry1 = screen.getByTestId('docket-entry-0');
+    const docketEntry2 = screen.getByTestId('docket-entry-1');
+    const docketEntry3 = screen.getByTestId('docket-entry-2');
+    expect(docketEntry1).toBeInTheDocument();
+    expect(docketEntry2).toBeInTheDocument();
+    expect(docketEntry3).toBeInTheDocument();
+
+    const document1NumberColumn = docketEntry1.querySelector('.document-number-column');
+    const document2NumberColumn = docketEntry2.querySelector('.document-number-column');
+    const document3NumberColumn = docketEntry3.querySelector('.document-number-column');
+
+    expect(document1NumberColumn).toHaveAttribute('aria-label', `Docket Number ${document1Number}`);
+    expect(document2NumberColumn).not.toHaveAttribute('aria-label');
+    expect(document3NumberColumn).toHaveAttribute('aria-label', `Docket Number ${document3Number}`);
+  });
+
   describe('No docket entry alert tests', () => {
     test('should display alert when no docket entries are found', async () => {
       render(

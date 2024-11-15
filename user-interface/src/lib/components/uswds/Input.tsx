@@ -4,9 +4,6 @@ import { InputRef } from '../../type-declarations/input-fields';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
 
-// Alias for readability.
-//const debounce = setTimeout;
-
 export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   label?: string;
   autoComplete?: 'off';
@@ -16,6 +13,7 @@ export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   includeClearButton?: boolean;
   ariaDescription?: string;
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
+  errorMessage?: string;
 };
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
@@ -81,48 +79,59 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
 
   return (
-    <div className="usa-form-group">
-      <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
-        {props.label}
-        {props.required && <span className="required-form-field">{' *'}</span>}
-      </label>
-      {ariaDescription && (
-        <div className="usa-hint" id={ariaDescribedBy()}>
-          {ariaDescription}
-        </div>
-      )}
-      <div className="usa-input-group">
-        <input
-          {...otherProps}
-          className={`usa-input usa-tooltip ${props.className ?? ''}`}
-          data-position={props.position ?? 'right'}
-          onChange={handleOnChange}
-          onFocus={handleFocus}
-          data-testid={props.id}
-          disabled={inputDisabled}
-          value={inputValue}
-          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
-          ref={inputRef}
-        />
-        {includeClearButton && !inputDisabled && (
-          <div className="usa-input-suffix" aria-hidden="true">
-            <Button
-              id={`button-clear-${props.id}`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={clearValue}
-              aria-label="clear text input."
-            >
-              <Icon name="close"></Icon>
-            </Button>
+    <>
+      <div className="usa-form-group">
+        <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+          {props.label}
+          {props.required && <span className="required-form-field">{' *'}</span>}
+        </label>
+        {ariaDescription && (
+          <div className="usa-hint" id={ariaDescribedBy()}>
+            {ariaDescription}
           </div>
         )}
-        {!includeClearButton && props.icon && (
-          <div className="usa-input-prefix" aria-hidden="true">
-            <Icon focusable={false} name={props.icon}></Icon>
+        <div
+          className={`usa-input-group ${props.errorMessage && props.errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
+        >
+          <input
+            {...otherProps}
+            className={`usa-input usa-tooltip ${props.className ?? ''}`}
+            aria-invalid={props.errorMessage ? 'true' : undefined}
+            aria-errormessage={props.errorMessage ? `${props.id}-input__error-message` : undefined}
+            data-position={props.position ?? 'right'}
+            onChange={handleOnChange}
+            onFocus={handleFocus}
+            data-testid={props.id}
+            disabled={inputDisabled}
+            value={inputValue}
+            aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+            ref={inputRef}
+          />
+          {includeClearButton && !inputDisabled && (
+            <div className="usa-input-suffix" aria-hidden="true">
+              <Button
+                id={`button-clear-${props.id}`}
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                onClick={clearValue}
+                aria-label="clear text input."
+              >
+                <Icon name="close"></Icon>
+              </Button>
+            </div>
+          )}
+          {!includeClearButton && props.icon && (
+            <div className="usa-input-prefix" aria-hidden="true">
+              <Icon focusable={false} name={props.icon}></Icon>
+            </div>
+          )}
+        </div>
+        {props.errorMessage && props.errorMessage.length > 0 && (
+          <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+            {props.errorMessage}
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
