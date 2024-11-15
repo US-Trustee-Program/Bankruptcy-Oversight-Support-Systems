@@ -1,9 +1,8 @@
-import * as df from 'durable-functions';
 import { InvocationContext } from '@azure/functions';
-import { AcmsConsolidation } from './model';
+import { AcmsConsolidation } from '../model';
 import { randomUUID } from 'crypto';
 
-export default async function handler(input: AcmsConsolidation, context: InvocationContext) {
+async function transformAndLoad(input: AcmsConsolidation, context: InvocationContext) {
   // Do some stuff
   context.log('#################Transform and load', JSON.stringify(input));
   const newOrder = {
@@ -13,6 +12,6 @@ export default async function handler(input: AcmsConsolidation, context: Invocat
   context.log(`Persisting ACMS consolidation ${newOrder.orderId} to CAMS ${newOrder.camsId}.`);
 }
 
-df.app.activity('transformAndLoad', {
-  handler,
-});
+export default {
+  handler: transformAndLoad,
+};
