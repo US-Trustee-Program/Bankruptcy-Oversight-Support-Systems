@@ -14,6 +14,7 @@ export type PredicateAndPage = Predicate & {
   pageNumber: number;
 };
 
+// properties here are temporary.  Need to figure out what this type should look like.
 export type AcmsConsolidation = {
   orderId: string;
   caseId: string;
