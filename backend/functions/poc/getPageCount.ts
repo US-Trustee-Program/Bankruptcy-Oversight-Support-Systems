@@ -4,7 +4,7 @@ import { PredicateAndPage } from './model';
 
 export default async function handler(input: PredicateAndPage, context: InvocationContext) {
   // Do some stuff
-  context.log('GetPageCount', JSON.stringify(input));
+  context.log('#################GetPageCount', JSON.stringify(input));
   return 4;
 }
 
