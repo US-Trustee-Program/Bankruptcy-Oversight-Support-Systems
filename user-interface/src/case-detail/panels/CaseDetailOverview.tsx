@@ -110,24 +110,27 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                   Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
                 </div>
               )}
-              <ul className="usa-list usa-list--unstyled">
-                {caseDetail.assignments &&
-                  caseDetail.assignments.length > 0 &&
-                  (caseDetail.assignments as Array<AttorneyUser>)?.map(
-                    (staff: AttorneyUser, idx: number) => {
-                      return (
-                        <li key={idx} className="individual-assignee">
-                          <span className="assignee-name">{staff.name}</span>
-                          <span className="vertical-divider"> | </span>
-                          <span className="assignee-role">Trial Attorney</span>
-                        </li>
-                      );
-                    },
-                  )}
-                {caseDetail.assignments?.length == 0 && (
-                  <span className="unassigned-placeholder">(unassigned)</span>
-                )}
-              </ul>
+              {(typeof caseDetail.assignments === 'undefined' ||
+                caseDetail.assignments.length === 0) && (
+                <span className="unassigned-placeholder">(unassigned)</span>
+              )}
+              {caseDetail.assignments && caseDetail.assignments.length > 0 && (
+                <ul className="usa-list usa-list--unstyled">
+                  {caseDetail.assignments &&
+                    caseDetail.assignments.length > 0 &&
+                    (caseDetail.assignments as Array<AttorneyUser>)?.map(
+                      (staff: AttorneyUser, idx: number) => {
+                        return (
+                          <li key={idx} className="individual-assignee">
+                            <span className="assignee-name">{staff.name}</span>
+                            <span className="vertical-divider"> | </span>
+                            <span className="assignee-role">Trial Attorney</span>
+                          </li>
+                        );
+                      },
+                    )}
+                </ul>
+              )}
             </div>
           </div>
           <div className="judge-information padding-bottom-4 case-card">

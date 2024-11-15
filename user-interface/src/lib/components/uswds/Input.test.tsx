@@ -61,6 +61,35 @@ describe('Tests for USWDS Input component.', () => {
   });
 });
 
+describe('Test error handling', () => {
+  test('Should have error attributes set properly when an error occurs', async () => {
+    const errorMessageId = 'input-1-input__error-message';
+    const { rerender } = render(
+      <div>
+        <Input id="input-1" errorMessage={undefined}></Input>
+      </div>,
+    );
+
+    const inputEl = screen.getByTestId('input-1');
+    expect(inputEl).not.toHaveAttribute('aria-invalid');
+    expect(inputEl).not.toHaveAttribute('aria-errorMessage');
+
+    rerender(
+      <div>
+        <Input id="input-1" errorMessage="TEST MESSAGE"></Input>
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(inputEl).toHaveAttribute('aria-invalid', 'true');
+      expect(inputEl).toHaveAttribute('aria-errorMessage', errorMessageId);
+    });
+
+    const errorMessageDiv = document.getElementById(errorMessageId);
+    expect(errorMessageDiv).toHaveTextContent('TEST MESSAGE');
+  });
+});
+
 describe('Tests for USWDS Input component when no value is initially set.', () => {
   const ref = React.createRef<InputRef>();
 
@@ -96,7 +125,18 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       const inputEl = screen.getByTestId('input-1');
       expect(inputEl).toHaveClass(expectedClassName);
     });
-    test('should have a default classes if not className provided', () => {
+
+    test('should have data-position="left" if position is set to "left"', () => {
+      render(
+        <div>
+          <Input id="input-1" position="left"></Input>
+        </div>,
+      );
+      const inputEl = screen.getByTestId('input-1');
+      expect(inputEl).toHaveAttribute('data-position', 'left');
+    });
+
+    test('should have a default classes and data-position="right" if neither className nor position are provided', () => {
       render(
         <div>
           <Input id="input-1"></Input>
@@ -105,6 +145,7 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       const inputEl = screen.getByTestId('input-1');
       expect(inputEl).toHaveClass('usa-input');
       expect(inputEl).toHaveClass('usa-tooltip');
+      expect(inputEl).toHaveAttribute('data-position', 'right');
     });
   });
 });
