@@ -5,13 +5,18 @@ import * as df from 'durable-functions';
 df.app.orchestration('subOrchestratorETL', function* (context) {
   const predicateAndPage: PredicateAndPage = context.df.getInput();
 
-  context.log('subOrchestratorETL', JSON.stringify(predicateAndPage));
+  context.log(
+    '#################subOrchestratorETL:',
+    context.df.instanceId,
+    JSON.stringify(predicateAndPage),
+  );
 
   const consolidatedOrdersPage = yield context.df.callActivity(
     'getConsolidationsFromACMS',
     predicateAndPage,
   );
 
+  context.log('#################length', consolidatedOrdersPage.length);
   const parallelTasks = [];
   for (let i = 0; i < consolidatedOrdersPage.length; i++) {
     parallelTasks.push(context.df.callActivity('transformAndLoad', consolidatedOrdersPage[i]));

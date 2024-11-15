@@ -13,3 +13,8 @@ export type Predicate = {
 export type PredicateAndPage = Predicate & {
   pageNumber: number;
 };
+
+export type AcmsConsolidation = {
+  orderId: string;
+  caseId: string;
+};

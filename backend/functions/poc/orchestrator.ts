@@ -19,7 +19,7 @@ df.app.orchestration('orchestrator', function* (context) {
       };
       const child_id = context.df.instanceId + `:${divisionCode}:${chapter}:`;
       provisioningTasks.push(
-        context.df.callSubOrchestrator('subOrchestrator', predicate, child_id),
+        context.df.callSubOrchestrator('subOrchestratorPaging', predicate, child_id),
       );
     }
   }
