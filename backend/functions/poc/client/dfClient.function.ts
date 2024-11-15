@@ -1,5 +1,6 @@
 import * as df from 'durable-functions';
-import { app, HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
+import { HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
+import { MAIN_ORCHESTRATOR } from '../loadConsolidations';
 
 export default async function httpStart(
   request: HttpRequest,
@@ -7,7 +8,7 @@ export default async function httpStart(
 ): Promise<HttpResponse> {
   const client = df.getClient(context);
   const body: unknown = await request.json();
-  const instanceId: string = await client.startNew('orchestrator', {
+  const instanceId: string = await client.startNew(MAIN_ORCHESTRATOR, {
     input: body,
   });
 
@@ -15,9 +16,3 @@ export default async function httpStart(
 
   return client.createCheckStatusResponse(request, instanceId);
 }
-
-app.http('dfClient', {
-  route: 'orchestrators/orchestrator',
-  extraInputs: [df.input.durableClient()],
-  handler: httpStart,
-});
