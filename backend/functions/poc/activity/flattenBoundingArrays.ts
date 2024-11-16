@@ -1,0 +1,23 @@
+import { Bounds, Predicate } from '../model';
+import { InvocationContext } from '@azure/functions';
+
+async function flattenBoundingArrays(
+  bounds: Bounds,
+  _context: InvocationContext,
+): Promise<Predicate[]> {
+  const predicates: Predicate[] = [];
+  for (const chapter in bounds.chapters) {
+    for (const divisionCode in bounds.divisionCodes) {
+      predicates.push({
+        divisionCode,
+        chapter,
+        dateRange: bounds.dateRange,
+      });
+    }
+  }
+  return predicates;
+}
+
+export default {
+  handler: flattenBoundingArrays,
+};

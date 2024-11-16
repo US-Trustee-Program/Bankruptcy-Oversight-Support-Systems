@@ -48,6 +48,8 @@ import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { StorageGateway } from '../../adapters/types/storage';
+import { AcmsConsolidation } from '../../../poc/model';
+import { randomUUID } from 'crypto';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -551,5 +553,22 @@ export class OrdersUseCase {
       consolidationsByJobId.set(jobId, consolidationOrder);
     });
     return consolidationsByJobId;
+  }
+
+  public async migrateExistingConsolidation(
+    existing: AcmsConsolidation,
+    context: ApplicationContext,
+  ): Promise<ConsolidationOrder> {
+    // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
+    context.logger.info(MODULE_NAME, 'Transform and load', existing);
+    const newOrder = {
+      ...existing,
+      camsId: randomUUID(),
+    };
+    context.logger.info(
+      MODULE_NAME,
+      `Persisting ACMS consolidation ${newOrder.orderId} to CAMS ${newOrder.camsId}.`,
+    );
+    return newOrder as unknown as ConsolidationOrder;
   }
 }
