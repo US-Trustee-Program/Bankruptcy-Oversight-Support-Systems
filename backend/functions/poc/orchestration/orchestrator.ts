@@ -1,5 +1,5 @@
-import { Bounds } from '../model';
-import { SUB_ORCHESTRATOR_PAGING } from '../loadConsolidations';
+import { Bounds, Predicate } from '../model';
+import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_PAGING } from '../loadConsolidations';
 import { OrchestrationContext } from 'durable-functions';
 
 export function* main(context: OrchestrationContext) {
@@ -7,20 +7,12 @@ export function* main(context: OrchestrationContext) {
 
   const provisioningTasks = [];
 
-  const { divisionCodes, chapters, dateRange } = bounds;
-  // TODO: Add an activity to flatten the arrays
-  for (const divisionCode of divisionCodes) {
-    for (const chapter of chapters) {
-      const predicate = {
-        divisionCode,
-        chapter,
-        dateRange,
-      };
-      const child_id = context.df.instanceId + `:${divisionCode}:${chapter}:`;
-      provisioningTasks.push(
-        context.df.callSubOrchestrator(SUB_ORCHESTRATOR_PAGING, predicate, child_id),
-      );
-    }
+  const partitions: Predicate[] = yield context.df.callActivity(FLATTEN_BOUNDING_ARRAYS, bounds);
+  for (const partition of partitions) {
+    const child_id = context.df.instanceId + `:${partition.divisionCode}:${partition.chapter}:`;
+    provisioningTasks.push(
+      context.df.callSubOrchestrator(SUB_ORCHESTRATOR_PAGING, partition, child_id),
+    );
   }
   yield context.df.Task.all(provisioningTasks);
 }
