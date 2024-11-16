@@ -27,6 +27,7 @@ import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrderSyncState } from '../../use-cases/gateways.types';
 import { closeDeferred } from '../../defer-close';
+import { AcmsConsolidation } from '../../../poc/model';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -83,6 +84,13 @@ export class OrdersController implements CamsController, CamsTimerController {
     } finally {
       await closeDeferred(context);
     }
+  }
+
+  public async handleMigration(
+    context: ApplicationContext,
+    existing: AcmsConsolidation,
+  ): Promise<ConsolidationOrder> {
+    return this.useCase.migrateExistingConsolidation(existing, context);
   }
 
   private async handleOrders(context: ApplicationContext) {

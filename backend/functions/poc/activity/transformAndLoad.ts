@@ -1,15 +1,14 @@
 import { InvocationContext } from '@azure/functions';
 import { AcmsConsolidation } from '../model';
-import { randomUUID } from 'crypto';
+import ContextCreator from '../../azure/application-context-creator';
+import { OrdersController } from '../../lib/controllers/orders/orders.controller';
 
-async function transformAndLoad(input: AcmsConsolidation, context: InvocationContext) {
+async function transformAndLoad(input: AcmsConsolidation, invocationContext: InvocationContext) {
   // Do some stuff
-  context.log('#################Transform and load', JSON.stringify(input));
-  const newOrder = {
-    ...input,
-    camsId: randomUUID(),
-  };
-  context.log(`Persisting ACMS consolidation ${newOrder.orderId} to CAMS ${newOrder.camsId}.`);
+  const logger = ContextCreator.getLogger(invocationContext);
+  const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
+  const controller = new OrdersController(appContext);
+  return controller.handleMigration(appContext, input);
 }
 
 export default {
