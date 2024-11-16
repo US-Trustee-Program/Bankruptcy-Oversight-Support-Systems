@@ -64,6 +64,8 @@ export interface SyncOrdersStatus {
   maxTxId: string;
 }
 
+export interface ImportConsolidationOptions {}
+
 export class OrdersUseCase {
   private readonly casesRepo: CasesRepository;
   private readonly casesGateway: CasesInterface;
@@ -169,12 +171,41 @@ export class OrdersUseCase {
     }
   }
 
+  public async getConsolidationPageCount(
+    context: ApplicationContext,
+    _options?: ImportConsolidationOptions,
+  ): Promise<number> {
+    try {
+      //const pageCount = await this.legacyDatabaseRepo.read('', '');
+      //context.logger.info(MODULE_NAME, 'Got page count for import from repo.', pageCount);
+      //return pageCount;
+    } catch (error) {
+      const message = 'Failed to get page count for consolidation import from repo.';
+      context.logger.info(MODULE_NAME, message, error);
+      throw new CamsError(MODULE_NAME, { message });
+    }
+    return 0;
+  }
+
+  public async importConsolidationData(
+    context: ApplicationContext,
+    _options?: ImportConsolidationOptions,
+  ): Promise<void> {
+    try {
+      //const consolidations = await this.legacyDatabaseRepo.read('', '');
+    } catch (error) {
+      const message = 'Failed to get consolidation data from repo.';
+      context.logger.info(MODULE_NAME, message, error);
+      throw new CamsError(MODULE_NAME, { message });
+    }
+    return;
+  }
+
   public async syncOrders(
     context: ApplicationContext,
     options?: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
     let initialSyncState: OrderSyncState;
-
     try {
       initialSyncState = await this.runtimeStateRepo.read('ORDERS_SYNC_STATE', '');
       context.logger.info(
