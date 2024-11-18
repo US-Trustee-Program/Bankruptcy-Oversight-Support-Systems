@@ -15,6 +15,7 @@ import {
   OfficesRepository,
   OrdersGateway,
   OrdersRepository,
+  OrderSyncState,
   RuntimeState,
   RuntimeStateRepository,
   UserSessionCacheRepository,
@@ -43,16 +44,27 @@ import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-s
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 
+let casesRepo: CasesRepository;
+let casesGateway: CasesInterface;
+let ordersGateway: OrdersGateway;
+let ordersRepo: OrdersRepository;
+let consolidationsRepo: ConsolidationOrdersRepository;
+let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
+let storageGateway: StorageGateway;
+
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
 };
 
 export const getCasesGateway = (applicationContext: ApplicationContext): CasesInterface => {
-  if (applicationContext.config.get('dbMock')) {
-    return new CasesLocalGateway();
-  } else {
-    return new CasesDxtrGateway();
+  if (!casesGateway) {
+    if (applicationContext.config.get('dbMock')) {
+      casesGateway = new CasesLocalGateway();
+    } else {
+      casesGateway = new CasesDxtrGateway();
+    }
   }
+  return casesGateway;
 };
 
 export const getAssignmentRepository = (
@@ -80,11 +92,14 @@ export const getSqlConnection = (databaseConfig: IDbConfig) => {
 };
 
 export const getOrdersGateway = (applicationContext: ApplicationContext): OrdersGateway => {
-  if (applicationContext.config.get('dbMock')) {
-    return new MockOrdersGateway();
-  } else {
-    return new DxtrOrdersGateway();
+  if (!ordersGateway) {
+    if (applicationContext.config.get('dbMock')) {
+      ordersGateway = new MockOrdersGateway();
+    } else {
+      ordersGateway = new DxtrOrdersGateway();
+    }
   }
+  return ordersGateway;
 };
 
 export const getOfficesGateway = (applicationContext: ApplicationContext): OfficesGateway => {
@@ -104,20 +119,38 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
 
 // transfer orders
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new OrdersMongoRepository(applicationContext);
+  if (!ordersRepo) {
+    if (applicationContext.config.get('dbMock')) {
+      ordersRepo = new MockMongoRepository();
+    } else {
+      ordersRepo = new OrdersMongoRepository(applicationContext);
+    }
+  }
+  return ordersRepo;
 };
 
 export const getConsolidationOrdersRepository = (
   applicationContext: ApplicationContext,
 ): ConsolidationOrdersRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new ConsolidationOrdersMongoRepository(applicationContext);
+  if (!consolidationsRepo) {
+    if (applicationContext.config.get('dbMock')) {
+      consolidationsRepo = new MockMongoRepository();
+    } else {
+      consolidationsRepo = new ConsolidationOrdersMongoRepository(applicationContext);
+    }
+  }
+  return consolidationsRepo;
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new CasesMongoRepository(applicationContext);
+  if (!casesRepo) {
+    if (applicationContext.config.get('dbMock')) {
+      casesRepo = new MockMongoRepository();
+    } else {
+      casesRepo = new CasesMongoRepository(applicationContext);
+    }
+  }
+  return casesRepo;
 };
 
 export const getRuntimeStateRepository = <T extends RuntimeState>(
@@ -125,6 +158,15 @@ export const getRuntimeStateRepository = <T extends RuntimeState>(
 ): RuntimeStateRepository<T> => {
   if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
   return new RuntimeStateMongoRepository<T>(applicationContext);
+};
+
+export const getOrderSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<OrderSyncState> => {
+  if (!orderSyncStateRepo) {
+    orderSyncStateRepo = getRuntimeStateRepository<OrderSyncState>(context);
+  }
+  return orderSyncStateRepo;
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
@@ -148,7 +190,10 @@ export const getUserSessionCacheRepository = (
 };
 
 export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
-  return LocalStorageGateway;
+  if (!storageGateway) {
+    storageGateway = LocalStorageGateway;
+  }
+  return storageGateway;
 };
 
 export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGateway => {
@@ -166,6 +211,7 @@ export const Factory = {
   getOfficesGateway,
   getOfficesRepository,
   getOrdersRepository,
+  getOrderSyncStateRepo,
   getConsolidationOrdersRepository,
   getCasesRepository,
   getRuntimeStateRepository,
@@ -175,3 +221,5 @@ export const Factory = {
   getStorageGateway,
   getUserGroupGateway,
 };
+
+export default Factory;
