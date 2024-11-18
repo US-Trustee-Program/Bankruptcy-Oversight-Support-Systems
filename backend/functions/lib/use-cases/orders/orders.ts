@@ -1,11 +1,4 @@
-import {
-  OrderSyncState,
-  OrdersGateway,
-  RuntimeStateRepository,
-  CasesRepository,
-  ConsolidationOrdersRepository,
-  OrdersRepository,
-} from '../gateways.types';
+import { OrderSyncState } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ConsolidationOrder,
@@ -29,7 +22,6 @@ import {
   TransferTo,
 } from '../../../../../common/src/cams/events';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
-import { CasesInterface } from '../cases.interface';
 import { CamsError } from '../../common-errors/cams-error';
 import { sortDates, sortDatesReverse } from '../../../../../common/src/date-helper';
 import * as crypto from 'crypto';
@@ -47,9 +39,9 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { StorageGateway } from '../../adapters/types/storage';
 import { AcmsConsolidation } from '../../../poc/model';
 import { randomUUID } from 'crypto';
+import { Factory } from '../../factory';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
 
@@ -69,48 +61,32 @@ export interface SyncOrdersStatus {
 export interface ImportConsolidationOptions {}
 
 export class OrdersUseCase {
-  private readonly casesRepo: CasesRepository;
-  private readonly casesGateway: CasesInterface;
-  private readonly ordersGateway: OrdersGateway;
-  private readonly ordersRepo: OrdersRepository;
-  private readonly consolidationsRepo: ConsolidationOrdersRepository;
-  private readonly runtimeStateRepo: RuntimeStateRepository<OrderSyncState>;
-  private readonly storageGateway: StorageGateway;
+  private readonly context: ApplicationContext;
 
-  constructor(
-    casesRepo: CasesRepository,
-    casesGateway: CasesInterface,
-    ordersRepo: OrdersRepository,
-    ordersGateway: OrdersGateway,
-    runtimeRepo: RuntimeStateRepository<OrderSyncState>,
-    consolidationRepo: ConsolidationOrdersRepository,
-    storageGateway: StorageGateway,
-  ) {
-    this.casesRepo = casesRepo;
-    this.casesGateway = casesGateway;
-    this.ordersRepo = ordersRepo;
-    this.ordersGateway = ordersGateway;
-    this.runtimeStateRepo = runtimeRepo;
-    this.consolidationsRepo = consolidationRepo;
-    this.storageGateway = storageGateway;
+  constructor(context: ApplicationContext) {
+    this.context = context;
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
+    const ordersRepo = Factory.getOrdersRepository(this.context);
+    const consolidationsRepo = Factory.getConsolidationOrdersRepository(this.context);
+
     let predicate: OrdersSearchPredicate = undefined;
     if (context.session) {
       const divisionCodes = getCourtDivisionCodes(context.session.user);
       predicate = { divisionCodes };
     }
-    const transferOrders = await this.ordersRepo.search(predicate);
-    const consolidationOrders = await this.consolidationsRepo.search(predicate);
+    const transferOrders = await ordersRepo.search(predicate);
+    const consolidationOrders = await consolidationsRepo.search(predicate);
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
   }
 
   public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
+    const casesGateway = Factory.getCasesGateway(this.context);
     const caseId = context.request.params.caseId;
-    return this.casesGateway.getSuggestedCases(context, caseId);
+    return casesGateway.getSuggestedCases(context, caseId);
   }
 
   public async updateTransferOrder(
@@ -122,7 +98,11 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    const divisionMeta = this.storageGateway.getUstpDivisionMeta();
+    const storageGateway = Factory.getStorageGateway(this.context);
+    const ordersRepo = Factory.getOrdersRepository(this.context);
+    const casesRepo = Factory.getCasesRepository(this.context);
+
+    const divisionMeta = storageGateway.getUstpDivisionMeta();
     const divisionCodeMaybe = data['newCase'] ? data['newCase'].courtDivisionCode : null;
     if (
       divisionCodeMaybe &&
@@ -135,11 +115,11 @@ export class OrdersUseCase {
     }
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
-    const initialOrder = await this.ordersRepo.read(id, data.caseId);
+    const initialOrder = await ordersRepo.read(id, data.caseId);
     let order: Order;
     if (isTransferOrder(initialOrder)) {
-      await this.ordersRepo.update(data);
-      order = await this.ordersRepo.read(id, data.caseId);
+      await ordersRepo.update(data);
+      order = await ordersRepo.read(id, data.caseId);
     }
     if (isTransferOrder(order)) {
       if (order.status === 'approved') {
@@ -157,8 +137,8 @@ export class OrdersUseCase {
           documentType: 'TRANSFER_TO',
         };
 
-        await this.casesRepo.createTransferFrom(transferFrom);
-        await this.casesRepo.createTransferTo(transferTo);
+        await casesRepo.createTransferFrom(transferFrom);
+        await casesRepo.createTransferTo(transferTo);
       }
       const caseHistory = createAuditRecord<CaseHistory>(
         {
@@ -169,7 +149,7 @@ export class OrdersUseCase {
         },
         context.session?.user,
       );
-      await this.casesRepo.createCaseHistory(caseHistory);
+      await casesRepo.createCaseHistory(caseHistory);
     }
   }
 
@@ -211,8 +191,14 @@ export class OrdersUseCase {
     options?: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
     let initialSyncState: OrderSyncState;
+    const runtimeStateRepo = Factory.getOrderSyncStateRepo(context);
+    const ordersGateway = Factory.getOrdersGateway(context);
+    const ordersRepo = Factory.getOrdersRepository(context);
+    const casesRepo = Factory.getCasesRepository(context);
+    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
+
     try {
-      initialSyncState = await this.runtimeStateRepo.read('ORDERS_SYNC_STATE', '');
+      initialSyncState = await runtimeStateRepo.read('ORDERS_SYNC_STATE', '');
       context.logger.info(
         MODULE_NAME,
         'Got initial runtime state from repo (Cosmos).',
@@ -235,7 +221,7 @@ export class OrdersUseCase {
           documentType: 'ORDERS_SYNC_STATE',
           txId: options.txIdOverride,
         };
-        initialSyncState = await this.runtimeStateRepo.upsert(initialSyncState);
+        initialSyncState = await runtimeStateRepo.upsert(initialSyncState);
         context.logger.info(
           MODULE_NAME,
           'Wrote new runtime state to repo (Cosmos).',
@@ -247,12 +233,12 @@ export class OrdersUseCase {
     }
 
     const startingTxId = options?.txIdOverride ?? initialSyncState.txId;
-    const { consolidations, transfers, maxTxId } = await this.ordersGateway.getOrderSync(
+    const { consolidations, transfers, maxTxId } = await ordersGateway.getOrderSync(
       context,
       startingTxId,
     );
 
-    const writtenTransfers = await this.ordersRepo.createMany(transfers);
+    const writtenTransfers = await ordersRepo.createMany(transfers);
 
     for (const order of writtenTransfers) {
       if (isTransferOrder(order)) {
@@ -265,7 +251,7 @@ export class OrdersUseCase {
           },
           context.session?.user,
         );
-        await this.casesRepo.createCaseHistory(caseHistory);
+        await casesRepo.createCaseHistory(caseHistory);
       }
     }
 
@@ -275,7 +261,7 @@ export class OrdersUseCase {
     });
     const consolidationsByJobId = await this.mapConsolidations(context, consolidations);
 
-    await this.consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
+    await consolidationsRepo.createMany(Array.from(consolidationsByJobId.values()));
 
     for (const order of consolidations) {
       const history: ConsolidationOrderSummary = {
@@ -291,11 +277,11 @@ export class OrdersUseCase {
         },
         context.session?.user,
       );
-      await this.casesRepo.createCaseHistory(caseHistory);
+      await casesRepo.createCaseHistory(caseHistory);
     }
 
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
-    await this.runtimeStateRepo.upsert(finalSyncState);
+    await runtimeStateRepo.upsert(finalSyncState);
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
 
     return {
@@ -345,7 +331,8 @@ export class OrdersUseCase {
     if (leadCase) after.leadCase = leadCase;
     let before;
     try {
-      const fullHistory = await this.casesRepo.getCaseHistory(bCase.caseId);
+      const casesRepo = Factory.getCasesRepository(context);
+      const fullHistory = await casesRepo.getCaseHistory(bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
         .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
@@ -384,16 +371,18 @@ export class OrdersUseCase {
       includedCases.includes(c.caseId),
     );
 
+    const casesRepo = Factory.getCasesRepository(context);
+    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
     if (status === 'approved') {
       for (const caseId of includedCases) {
-        const references = await this.casesRepo.getConsolidation(caseId);
+        const references = await casesRepo.getConsolidation(caseId);
         if (references.length > 0) {
           throw new BadRequestError(MODULE_NAME, {
             message: `Cannot consolidate order. A child case has already been consolidated.`,
           });
         }
       }
-      const leadCaseReferences = await this.casesRepo.getConsolidation(leadCase.caseId);
+      const leadCaseReferences = await casesRepo.getConsolidation(leadCase.caseId);
       const isLeadCaseAChildCase = leadCaseReferences
         .filter((reference) => reference.caseId === leadCase.caseId)
         .reduce((isChildCase, reference) => {
@@ -429,19 +418,19 @@ export class OrdersUseCase {
         childCases: remainingChildCases,
         id: undefined,
       };
-      const updatedRemainingOrder = await this.consolidationsRepo.create(remainingOrder);
+      const updatedRemainingOrder = await consolidationsRepo.create(remainingOrder);
       response.push(updatedRemainingOrder as ConsolidationOrder);
     }
 
-    await this.consolidationsRepo.delete(provisionalOrder.id);
+    await consolidationsRepo.delete(provisionalOrder.id);
 
-    const createdConsolidation = await this.consolidationsRepo.create(newConsolidation);
+    const createdConsolidation = await consolidationsRepo.create(newConsolidation);
     response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {
       if (!leadCase || childCase.caseId !== leadCase.caseId) {
         const caseHistory = await this.buildHistory(context, childCase, status, [], leadCase);
-        await this.casesRepo.createCaseHistory(caseHistory);
+        await casesRepo.createCaseHistory(caseHistory);
       }
     }
 
@@ -466,7 +455,7 @@ export class OrdersUseCase {
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_TO',
           };
-          await this.casesRepo.createConsolidationTo(consolidationTo);
+          await casesRepo.createConsolidationTo(consolidationTo);
 
           // Add the reference to the child case to the lead case.
           const consolidationFrom: ConsolidationFrom = {
@@ -476,7 +465,7 @@ export class OrdersUseCase {
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_FROM',
           };
-          await this.casesRepo.createConsolidationFrom(consolidationFrom);
+          await casesRepo.createConsolidationFrom(consolidationFrom);
 
           // Assign lead case attorneys to the child case.
           await assignmentUseCase.createTrialAttorneyAssignments(
@@ -500,7 +489,7 @@ export class OrdersUseCase {
         status,
         childCaseSummaries,
       );
-      await this.casesRepo.createCaseHistory(leadCaseHistory);
+      await casesRepo.createCaseHistory(leadCaseHistory);
     }
 
     return response;
@@ -524,7 +513,8 @@ export class OrdersUseCase {
       const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
       if (maybeLeadCaseId && !caseMap.has(maybeLeadCaseId) && !notFound.has(maybeLeadCaseId)) {
         try {
-          const maybeLeadCase = await this.casesGateway.getCaseSummary(context, maybeLeadCaseId);
+          const casesGateway = Factory.getCasesGateway(context);
+          const maybeLeadCase = await casesGateway.getCaseSummary(context, maybeLeadCaseId);
           if (maybeLeadCase) {
             caseMap.set(maybeLeadCaseId, {
               ...maybeLeadCase,

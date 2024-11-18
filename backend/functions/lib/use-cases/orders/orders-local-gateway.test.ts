@@ -1,22 +1,11 @@
-import { LocalCasesRepository } from '../../testing/local-data/local-cases-repository';
-import { LocalConsolidationOrdersRepository } from '../../testing/local-data/local-consolidation-orders-repository';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
 } from '../../../../../common/src/cams/orders';
-import { OrdersUseCase } from './orders';
 
-import * as FactoryModule from '../../factory';
-import {
-  getCasesGateway,
-  getOrdersGateway,
-  getOrdersRepository,
-  getRuntimeStateRepository,
-  getStorageGateway,
-} from '../../factory';
+import { Factory } from '../../factory';
 import { CasesRepository, ConsolidationOrdersRepository } from '../gateways.types';
-import { ApplicationContext } from '../../adapters/types/basic';
 import { ConsolidationFrom, ConsolidationTo } from '../../../../../common/src/cams/events';
 import {
   createMockApplicationContext,
@@ -24,14 +13,12 @@ import {
 } from '../../testing/testing-utilities';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { REGION_02_GROUP_NY } from '../../../../../common/src/cams/test-utilities/mock-user';
+import { LocalCasesRepository } from '../../testing/local-data/local-cases-repository';
+import { LocalConsolidationOrdersRepository } from '../../testing/local-data/local-consolidation-orders-repository';
+import { OrdersUseCase } from './orders';
 
-// TODO: This could be a testing library functions.
 function setupCasesRepoMock(repo: CasesRepository) {
-  jest
-    .spyOn(FactoryModule, 'getCasesRepository')
-    .mockImplementation((_context: ApplicationContext): CasesRepository => {
-      return repo;
-    });
+  jest.spyOn(Factory, 'getCasesRepository').mockReturnValue(repo);
   return {
     createCaseHistory: jest.spyOn(repo, 'createCaseHistory'),
     createConsolidationTo: jest.spyOn(repo, 'createConsolidationTo'),
@@ -44,13 +31,8 @@ function setupCasesRepoMock(repo: CasesRepository) {
   };
 }
 
-// TODO: This could be a testing library functions.
 function setupConsolidationsRepoMock(repo: ConsolidationOrdersRepository) {
-  jest
-    .spyOn(FactoryModule, 'getConsolidationOrdersRepository')
-    .mockImplementation((_context: ApplicationContext): ConsolidationOrdersRepository => {
-      return repo;
-    });
+  jest.spyOn(Factory, 'getConsolidationOrdersRepository').mockReturnValue(repo);
   return {
     put: jest.spyOn(repo, 'create'),
     delete: jest.spyOn(repo, 'delete'),
@@ -83,7 +65,6 @@ const pendingConsolidation = MockData.getConsolidationOrder({
 
 // TODO: This could be a library function to setup a repo, be it local or cosmos.
 async function setupConsolidationCaseReferences(
-  context: ApplicationContext,
   repo: CasesRepository,
   order: ConsolidationOrder,
 ): Promise<CasesRepository> {
@@ -112,7 +93,6 @@ async function setupConsolidationCaseReferences(
 
 // TODO: This could be a library function to setup a repo, be it local or cosmos.
 async function setupConsolidationOrder(
-  context: ApplicationContext,
   repo: ConsolidationOrdersRepository,
   order: ConsolidationOrder,
 ): Promise<ConsolidationOrdersRepository> {
@@ -122,11 +102,6 @@ async function setupConsolidationOrder(
 
 describe('orders use case tests', () => {
   let mockContext;
-  let ordersGateway;
-  let ordersRepo;
-  let runtimeStateRepo;
-  let casesGateway;
-  let storageGateway;
 
   const authorizedUser = MockData.getCamsUser({
     roles: [CamsRole.DataVerifier],
@@ -136,35 +111,23 @@ describe('orders use case tests', () => {
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
-    ordersGateway = getOrdersGateway(mockContext);
-    runtimeStateRepo = getRuntimeStateRepository(mockContext);
-    ordersRepo = getOrdersRepository(mockContext);
-    casesGateway = getCasesGateway(mockContext);
-    storageGateway = getStorageGateway(mockContext);
   });
 
-  test('should not create a second lead case for an existing consolidation', async () => {
+  test.only('should not create a second lead case for an existing consolidation', async () => {
     // Spy/mock the factory functions so we can return a LOCAL database of our choosing for the test.
     // We need a generic LOCAL gateway implementation that we return via the mocked factory function.
     const localCasesRepo = new LocalCasesRepository();
     const localConsolidationsRepo = new LocalConsolidationOrdersRepository();
 
-    await setupConsolidationCaseReferences(mockContext, localCasesRepo, approvedConsolidation);
-    await setupConsolidationOrder(mockContext, localConsolidationsRepo, approvedConsolidation);
-    await setupConsolidationOrder(mockContext, localConsolidationsRepo, pendingConsolidation);
+    await setupConsolidationCaseReferences(localCasesRepo, approvedConsolidation);
+    await setupConsolidationOrder(localConsolidationsRepo, approvedConsolidation);
+    await setupConsolidationOrder(localConsolidationsRepo, pendingConsolidation);
 
     // Do not add the mock until the local data has been setup.
     const casesRepoSpy = setupCasesRepoMock(localCasesRepo);
     const consolidationSpy = setupConsolidationsRepoMock(localConsolidationsRepo);
-    const useCase = new OrdersUseCase(
-      localCasesRepo,
-      casesGateway,
-      ordersRepo,
-      ordersGateway,
-      runtimeStateRepo,
-      localConsolidationsRepo,
-      storageGateway,
-    );
+
+    const useCase = new OrdersUseCase(mockContext);
 
     // attempt to set up a consolidation with a different lead case
     const incorrectLeadCase = MockData.getCaseSummary();
@@ -176,10 +139,8 @@ describe('orders use case tests', () => {
       leadCase: incorrectLeadCase,
     };
 
-    const expectedErrorMessage =
-      'Cannot consolidate order. A child case has already been consolidated.';
     await expect(useCase.approveConsolidation(mockContext, approval)).rejects.toThrow(
-      expectedErrorMessage,
+      'Cannot consolidate order. A child case has already been consolidated.',
     );
 
     // verify that the attempt fails (hint, it won't currently)

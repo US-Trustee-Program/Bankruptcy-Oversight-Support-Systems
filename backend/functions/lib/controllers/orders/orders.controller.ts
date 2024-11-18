@@ -1,15 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import {
-  getCasesGateway,
-  getCasesRepository,
-  getConsolidationOrdersRepository,
-  getOrdersGateway,
-  getOrdersRepository,
-  getRuntimeStateRepository,
-  getStorageGateway,
-} from '../../factory';
 import { OrdersUseCase, SyncOrdersOptions, SyncOrdersStatus } from '../../use-cases/orders/orders';
 import {
   ConsolidationOrder,
@@ -25,7 +16,6 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { OrderSyncState } from '../../use-cases/gateways.types';
 import { closeDeferred } from '../../defer-close';
 import { AcmsConsolidation, PredicateAndPage } from '../../../poc/model';
 
@@ -41,15 +31,7 @@ export class OrdersController implements CamsController, CamsTimerController {
   private readonly useCase: OrdersUseCase;
 
   constructor(context: ApplicationContext) {
-    this.useCase = new OrdersUseCase(
-      getCasesRepository(context),
-      getCasesGateway(context),
-      getOrdersRepository(context),
-      getOrdersGateway(context),
-      getRuntimeStateRepository<OrderSyncState>(context),
-      getConsolidationOrdersRepository(context),
-      getStorageGateway(context),
-    );
+    this.useCase = new OrdersUseCase(context);
   }
 
   public async handleTimer(context: ApplicationContext): Promise<void> {
