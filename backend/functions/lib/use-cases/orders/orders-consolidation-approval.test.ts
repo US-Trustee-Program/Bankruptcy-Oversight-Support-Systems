@@ -3,15 +3,7 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
-import {
-  getOrdersGateway,
-  getOrdersRepository,
-  getRuntimeStateRepository,
-  getCasesRepository,
-  getCasesGateway,
-  getConsolidationOrdersRepository,
-  getStorageGateway,
-} from '../../factory';
+import { getCasesRepository } from '../../factory';
 import {
   ConsolidationOrderActionApproval,
   getCaseSummaryFromConsolidationOrderCase,
@@ -28,12 +20,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 
 describe('Orders use case', () => {
   let mockContext;
-  let ordersGateway;
-  let ordersRepo;
   let casesRepo;
-  let runtimeStateRepo;
-  let casesGateway;
-  let consolidationRepo;
   let useCase: OrdersUseCase;
   const courtDivisionCode = '081';
   const authorizedUser = MockData.getCamsUser({
@@ -44,21 +31,8 @@ describe('Orders use case', () => {
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
-    ordersGateway = getOrdersGateway(mockContext);
-    runtimeStateRepo = getRuntimeStateRepository(mockContext);
-    ordersRepo = getOrdersRepository(mockContext);
     casesRepo = getCasesRepository(mockContext);
-    casesGateway = getCasesGateway(mockContext);
-    consolidationRepo = getConsolidationOrdersRepository(mockContext);
-    useCase = new OrdersUseCase(
-      casesRepo,
-      casesGateway,
-      ordersRepo,
-      ordersGateway,
-      runtimeStateRepo,
-      consolidationRepo,
-      getStorageGateway(mockContext),
-    );
+    useCase = new OrdersUseCase(mockContext);
   });
 
   afterEach(() => {

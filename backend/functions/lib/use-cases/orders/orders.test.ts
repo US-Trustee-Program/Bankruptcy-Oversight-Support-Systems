@@ -4,15 +4,11 @@ import {
 } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
 import {
-  getOrdersGateway,
   getOrdersRepository,
-  getRuntimeStateRepository,
   getCasesRepository,
   getCasesGateway,
   getConsolidationOrdersRepository,
-  getStorageGateway,
 } from '../../factory';
-import * as factory from '../../factory';
 import { OrderSyncState } from '../gateways.types';
 import {
   ConsolidationOrder,
@@ -48,13 +44,10 @@ import { UstpDivisionMeta } from '../../../../../common/src/cams/offices';
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
   let mockContext;
-  let ordersGateway;
   let ordersRepo;
   let casesRepo;
-  let runtimeStateRepo;
   let casesGateway;
   let consolidationRepo;
-  let storageGateway;
 
   let useCase: OrdersUseCase;
   const authorizedUser = MockData.getCamsUser({
@@ -66,22 +59,11 @@ describe('Orders use case', () => {
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
-    ordersGateway = getOrdersGateway(mockContext);
-    runtimeStateRepo = getRuntimeStateRepository(mockContext);
     ordersRepo = getOrdersRepository(mockContext);
     casesRepo = getCasesRepository(mockContext);
     casesGateway = getCasesGateway(mockContext);
     consolidationRepo = getConsolidationOrdersRepository(mockContext);
-    storageGateway = getStorageGateway(mockContext);
-    useCase = new OrdersUseCase(
-      casesRepo,
-      casesGateway,
-      ordersRepo,
-      ordersGateway,
-      runtimeStateRepo,
-      consolidationRepo,
-      storageGateway,
-    );
+    useCase = new OrdersUseCase(mockContext);
   });
 
   afterEach(() => {
@@ -649,7 +631,15 @@ describe('Orders use case', () => {
 
   test('should fail to update to a legacy office', async () => {
     const courtDivisionCode = '000';
-    jest.spyOn(factory, 'getStorageGateway').mockImplementation(() => {
+
+    let Factory;
+    await jest.isolateModulesAsync(async () => {
+      Factory = await import('../../factory');
+      ordersRepo = Factory.getOrdersRepository(mockContext);
+      casesRepo = Factory.getCasesRepository(mockContext);
+    });
+
+    jest.spyOn(Factory, 'getStorageGateway').mockImplementation(() => {
       return {
         get: jest.fn(),
         getRoleMapping: jest.fn(),
@@ -660,15 +650,7 @@ describe('Orders use case', () => {
       };
     });
 
-    const localUseCase = new OrdersUseCase(
-      casesRepo,
-      casesGateway,
-      ordersRepo,
-      ordersGateway,
-      runtimeStateRepo,
-      consolidationRepo,
-      factory.getStorageGateway(mockContext),
-    );
+    const localUseCase = new OrdersUseCase(mockContext);
 
     const newCase = MockData.getCaseSummary({ override: { courtDivisionCode } });
     const order: TransferOrder = MockData.getTransferOrder({
