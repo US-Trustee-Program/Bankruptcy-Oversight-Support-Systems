@@ -173,6 +173,9 @@ export class OrdersUseCase {
     }
   }
 
+  // TODO: Reconcile the argument type. For migrateExistingConsolidation I went with bringing in the
+  // AcmsConsolidation type, but it would be better for the type to be owned by the use case. I'm
+  // not sure we want one Options type for all related methods though.
   public async getConsolidationPageCount(
     context: ApplicationContext,
     _options?: ImportConsolidationOptions,
