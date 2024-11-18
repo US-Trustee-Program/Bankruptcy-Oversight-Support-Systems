@@ -27,7 +27,7 @@ import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { OrderSyncState } from '../../use-cases/gateways.types';
 import { closeDeferred } from '../../defer-close';
-import { AcmsConsolidation } from '../../../poc/model';
+import { AcmsConsolidation, PredicateAndPage } from '../../../poc/model';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -91,6 +91,14 @@ export class OrdersController implements CamsController, CamsTimerController {
     existing: AcmsConsolidation,
   ): Promise<ConsolidationOrder> {
     return this.useCase.migrateExistingConsolidation(existing, context);
+  }
+
+  public async handlePageCount(
+    context: ApplicationContext,
+    predicate: PredicateAndPage,
+  ): Promise<number> {
+    // TODO: Reconcile the argument type
+    return this.useCase.getConsolidationPageCount(context, predicate);
   }
 
   private async handleOrders(context: ApplicationContext) {
