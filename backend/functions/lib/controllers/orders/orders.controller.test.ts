@@ -22,6 +22,7 @@ import { ResponseBody } from '../../../../../common/src/api/response';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
 import * as crypto from 'crypto';
+import AcmsOrders, { Predicate, PredicateAndPage } from '../../use-cases/acms-orders/acms-orders';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
@@ -254,6 +255,70 @@ describe('orders controller tests', () => {
     applicationContext.request = request3;
 
     await expect(controller.approveConsolidation(applicationContext)).rejects.toThrow(CamsError);
+  });
+
+  test('should return ACMS Order Consolidations page count', async () => {
+    jest.spyOn(AcmsOrders.prototype, 'getPageCount').mockResolvedValue(5);
+    const predicate: Predicate = {
+      divisionCode: '000',
+      chapter: '00',
+      dateRange: ['2020-01-01', '2021-01-01'],
+    };
+
+    const controller = new OrdersController(applicationContext);
+
+    const actual = await controller.handlePageCount(applicationContext, predicate);
+
+    expect(actual).toEqual(5);
+  });
+
+  test('should return ACMS Order Consolidation array when calling getConsolidationOrders', async () => {
+    const mockAcmsConsolidationArray = MockData.buildArray(
+      () => ({
+        orderId: MockData.randomCaseId(),
+        caseId: MockData.randomCaseId(),
+      }),
+      3,
+    );
+    const predicate: PredicateAndPage = {
+      divisionCode: '000',
+      chapter: '00',
+      dateRange: ['2020-01-01', '2021-01-01'],
+      pageNumber: 1,
+    };
+
+    jest
+      .spyOn(AcmsOrders.prototype, 'getConsolidationOrders')
+      .mockResolvedValue(mockAcmsConsolidationArray);
+
+    const controller = new OrdersController(applicationContext);
+
+    const actual = await controller.handleGetLegacyConsolidationOrders(
+      applicationContext,
+      predicate,
+    );
+
+    expect(actual).toEqual(mockAcmsConsolidationArray);
+  });
+
+  test('should return Order Consolidation with camsId', async () => {
+    const originalOrder = {
+      orderId: '123',
+      caseId: '12-34567',
+    };
+    const newOrder = {
+      ...originalOrder,
+      camsId: crypto.randomUUID(),
+    };
+    jest
+      .spyOn(AcmsOrders.prototype, 'migrateExistingConsolidation')
+      .mockResolvedValue(newOrder as unknown as ConsolidationOrder);
+
+    const controller = new OrdersController(applicationContext);
+
+    const actual = await controller.handleMigration(applicationContext, originalOrder);
+
+    expect(actual).toEqual(newOrder);
   });
 });
 

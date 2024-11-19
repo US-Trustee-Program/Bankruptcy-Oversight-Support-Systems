@@ -39,8 +39,6 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { AcmsConsolidation } from '../../../poc/model';
-import { randomUUID } from 'crypto';
 import { Factory } from '../../factory';
 
 const MODULE_NAME = 'ORDERS_USE_CASE';
@@ -57,8 +55,6 @@ export interface SyncOrdersStatus {
   startingTxId: string;
   maxTxId: string;
 }
-
-export interface ImportConsolidationOptions {}
 
 export class OrdersUseCase {
   private readonly context: ApplicationContext;
@@ -151,39 +147,6 @@ export class OrdersUseCase {
       );
       await casesRepo.createCaseHistory(caseHistory);
     }
-  }
-
-  // TODO: Reconcile the argument type. For migrateExistingConsolidation I went with bringing in the
-  // AcmsConsolidation type, but it would be better for the type to be owned by the use case. I'm
-  // not sure we want one Options type for all related methods though.
-  public async getConsolidationPageCount(
-    context: ApplicationContext,
-    _options?: ImportConsolidationOptions,
-  ): Promise<number> {
-    try {
-      //const pageCount = await this.legacyDatabaseRepo.read('', '');
-      //context.logger.info(MODULE_NAME, 'Got page count for import from repo.', pageCount);
-      //return pageCount;
-    } catch (error) {
-      const message = 'Failed to get page count for consolidation import from repo.';
-      context.logger.info(MODULE_NAME, message, error);
-      throw new CamsError(MODULE_NAME, { message });
-    }
-    return 0;
-  }
-
-  public async importConsolidationData(
-    context: ApplicationContext,
-    _options?: ImportConsolidationOptions,
-  ): Promise<void> {
-    try {
-      //const consolidations = await this.legacyDatabaseRepo.read('', '');
-    } catch (error) {
-      const message = 'Failed to get consolidation data from repo.';
-      context.logger.info(MODULE_NAME, message, error);
-      throw new CamsError(MODULE_NAME, { message });
-    }
-    return;
   }
 
   public async syncOrders(
@@ -546,22 +509,5 @@ export class OrdersUseCase {
       consolidationsByJobId.set(jobId, consolidationOrder);
     });
     return consolidationsByJobId;
-  }
-
-  public async migrateExistingConsolidation(
-    existing: AcmsConsolidation,
-    context: ApplicationContext,
-  ): Promise<ConsolidationOrder> {
-    // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
-    context.logger.info(MODULE_NAME, 'Transform and load', existing);
-    const newOrder = {
-      ...existing,
-      camsId: randomUUID(),
-    };
-    context.logger.info(
-      MODULE_NAME,
-      `Persisting ACMS consolidation ${newOrder.orderId} to CAMS ${newOrder.camsId}.`,
-    );
-    return newOrder as unknown as ConsolidationOrder;
   }
 }

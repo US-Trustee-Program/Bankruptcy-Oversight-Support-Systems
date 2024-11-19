@@ -1,5 +1,5 @@
 import { InvocationContext } from '@azure/functions';
-import { PredicateAndPage } from '../model';
+import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 
 async function getConsolidations(input: PredicateAndPage, context: InvocationContext) {
   // Do some stuff

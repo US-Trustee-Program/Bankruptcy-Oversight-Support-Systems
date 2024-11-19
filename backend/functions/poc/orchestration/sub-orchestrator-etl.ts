@@ -1,5 +1,5 @@
+import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 import { CONSOLIDATIONS_FROM_ACMS, TRANSFORM_AND_LOAD } from '../loadConsolidations';
-import { PredicateAndPage } from '../model';
 import { OrchestrationContext } from 'durable-functions';
 
 export function* subOrchestratorETL(context: OrchestrationContext) {
