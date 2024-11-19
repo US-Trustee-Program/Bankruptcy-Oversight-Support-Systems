@@ -1,13 +1,14 @@
 import { InvocationContext } from '@azure/functions';
 import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import ContextCreator from '../../azure/application-context-creator';
+import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
 
-async function getConsolidations(input: PredicateAndPage, context: InvocationContext) {
+async function getConsolidations(input: PredicateAndPage, invocationContext: InvocationContext) {
   // Do some stuff
-  context.log('GetConsolidations', JSON.stringify(input));
-  return [
-    { orderId: '53rs2', caseId: '071-23-012345' },
-    { orderId: '426gh', caseId: '071-23-43215' },
-  ];
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.applicationContextCreator(invocationContext, logger);
+  const controller = new AcmsOrdersController();
+  return controller.getConsolidationOrders(context, input);
 }
 
 export default {

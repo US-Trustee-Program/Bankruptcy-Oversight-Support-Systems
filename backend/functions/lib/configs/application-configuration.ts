@@ -10,6 +10,7 @@ dotenv.config();
 export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
+  public readonly acmsDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly documentDbConfig: DocumentDbConfig;
   public readonly featureFlagKey: string;
@@ -19,7 +20,8 @@ export class ApplicationConfiguration {
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
     this.server = this.getAppServerConfig();
-    this.dxtrDbConfig = this.getDbConfig(process.env.MSSQL_DATABASE_DXTR);
+    this.dxtrDbConfig = this.getDxtrDbConfig(process.env.MSSQL_DATABASE_DXTR);
+    this.acmsDbConfig = this.getAcmsDbConfig(process.env.ACMS_DATABASE);
     this.documentDbConfig = this.getDocumentDbConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
@@ -33,7 +35,7 @@ export class ApplicationConfiguration {
     };
   }
 
-  private getDbConfig(database: string): IDbConfig {
+  private getDxtrDbConfig(database: string): IDbConfig {
     const server = process.env.MSSQL_HOST;
     const port: number = Number(process.env.MSSQL_PORT) || 1433;
     const encrypt: boolean = Boolean(process.env.MSSQL_ENCRYPT);
@@ -43,6 +45,54 @@ export class ApplicationConfiguration {
     const password = process.env.MSSQL_PASS;
     const identityClientId = process.env.MSSQL_CLIENT_ID;
     const requestTimeout = parseInt(process.env.MSSQL_REQUEST_TIMEOUT ?? '15000');
+
+    const config: IDbConfig = {
+      server,
+      port,
+      database,
+      requestTimeout,
+    };
+
+    const useSqlAuth = user && password;
+    if (useSqlAuth) {
+      config.user = user;
+      config.password = password;
+    } else {
+      config.authentication = {
+        type: authType,
+      };
+
+      // If client id is not set here, ensure that AZURE_CLIENT_ID is set when using DefaultAzureCredential
+      if (identityClientId) {
+        config.authentication.options = { clientId: identityClientId };
+      }
+    }
+
+    config.pool = {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30 * 1000,
+    };
+
+    config.options = {
+      encrypt,
+      trustServerCertificate,
+    };
+
+    return config;
+  }
+
+  // TODO: This and getDxtrDbConfig are gross. Refactor when we feel we really want to clean this up.
+  private getAcmsDbConfig(database: string): IDbConfig {
+    const server = process.env.ACMS_HOST;
+    const port: number = Number(process.env.ACMS_PORT) || 1433;
+    const encrypt: boolean = Boolean(process.env.ACMS_ENCRYPT);
+    const trustServerCertificate: boolean = Boolean(process.env.ACMS_TRUST_UNSIGNED_CERT);
+    const authType = process.env.ACMS_AUTH_TYPE || 'azure-active-directory-default';
+    const user = process.env.ACMS_USER;
+    const password = process.env.ACMS_PASS;
+    const identityClientId = process.env.ACMS_CLIENT_ID;
+    const requestTimeout = parseInt(process.env.ACMS_REQUEST_TIMEOUT ?? '15000');
 
     const config: IDbConfig = {
       server,

@@ -11,7 +11,6 @@ async function flattenBoundingArrays(
       predicates.push({
         divisionCode,
         chapter,
-        dateRange: bounds.dateRange,
       });
     }
   }
