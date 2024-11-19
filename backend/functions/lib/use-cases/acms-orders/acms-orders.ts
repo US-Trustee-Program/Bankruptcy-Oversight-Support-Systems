@@ -8,13 +8,11 @@ const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 export type Bounds = {
   divisionCodes: string[];
   chapters: string[];
-  dateRange: [string, string];
 };
 
 export type Predicate = {
   divisionCode: string;
   chapter: string;
-  dateRange: [string, string];
 };
 
 export type PredicateAndPage = Predicate & {
@@ -42,13 +40,13 @@ export class AcmsOrders {
   }
 
   public async migrateExistingConsolidation(
-    existing: AcmsConsolidation,
     context: ApplicationContext,
+    consolidation: AcmsConsolidation,
   ): Promise<ConsolidationOrder> {
     // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
-    context.logger.info(MODULE_NAME, 'Transform and load', existing);
+    context.logger.info(MODULE_NAME, 'Transform and load', consolidation);
     const newOrder = {
-      ...existing,
+      ...consolidation,
       camsId: randomUUID(),
     };
     context.logger.info(

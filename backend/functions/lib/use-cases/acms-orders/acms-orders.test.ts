@@ -31,7 +31,6 @@ describe('ACMS Orders', () => {
     const predicate: Predicate = {
       divisionCode: '000',
       chapter: '00',
-      dateRange: ['2020-01-01', '2021-01-01'],
     };
     const useCase = new AcmsOrders();
     const actual = await useCase.getPageCount(context, predicate);
@@ -50,7 +49,6 @@ describe('ACMS Orders', () => {
     const predicateAndPage: PredicateAndPage = {
       divisionCode: '000',
       chapter: '00',
-      dateRange: ['2020-01-01', '2021-01-01'],
       pageNumber: 1,
     };
 
@@ -68,7 +66,6 @@ describe('ACMS Orders', () => {
     const predicate: Predicate = {
       divisionCode: '000',
       chapter: '00',
-      dateRange: ['2020-01-01', '2021-01-01'],
     };
 
     const predicateAndPage: PredicateAndPage = {

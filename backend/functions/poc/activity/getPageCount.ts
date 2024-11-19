@@ -1,8 +1,8 @@
 import { InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { CamsError } from '../../lib/common-errors/cams-error';
-import { OrdersController } from '../../lib/controllers/orders/orders.controller';
 import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
 
 const MODULE_NAME = 'IMPORT-ACTION-GET-PAGE-COUNT';
 
@@ -13,8 +13,8 @@ async function getPageCount(input: PredicateAndPage, invocationContext: Invocati
 
     // Do some stuff
     console.log('#################GetPageCount', JSON.stringify(input));
-    const controller = new OrdersController(context);
-    return controller.handlePageCount(context, input);
+    const controller = new AcmsOrdersController();
+    return controller.getPageCount(context, input);
     // TODO: This seems silly to have to supply all of these repos and gateways.
     // Are we going to add yet another for ACMS?
     // const orders = new OrdersUseCase(
