@@ -1,8 +1,8 @@
 import { InvocationContext } from '@azure/functions';
-import { PredicateAndPage } from '../model';
 import ContextCreator from '../../azure/application-context-creator';
 import { CamsError } from '../../lib/common-errors/cams-error';
 import { OrdersController } from '../../lib/controllers/orders/orders.controller';
+import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 
 const MODULE_NAME = 'IMPORT-ACTION-GET-PAGE-COUNT';
 

@@ -9,6 +9,7 @@ import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
 import {
+  AcmsGateway,
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
@@ -43,6 +44,7 @@ import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.reposito
 import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
+import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 
 let casesRepo: CasesRepository;
 let casesGateway: CasesInterface;
@@ -51,6 +53,7 @@ let ordersRepo: OrdersRepository;
 let consolidationsRepo: ConsolidationOrdersRepository;
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let storageGateway: StorageGateway;
+let acmsGateway: AcmsGateway;
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -200,7 +203,15 @@ export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGate
   return OktaUserGroupGateway;
 };
 
+const getAcmsGateway = (applicationContext: ApplicationContext): AcmsGateway => {
+  if (!acmsGateway) {
+    acmsGateway = new AcmsGatewayImpl(applicationContext);
+  }
+  return acmsGateway;
+};
+
 export const Factory = {
+  getAcmsGateway,
   getAttorneyGateway,
   getCasesGateway,
   getAssignmentRepository,
