@@ -262,7 +262,6 @@ describe('orders controller tests', () => {
     const predicate: Predicate = {
       divisionCode: '000',
       chapter: '00',
-      dateRange: ['2020-01-01', '2021-01-01'],
     };
 
     const controller = new OrdersController(applicationContext);
@@ -283,7 +282,6 @@ describe('orders controller tests', () => {
     const predicate: PredicateAndPage = {
       divisionCode: '000',
       chapter: '00',
-      dateRange: ['2020-01-01', '2021-01-01'],
       pageNumber: 1,
     };
 

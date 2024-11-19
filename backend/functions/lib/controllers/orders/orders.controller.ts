@@ -17,11 +17,6 @@ import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { closeDeferred } from '../../defer-close';
-import AcmsOrders, {
-  AcmsConsolidation,
-  Predicate,
-  PredicateAndPage,
-} from '../../use-cases/acms-orders/acms-orders';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -70,28 +65,6 @@ export class OrdersController implements CamsController, CamsTimerController {
     } finally {
       await closeDeferred(context);
     }
-  }
-
-  public async handleMigration(
-    context: ApplicationContext,
-    existing: AcmsConsolidation,
-  ): Promise<ConsolidationOrder> {
-    const useCase = new AcmsOrders();
-    return useCase.migrateExistingConsolidation(existing, context);
-  }
-
-  public async handlePageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
-    // TODO: Reconcile the argument type
-    const useCase = new AcmsOrders();
-    return useCase.getPageCount(context, predicate);
-  }
-
-  public async handleGetLegacyConsolidationOrders(
-    context: ApplicationContext,
-    predicate: PredicateAndPage,
-  ): Promise<AcmsConsolidation[]> {
-    const useCase = new AcmsOrders();
-    return useCase.getConsolidationOrders(context, predicate);
   }
 
   private async handleOrders(context: ApplicationContext) {
