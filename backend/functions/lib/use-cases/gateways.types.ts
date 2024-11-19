@@ -19,6 +19,7 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
+import { AcmsConsolidation, Predicate, PredicateAndPage } from './acms-orders/acms-orders';
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -87,6 +88,14 @@ export interface CaseHistoryGateway {
 
 export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
+}
+
+export interface AcmsGateway {
+  getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number>;
+  getConsolidationOrders(
+    context: ApplicationContext,
+    predicateAndPage: PredicateAndPage,
+  ): Promise<AcmsConsolidation[]>;
 }
 
 export interface CasesRepository {

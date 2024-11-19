@@ -1,4 +1,4 @@
-import { Bounds, Predicate } from '../model';
+import { Bounds, Predicate } from '../../lib/use-cases/acms-orders/acms-orders';
 import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_PAGING } from '../loadConsolidations';
 import { OrchestrationContext } from 'durable-functions';
 

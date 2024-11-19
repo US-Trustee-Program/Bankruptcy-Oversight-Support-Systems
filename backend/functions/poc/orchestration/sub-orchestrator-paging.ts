@@ -1,6 +1,6 @@
-import { Predicate, PredicateAndPage } from '../model';
 import { OrchestrationContext } from 'durable-functions';
 import { PAGE_COUNT_ACTIVITY, SUB_ORCHESTRATOR_ETL } from '../loadConsolidations';
+import { Predicate, PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 
 export function* subOrchestratorPaging(context: OrchestrationContext) {
   const predicate: Predicate = context.df.getInput();

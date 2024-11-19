@@ -1,7 +1,7 @@
 import { InvocationContext } from '@azure/functions';
-import { AcmsConsolidation } from '../model';
 import ContextCreator from '../../azure/application-context-creator';
 import { OrdersController } from '../../lib/controllers/orders/orders.controller';
+import { AcmsConsolidation } from '../../lib/use-cases/acms-orders/acms-orders';
 
 async function transformAndLoad(input: AcmsConsolidation, invocationContext: InvocationContext) {
   // Do some stuff
