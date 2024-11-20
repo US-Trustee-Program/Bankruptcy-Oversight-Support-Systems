@@ -6,26 +6,24 @@ import AcmsOrders, {
   PredicateAndPage,
 } from '../../use-cases/acms-orders/acms-orders';
 class AcmsOrdersController {
-  public async migrateExistingConsolidation(
+  private readonly useCase = new AcmsOrders();
+
+  public async migrateConsolidation(
     context: ApplicationContext,
     existing: AcmsConsolidation,
   ): Promise<ConsolidationOrder> {
-    const useCase = new AcmsOrders();
-    return useCase.migrateExistingConsolidation(context, existing);
+    return this.useCase.migrateConsolidation(context, existing);
   }
 
   public async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
-    // TODO: Reconcile the argument type
-    const useCase = new AcmsOrders();
-    return useCase.getPageCount(context, predicate);
+    return this.useCase.getPageCount(context, predicate);
   }
 
-  public async getConsolidationOrders(
+  public async getConsolidations(
     context: ApplicationContext,
     predicate: PredicateAndPage,
   ): Promise<AcmsConsolidation[]> {
-    const useCase = new AcmsOrders();
-    return useCase.getConsolidationOrders(context, predicate);
+    return this.useCase.getConsolidations(context, predicate);
   }
 }
 

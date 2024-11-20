@@ -1,11 +1,11 @@
 import { OrchestrationContext } from 'durable-functions';
-import { PAGE_COUNT_ACTIVITY, SUB_ORCHESTRATOR_ETL } from '../loadConsolidations';
+import { GET_PAGE_COUNT, SUB_ORCHESTRATOR_ETL } from '../loadConsolidations';
 import { Predicate, PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 
 export function* subOrchestratorPaging(context: OrchestrationContext) {
   const predicate: Predicate = context.df.getInput();
 
-  const pageCount: number = yield context.df.callActivity(PAGE_COUNT_ACTIVITY, predicate);
+  const pageCount: number = yield context.df.callActivity(GET_PAGE_COUNT, predicate);
   const provisioningTasks = [];
   for (let pageNumber = 0; pageNumber < pageCount; pageNumber++) {
     const predicateAndPage: PredicateAndPage = {
