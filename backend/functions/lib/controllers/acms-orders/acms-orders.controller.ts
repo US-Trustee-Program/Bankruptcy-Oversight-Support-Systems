@@ -1,4 +1,3 @@
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../adapters/types/basic';
 import AcmsOrders, { Predicate, PredicateAndPage } from '../../use-cases/acms-orders/acms-orders';
 class AcmsOrdersController {
@@ -7,7 +6,7 @@ class AcmsOrdersController {
   public async migrateConsolidation(
     context: ApplicationContext,
     leadCaseId: string,
-  ): Promise<ConsolidationOrder> {
+  ): Promise<void> {
     return this.useCase.migrateConsolidation(context, leadCaseId);
   }
 
