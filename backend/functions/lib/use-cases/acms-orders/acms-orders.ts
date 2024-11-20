@@ -31,15 +31,15 @@ export class AcmsOrders {
     return gateway.getPageCount(context, predicate);
   }
 
-  public async getConsolidationOrders(
+  public async getConsolidations(
     context: ApplicationContext,
     predicateAndPage: PredicateAndPage,
   ): Promise<AcmsConsolidation[]> {
     const gateway = Factory.getAcmsGateway(context);
-    return gateway.getConsolidationOrders(context, predicateAndPage);
+    return gateway.getConsolidations(context, predicateAndPage);
   }
 
-  public async migrateExistingConsolidation(
+  public async migrateConsolidation(
     context: ApplicationContext,
     consolidation: AcmsConsolidation,
   ): Promise<ConsolidationOrder> {

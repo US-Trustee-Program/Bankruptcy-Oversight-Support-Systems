@@ -58,7 +58,7 @@ export class AcmsGatewayImpl extends AbstractDbClient implements AcmsGateway {
     }
   }
 
-  async getConsolidationOrders(
+  async getConsolidations(
     _context: ApplicationContext,
     _predicateAndPage: PredicateAndPage,
   ): Promise<AcmsConsolidation[]> {
