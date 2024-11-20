@@ -1,6 +1,5 @@
 import AcmsOrders, { Predicate, PredicateAndPage } from '../../use-cases/acms-orders/acms-orders';
 import AcmsOrdersController from './acms-orders.controller';
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 
@@ -42,17 +41,11 @@ describe('AcmsOrdersController', () => {
 
   test('should return Order Consolidation with camsId', async () => {
     const leadCaseId = '811100000';
-    const newOrder = {
-      leadCaseId,
-      camsId: crypto.randomUUID(),
-    };
-    jest
-      .spyOn(AcmsOrders.prototype, 'migrateConsolidation')
-      .mockResolvedValue(newOrder as unknown as ConsolidationOrder);
+    const spy = jest.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockResolvedValue();
 
     const controller = new AcmsOrdersController();
-    const actual = await controller.migrateConsolidation(context, leadCaseId);
+    await controller.migrateConsolidation(context, leadCaseId);
 
-    expect(actual).toEqual(newOrder);
+    expect(spy).toHaveBeenCalled();
   });
 });
