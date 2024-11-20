@@ -6,7 +6,7 @@
     "@faker-js/faker": "^9.2.0",
     "@types/jest": "^29.5.14",
     "@types/mssql": "^9.1.5",
-    "@types/node": "^22.9.0",
+    "@types/node": "^22.9.1",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "azure-function-context-mock": "^0.0.7",
     "dependency-cruiser": "^16.6.0",
@@ -22,11 +22,11 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@azure/cosmos": "^4.1.1",
+    "@azure/cosmos": "^4.2.0",
     "@azure/functions": "^4.6.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "@launchdarkly/node-server-sdk": "^9.7.1",
+    "@launchdarkly/node-server-sdk": "^9.7.2",
     "@okta/jwt-verifier": "^4.0.1",
     "@okta/okta-sdk-nodejs": "^7.1.1",
     "applicationinsights": "^3.4.0",
