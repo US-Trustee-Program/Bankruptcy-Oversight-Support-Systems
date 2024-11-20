@@ -92,7 +92,7 @@ export interface OrdersGateway {
 
 export interface AcmsGateway {
   getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number>;
-  getConsolidationOrders(
+  getConsolidations(
     context: ApplicationContext,
     predicateAndPage: PredicateAndPage,
   ): Promise<AcmsConsolidation[]>;
