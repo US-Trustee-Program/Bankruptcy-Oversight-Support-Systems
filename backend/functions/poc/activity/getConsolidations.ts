@@ -12,7 +12,7 @@ async function getConsolidations(input: PredicateAndPage, invocationContext: Inv
   const controller = new AcmsOrdersController();
 
   try {
-    return controller.getConsolidations(context, input);
+    return controller.getLeadCaseIds(context, input);
   } catch (originalError) {
     throw getCamsError(originalError, MODULE_NAME);
   }
