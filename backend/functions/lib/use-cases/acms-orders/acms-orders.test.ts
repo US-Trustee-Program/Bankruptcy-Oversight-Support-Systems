@@ -7,7 +7,10 @@ const mockAcmsGateway: AcmsGateway = {
   getPageCount: function (..._ignore): Promise<number> {
     throw new Error('Function not implemented.');
   },
-  getLeadCaseIds: function (..._ignore): Promise<AcmsConsolidation[]> {
+  getLeadCaseIds: function (..._ignore): Promise<string[]> {
+    throw new Error('Function not implemented.');
+  },
+  getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
     throw new Error('Function not implemented.');
   },
 };
@@ -40,9 +43,9 @@ describe('ACMS Orders', () => {
   });
 
   test('should return a page of consolidation orders', async () => {
-    const expected: AcmsConsolidation[] = [{ caseId: '00-00000', orderId: '' }];
+    const expected: string[] = ['811100000', '1231111111'];
     const getConsolidationOrders = jest
-      .spyOn(mockAcmsGateway, 'getConsolidationOrders')
+      .spyOn(mockAcmsGateway, 'getLeadCaseIds')
       .mockResolvedValue(expected);
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
 
@@ -57,6 +60,16 @@ describe('ACMS Orders', () => {
 
     expect(getConsolidationOrders).toHaveBeenCalledWith(context, predicateAndPage);
     expect(actual).toEqual(expected);
+  });
+
+  test('should write case references for consolidations to the cases repo', async () => {
+    const createConsolidationFrom = jest.fn();
+    const createConsolidationTo = jest.fn();
+    jest.spyOn(Factory, 'getCasesRepository').mockImplementation(() => {
+      createConsolidationFrom,
+      createConsolidationTo,
+      
+    });
   });
 
   test('should handle exceptions', async () => {

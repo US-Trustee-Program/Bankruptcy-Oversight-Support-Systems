@@ -19,7 +19,7 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
-import { Predicate, PredicateAndPage } from './acms-orders/acms-orders';
+import { AcmsConsolidation, Predicate, PredicateAndPage } from './acms-orders/acms-orders';
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -96,6 +96,10 @@ export interface AcmsGateway {
     context: ApplicationContext,
     predicateAndPage: PredicateAndPage,
   ): Promise<string[]>;
+  getConsolidationDetails(
+    context: ApplicationContext,
+    leadCaseId: string,
+  ): Promise<AcmsConsolidation>;
 }
 
 export interface CasesRepository {

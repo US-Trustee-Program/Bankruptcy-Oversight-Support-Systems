@@ -1,9 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import Factory from '../../factory';
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
-import { randomUUID } from 'crypto';
+import { ConsolidationFrom, ConsolidationTo } from '../../../../../common/src/cams/events';
+import { ConsolidationType } from '../../../../../common/src/cams/orders';
 
-const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
+const _MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
 export type Bounds = {
   divisionCodes: string[];
@@ -17,6 +17,17 @@ export type Predicate = {
 
 export type PredicateAndPage = Predicate & {
   pageNumber: number;
+};
+
+export type AcmsConsolidationChildCase = {
+  caseId: string;
+  consolidationType: string;
+  consolidationDate: string;
+};
+
+export type AcmsConsolidation = {
+  leadCaseId: string;
+  childCases: AcmsConsolidationChildCase[];
 };
 
 export class AcmsOrders {
@@ -36,18 +47,44 @@ export class AcmsOrders {
   public async migrateConsolidation(
     context: ApplicationContext,
     leadCaseId: string,
-  ): Promise<ConsolidationOrder> {
+  ): Promise<void> {
     // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
-    context.logger.info(MODULE_NAME, 'Transform and load', leadCaseId);
-    const newOrder = {
-      leadCaseId,
-      camsId: randomUUID(),
-    };
-    context.logger.info(
-      MODULE_NAME,
-      `Persisting ACMS consolidation ${newOrder.leadCaseId} to CAMS ${newOrder.camsId}.`,
-    );
-    return newOrder as unknown as ConsolidationOrder;
+
+    const casesRepo = Factory.getCasesRepository(context);
+    const dxtr = Factory.getCasesGateway(context);
+    const acms = Factory.getAcmsGateway(context);
+    const basics = await acms.getConsolidationDetails(context, leadCaseId);
+
+    // TODO: Consider if there is a better way to get the order date.
+    const _orderDate = basics.childCases[0].consolidationDate;
+
+    const leadCase = await dxtr.getCaseSummary(context, leadCaseId);
+
+    for (const childCase of basics.childCases) {
+      const consolidationType = childCase.consolidationType as ConsolidationType;
+
+      const toLink: ConsolidationTo = {
+        caseId: childCase.caseId,
+        consolidationType,
+        documentType: 'CONSOLIDATION_TO',
+        orderDate: childCase.consolidationDate,
+        otherCase: leadCase,
+      };
+
+      const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
+      const fromLink: ConsolidationFrom = {
+        caseId: leadCaseId,
+        consolidationType,
+        documentType: 'CONSOLIDATION_FROM',
+        orderDate: childCase.consolidationDate,
+        otherCase,
+      };
+
+      await casesRepo.createConsolidationFrom(fromLink);
+      await casesRepo.createConsolidationTo(toLink);
+
+      // TODO: Write the audit record to the cases repo too.
+    }
   }
 }
 
