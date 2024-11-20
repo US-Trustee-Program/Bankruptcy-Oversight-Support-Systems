@@ -7,7 +7,7 @@ const mockAcmsGateway: AcmsGateway = {
   getPageCount: function (..._ignore): Promise<number> {
     throw new Error('Function not implemented.');
   },
-  getConsolidations: function (..._ignore): Promise<AcmsConsolidation[]> {
+  getLeadCaseIds: function (..._ignore): Promise<AcmsConsolidation[]> {
     throw new Error('Function not implemented.');
   },
 };
@@ -53,7 +53,7 @@ describe('ACMS Orders', () => {
     };
 
     const useCase = new AcmsOrders();
-    const actual = await useCase.getConsolidations(context, predicateAndPage);
+    const actual = await useCase.getLeadCaseIds(context, predicateAndPage);
 
     expect(getConsolidationOrders).toHaveBeenCalledWith(context, predicateAndPage);
     expect(actual).toEqual(expected);
@@ -74,6 +74,6 @@ describe('ACMS Orders', () => {
     };
 
     await expect(useCase.getPageCount(context, predicate)).rejects.toThrow();
-    await expect(useCase.getConsolidations(context, predicateAndPage)).rejects.toThrow();
+    await expect(useCase.getLeadCaseIds(context, predicateAndPage)).rejects.toThrow();
   });
 });

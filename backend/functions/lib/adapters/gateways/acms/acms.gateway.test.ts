@@ -1,7 +1,7 @@
 import { AbstractDbClient } from '../mssql';
 import { AcmsGatewayImpl } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { Predicate } from '../../../use-cases/acms-orders/acms-orders';
+import { Predicate, PredicateAndPage } from '../../../use-cases/acms-orders/acms-orders';
 
 describe('ACMS gateway tests', () => {
   const pageCountCases = [
@@ -35,4 +35,32 @@ describe('ACMS gateway tests', () => {
       expect(result).toEqual(params.pageCount);
     },
   );
+
+  test('should return a page of consolidation lead case numbers', async () => {
+    const databaseResult = [
+      { leadCaseId: '11-00000' },
+      { leadCaseId: '11-11111' },
+      { leadCaseId: '11-22222' },
+    ];
+    const expectedResult = databaseResult.map((record) => record.leadCaseId);
+
+    const spy = jest.spyOn(AbstractDbClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: databaseResult,
+      message: '',
+    });
+
+    const predicate: PredicateAndPage = {
+      chapter: '15',
+      divisionCode: '081',
+      pageNumber: 1,
+    };
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    const result = await gateway.getLeadCaseIds(context, predicate);
+
+    expect(spy);
+    expect(result).toEqual(expectedResult);
+  });
 });
