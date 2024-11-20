@@ -1,28 +1,24 @@
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../adapters/types/basic';
-import AcmsOrders, {
-  AcmsConsolidation,
-  Predicate,
-  PredicateAndPage,
-} from '../../use-cases/acms-orders/acms-orders';
+import AcmsOrders, { Predicate, PredicateAndPage } from '../../use-cases/acms-orders/acms-orders';
 class AcmsOrdersController {
   private readonly useCase = new AcmsOrders();
 
   public async migrateConsolidation(
     context: ApplicationContext,
-    existing: AcmsConsolidation,
+    leadCaseId: string,
   ): Promise<ConsolidationOrder> {
-    return this.useCase.migrateConsolidation(context, existing);
+    return this.useCase.migrateConsolidation(context, leadCaseId);
   }
 
   public async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
     return this.useCase.getPageCount(context, predicate);
   }
 
-  public async getConsolidations(
+  public async getLeadCaseIds(
     context: ApplicationContext,
     predicate: PredicateAndPage,
-  ): Promise<AcmsConsolidation[]> {
+  ): Promise<string[]> {
     return this.useCase.getLeadCaseIds(context, predicate);
   }
 }
