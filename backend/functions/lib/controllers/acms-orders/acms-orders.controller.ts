@@ -23,7 +23,7 @@ class AcmsOrdersController {
     context: ApplicationContext,
     predicate: PredicateAndPage,
   ): Promise<AcmsConsolidation[]> {
-    return this.useCase.getConsolidations(context, predicate);
+    return this.useCase.getLeadCaseIds(context, predicate);
   }
 }
 

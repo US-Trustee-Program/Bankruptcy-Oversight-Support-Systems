@@ -19,7 +19,7 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
-import { AcmsConsolidation, Predicate, PredicateAndPage } from './acms-orders/acms-orders';
+import { Predicate, PredicateAndPage } from './acms-orders/acms-orders';
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -92,10 +92,10 @@ export interface OrdersGateway {
 
 export interface AcmsGateway {
   getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number>;
-  getConsolidations(
+  getLeadCaseIds(
     context: ApplicationContext,
     predicateAndPage: PredicateAndPage,
-  ): Promise<AcmsConsolidation[]>;
+  ): Promise<string[]>;
 }
 
 export interface CasesRepository {

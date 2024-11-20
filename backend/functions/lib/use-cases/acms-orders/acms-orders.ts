@@ -19,39 +19,33 @@ export type PredicateAndPage = Predicate & {
   pageNumber: number;
 };
 
-// properties here are temporary.  Need to figure out what this type should look like.
-export type AcmsConsolidation = {
-  orderId: string;
-  caseId: string;
-};
-
 export class AcmsOrders {
   public async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
     const gateway = Factory.getAcmsGateway(context);
     return gateway.getPageCount(context, predicate);
   }
 
-  public async getConsolidations(
+  public async getLeadCaseIds(
     context: ApplicationContext,
     predicateAndPage: PredicateAndPage,
-  ): Promise<AcmsConsolidation[]> {
+  ): Promise<string[]> {
     const gateway = Factory.getAcmsGateway(context);
-    return gateway.getConsolidations(context, predicateAndPage);
+    return gateway.getLeadCaseIds(context, predicateAndPage);
   }
 
   public async migrateConsolidation(
     context: ApplicationContext,
-    consolidation: AcmsConsolidation,
+    leadCaseId: string,
   ): Promise<ConsolidationOrder> {
     // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
-    context.logger.info(MODULE_NAME, 'Transform and load', consolidation);
+    context.logger.info(MODULE_NAME, 'Transform and load', leadCaseId);
     const newOrder = {
-      ...consolidation,
+      leadCaseId,
       camsId: randomUUID(),
     };
     context.logger.info(
       MODULE_NAME,
-      `Persisting ACMS consolidation ${newOrder.orderId} to CAMS ${newOrder.camsId}.`,
+      `Persisting ACMS consolidation ${newOrder.leadCaseId} to CAMS ${newOrder.camsId}.`,
     );
     return newOrder as unknown as ConsolidationOrder;
   }
