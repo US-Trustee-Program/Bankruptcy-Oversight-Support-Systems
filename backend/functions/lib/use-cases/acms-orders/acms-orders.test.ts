@@ -185,6 +185,14 @@ describe('ACMS Orders', () => {
 
     await expect(useCase.getPageCount(context, predicate)).rejects.toThrow();
     await expect(useCase.getLeadCaseIds(context, predicateAndPage)).rejects.toThrow();
-    await expect(useCase.migrateConsolidation(context, '000-11-22222')).rejects.toThrow();
+  });
+
+  test('should not throw exceptions', async () => {
+    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
+    const useCase = new AcmsOrders();
+
+    await expect(useCase.migrateConsolidation(context, '000-11-22222')).resolves.toEqual(
+      expect.objectContaining({ success: false }),
+    );
   });
 });
