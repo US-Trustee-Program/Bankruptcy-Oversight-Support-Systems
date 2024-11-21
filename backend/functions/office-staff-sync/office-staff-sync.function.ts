@@ -26,6 +26,6 @@ export default async function timerTrigger(
 }
 
 app.timer('office-staff-sync', {
-  schedule: '0 0 * * * *',
+  schedule: '0 0 5 * * *',
   handler: timerTrigger,
 });
