@@ -1,5 +1,5 @@
 import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
-import { AttorneyUser, Staff } from '../../../../../common/src/cams/users';
+import { AttorneyUser, CamsUserGroup, Staff } from '../../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
@@ -7,15 +7,35 @@ import {
   getOfficesRepository,
   getStorageGateway,
   getRuntimeStateRepository,
+  Factory,
 } from '../../factory';
-import { OfficeStaffSyncState } from '../gateways.types';
+import { OfficesRepository, OfficeStaffSyncState, RuntimeStateRepository } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { CamsError } from '../../common-errors/cams-error';
 import AttorneysList from '../attorneys';
+import { OfficesGateway } from './offices.types';
+import { UserGroupGateway, UserGroupGatewayConfig } from '../../adapters/types/authorization';
+import { StorageGateway } from '../../adapters/types/storage';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 
 export class OfficesUseCase {
+  private readonly config: UserGroupGatewayConfig;
+  private readonly officesGateway: OfficesGateway;
+  private readonly repository: OfficesRepository;
+  private readonly userGroupSource: UserGroupGateway;
+  private readonly storage: StorageGateway;
+  private readonly runtimeStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
+
+  constructor(context: ApplicationContext) {
+    this.config = context.config.userGroupGatewayConfig;
+    this.officesGateway = Factory.getOfficesGateway(context);
+    this.repository = Factory.getOfficesRepository(context);
+    this.userGroupSource = Factory.getUserGroupGateway(context);
+    this.storage = Factory.getStorageGateway(context);
+    this.runtimeStateRepo = Factory.getRuntimeStateRepository(context);
+  }
+
   public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const officesGateway = getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
@@ -51,7 +71,76 @@ export class OfficesUseCase {
     return attorneys;
   }
 
-  public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
+  public async syncOfficeStaff(context: ApplicationContext, weekly: boolean): Promise<object> {
+    if (weekly) {
+      return await this.weeklySync(context);
+    } else {
+      return await this.partialSync(context);
+    }
+  }
+
+  // THIS IS AN ATTEMPT TO SUBDIVIDE THE ORIGINAL SYNC FUNCTION INTO SMALLER FUNCTIONS.
+  private async getRoleGroups(context: ApplicationContext) {
+    const groupToRoleMap = this.storage.getRoleMapping();
+
+    // TODO: We should probably just iteratively request the role user groups by name from Okta rather than bring ALL group back.
+    const userGroups = await this.userGroupSource.getUserGroups(context, this.config);
+    const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
+    return roleGroups;
+  }
+
+  // THIS IS AN ATTEMPT TO SUBDIVIDE THE ORIGINAL SYNC FUNCTION INTO SMALLER FUNCTIONS.
+  private async getOfficeGroups(context: ApplicationContext, lastMembershipUpdated?: string) {
+    const offices = await this.officesGateway.getOffices(context);
+    const groupToOfficeMap = offices.reduce((acc, office) => {
+      acc.set(office.idpGroupId, office);
+      return acc;
+    }, new Map<string, UstpOfficeDetails>());
+
+    const userGroups = await this.userGroupSource.getUserGroups(
+      context,
+      this.config,
+      lastMembershipUpdated,
+    );
+
+    const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
+    return officeGroups;
+  }
+
+  private async getUsersForGroup(context: ApplicationContext, userGroup: CamsUserGroup) {
+    return this.userGroupSource.getUserGroupUsers(context, this.config, userGroup);
+  }
+
+  // THIS IS AN ATTEMPT TO SUBDIVIDE THE ORIGINAL SYNC FUNCTION INTO SMALLER FUNCTIONS.
+  private async applyRoles(
+    context: ApplicationContext,
+    users: Map<string, Staff>,
+  ): Promise<Map<string, Staff>> {
+    const config = context.config.userGroupGatewayConfig;
+    const groupToRoleMap = this.storage.getRoleMapping();
+    const roleGroups = await this.getRoleGroups(context);
+
+    const userMap = new Map<string, Staff>();
+    for (const roleGroup of roleGroups) {
+      const users = await this.userGroupSource.getUserGroupUsers(context, config, roleGroup);
+      const role = groupToRoleMap.get(roleGroup.name);
+      for (const user of users) {
+        if (userMap.has(user.id)) {
+          userMap.get(user.id).roles.push(role);
+        } else {
+          // TODO: Don't add users to the list if we are only APPLYING roles to the users
+          // userMap.set(user.id, { ...user, roles: [role] });
+        }
+      }
+    }
+    return users;
+  }
+
+  // THIS IS THE ORIGINAL SYNC FUNCTION!!
+  private async weeklySync(context: ApplicationContext) {
+    const executionStartTime = new Date().toISOString();
+
+    //TODO: Do not instantiate these individually for the weekly/partial syncs
     const config = context.config.userGroupGatewayConfig;
     const officesGateway = getOfficesGateway(context);
     const repository = getOfficesRepository(context);
@@ -114,6 +203,7 @@ export class OfficesUseCase {
       userGroups,
       users: [...userMap.values()],
       officesWithUsers,
+      lastModifiedDate: executionStartTime,
     };
 
     const runtimeStateRepo = getRuntimeStateRepository(context);
@@ -121,6 +211,26 @@ export class OfficesUseCase {
     await runtimeStateRepo.upsert(result);
 
     return result;
+  }
+
+  private async partialSync(_context: ApplicationContext) {
+    //Do the partial sync
+    // const config = context.config.userGroupGatewayConfig;
+    // const officesGateway = Factory.getOfficesGateway(context);
+    // const repository = Factory.getOfficesRepository(context);
+    // const userGroupSource = Factory.getUserGroupGateway(context);
+    // const storage = Factory.getStorageGateway(context);
+    // const runtimeStateRepo = Factory.getRuntimeStateRepository<OfficeStaffSyncState>(context);
+    // const stateType: RuntimeStateDocumentType = 'OFFICE_STAFF_SYNC_STATE';
+    // const lastRunState = await runtimeStateRepo.read(stateType);
+    // // lastMembershipUpdated
+    // const userGroupsWithChangedMembership = await userGroupSource.getUserGroups(
+    //   context,
+    //   config,
+    //   lastRunState.lastModifiedDate,
+    // );
+    // const result = { foo: 'something' };
+    // return result;
   }
 }
 

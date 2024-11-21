@@ -91,11 +91,13 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
  *
  * @param {ApplicationContext} context
  * @param {UserGroupGatewayConfig} config
+ * @param {string} membershipChangedDate Date must be in the format 2015-11-11T00:00:00.000Z
  * @returns {CamsUserGroup[]}
  */
 async function getUserGroups(
   context: ApplicationContext,
   config: UserGroupGatewayConfig,
+  membershipChangedDate?: string,
 ): Promise<CamsUserGroup[]> {
   const camsUserGroups: CamsUserGroup[] = [];
   try {
@@ -104,6 +106,11 @@ async function getUserGroups(
       q: 'USTP CAMS',
       limit: MAX_PAGE_SIZE,
     };
+
+    if (membershipChangedDate) {
+      query.filter = `lastMembershipUpdated ge "${membershipChangedDate}"`;
+    }
+
     const oktaGroups = await client.groupApi.listGroups(query);
 
     for await (const oktaGroup of oktaGroups) {

@@ -99,6 +99,18 @@ describe('OktaGroupGateway', () => {
         },
       ];
       expect(actual).toEqual(expected);
+      expect(listGroups).not.toHaveBeenCalledWith(
+        expect.objectContaining({ filter: expect.anything() }),
+      );
+    });
+
+    test('should include filter for membership updated date', async () => {
+      listGroups.mockResolvedValue(buildMockCollection<Group>([group1, group2, group3]));
+      await OktaUserGroupGateway.getUserGroups(context, configuration, 'some-date');
+
+      expect(listGroups).toHaveBeenCalledWith(
+        expect.objectContaining({ filter: expect.any(String) }),
+      );
     });
 
     test('should throw an error if an error is returned by the api', async () => {

@@ -17,9 +17,9 @@ export class OfficesController implements CamsController, CamsTimerController {
     this.useCase = new OfficesUseCase();
   }
 
-  public async handleTimer(context: ApplicationContext): Promise<void> {
+  public async handleTimer(context: ApplicationContext, weekly: boolean = false): Promise<void> {
     try {
-      await this.useCase.syncOfficeStaff(context);
+      await this.useCase.syncOfficeStaff(context, weekly);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {

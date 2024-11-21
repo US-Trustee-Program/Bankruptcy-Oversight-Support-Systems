@@ -11,7 +11,7 @@ initializeApplicationInsights();
 
 const MODULE_NAME = 'OFFICE-STAFF-SYNC-FUNCTION';
 
-export default async function timerTrigger(
+export async function timerTrigger(
   _myTimer: Timer,
   invocationContext: InvocationContext,
 ): Promise<void> {
@@ -25,7 +25,26 @@ export default async function timerTrigger(
   }
 }
 
+export async function weeklyTrigger(
+  _myTimer: Timer,
+  invocationContext: InvocationContext,
+): Promise<void> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  try {
+    const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
+    const controller = new OfficesController();
+    await controller.handleTimer(appContext, true);
+  } catch (error) {
+    toAzureError(logger, MODULE_NAME, error);
+  }
+}
+
 app.timer('office-staff-sync', {
-  schedule: '0 0 * * * *',
+  schedule: '0 0 * * * Sun-Fri',
   handler: timerTrigger,
+});
+
+app.timer('weekly-office-staff-sync', {
+  schedule: '0 0 5 * * Sat',
+  handler: weeklyTrigger,
 });

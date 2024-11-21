@@ -123,6 +123,7 @@ export type OfficeStaffSyncState = RuntimeState & {
   userGroups: CamsUserGroup[];
   users: CamsUserReference[];
   officesWithUsers: UstpOfficeDetails[];
+  lastModifiedDate: string;
 };
 
 export interface DocumentCollectionAdapter<T> {

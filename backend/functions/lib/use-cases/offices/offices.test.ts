@@ -121,7 +121,7 @@ describe('offices use case tests', () => {
     expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
-  test('should persist offices', async () => {
+  test('should persist offices for weekly sync', async () => {
     const seattleGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
     const seattleOfficeCode = 'USTP_CAMS_Region_18_Office_Seattle';
     const trialAttorneyGroup: CamsUserGroup = { id: 'four', name: 'USTP CAMS Trial Attorney' };
@@ -164,11 +164,79 @@ describe('offices use case tests', () => {
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
 
     const useCase = new OfficesUseCase();
-    await useCase.syncOfficeStaff(applicationContext);
+    await useCase.syncOfficeStaff(applicationContext, true);
     expect(putSpy).toHaveBeenCalledTimes(seattleUsers.length);
     seattleUsers.forEach((_, idx) => {
       expect(putSpy).toHaveBeenCalledWith(seattleOfficeCode, seattleUsers[idx]);
     });
     expect(stateRepoSpy).toHaveBeenCalled();
+  });
+
+  test('should persist office only if group membership has changed', async () => {
+    const seattleGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
+    const trialAttorneyGroup: CamsUserGroup = { id: 'four', name: 'USTP CAMS Trial Attorney' };
+    const dataVerifierGroup: CamsUserGroup = { id: 'five', name: 'USTP CAMS Data Verifier' };
+    const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 4);
+    const seattleUsers = [users[0], users[1], users[3]];
+    const attorneyUsers = [users[1], users[2], users[3]];
+    const dataVerifierUsers = [users[3]];
+    users[3].roles.push(CamsRole.DataVerifier);
+    const getUserGroupSpy = jest
+      .spyOn(OktaUserGroupGateway, 'getUserGroups')
+      .mockResolvedValue([
+        { id: 'one', name: 'group-a' },
+        { id: 'two', name: 'group-b' },
+        seattleGroup,
+        trialAttorneyGroup,
+        dataVerifierGroup,
+      ]);
+    jest
+      .spyOn(OktaUserGroupGateway, 'getUserGroupUsers')
+      .mockImplementation(
+        async (
+          _context: ApplicationContext,
+          _config: UserGroupGatewayConfig,
+          group: CamsUserGroup,
+        ) => {
+          if (group.name === 'USTP CAMS Region 18 Office Seattle') {
+            return Promise.resolve(seattleUsers);
+          } else if (group.name === 'USTP CAMS Trial Attorney') {
+            return Promise.resolve(attorneyUsers);
+          } else if (group.name === 'USTP CAMS Data Verifier') {
+            return Promise.resolve(dataVerifierUsers);
+          } else if (group.name === 'group-a' || group.name === 'group-b') {
+            throw new Error('Tried to retrieve users for invalid group.');
+          }
+        },
+      );
+
+    const putSpy = jest.spyOn(MockOfficesRepository, 'putOfficeStaff').mockResolvedValue();
+    const stateUpsertSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValue({});
+    const mockEarlierDate = '2024-11-11-T16:00:00.000Z';
+
+    const stateReadSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'read')
+      .mockResolvedValue({ lastModifiedDate: mockEarlierDate });
+
+    const mockDate = '2024-11-21-T16:00:00.000Z';
+    jest.spyOn(Date.prototype, 'toISOString').mockReturnValue(mockDate);
+
+    const useCase = new OfficesUseCase();
+    await useCase.syncOfficeStaff(applicationContext, true);
+
+    expect(getUserGroupSpy).toHaveBeenCalledWith(
+      applicationContext,
+      expect.anything(),
+      mockEarlierDate,
+    );
+
+    expect(putSpy).toHaveBeenCalledTimes(seattleUsers.length);
+    expect(stateReadSpy).toHaveBeenCalled();
+    expect(stateUpsertSpy).toHaveBeenCalledWith({ lastModifiedDate: mockDate });
+  });
+  test('should not do anything if group membership has not changed', async () => {
+    //TODO: Construct test accordingly
   });
 });

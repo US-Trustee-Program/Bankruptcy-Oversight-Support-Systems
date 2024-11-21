@@ -17,6 +17,7 @@ export interface UserGroupGateway {
   getUserGroups: (
     context: ApplicationContext,
     config: UserGroupGatewayConfig,
+    membershipChangedDate?: string,
   ) => Promise<CamsUserGroup[]>;
   getUserGroupUsers(
     context: ApplicationContext,
