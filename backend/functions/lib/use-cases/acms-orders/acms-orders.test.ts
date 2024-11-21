@@ -8,6 +8,8 @@ import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import CasesDxtrGateway from '../../adapters/gateways/dxtr/cases.dxtr.gateway';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { ConsolidationType } from '../../../../../common/src/cams/orders';
+import { CaseConsolidationHistory } from '../../../../../common/src/cams/history';
+import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 
 const mockAcmsGateway: AcmsGateway = {
   getPageCount: function (..._ignore): Promise<number> {
@@ -75,6 +77,9 @@ describe('ACMS Orders', () => {
     const createConsolidationToSpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
       .mockResolvedValue(MockData.getConsolidationTo());
+    const createCaseHistorySpy = jest
+      .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue();
 
     const leadCase = MockData.getCaseSummary();
     const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
@@ -99,6 +104,7 @@ describe('ACMS Orders', () => {
       [childCases[0].caseId, childCases[0]],
       [childCases[1].caseId, childCases[1]],
     ]);
+
     const expectedFromLinks = details.childCases.map((bCase) => {
       const caseId = leadCase.caseId;
       const orderDate = bCase.consolidationDate;
@@ -110,6 +116,23 @@ describe('ACMS Orders', () => {
           orderDate,
           otherCase: caseSummaryMap.get(bCase.caseId),
         },
+      });
+    });
+
+    const expectedHistory: CaseConsolidationHistory[] = [];
+    const allCaseIds = Array.from(caseSummaryMap.keys());
+    allCaseIds.forEach((caseId) => {
+      expectedHistory.push({
+        caseId,
+        documentType: 'AUDIT_CONSOLIDATION',
+        before: null,
+        after: {
+          status: 'approved',
+          leadCase,
+          childCases,
+        },
+        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-01',
       });
     });
 
@@ -133,6 +156,7 @@ describe('ACMS Orders', () => {
 
     expect(createConsolidationToSpy).toHaveBeenCalledTimes(childCases.length);
     expect(createConsolidationFromSpy).toHaveBeenCalledTimes(childCases.length);
+    expect(createCaseHistorySpy).toHaveBeenCalledTimes(expectedHistory.length);
 
     expectedFromLinks.forEach((fromLink) => {
       expect(createConsolidationFromSpy).toHaveBeenCalledWith(fromLink);
@@ -140,9 +164,12 @@ describe('ACMS Orders', () => {
     expectedToLinks.forEach((toLink) => {
       expect(createConsolidationToSpy).toHaveBeenCalledWith(toLink);
     });
+    expectedHistory.forEach((history) => {
+      expect(createCaseHistorySpy).toHaveBeenCalledWith(history);
+    });
   });
 
-  test('should handle exceptions', async () => {
+  test('should throw exceptions', async () => {
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
     const useCase = new AcmsOrders();
 
@@ -158,5 +185,6 @@ describe('ACMS Orders', () => {
 
     await expect(useCase.getPageCount(context, predicate)).rejects.toThrow();
     await expect(useCase.getLeadCaseIds(context, predicateAndPage)).rejects.toThrow();
+    await expect(useCase.migrateConsolidation(context, '000-11-22222')).rejects.toThrow();
   });
 });
