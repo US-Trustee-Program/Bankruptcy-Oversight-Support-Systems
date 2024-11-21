@@ -81,6 +81,7 @@ export class AcmsOrders {
       };
       childCaseSummaries.push(otherCase);
 
+      // TODO: convert these functions to upsert because this _may_ run more than once
       await casesRepo.createConsolidationFrom(fromLink);
       await casesRepo.createConsolidationTo(toLink);
     }
