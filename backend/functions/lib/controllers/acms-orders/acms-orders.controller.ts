@@ -1,12 +1,16 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import AcmsOrders, { Predicate, PredicateAndPage } from '../../use-cases/acms-orders/acms-orders';
+import AcmsOrders, {
+  AcmsConsolidationReport,
+  Predicate,
+  PredicateAndPage,
+} from '../../use-cases/acms-orders/acms-orders';
 class AcmsOrdersController {
   private readonly useCase = new AcmsOrders();
 
   public async migrateConsolidation(
     context: ApplicationContext,
     leadCaseId: string,
-  ): Promise<void> {
+  ): Promise<AcmsConsolidationReport> {
     return this.useCase.migrateConsolidation(context, leadCaseId);
   }
 

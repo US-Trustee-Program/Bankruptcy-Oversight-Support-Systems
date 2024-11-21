@@ -33,6 +33,12 @@ export type AcmsConsolidation = {
   childCases: AcmsConsolidationChildCase[];
 };
 
+export type AcmsConsolidationReport = {
+  leadCaseId: string;
+  success: boolean;
+  error?: unknown;
+};
+
 export class AcmsOrders {
   public async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
     const gateway = Factory.getAcmsGateway(context);
@@ -50,59 +56,66 @@ export class AcmsOrders {
   public async migrateConsolidation(
     context: ApplicationContext,
     leadCaseId: string,
-  ): Promise<void> {
-    const casesRepo = Factory.getCasesRepository(context);
-    const dxtr = Factory.getCasesGateway(context);
-    const acms = Factory.getAcmsGateway(context);
+  ): Promise<AcmsConsolidationReport> {
+    const report: AcmsConsolidationReport = { leadCaseId, success: true };
+    try {
+      const casesRepo = Factory.getCasesRepository(context);
+      const dxtr = Factory.getCasesGateway(context);
+      const acms = Factory.getAcmsGateway(context);
 
-    const basics = await acms.getConsolidationDetails(context, leadCaseId);
-    const leadCase = await dxtr.getCaseSummary(context, leadCaseId);
+      const basics = await acms.getConsolidationDetails(context, leadCaseId);
+      const leadCase = await dxtr.getCaseSummary(context, leadCaseId);
 
-    const childCaseSummaries: CaseSummary[] = [];
-    for (const childCase of basics.childCases) {
-      // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
-      const consolidationType = childCase.consolidationType as ConsolidationType;
+      const childCaseSummaries: CaseSummary[] = [];
+      for (const childCase of basics.childCases) {
+        // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
+        const consolidationType = childCase.consolidationType as ConsolidationType;
 
-      const toLink: ConsolidationTo = {
-        caseId: childCase.caseId,
-        consolidationType,
-        documentType: 'CONSOLIDATION_TO',
-        orderDate: childCase.consolidationDate,
-        otherCase: leadCase,
+        const toLink: ConsolidationTo = {
+          caseId: childCase.caseId,
+          consolidationType,
+          documentType: 'CONSOLIDATION_TO',
+          orderDate: childCase.consolidationDate,
+          otherCase: leadCase,
+        };
+
+        const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
+        const fromLink: ConsolidationFrom = {
+          caseId: leadCaseId,
+          consolidationType,
+          documentType: 'CONSOLIDATION_FROM',
+          orderDate: childCase.consolidationDate,
+          otherCase,
+        };
+        childCaseSummaries.push(otherCase);
+
+        // TODO: convert these functions to upsert because this _may_ run more than once
+        await casesRepo.createConsolidationFrom(fromLink);
+        await casesRepo.createConsolidationTo(toLink);
+      }
+
+      const caseHistory: Omit<CaseConsolidationHistory, 'caseId'> = {
+        documentType: 'AUDIT_CONSOLIDATION',
+        before: null,
+        after: {
+          status: 'approved',
+          leadCase,
+          childCases: childCaseSummaries,
+        },
+        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+        updatedOn: basics.childCases[0].consolidationDate,
       };
 
-      const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
-      const fromLink: ConsolidationFrom = {
-        caseId: leadCaseId,
-        consolidationType,
-        documentType: 'CONSOLIDATION_FROM',
-        orderDate: childCase.consolidationDate,
-        otherCase,
-      };
-      childCaseSummaries.push(otherCase);
-
-      // TODO: convert these functions to upsert because this _may_ run more than once
-      await casesRepo.createConsolidationFrom(fromLink);
-      await casesRepo.createConsolidationTo(toLink);
+      // TODO: Consider the case history will be different if the consolidation date is not the same for all child cases.
+      const allCaseIds = [leadCaseId, ...basics.childCases.map((bCase) => bCase.caseId)];
+      for (const caseId of allCaseIds) {
+        await casesRepo.createCaseHistory({ ...caseHistory, caseId });
+      }
+    } catch (error) {
+      report.success = false;
+      report.error = error;
     }
-
-    const caseHistory: Omit<CaseConsolidationHistory, 'caseId'> = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: childCaseSummaries,
-      },
-      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
-      updatedOn: basics.childCases[0].consolidationDate,
-    };
-
-    // TODO: Consider the case history will be different if the consolidation date is not the same for all child cases.
-    const allCaseIds = [leadCaseId, ...basics.childCases.map((bCase) => bCase.caseId)];
-    for (const caseId of allCaseIds) {
-      await casesRepo.createCaseHistory({ ...caseHistory, caseId });
-    }
+    return report;
   }
 }
 
