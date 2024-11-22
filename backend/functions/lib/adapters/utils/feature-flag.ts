@@ -14,7 +14,7 @@ export async function getFeatureFlags(config: ApplicationConfiguration): Promise
   await client.waitForInitialization();
   const state = await client.allFlagsState({
     kind: 'user',
-    key: 'feature-flag-poc',
+    key: 'feature-flag-migration',
     anonymous: true,
   });
   await client.flush();
