@@ -113,7 +113,7 @@ describe('orders use case tests', () => {
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
   });
 
-  test.only('should not create a second lead case for an existing consolidation', async () => {
+  test('should not create a second lead case for an existing consolidation', async () => {
     // Spy/mock the factory functions so we can return a LOCAL database of our choosing for the test.
     // We need a generic LOCAL gateway implementation that we return via the mocked factory function.
     const localCasesRepo = new LocalCasesRepository();
