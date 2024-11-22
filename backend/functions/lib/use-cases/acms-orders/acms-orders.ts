@@ -57,6 +57,7 @@ export class AcmsOrders {
     context: ApplicationContext,
     leadCaseId: string,
   ): Promise<AcmsConsolidationReport> {
+    // TODO: Add child case count to the report??
     const report: AcmsConsolidationReport = { leadCaseId, success: true };
     try {
       const casesRepo = Factory.getCasesRepository(context);
@@ -66,9 +67,43 @@ export class AcmsOrders {
       const basics = await acms.getConsolidationDetails(context, leadCaseId);
       const leadCase = await dxtr.getCaseSummary(context, leadCaseId);
 
+      // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
+      // Check if exported child cases have already been migrated.
+      const existingConsolidations = await casesRepo.getConsolidation(leadCaseId);
+      const existingChildCaseIds = existingConsolidations
+        .filter((link) => link.documentType === 'CONSOLIDATION_FROM')
+        .map((link) => link.otherCase.caseId)
+        .reduce((acc, caseId) => {
+          acc.add(caseId);
+          return acc;
+        }, new Set<string>());
+
+      const exportedChildCaseIds = basics.childCases
+        .map((bCase) => bCase.caseId)
+        .reduce((acc, caseId) => {
+          acc.add(caseId);
+          return acc;
+        }, new Set<string>());
+
+      const unimportedChildCaseIds = new Set<string>();
+      exportedChildCaseIds.forEach((caseId) => {
+        if (!existingChildCaseIds.has(caseId)) {
+          unimportedChildCaseIds.add(caseId);
+        }
+      });
+
+      // Return early if there is no work to do.
+      if (unimportedChildCaseIds.size === 0) {
+        return report;
+      }
+
+      // Load any child cases that have not been migrated.
       const childCaseSummaries = new Map<string, CaseSummary>();
-      for (const childCase of basics.childCases) {
-        // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
+      const filteredBasicsChildCases = basics.childCases.filter((bCase) =>
+        unimportedChildCaseIds.has(bCase.caseId),
+      );
+
+      for (const childCase of filteredBasicsChildCases) {
         const consolidationType = childCase.consolidationType as ConsolidationType;
 
         const toLink: ConsolidationTo = {
@@ -89,14 +124,13 @@ export class AcmsOrders {
         };
         childCaseSummaries.set(otherCase.caseId, otherCase);
 
-        // TODO: convert these functions to upsert because this _may_ run more than once
         await casesRepo.createConsolidationFrom(fromLink);
         await casesRepo.createConsolidationTo(toLink);
       }
 
       // Partition history by date.
       const historyDateMap = new Map<string, CaseSummary[]>();
-      basics.childCases.forEach((bCase) => {
+      filteredBasicsChildCases.forEach((bCase) => {
         if (historyDateMap.has(bCase.consolidationDate)) {
           historyDateMap.get(bCase.consolidationDate).push(childCaseSummaries.get(bCase.caseId));
         } else {
