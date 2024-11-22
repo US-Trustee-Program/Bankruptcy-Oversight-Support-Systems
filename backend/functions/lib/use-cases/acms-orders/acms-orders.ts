@@ -5,8 +5,9 @@ import { ConsolidationType } from '../../../../../common/src/cams/orders';
 import { CaseSummary } from '../../../../../common/src/cams/cases';
 import { CaseConsolidationHistory } from '../../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { getCamsError } from '../../common-errors/error-utilities';
 
-const _MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
+const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
 export type Bounds = {
   divisionCodes: string[];
@@ -36,7 +37,6 @@ export type AcmsConsolidation = {
 export type AcmsConsolidationReport = {
   leadCaseId: string;
   success: boolean;
-  error?: unknown;
 };
 
 export class AcmsOrders {
@@ -113,7 +113,12 @@ export class AcmsOrders {
       }
     } catch (error) {
       report.success = false;
-      report.error = error;
+      const camsError = getCamsError(
+        error,
+        MODULE_NAME,
+        `Transformation failed for lead case ${leadCaseId}`,
+      );
+      context.logger.camsError(camsError);
     }
     return report;
   }
