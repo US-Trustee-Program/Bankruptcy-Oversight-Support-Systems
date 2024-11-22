@@ -1,4 +1,7 @@
-import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import {
+  AcmsConsolidationReport,
+  PredicateAndPage,
+} from '../../lib/use-cases/acms-orders/acms-orders';
 import { GET_CONSOLIDATIONS, MIGRATE_CONSOLIDATION } from '../loadConsolidations';
 import { OrchestrationContext } from 'durable-functions';
 
@@ -14,7 +17,19 @@ export function* subOrchestratorETL(context: OrchestrationContext) {
 
   yield context.df.Task.all(etlTasks);
 
-  // DO we need to fan in??
-  // const sum = parallelTasks.reduce((prev, curr) => prev + curr, 0);
-  // yield context.df.callActivity('finalResults??', sum);
+  const finalResults = etlTasks.reduce(
+    (acc, task) => {
+      const taskResponse = task as AcmsConsolidationReport;
+      if (taskResponse.success) {
+        acc.successful += 1;
+      } else {
+        acc.failed += 1;
+      }
+      return acc;
+    },
+    { successful: 0, failed: 0 },
+  );
+  context.log(
+    `ACMS Consolidation Migration ETL: successful: ${finalResults.successful}, failures: ${finalResults.failed}`,
+  );
 }
