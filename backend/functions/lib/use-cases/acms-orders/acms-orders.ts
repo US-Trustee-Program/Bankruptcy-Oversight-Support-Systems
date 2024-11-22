@@ -58,6 +58,7 @@ export class AcmsOrders {
     leadCaseId: string,
   ): Promise<AcmsConsolidationReport> {
     const report: AcmsConsolidationReport = { leadCaseId, success: true };
+    const alltheHistory = [];
     try {
       const casesRepo = Factory.getCasesRepository(context);
       const dxtr = Factory.getCasesGateway(context);
@@ -66,7 +67,7 @@ export class AcmsOrders {
       const basics = await acms.getConsolidationDetails(context, leadCaseId);
       const leadCase = await dxtr.getCaseSummary(context, leadCaseId);
 
-      const childCaseSummaries: CaseSummary[] = [];
+      const childCaseSummaries = new Map<string, CaseSummary>();
       for (const childCase of basics.childCases) {
         // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
         const consolidationType = childCase.consolidationType as ConsolidationType;
@@ -87,30 +88,65 @@ export class AcmsOrders {
           orderDate: childCase.consolidationDate,
           otherCase,
         };
-        childCaseSummaries.push(otherCase);
+        childCaseSummaries.set(otherCase.caseId, otherCase);
 
         // TODO: convert these functions to upsert because this _may_ run more than once
         await casesRepo.createConsolidationFrom(fromLink);
         await casesRepo.createConsolidationTo(toLink);
       }
 
-      const caseHistory: Omit<CaseConsolidationHistory, 'caseId'> = {
-        documentType: 'AUDIT_CONSOLIDATION',
-        before: null,
-        after: {
+      // Partition history by date.
+      const historyDateMap = new Map<string, CaseSummary[]>();
+      basics.childCases.forEach((bCase) => {
+        if (historyDateMap.has(bCase.consolidationDate)) {
+          historyDateMap.get(bCase.consolidationDate).push(childCaseSummaries.get(bCase.caseId));
+        } else {
+          historyDateMap.set(bCase.consolidationDate, [childCaseSummaries.get(bCase.caseId)]);
+        }
+      });
+
+      const consolidationDates = Array.from(historyDateMap.keys()).sort();
+      let leadCaseHistoryBefore: CaseConsolidationHistory['before'] | null = null;
+      for (const consolidationDate of consolidationDates) {
+        const caseHistory: Omit<CaseConsolidationHistory, 'caseId'> = {
+          documentType: 'AUDIT_CONSOLIDATION',
+          before: null,
+          after: {
+            status: 'approved',
+            leadCase,
+            childCases: [...historyDateMap.get(consolidationDate)],
+          },
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: consolidationDate,
+        };
+
+        // Write the history for the child cases.
+        const caseIds = [...historyDateMap.get(consolidationDate).map((bCase) => bCase.caseId)];
+        for (const caseId of caseIds) {
+          const childCaseHistory = { caseId, ...caseHistory };
+          await casesRepo.createCaseHistory(childCaseHistory);
+          alltheHistory.push(childCaseHistory);
+        }
+
+        // Write the history for the lead case.
+        const leadCaseHistoryAfter: CaseConsolidationHistory['after'] = {
           status: 'approved',
           leadCase,
-          childCases: childCaseSummaries,
-        },
-        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
-        updatedOn: basics.childCases[0].consolidationDate,
-      };
-
-      // TODO: Consider the case history will be different if the consolidation date is not the same for all child cases.
-      const allCaseIds = [leadCaseId, ...basics.childCases.map((bCase) => bCase.caseId)];
-      for (const caseId of allCaseIds) {
-        await casesRepo.createCaseHistory({ ...caseHistory, caseId });
+          childCases: leadCaseHistoryBefore
+            ? [...leadCaseHistoryBefore.childCases, ...historyDateMap.get(consolidationDate)]
+            : [...historyDateMap.get(consolidationDate)],
+        };
+        const leadCaseHistory: CaseConsolidationHistory = {
+          caseId: leadCase.caseId,
+          ...caseHistory,
+          before: leadCaseHistoryBefore ? { ...leadCaseHistoryBefore } : null,
+          after: leadCaseHistoryAfter,
+        };
+        await casesRepo.createCaseHistory(leadCaseHistory);
+        leadCaseHistoryBefore = leadCaseHistoryAfter;
+        alltheHistory.push(leadCaseHistory);
       }
+      console.log(JSON.stringify(alltheHistory));
     } catch (error) {
       report.success = false;
       const camsError = getCamsError(

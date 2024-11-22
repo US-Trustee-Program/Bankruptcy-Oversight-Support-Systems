@@ -93,7 +93,7 @@ describe('ACMS Orders', () => {
         },
         {
           caseId: childCases[1].caseId,
-          consolidationDate: '2024-02-01',
+          consolidationDate: '2024-01-01',
           consolidationType: 'administrative',
         },
       ],
@@ -123,7 +123,6 @@ describe('ACMS Orders', () => {
     const allCaseIds = Array.from(caseSummaryMap.keys());
     allCaseIds.forEach((caseId) => {
       expectedHistory.push({
-        caseId,
         documentType: 'AUDIT_CONSOLIDATION',
         before: null,
         after: {
@@ -133,6 +132,7 @@ describe('ACMS Orders', () => {
         },
         updatedBy: ACMS_SYSTEM_USER_REFERENCE,
         updatedOn: '2024-01-01',
+        caseId,
       });
     });
 
@@ -165,6 +165,168 @@ describe('ACMS Orders', () => {
       expect(createConsolidationToSpy).toHaveBeenCalledWith(toLink);
     });
     expectedHistory.forEach((history) => {
+      expect(createCaseHistorySpy).toHaveBeenCalledWith(history);
+    });
+  });
+
+  test('should histories for consolidations over a date range', async () => {
+    jest
+      .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
+      .mockResolvedValue(MockData.getConsolidationFrom());
+    jest
+      .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
+      .mockResolvedValue(MockData.getConsolidationTo());
+    const createCaseHistorySpy = jest
+      .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
+      .mockResolvedValue();
+
+    const leadCase = MockData.getCaseSummary();
+    const childCases = MockData.buildArray(MockData.getCaseSummary, 4);
+    const details: AcmsConsolidation = {
+      leadCaseId: leadCase.caseId,
+      childCases: [
+        {
+          caseId: childCases[0].caseId,
+          consolidationDate: '2024-01-01',
+          consolidationType: 'substantive',
+        },
+        {
+          caseId: childCases[1].caseId,
+          consolidationDate: '2024-01-01',
+          consolidationType: 'substantive',
+        },
+        {
+          caseId: childCases[2].caseId,
+          consolidationDate: '2024-02-01',
+          consolidationType: 'substantive',
+        },
+        {
+          caseId: childCases[3].caseId,
+          consolidationDate: '2024-03-01',
+          consolidationType: 'substantive',
+        },
+      ],
+    };
+
+    const caseSummaryMap = new Map<string, CaseSummary>([
+      [leadCase.caseId, leadCase],
+      [childCases[0].caseId, childCases[0]],
+      [childCases[1].caseId, childCases[1]],
+      [childCases[2].caseId, childCases[2]],
+      [childCases[3].caseId, childCases[3]],
+    ]);
+
+    // History for lead case and 2 child cases on '2024-01-01'
+    const allHistories: CaseConsolidationHistory[] = [];
+    allHistories.push({
+      caseId: childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: null,
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-01-01',
+    });
+    allHistories.push({
+      caseId: childCases[1].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: null,
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-01-01',
+    });
+    allHistories.push({
+      caseId: leadCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: null,
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-01-01',
+    });
+
+    // History for lead case and next child case on '2024-02-01'
+    allHistories.push({
+      caseId: childCases[2].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: null,
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[2]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-02-01',
+    });
+    allHistories.push({
+      caseId: leadCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1]],
+      },
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1], childCases[2]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-02-01',
+    });
+
+    // History for lead case and next child case on '2024-03-01'
+    allHistories.push({
+      caseId: childCases[3].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: null,
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[3]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-03-01',
+    });
+    allHistories.push({
+      caseId: leadCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      before: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1], childCases[2]],
+      },
+      after: {
+        status: 'approved',
+        leadCase,
+        childCases: [childCases[0], childCases[1], childCases[2], childCases[3]],
+      },
+      updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-03-01',
+    });
+
+    jest.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
+    jest
+      .spyOn(CasesDxtrGateway.prototype, 'getCaseSummary')
+      .mockImplementation((_context, caseId) => {
+        return Promise.resolve(caseSummaryMap.get(caseId));
+      });
+    const useCase = new AcmsOrders();
+    await useCase.migrateConsolidation(context, leadCase.caseId);
+
+    console.log(JSON.stringify(allHistories));
+    expect(createCaseHistorySpy).toHaveBeenCalledTimes(allHistories.length);
+    allHistories.forEach((history) => {
       expect(createCaseHistorySpy).toHaveBeenCalledWith(history);
     });
   });
