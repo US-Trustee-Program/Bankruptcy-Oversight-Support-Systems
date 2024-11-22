@@ -1,7 +1,7 @@
 import * as df from 'durable-functions';
 import { app } from '@azure/functions';
 
-import httpStart from './client/dfClient.function';
+import httpStart from './client/trigger.function';
 import { main } from './orchestration/orchestrator';
 import { subOrchestratorETL } from './orchestration/sub-orchestrator-etl';
 import { subOrchestratorPaging } from './orchestration/sub-orchestrator-paging';
