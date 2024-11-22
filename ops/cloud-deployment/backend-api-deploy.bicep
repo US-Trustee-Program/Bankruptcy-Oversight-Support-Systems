@@ -258,6 +258,8 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   ]
 }
 
+//TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
+
 var applicationSettings = concat(
   [
     {
@@ -329,27 +331,23 @@ var applicationSettings = concat(
       value: mssqlRequestTimeout
     }
     {
-      name: 'ACMS_HOST'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
+      name: 'ACMS_MSSQL_HOST'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-HOST)'
     }
     {
-      name: 'ACMS_DATABASE'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-DATABASE)'
+      name: 'ACMS_MSSQL_DATABASE'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-DATABASE)'
     }
     {
-      name: 'ACMS_CLIENT_ID'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+      name: 'ACMS_MSSQL_ENCRYPT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-ENCRYPT)'
     }
     {
-      name: 'ACMS_ENCRYPT'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
+      name: 'ACMS_MSSQL_TRUST_UNSIGNED_CERT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-TRUST-UNSIGNED-CERT)'
     }
     {
-      name: 'ACMS_TRUST_UNSIGNED_CERT'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
-    }
-    {
-      name: 'ACMS_REQUEST_TIMEOUT'
+      name: 'ACMS_MSSQL_REQUEST_TIMEOUT'
       value: mssqlRequestTimeout
     }
     {
@@ -372,8 +370,13 @@ var applicationSettings = concat(
     ? [
         { name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }
         { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }
+        { name: 'ACMS_MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)' }
+        { name: 'ACMS_MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)' }
       ]
-    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
+    : [
+        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
+        { name: 'ACMS_MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'}
+      ]
 )
 
 var ipSecurityRestrictionsRules = concat(

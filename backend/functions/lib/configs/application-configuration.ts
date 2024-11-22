@@ -21,7 +21,7 @@ export class ApplicationConfiguration {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDxtrDbConfig(process.env.MSSQL_DATABASE_DXTR);
-    this.acmsDbConfig = this.getAcmsDbConfig(process.env.ACMS_DATABASE);
+    this.acmsDbConfig = this.getAcmsDbConfig(process.env.ACMS_MSSQL_DATABASE);
     this.documentDbConfig = this.getDocumentDbConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
@@ -84,15 +84,15 @@ export class ApplicationConfiguration {
 
   // TODO: This and getDxtrDbConfig are gross. Refactor when we feel we really want to clean this up.
   private getAcmsDbConfig(database: string): IDbConfig {
-    const server = process.env.ACMS_HOST;
+    const server = process.env.ACMS_MSSQL_HOST;
     const port: number = Number(process.env.ACMS_PORT) || 1433;
-    const encrypt: boolean = Boolean(process.env.ACMS_ENCRYPT);
-    const trustServerCertificate: boolean = Boolean(process.env.ACMS_TRUST_UNSIGNED_CERT);
+    const encrypt: boolean = Boolean(process.env.ACMS_MSSQL_ENCRYPT);
+    const trustServerCertificate: boolean = Boolean(process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT);
     const authType = process.env.ACMS_AUTH_TYPE || 'azure-active-directory-default';
-    const user = process.env.ACMS_USER;
-    const password = process.env.ACMS_PASS;
-    const identityClientId = process.env.ACMS_CLIENT_ID;
-    const requestTimeout = parseInt(process.env.ACMS_REQUEST_TIMEOUT ?? '15000');
+    const user = process.env.ACMS_MSSQL_USER;
+    const password = process.env.ACMS_MSSQL_PASS;
+    const identityClientId = process.env.ACMS_MSSQL_CLIENT_ID;
+    const requestTimeout = parseInt(process.env.ACMS_MSSQL_REQUEST_TIMEOUT ?? '15000');
 
     const config: IDbConfig = {
       server,
