@@ -324,7 +324,6 @@ describe('ACMS Orders', () => {
     const useCase = new AcmsOrders();
     await useCase.migrateConsolidation(context, leadCase.caseId);
 
-    console.log(JSON.stringify(allHistories));
     expect(createCaseHistorySpy).toHaveBeenCalledTimes(allHistories.length);
     allHistories.forEach((history) => {
       expect(createCaseHistorySpy).toHaveBeenCalledWith(history);

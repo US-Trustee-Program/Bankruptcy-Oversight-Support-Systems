@@ -58,7 +58,6 @@ export class AcmsOrders {
     leadCaseId: string,
   ): Promise<AcmsConsolidationReport> {
     const report: AcmsConsolidationReport = { leadCaseId, success: true };
-    const alltheHistory = [];
     try {
       const casesRepo = Factory.getCasesRepository(context);
       const dxtr = Factory.getCasesGateway(context);
@@ -125,7 +124,6 @@ export class AcmsOrders {
         for (const caseId of caseIds) {
           const childCaseHistory = { caseId, ...caseHistory };
           await casesRepo.createCaseHistory(childCaseHistory);
-          alltheHistory.push(childCaseHistory);
         }
 
         // Write the history for the lead case.
@@ -144,9 +142,7 @@ export class AcmsOrders {
         };
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
-        alltheHistory.push(leadCaseHistory);
       }
-      console.log(JSON.stringify(alltheHistory));
     } catch (error) {
       report.success = false;
       const camsError = getCamsError(
