@@ -13,7 +13,7 @@ operation='start'
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-    -g | --resource-group)
+    -g | --resourceGroup)
         app_rg="${2}"
         shift 2
         ;;
