@@ -9,14 +9,19 @@ describe('Factory functions', () => {
   let RuntimeStateMongoRepository;
   let MockMongoRepository;
   let OrdersMongoRepository;
+  let ConsolidationOrdersMongoRepository;
   let CaseAssignmentMongoRepository;
   let MockOfficesGateway;
   let MockOrdersGateway;
   let DxtrOrdersGateway;
   let OfficesDxtrGateway;
+  let OfficesMongoRepository;
   let CaseDocketUseCase;
   let CasesLocalGateway;
   let CasesDxtrGateway;
+  let UserSessionCacheRepository;
+  let UserSessionUseCase;
+  let OktaGateway;
 
   beforeEach(async () => {
     await jest.isolateModulesAsync(async () => {
@@ -31,6 +36,14 @@ describe('Factory functions', () => {
 
       OrdersMongoRepository = (await import('./adapters/gateways/mongo/orders.mongo.repository'))
         .OrdersMongoRepository;
+
+      UserSessionCacheRepository = (
+        await import('./adapters/gateways/mongo/user-session-cache.mongo.repository')
+      ).UserSessionCacheMongoRepository;
+
+      ConsolidationOrdersMongoRepository = (
+        await import('./adapters/gateways/mongo/consolidations.mongo.repository')
+      ).default;
 
       MockOfficesGateway = (await import('./testing/mock-gateways/mock.offices.gateway'))
         .MockOfficesGateway;
@@ -49,15 +62,25 @@ describe('Factory functions', () => {
         .CasesLocalGateway;
 
       CasesDxtrGateway = (await import('./adapters/gateways/dxtr/cases.dxtr.gateway')).default;
+
       CaseAssignmentMongoRepository = (
         await import('./adapters/gateways/mongo/case-assignment.mongo.repository')
       ).CaseAssignmentMongoRepository;
+
+      OfficesMongoRepository = (await import('./adapters/gateways/mongo/offices.mongo.repository'))
+        .OfficesMongoRepository;
+
+      UserSessionUseCase = (await import('./use-cases/user-session/user-session'))
+        .UserSessionUseCase;
+
+      OktaGateway = (await import('./adapters/gateways/okta/okta-gateway')).default;
     });
   });
 
   beforeAll(async () => {
     dbContext = await createMockApplicationContext({
       env: {
+        CAMS_LOGIN_PROVIDER: 'okta',
         DATABASE_MOCK: 'false',
         COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
       },
@@ -105,6 +128,14 @@ describe('Factory functions', () => {
     expect(obj).toBeInstanceOf(DxtrOrdersGateway);
   });
 
+  test('getOfficesRepository', async () => {
+    const context = { ...dbContext };
+    context.config.authConfig.provider = 'okta';
+
+    const obj = factory.getOfficesRepository(context);
+    expect(obj).toBeInstanceOf(OfficesMongoRepository);
+  });
+
   test('getOfficesGateway mock', async () => {
     const mockObj = factory.getOfficesGateway(mockDbContext);
     expect(mockObj).toBeInstanceOf(MockOfficesGateway);
@@ -120,7 +151,17 @@ describe('Factory functions', () => {
     expect(mockObj).toBeInstanceOf(MockMongoRepository);
   });
 
-  test('getOrdersRepository DXTR', async () => {
+  test('getConsolidationOrdersRepository', async () => {
+    const obj = factory.getConsolidationOrdersRepository(dbContext);
+    expect(obj).toBeInstanceOf(ConsolidationOrdersMongoRepository);
+  });
+
+  test('getUserSessionCacheRepository', async () => {
+    const obj = factory.getUserSessionCacheRepository(dbContext);
+    expect(obj).toBeInstanceOf(UserSessionCacheRepository);
+  });
+
+  test('getOrdersRepository', async () => {
     const obj = factory.getOrdersRepository(dbContext);
     expect(obj).toBeInstanceOf(OrdersMongoRepository);
   });
@@ -128,5 +169,27 @@ describe('Factory functions', () => {
   test('getRuntimeStateRepository', async () => {
     const obj = factory.getRuntimeStateRepository(dbContext);
     expect(obj).toBeInstanceOf(RuntimeStateMongoRepository);
+  });
+
+  test('getAuthorizationGateway should return null if no recognized provider', async () => {
+    const contextWithInvalidProvider = { ...dbContext };
+    contextWithInvalidProvider.config.authConfig.provider = 'test';
+    const result = factory.getAuthorizationGateway(contextWithInvalidProvider);
+    expect(result).toBeNull();
+  });
+
+  test('getAuthorizationGateway should return real gateway', async () => {
+    const contextWithOkta = { ...dbContext };
+    contextWithOkta.config.authConfig.provider = 'okta';
+    const result = factory.getAuthorizationGateway(contextWithOkta);
+    expect(result).toEqual(OktaGateway);
+  });
+
+  test('getUserSessionUseCase', async () => {
+    const context = { ...dbContext };
+    context.config.authConfig.provider = 'okta';
+
+    const obj = factory.getUserSessionUseCase(context);
+    expect(obj).toBeInstanceOf(UserSessionUseCase);
   });
 });

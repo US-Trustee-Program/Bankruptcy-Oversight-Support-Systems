@@ -15,7 +15,7 @@ async function migrateConsolidation(
   const controller = new AcmsOrdersController();
 
   try {
-    return controller.migrateConsolidation(appContext, leadCaseId);
+    return await controller.migrateConsolidation(appContext, leadCaseId);
   } catch (originalError) {
     throw getCamsError(originalError, MODULE_NAME);
   }
