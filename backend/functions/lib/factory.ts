@@ -3,7 +3,7 @@ import { CasesInterface } from './use-cases/cases.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { DocumentDbConfig, IDbConfig } from './adapters/types/database';
+import { IDbConfig } from './adapters/types/database';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
@@ -75,10 +75,6 @@ export const getAssignmentRepository = (
 ): CaseAssignmentRepository => {
   if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
   return new CaseAssignmentMongoRepository(applicationContext);
-};
-
-export const getCosmosConfig = (applicationContext: ApplicationContext): DocumentDbConfig => {
-  return applicationContext.config.get('cosmosConfig');
 };
 
 export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
@@ -215,7 +211,6 @@ export const Factory = {
   getAttorneyGateway,
   getCasesGateway,
   getAssignmentRepository,
-  getCosmosConfig,
   getCaseDocketUseCase,
   getSqlConnection,
   getOrdersGateway,
