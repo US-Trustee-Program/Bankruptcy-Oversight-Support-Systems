@@ -8,12 +8,11 @@ const MODULE_NAME = 'IMPORT-ACTION-GET-PAGE-COUNT';
 
 async function getPageCount(input: PredicateAndPage, invocationContext: InvocationContext) {
   const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.applicationContextCreator(invocationContext, logger);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
   const controller = new AcmsOrdersController();
 
   try {
-    console.log('#################GetPageCount', JSON.stringify(input));
-    return controller.getPageCount(context, input);
+    return await controller.getPageCount(context, input);
   } catch (originalError) {
     throw getCamsError(originalError, MODULE_NAME);
   }

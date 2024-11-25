@@ -6,8 +6,8 @@ async function flattenBoundingArrays(
   _context: InvocationContext,
 ): Promise<Predicate[]> {
   const predicates: Predicate[] = [];
-  for (const chapter in bounds.chapters) {
-    for (const divisionCode in bounds.divisionCodes) {
+  for (const chapter of bounds.chapters) {
+    for (const divisionCode of bounds.divisionCodes) {
       predicates.push({
         divisionCode,
         chapter,
