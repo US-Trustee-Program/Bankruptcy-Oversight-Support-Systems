@@ -91,7 +91,7 @@ export abstract class AbstractDbClient implements Closable {
   }
 
   public async close(): Promise<void> {
-    this.connectionPool.close();
+    await this.connectionPool.close();
   }
 }
 
