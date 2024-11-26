@@ -86,6 +86,59 @@ describe('ACMS gateway tests', () => {
     },
   );
 
+  const chapters = [
+    { chapter: '9', querySubString: null, inputVariable: '09' },
+    { chapter: '11', querySubString: null, inputVariable: '11' },
+    { chapter: '12', querySubString: null, inputVariable: '12' },
+    { chapter: '13', querySubString: null, inputVariable: '13' },
+    { chapter: '15', querySubString: null, inputVariable: '15' },
+    { chapter: '7', querySubString: "IN ('7A', '7N')", inputVariable: null },
+  ];
+  test.each(chapters)('should translate chapter $chapter into query', async (params) => {
+    const spy = jest
+      .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
+      .mockResolvedValueOnce({
+        success: true,
+        results: [{ leadCaseCount: 0 }],
+        message: '',
+      })
+      .mockResolvedValue({
+        success: true,
+        results: [],
+        message: '',
+      });
+
+    const predicate: Predicate = {
+      chapter: params.chapter,
+      divisionCode: '081',
+    };
+    const predicateAndPage: PredicateAndPage = {
+      ...predicate,
+      pageNumber: 0,
+    };
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await gateway.getPageCount(context, predicate);
+    await gateway.getLeadCaseIds(context, predicateAndPage);
+
+    if (params.inputVariable) {
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.any(String),
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'chapter', value: params.inputVariable }),
+        ]),
+      );
+    } else {
+      expect(spy).toHaveBeenCalledWith(
+        context,
+        expect.stringContaining(params.querySubString),
+        expect.any(Array),
+      );
+    }
+  });
+
   test('should get substantive consolidation details from ACMS', async () => {
     const leadCaseId = '0000000000';
     const databaseResult: AcmsConsolidationChildCase[] = [

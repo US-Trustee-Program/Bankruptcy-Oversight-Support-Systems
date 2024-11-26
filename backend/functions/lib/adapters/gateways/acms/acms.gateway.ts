@@ -24,14 +24,28 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
   async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
     const input: DbTableFieldSpec[] = [];
+    let query = `
+      SELECT COUNT(DISTINCT CONSOLIDATED_CASE_NUMBER) AS leadCaseCount
+      FROM CMMDB
+      WHERE CASE_DIV = @divisionCode
+      AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
+      AND CONSOLIDATED_CASE_NUMBER != '0'`;
 
-    // TODO: map from string chapters that accept numbers to be two character strings
-    // 09, 11, 12, 13, 15, 7A, 7N, AC
-    input.push({
-      name: 'chapter',
-      type: mssql.VarChar,
-      value: predicate.chapter,
-    });
+    // Valid ACMS chapters: 09, 11, 12, 13, 15, 7A, 7N, AC
+    // 'AC' is the predecesor to chapter 15. We are not importing these old cases into CAMS.
+    // '7A' and '7N' are treated inclusively as chapter 7 cases when importing into CAMS.
+    // Leading zero padding is added for chapter 9.
+
+    if (predicate.chapter === '7') {
+      query += ` AND CURR_CASE_CHAPT IN ('7A', '7N')`;
+    } else {
+      query += ` AND CURR_CASE_CHAPT = @chapter`;
+      input.push({
+        name: 'chapter',
+        type: mssql.VarChar,
+        value: ('00' + predicate.chapter).slice(-2),
+      });
+    }
 
     input.push({
       name: 'divisionCode',
@@ -42,14 +56,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     type ResultType = {
       leadCaseCount: number;
     };
-
-    const query = `
-      SELECT COUNT(DISTINCT CONSOLIDATED_CASE_NUMBER) AS leadCaseCount
-      FROM CMMDB
-      WHERE CURR_CASE_CHAPT = @chapter
-      AND CASE_DIV = @divisionCode
-      AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
-      AND CONSOLIDATED_CASE_NUMBER != '0'`;
 
     try {
       const results = await this.executeQuery<ResultType>(context, query, input);
@@ -65,14 +71,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     predicateAndPage: PredicateAndPage,
   ): Promise<string[]> {
     const input: DbTableFieldSpec[] = [];
-
-    // TODO: map from string chapters that accept numbers to be two character strings
-    // 09, 11, 12, 13, 15, 7A, 7N, AC
-    input.push({
-      name: 'chapter',
-      type: mssql.VarChar,
-      value: predicateAndPage.chapter,
-    });
 
     input.push({
       name: 'divisionCode',
@@ -92,25 +90,39 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       value: PAGE_SIZE * (predicateAndPage.pageNumber - 1),
     });
 
-    // RIGHT(CONCAT('000', CAST(CONSOLIDATED_CASE_NUMBER AS VARCHAR)), 10)
-    const query = `
+    let query = `
       SELECT DISTINCT CONSOLIDATED_CASE_NUMBER AS leadCaseId
       FROM CMMDB
-      WHERE CURR_CASE_CHAPT = @chapter
-      AND CASE_DIV = @divisionCode
+      WHERE CASE_DIV = @divisionCode
       AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
-      AND CONSOLIDATED_CASE_NUMBER != '0'
-      ORDER BY CONSOLIDATED_CASE_NUMBER DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
+      AND CONSOLIDATED_CASE_NUMBER != '0'`;
+
+    // Valid ACMS chapters: 09, 11, 12, 13, 15, 7A, 7N, AC
+    // 'AC' is the predecesor to chapter 15. We are not importing these old cases into CAMS.
+    // '7A' and '7N' are treated inclusively as chapter 7 cases when importing into CAMS.
+    // Leading zero padding is added for chapter 9.
+
+    if (predicateAndPage.chapter === '7') {
+      query += ` AND CURR_CASE_CHAPT IN ('7A', '7N')`;
+    } else {
+      query += ` AND CURR_CASE_CHAPT = @chapter`;
+      input.push({
+        name: 'chapter',
+        type: mssql.VarChar,
+        value: ('00' + predicateAndPage.chapter).slice(-2),
+      });
+    }
+
+    query += ` ORDER BY CONSOLIDATED_CASE_NUMBER DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
 
     type ResultType = {
       leadCaseId: string;
     };
 
     try {
-      const results = await this.executeQuery<ResultType>(context, query, input);
-      // TODO: Fix this.
-      const theFrackingList = results.results as ResultType[];
-      return theFrackingList.map((record) => record.leadCaseId);
+      const { results } = await this.executeQuery<ResultType>(context, query, input);
+      const leadCaseIdsResults = results as ResultType[];
+      return leadCaseIdsResults.map((record) => record.leadCaseId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
