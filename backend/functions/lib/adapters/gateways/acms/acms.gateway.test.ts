@@ -154,7 +154,7 @@ describe('ACMS gateway tests', () => {
     );
   });
 
-  test('should get substantive consolidation details from ACMS', async () => {
+  test('should get administrative consolidation details from ACMS', async () => {
     const leadCaseId = '0000000000';
     const databaseResult: AcmsConsolidationChildCase[] = [
       {
