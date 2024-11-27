@@ -3,21 +3,17 @@ import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { Closable, deferClose } from '../../defer-close';
 import { ApplicationContext } from '../types/basic';
 
-export abstract class AbstractDbClient implements Closable {
+export abstract class AbstractMssqlClient implements Closable {
   private connectionPool: ConnectionPool;
   private readonly moduleName: string;
 
-  protected constructor(context: ApplicationContext, config: IDbConfig, childModuleName: string) {
-    this.moduleName = `MSSQL-ABSTRACT-DB-CLIENT (${childModuleName})`;
-    this.setupConnectionPool(config);
+  protected constructor(context: ApplicationContext, dbConfig: IDbConfig, childModuleName: string) {
+    this.moduleName = `ABSTRACT-MSSQL-CLIENT (${childModuleName})`;
+    this.connectionPool = new ConnectionPool(dbConfig as config);
     deferClose(context, this);
   }
 
-  private setupConnectionPool = (databaseConfig: IDbConfig) => {
-    this.connectionPool = new ConnectionPool(databaseConfig as config);
-  };
-
-  async executeQuery<T = unknown>(
+  public async executeQuery<T = unknown>(
     context: ApplicationContext,
     query: string,
     input?: DbTableFieldSpec[],
@@ -64,18 +60,23 @@ export abstract class AbstractDbClient implements Closable {
         errorMessages.push(error.message);
         context.logger.error(this.moduleName, 'ConnectionError', { errorMessages });
       } else if (isMssqlError(error)) {
-        context.logger.error(this.moduleName, 'MssqlError', {
+        const newError = {
           error: {
             name: error.name, // RequestError
             description: error.message, // Timeout: Request failed to complete in 15000ms
           },
-          originalError: {
-            name: error.originalError.name,
-            description: error.originalError.name,
-          },
+          originalError: {},
           query,
           input,
-        });
+        };
+        if (error.originalError) {
+          newError.originalError = {
+            name: error.originalError.name,
+            description: error.originalError.name,
+          };
+        }
+
+        context.logger.error(this.moduleName, 'MssqlError', newError);
       } else {
         context.logger.error(this.moduleName, error.message, { error, query, input });
       }
