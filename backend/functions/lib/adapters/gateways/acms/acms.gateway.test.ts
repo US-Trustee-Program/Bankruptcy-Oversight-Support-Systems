@@ -108,11 +108,11 @@ describe('ACMS gateway tests', () => {
         message: '',
       });
 
-    const predicate: Predicate = {
+    const predicate: AcmsPredicate = {
       chapter: params.chapter,
       divisionCode: '081',
     };
-    const predicateAndPage: PredicateAndPage = {
+    const predicateAndPage: AcmsPredicateAndPage = {
       ...predicate,
       pageNumber: 0,
     };
