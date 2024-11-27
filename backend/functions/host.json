@@ -24,7 +24,7 @@
   },
   "extensions": {
     "durableTask": {
-      "hubName": "%TaskHubName%"
+      "hubName": "%MyTaskHub%"
     }
   }
 }
