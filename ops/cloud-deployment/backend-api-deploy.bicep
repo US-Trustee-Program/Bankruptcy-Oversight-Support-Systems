@@ -363,7 +363,7 @@ var applicationSettings = concat(
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     }
     {
-      name: 'TaskHubName'
+      name: 'MyTaskHub'
       value: 'main'
     }
   ],
