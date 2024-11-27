@@ -1,4 +1,4 @@
-import { AbstractDbClient } from '../mssql';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { AcmsGatewayImpl } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
@@ -7,6 +7,7 @@ import {
   Predicate,
   PredicateAndPage,
 } from '../../../use-cases/acms-orders/acms-orders';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 const PAGE_SIZE = 50;
 
@@ -19,7 +20,7 @@ describe('ACMS gateway tests', () => {
   test.each(pageCountCases)(
     'should execute query and calculate page count for $leadCaseCount consolidations',
     async (params: { leadCaseCount: number; pageCount: number }) => {
-      const spy = jest.spyOn(AbstractDbClient.prototype, 'executeQuery').mockResolvedValue({
+      const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: [{ leadCaseCount: params.leadCaseCount }],
         message: '',
@@ -54,7 +55,7 @@ describe('ACMS gateway tests', () => {
       ];
       const expectedResult = databaseResult.map((record) => record.leadCaseId);
 
-      const spy = jest.spyOn(AbstractDbClient.prototype, 'executeQuery').mockResolvedValue({
+      const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
         results: databaseResult,
         message: '',
@@ -114,7 +115,7 @@ describe('ACMS gateway tests', () => {
       ],
     };
 
-    const spy = jest.spyOn(AbstractDbClient.prototype, 'executeQuery').mockResolvedValue({
+    const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
       success: true,
       results: databaseResult,
       message: '',
@@ -130,5 +131,63 @@ describe('ACMS gateway tests', () => {
       expect.arrayContaining([expect.objectContaining({ name: 'leadCaseId', value: leadCaseId })]),
     );
     expect(result).toEqual(expectedResult);
+  });
+
+  test('should handle exceptions from executeQuery when calling getPageCount', async () => {
+    const mockError = new Error('test error');
+    jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.getPageCount(context, {
+        chapter: '11',
+        divisionCode: '010',
+      } as Predicate);
+    }).rejects.toThrow(
+      new UnknownError('ACMS_GATEWAY', {
+        status: 500,
+        message: 'Unknown Error',
+        originalError: mockError,
+      }),
+    );
+  });
+
+  test('should handle exceptions from executeQuery when calling getLeadCaseIds', async () => {
+    const mockError = new Error('test error');
+    jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.getLeadCaseIds(context, {
+        chapter: '11',
+        divisionCode: '010',
+        pageNumber: 1,
+      } as PredicateAndPage);
+    }).rejects.toThrow(
+      new UnknownError('ACMS_GATEWAY', {
+        status: 500,
+        message: 'Unknown Error',
+        originalError: mockError,
+      }),
+    );
+  });
+
+  test('should handle exceptions from executeQuery when calling getConsolidationDetails', async () => {
+    const mockError = new Error('test error');
+    jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.getConsolidationDetails(context, '000-00-1234');
+    }).rejects.toThrow(
+      new UnknownError('ACMS_GATEWAY', {
+        status: 500,
+        message: 'Unknown Error',
+        originalError: mockError,
+      }),
+    );
   });
 });
