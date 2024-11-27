@@ -5,6 +5,7 @@ import { AbstractMssqlClient } from './abstract-mssql-client';
 import { ApplicationContext } from '../types/basic';
 
 // Setting default Jest mocks for mssql
+//NOTE: using const here causes these tests to error out with 'Cannot access {var} before initialization
 // eslint-disable-next-line no-var
 var connectionError = new ConnectionError('');
 // eslint-disable-next-line no-var

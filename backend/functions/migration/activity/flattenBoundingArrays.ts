@@ -1,11 +1,11 @@
 import { InvocationContext } from '@azure/functions';
-import { Bounds, Predicate } from '../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsBounds, AcmsPredicate } from '../../lib/use-cases/acms-orders/acms-orders';
 
 async function flattenBoundingArrays(
-  bounds: Bounds,
+  bounds: AcmsBounds,
   _context: InvocationContext,
-): Promise<Predicate[]> {
-  const predicates: Predicate[] = [];
+): Promise<AcmsPredicate[]> {
+  const predicates: AcmsPredicate[] = [];
   for (const chapter of bounds.chapters) {
     for (const divisionCode of bounds.divisionCodes) {
       predicates.push({

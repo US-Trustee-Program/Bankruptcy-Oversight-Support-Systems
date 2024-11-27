@@ -2,7 +2,7 @@ import { InvocationContext } from '@azure/functions';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../lib/common-errors/cams-error';
 import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
-import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsPredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 import module from './getPageCount';
 
 describe('getPageCount test', () => {
@@ -17,7 +17,7 @@ describe('getPageCount test', () => {
       .mockResolvedValue(expected);
 
     const context = createMockAzureFunctionContext();
-    const input: PredicateAndPage = {
+    const input: AcmsPredicateAndPage = {
       divisionCode: '101',
       chapter: '15',
       pageNumber: 1,
@@ -33,7 +33,7 @@ describe('getPageCount test', () => {
     jest.spyOn(AcmsOrdersController.prototype, 'getPageCount').mockRejectedValue(error);
 
     const context: InvocationContext = {} as InvocationContext;
-    const input: PredicateAndPage = {
+    const input: AcmsPredicateAndPage = {
       divisionCode: '101',
       chapter: '15',
       pageNumber: 1,
