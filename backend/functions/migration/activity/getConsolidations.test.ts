@@ -1,7 +1,7 @@
 import { InvocationContext } from '@azure/functions';
 import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
 import module from './getConsolidations';
-import { PredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsPredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../lib/common-errors/cams-error';
 
@@ -17,7 +17,7 @@ describe('getConsolidations test', () => {
       .mockResolvedValue(expected);
 
     const context = createMockAzureFunctionContext();
-    const input: PredicateAndPage = {
+    const input: AcmsPredicateAndPage = {
       divisionCode: '101',
       chapter: '15',
       pageNumber: 1,
@@ -33,7 +33,7 @@ describe('getConsolidations test', () => {
     jest.spyOn(AcmsOrdersController.prototype, 'getLeadCaseIds').mockRejectedValue(error);
 
     const context: InvocationContext = {} as InvocationContext;
-    const input: PredicateAndPage = {
+    const input: AcmsPredicateAndPage = {
       divisionCode: '101',
       chapter: '15',
       pageNumber: 1,

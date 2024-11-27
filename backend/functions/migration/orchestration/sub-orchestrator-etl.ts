@@ -1,12 +1,12 @@
 import {
   AcmsConsolidationReport,
-  PredicateAndPage,
+  AcmsPredicateAndPage,
 } from '../../lib/use-cases/acms-orders/acms-orders';
 import { GET_CONSOLIDATIONS, MIGRATE_CONSOLIDATION } from '../loadConsolidations';
 import { OrchestrationContext } from 'durable-functions';
 
 export function* subOrchestratorETL(context: OrchestrationContext) {
-  const predicateAndPage: PredicateAndPage = context.df.getInput();
+  const predicateAndPage: AcmsPredicateAndPage = context.df.getInput();
 
   const leadCaseIds = yield context.df.callActivity(GET_CONSOLIDATIONS, predicateAndPage);
 

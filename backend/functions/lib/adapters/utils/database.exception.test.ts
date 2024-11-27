@@ -4,6 +4,7 @@ import { ConnectionError, MSSQLError, RequestError } from 'mssql';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 
 // Setting default Jest mocks for mssql
+//NOTE: using const here causes these tests to error out with 'Cannot access {var} before initialization
 // eslint-disable-next-line no-var
 var connectionError = new ConnectionError('');
 // eslint-disable-next-line no-var

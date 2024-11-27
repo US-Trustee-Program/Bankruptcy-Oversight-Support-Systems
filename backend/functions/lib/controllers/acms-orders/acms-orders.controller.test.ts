@@ -1,7 +1,7 @@
 import AcmsOrders, {
   AcmsConsolidationReport,
-  Predicate,
-  PredicateAndPage,
+  AcmsPredicate,
+  AcmsPredicateAndPage,
 } from '../../use-cases/acms-orders/acms-orders';
 import AcmsOrdersController from './acms-orders.controller';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -16,7 +16,7 @@ describe('AcmsOrdersController', () => {
 
   test('should return ACMS Order Consolidations page count', async () => {
     jest.spyOn(AcmsOrders.prototype, 'getPageCount').mockResolvedValue(5);
-    const predicate: Predicate = {
+    const predicate: AcmsPredicate = {
       divisionCode: '000',
       chapter: '00',
     };
@@ -29,7 +29,7 @@ describe('AcmsOrdersController', () => {
 
   test('should return array of lead case ids when calling getConsolidationOrders', async () => {
     const leadCaseIds = ['811100000', '1231111111'];
-    const predicate: PredicateAndPage = {
+    const predicate: AcmsPredicateAndPage = {
       divisionCode: '000',
       chapter: '00',
       pageNumber: 1,

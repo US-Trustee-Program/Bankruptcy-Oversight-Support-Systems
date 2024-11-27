@@ -1,7 +1,7 @@
 import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
-import AcmsOrders, { AcmsConsolidation, Predicate, PredicateAndPage } from './acms-orders';
+import AcmsOrders, { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
@@ -40,7 +40,7 @@ describe('ACMS Orders', () => {
     const getPageCount = jest.spyOn(mockAcmsGateway, 'getPageCount').mockResolvedValue(expected);
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
 
-    const predicate: Predicate = {
+    const predicate: AcmsPredicate = {
       divisionCode: '000',
       chapter: '00',
     };
@@ -58,7 +58,7 @@ describe('ACMS Orders', () => {
       .mockResolvedValue(expected);
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
 
-    const predicateAndPage: PredicateAndPage = {
+    const predicateAndPage: AcmsPredicateAndPage = {
       divisionCode: '000',
       chapter: '00',
       pageNumber: 1,
@@ -533,12 +533,12 @@ describe('ACMS Orders', () => {
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
     const useCase = new AcmsOrders();
 
-    const predicate: Predicate = {
+    const predicate: AcmsPredicate = {
       divisionCode: '000',
       chapter: '00',
     };
 
-    const predicateAndPage: PredicateAndPage = {
+    const predicateAndPage: AcmsPredicateAndPage = {
       ...predicate,
       pageNumber: 1,
     };

@@ -2,8 +2,8 @@ import * as mssql from 'mssql';
 import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
-  Predicate,
-  PredicateAndPage,
+  AcmsPredicate,
+  AcmsPredicateAndPage,
 } from '../../../use-cases/acms-orders/acms-orders';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
@@ -22,7 +22,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     super(context, config, MODULE_NAME);
   }
 
-  async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
+  async getPageCount(context: ApplicationContext, predicate: AcmsPredicate): Promise<number> {
     const input: DbTableFieldSpec[] = [];
     let query = `
       SELECT COUNT(DISTINCT CONSOLIDATED_CASE_NUMBER) AS leadCaseCount
@@ -68,7 +68,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
   async getLeadCaseIds(
     context: ApplicationContext,
-    predicateAndPage: PredicateAndPage,
+    predicateAndPage: AcmsPredicateAndPage,
   ): Promise<string[]> {
     const input: DbTableFieldSpec[] = [];
 

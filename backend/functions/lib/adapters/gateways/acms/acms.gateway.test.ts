@@ -4,8 +4,8 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
-  Predicate,
-  PredicateAndPage,
+  AcmsPredicate,
+  AcmsPredicateAndPage,
 } from '../../../use-cases/acms-orders/acms-orders';
 import { UnknownError } from '../../../common-errors/unknown-error';
 
@@ -26,7 +26,7 @@ describe('ACMS gateway tests', () => {
         results: [{ leadCaseCount: params.leadCaseCount }],
         message: '',
       });
-      const predicate: Predicate = {
+      const predicate: AcmsPredicate = {
         chapter: '15',
         divisionCode: '081',
       };
@@ -62,7 +62,7 @@ describe('ACMS gateway tests', () => {
         message: '',
       });
 
-      const predicate: PredicateAndPage = {
+      const predicate: AcmsPredicateAndPage = {
         chapter: '15',
         divisionCode: '081',
         pageNumber,
@@ -197,7 +197,7 @@ describe('ACMS gateway tests', () => {
       return await gateway.getPageCount(context, {
         chapter: '11',
         divisionCode: '010',
-      } as Predicate);
+      } as AcmsPredicate);
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
         status: 500,
@@ -266,7 +266,7 @@ describe('ACMS gateway tests', () => {
         chapter: '11',
         divisionCode: '010',
         pageNumber: 1,
-      } as PredicateAndPage);
+      } as AcmsPredicateAndPage);
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
         status: 500,

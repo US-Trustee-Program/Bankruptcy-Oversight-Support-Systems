@@ -9,17 +9,17 @@ import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
-export type Bounds = {
+export type AcmsBounds = {
   divisionCodes: string[];
   chapters: string[];
 };
 
-export type Predicate = {
+export type AcmsPredicate = {
   divisionCode: string;
   chapter: string;
 };
 
-export type PredicateAndPage = Predicate & {
+export type AcmsPredicateAndPage = AcmsPredicate & {
   pageNumber: number;
 };
 
@@ -40,14 +40,17 @@ export type AcmsConsolidationReport = {
 };
 
 export class AcmsOrders {
-  public async getPageCount(context: ApplicationContext, predicate: Predicate): Promise<number> {
+  public async getPageCount(
+    context: ApplicationContext,
+    predicate: AcmsPredicate,
+  ): Promise<number> {
     const gateway = Factory.getAcmsGateway(context);
     return gateway.getPageCount(context, predicate);
   }
 
   public async getLeadCaseIds(
     context: ApplicationContext,
-    predicateAndPage: PredicateAndPage,
+    predicateAndPage: AcmsPredicateAndPage,
   ): Promise<string[]> {
     const gateway = Factory.getAcmsGateway(context);
     return gateway.getLeadCaseIds(context, predicateAndPage);
