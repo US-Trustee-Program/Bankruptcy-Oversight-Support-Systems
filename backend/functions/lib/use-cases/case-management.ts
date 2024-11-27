@@ -19,6 +19,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { buildOfficeCode } from './offices/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { getCamsError } from '../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -119,23 +120,31 @@ export default class CaseManagement {
     applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<ResourceActions<CaseDetail>> {
-    const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
-    caseDetails.transfers = await this.casesRepo.getTransfers(caseId);
-    caseDetails.consolidation = await this.casesRepo.getConsolidation(caseId);
-    caseDetails.assignments = await this.getCaseAssignments(applicationContext, caseDetails);
-    caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
-    caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
-    const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
+    try {
+      const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
+      caseDetails.transfers = await this.casesRepo.getTransfers(caseId);
+      caseDetails.consolidation = await this.casesRepo.getConsolidation(caseId);
+      caseDetails.assignments = await this.getCaseAssignments(applicationContext, caseDetails);
+      caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
+      caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
+      const _actions = getAction<CaseDetail>(applicationContext, caseDetails);
 
-    return { ...caseDetails, _actions };
+      return { ...caseDetails, _actions };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   public async getCaseSummary(
     applicationContext: ApplicationContext,
     caseId: string,
   ): Promise<CaseSummary> {
-    const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-    return caseSummary;
+    try {
+      const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
+      return caseSummary;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   private async getCaseAssignments(
