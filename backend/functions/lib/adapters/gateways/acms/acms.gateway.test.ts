@@ -16,6 +16,7 @@ describe('ACMS gateway tests', () => {
     { leadCaseCount: 245, pageCount: 5 },
     { leadCaseCount: 250, pageCount: 5 },
     { leadCaseCount: 251, pageCount: 6 },
+    { pageCount: 0 },
   ];
   test.each(pageCountCases)(
     'should execute query and calculate page count for $leadCaseCount consolidations',
@@ -85,7 +86,7 @@ describe('ACMS gateway tests', () => {
     },
   );
 
-  test('should get consolidation details from ACMS', async () => {
+  test('should get substantive consolidation details from ACMS', async () => {
     const leadCaseId = '0000000000';
     const databaseResult: AcmsConsolidationChildCase[] = [
       {
@@ -151,6 +152,54 @@ describe('ACMS gateway tests', () => {
         originalError: mockError,
       }),
     );
+  });
+
+  test('should get substantive consolidation details from ACMS', async () => {
+    const leadCaseId = '0000000000';
+    const databaseResult: AcmsConsolidationChildCase[] = [
+      {
+        caseId: '000-00-11111',
+        consolidationDate: '20240201',
+        consolidationType: 'A',
+      },
+      {
+        caseId: '000-00-22222',
+        consolidationDate: '20240201',
+        consolidationType: 'A',
+      },
+    ];
+    const expectedResult: AcmsConsolidation = {
+      leadCaseId: '000-00-00000',
+      childCases: [
+        {
+          caseId: '000-00-11111',
+          consolidationDate: '2024-02-01',
+          consolidationType: 'administrative',
+        },
+        {
+          caseId: '000-00-22222',
+          consolidationDate: '2024-02-01',
+          consolidationType: 'administrative',
+        },
+      ],
+    };
+
+    const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: databaseResult,
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    const result = await gateway.getConsolidationDetails(context, leadCaseId);
+
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      expect.any(String),
+      expect.arrayContaining([expect.objectContaining({ name: 'leadCaseId', value: leadCaseId })]),
+    );
+    expect(result).toEqual(expectedResult);
   });
 
   test('should handle exceptions from executeQuery when calling getLeadCaseIds', async () => {
