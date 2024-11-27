@@ -6,8 +6,8 @@ import CaseDetailScreen, {
   getSummaryFacetList,
 } from './CaseDetailScreen';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
-import ReactRouter from 'react-router';
+// import { vi } from 'vitest';
+// import ReactRouter from 'react-router';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket } from '@common/cams/cases';
 
@@ -107,8 +107,6 @@ describe('Case Detail sort, search, and filter tests', () => {
     }, 5000);
 
     test('should not display sort and filter panel when navigated to basic info', async () => {
-      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
-
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 
       render(
@@ -192,7 +190,7 @@ describe('Case Detail sort, search, and filter tests', () => {
     }, 5000);
 
     test('should not display filter select when navigated to basic info', async () => {
-      vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
+      // vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });
 
       const docketEntryPath = `/case-detail/${testCaseId}/court-docket`;
 

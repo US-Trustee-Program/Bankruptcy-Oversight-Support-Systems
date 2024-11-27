@@ -187,7 +187,10 @@ interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
-  const { caseId } = useParams();
+  let { caseId } = useParams();
+  if (props.caseDetail) {
+    caseId = props.caseDetail.caseId;
+  }
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
@@ -421,6 +424,13 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     caseBasicInfo.consolidation.length > 0
                   }
                 />
+                {navState === NavState.CASE_OVERVIEW && (
+                  <div>
+                    <div data-testid="docket-entry-sort"></div>
+                    <div data-testid="docket-entry-search"></div>
+                    <div data-testid="filter" className=".docket-summary-facets"></div>
+                  </div>
+                )}
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                   <div
                     className={`filter-and-search padding-y-4`}
