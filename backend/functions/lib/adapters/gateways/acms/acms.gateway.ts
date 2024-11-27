@@ -7,14 +7,14 @@ import {
 } from '../../../use-cases/acms-orders/acms-orders';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
-import { AbstractDbClient } from '../mssql';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
 
 const MODULE_NAME = 'ACMS_GATEWAY';
 const PAGE_SIZE = 50;
 
-export class AcmsGatewayImpl extends AbstractDbClient implements AcmsGateway {
+export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway {
   constructor(context: ApplicationContext) {
     // The context carries different database connection configurations.
     // We pick off the configuration specific to this ACMS gateway.

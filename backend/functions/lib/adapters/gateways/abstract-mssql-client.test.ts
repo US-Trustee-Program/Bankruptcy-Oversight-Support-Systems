@@ -1,6 +1,6 @@
 import { QueryResults, IDbConfig } from '../types/database';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { AbstractDbClient } from './mssql';
+import { AbstractMssqlClient } from './abstract-mssql-client';
 import { ApplicationContext } from '../types/basic';
 import { IResult } from 'mssql';
 
@@ -61,7 +61,7 @@ describe('Abstract MS-SQL client', () => {
     ];
 
     // execute method under test
-    class TestDbClient extends AbstractDbClient {
+    class TestDbClient extends AbstractMssqlClient {
       constructor(context: ApplicationContext, config: IDbConfig, childModuleName: string) {
         super(context, config, childModuleName);
       }
