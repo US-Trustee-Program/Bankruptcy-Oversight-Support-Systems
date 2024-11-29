@@ -11,6 +11,7 @@ import {
 } from '@common/cams/history';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
+import { CaseAssignment } from '@common/cams/assignments';
 
 export interface CaseDetailAuditHistoryProps {
   caseId: string;
@@ -42,20 +43,26 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
       <tr key={idx}>
         <td>Staff</td>
         <td data-testid={`previous-assignment-${idx}`}>
-          {history.before.length === 0 && <>(none)</>}
-          {history.before
-            .map((assignment) => {
-              return assignment.name;
-            })
-            .join(', ')}
+          {assignmentHistoryHasValue(history.before) ? (
+            history.before
+              .map((assignment) => {
+                return assignment.name;
+              })
+              .join(', ')
+          ) : (
+            <>(none)</>
+          )}
         </td>
         <td data-testid={`new-assignment-${idx}`}>
-          {history.after.length === 0 && <>(none)</>}
-          {history.after
-            .map((assignment) => {
-              return assignment.name;
-            })
-            .join(', ')}
+          {assignmentHistoryHasValue(history.after) ? (
+            history.after
+              .map((assignment) => {
+                return assignment.name;
+              })
+              .join(', ')
+          ) : (
+            <>(none)</>
+          )}
         </td>
         <td data-testid={`changed-by-${idx}`}>
           {history.updatedBy && <>{history.updatedBy.name}</>}
@@ -89,6 +96,13 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         </td>
       </tr>
     );
+  }
+  function assignmentHistoryHasValue(assignmentHistory: CaseAssignment[] | null): boolean {
+    let noValue = true;
+    if (assignmentHistory === null || assignmentHistory.length === 0) {
+      noValue = false;
+    }
+    return noValue;
   }
 
   function renderCaseHistory() {
