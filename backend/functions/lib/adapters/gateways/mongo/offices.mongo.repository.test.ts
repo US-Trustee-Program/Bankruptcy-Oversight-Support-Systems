@@ -49,7 +49,7 @@ describe('offices repo', () => {
     const session = await createMockApplicationContextSession();
     const officeCode = 'test_office_code';
 
-    const ttl = 4500;
+    const ttl = 86400;
     const staff = createAuditRecord<OfficeStaff>({
       id: session.user.id,
       documentType: 'OFFICE_STAFF',
