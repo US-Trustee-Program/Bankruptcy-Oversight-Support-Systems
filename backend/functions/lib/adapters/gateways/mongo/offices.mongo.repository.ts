@@ -26,7 +26,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {
-    const ttl = 4500;
+    const ttl = 86400;
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
