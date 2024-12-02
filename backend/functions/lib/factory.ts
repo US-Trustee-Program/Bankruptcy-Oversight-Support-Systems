@@ -49,11 +49,15 @@ import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 let casesRepo: CasesRepository;
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
-let ordersRepo: OrdersRepository;
 let consolidationsRepo: ConsolidationOrdersRepository;
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let storageGateway: StorageGateway;
 let acmsGateway: AcmsGateway;
+
+// TODO: Need a better place to export this from.
+export interface Releaseable {
+  release: () => void;
+}
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -118,14 +122,11 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
 
 // transfer orders
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  if (!ordersRepo) {
-    if (applicationContext.config.get('dbMock')) {
-      ordersRepo = new MockMongoRepository();
-    } else {
-      ordersRepo = new OrdersMongoRepository(applicationContext);
-    }
+  if (applicationContext.config.get('dbMock')) {
+    return new MockMongoRepository();
+  } else {
+    return OrdersMongoRepository.getInstance(applicationContext);
   }
-  return ordersRepo;
 };
 
 export const getConsolidationOrdersRepository = (

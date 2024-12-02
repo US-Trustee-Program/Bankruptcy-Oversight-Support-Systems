@@ -20,6 +20,7 @@ import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders/acms-orders';
+import { Releaseable } from '../factory';
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -69,7 +70,8 @@ export interface OrdersRepository<T = Order>
   extends Searches<OrdersSearchPredicate, T>,
     CreatesMany<T, T[]>,
     Reads<T>,
-    Updates<TransferOrderAction> {}
+    Updates<TransferOrderAction>,
+    Releaseable {}
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   extends Reads<T>,

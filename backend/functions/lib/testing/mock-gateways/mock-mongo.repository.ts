@@ -27,6 +27,10 @@ export class MockMongoRepository
     RuntimeStateRepository,
     UserSessionCacheRepository
 {
+  release() {
+    return;
+  }
+
   findAssignmentsByCaseId(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }

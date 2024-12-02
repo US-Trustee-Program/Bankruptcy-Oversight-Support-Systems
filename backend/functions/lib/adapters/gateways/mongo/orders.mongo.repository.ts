@@ -16,8 +16,31 @@ const COLLECTION_NAME = 'orders';
 const { contains, equals, orderBy } = QueryBuilder;
 
 export class OrdersMongoRepository extends BaseMongoRepository implements OrdersRepository {
-  constructor(context: ApplicationContext) {
+  private static referenceCount: number = 0;
+  private static instance: OrdersMongoRepository;
+
+  private constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+  }
+
+  public static getInstance(context: ApplicationContext) {
+    if (!OrdersMongoRepository.instance)
+      OrdersMongoRepository.instance = new OrdersMongoRepository(context);
+    OrdersMongoRepository.referenceCount++;
+    return OrdersMongoRepository.instance;
+  }
+
+  public static dropInstance() {
+    if (OrdersMongoRepository.referenceCount > 0) OrdersMongoRepository.referenceCount--;
+    if (OrdersMongoRepository.referenceCount < 1) {
+      OrdersMongoRepository.instance.client.close().then();
+      OrdersMongoRepository.instance = null;
+    }
+  }
+
+  public release() {
+    console.log('***** RELEASE CALLED **********');
+    OrdersMongoRepository.dropInstance();
   }
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
