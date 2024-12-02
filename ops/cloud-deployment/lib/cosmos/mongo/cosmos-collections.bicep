@@ -121,7 +121,7 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
 
           }
           options: {
-            expireAfterSeconds: -1
+            expireAfterSeconds: 86400
           }
        }
        {
