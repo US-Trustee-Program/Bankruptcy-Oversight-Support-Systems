@@ -22,7 +22,7 @@ export default async function handler(
       logger,
       request,
     );
-    const caseHistoryController = new CaseHistoryController(applicationContext);
+    const caseHistoryController = new CaseHistoryController();
     const responseBody = await caseHistoryController.handleRequest(applicationContext);
     return toAzureSuccess(responseBody);
   } catch (error) {

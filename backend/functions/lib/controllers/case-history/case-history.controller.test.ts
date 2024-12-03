@@ -13,7 +13,7 @@ describe('Test case-history controller', () => {
 
   test('should return a case history when getCaseHistory is called', async () => {
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockResolvedValue(CASE_HISTORY);
-    const controller = new CaseHistoryController(applicationContext);
+    const controller = new CaseHistoryController();
     const result = await controller.handleRequest(applicationContext);
     expect(result.body['data']).toEqual(CASE_HISTORY);
   });
@@ -22,13 +22,13 @@ describe('Test case-history controller', () => {
     jest
       .spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory')
       .mockRejectedValue(new NotFoundError('TEST'));
-    const controller = new CaseHistoryController(applicationContext);
+    const controller = new CaseHistoryController();
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Not found');
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
     const expectedMessage = 'Unknown Error';
-    const controller = new CaseHistoryController(applicationContext);
+    const controller = new CaseHistoryController();
     jest.spyOn(CaseHistoryUseCase.prototype, 'getCaseHistory').mockImplementation(async () => {
       throw Error(expectedMessage);
     });
