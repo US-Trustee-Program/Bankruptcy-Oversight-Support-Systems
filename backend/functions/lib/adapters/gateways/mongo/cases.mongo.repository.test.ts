@@ -3,7 +3,7 @@ import { TransferFrom, TransferTo } from '../../../../../../common/src/cams/even
 import { CaseAssignmentHistory } from '../../../../../../common/src/cams/history';
 import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';

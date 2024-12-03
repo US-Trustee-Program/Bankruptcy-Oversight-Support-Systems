@@ -6,7 +6,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController, CamsTimerController } from '../controller';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 
@@ -23,7 +23,7 @@ export class OfficesController implements CamsController, CamsTimerController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 
@@ -53,7 +53,7 @@ export class OfficesController implements CamsController, CamsTimerController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 }

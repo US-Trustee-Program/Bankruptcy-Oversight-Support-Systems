@@ -1,6 +1,6 @@
 import { config, ConnectionError, ConnectionPool, MSSQLError, IResult } from 'mssql';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
-import { Closable, deferClose } from '../../defer-close';
+import { Closable, deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
 
 export abstract class AbstractMssqlClient implements Closable {

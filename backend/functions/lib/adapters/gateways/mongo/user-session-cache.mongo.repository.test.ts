@@ -8,7 +8,7 @@ import {
 import { MockData } from '../../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsJwtClaims } from '../../../../../../common/src/cams/jwt';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder from '../../../query/query-builder';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 

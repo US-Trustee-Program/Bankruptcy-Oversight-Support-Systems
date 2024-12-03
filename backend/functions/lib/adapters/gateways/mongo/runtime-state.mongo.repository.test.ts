@@ -4,7 +4,7 @@ import { ApplicationContext } from '../../types/basic';
 import { RuntimeStateMongoRepository } from './runtime-state.mongo.repository';
 import * as crypto from 'crypto';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('Runtime State Repo', () => {

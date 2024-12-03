@@ -7,7 +7,6 @@ export class CaseHistoryUseCase {
     const caseId = context.request.params.id;
     const casesRepo = Factory.getCasesRepository(context);
     const caseHistory = casesRepo.getCaseHistory(caseId);
-    casesRepo.release();
     return caseHistory;
   }
 }

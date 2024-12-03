@@ -7,7 +7,7 @@ import {
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { deferClose } from '../../../defer-close';
+import { deferClose } from '../../../deferrable/defer-close';
 
 const MODULE_NAME = 'RUNTIME_STATE_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';

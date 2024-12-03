@@ -56,8 +56,6 @@ export class CaseAssignmentUseCase {
     for (const childCaseId of childCaseIds) {
       await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
     }
-
-    casesRepo.release();
   }
 
   private async assignTrialAttorneys(
@@ -137,9 +135,6 @@ export class CaseAssignmentUseCase {
       `Updated assignments for case number ${caseId}.`,
       listOfAssignmentIdsCreated,
     );
-
-    casesRepo.release();
-
     return listOfAssignmentIdsCreated;
   }
 
