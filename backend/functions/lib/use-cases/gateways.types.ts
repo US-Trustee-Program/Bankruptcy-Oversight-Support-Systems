@@ -20,7 +20,10 @@ import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders/acms-orders';
-import { Releaseable } from '../factory';
+
+export interface Releasable {
+  release: () => void;
+}
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -55,9 +58,13 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Creates<T, T>,
     CreatesMany<T>,
     Reads<T>,
-    Deletes {}
+    Deletes,
+    Releasable {}
 
-export interface UserSessionCacheRepository<T = CamsSession> extends Reads<T>, Upserts<T, T> {}
+export interface UserSessionCacheRepository<T = CamsSession>
+  extends Reads<T>,
+    Upserts<T, T>,
+    Releasable {}
 
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>,
@@ -71,7 +78,7 @@ export interface OrdersRepository<T = Order>
     CreatesMany<T, T[]>,
     Reads<T>,
     Updates<TransferOrderAction>,
-    Releaseable {}
+    Releasable {}
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   extends Reads<T>,
@@ -104,7 +111,7 @@ export interface AcmsGateway {
   ): Promise<AcmsConsolidation>;
 }
 
-export interface CasesRepository extends Releaseable {
+export interface CasesRepository extends Releasable {
   createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
   createTransferTo(reference: TransferTo): Promise<TransferTo>;
   getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>>;
@@ -115,7 +122,7 @@ export interface CasesRepository extends Releaseable {
   createCaseHistory(history: CaseHistory);
 }
 
-export interface OfficesRepository {
+export interface OfficesRepository extends Releasable {
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void>;
 }

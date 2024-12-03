@@ -15,6 +15,10 @@ export class LocalCasesRepository implements CasesRepository {
   consolidationsContainer: Consolidation[] = [];
   transfersContainer: Transfer[] = [];
 
+  release() {
+    return;
+  }
+
   async createTransferFrom(reference: TransferFrom): Promise<TransferFrom> {
     const doc = { ...reference, id: crypto.randomUUID() };
     this.transfersContainer.push(doc);

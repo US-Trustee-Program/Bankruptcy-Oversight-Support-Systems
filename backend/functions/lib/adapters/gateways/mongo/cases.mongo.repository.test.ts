@@ -33,7 +33,7 @@ describe('Cases repository', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new CasesMongoRepository(context);
+    repo = CasesMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {

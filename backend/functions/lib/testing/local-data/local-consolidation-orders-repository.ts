@@ -2,9 +2,21 @@ import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import { ConsolidationOrdersRepository } from '../../use-cases/gateways.types';
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import * as crypto from 'crypto';
+import { ApplicationContext } from '../../adapters/types/basic';
 
 export class LocalConsolidationOrdersRepository implements ConsolidationOrdersRepository {
   container: ConsolidationOrder[] = [];
+
+  private static singleton: LocalConsolidationOrdersRepository;
+
+  release() {
+    return;
+  }
+
+  static getInstance(_context: ApplicationContext) {
+    if (!this.singleton) this.singleton = new LocalConsolidationOrdersRepository();
+    return this.singleton;
+  }
 
   async search(_predicate?: OrdersSearchPredicate): Promise<ConsolidationOrder[]> {
     return [...this.container];
