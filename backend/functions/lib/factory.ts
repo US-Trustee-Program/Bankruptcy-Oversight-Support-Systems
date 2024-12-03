@@ -123,7 +123,7 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
 // transfer orders
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
   if (applicationContext.config.get('dbMock')) {
-    return new MockMongoRepository();
+    return MockMongoRepository.getInstance(applicationContext);
   } else {
     return OrdersMongoRepository.getInstance(applicationContext);
   }
