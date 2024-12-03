@@ -143,6 +143,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
       upsert: jest.fn(),
       read: jest.fn().mockRejectedValue(new NotFoundError('')),
+      release: () => {},
     });
 
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(MockOpenIdConnectGateway);

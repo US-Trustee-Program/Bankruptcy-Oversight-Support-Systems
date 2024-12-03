@@ -24,14 +24,17 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!OrdersMongoRepository.instance)
+    if (!OrdersMongoRepository.instance) {
       OrdersMongoRepository.instance = new OrdersMongoRepository(context);
+    }
     OrdersMongoRepository.referenceCount++;
     return OrdersMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (OrdersMongoRepository.referenceCount > 0) OrdersMongoRepository.referenceCount--;
+    if (OrdersMongoRepository.referenceCount > 0) {
+      OrdersMongoRepository.referenceCount--;
+    }
     if (OrdersMongoRepository.referenceCount < 1) {
       OrdersMongoRepository.instance.client.close().then();
       OrdersMongoRepository.instance = null;
@@ -39,7 +42,6 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   }
 
   public release() {
-    console.log('***** RELEASE CALLED **********');
     OrdersMongoRepository.dropInstance();
   }
 
