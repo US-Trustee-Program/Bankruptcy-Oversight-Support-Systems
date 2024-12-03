@@ -7,6 +7,7 @@ import {
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { deferClose } from '../../../defer-close';
 
 const MODULE_NAME = 'RUNTIME_STATE_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';
@@ -19,6 +20,7 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
 {
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+    deferClose(context, this.client);
   }
 
   async read(id: RuntimeStateDocumentType): Promise<T> {
