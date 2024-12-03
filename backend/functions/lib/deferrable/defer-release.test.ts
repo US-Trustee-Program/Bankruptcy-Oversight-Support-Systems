@@ -1,48 +1,53 @@
-import { Closable, closeDeferred, deferClose, DeferCloseAccumulator } from './defer-close';
+import { Releasable } from '../use-cases/gateways.types';
+import { deferRelease, DeferReleaseAccumulator, releaseDeferred } from './defer-release';
 
 describe('Defer Release', () => {
   test('should add a releasable object to an accumulator', async () => {
-    const closable: Closable = {
-      close: async () => {},
+    const closable: Releasable = {
+      release: async () => {},
     };
-    const accumulator: DeferCloseAccumulator = {
-      closables: [],
+    const accumulator: DeferReleaseAccumulator = {
+      releasables: [],
     };
-    const success = deferClose(accumulator, closable);
+    const success = deferRelease(accumulator, closable);
 
     expect(success).toBeTruthy();
-    expect(accumulator.closables.length).toEqual(1);
+    expect(accumulator.releasables.length).toEqual(1);
   });
 
-  test('should call close on deferred closables', async () => {
-    const close = jest.fn();
-    const closable: Closable = {
-      close,
+  test('should call release on deferred releasables', async () => {
+    const release = jest.fn();
+    const releasable: Releasable = {
+      release,
     };
-    const accumulator: DeferCloseAccumulator = {
-      closables: [closable],
+    const accumulator: DeferReleaseAccumulator = {
+      releasables: [releasable],
     };
 
-    const success = closeDeferred(accumulator);
+    const success = releaseDeferred(accumulator);
 
     expect(success).toBeTruthy();
-    expect(accumulator.closables.length).toEqual(1);
-    expect(close).toHaveBeenCalledTimes(1);
+    expect(accumulator.releasables.length).toEqual(1);
+    expect(release).toHaveBeenCalledTimes(1);
   });
 
-  test('should silently handle close errors', async () => {
-    const close = jest.fn().mockRejectedValue(new Error('some error'));
-    const closable: Closable = {
-      close,
+  test('should not fail if a proper accumulator is not passed', async () => {
+    expect(releaseDeferred({})).resolves.toBeFalsy();
+  });
+
+  test('should silently handle release errors', async () => {
+    const release = jest.fn().mockRejectedValue(new Error('some error'));
+    const releasable: Releasable = {
+      release,
     };
-    const accumulator: DeferCloseAccumulator = {
-      closables: [closable],
+    const accumulator: DeferReleaseAccumulator = {
+      releasables: [releasable],
     };
 
-    const success = await closeDeferred(accumulator);
+    const success = await releaseDeferred(accumulator);
 
     expect(success).toBeFalsy();
-    expect(accumulator.closables.length).toEqual(1);
-    expect(close).toHaveBeenCalledTimes(1);
+    expect(accumulator.releasables.length).toEqual(1);
+    expect(release).toHaveBeenCalledTimes(1);
   });
 });
