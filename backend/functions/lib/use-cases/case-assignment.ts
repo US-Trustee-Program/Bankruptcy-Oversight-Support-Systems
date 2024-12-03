@@ -1,6 +1,6 @@
-import { getAssignmentRepository, getCasesRepository } from '../factory';
+import Factory, { getAssignmentRepository } from '../factory';
 import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentRepository, CasesRepository } from './gateways.types';
+import { CaseAssignmentRepository } from './gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from './case-management';
@@ -12,12 +12,12 @@ import { createAuditRecord } from '../../../../common/src/cams/auditable';
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
+  private context: ApplicationContext;
   private assignmentRepository: CaseAssignmentRepository;
-  private casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext) {
+    this.context = applicationContext;
     this.assignmentRepository = getAssignmentRepository(applicationContext);
-    this.casesRepository = getCasesRepository(applicationContext);
   }
 
   public async createTrialAttorneyAssignments(
@@ -27,6 +27,7 @@ export class CaseAssignmentUseCase {
     role: string,
     options: { processRoles?: CamsRole[] } = {},
   ): Promise<void> {
+    const casesRepo = Factory.getCasesRepository(context);
     const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
     if (!userAndProcessRoles.includes(CamsRole.CaseAssignmentManager)) {
       throw new AssignmentError(MODULE_NAME, {
@@ -44,7 +45,7 @@ export class CaseAssignmentUseCase {
     await this.assignTrialAttorneys(context, caseId, newAssignments, role);
 
     // Reassign all child cases if this is a joint administration lead case.
-    const consolidationReferences = await this.casesRepository.getConsolidation(caseId);
+    const consolidationReferences = await casesRepo.getConsolidation(caseId);
     const childCaseIds = consolidationReferences
       .filter(
         (reference) =>
@@ -55,6 +56,8 @@ export class CaseAssignmentUseCase {
     for (const childCaseId of childCaseIds) {
       await this.assignTrialAttorneys(context, childCaseId, newAssignments, role);
     }
+
+    casesRepo.release();
   }
 
   private async assignTrialAttorneys(
@@ -63,6 +66,8 @@ export class CaseAssignmentUseCase {
     newAssignments: CamsUserReference[],
     role: string,
   ): Promise<string[]> {
+    const casesRepo = Factory.getCasesRepository(context);
+    const assignmentRepo = Factory.getAssignmentRepository(context);
     context.logger.info(MODULE_NAME, 'New assignments:', newAssignments);
 
     const listOfAssignments: CaseAssignment[] = [];
@@ -85,9 +90,7 @@ export class CaseAssignmentUseCase {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
-    const existingAssignmentRecordsMap = await this.assignmentRepository.findAssignmentsByCaseId([
-      caseId,
-    ]);
+    const existingAssignmentRecordsMap = await assignmentRepo.findAssignmentsByCaseId([caseId]);
     const existingAssignmentRecords = existingAssignmentRecordsMap.get(caseId) ?? [];
     for (const existingAssignment of existingAssignmentRecords) {
       const stillAssigned = listOfAssignments.find((newAssignment) => {
@@ -97,7 +100,7 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        await this.assignmentRepository.update({
+        await assignmentRepo.update({
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
         });
@@ -109,15 +112,13 @@ export class CaseAssignmentUseCase {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
-        const assignmentId = await this.assignmentRepository.create(assignment);
+        const assignmentId = await assignmentRepo.create(assignment);
         if (!listOfAssignmentIdsCreated.includes(assignmentId))
           listOfAssignmentIdsCreated.push(assignmentId);
       }
     }
 
-    const newAssignmentRecordsMap = await this.assignmentRepository.findAssignmentsByCaseId([
-      caseId,
-    ]);
+    const newAssignmentRecordsMap = await assignmentRepo.findAssignmentsByCaseId([caseId]);
     const newAssignmentRecords = newAssignmentRecordsMap.get(caseId);
     const history = createAuditRecord<CaseAssignmentHistory>(
       {
@@ -129,7 +130,7 @@ export class CaseAssignmentUseCase {
       context.session?.user,
     );
     history.updatedOn = currentDate;
-    await this.casesRepository.createCaseHistory(history);
+    await casesRepo.createCaseHistory(history);
 
     context.logger.info(
       MODULE_NAME,
@@ -137,11 +138,14 @@ export class CaseAssignmentUseCase {
       listOfAssignmentIdsCreated,
     );
 
+    casesRepo.release();
+
     return listOfAssignmentIdsCreated;
   }
 
   public async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
-    return await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
+    const assignmentRepo = Factory.getAssignmentRepository(this.context);
+    return await assignmentRepo.findAssignmentsByCaseId(caseIds);
   }
 
   public async getCaseLoad(userId: string): Promise<number> {
@@ -150,7 +154,7 @@ export class CaseAssignmentUseCase {
   }
 
   public async getCaseAssignments(userId: string): Promise<CaseAssignment[]> {
-    const assignments = await this.assignmentRepository.findAssignmentsByAssignee(userId);
-    return assignments;
+    const assignmentRepo = Factory.getAssignmentRepository(this.context);
+    return await assignmentRepo.findAssignmentsByAssignee(userId);
   }
 }

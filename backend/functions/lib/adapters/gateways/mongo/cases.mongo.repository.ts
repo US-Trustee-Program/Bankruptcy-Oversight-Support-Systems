@@ -18,8 +18,30 @@ const COLLECTION_NAME = 'cases';
 const { and, equals, regex } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
-  constructor(context: ApplicationContext) {
+  private static referenceCount: number = 0;
+  private static instance: CasesMongoRepository;
+
+  private constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+  }
+
+  public static getInstance(context: ApplicationContext) {
+    if (!CasesMongoRepository.instance)
+      CasesMongoRepository.instance = new CasesMongoRepository(context);
+    CasesMongoRepository.referenceCount++;
+    return CasesMongoRepository.instance;
+  }
+
+  public static dropInstance() {
+    if (CasesMongoRepository.referenceCount > 0) CasesMongoRepository.referenceCount--;
+    if (CasesMongoRepository.referenceCount < 1) {
+      CasesMongoRepository.instance.client.close().then();
+      CasesMongoRepository.instance = null;
+    }
+  }
+
+  public release() {
+    CasesMongoRepository.dropInstance();
   }
 
   async getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>> {

@@ -46,7 +46,6 @@ import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 
-let casesRepo: CasesRepository;
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
 let consolidationsRepo: ConsolidationOrdersRepository;
@@ -78,7 +77,7 @@ export const getAssignmentRepository = (
   applicationContext: ApplicationContext,
 ): CaseAssignmentRepository => {
   if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new CaseAssignmentMongoRepository(applicationContext);
+  return CaseAssignmentMongoRepository.getInstance(applicationContext);
 };
 
 export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
@@ -143,14 +142,8 @@ export const getConsolidationOrdersRepository = (
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  if (!casesRepo) {
-    if (applicationContext.config.get('dbMock')) {
-      casesRepo = new MockMongoRepository();
-    } else {
-      casesRepo = new CasesMongoRepository(applicationContext);
-    }
-  }
-  return casesRepo;
+  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  return CasesMongoRepository.getInstance(applicationContext);
 };
 
 export const getRuntimeStateRepository = <T extends RuntimeState>(

@@ -104,7 +104,7 @@ export interface AcmsGateway {
   ): Promise<AcmsConsolidation>;
 }
 
-export interface CasesRepository {
+export interface CasesRepository extends Releaseable {
   createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
   createTransferTo(reference: TransferTo): Promise<TransferTo>;
   getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>>;

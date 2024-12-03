@@ -1,6 +1,5 @@
-import { getCasesRepository } from '../../factory';
+import Factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CasesRepository } from '../gateways.types';
 import { EventCaseReference } from '../../../../../common/src/cams/events';
 
 function getEarliestDate(orders: Array<EventCaseReference>) {
@@ -10,15 +9,10 @@ function getEarliestDate(orders: Array<EventCaseReference>) {
 }
 
 export class CaseAssociatedUseCase {
-  private casesRepository: CasesRepository;
-
-  constructor(applicationContext: ApplicationContext) {
-    this.casesRepository = getCasesRepository(applicationContext);
-  }
-
   public async getAssociatedCases(context: ApplicationContext): Promise<EventCaseReference[]> {
+    const casesRepo = Factory.getCasesRepository(context);
     const caseId = context.request.params.caseId;
-    const consolidation = await this.casesRepository.getConsolidation(caseId);
+    const consolidation = await casesRepo.getConsolidation(caseId);
     if (!consolidation.length) return [];
 
     let leadCaseRef: EventCaseReference;
@@ -30,14 +24,17 @@ export class CaseAssociatedUseCase {
     if (thisIsTheLeadCase) {
       childCaseRefs = consolidation;
       const leadCaseId = childCaseRefs[0].otherCase.caseId;
-      const childCaseConsolidation = await this.casesRepository.getConsolidation(leadCaseId);
+      const childCaseConsolidation = await casesRepo.getConsolidation(leadCaseId);
       leadCaseRef = childCaseConsolidation[0];
     } else {
       leadCaseRef = consolidation[0];
       const leadCaseId = leadCaseRef.otherCase.caseId;
-      childCaseRefs = await this.casesRepository.getConsolidation(leadCaseId);
+      childCaseRefs = await casesRepo.getConsolidation(leadCaseId);
     }
     leadCaseRef.orderDate = getEarliestDate(childCaseRefs);
+
+    casesRepo.release();
+
     return [leadCaseRef, ...childCaseRefs];
   }
 }
