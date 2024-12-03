@@ -21,8 +21,30 @@ export type OfficeStaff = Staff &
   };
 
 export class OfficesMongoRepository extends BaseMongoRepository implements OfficesRepository {
+  private static referenceCount: number = 0;
+  private static instance: OfficesMongoRepository;
+
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+  }
+
+  public static getInstance(context: ApplicationContext) {
+    if (!OfficesMongoRepository.instance)
+      OfficesMongoRepository.instance = new OfficesMongoRepository(context);
+    OfficesMongoRepository.referenceCount++;
+    return OfficesMongoRepository.instance;
+  }
+
+  public static dropInstance() {
+    if (OfficesMongoRepository.referenceCount > 0) OfficesMongoRepository.referenceCount--;
+    if (OfficesMongoRepository.referenceCount < 1) {
+      OfficesMongoRepository.instance.client.close().then();
+      OfficesMongoRepository.instance = null;
+    }
+  }
+
+  public release() {
+    OfficesMongoRepository.dropInstance();
   }
 
   async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {

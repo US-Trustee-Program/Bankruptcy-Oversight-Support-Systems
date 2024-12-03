@@ -23,8 +23,33 @@ export class UserSessionCacheMongoRepository
   extends BaseMongoRepository
   implements UserSessionCacheRepository
 {
+  private static referenceCount: number = 0;
+  private static instance: UserSessionCacheMongoRepository;
+
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+  }
+
+  public static getInstance(context: ApplicationContext) {
+    if (!UserSessionCacheMongoRepository.instance) {
+      UserSessionCacheMongoRepository.instance = new UserSessionCacheMongoRepository(context);
+    }
+    UserSessionCacheMongoRepository.referenceCount++;
+    return UserSessionCacheMongoRepository.instance;
+  }
+
+  public static dropInstance() {
+    if (UserSessionCacheMongoRepository.referenceCount > 0) {
+      UserSessionCacheMongoRepository.referenceCount--;
+    }
+    if (UserSessionCacheMongoRepository.referenceCount < 1) {
+      UserSessionCacheMongoRepository.instance.client.close().then();
+      UserSessionCacheMongoRepository.instance = null;
+    }
+  }
+
+  public release() {
+    UserSessionCacheMongoRepository.dropInstance();
   }
 
   public async read(token: string): Promise<CamsSession> {

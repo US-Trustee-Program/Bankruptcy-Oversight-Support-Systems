@@ -35,8 +35,7 @@ export class MockMongoRepository
   }
 
   static getInstance(_context: ApplicationContext) {
-    if (!this.singleton) this.singleton = new MockMongoRepository();
-    return this.singleton;
+    return new MockMongoRepository();
   }
 
   findAssignmentsByCaseId(..._ignore): Promise<any> {

@@ -14,6 +14,7 @@ import {
   CasesRepository,
   ConsolidationOrdersRepository,
   OfficesRepository,
+  OfficeStaffSyncState,
   OrdersGateway,
   OrdersRepository,
   OrderSyncState,
@@ -48,15 +49,16 @@ import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
-let consolidationsRepo: ConsolidationOrdersRepository;
-let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let storageGateway: StorageGateway;
 let acmsGateway: AcmsGateway;
 
-// TODO: Need a better place to export this from.
-export interface Releaseable {
-  release: () => void;
-}
+let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
+let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
+
+let mockOrdersRepository: MockMongoRepository;
+let mockConsolidationsRepository: MockMongoRepository;
+let mockCasesRepository: MockMongoRepository;
+let mockUserSessionCacheRepository: MockMongoRepository;
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
@@ -116,13 +118,16 @@ export const getOfficesRepository = (applicationContext: ApplicationContext): Of
   if (applicationContext.config.authConfig.provider === 'mock') {
     return MockOfficesRepository;
   }
-  return new OfficesMongoRepository(applicationContext);
+  return OfficesMongoRepository.getInstance(applicationContext);
 };
 
 // transfer orders
 export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
   if (applicationContext.config.get('dbMock')) {
-    return MockMongoRepository.getInstance(applicationContext);
+    if (!mockOrdersRepository) {
+      mockOrdersRepository = MockMongoRepository.getInstance(applicationContext);
+    }
+    return mockOrdersRepository;
   } else {
     return OrdersMongoRepository.getInstance(applicationContext);
   }
@@ -131,18 +136,23 @@ export const getOrdersRepository = (applicationContext: ApplicationContext): Ord
 export const getConsolidationOrdersRepository = (
   applicationContext: ApplicationContext,
 ): ConsolidationOrdersRepository => {
-  if (!consolidationsRepo) {
-    if (applicationContext.config.get('dbMock')) {
-      consolidationsRepo = new MockMongoRepository();
-    } else {
-      consolidationsRepo = new ConsolidationOrdersMongoRepository(applicationContext);
+  if (applicationContext.config.get('dbMock')) {
+    if (!mockConsolidationsRepository) {
+      mockConsolidationsRepository = MockMongoRepository.getInstance(applicationContext);
     }
+    return mockConsolidationsRepository;
+  } else {
+    return ConsolidationOrdersMongoRepository.getInstance(applicationContext);
   }
-  return consolidationsRepo;
 };
 
 export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
+  if (applicationContext.config.get('dbMock')) {
+    if (!mockCasesRepository) {
+      mockCasesRepository = MockMongoRepository.getInstance(applicationContext);
+    }
+    return mockCasesRepository;
+  }
   return CasesMongoRepository.getInstance(applicationContext);
 };
 
@@ -162,6 +172,15 @@ export const getOrderSyncStateRepo = (
   return orderSyncStateRepo;
 };
 
+export const getOfficeStaffSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<OfficeStaffSyncState> => {
+  if (!officeStaffSyncStateRepo) {
+    officeStaffSyncStateRepo = getRuntimeStateRepository<OfficeStaffSyncState>(context);
+  }
+  return officeStaffSyncStateRepo;
+};
+
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
   if (context.config.authConfig.provider === 'okta') return OktaGateway;
   if (context.config.authConfig.provider === 'mock') return MockOpenIdConnectGateway;
@@ -178,8 +197,13 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
 export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
-  if (context.config.get('dbMock')) return new MockMongoRepository();
-  return new UserSessionCacheMongoRepository(context);
+  if (context.config.get('dbMock')) {
+    if (!mockUserSessionCacheRepository) {
+      mockUserSessionCacheRepository = MockMongoRepository.getInstance(context);
+    }
+    return mockUserSessionCacheRepository;
+  }
+  return UserSessionCacheMongoRepository.getInstance(context);
 };
 
 export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
@@ -211,10 +235,11 @@ export const Factory = {
   getOfficesGateway,
   getOfficesRepository,
   getOrdersRepository,
-  getOrderSyncStateRepo,
   getConsolidationOrdersRepository,
   getCasesRepository,
   getRuntimeStateRepository,
+  getOrderSyncStateRepo,
+  getOfficeStaffSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,
   getUserSessionCacheRepository,
