@@ -32,9 +32,6 @@ export class CaseAssociatedUseCase {
       childCaseRefs = await casesRepo.getConsolidation(leadCaseId);
     }
     leadCaseRef.orderDate = getEarliestDate(childCaseRefs);
-
-    casesRepo.release();
-
     return [leadCaseRef, ...childCaseRefs];
   }
 }
