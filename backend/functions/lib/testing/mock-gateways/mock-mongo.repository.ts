@@ -6,6 +6,7 @@ import {
   ConsolidationFrom,
 } from '../../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../../common/src/cams/history';
+import { ApplicationContext } from '../../adapters/types/basic';
 import {
   CaseAssignmentRepository,
   CasesRepository,
@@ -27,8 +28,15 @@ export class MockMongoRepository
     RuntimeStateRepository,
     UserSessionCacheRepository
 {
+  private static singleton: MockMongoRepository;
+
   release() {
     return;
+  }
+
+  static getInstance(_context: ApplicationContext) {
+    if (!this.singleton) this.singleton = new MockMongoRepository();
+    return this.singleton;
   }
 
   findAssignmentsByCaseId(..._ignore): Promise<any> {

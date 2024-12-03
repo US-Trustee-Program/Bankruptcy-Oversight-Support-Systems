@@ -15,7 +15,7 @@ describe('orders repo', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new OrdersMongoRepository(context);
+    repo = OrdersMongoRepository.getInstance(context);
     jest.clearAllMocks();
   });
 
