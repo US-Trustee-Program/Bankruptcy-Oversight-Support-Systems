@@ -30,6 +30,10 @@ describe('Defer Close', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  test('should not fail if a proper accumulator is not passed', async () => {
+    expect(closeDeferred({})).resolves.toBeFalsy();
+  });
+
   test('should silently handle close errors', async () => {
     const close = jest.fn().mockRejectedValue(new Error('some error'));
     const closable: Closable = {
