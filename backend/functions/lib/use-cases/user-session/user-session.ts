@@ -68,9 +68,6 @@ export class UserSessionUseCase {
       };
 
       await sessionCacheRepository.upsert(session);
-
-      sessionCacheRepository.release();
-
       return session;
     } catch (error) {
       throw isCamsError(error)

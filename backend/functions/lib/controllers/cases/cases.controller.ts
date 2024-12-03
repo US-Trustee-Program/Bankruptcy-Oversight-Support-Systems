@@ -8,8 +8,8 @@ import { Pagination } from '../../../../../common/src/api/pagination';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { ResourceActions } from '../../../../../common/src/cams/actions';
 import { CamsController } from '../controller';
-import { closeDeferred } from '../../defer-close';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
@@ -42,7 +42,7 @@ export class CasesController implements CamsController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 

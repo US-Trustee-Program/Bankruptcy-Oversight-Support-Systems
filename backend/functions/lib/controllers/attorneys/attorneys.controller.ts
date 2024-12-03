@@ -4,7 +4,7 @@ import { AttorneyUser } from '../../../../../common/src/cams/users';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'ATTORNEYS-CONTROLLER';
 
@@ -26,7 +26,7 @@ export class AttorneysController implements CamsController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 }

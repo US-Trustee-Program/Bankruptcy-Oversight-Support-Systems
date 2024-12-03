@@ -1,6 +1,6 @@
 import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { CaseAssignmentMongoRepository } from './case-assignment.mongo.repository';

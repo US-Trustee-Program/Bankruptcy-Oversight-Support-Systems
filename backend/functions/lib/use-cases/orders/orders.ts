@@ -75,9 +75,6 @@ export class OrdersUseCase {
     const transferOrders = await ordersRepo.search(predicate);
     const consolidationOrders = await consolidationsRepo.search(predicate);
 
-    ordersRepo.release();
-    consolidationsRepo.release();
-
     return transferOrders
       .concat(consolidationOrders)
       .sort((a, b) => sortDates(a.orderDate, b.orderDate));
@@ -151,9 +148,6 @@ export class OrdersUseCase {
       );
       await casesRepo.createCaseHistory(caseHistory);
     }
-
-    ordersRepo.release();
-    casesRepo.release();
   }
 
   public async syncOrders(
@@ -253,10 +247,6 @@ export class OrdersUseCase {
     const finalSyncState = { ...initialSyncState, txId: maxTxId };
     await runtimeStateRepo.upsert(finalSyncState);
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
-    //TODO: Will need runtime state repo release once implemented
-    casesRepo.release();
-    ordersRepo.release();
-    consolidationsRepo.release();
 
     return {
       options,
@@ -311,8 +301,6 @@ export class OrdersUseCase {
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
         .sort((a, b) => sortDatesReverse(a.updatedOn, b.updatedOn))
         .shift()?.after;
-
-      casesRepo.release();
     } catch {
       before = undefined;
     }
@@ -467,8 +455,6 @@ export class OrdersUseCase {
       );
       await casesRepo.createCaseHistory(leadCaseHistory);
     }
-
-    consolidationsRepo.release();
 
     return response;
   }

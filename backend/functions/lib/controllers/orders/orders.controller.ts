@@ -16,7 +16,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController, CamsTimerController } from '../controller';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'ORDERS-CONTROLLER';
 
@@ -39,7 +39,7 @@ export class OrdersController implements CamsController, CamsTimerController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 
@@ -63,7 +63,7 @@ export class OrdersController implements CamsController, CamsTimerController {
           });
       }
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 

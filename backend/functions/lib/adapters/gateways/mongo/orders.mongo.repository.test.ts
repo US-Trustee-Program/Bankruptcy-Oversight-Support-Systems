@@ -5,7 +5,7 @@ import MockData from '../../../../../../common/src/cams/test-utilities/mock-data
 import { TransferOrderAction } from '../../../../../../common/src/cams/orders';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
