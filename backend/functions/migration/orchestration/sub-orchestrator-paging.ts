@@ -7,7 +7,7 @@ export function* subOrchestratorPaging(context: OrchestrationContext) {
 
   const pageCount: number = yield context.df.callActivity(GET_PAGE_COUNT, predicate);
   const provisioningTasks = [];
-  for (let pageNumber = 0; pageNumber < pageCount; pageNumber++) {
+  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
     const predicateAndPage: AcmsPredicateAndPage = {
       ...predicate,
       pageNumber,

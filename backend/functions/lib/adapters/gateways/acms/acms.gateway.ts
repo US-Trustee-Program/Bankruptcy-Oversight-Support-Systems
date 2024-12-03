@@ -26,7 +26,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     const input: DbTableFieldSpec[] = [];
     let query = `
       SELECT COUNT(DISTINCT CONSOLIDATED_CASE_NUMBER) AS leadCaseCount
-      FROM CMMDB
+      FROM [dbo].[CMMDB]
       WHERE CASE_DIV = @divisionCode
       AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
       AND CONSOLIDATED_CASE_NUMBER != '0'`;
@@ -59,6 +59,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     try {
       const results = await this.executeQuery<ResultType>(context, query, input);
+      // TODO: handle falsy result
       const result = results.results[0];
       return result.leadCaseCount ? Math.ceil(result.leadCaseCount / PAGE_SIZE) : 0;
     } catch (originalError) {
@@ -92,7 +93,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     let query = `
       SELECT DISTINCT CONSOLIDATED_CASE_NUMBER AS leadCaseId
-      FROM CMMDB
+      FROM [dbo].[CMMDB]
       WHERE CASE_DIV = @divisionCode
       AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
       AND CONSOLIDATED_CASE_NUMBER != '0'`;
@@ -135,7 +136,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     const input: DbTableFieldSpec[] = [];
     input.push({
       name: `leadCaseId`,
-      type: mssql.Int,
+      type: mssql.BigInt,
       value: leadCaseId,
     });
 
@@ -149,8 +150,8 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
         ) AS caseId,
         CONSOLIDATION_DATE as consolidationDate,
-        CONSOLIDATION_TYPE as consolidationType,
-      FROM CMMDB
+        CONSOLIDATION_TYPE as consolidationType
+      FROM [dbo].[CMMDB]
       WHERE CONSOLIDATED_CASE_NUMBER = @leadCaseId`;
 
     try {
@@ -169,6 +170,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         childCases,
       };
     } catch (originalError) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to get case info for lead case id: ${leadCaseId}.`,
+        originalError,
+      );
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
