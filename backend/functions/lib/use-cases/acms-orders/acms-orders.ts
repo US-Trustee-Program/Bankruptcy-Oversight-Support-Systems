@@ -180,6 +180,8 @@ export class AcmsOrders {
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
       }
+
+      casesRepo.release();
     } catch (error) {
       report.success = false;
       const camsError = getCamsError(

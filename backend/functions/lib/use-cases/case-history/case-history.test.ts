@@ -9,8 +9,9 @@ describe('Test case-history use case', () => {
     jest.spyOn(MockMongoRepository.prototype, 'getCaseHistory').mockResolvedValue(CASE_HISTORY);
     const mockContext = await createMockApplicationContext();
     const caseId = NORMAL_CASE_ID;
-    const useCase = new CaseHistoryUseCase(mockContext);
-    const result = await useCase.getCaseHistory(caseId);
+    mockContext.request.params.id = caseId;
+    const useCase = new CaseHistoryUseCase();
+    const result = await useCase.getCaseHistory(mockContext);
     expect(result).toEqual(CASE_HISTORY);
   });
 });

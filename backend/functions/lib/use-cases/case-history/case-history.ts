@@ -1,16 +1,13 @@
-import { getCasesRepository } from '../../factory';
+import Factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CasesRepository } from '../gateways.types';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 
 export class CaseHistoryUseCase {
-  private casesRepository: CasesRepository;
-
-  constructor(applicationContext: ApplicationContext) {
-    this.casesRepository = getCasesRepository(applicationContext);
-  }
-
-  public async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
-    return this.casesRepository.getCaseHistory(caseId);
+  public async getCaseHistory(context: ApplicationContext): Promise<CaseHistory[]> {
+    const caseId = context.request.params.id;
+    const casesRepo = Factory.getCasesRepository(context);
+    const caseHistory = casesRepo.getCaseHistory(caseId);
+    casesRepo.release();
+    return caseHistory;
   }
 }
