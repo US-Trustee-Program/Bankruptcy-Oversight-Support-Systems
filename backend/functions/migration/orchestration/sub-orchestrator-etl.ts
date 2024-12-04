@@ -12,7 +12,8 @@ export function* subOrchestratorETL(context: OrchestrationContext) {
 
   const etlTasks = [];
   for (let i = 0; i < leadCaseIds.length; i++) {
-    etlTasks.push(context.df.callActivity(MIGRATE_CONSOLIDATION, leadCaseIds[i]));
+    const leadCaseIdString = leadCaseIds[i].toString();
+    etlTasks.push(context.df.callActivity(MIGRATE_CONSOLIDATION, leadCaseIdString));
   }
 
   yield context.df.Task.all(etlTasks);

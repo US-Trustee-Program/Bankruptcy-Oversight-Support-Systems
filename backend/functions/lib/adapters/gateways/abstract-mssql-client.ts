@@ -2,6 +2,7 @@ import { config, ConnectionError, ConnectionPool, MSSQLError, IResult } from 'ms
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
+import { getCamsError } from '../../common-errors/error-utilities';
 
 export abstract class AbstractMssqlClient {
   private static connectionPool: ConnectionPool;
@@ -22,8 +23,11 @@ export abstract class AbstractMssqlClient {
   ): Promise<QueryResults> {
     // we should do some sanitization here to eliminate sql injection issues
     try {
-      const connection = await AbstractMssqlClient.connectionPool.connect();
-      const request = connection.request();
+      if (!AbstractMssqlClient.connectionPool.connected) {
+        await AbstractMssqlClient.connectionPool.connect();
+      }
+      // const connection = await AbstractMssqlClient.connectionPool.connect();
+      const request = AbstractMssqlClient.connectionPool.request();
 
       if (typeof input != 'undefined') {
         input.forEach((item) => {
@@ -37,10 +41,6 @@ export abstract class AbstractMssqlClient {
         message: '',
         success: true,
       };
-
-      context.logger.info(this.moduleName, 'Closing connection.');
-
-      await connection.close();
 
       return queryResults;
     } catch (error) {
@@ -83,13 +83,14 @@ export abstract class AbstractMssqlClient {
         context.logger.error(this.moduleName, error.message, { error, query, input });
       }
 
-      // TODO May want to refactor to throw CamsError and remove returning QueryResults
-      const queryResult: QueryResults = {
-        results: {},
-        message: (error as Error).message,
-        success: false,
-      };
-      return queryResult;
+      // // TODO May want to refactor to throw CamsError and remove returning QueryResults
+      // const queryResult: QueryResults = {
+      //   results: {},
+      //   message: (error as Error).message,
+      //   success: false,
+      // };
+      // return queryResult;
+      throw getCamsError(error, this.moduleName, error.message);
     }
   }
 }
