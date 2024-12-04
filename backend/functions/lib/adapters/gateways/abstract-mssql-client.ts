@@ -1,16 +1,18 @@
 import { config, ConnectionError, ConnectionPool, MSSQLError, IResult } from 'mssql';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
-import { Closable, deferClose } from '../../deferrable/defer-close';
+import { deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
 
-export abstract class AbstractMssqlClient implements Closable {
-  private connectionPool: ConnectionPool;
+export abstract class AbstractMssqlClient {
+  private static connectionPool: ConnectionPool;
   private readonly moduleName: string;
 
   protected constructor(context: ApplicationContext, dbConfig: IDbConfig, childModuleName: string) {
     this.moduleName = `ABSTRACT-MSSQL-CLIENT (${childModuleName})`;
-    this.connectionPool = new ConnectionPool(dbConfig as config);
-    deferClose(context, this);
+    if (!AbstractMssqlClient.connectionPool) {
+      AbstractMssqlClient.connectionPool = new ConnectionPool(dbConfig as config);
+      deferClose(context, AbstractMssqlClient.connectionPool);
+    }
   }
 
   public async executeQuery<T = unknown>(
@@ -20,7 +22,7 @@ export abstract class AbstractMssqlClient implements Closable {
   ): Promise<QueryResults> {
     // we should do some sanitization here to eliminate sql injection issues
     try {
-      const connection = await this.connectionPool.connect();
+      const connection = await AbstractMssqlClient.connectionPool.connect();
       const request = connection.request();
 
       if (typeof input != 'undefined') {
@@ -89,10 +91,6 @@ export abstract class AbstractMssqlClient implements Closable {
       };
       return queryResult;
     }
-  }
-
-  public async close(): Promise<void> {
-    await this.connectionPool.close();
   }
 }
 
