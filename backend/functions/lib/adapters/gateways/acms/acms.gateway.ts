@@ -157,14 +157,18 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     try {
       const results = await this.executeQuery<AcmsConsolidationChildCase>(context, query, input);
       const rawResults = results.results as AcmsConsolidationChildCase[];
-      const childCases = rawResults.map((bCase) => {
-        const date = String(bCase.consolidationDate);
-        return {
-          ...bCase,
-          consolidationType: bCase.consolidationType === 'S' ? 'substantive' : 'administrative',
-          consolidationDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
-        };
-      });
+
+      const formattedLeadCaseId = this.formatCaseId(leadCaseId);
+      const childCases = rawResults
+        .filter((bCase) => bCase.caseId !== formattedLeadCaseId)
+        .map((bCase) => {
+          const date = String(bCase.consolidationDate);
+          return {
+            ...bCase,
+            consolidationType: bCase.consolidationType === 'S' ? 'substantive' : 'administrative',
+            consolidationDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
+          };
+        });
       return {
         leadCaseId: this.formatCaseId(leadCaseId.toString()),
         childCases,
