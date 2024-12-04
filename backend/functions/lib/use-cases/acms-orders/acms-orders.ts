@@ -45,8 +45,7 @@ export class AcmsOrders {
     predicate: AcmsPredicate,
   ): Promise<number> {
     const gateway = Factory.getAcmsGateway(context);
-    const pageCount = await gateway.getPageCount(context, predicate);
-    return pageCount > 0 ? 1 : pageCount;
+    return await gateway.getPageCount(context, predicate);
   }
 
   public async getLeadCaseIds(

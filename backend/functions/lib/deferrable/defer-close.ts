@@ -49,3 +49,4 @@ async function closeGlobal() {
 
 process.on('SIGINT', closeGlobal);
 process.on('SIGTERM', closeGlobal);
+process.on('exit', closeGlobal);

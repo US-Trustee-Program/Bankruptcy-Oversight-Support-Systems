@@ -1,9 +1,11 @@
-import { ConnectionError, MSSQLError } from 'mssql';
+import { ConnectionError, ConnectionPool, MSSQLError } from 'mssql';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
 import { getSqlConnection } from '../../factory';
+import { deferClose } from '../../deferrable/defer-close';
 
 const MODULE_NAME = 'DATABASE-UTILITY';
+let sqlConnectionPool: ConnectionPool;
 
 export async function executeQuery(
   applicationContext: ApplicationContext,
@@ -13,9 +15,13 @@ export async function executeQuery(
 ): Promise<QueryResults> {
   // we should do some sanitization here to eliminate sql injection issues
   try {
-    const sqlConnectionPool = getSqlConnection(databaseConfig);
-    const sqlConnection = await sqlConnectionPool.connect();
-    const sqlRequest = sqlConnection.request();
+    if (!sqlConnectionPool) {
+      sqlConnectionPool = getSqlConnection(databaseConfig);
+      deferClose(sqlConnectionPool);
+    }
+
+    if (!sqlConnectionPool.connected) await sqlConnectionPool.connect();
+    const sqlRequest = sqlConnectionPool.request();
 
     if (typeof input != 'undefined') {
       input.forEach((item) => {
@@ -29,10 +35,6 @@ export async function executeQuery(
       message: '',
       success: true,
     };
-
-    applicationContext.logger.info(MODULE_NAME, 'Closing connection.');
-
-    await sqlConnection.close();
 
     return queryResult;
   } catch (error) {
