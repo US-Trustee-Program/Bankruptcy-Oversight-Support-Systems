@@ -22,7 +22,7 @@ export default async function handler(
       logger,
       request,
     );
-    const controller = new CaseAssociatedController(applicationContext);
+    const controller = new CaseAssociatedController();
 
     const response = await controller.handleRequest(applicationContext);
 

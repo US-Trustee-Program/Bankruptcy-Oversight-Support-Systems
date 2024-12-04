@@ -103,7 +103,6 @@ describe('offices use case tests', () => {
     expect(attorneysSpy).toHaveBeenCalledWith(localContext);
   });
 
-  // TODO: this test is broken line 121
   test('should return attorneys for office with feature flag on', async () => {
     const localContext = {
       ...applicationContext,
