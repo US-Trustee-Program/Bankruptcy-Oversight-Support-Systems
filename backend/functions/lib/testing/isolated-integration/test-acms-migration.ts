@@ -29,5 +29,6 @@ async function testAcmsMigration() {
 if (require.main === module) {
   (async () => {
     await testAcmsMigration();
+    process.exit(0);
   })();
 }
