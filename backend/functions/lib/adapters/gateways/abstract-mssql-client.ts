@@ -11,7 +11,7 @@ export abstract class AbstractMssqlClient {
     this.moduleName = `ABSTRACT-MSSQL-CLIENT (${childModuleName})`;
     if (!AbstractMssqlClient.connectionPool) {
       AbstractMssqlClient.connectionPool = new ConnectionPool(dbConfig as config);
-      deferClose(context, AbstractMssqlClient.connectionPool);
+      deferClose(AbstractMssqlClient.connectionPool);
     }
   }
 
