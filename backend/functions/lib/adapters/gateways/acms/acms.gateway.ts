@@ -12,7 +12,7 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
 
 const MODULE_NAME = 'ACMS_GATEWAY';
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway {
   constructor(context: ApplicationContext) {
@@ -63,7 +63,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const result = results.results[0];
       return result.leadCaseCount ? Math.ceil(result.leadCaseCount / PAGE_SIZE) : 0;
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
   }
 
@@ -125,7 +125,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const leadCaseIdsResults = results as ResultType[];
       return leadCaseIdsResults.map((record) => record.leadCaseId);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
   }
 
@@ -166,7 +166,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         };
       });
       return {
-        leadCaseId: this.formatCaseId(leadCaseId),
+        leadCaseId: this.formatCaseId(leadCaseId.toString()),
         childCases,
       };
     } catch (originalError) {
@@ -175,11 +175,12 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         `Failed to get case info for lead case id: ${leadCaseId}.`,
         originalError,
       );
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
   }
 
   private formatCaseId(caseId: string): string {
+    console.log(`Case ID: ${caseId} is of type ${typeof caseId}.`);
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
   }

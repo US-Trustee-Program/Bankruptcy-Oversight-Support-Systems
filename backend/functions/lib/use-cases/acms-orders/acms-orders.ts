@@ -45,7 +45,8 @@ export class AcmsOrders {
     predicate: AcmsPredicate,
   ): Promise<number> {
     const gateway = Factory.getAcmsGateway(context);
-    return gateway.getPageCount(context, predicate);
+    const pageCount = await gateway.getPageCount(context, predicate);
+    return pageCount > 0 ? 1 : pageCount;
   }
 
   public async getLeadCaseIds(
@@ -185,7 +186,7 @@ export class AcmsOrders {
       const camsError = getCamsError(
         error,
         MODULE_NAME,
-        `Transformation failed for lead case ${leadCaseId}`,
+        `Transformation failed for lead case ${leadCaseId}. ${error.message}`,
       );
       context.logger.camsError(camsError);
     }
