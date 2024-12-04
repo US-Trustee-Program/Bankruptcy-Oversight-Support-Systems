@@ -26,7 +26,7 @@ describe('Test case-history controller', () => {
       .mockResolvedValue(associatedCases);
     const caseId = NORMAL_CASE_ID;
     applicationContext.request.params.caseId = caseId;
-    const controller = new CaseAssociatedController(applicationContext);
+    const controller = new CaseAssociatedController();
     const result = await controller.handleRequest(applicationContext);
     expect(result.body.data).toEqual(associatedCases);
   });
@@ -37,7 +37,7 @@ describe('Test case-history controller', () => {
       .mockRejectedValue(new NotFoundError('TEST'));
     const caseId = NOT_FOUND_ERROR_CASE_ID;
     applicationContext.request.params.caseId = caseId;
-    const controller = new CaseAssociatedController(applicationContext);
+    const controller = new CaseAssociatedController();
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Not found');
   });
 
@@ -45,7 +45,7 @@ describe('Test case-history controller', () => {
     const expectedMessage = 'Unknown Error';
     const caseId = THROW_UNKNOWN_ERROR_CASE_ID;
     applicationContext.request.params.caseId = caseId;
-    const controller = new CaseAssociatedController(applicationContext);
+    const controller = new CaseAssociatedController();
     jest
       .spyOn(CaseAssociatedUseCase.prototype, 'getAssociatedCases')
       .mockImplementation(async () => {

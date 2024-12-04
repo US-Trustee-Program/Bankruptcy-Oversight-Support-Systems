@@ -174,7 +174,7 @@ describe('ACMS Orders', () => {
     });
   });
 
-  test('should histories for consolidations over a date range', async () => {
+  test('should get histories for consolidations over a date range', async () => {
     jest
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
       .mockResolvedValue(MockData.getConsolidationFrom());

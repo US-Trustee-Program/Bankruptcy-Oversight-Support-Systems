@@ -11,7 +11,7 @@ const MODULE_NAME = 'CASE-ASSOCIATED-CONTROLLER';
 export class CaseAssociatedController {
   private readonly useCase: CaseAssociatedUseCase;
 
-  constructor(_applicationContext: ApplicationContext) {
+  constructor() {
     this.useCase = new CaseAssociatedUseCase();
   }
 

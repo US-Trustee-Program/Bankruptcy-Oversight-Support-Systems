@@ -77,6 +77,7 @@ describe('Tests database client exceptions', () => {
 
     expect(mockRequest).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
+    expect(queryResult.message).toEqual(expectedErrorMessage);
   });
 
   test('should handle known mssql MSSQLError exceptions', async () => {
@@ -103,6 +104,7 @@ describe('Tests database client exceptions', () => {
 
     expect(mockRequest).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
+    expect(queryResult.message).toEqual(expectedErrorMessage);
   });
 
   test('should handle known mssql ConnectionError exceptions', async () => {
@@ -120,6 +122,7 @@ describe('Tests database client exceptions', () => {
     const queryResult: QueryResults = await client.executeQuery(context, 'SELECT * FROM bar', []);
     expect(mockConnect).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
+    expect(queryResult.message).toEqual(expectedErrorMessage);
   });
 
   test('should handle known mssql ConnectionError exceptions with AggregateErrors', async () => {
@@ -165,6 +168,7 @@ describe('Tests database client exceptions', () => {
 
     expect(mockConnect).toThrow(expectedErrorMessage);
     expect(queryResult.success).toBeFalsy();
+    expect(queryResult.message).toEqual(expectedErrorMessage);
   });
 
   test('should close connection pool when calling close', async () => {
