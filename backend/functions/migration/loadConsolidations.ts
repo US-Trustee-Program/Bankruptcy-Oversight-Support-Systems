@@ -27,7 +27,7 @@ df.app.activity(MIGRATE_CONSOLIDATION, migrateConsolidation);
 df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
 
 app.http('dfClient', {
-  route: 'orchestrators/orchestrator',
+  route: 'migrations/consolidation',
   extraInputs: [df.input.durableClient()],
   handler: httpStart,
 });
