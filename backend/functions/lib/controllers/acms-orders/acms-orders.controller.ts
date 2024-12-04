@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+// import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import AcmsOrders, {
   AcmsConsolidationReport,
   AcmsPredicate,
@@ -13,7 +13,7 @@ class AcmsOrdersController {
     leadCaseId: string,
   ): Promise<AcmsConsolidationReport> {
     const response = this.useCase.migrateConsolidation(context, leadCaseId);
-    await finalizeDeferrable(context);
+    // await finalizeDeferrable(context);
     return response;
   }
 
@@ -22,7 +22,7 @@ class AcmsOrdersController {
     predicate: AcmsPredicate,
   ): Promise<number> {
     const response = this.useCase.getPageCount(context, predicate);
-    await finalizeDeferrable(context);
+    // await finalizeDeferrable(context);
     return response;
   }
 
@@ -31,7 +31,7 @@ class AcmsOrdersController {
     predicate: AcmsPredicateAndPage,
   ): Promise<string[]> {
     const response = this.useCase.getLeadCaseIds(context, predicate);
-    await finalizeDeferrable(context);
+    // await finalizeDeferrable(context);
     return response;
   }
 }
