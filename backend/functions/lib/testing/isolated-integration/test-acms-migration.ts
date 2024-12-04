@@ -1,5 +1,8 @@
-import { InvocationContext } from '@azure/functions';
 import migrateConsolidation from '../../../migration/activity/migrateConsolidation';
+import { createMockAzureFunctionContext } from '../../../azure/testing-helpers';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 const MODULE_NAME = 'ITEST';
 
@@ -10,7 +13,7 @@ const MODULE_NAME = 'ITEST';
 */
 
 async function testAcmsMigration() {
-  const invocationContext = new InvocationContext();
+  const invocationContext = createMockAzureFunctionContext({ ...process.env });
 
   try {
     const leadCaseId = '819929871';
