@@ -1,4 +1,4 @@
-name: Deploy code for slot
+name: Deploy code for 35
 
 on:
   workflow_call:
