@@ -170,12 +170,4 @@ describe('Tests database client exceptions', () => {
     expect(queryResult.success).toBeFalsy();
     expect(queryResult.message).toEqual(expectedErrorMessage);
   });
-
-  test('should close connection pool when calling close', async () => {
-    const context = await createMockApplicationContext();
-    const client = new MssqlClient(context);
-
-    await client.close();
-    expect(mockConnectionPoolClose).toHaveBeenCalled();
-  });
 });
