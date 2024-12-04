@@ -165,3 +165,13 @@ jobs:
           deployBicep=$(./ops/scripts/pipeline/check-deploy-bicep.sh ${{ steps.rgAppDecode.outputs.out }} ${{ inputs.enableBicepDeployment == 'true' }})
           echo "Deploy Bicep: $deployBicep"
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
+      - name: Start App Slots
+        id: start-app-slots
+        if: (${{ steps.check-initial-deployment.outputs.initialDeployment }} == 'false' || ${{ steps.check-initial-deployment.outputs.initialDeployment }} == false)
+        run: |
+          ./ops/scripts/pipeline/slots/az-slot-start-stop-operations.sh \
+            --resourceGroup ${{ steps.rgApp.outputs.out }} \
+            --apiName ${{ steps.build-info.outputs.apiName }} \
+            --webappName ${{ steps.build-info.outputs.webappName }} \
+            --slotName ${{ steps.build-info.outputs.slotName }} \
+            --operation 'start'
