@@ -9,13 +9,13 @@ import {
 } from '../../../use-cases/acms-orders/acms-orders';
 import { UnknownError } from '../../../common-errors/unknown-error';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 describe('ACMS gateway tests', () => {
   const pageCountCases = [
-    { leadCaseCount: 245, pageCount: 5 },
-    { leadCaseCount: 250, pageCount: 5 },
-    { leadCaseCount: 251, pageCount: 6 },
+    { leadCaseCount: 245, pageCount: 25 },
+    { leadCaseCount: 250, pageCount: 25 },
+    { leadCaseCount: 251, pageCount: 26 },
     { pageCount: 0 },
   ];
   test.each(pageCountCases)(
@@ -201,7 +201,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
         status: 500,
-        message: 'Unknown Error',
+        message: mockError.message,
         originalError: mockError,
       }),
     );
@@ -270,7 +270,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
         status: 500,
-        message: 'Unknown Error',
+        message: mockError.message,
         originalError: mockError,
       }),
     );
@@ -287,7 +287,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
         status: 500,
-        message: 'Unknown Error',
+        message: mockError.message,
         originalError: mockError,
       }),
     );

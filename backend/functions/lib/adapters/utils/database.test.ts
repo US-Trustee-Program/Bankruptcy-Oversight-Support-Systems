@@ -12,6 +12,12 @@ jest.mock('mssql', () => {
   return {
     ConnectionPool: jest.fn().mockImplementation(() => {
       return {
+        request: jest.fn().mockImplementation(() => ({
+          input: jest.fn(),
+          query: jest
+            .fn()
+            .mockImplementation((): Promise<string> => Promise.resolve('test string')),
+        })),
         connect: jest.fn().mockImplementation(
           (): Promise<sqlConnect> =>
             Promise.resolve({

@@ -35,6 +35,15 @@ jest.mock('mssql', () => {
                 ),
             }),
         ),
+        request: jest.fn().mockImplementation(() => ({
+          input: jest.fn(),
+          query: jest
+            .fn()
+            .mockImplementation(
+              (): Promise<IResult<string>> =>
+                Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
+            ),
+        })),
       };
     }),
   };

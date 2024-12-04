@@ -1,4 +1,4 @@
-import { QueryResults, IDbConfig } from '../types/database';
+import { IDbConfig } from '../types/database';
 import { ConnectionError, MSSQLError, RequestError } from 'mssql';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
@@ -40,6 +40,7 @@ jest.mock('mssql', () => {
       return {
         close: mockConnectionPoolClose,
         connect: mockConnect,
+        request: mockRequest,
       };
     }),
   };
@@ -62,7 +63,7 @@ describe('Tests database client exceptions', () => {
     client = new MssqlClient(context);
   });
 
-  test('should handle miscelaneous mssql error exceptions', async () => {
+  test('should rethrow miscelaneous mssql error exceptions', async () => {
     const expectedErrorMessage = 'Test request error exception';
     const requestError = new RequestError(expectedErrorMessage);
     requestError.name = 'RequestError';
@@ -73,11 +74,9 @@ describe('Tests database client exceptions', () => {
     });
 
     // method under test
-    const queryResult: QueryResults = await client.executeQuery(context, 'SELECT * FROM bar', []);
-
-    expect(mockRequest).toThrow(expectedErrorMessage);
-    expect(queryResult.success).toBeFalsy();
-    expect(queryResult.message).toEqual(expectedErrorMessage);
+    await expect(async () => {
+      await client.executeQuery(context, 'SELECT * FROM bar', []);
+    }).rejects.toThrow(expectedErrorMessage);
   });
 
   test('should handle known mssql MSSQLError exceptions', async () => {
@@ -100,11 +99,9 @@ describe('Tests database client exceptions', () => {
     });
 
     // method under test
-    const queryResult: QueryResults = await client.executeQuery(context, 'SELECT * FROM bar', []);
-
-    expect(mockRequest).toThrow(expectedErrorMessage);
-    expect(queryResult.success).toBeFalsy();
-    expect(queryResult.message).toEqual(expectedErrorMessage);
+    await expect(async () => {
+      await client.executeQuery(context, 'SELECT * FROM bar', []);
+    }).rejects.toThrow(expectedErrorMessage);
   });
 
   test('should handle known mssql ConnectionError exceptions', async () => {
@@ -119,10 +116,9 @@ describe('Tests database client exceptions', () => {
     });
 
     // method under test
-    const queryResult: QueryResults = await client.executeQuery(context, 'SELECT * FROM bar', []);
-    expect(mockConnect).toThrow(expectedErrorMessage);
-    expect(queryResult.success).toBeFalsy();
-    expect(queryResult.message).toEqual(expectedErrorMessage);
+    await expect(async () => {
+      await client.executeQuery(context, 'SELECT * FROM bar', []);
+    }).rejects.toThrow(expectedErrorMessage);
   });
 
   test('should handle known mssql ConnectionError exceptions with AggregateErrors', async () => {
@@ -164,10 +160,8 @@ describe('Tests database client exceptions', () => {
 
     const context = await createMockApplicationContext();
     // method under test
-    const queryResult: QueryResults = await client.executeQuery(context, 'SELECT * FROM bar', []);
-
-    expect(mockConnect).toThrow(expectedErrorMessage);
-    expect(queryResult.success).toBeFalsy();
-    expect(queryResult.message).toEqual(expectedErrorMessage);
+    await expect(async () => {
+      await client.executeQuery(context, 'SELECT * FROM bar', []);
+    }).rejects.toThrow(expectedErrorMessage);
   });
 });
