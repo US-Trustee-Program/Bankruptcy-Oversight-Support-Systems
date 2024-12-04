@@ -59,21 +59,21 @@ export class AcmsOrders {
 
   public async migrateConsolidation(
     context: ApplicationContext,
-    leadCaseId: string,
+    acmsLeadCaseId: string,
   ): Promise<AcmsConsolidationReport> {
     // TODO: Add child case count to the report??
-    const report: AcmsConsolidationReport = { leadCaseId, success: true };
+    const report: AcmsConsolidationReport = { leadCaseId: acmsLeadCaseId, success: true };
     try {
       const casesRepo = Factory.getCasesRepository(context);
       const dxtr = Factory.getCasesGateway(context);
       const acms = Factory.getAcmsGateway(context);
 
-      const basics = await acms.getConsolidationDetails(context, leadCaseId);
-      const leadCase = await dxtr.getCaseSummary(context, leadCaseId);
+      const basics = await acms.getConsolidationDetails(context, acmsLeadCaseId);
+      const leadCase = await dxtr.getCaseSummary(context, basics.leadCaseId);
 
       // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
       // Check if exported child cases have already been migrated.
-      const existingConsolidations = await casesRepo.getConsolidation(leadCaseId);
+      const existingConsolidations = await casesRepo.getConsolidation(basics.leadCaseId);
       const existingChildCaseIds = existingConsolidations
         .filter((link) => link.documentType === 'CONSOLIDATION_FROM')
         .map((link) => link.otherCase.caseId)
@@ -120,7 +120,7 @@ export class AcmsOrders {
 
         const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
         const fromLink: ConsolidationFrom = {
-          caseId: leadCaseId,
+          caseId: basics.leadCaseId,
           consolidationType,
           documentType: 'CONSOLIDATION_FROM',
           orderDate: childCase.consolidationDate,
@@ -186,7 +186,7 @@ export class AcmsOrders {
       const camsError = getCamsError(
         error,
         MODULE_NAME,
-        `Transformation failed for lead case ${leadCaseId}. ${error.message}`,
+        `Transformation failed for lead case ${acmsLeadCaseId}. ${error.message}`,
       );
       context.logger.camsError(camsError);
     }
