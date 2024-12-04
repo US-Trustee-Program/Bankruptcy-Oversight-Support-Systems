@@ -167,7 +167,7 @@ jobs:
           echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
       - name: Start App Slots
         id: start-app-slots
-        if: ${{ steps.check-initial-deployment.outputs.initialDeployment != 'true' || steps.check-initial-deployment.outputs.initialDeployment != true }}
+        if: ${{ steps.check-initial-deployment.outputs.initialDeployment != 'true' }}
         run: |
           ./ops/scripts/pipeline/slots/az-slot-start-stop-operations.sh \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
