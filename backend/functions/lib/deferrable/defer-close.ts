@@ -14,7 +14,7 @@ function isDeferCloseAccumulator(obj: unknown): obj is DeferCloseAccumulator {
   return typeof obj === 'object' && 'closables' in obj;
 }
 
-export function deferClose(accumulator: unknown, closable: unknown): boolean {
+export function deferClose(closable: unknown, accumulator: unknown = globalAccumulator): boolean {
   if (isDeferCloseAccumulator(accumulator)) {
     if (isClosable(closable)) {
       const priorLength = accumulator.closables.length;
@@ -23,7 +23,7 @@ export function deferClose(accumulator: unknown, closable: unknown): boolean {
   }
 }
 
-export async function closeDeferred(accumulator: unknown): Promise<boolean> {
+export async function closeDeferred(accumulator: unknown = globalAccumulator): Promise<boolean> {
   if (isDeferCloseAccumulator(accumulator)) {
     let success = true;
     for (const closable of accumulator.closables) {
@@ -37,3 +37,15 @@ export async function closeDeferred(accumulator: unknown): Promise<boolean> {
   }
   return false;
 }
+
+const globalAccumulator: DeferCloseAccumulator = {
+  closables: [],
+};
+
+async function closeGlobal() {
+  console.warn(`***** CLOSING ${globalAccumulator.closables.length} CLOSABLES ****`);
+  closeDeferred(globalAccumulator);
+}
+
+process.on('SIGINT', closeGlobal);
+process.on('SIGTERM', closeGlobal);
