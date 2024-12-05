@@ -287,6 +287,10 @@ var applicationSettings = concat(
       value: '-70'
     }
     {
+      name: 'ADMIN_KEY'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN_KEY)'
+    }
+    {
       name: 'COSMOS_DATABASE_NAME'
       value: cosmosDatabaseName
     }
