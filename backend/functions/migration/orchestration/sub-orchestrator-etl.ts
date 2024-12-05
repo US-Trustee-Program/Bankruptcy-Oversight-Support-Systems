@@ -1,6 +1,7 @@
 import {
-  AcmsConsolidationReport,
+  AcmsTransformationResult,
   AcmsPredicateAndPage,
+  AcmsPageReport,
 } from '../../lib/use-cases/acms-orders/acms-orders';
 import { GET_CONSOLIDATIONS, MIGRATE_CONSOLIDATION } from '../loadConsolidations';
 import { OrchestrationContext } from 'durable-functions';
@@ -18,19 +19,23 @@ export function* subOrchestratorETL(context: OrchestrationContext) {
 
   yield context.df.Task.all(etlTasks);
 
-  const finalResults = etlTasks.reduce(
+  return etlTasks.reduce(
     (acc, task) => {
-      const taskResponse = task as AcmsConsolidationReport;
-      if (taskResponse.success) {
-        acc.successful += 1;
+      const transformationResult = task.result as AcmsTransformationResult;
+      if (transformationResult.success) {
+        acc.successful.leadCaseCount += 1;
+        acc.successful.childCaseCount += transformationResult.childCaseCount;
       } else {
-        acc.failed += 1;
+        acc.failed.leadCaseIds.push(transformationResult.leadCaseId);
+        acc.failed.leadCaseCount += 1;
+        acc.failed.childCaseCount += transformationResult.childCaseCount;
       }
       return acc;
     },
-    { successful: 0, failed: 0 },
-  );
-  context.log(
-    `ACMS Consolidation Migration ETL: successful: ${finalResults.successful}, failures: ${finalResults.failed}`,
+    {
+      predicateAndPage,
+      successful: { leadCaseCount: 0, childCaseCount: 0 },
+      failed: { leadCaseIds: [], leadCaseCount: 0, childCaseCount: 0 },
+    } as AcmsPageReport,
   );
 }

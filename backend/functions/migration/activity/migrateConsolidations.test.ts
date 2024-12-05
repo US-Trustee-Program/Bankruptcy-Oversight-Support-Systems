@@ -3,6 +3,7 @@ import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.
 import module from './migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../lib/common-errors/cams-error';
+import { AcmsTransformationResult } from '../../lib/use-cases/acms-orders/acms-orders';
 
 describe('getConsolidations test', () => {
   afterEach(() => {
@@ -11,8 +12,9 @@ describe('getConsolidations test', () => {
 
   test('should call getLeadCaseIds controller method', async () => {
     const caseId = '000-11-22222';
-    const expected = {
+    const expected: AcmsTransformationResult = {
       leadCaseId: caseId,
+      childCaseCount: 2,
       success: true,
     };
     const getLeadCaseIdsSpy = jest

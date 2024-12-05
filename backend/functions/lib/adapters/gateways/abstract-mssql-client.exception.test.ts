@@ -47,9 +47,9 @@ jest.mock('mssql', () => {
 });
 
 class MssqlClient extends AbstractMssqlClient {
-  constructor(context: ApplicationContext) {
+  constructor(_context: ApplicationContext) {
     const config = { server: 'foo' } as IDbConfig;
-    super(context, config, 'Exception Tests');
+    super(config, 'Exception Tests');
   }
 }
 

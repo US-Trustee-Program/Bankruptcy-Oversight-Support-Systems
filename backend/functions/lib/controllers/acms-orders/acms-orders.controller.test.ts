@@ -1,5 +1,5 @@
 import AcmsOrders, {
-  AcmsConsolidationReport,
+  AcmsTransformationResult,
   AcmsPredicate,
   AcmsPredicateAndPage,
 } from '../../use-cases/acms-orders/acms-orders';
@@ -45,8 +45,9 @@ describe('AcmsOrdersController', () => {
 
   test('should return processing report from migrateConsolidation', async () => {
     const leadCaseId = '811100000';
-    const report: AcmsConsolidationReport = {
+    const report: AcmsTransformationResult = {
       leadCaseId,
+      childCaseCount: 1,
       success: true,
     };
     const spy = jest.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockResolvedValue(report);
