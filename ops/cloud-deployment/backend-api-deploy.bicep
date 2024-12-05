@@ -288,7 +288,7 @@ var applicationSettings = concat(
     }
     {
       name: 'ADMIN_KEY'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN_KEY)'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
     }
     {
       name: 'COSMOS_DATABASE_NAME'
