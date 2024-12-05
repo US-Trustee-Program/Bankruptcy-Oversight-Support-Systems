@@ -47,7 +47,7 @@
     "build-common": "pushd ../common && npm ci && npm run build && popd",
     "watch": "tsc --project tsconfig.build.json -w",
     "prestart": "npm run build",
-    "start": "func start --typescript",
+    "start": "pushd functions && func start --typescript && popd",
     "start:dev": "nodemon --esm src/server.ts",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' jest -c jest.config.js",
     "test:open-handles": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' jest -c jest.config.js --detectOpenHandles",
