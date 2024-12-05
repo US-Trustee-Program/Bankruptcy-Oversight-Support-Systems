@@ -8,7 +8,7 @@ describe('Defer Close', () => {
     const accumulator: DeferCloseAccumulator = {
       closables: [],
     };
-    const success = deferClose(accumulator, closable);
+    const success = deferClose(closable, accumulator);
 
     expect(success).toBeTruthy();
     expect(accumulator.closables.length).toEqual(1);
