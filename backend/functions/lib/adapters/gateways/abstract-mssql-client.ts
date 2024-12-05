@@ -8,7 +8,7 @@ export abstract class AbstractMssqlClient {
   private static connectionPool: ConnectionPool;
   private readonly moduleName: string;
 
-  protected constructor(context: ApplicationContext, dbConfig: IDbConfig, childModuleName: string) {
+  protected constructor(dbConfig: IDbConfig, childModuleName: string) {
     this.moduleName = `ABSTRACT-MSSQL-CLIENT (${childModuleName})`;
     if (!AbstractMssqlClient.connectionPool) {
       AbstractMssqlClient.connectionPool = new ConnectionPool(dbConfig as config);
@@ -21,12 +21,10 @@ export abstract class AbstractMssqlClient {
     query: string,
     input?: DbTableFieldSpec[],
   ): Promise<QueryResults> {
-    // we should do some sanitization here to eliminate sql injection issues
     try {
       if (!AbstractMssqlClient.connectionPool.connected) {
         await AbstractMssqlClient.connectionPool.connect();
       }
-      // const connection = await AbstractMssqlClient.connectionPool.connect();
       const request = AbstractMssqlClient.connectionPool.request();
 
       if (typeof input != 'undefined') {
@@ -64,8 +62,8 @@ export abstract class AbstractMssqlClient {
       } else if (isMssqlError(error)) {
         const newError = {
           error: {
-            name: error.name, // RequestError
-            description: error.message, // Timeout: Request failed to complete in 15000ms
+            name: error.name,
+            description: error.message,
           },
           originalError: {},
           query,
@@ -83,13 +81,6 @@ export abstract class AbstractMssqlClient {
         context.logger.error(this.moduleName, error.message, { error, query, input });
       }
 
-      // // TODO May want to refactor to throw CamsError and remove returning QueryResults
-      // const queryResult: QueryResults = {
-      //   results: {},
-      //   message: (error as Error).message,
-      //   success: false,
-      // };
-      // return queryResult;
       throw getCamsError(error, this.moduleName, error.message);
     }
   }

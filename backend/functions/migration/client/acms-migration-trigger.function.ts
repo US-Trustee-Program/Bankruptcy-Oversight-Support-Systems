@@ -14,21 +14,22 @@ export default async function httpStart(
   context: InvocationContext,
 ): Promise<HttpResponse> {
   const client = df.getClient(context);
-  let body: TriggerRequest;
+  let params: TriggerRequest;
   if (request.body) {
-    body = (await request.json()) as unknown as TriggerRequest;
+    params = (await request.json()) as unknown as TriggerRequest;
   }
 
-  if (!isTriggerRequest(body)) {
+  if (!isTriggerRequest(params)) {
     throw new BadRequestError(MODULE_NAME, { message: 'Missing or malformed request body.' });
   }
 
-  if (body.apiKey !== process.env.ADMIN_KEY) {
+  if (params.apiKey !== process.env.ADMIN_KEY) {
     throw new UnauthorizedError(MODULE_NAME, { message: 'API key was missing or did not match.' });
   }
 
+  delete params.apiKey;
   const instanceId: string = await client.startNew(MAIN_ORCHESTRATOR, {
-    input: body,
+    input: params,
   });
 
   return client.createCheckStatusResponse(request, instanceId);

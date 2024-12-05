@@ -43,7 +43,6 @@ const globalAccumulator: DeferCloseAccumulator = {
 };
 
 async function closeGlobal() {
-  console.warn(`***** CLOSING ${globalAccumulator.closables.length} CLOSABLES ****`);
   closeDeferred(globalAccumulator);
 }
 

@@ -2,14 +2,14 @@ import { InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../lib/common-errors/error-utilities';
-import { AcmsConsolidationReport } from '../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsTransformationResult } from '../../lib/use-cases/acms-orders/acms-orders';
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
 
 async function migrateConsolidation(
   leadCaseId: string,
   invocationContext: InvocationContext,
-): Promise<AcmsConsolidationReport> {
+): Promise<AcmsTransformationResult> {
   const logger = ContextCreator.getLogger(invocationContext);
   const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
   const controller = new AcmsOrdersController();

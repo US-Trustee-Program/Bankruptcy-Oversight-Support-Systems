@@ -72,7 +72,7 @@ describe('Abstract MS-SQL client', () => {
     // execute method under test
     class TestDbClient extends AbstractMssqlClient {
       constructor(context: ApplicationContext, config: IDbConfig, childModuleName: string) {
-        super(context, config, childModuleName);
+        super(config, childModuleName);
       }
     }
     const client = new TestDbClient(context, context.config.dxtrDbConfig, 'TEST_MODULE');

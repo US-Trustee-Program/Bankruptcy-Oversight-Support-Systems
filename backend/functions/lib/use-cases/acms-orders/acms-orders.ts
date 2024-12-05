@@ -38,9 +38,30 @@ export type AcmsConsolidation = {
   childCases: AcmsConsolidationChildCase[];
 };
 
-export type AcmsConsolidationReport = {
+export type AcmsTransformationResult = {
   leadCaseId: string;
+  childCaseCount: number;
   success: boolean;
+};
+
+export type AcmsAggregate = {
+  successful: {
+    leadCaseCount: number;
+    childCaseCount: number;
+  };
+  failed: {
+    leadCaseIds: string[];
+    leadCaseCount: number;
+    childCaseCount: number;
+  };
+};
+
+export type AcmsPageReport = AcmsAggregate & {
+  predicateAndPage: AcmsPredicateAndPage;
+};
+
+export type AcmsPartitionReport = AcmsAggregate & {
+  predicate: AcmsPredicate;
 };
 
 export class AcmsOrders {
@@ -63,9 +84,13 @@ export class AcmsOrders {
   public async migrateConsolidation(
     context: ApplicationContext,
     acmsLeadCaseId: string,
-  ): Promise<AcmsConsolidationReport> {
+  ): Promise<AcmsTransformationResult> {
     // TODO: Add child case count to the report??
-    const report: AcmsConsolidationReport = { leadCaseId: acmsLeadCaseId, success: true };
+    const report: AcmsTransformationResult = {
+      leadCaseId: acmsLeadCaseId,
+      childCaseCount: 0,
+      success: true,
+    };
     try {
       const casesRepo = Factory.getCasesRepository(context);
       const dxtr = Factory.getCasesGateway(context);
@@ -91,6 +116,8 @@ export class AcmsOrders {
           acc.add(caseId);
           return acc;
         }, new Set<string>());
+
+      report.childCaseCount = exportedChildCaseIds.size;
 
       const unimportedChildCaseIds = new Set<string>();
       exportedChildCaseIds.forEach((caseId) => {
