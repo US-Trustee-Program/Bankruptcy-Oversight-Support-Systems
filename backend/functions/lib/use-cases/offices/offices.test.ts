@@ -88,6 +88,7 @@ describe('offices use case tests', () => {
     const repoSpy = jest.fn().mockResolvedValue([]);
     jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
       return {
+        release: () => {},
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
         close: jest.fn(),
@@ -103,10 +104,18 @@ describe('offices use case tests', () => {
   });
 
   test('should return attorneys for office with feature flag on', async () => {
+    const localContext = {
+      ...applicationContext,
+      featureFlags: { ...applicationContext.featureFlags },
+    };
+    localContext.featureFlags['restrict-case-assignment'] = true;
+
     const useCase = new OfficesUseCase();
-    const repoSpy = jest.fn().mockResolvedValue([]);
+    const mockAttorneys = [];
+    const repoSpy = jest.fn().mockResolvedValue(mockAttorneys);
     jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
       return {
+        release: () => {},
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
         close: jest.fn(),
@@ -115,8 +124,8 @@ describe('offices use case tests', () => {
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
 
     const officeCode = 'new-york';
-    const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
-    expect(officeAttorneys).toEqual([]);
+    const officeAttorneys = await useCase.getOfficeAttorneys(localContext, officeCode);
+    expect(officeAttorneys).toEqual(mockAttorneys);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
     expect(attorneysSpy).not.toHaveBeenCalled();
   });

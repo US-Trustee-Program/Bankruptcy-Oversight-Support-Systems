@@ -8,7 +8,7 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import MockData from '../../../../../../common/src/cams/test-utilities/mock-data';
 import QueryBuilder from '../../../query/query-builder';
 import { CamsRole } from '../../../../../../common/src/cams/roles';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { createAuditRecord } from '../../../../../../common/src/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
 

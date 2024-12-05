@@ -4,15 +4,15 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { EventCaseReference } from '../../../../../common/src/cams/events';
 import { CaseAssociatedUseCase } from '../../use-cases/case-associated/case-associated';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'CASE-ASSOCIATED-CONTROLLER';
 
 export class CaseAssociatedController {
   private readonly useCase: CaseAssociatedUseCase;
 
-  constructor(applicationContext: ApplicationContext) {
-    this.useCase = new CaseAssociatedUseCase(applicationContext);
+  constructor() {
+    this.useCase = new CaseAssociatedUseCase();
   }
 
   public async handleRequest(
@@ -28,7 +28,7 @@ export class CaseAssociatedController {
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 }

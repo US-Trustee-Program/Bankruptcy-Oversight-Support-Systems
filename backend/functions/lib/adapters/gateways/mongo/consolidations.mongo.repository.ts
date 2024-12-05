@@ -16,8 +16,33 @@ export default class ConsolidationOrdersMongoRepository<T extends CamsDocument =
   extends BaseMongoRepository
   implements ConsolidationOrdersRepository<T>
 {
+  private static referenceCount: number = 0;
+  private static instance: ConsolidationOrdersMongoRepository;
+
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+  }
+
+  public static getInstance(context: ApplicationContext) {
+    if (!ConsolidationOrdersMongoRepository.instance) {
+      ConsolidationOrdersMongoRepository.instance = new ConsolidationOrdersMongoRepository(context);
+    }
+    ConsolidationOrdersMongoRepository.referenceCount++;
+    return ConsolidationOrdersMongoRepository.instance;
+  }
+
+  public static dropInstance() {
+    if (ConsolidationOrdersMongoRepository.referenceCount > 0) {
+      ConsolidationOrdersMongoRepository.referenceCount--;
+    }
+    if (ConsolidationOrdersMongoRepository.referenceCount < 1) {
+      ConsolidationOrdersMongoRepository.instance.client.close().then();
+      ConsolidationOrdersMongoRepository.instance = null;
+    }
+  }
+
+  public release() {
+    ConsolidationOrdersMongoRepository.dropInstance();
   }
 
   async read(id: string): Promise<T> {

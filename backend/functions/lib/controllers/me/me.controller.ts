@@ -2,7 +2,7 @@ import { CamsSession } from '../../../../../common/src/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CamsController } from '../controller';
 
 const MODULE_NAME = 'ME-CONTROLLER';
@@ -21,7 +21,7 @@ export class MeController implements CamsController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 }

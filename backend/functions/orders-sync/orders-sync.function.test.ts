@@ -26,6 +26,7 @@ describe('Orders Sync Function tests', () => {
       read: jest.fn(),
       update: jest.fn(),
       createMany: jest.fn(),
+      release: jest.fn(),
     });
     const handleTimer = jest
       .spyOn(OrdersController.prototype, 'handleTimer')
@@ -40,6 +41,7 @@ describe('Orders Sync Function tests', () => {
       read: jest.fn(),
       update: jest.fn(),
       createMany: jest.fn(),
+      release: jest.fn(),
     });
     const handleTimer = jest
       .spyOn(OrdersController.prototype, 'handleTimer')

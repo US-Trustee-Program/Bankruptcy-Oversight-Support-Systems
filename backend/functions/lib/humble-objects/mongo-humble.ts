@@ -1,5 +1,5 @@
 import { Collection, Db, MongoClient } from 'mongodb';
-import { Closable } from '../defer-close';
+import { Closable } from '../deferrable/defer-close';
 
 export class CollectionHumble<T> {
   private collection: Collection<T>;

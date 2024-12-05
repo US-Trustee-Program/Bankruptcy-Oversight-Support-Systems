@@ -8,7 +8,7 @@ describe('Defer Close', () => {
     const accumulator: DeferCloseAccumulator = {
       closables: [],
     };
-    const success = deferClose(accumulator, closable);
+    const success = deferClose(closable, accumulator);
 
     expect(success).toBeTruthy();
     expect(accumulator.closables.length).toEqual(1);
@@ -28,6 +28,10 @@ describe('Defer Close', () => {
     expect(success).toBeTruthy();
     expect(accumulator.closables.length).toEqual(1);
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  test('should not fail if a proper accumulator is not passed', async () => {
+    expect(closeDeferred({})).resolves.toBeFalsy();
   });
 
   test('should silently handle close errors', async () => {

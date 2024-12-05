@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import { ApplicationContext } from '../lib/adapters/types/basic';
 import { DocumentClient } from '../lib/humble-objects/mongo-humble';
 import QueryBuilder from '../lib/query/query-builder';
-import { deferClose } from '../lib/defer-close';
+import { deferClose } from '../lib/deferrable/defer-close';
 import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
 dotenv.config();
@@ -26,7 +26,7 @@ export default class HealthcheckCosmosDb {
     const { connectionString, databaseName } = this.context.config.documentDbConfig;
     this.databaseName = databaseName;
     this.client = new DocumentClient(connectionString);
-    deferClose(context, this.client);
+    deferClose(this.client, context);
   }
 
   private getAdapter<T>() {

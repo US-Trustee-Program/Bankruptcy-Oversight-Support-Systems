@@ -6,7 +6,7 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { CaseDocket } from '../../../../../common/src/cams/cases';
 import { CamsController } from '../controller';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'CASE-DOCKET-CONTROLLER';
 
@@ -34,7 +34,7 @@ export class CaseDocketController implements CamsController {
         ? originalError
         : new UnknownError(MODULE_NAME, { originalError });
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 }

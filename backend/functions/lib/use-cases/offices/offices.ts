@@ -4,9 +4,9 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
   getUserGroupGateway,
-  getOfficesRepository,
   getStorageGateway,
-  getRuntimeStateRepository,
+  getOfficesRepository,
+  getOfficeStaffSyncStateRepo,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
@@ -116,10 +116,9 @@ export class OfficesUseCase {
       officesWithUsers,
     };
 
-    const runtimeStateRepo = getRuntimeStateRepository(context);
+    const runtimeStateRepo = getOfficeStaffSyncStateRepo(context);
 
     await runtimeStateRepo.upsert(result);
-
     return result;
   }
 }

@@ -12,9 +12,10 @@ export async function getFeatureFlags(config: ApplicationConfiguration): Promise
     eventsUri: 'https://events.launchdarkly.us',
   });
   await client.waitForInitialization();
+  //TODO: revisit if this is necessary when we look at why we need to restart the backend for feature flags
   const state = await client.allFlagsState({
     kind: 'user',
-    key: 'feature-flag-poc',
+    key: 'feature-flag-migration',
     anonymous: true,
   });
   await client.flush();

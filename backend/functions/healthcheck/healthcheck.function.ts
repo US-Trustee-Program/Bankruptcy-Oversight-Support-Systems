@@ -8,7 +8,7 @@ import HealthcheckInfo from './healthcheck.info';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
-import { closeDeferred } from '../lib/defer-close';
+import { closeDeferred } from '../lib/deferrable/defer-close';
 
 const MODULE_NAME = 'HEALTHCHECK';
 

@@ -3,18 +3,21 @@ import { CasesInterface } from './use-cases/cases.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { DocumentDbConfig, IDbConfig } from './adapters/types/database';
+import { IDbConfig } from './adapters/types/database';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
 import { ConnectionPool, config } from 'mssql';
 import {
+  AcmsGateway,
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
   OfficesRepository,
+  OfficeStaffSyncState,
   OrdersGateway,
   OrdersRepository,
+  OrderSyncState,
   RuntimeState,
   RuntimeStateRepository,
   UserSessionCacheRepository,
@@ -42,28 +45,42 @@ import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.reposito
 import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
+import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
+import { deferRelease } from './deferrable/defer-release';
+
+let casesGateway: CasesInterface;
+let ordersGateway: OrdersGateway;
+let storageGateway: StorageGateway;
+let acmsGateway: AcmsGateway;
+
+let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
+let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
+
+let mockOrdersRepository: MockMongoRepository;
+let mockConsolidationsRepository: MockMongoRepository;
+let mockCasesRepository: MockMongoRepository;
+let mockUserSessionCacheRepository: MockMongoRepository;
 
 export const getAttorneyGateway = (): AttorneyGatewayInterface => {
   return MockAttorneysGateway;
 };
 
-export const getCasesGateway = (applicationContext: ApplicationContext): CasesInterface => {
-  if (applicationContext.config.get('dbMock')) {
-    return new CasesLocalGateway();
-  } else {
-    return new CasesDxtrGateway();
+export const getCasesGateway = (context: ApplicationContext): CasesInterface => {
+  if (!casesGateway) {
+    if (context.config.get('dbMock')) {
+      casesGateway = new CasesLocalGateway();
+    } else {
+      casesGateway = new CasesDxtrGateway();
+    }
   }
+  return casesGateway;
 };
 
-export const getAssignmentRepository = (
-  applicationContext: ApplicationContext,
-): CaseAssignmentRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new CaseAssignmentMongoRepository(applicationContext);
-};
-
-export const getCosmosConfig = (applicationContext: ApplicationContext): DocumentDbConfig => {
-  return applicationContext.config.get('cosmosConfig');
+export const getAssignmentRepository = (context: ApplicationContext): CaseAssignmentRepository => {
+  if (context.config.get('dbMock')) return new MockMongoRepository();
+  const repo = CaseAssignmentMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
 };
 
 export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
@@ -79,52 +96,98 @@ export const getSqlConnection = (databaseConfig: IDbConfig) => {
   return new ConnectionPool(databaseConfig as config);
 };
 
-export const getOrdersGateway = (applicationContext: ApplicationContext): OrdersGateway => {
-  if (applicationContext.config.get('dbMock')) {
-    return new MockOrdersGateway();
-  } else {
-    return new DxtrOrdersGateway();
+export const getOrdersGateway = (context: ApplicationContext): OrdersGateway => {
+  if (!ordersGateway) {
+    if (context.config.get('dbMock')) {
+      ordersGateway = new MockOrdersGateway();
+    } else {
+      ordersGateway = new DxtrOrdersGateway();
+    }
   }
+  return ordersGateway;
 };
 
-export const getOfficesGateway = (applicationContext: ApplicationContext): OfficesGateway => {
-  if (applicationContext.config.get('dbMock')) {
+export const getOfficesGateway = (context: ApplicationContext): OfficesGateway => {
+  if (context.config.get('dbMock')) {
     return new MockOfficesGateway();
   } else {
     return new OfficesDxtrGateway();
   }
 };
 
-export const getOfficesRepository = (applicationContext: ApplicationContext): OfficesRepository => {
-  if (applicationContext.config.authConfig.provider === 'mock') {
+export const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
+  if (context.config.authConfig.provider === 'mock') {
     return MockOfficesRepository;
   }
-  return new OfficesMongoRepository(applicationContext);
+  const repo = OfficesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
 };
 
 // transfer orders
-export const getOrdersRepository = (applicationContext: ApplicationContext): OrdersRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new OrdersMongoRepository(applicationContext);
+export const getOrdersRepository = (context: ApplicationContext): OrdersRepository => {
+  if (context.config.get('dbMock')) {
+    if (!mockOrdersRepository) {
+      mockOrdersRepository = MockMongoRepository.getInstance(context);
+    }
+    return mockOrdersRepository;
+  } else {
+    const repo = OrdersMongoRepository.getInstance(context);
+    deferRelease(repo, context);
+    return repo;
+  }
 };
 
 export const getConsolidationOrdersRepository = (
-  applicationContext: ApplicationContext,
+  context: ApplicationContext,
 ): ConsolidationOrdersRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new ConsolidationOrdersMongoRepository(applicationContext);
+  if (context.config.get('dbMock')) {
+    if (!mockConsolidationsRepository) {
+      mockConsolidationsRepository = MockMongoRepository.getInstance(context);
+    }
+    return mockConsolidationsRepository;
+  } else {
+    const repo = ConsolidationOrdersMongoRepository.getInstance(context);
+    deferRelease(repo, context);
+    return repo;
+  }
 };
 
-export const getCasesRepository = (applicationContext: ApplicationContext): CasesRepository => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new CasesMongoRepository(applicationContext);
+export const getCasesRepository = (context: ApplicationContext): CasesRepository => {
+  if (context.config.get('dbMock')) {
+    if (!mockCasesRepository) {
+      mockCasesRepository = MockMongoRepository.getInstance(context);
+    }
+    return mockCasesRepository;
+  }
+  const repo = CasesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
 };
 
 export const getRuntimeStateRepository = <T extends RuntimeState>(
-  applicationContext: ApplicationContext,
+  context: ApplicationContext,
 ): RuntimeStateRepository<T> => {
-  if (applicationContext.config.get('dbMock')) return new MockMongoRepository();
-  return new RuntimeStateMongoRepository<T>(applicationContext);
+  if (context.config.get('dbMock')) return new MockMongoRepository();
+  return new RuntimeStateMongoRepository<T>(context);
+};
+
+export const getOrderSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<OrderSyncState> => {
+  if (!orderSyncStateRepo) {
+    orderSyncStateRepo = getRuntimeStateRepository<OrderSyncState>(context);
+  }
+  return orderSyncStateRepo;
+};
+
+export const getOfficeStaffSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<OfficeStaffSyncState> => {
+  if (!officeStaffSyncStateRepo) {
+    officeStaffSyncStateRepo = getRuntimeStateRepository<OfficeStaffSyncState>(context);
+  }
+  return officeStaffSyncStateRepo;
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
@@ -143,23 +206,40 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
 export const getUserSessionCacheRepository = (
   context: ApplicationContext,
 ): UserSessionCacheRepository => {
-  if (context.config.get('dbMock')) return new MockMongoRepository();
-  return new UserSessionCacheMongoRepository(context);
+  if (context.config.get('dbMock')) {
+    if (!mockUserSessionCacheRepository) {
+      mockUserSessionCacheRepository = MockMongoRepository.getInstance(context);
+    }
+    return mockUserSessionCacheRepository;
+  }
+  const repo = UserSessionCacheMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
 };
 
 export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
-  return LocalStorageGateway;
+  if (!storageGateway) {
+    storageGateway = LocalStorageGateway;
+  }
+  return storageGateway;
 };
 
 export const getUserGroupGateway = (_context: ApplicationContext): UserGroupGateway => {
   return OktaUserGroupGateway;
 };
 
+const getAcmsGateway = (context: ApplicationContext): AcmsGateway => {
+  if (!acmsGateway) {
+    acmsGateway = new AcmsGatewayImpl(context);
+  }
+  return acmsGateway;
+};
+
 export const Factory = {
+  getAcmsGateway,
   getAttorneyGateway,
   getCasesGateway,
   getAssignmentRepository,
-  getCosmosConfig,
   getCaseDocketUseCase,
   getSqlConnection,
   getOrdersGateway,
@@ -169,9 +249,13 @@ export const Factory = {
   getConsolidationOrdersRepository,
   getCasesRepository,
   getRuntimeStateRepository,
+  getOrderSyncStateRepo,
+  getOfficeStaffSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,
   getUserSessionCacheRepository,
   getStorageGateway,
   getUserGroupGateway,
 };
+
+export default Factory;

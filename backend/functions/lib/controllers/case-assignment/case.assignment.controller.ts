@@ -8,7 +8,7 @@ import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-res
 import HttpStatusCodes from '../../../../../common/src/api/http-status-codes';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { closeDeferred } from '../../defer-close';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =
@@ -56,7 +56,7 @@ export class CaseAssignmentController implements CamsController {
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {
-      await closeDeferred(context);
+      await finalizeDeferrable(context);
     }
   }
 

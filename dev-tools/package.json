@@ -4,13 +4,14 @@
   "description": "Custom tools used to aid development.",
   "scripts": {
     "clean": "rm -rf ./node_modules",
-    "delete-all": "ts-node cosmos-records/index.ts",
-    "delete-assignments": "ts-node cosmos-records/delete-assignments.ts",
-    "delete-orders": "ts-node cosmos-records/delete-orders.ts",
-    "sync-orders": "ts-node cosmos-records/sync-orders.ts",
+    "delete-all": "tsx --env-file=.env cosmos-records/index.ts",
+    "delete-assignments": "tsx --env-file=.env cosmos-records/delete-assignments.ts",
+    "delete-orders": "tsx --env-file=.env cosmos-records/delete-orders.ts",
+    "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
+    "sync-orders": "tsx --env-file=.env cosmos-records/sync-orders.ts",
     "reload-orders": "npm run delete-orders; npm run sync-orders",
-    "test-data:sql": "mkdir -p data; ts-node test-data/index.ts sql > data/test-data.sql",
-    "test-data:json": "mkdir -p data; ts-node test-data/index.ts json > data/test-data.json",
+    "test-data:sql": "mkdir -p data; tsx --env-file=.env test-data/index.ts sql > data/test-data.sql",
+    "test-data:json": "mkdir -p data; tsx --env-file=.env test-data/index.ts json > data/test-data.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -29,6 +30,7 @@
     "eslint-plugin-n": "^16.6.2",
     "eslint-plugin-prettier": "^5.2.1",
     "eslint-plugin-promise": "^6.6.0",
-    "ts-node": "^10.9.2"
-  }
+    "tsx": "^4.19.2"
+  },
+  "type": "module"
 }

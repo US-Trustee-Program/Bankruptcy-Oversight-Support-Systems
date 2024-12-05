@@ -4,7 +4,7 @@ import MockData from '../../../../../../common/src/cams/test-utilities/mock-data
 import ConsolidationOrdersMongoRepository from './consolidations.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
-import { closeDeferred } from '../../../defer-close';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { getCamsError } from '../../../common-errors/error-utilities';
 
 describe('Consolidations Repository tests', () => {

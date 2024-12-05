@@ -19,6 +19,11 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
+import { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders/acms-orders';
+
+export interface Releasable {
+  release: () => void;
+}
 
 interface Creates<T, R = void> {
   create(data: T): Promise<R>;
@@ -53,9 +58,13 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Creates<T, T>,
     CreatesMany<T>,
     Reads<T>,
-    Deletes {}
+    Deletes,
+    Releasable {}
 
-export interface UserSessionCacheRepository<T = CamsSession> extends Reads<T>, Upserts<T, T> {}
+export interface UserSessionCacheRepository<T = CamsSession>
+  extends Reads<T>,
+    Upserts<T, T>,
+    Releasable {}
 
 export interface CaseAssignmentRepository<T = CaseAssignment>
   extends Creates<T, string>,
@@ -68,7 +77,8 @@ export interface OrdersRepository<T = Order>
   extends Searches<OrdersSearchPredicate, T>,
     CreatesMany<T, T[]>,
     Reads<T>,
-    Updates<TransferOrderAction> {}
+    Updates<TransferOrderAction>,
+    Releasable {}
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   extends Reads<T>,
@@ -89,7 +99,19 @@ export interface OrdersGateway {
   getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync>;
 }
 
-export interface CasesRepository {
+export interface AcmsGateway {
+  getPageCount(context: ApplicationContext, predicate: AcmsPredicate): Promise<number>;
+  getLeadCaseIds(
+    context: ApplicationContext,
+    predicateAndPage: AcmsPredicateAndPage,
+  ): Promise<string[]>;
+  getConsolidationDetails(
+    context: ApplicationContext,
+    leadCaseId: string,
+  ): Promise<AcmsConsolidation>;
+}
+
+export interface CasesRepository extends Releasable {
   createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
   createTransferTo(reference: TransferTo): Promise<TransferTo>;
   getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>>;
@@ -100,7 +122,7 @@ export interface CasesRepository {
   createCaseHistory(history: CaseHistory);
 }
 
-export interface OfficesRepository {
+export interface OfficesRepository extends Releasable {
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void>;
 }

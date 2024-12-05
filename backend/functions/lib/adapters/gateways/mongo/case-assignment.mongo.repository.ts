@@ -14,8 +14,31 @@ export class CaseAssignmentMongoRepository
   extends BaseMongoRepository
   implements CaseAssignmentRepository
 {
+  private static referenceCount: number = 0;
+  private static instance: CaseAssignmentMongoRepository;
+
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+  }
+
+  public static getInstance(context: ApplicationContext) {
+    if (!CaseAssignmentMongoRepository.instance)
+      CaseAssignmentMongoRepository.instance = new CaseAssignmentMongoRepository(context);
+    CaseAssignmentMongoRepository.referenceCount++;
+    return CaseAssignmentMongoRepository.instance;
+  }
+
+  public static dropInstance() {
+    if (CaseAssignmentMongoRepository.referenceCount > 0)
+      CaseAssignmentMongoRepository.referenceCount--;
+    if (CaseAssignmentMongoRepository.referenceCount < 1) {
+      CaseAssignmentMongoRepository.instance.client.close().then();
+      CaseAssignmentMongoRepository.instance = null;
+    }
+  }
+
+  public release() {
+    CaseAssignmentMongoRepository.dropInstance();
   }
 
   async create(caseAssignment: CaseAssignment): Promise<string> {
