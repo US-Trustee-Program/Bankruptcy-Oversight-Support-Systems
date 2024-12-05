@@ -3,7 +3,7 @@ import { app, InvocationContext, Timer } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { toAzureError } from '../azure/functions';
-import { OfficesController } from '../lib/controllers/offices/offices.controller';
+import { OfficesController } from '../../lib/controllers/offices/offices.controller';
 
 dotenv.config();
 

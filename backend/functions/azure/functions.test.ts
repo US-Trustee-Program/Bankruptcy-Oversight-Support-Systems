@@ -1,7 +1,7 @@
 import { azureToCamsHttpRequest, toAzureSuccess } from './functions';
 import { HttpRequest, HttpResponseInit } from '@azure/functions';
-import { CamsHttpRequest } from '../lib/adapters/types/http';
-import { CamsHttpResponseInit } from '../lib/adapters/utils/http-response';
+import { CamsHttpRequest } from '../../lib/adapters/types/http';
+import { CamsHttpResponseInit } from '../../lib/adapters/utils/http-response';
 
 describe('functions test', () => {
   test('should return properly formatted CamsHttpRequest from malformed headers and query', async () => {

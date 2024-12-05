@@ -1,10 +1,10 @@
-import { LoggerImpl } from '../lib/adapters/services/logger.service';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { LoggerImpl } from '../../lib/adapters/services/logger.service';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import timerTrigger from './orders-sync.function';
 import { Timer } from '@azure/functions';
 import { createMockAzureFunctionContext } from '../azure/testing-helpers';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
-import * as factory from '../lib/factory';
+import { OrdersController } from '../../lib/controllers/orders/orders.controller';
+import * as factory from '../../lib/factory';
 
 describe('Orders Sync Function tests', () => {
   const context = createMockAzureFunctionContext({ MONGO_CONNECTION_STRING: 'fake' });

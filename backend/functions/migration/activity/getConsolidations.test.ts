@@ -1,9 +1,9 @@
 import { InvocationContext } from '@azure/functions';
-import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
+import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import module from './getConsolidations';
-import { AcmsPredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsPredicateAndPage } from '../../../lib/use-cases/acms-orders/acms-orders';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
-import { CamsError } from '../../lib/common-errors/cams-error';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 
 describe('getConsolidations test', () => {
   afterEach(() => {

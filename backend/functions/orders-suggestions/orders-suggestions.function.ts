@@ -1,7 +1,7 @@
 import { InvocationContext, HttpRequest, HttpResponseInit, app } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { OrdersController } from '../../lib/controllers/orders/orders.controller';
 
 import * as dotenv from 'dotenv';
 import { toAzureError, toAzureSuccess } from '../azure/functions';

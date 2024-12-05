@@ -5,7 +5,7 @@ import {
   AcmsPredicate,
   AcmsPredicateAndPage,
   AcmsPartitionReport,
-} from '../../lib/use-cases/acms-orders/acms-orders';
+} from '../../../lib/use-cases/acms-orders/acms-orders';
 
 export function* subOrchestratorPaging(context: OrchestrationContext) {
   const predicate: AcmsPredicate = context.df.getInput();

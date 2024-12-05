@@ -1,12 +1,12 @@
-import { AttorneysController } from '../lib/controllers/attorneys/attorneys.controller';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { AttorneysController } from '../../lib/controllers/attorneys/attorneys.controller';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import AttorneyList from '../lib/use-cases/attorneys';
+import AttorneyList from '../../lib/use-cases/attorneys';
 import handler from './attorneys.function';
 import { InvocationContext } from '@azure/functions';
 import { ResponseBody } from '../../../common/src/api/response';

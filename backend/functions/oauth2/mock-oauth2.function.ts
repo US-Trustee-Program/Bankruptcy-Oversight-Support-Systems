@@ -1,8 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
-import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
+import { mockAuthentication } from '../../lib/testing/mock-gateways/mock-oauth2-gateway';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
-import { httpSuccess } from '../lib/adapters/utils/http-response';
+import { httpSuccess } from '../../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION';
 

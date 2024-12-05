@@ -1,4 +1,4 @@
-import { CamsError } from '../lib/common-errors/cams-error';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import handler from './courts.function';
 import {
   buildTestResponseError,
@@ -6,7 +6,7 @@ import {
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { CourtsController } from '../lib/controllers/courts/courts.controller';
+import { CourtsController } from '../../lib/controllers/courts/courts.controller';
 import { CourtDivisionDetails } from '../../../common/src/cams/courts';
 import { COURT_DIVISIONS } from '../../../common/src/cams/test-utilities/courts.mock';
 

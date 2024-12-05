@@ -1,8 +1,8 @@
 import handler from './orders.function';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { CamsHttpRequest } from '../lib/adapters/types/http';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { CamsHttpRequest } from '../../lib/adapters/types/http';
+import { OrdersController } from '../../lib/controllers/orders/orders.controller';
 import { Order } from '../../../common/src/cams/orders';
 import {
   buildTestResponseError,
@@ -10,7 +10,7 @@ import {
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { commonHeaders } from '../lib/adapters/utils/http-response';
+import { commonHeaders } from '../../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Orders Function tests', () => {

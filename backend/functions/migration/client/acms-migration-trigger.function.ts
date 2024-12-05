@@ -1,10 +1,10 @@
 import * as df from 'durable-functions';
 import { HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
 import { MAIN_ORCHESTRATOR } from '../loadConsolidations';
-import { TriggerRequest } from '../../lib/use-cases/acms-orders/acms-orders';
-import { BadRequestError } from '../../lib/common-errors/bad-request';
+import { TriggerRequest } from '../../../lib/use-cases/acms-orders/acms-orders';
+import { BadRequestError } from '../../../lib/common-errors/bad-request';
 import * as dotenv from 'dotenv';
-import { UnauthorizedError } from '../../lib/common-errors/unauthorized-error';
+import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
 
 const MODULE_NAME = 'ACMS_MIGRATION_TRIGGER';
 dotenv.config();

@@ -1,8 +1,8 @@
 import { InvocationContext } from '@azure/functions';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
-import { CamsError } from '../../lib/common-errors/cams-error';
-import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
-import { AcmsPredicateAndPage } from '../../lib/use-cases/acms-orders/acms-orders';
+import { CamsError } from '../../../lib/common-errors/cams-error';
+import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
+import { AcmsPredicateAndPage } from '../../../lib/use-cases/acms-orders/acms-orders';
 import module from './getPageCount';
 
 describe('getPageCount test', () => {

@@ -1,14 +1,14 @@
 import ContextCreator from '../azure/application-context-creator';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 
 import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/functions';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
-import { httpSuccess } from '../lib/adapters/utils/http-response';
+import { httpSuccess } from '../../lib/adapters/utils/http-response';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
-import { closeDeferred } from '../lib/deferrable/defer-close';
+import { closeDeferred } from '../../lib/deferrable/defer-close';
 
 const MODULE_NAME = 'HEALTHCHECK';
 

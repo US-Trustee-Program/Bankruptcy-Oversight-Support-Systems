@@ -3,7 +3,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
-import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
+import { CaseSummaryController } from '../../lib/controllers/case-summary/case-summary.controller';
 
 dotenv.config();
 

@@ -1,11 +1,11 @@
 import { describe } from 'node:test';
 
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
-import { closeDeferred } from '../lib/deferrable/defer-close';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
+import { closeDeferred } from '../../lib/deferrable/defer-close';
 
 import HealthcheckCosmosDb, { HealthCheckDocument } from './healthcheck.db.cosmos';
-import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/utils/mongo-adapter';
+import { MongoCollectionAdapter } from '../../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
 describe('healthcheck db tests', () => {
   let context: ApplicationContext;
