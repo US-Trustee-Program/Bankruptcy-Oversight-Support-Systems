@@ -1,11 +1,11 @@
 import handler from './orders-suggestions.function';
-import { CamsError } from '../lib/common-errors/cams-error';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import {
   buildTestResponseSuccess,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { OrdersController } from '../../lib/controllers/orders/orders.controller';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { CaseSummary } from '../../../common/src/cams/cases';
 import { buildTestResponseError } from '../azure/testing-helpers';

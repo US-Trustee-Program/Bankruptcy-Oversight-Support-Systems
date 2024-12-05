@@ -1,5 +1,5 @@
-import { NotFoundError } from '../lib/common-errors/not-found-error';
-import { CaseAssociatedController } from '../lib/controllers/case-associated/case-associated.controller';
+import { NotFoundError } from '../../lib/common-errors/not-found-error';
+import { CaseAssociatedController } from '../../lib/controllers/case-associated/case-associated.controller';
 import handler from './case-associated.function';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';

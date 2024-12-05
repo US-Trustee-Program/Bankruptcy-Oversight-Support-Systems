@@ -1,6 +1,6 @@
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import handler from './consolidations.function';
-import { CamsHttpRequest } from '../lib/adapters/types/http';
+import { CamsHttpRequest } from '../../lib/adapters/types/http';
 import ContextCreator from '../azure/application-context-creator';
 import {
   buildTestResponseError,
@@ -8,9 +8,9 @@ import {
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { OrdersController } from '../lib/controllers/orders/orders.controller';
+import { OrdersController } from '../../lib/controllers/orders/orders.controller';
 import { ConsolidationOrder } from '../../../common/src/cams/orders';
-import { BadRequestError } from '../lib/common-errors/bad-request';
+import { BadRequestError } from '../../lib/common-errors/bad-request';
 
 describe('Consolidations Function tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {

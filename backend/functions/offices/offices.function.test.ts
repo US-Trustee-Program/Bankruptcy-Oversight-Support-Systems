@@ -1,4 +1,4 @@
-import { CamsError } from '../lib/common-errors/cams-error';
+import { CamsError } from '../../lib/common-errors/cams-error';
 import ContextCreator from '../azure/application-context-creator';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import handler from './offices.function';
@@ -8,7 +8,7 @@ import {
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { OfficesController } from '../lib/controllers/offices/offices.controller';
+import { OfficesController } from '../../lib/controllers/offices/offices.controller';
 import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../common/src/cams/offices';
 
 describe('offices Function tests', () => {

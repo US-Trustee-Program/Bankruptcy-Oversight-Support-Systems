@@ -1,6 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../azure/application-context-creator';
-import { OfficesController } from '../lib/controllers/offices/offices.controller';
+import { OfficesController } from '../../lib/controllers/offices/offices.controller';
 import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 const MODULE_NAME = 'OFFICES_FUNCTION';

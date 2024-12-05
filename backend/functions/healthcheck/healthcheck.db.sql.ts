@@ -1,5 +1,5 @@
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import { getSqlConnection } from '../lib/factory';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { getSqlConnection } from '../../lib/factory';
 
 const MODULE_NAME = 'HEALTHCHECK-SQL-DB';
 

@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { CasesController } from '../lib/controllers/cases/cases.controller';
+import { CasesController } from '../../lib/controllers/cases/cases.controller';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../azure/functions';

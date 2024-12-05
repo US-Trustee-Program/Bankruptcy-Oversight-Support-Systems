@@ -1,5 +1,5 @@
 import { createMockAzureFunctionRequest } from '../azure/testing-helpers';
-import { MongoCollectionAdapter } from '../lib/adapters/gateways/mongo/utils/mongo-adapter';
+import { MongoCollectionAdapter } from '../../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
 import { HealthCheckDocument } from './healthcheck.db.cosmos';
 import handler, { checkResults } from './healthcheck.function';

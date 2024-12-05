@@ -1,5 +1,5 @@
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
+import { CaseAssignmentController } from '../../lib/controllers/case-assignment/case.assignment.controller';
 import ContextCreator from '../azure/application-context-creator';
 import { initializeApplicationInsights } from '../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../azure/functions';

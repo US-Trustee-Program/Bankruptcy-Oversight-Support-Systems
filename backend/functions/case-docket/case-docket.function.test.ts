@@ -1,15 +1,15 @@
 import handler from './case-docket.function';
-import { DXTR_CASE_DOCKET_ENTRIES } from '../lib/testing/mock-data/case-docket-entries.mock';
-import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../lib/testing/testing-constants';
+import { DXTR_CASE_DOCKET_ENTRIES } from '../../lib/testing/mock-data/case-docket-entries.mock';
+import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../lib/testing/testing-constants';
 import { InvocationContext } from '@azure/functions';
-import { CamsHttpRequest } from '../lib/adapters/types/http';
+import { CamsHttpRequest } from '../../lib/adapters/types/http';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../azure/testing-helpers';
-import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
-import { NotFoundError } from '../lib/common-errors/not-found-error';
+import { CaseDocketController } from '../../lib/controllers/case-docket/case-docket.controller';
+import { NotFoundError } from '../../lib/common-errors/not-found-error';
 import { CaseDocket } from '../../../common/src/cams/cases';
 
 describe('Case docket function', () => {

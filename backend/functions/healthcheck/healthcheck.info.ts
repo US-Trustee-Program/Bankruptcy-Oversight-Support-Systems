@@ -1,5 +1,5 @@
 import * as dotenv from 'dotenv';
-import { ApplicationContext } from '../lib/adapters/types/basic';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
 
 dotenv.config();
 
