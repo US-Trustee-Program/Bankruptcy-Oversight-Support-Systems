@@ -29,7 +29,9 @@ on:
           - "false"
           - "true"
       enableBicepDeployment:
-        description: "enableBicepDeployment: Execute main.bicep deployment for application component Azure resources"
+        description:
+          "enableBicepDeployment: Execute main.bicep deployment for application component Azure
+          resources"
         required: true
         default: "false"
         type: choice
@@ -109,12 +111,13 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      camsServerHostname: ${{ needs.setup.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ needs.setup.outputs.webappName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
 
@@ -131,13 +134,16 @@ jobs:
         unit-test-backend,
         unit-test-common,
       ]
-    if: ((github.ref == 'refs/heads/main') || (github.ref == 'refs/heads/dependency-updates-auto') || (inputs.deployBranch == 'true'))
+    if:
+      ((github.ref == 'refs/heads/main') || (github.ref == 'refs/heads/dependency-updates-auto') ||
+      (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
       webAppName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
@@ -154,7 +160,8 @@ jobs:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
       webAppName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}

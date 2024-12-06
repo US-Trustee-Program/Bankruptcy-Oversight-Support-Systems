@@ -15,7 +15,10 @@ on:
       webappName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      migrationFunctionName:
         required: true
         type: string
       azResourceGrpAppEncrypted:
@@ -54,7 +57,7 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.webappName }}
 
-  deploy-service:
+  deploy-api:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
@@ -63,7 +66,7 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4.1.7
         with:
-          name: ${{ inputs.apiName }}-build
+          name: ${{ inputs.apiFunctionName }}-build
 
       - uses: azure/login@v1
         with:
@@ -77,22 +80,54 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy Azure Functions backend
-        id: deploy-backend-step
+      - name: Deploy Azure Functions API
+        id: deploy-backend-api-step
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip
+          -n ${{ inputs.apiFunctionName }} \
+          --src ./${{ inputs.apiFunctionName }}.zip
 
-  endpoint-test-application:
-    needs: [deploy-webapp, deploy-service]
+  deploy-migration-app:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4.1.7
+        with:
+          name: ${{ inputs.migrationFunctionName }}-build
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Deploy Azure Function Migration App
+        id: deploy-migration-app-step
+        run: |
+          sleep 30 &&
+          ./ops/scripts/pipeline/az-func-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ inputs.migrationFunctionName }} \
+          --src ./${{ inputs.migrationFunctionName }}.zip
+
+  endpoint-test-application: # TODO: healthcheck/endpoint test on new migration function app?
+    needs: [deploy-webapp, deploy-api]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -105,7 +140,7 @@ jobs:
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
     steps:
       - uses: azure/login@v1
         with:
@@ -122,4 +157,4 @@ jobs:
       - name: Enable production slot access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

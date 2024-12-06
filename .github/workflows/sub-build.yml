@@ -6,7 +6,10 @@ on:
       nodeVersion:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      migrationFunctionName:
         required: true
         type: string
       camsServerHostname:
@@ -100,12 +103,22 @@ jobs:
           npm ci
           npm run build
 
-      - name: Package Application
-        run: OUT=${{ inputs.apiName }} npm run pack
+      - name: Package API
+        run: OUT=${{ inputs.apiFunctionName }} npm run pack
 
-      - name: Upload Node Azure Functions Artifact
+      - name: Package Migration
+        run: OUT=${{ inputs.migrationFunctionName }} npm run pack:migration
+
+      - name: Upload API Azure Functions Artifact
         uses: actions/upload-artifact@v4.4.0
         with:
-          name: ${{ inputs.apiName }}-build
-          path: backend/${{ inputs.apiName }}.zip
+          name: ${{ inputs.apiFunctionName }}-build
+          path: backend/api/${{ inputs.apiFunctionName }}.zip
+          if-no-files-found: error
+
+      - name: Upload Migration Azure Functions Artifact
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: ${{ inputs.migrationFunctionName }}-build
+          path: backend/migration/${{ inputs.migrationFunctionName }}.zip
           if-no-files-found: error

@@ -37,11 +37,16 @@ var planTypeToSkuMap = {
 
 param stackName string = 'ustp-cams'
 
-param functionName string
+param apiFunctionName string
+
+param apiFunctionSubnetId string
+
+param migrationFunctionName string
+
+param migrationFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
 
-param functionSubnetId string
 
 param privateEndpointSubnetId string
 
@@ -75,7 +80,7 @@ param functionsVersion string = '~4'
 @description('Storage account name. Default creates unique name from resource group id and stack name')
 @minLength(3)
 @maxLength(24)
-param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, functionName)}'
+param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
 
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
@@ -159,7 +164,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: functionsStorageName
   location: location
   tags: {
-    'Stack Name': functionName
+    'Stack Name': apiFunctionName
   }
   sku: {
     name: 'Standard_LRS'
@@ -172,33 +177,33 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
 }
 
 module appInsights './lib/app-insights/app-insights.bicep' = if (createApplicationInsights) {
-  name: '${functionName}-application-insights-module'
+  name: '${apiFunctionName}-application-insights-module'
   params: {
     location: location
     kind: 'web'
-    appInsightsName: 'appi-${functionName}'
+    appInsightsName: 'appi-${apiFunctionName}'
     applicationType: 'web'
     workspaceResourceId: analyticsWorkspaceId
   }
 }
 
 module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' = if (createApplicationInsights) {
-  name: '${functionName}-diagnostic-settings-module'
+  name: '${apiFunctionName}-diagnostic-settings-module'
   params: {
-    functionAppName: functionName
+    functionAppName: apiFunctionName
     workspaceResourceId: analyticsWorkspaceId
   }
   dependsOn: [
     appInsights
-    functionApp
+    apiFunctionApp
   ]
 }
 
 module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${functionName}-healthcheck-alert-rule-module'
+  name: '${apiFunctionName}-healthcheck-alert-rule-module'
   params: {
-    alertName: '${functionName}-health-check-alert'
-    appId: functionApp.id
+    alertName: '${apiFunctionName}-health-check-alert'
+    appId: apiFunctionApp.id
     timeAggregation: 'Average'
     operator: 'LessThan'
     targetResourceType: 'Microsoft.Web/sites'
@@ -211,10 +216,10 @@ module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (
 }
 
 module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${functionName}-http-error-alert-rule-module'
+  name: '${apiFunctionName}-http-error-alert-rule-module'
   params: {
-    alertName: '${functionName}-http-error-alert'
-    appId: functionApp.id
+    alertName: '${apiFunctionName}-http-error-alert'
+    appId: apiFunctionApp.id
     timeAggregation: 'Total'
     operator: 'GreaterThanOrEqual'
     targetResourceType: 'Microsoft.Web/sites'
@@ -237,8 +242,8 @@ var userAssignedIdentities = union(
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 
-resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
-  name: functionName
+resource apiFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
+  name: apiFunctionName
   location: location
   kind: 'functionapp,linux'
   identity: {
@@ -249,7 +254,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     serverFarmId: servicePlan.id
     enabled: true
     httpsOnly: true
-    virtualNetworkSubnetId: functionSubnetId
+    virtualNetworkSubnetId: apiFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
   dependsOn: [
@@ -258,6 +263,27 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   ]
 }
 
+
+resource migrationFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
+  name: migrationFunctionName
+  location: location
+  kind: 'functionapp,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: userAssignedIdentities
+  }
+  properties: {
+    serverFarmId: servicePlan.id
+    enabled: true
+    httpsOnly: true
+    virtualNetworkSubnetId: migrationFunctionSubnetId
+    keyVaultReferenceIdentity: appConfigIdentity.id
+  }
+  dependsOn: [
+    appConfigIdentity
+    sqlIdentity
+  ]
+}
 //TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
 
 var applicationSettings = concat(
@@ -410,8 +436,8 @@ var ipSecurityRestrictionsRules = concat(
     : []
 )
 
-resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
-  parent: functionApp
+resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+  parent: apiFunctionApp
   name: 'web'
   properties: {
     cors: {
@@ -441,14 +467,60 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${functionName}-pep-module'
+resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+  parent: migrationFunctionApp
+  name: 'web'
+  properties: {
+    cors: {
+      allowedOrigins: corsAllowOrigins
+    }
+    numberOfWorkers: 1
+    alwaysOn: true
+    http20Enabled: true
+    functionAppScaleLimit: 0
+    minimumElasticInstanceCount: 0
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: applicationSettings
+  }
+}
+
+module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${apiFunctionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
     privateLinkGroup: 'sites'
-    stackName: functionName
+    stackName: apiFunctionName
     location: location
-    privateLinkServiceId: functionApp.id
+    privateLinkServiceId: apiFunctionApp.id
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+  }
+}
+
+module migrationFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${migrationFunctionName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites'
+    stackName: migrationFunctionName
+    location: location
+    privateLinkServiceId: migrationFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
@@ -458,25 +530,35 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
-module setSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+module setMigrationFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${functionName}-sql-vnet-rule-module'
+  name: '${apiFunctionName}-sql-vnet-rule-module'
   params: {
-    stackName: functionName
+    stackName: migrationFunctionName
     sqlServerName: sqlServerName
-    subnetId: functionSubnetId
+    subnetId: apiFunctionSubnetId
   }
 }
 
-// Creates a managed identity that would be used to grant access to functionapp instance
-var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${functionName}-readonly'
+module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+  scope: resourceGroup(sqlServerResourceGroupName)
+  name: '${apiFunctionName}-sql-vnet-rule-module'
+  params: {
+    stackName: apiFunctionName
+    sqlServerName: sqlServerName
+    subnetId: apiFunctionSubnetId
+  }
+}
+
+// Creates a managed identity that would be used to grant access to function instance
+var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${apiFunctionName}-readonly'
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
 
 module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlIdentityRG)
-  name: '${functionName}-sql-identity-module'
+  name: '${apiFunctionName}-sql-identity-module'
   params: {
     managedIdentityName: sqlIdentityName
     location: location
@@ -488,7 +570,8 @@ resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
   scope: resourceGroup(sqlIdentityRG)
 }
 
-output functionAppName string = functionApp.name
-output functionAppId string = functionApp.id
-output createdSqlServerVnetRule bool = createSqlServerVnetRule
-output keyVaultId string = functionApp.properties.keyVaultReferenceIdentity
+// output apiFunctionAppName string = apiFunctionApp.name
+// output apiFunctionAppId string = apiFunctionApp.id
+// output migrationFunctionAppId string = migrationFunctionApp.id
+// output createdSqlServerVnetRule bool = createSqlServerVnetRule
+// output keyVaultId string = apiFunctionApp.properties.keyVaultReferenceIdentity

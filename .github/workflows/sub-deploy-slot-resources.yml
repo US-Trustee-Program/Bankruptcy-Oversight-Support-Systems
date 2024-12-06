@@ -6,7 +6,10 @@ on:
       webAppName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      migrationFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -29,7 +32,7 @@ jobs:
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
       webAppName: ${{ inputs.webAppName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
@@ -40,7 +43,8 @@ jobs:
     uses: ./.github/workflows/reusable-backend-slot.yml
     with:
       webAppName: ${{ inputs.webAppName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
+      migrationFunctionName: ${{ inputs.migrationFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
