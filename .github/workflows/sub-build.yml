@@ -97,13 +97,11 @@ jobs:
 
       - name: Execute Build
         run: |
-          pushd ../common
-          npm ci
-          popd
-
-          npm ci
-
           npm run use-bash
+
+          npm run build-common
+
+          npm ci
 
           npm run build:api
 
