@@ -1,0 +1,10 @@
+{
+  "name": "cams-api",
+  "version": "1.0.0",
+  "description": "",
+  "workspaces": ["../../"],
+  "dependencies": {
+    "@azure/functions": "^4.6.0"
+  },
+  "main": "dist/backend/functions/api/*/*.function.js"
+}

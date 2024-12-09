@@ -2,7 +2,7 @@
 
 # Title:        az-slot-web-resource-deploy.sh
 # Description:  Helper script to provision Azure slot deployment resources for Azure webapp
-# Usage:        ./az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiName apiName --slotName staging --subscription networkSubscription --network-rg networkResourceGroup --vnet vnetName --subnet webappSubnetName"
+# Usage:        ./az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiFunctionName apiFunctionName --slotName staging --subscription networkSubscription --network-rg networkResourceGroup --vnet vnetName --subnet webappSubnetName"
 #
 # Exitcodes
 # ==========
@@ -15,7 +15,7 @@ set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiName apiName --slotName staging --subscription networkSubscription --network-rg networkResourceGroup --vnet vnetName --subnet webappSubnetName"
+        echo "USAGE: az-slot-web-resource-deploy.sh -h --resourceGroup resourceGroupName --webappName webappName --apiFunctionName apiFunctionName --slotName staging --subscription networkSubscription --network-rg networkResourceGroup --vnet vnetName --subnet webappSubnetName"
         exit 0
         ;;
     --resourceGroup)
@@ -27,7 +27,7 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --apiName)
+    --apiFunctionName)
         api_name="${2}"
         shift 2
         ;;

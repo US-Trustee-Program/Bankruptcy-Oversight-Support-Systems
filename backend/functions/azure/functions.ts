@@ -1,9 +1,9 @@
 import { HttpRequest, HttpResponseInit } from '@azure/functions';
-import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
-import { CamsHttpResponseInit, commonHeaders } from '../lib/adapters/utils/http-response';
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import { getCamsError } from '../lib/common-errors/error-utilities';
-import { LoggerImpl } from '../lib/adapters/services/logger.service';
+import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../../lib/adapters/types/http';
+import { CamsHttpResponseInit, commonHeaders } from '../../lib/adapters/utils/http-response';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { getCamsError } from '../../lib/common-errors/error-utilities';
+import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   if (!it) return {};

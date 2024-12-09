@@ -1,5 +1,5 @@
 import { InvocationContext } from '@azure/functions';
-import { AcmsBounds, AcmsPredicate } from '../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsBounds, AcmsPredicate } from '../../../lib/use-cases/acms-orders/acms-orders';
 
 async function flattenBoundingArrays(
   bounds: AcmsBounds,

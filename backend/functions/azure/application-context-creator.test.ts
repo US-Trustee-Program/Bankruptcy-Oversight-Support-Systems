@@ -1,13 +1,13 @@
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../lib/adapters/types/basic';
-import * as FeatureFlags from '../lib/adapters/utils/feature-flag';
-import { ApplicationConfiguration } from '../lib/configs/application-configuration';
-import { MockUserSessionUseCase } from '../lib/testing/mock-gateways/mock-user-session-use-case';
-import { createMockApplicationContext } from '../lib/testing/testing-utilities';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
+import * as FeatureFlags from '../../lib/adapters/utils/feature-flag';
+import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
+import { MockUserSessionUseCase } from '../../lib/testing/mock-gateways/mock-user-session-use-case';
+import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
 import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 import { azureToCamsHttpRequest } from './functions';
-import { LoggerImpl } from '../lib/adapters/services/logger.service';
+import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {

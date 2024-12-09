@@ -1,8 +1,8 @@
 import { InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
-import AcmsOrdersController from '../../lib/controllers/acms-orders/acms-orders.controller';
-import { getCamsError } from '../../lib/common-errors/error-utilities';
-import { AcmsTransformationResult } from '../../lib/use-cases/acms-orders/acms-orders';
+import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { AcmsTransformationResult } from '../../../lib/use-cases/acms-orders/acms-orders';
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
 

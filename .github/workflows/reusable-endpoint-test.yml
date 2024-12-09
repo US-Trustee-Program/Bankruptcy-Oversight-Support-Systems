@@ -3,7 +3,7 @@ name: Endpoint Tests
 on:
   workflow_call:
     inputs:
-      apiName:
+      apiFunctionName:
         required: true
         type: string
       slotName:
@@ -33,7 +33,7 @@ jobs:
     env:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.branchHashId }}
       priority: 200
     steps:
@@ -62,7 +62,7 @@ jobs:
       - name: Health check App Resources
         run: |
           ./ops/scripts/pipeline/endpoint-test.sh \
-          --apiName ${{ inputs.apiName }} \
+          --apiFunctionName ${{ inputs.apiFunctionName }} \
           --webappName ${{ inputs.webappName }} \
           --hostSuffix ${{ vars.AZ_HOSTNAME_SUFFIX }} \
           --gitSha ${{ github.sha }} \
