@@ -105,10 +105,8 @@ jobs:
 
           npm run build
 
-          npm run prepare-pack:api
           npm run build:api
 
-          npm run prepare-pack:migration
           npm run build:migration
 
       - name: Package API
