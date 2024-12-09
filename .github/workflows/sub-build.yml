@@ -106,7 +106,7 @@ jobs:
 
           npm run build:api
 
-          npm pushd functions/migration
+          pushd functions/migration
           npm ci
           popd
 
