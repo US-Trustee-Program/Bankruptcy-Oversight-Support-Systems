@@ -542,7 +542,7 @@ var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlSe
 
 module setMigrationFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${apiFunctionName}-sql-vnet-rule-module'
+  name: '${migrationFunctionName}-sql-vnet-rule-module'
   params: {
     stackName: migrationFunctionName
     sqlServerName: sqlServerName
