@@ -256,6 +256,9 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
     createApplicationInsights: createApplicationInsights
     functionAppName: apiFunctionName
   }
+  dependsOn: [
+    apiFunctionApp
+  ]
 }
 
 module migrationFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
@@ -269,7 +272,9 @@ module migrationFunctionAppInsights 'lib/app-insights/function-app-insights.bice
     createApplicationInsights: createApplicationInsights
     functionAppName: migrationFunctionName
   }
-
+  dependsOn: [
+    migrationFunctionApp
+  ]
 }
 
 //TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
