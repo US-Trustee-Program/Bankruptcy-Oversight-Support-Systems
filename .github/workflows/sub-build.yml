@@ -103,6 +103,8 @@ jobs:
 
           npm ci
 
+          npm run build
+
           npm run build:api
 
           npm run build:migration
