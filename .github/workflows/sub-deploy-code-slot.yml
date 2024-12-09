@@ -266,6 +266,7 @@ jobs:
         run: |
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ inputs.migrationFunctionName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ inputs.migrationFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp stop -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --slot ${{ inputs.slotName }}
 
   endpoint-test-application-post-swap:
     needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
@@ -304,3 +305,4 @@ jobs:
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
