@@ -178,6 +178,7 @@ module migrationFunctionSubnet './subnet.bicep' = {
     ustpVirtualNetwork
     ustpDnsZones
     privateEndpointSubnet
+    apiFunctionSubnet
   ]
 }
 
@@ -202,6 +203,7 @@ module webappSubnet './subnet.bicep' = {
     ustpVirtualNetwork
     ustpDnsZones
     apiFunctionSubnet
+    migrationFunctionSubnet
   ]
 }
 
