@@ -100,15 +100,9 @@ jobs:
           npm ci
           popd
 
-          pushd functions/api
           npm ci
-          popd
 
           npm run build:api
-
-          pushd functions/migration
-          npm ci
-          popd
 
           npm run build:migration
 
