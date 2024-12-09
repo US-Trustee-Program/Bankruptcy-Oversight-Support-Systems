@@ -125,6 +125,9 @@ az functionapp config appsettings set -g "$app_rg" -n "$migration_function_name"
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
 
+echo "Setting CORS Allowed origins for Migration function"
+az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://portal.azure.us"
+
 # Identities occasionally come through with improper id for usage here, this constructs that
 kv_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$kv_id_name'].id" -o tsv)
 identities="$kv_ref_id"
