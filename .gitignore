@@ -75,8 +75,9 @@ cams1.code-workspace
 # Node
 **/node_modules/
 
-# Dist
+# Build and Dist
 **/dist/
+**/build/
 
 # Veracode
 **/pipeline-scan*

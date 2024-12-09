@@ -2,9 +2,11 @@
   "name": "cams-api",
   "version": "1.0.0",
   "description": "",
-  "workspaces": ["../../"],
-  "dependencies": {
-    "@azure/functions": "^4.6.0"
-  },
-  "main": "dist/backend/functions/api/*/*.function.js"
+  "main": "backend/functions/api/*/*.js",
+  "scripts": {
+    "clean": "rm -rf build/ dist/ api.zip",
+    "start": "func start --javascript",
+    "build": "tsc --build tsconfig.build.json",
+    "pack": "export PACK_OUT=api; export PACK_TEMP_DIR=/tmp/build/${pwd}; ../../pack.sh"
+  }
 }
