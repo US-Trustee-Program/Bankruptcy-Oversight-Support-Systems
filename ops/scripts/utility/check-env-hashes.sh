@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# A utility script useful for beginning dependency updates
+# A utility script useful for identifying deployed branch environments
 
 # Usage
 #   From the root directory, run the following command:
@@ -12,14 +12,17 @@
 Help()
 {
    # Display Help
-   echo "This script runs 'npm update' for all Node projects in the repository."
+   echo "This script prints branch names and their short hashes or checks a"
+   echo "known short hash against existing branches. Default lists remote"
+   echo "branches and their short hashes."
    echo
-   echo "Syntax: ./ops/scripts/utility/update-dependencies.sh [-c|h|r|u]"
+   echo "Syntax: ./ops/scripts/utility/check-env-hashes.sh [-l|h|r|e {hash}]"
    echo "options:"
    echo "l     Check local branches."
    echo "h     Print this Help and exit."
    echo "r     Check remote branches."
-   echo "e     Check against a specific known short hash. Example usage: -e 0a3de4"
+   echo "e     Check against a specific known short hash."
+   echo "      Example usage: -e 0a3de4"
    echo
 }
 
