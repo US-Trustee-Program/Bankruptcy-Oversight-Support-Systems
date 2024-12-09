@@ -126,8 +126,6 @@ param camsReactSelectHash string
 
 param cosmosDatabaseName string
 
-
-//TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
