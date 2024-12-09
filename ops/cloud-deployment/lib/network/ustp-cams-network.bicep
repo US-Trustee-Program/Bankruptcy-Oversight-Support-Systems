@@ -28,7 +28,7 @@ param migrationSubnetAddressPrefix string = '10.10.14.0/28'
 
 param migrationSubnetName string = 'snet-${migrationFunctionName}'
 
-param webappName string = '${stackName}-node-api'
+param webappName string = '${stackName}-webapp'
 
 param webappSubnetName string = 'snet-${apiFunctionName}'
 
