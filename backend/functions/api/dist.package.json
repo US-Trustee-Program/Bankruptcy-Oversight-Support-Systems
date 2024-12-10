@@ -1,9 +1,0 @@
-{
-  "name": "cams-api",
-  "version": "1.0.0",
-  "description": "",
-  "main": "backend/functions/api/*/*.function.js",
-  "scripts": {
-    "start": "func start --javascript"
-  }
-}
