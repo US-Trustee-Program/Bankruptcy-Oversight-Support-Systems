@@ -236,4 +236,3 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       network
     ]
 }
-
