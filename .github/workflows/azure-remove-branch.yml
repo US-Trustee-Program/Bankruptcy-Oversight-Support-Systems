@@ -1,8 +1,11 @@
 name: Clean up Flexion Azure Resources
 
 on:
+  delete:
+
   pull_request:
     types: [closed]
+
   workflow_dispatch:
     inputs:
       hashId:
