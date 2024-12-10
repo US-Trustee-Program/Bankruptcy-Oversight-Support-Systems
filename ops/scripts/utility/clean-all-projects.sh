@@ -6,7 +6,7 @@
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/clean-all-projects.sh
 
-PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("common" "dev-tools" "test/e2e" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
@@ -14,5 +14,10 @@ for str in "${PROJECTS[@]}"; do
   npm run clean
   popd || exit
 done
+
+pushd "backend" || exit
+echo "Cleaning backend."
+npm run clean:all
+popd || exit
 
 exit 0
