@@ -8,6 +8,6 @@
     "prestart": "npm run build && cp ../../.env ../../local.settings.json .",
     "start": "func start --typescript --model v4",
     "build": "tsc --build tsconfig.build.json",
-    "pack": "export PACK_OUT=migration; export PACK_TEMP_DIR=/tmp/build/${pwd}; ../../pack.sh"
+    "pack": "export PACK_OUT=migration; ../../pack.sh migration"
   }
 }
