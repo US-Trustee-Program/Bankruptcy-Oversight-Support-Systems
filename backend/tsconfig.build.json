@@ -3,5 +3,7 @@
     "outDir": "dist"
   },
   "extends": "./tsconfig.json",
-  "exclude": ["**/*.test.ts", "**/testing*", "**/fake*", "**/testing/*", "functions"]
+  "exclude": ["**/*.test.ts", "**/testing*", "**/fake*", "**/testing/*",
+    "function-apps"
+  ]
 }

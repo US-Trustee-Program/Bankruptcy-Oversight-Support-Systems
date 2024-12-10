@@ -75,7 +75,7 @@ describe('extractPathFromUri', () => {
   });
 });
 
-describe('_Api2 functions', async () => {
+describe('_Api2 function-apps', async () => {
   let api: ApiType;
   let api2: Api2Type;
 
@@ -86,7 +86,7 @@ describe('_Api2 functions', async () => {
     api2 = await import('./api2');
   });
 
-  test('should call real api functions', async () => {
+  test('should call real api function-apps', async () => {
     await callApiFunction(api2.Api2.getAttorneys, null, api);
     await callApiFunction(api2.Api2.getCaseAssignments, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseAssociations, 'some-id', api);

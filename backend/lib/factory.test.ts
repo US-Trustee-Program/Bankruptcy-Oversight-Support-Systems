@@ -1,7 +1,7 @@
 import { ApplicationContext } from './adapters/types/basic';
 import { createMockApplicationContext } from './testing/testing-utilities';
 
-describe('Factory functions', () => {
+describe('Factory function-apps', () => {
   let dbContext: ApplicationContext;
   let mockDbContext: ApplicationContext;
   let factory;

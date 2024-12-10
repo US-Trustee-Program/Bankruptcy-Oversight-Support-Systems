@@ -59,7 +59,7 @@ trap 'rm -f "$TEMP_FILE"' EXIT
 cat ./ops/scripts/utility/audit-comment.md >> "$TEMP_FILE"
 RESULTS=0
 
-PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
 for dir in "${PROJECTS[@]}"; do
   pushd "${dir}" || exit
   npm ci

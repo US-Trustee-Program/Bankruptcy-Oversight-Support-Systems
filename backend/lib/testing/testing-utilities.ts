@@ -3,7 +3,7 @@ import { HttpRequest, InvocationContext } from '@azure/functions';
 import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import { CamsSession } from '../../../common/src/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
-import ContextCreator from '../../functions/azure/application-context-creator';
+import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';
 
 const invocationContext = new InvocationContext();
