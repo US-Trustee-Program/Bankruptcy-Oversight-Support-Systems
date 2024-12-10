@@ -55,8 +55,6 @@
     "pack": "npm run pack:api",
     "pack:api": "pushd functions/api && npm run pack && popd",
     "pack:migration": "pushd functions/migration && npm run pack && popd",
-    "watch": "tsc --project tsconfig.build.json -w",
-    "prestart": "npm run build-common && npm run build",
     "start": "npm run start:api",
     "start:api": "pushd functions/api && npm run start && popd",
     "start:migration": "pushd functions/migration && npm run start && popd",
