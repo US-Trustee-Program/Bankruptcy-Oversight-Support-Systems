@@ -4,8 +4,8 @@
   "description": "",
   "main": "dist/backend/functions/api/*/*.function.js",
   "scripts": {
-    "clean": "rm -rf dist/ node_modules/ *.zip",
-    "prestart": "npm run build && cp ../../.env ../../local.settings.json .",
+    "clean": "rm -rf ./dist ./node_modules *.zip",
+    "prestart": "npm run build && cp ../../.env .",
     "start": "func start --javascript",
     "build": "tsc --build tsconfig.build.json",
     "pack": "../../pack.sh api"
