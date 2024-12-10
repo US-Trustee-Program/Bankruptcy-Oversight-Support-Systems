@@ -2,10 +2,11 @@
   "name": "cams-api",
   "version": "1.0.0",
   "description": "",
-  "main": "backend/functions/api/*/*.js",
+  "main": "build/backend/functions/api/*/*.function.js",
   "scripts": {
-    "clean": "rm -rf build/ dist/ api.zip",
-    "start": "func start --javascript",
+    "clean": "rm -rf build/ dist/ *.zip",
+    "prestart": "npm run build",
+    "start": "func start --typescript --model v4",
     "build": "tsc --build tsconfig.build.json",
     "pack": "export PACK_OUT=api; export PACK_TEMP_DIR=/tmp/build/${pwd}; ../../pack.sh"
   }
