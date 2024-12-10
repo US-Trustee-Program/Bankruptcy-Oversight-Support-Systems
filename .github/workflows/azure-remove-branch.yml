@@ -1,12 +1,11 @@
 name: Clean up Flexion Azure Resources
 
 on:
-  pull_request:
-    types: [closed]
+  delete:
   workflow_dispatch:
     inputs:
       hashId:
-        description: "Hash id of target branch deployemnt"
+        description: "Hash id of target branch deployment"
         default: ""
         type: string
 
