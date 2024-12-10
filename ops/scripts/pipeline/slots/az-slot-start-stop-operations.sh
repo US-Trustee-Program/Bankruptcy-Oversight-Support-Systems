@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Description: Helper script to start and stop slots so we do not run sync function-apps against slot resources
+# Description: Helper script to start and stop slots so we do not run sync functions against slot resources
 # Prerequisite:
 #   - curl
 #   - Azure CLI

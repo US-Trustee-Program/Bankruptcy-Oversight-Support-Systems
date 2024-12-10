@@ -54,7 +54,7 @@ describe('Date/Time utilities', () => {
     });
   });
 
-  describe('sort function-apps', () => {
+  describe('sort functions', () => {
     test('should sort dates newest first', () => {
       const middle = new Date(2024, 0, 1);
       const newest = new Date(2024, 1, 1);

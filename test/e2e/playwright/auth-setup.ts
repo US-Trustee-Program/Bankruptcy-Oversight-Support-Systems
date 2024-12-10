@@ -57,7 +57,7 @@ async function oktaLogin(page: Page) {
 function usingAuthenticationProvider() {
   let loginFunction;
   const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
-  // TODO: Add new login function-apps as we add new providers.
+  // TODO: Add new login functions as we add new providers.
   switch (provider.toLowerCase()) {
     case 'none':
       loginFunction = noOp;
