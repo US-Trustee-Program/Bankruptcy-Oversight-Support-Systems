@@ -44,11 +44,17 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
 ])
 param webappPlanType string = 'P1v2'
 
-param functionName string = '${stackName}-node-api'
+param apiFunctionName string = '${stackName}-node-api'
 
-param functionSubnetName string = 'snet-${functionName}'
+param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
 
-param functionSubnetAddressPrefix string = '10.10.11.0/28'
+param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
+
+param migrationFunctionName string = '${stackName}-migration'
+
+param migrationSubnetAddressPrefix string = '10.10.14.0/28'
+
+param migrationSubnetName string = 'snet-${migrationFunctionName}'
 
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
@@ -120,8 +126,6 @@ param camsReactSelectHash string
 
 param cosmosDatabaseName string
 
-
-//TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -139,9 +143,12 @@ module network './lib//network/ustp-cams-network.bicep' = {
     networkResourceGroupName: networkResourceGroupName
     deployVnet: deployVnet
     location: location
-    functionName: functionName
-    functionSubnetName: functionSubnetName
-    functionSubnetAddressPrefix: functionSubnetAddressPrefix
+    apiFunctionName: apiFunctionName
+    apiFunctionSubnetName: apiFunctionSubnetName
+    apiFunctionSubnetAddressPrefix: apiFunctionSubnetAddressPrefix
+    migrationFunctionName: migrationFunctionName
+    migrationSubnetAddressPrefix: migrationSubnetAddressPrefix
+    migrationSubnetName: migrationSubnetName
     webappName: webappName
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappSubnetName: webappSubnetName
@@ -172,7 +179,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
-      targetApiServerHost: '${functionName}.azurewebsites${azHostSuffix} ${functionName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
+      targetApiServerHost: '${apiFunctionName}.azurewebsites${azHostSuffix} ${apiFunctionName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
       camsReactSelectHash: camsReactSelectHash
       webappSubnetId: network.outputs.webappSubnetId
@@ -196,10 +203,12 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
       planType: functionPlanType
-      planName: 'plan-${functionName}'
-      functionName: functionName
+      planName: 'plan-${stackName}-functions'
+      apiFunctionName: apiFunctionName
+      apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
+      migrationFunctionName: migrationFunctionName
+      migrationFunctionSubnetId: network.outputs.migrationFunctionSubnetId
       functionsRuntime: 'node'
-      functionSubnetId: network.outputs.functionSubnetId
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
@@ -227,12 +236,3 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       network
     ]
 }
-
-// main.bicep outputs
-
-resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: idKeyvaultAppConfiguration
-  scope: resourceGroup(kvAppConfigResourceGroupName)
-}
-output keyVaultId string = identityKeyVaultAppConfig.id
-output keyVaultManagedIdName string = identityKeyVaultAppConfig.name

@@ -1,0 +1,2 @@
+# Ignore package-lock.json as this project should not have its own dependencies
+package-lock.json

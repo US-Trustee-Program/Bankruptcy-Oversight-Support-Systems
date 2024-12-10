@@ -1,0 +1,13 @@
+{
+  "name": "cams-migration",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/backend/function-apps/migration/loadConsolidations.js",
+  "scripts": {
+    "clean": "rm -rf ./dist ./node_modules *.zip",
+    "prestart": "npm run build && cp ../../.env .",
+    "start": "func start --javascript",
+    "build": "tsc --build tsconfig.build.json",
+    "pack": "../../pack.sh migration"
+  }
+}

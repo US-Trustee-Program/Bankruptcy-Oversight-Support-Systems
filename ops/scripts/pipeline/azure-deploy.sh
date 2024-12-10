@@ -16,12 +16,12 @@ deployment_parameters=''
 is_ustp_deployment=false
 inputParams=()
 
-requiredUSTPParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
+requiredUSTPParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--migrationSubnetName" "--migrationSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
 
 requiredFlexionParams=("--mssqlRequestTimeout" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
+allParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--migrationSubnetName" "--migrationSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
 
 
 function az_vnet_exists_func() {
@@ -158,16 +158,28 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${webapp_subnet_address_prefix_param}"
         shift 2
         ;;
-    --functionSubnetName)
+    --apiFunctionSubnetName)
         inputParams+=("${1}")
-        function_subnet_name_param="functionSubnetName=${2}"
-        deployment_parameters="${deployment_parameters} ${function_subnet_name_param}"
+        api_function_subnet_name_param="apiFunctionSubnetName=${2}"
+        deployment_parameters="${deployment_parameters} ${api_function_subnet_name_param}"
         shift 2
         ;;
-    --functionSubnetAddressPrefix)
+    --apiFunctionSubnetAddressPrefix)
         inputParams+=("${1}")
-        function_subnet_address_prefix_param="functionSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${function_subnet_address_prefix_param}"
+        api_function_subnet_address_prefix_param="apiFunctionSubnetAddressPrefix=${2}"
+        deployment_parameters="${deployment_parameters} ${api_function_subnet_address_prefix_param}"
+        shift 2
+        ;;
+    --migrationFunctionSubnetName)
+        inputParams+=("${1}")
+        migration_function_subnet_name_param="migrationFunctionSubnetName=${2}"
+        deployment_parameters="${deployment_parameters} ${migration_function_subnet_name_param}"
+        shift 2
+        ;;
+    --migrationFunctionSubnetAddressPrefix)
+        inputParams+=("${1}")
+        migration_function_subnet_address_prefix_param="migrationFunctionSubnetAddressPrefix=${2}"
+        deployment_parameters="${deployment_parameters} ${migration_function_subnet_address_prefix_param}"
         shift 2
         ;;
     --privateEndpointSubnetName)

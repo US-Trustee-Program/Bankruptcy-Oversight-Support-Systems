@@ -37,16 +37,33 @@ var planTypeToSkuMap = {
 
 param stackName string = 'ustp-cams'
 
-param functionName string
+@description('Azure functions version')
+param functionsVersion string = '~4'
+
+@description('Storage account name. Default creates unique name from resource group id and stack name')
+@minLength(3)
+@maxLength(24)
+param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
+
+@description('Storage account name. Default creates unique name from resource group id and stack name')
+@minLength(3)
+@maxLength(24)
+param migrationFunctionStorageName string = 'ustpmigr${uniqueString(resourceGroup().id, apiFunctionName)}'
+
+param apiFunctionName string
+
+param apiFunctionSubnetId string
+
+param migrationFunctionName string
+
+param migrationFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
 
-param functionSubnetId string
 
 param privateEndpointSubnetId string
 
 param mssqlRequestTimeout string
-
 
 @description('Azure functions runtime environment')
 @allowed([
@@ -69,14 +86,6 @@ param loginProvider string
 
 @description('Is ustp deployment')
 param isUstpDeployment bool
-
-@description('Azure functions version')
-param functionsVersion string = '~4'
-
-@description('Storage account name. Default creates unique name from resource group id and stack name')
-@minLength(3)
-@maxLength(24)
-param functionsStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, functionName)}'
 
 @description('List of origins to allow. Need to include protocol')
 param corsAllowOrigins array = []
@@ -131,9 +140,6 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-/*
-  App service plan (hosting plan) for Azure functions instances
-*/
 resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
@@ -153,14 +159,12 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   }
 }
 
-/*
-  Storage resource for Azure functions
-*/
-resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: functionsStorageName
+//Storage Account Resources
+resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+  name: apiFunctionStorageName
   location: location
   tags: {
-    'Stack Name': functionName
+    'Stack Name': apiFunctionName
   }
   sku: {
     name: 'Standard_LRS'
@@ -172,70 +176,24 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
-module appInsights './lib/app-insights/app-insights.bicep' =
-  if (createApplicationInsights) {
-    name: '${functionName}-application-insights-module'
-    params: {
-      location: location
-      kind: 'web'
-      appInsightsName: 'appi-${functionName}'
-      applicationType: 'web'
-      workspaceResourceId: analyticsWorkspaceId
-    }
+resource migrationFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+  name: migrationFunctionStorageName
+  location: location
+  tags: {
+    'Stack Name': apiFunctionName
   }
-
-module diagnosticSettings './lib/app-insights/diagnostics-settings-func.bicep' =
-if(createApplicationInsights) {
-  name: '${functionName}-diagnostic-settings-module'
-  params: {
-    functionAppName: functionName
-    workspaceResourceId: analyticsWorkspaceId
+  sku: {
+    name: 'Standard_LRS'
   }
-  dependsOn: [
-    appInsights
-    functionApp
-  ]
+  kind: 'Storage'
+  properties: {
+    supportsHttpsTrafficOnly: true
+    defaultToOAuthAuthentication: true
+  }
 }
 
-module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
-  if (createAlerts) {
-    name: '${functionName}-healthcheck-alert-rule-module'
-    params: {
-      alertName: '${functionName}-health-check-alert'
-      appId: functionApp.id
-      timeAggregation: 'Average'
-      operator: 'LessThan'
-      targetResourceType: 'Microsoft.Web/sites'
-      metricName: 'HealthCheckStatus'
-      severity: 2
-      threshold: 100
-      actionGroupName: actionGroupName
-      actionGroupResourceGroupName: actionGroupResourceGroupName
-    }
-  }
 
-module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
-  if (createAlerts) {
-    name: '${functionName}-http-error-alert-rule-module'
-    params: {
-      alertName: '${functionName}-http-error-alert'
-      appId: functionApp.id
-      timeAggregation: 'Total'
-      operator: 'GreaterThanOrEqual'
-      targetResourceType: 'Microsoft.Web/sites'
-      metricName: 'Http5xx'
-      severity: 1
-      threshold: 1
-      actionGroupName: actionGroupName
-      actionGroupResourceGroupName: actionGroupResourceGroupName
-    }
-  }
-
-/*
-  Create functionapp
-*/
-
-
+//Function App Resources
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
@@ -243,8 +201,8 @@ var userAssignedIdentities = union(
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 
-resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
-  name: functionName
+resource apiFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
+  name: apiFunctionName
   location: location
   kind: 'functionapp,linux'
   identity: {
@@ -255,7 +213,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     serverFarmId: servicePlan.id
     enabled: true
     httpsOnly: true
-    virtualNetworkSubnetId: functionSubnetId
+    virtualNetworkSubnetId: apiFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
   dependsOn: [
@@ -264,12 +222,65 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   ]
 }
 
-var applicationSettings = concat(
+
+resource migrationFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
+  name: migrationFunctionName
+  location: location
+  kind: 'functionapp,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: userAssignedIdentities
+  }
+  properties: {
+    serverFarmId: servicePlan.id
+    enabled: true
+    httpsOnly: true
+    virtualNetworkSubnetId: migrationFunctionSubnetId
+    keyVaultReferenceIdentity: appConfigIdentity.id
+  }
+  dependsOn: [
+    appConfigIdentity
+    sqlIdentity
+  ]
+}
+
+//Create App Insights
+module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
+  name:'appi-${apiFunctionName}-module'
+  scope: resourceGroup()
+  params: {
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
+    analyticsWorkspaceId: analyticsWorkspaceId
+    createAlerts: createAlerts
+    createApplicationInsights: createApplicationInsights
+    functionAppName: apiFunctionName
+  }
+  dependsOn: [
+    apiFunctionApp
+  ]
+}
+
+module migrationFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
+  name:'appi-${migrationFunctionName}-module'
+  scope: resourceGroup()
+  params: {
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
+    analyticsWorkspaceId: analyticsWorkspaceId
+    createAlerts: createAlerts
+    createApplicationInsights: createApplicationInsights
+    functionAppName: migrationFunctionName
+  }
+  dependsOn: [
+    migrationFunctionApp
+  ]
+}
+
+//TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
+
+var baseApplicationSettings = concat(
   [
-    {
-      name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
-    }
     {
       name: 'FUNCTIONS_EXTENSION_VERSION'
       value: functionsVersion
@@ -289,6 +300,10 @@ var applicationSettings = concat(
     {
       name: 'STARTING_MONTH'
       value: '-70'
+    }
+    {
+      name: 'ADMIN_KEY'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
     }
     {
       name: 'COSMOS_DATABASE_NAME'
@@ -331,6 +346,30 @@ var applicationSettings = concat(
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
     }
     {
+      name: 'MSSQL_REQUEST_TIMEOUT'
+      value: mssqlRequestTimeout
+    }
+    {
+      name: 'ACMS_MSSQL_HOST'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-HOST)'
+    }
+    {
+      name: 'ACMS_MSSQL_DATABASE'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-DATABASE)'
+    }
+    {
+      name: 'ACMS_MSSQL_ENCRYPT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-ENCRYPT)'
+    }
+    {
+      name: 'ACMS_MSSQL_TRUST_UNSIGNED_CERT'
+      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-TRUST-UNSIGNED-CERT)'
+    }
+    {
+      name: 'ACMS_MSSQL_REQUEST_TIMEOUT'
+      value: mssqlRequestTimeout
+    }
+    {
       name: 'FEATURE_FLAG_SDK_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
     }
@@ -343,16 +382,49 @@ var applicationSettings = concat(
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
     }
     {
-      name: 'MSSQL_REQUEST_TIMEOUT'
-      value: mssqlRequestTimeout
+      name: 'MyTaskHub'
+      value: 'main'
     }
   ],
-  createApplicationInsights
-    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.outputs.connectionString }]
-    : [],
   isUstpDeployment
-    ? [{ name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }, { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }]
-    : [{ name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }]
+    ? [
+        { name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }
+        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }
+        { name: 'ACMS_MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)' }
+        { name: 'ACMS_MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)' }
+      ]
+    : [
+        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
+        { name: 'ACMS_MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'}
+      ]
+)
+
+//Migration Function Application Settings
+var migrationApplicationSettings = concat(
+  [
+    {
+      name: 'AzureWebJobsStorage'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${migrationFunctonStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${migrationFunctonStorageAccount.listKeys().keys[0].value}'
+    }
+  ],
+  baseApplicationSettings,
+  createApplicationInsights
+  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: migrationFunctionAppInsights.outputs.connectionString }]
+  : []
+)
+
+//API Function Application Settings
+var apiApplicationSettings = concat(
+  [
+    {
+      name: 'AzureWebJobsStorage'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
+    }
+  ],
+  baseApplicationSettings,
+  createApplicationInsights
+  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
+  : []
 )
 
 var ipSecurityRestrictionsRules = concat(
@@ -378,8 +450,8 @@ var ipSecurityRestrictionsRules = concat(
     : []
 )
 
-resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
-  parent: functionApp
+resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+  parent: apiFunctionApp
   name: 'web'
   properties: {
     cors: {
@@ -405,18 +477,65 @@ resource functionAppConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: applicationSettings
+    appSettings: apiApplicationSettings
   }
 }
 
-module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${functionName}-pep-module'
+resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+  parent: migrationFunctionApp
+  name: 'web'
+  properties: {
+    cors: {
+      allowedOrigins: corsAllowOrigins
+    }
+    numberOfWorkers: 1
+    alwaysOn: true
+    http20Enabled: true
+    functionAppScaleLimit: 0
+    minimumElasticInstanceCount: 0
+    publicNetworkAccess: 'Enabled'
+    ipSecurityRestrictions: ipSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
+    scmIpSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictionsUseMain: false
+    linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
+    appSettings: migrationApplicationSettings
+  }
+}
+
+//Private Endpoints
+module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${apiFunctionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
     privateLinkGroup: 'sites'
-    stackName: functionName
+    stackName: apiFunctionName
     location: location
-    privateLinkServiceId: functionApp.id
+    privateLinkServiceId: apiFunctionApp.id
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+  }
+}
+
+module migrationFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${migrationFunctionName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites'
+    stackName: migrationFunctionName
+    location: location
+    privateLinkServiceId: migrationFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
@@ -426,39 +545,42 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
-module setSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' =
-  if (createSqlServerVnetRule) {
-    scope: resourceGroup(sqlServerResourceGroupName)
-    name: '${functionName}-sql-vnet-rule-module'
-    params: {
-      stackName: functionName
-      sqlServerName: sqlServerName
-      subnetId: functionSubnetId
-    }
+module setMigrationFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+  scope: resourceGroup(sqlServerResourceGroupName)
+  name: '${migrationFunctionName}-sql-vnet-rule-module'
+  params: {
+    stackName: migrationFunctionName
+    sqlServerName: sqlServerName
+    subnetId: migrationFunctionSubnetId
   }
+}
 
-// Creates a managed identity that would be used to grant access to functionapp instance
-var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${functionName}-readonly'
+module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+  scope: resourceGroup(sqlServerResourceGroupName)
+  name: '${apiFunctionName}-sql-vnet-rule-module'
+  params: {
+    stackName: apiFunctionName
+    sqlServerName: sqlServerName
+    subnetId: apiFunctionSubnetId
+  }
+}
+
+// Creates a managed identity that would be used to grant access to function instance
+var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${apiFunctionName}-readonly'
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
   : sqlServerResourceGroupName
 
-module sqlManagedIdentity './lib/identity/managed-identity.bicep' =
-  if (createSqlServerVnetRule) {
-    scope: resourceGroup(sqlIdentityRG)
-    name: '${functionName}-sql-identity-module'
-    params: {
-      managedIdentityName: sqlIdentityName
-      location: location
-    }
+module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
+  scope: resourceGroup(sqlIdentityRG)
+  name: '${apiFunctionName}-sql-identity-module'
+  params: {
+    managedIdentityName: sqlIdentityName
+    location: location
   }
+}
 
 resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: sqlIdentityName
   scope: resourceGroup(sqlIdentityRG)
 }
-
-output functionAppName string = functionApp.name
-output functionAppId string = functionApp.id
-output createdSqlServerVnetRule bool = createSqlServerVnetRule
-output keyVaultId string = functionApp.properties.keyVaultReferenceIdentity

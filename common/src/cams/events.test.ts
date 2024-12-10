@@ -26,7 +26,7 @@ const substantiveConsolidationChildCase: Consolidation[] = [
   }),
 ];
 
-describe('Event domain helper functions', () => {
+describe('Event domain helper function-apps', () => {
   describe('isJointAdministrationLeadCase', () => {
     test('should return true', () => {
       expect(isJointAdministrationLeadCase(jointAdministrationLeadCase)).toBeTruthy();
