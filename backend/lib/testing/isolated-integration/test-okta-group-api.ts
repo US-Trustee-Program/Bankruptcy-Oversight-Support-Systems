@@ -1,6 +1,6 @@
 import { InvocationContext } from '@azure/functions';
 import { LoggerImpl } from '../../adapters/services/logger.service';
-import applicationContextCreator from '../../../functions/azure/application-context-creator';
+import applicationContextCreator from '../../../function-apps/azure/application-context-creator';
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { getUserGroupGatewayConfig } from '../../configs/user-groups-gateway-configuration';
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';

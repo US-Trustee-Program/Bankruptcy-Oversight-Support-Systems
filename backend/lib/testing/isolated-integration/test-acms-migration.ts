@@ -1,5 +1,5 @@
-import migrateConsolidation from '../../../functions/migration/activity/migrateConsolidation';
-import { createMockAzureFunctionContext } from '../../../functions/azure/testing-helpers';
+import migrateConsolidation from '../../../function-apps/migration/activity/migrateConsolidation';
+import { createMockAzureFunctionContext } from '../../../function-apps/azure/testing-helpers';
 import * as dotenv from 'dotenv';
 
 dotenv.config();

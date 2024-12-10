@@ -1,5 +1,5 @@
 import { InvocationContext } from '@azure/functions';
-import applicationContextCreator from '../../../../functions/azure/application-context-creator';
+import applicationContextCreator from '../../../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../../../adapters/services/logger.service';
 import OfficesDxtrGateway from '../../../adapters/gateways/dxtr/offices.dxtr.gateway';
 import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
@@ -433,7 +433,7 @@ async function main() {
   );
 
   // Write the results to the temp directory.
-  // See: backend/functions/temp/
+  // See: backend/function-apps/temp/
   await outputResults(output);
 }
 

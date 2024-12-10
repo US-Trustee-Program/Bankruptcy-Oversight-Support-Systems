@@ -3,7 +3,7 @@ import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CamsHttpRequest } from '../../lib/adapters/types/http';
 import { CamsHttpResponseInit } from '../../lib/adapters/utils/http-response';
 
-describe('functions test', () => {
+describe('function-apps test', () => {
   test('should return properly formatted CamsHttpRequest from malformed headers and query', async () => {
     const request = {
       method: 'GET',
