@@ -147,7 +147,7 @@ jobs:
           op: decode
           in: ${{ steps.rgApp.outputs.out }}
 
-      - name: Check Initial Deployment # update flag --apiName to --apiFunctionName
+      - name: Check Initial Deployment
         id: check-initial-deployment
         run: |
           initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiFunctionName }})
