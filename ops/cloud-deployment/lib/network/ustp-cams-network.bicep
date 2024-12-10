@@ -24,7 +24,7 @@ param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
 param migrationFunctionName string = '${stackName}-migration'
 
-param migrationSubnetAddressPrefix string = '10.10.14.0/28'
+param migrationSubnetAddressPrefix string = '10.10.15.0/28'
 
 param migrationSubnetName string = 'snet-${migrationFunctionName}'
 
