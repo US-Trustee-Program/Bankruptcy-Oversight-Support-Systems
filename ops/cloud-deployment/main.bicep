@@ -237,11 +237,3 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
     ]
 }
 
-// main.bicep outputs
-
-// resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-//   name: idKeyvaultAppConfiguration
-//   scope: resourceGroup(kvAppConfigResourceGroupName)
-// }
-// output keyVaultId string = identityKeyVaultAppConfig.id
-// output keyVaultManagedIdName string = identityKeyVaultAppConfig.name
