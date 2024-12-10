@@ -6,7 +6,10 @@ on:
       webAppName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      migrationFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -51,16 +54,19 @@ jobs:
 
       - name: Create API Slot Resource
         run: |
-          slotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          migrationSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          apiSlotStorageAccountName=migrationslot${{ inputs.environmentHash }}
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --idResourceGroup ${{ secrets.AZURE_RG }} \
-              --apiName ${{ inputs.apiName }} \
+              --apiFunctionName ${{ inputs.apiFunctionName }} \
+              --migrationFunctionName ${{ inputs.migrationFunctionName }} \
               --webappName ${{ inputs.webappName }} \
               --slotName ${{ inputs.slotName }} \
               --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
               --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --storageAccName ${slotStorageAccountName:0:24} \
+              --apiStorageAccName ${migrationSlotStorageAccountName:0:24} \
+              --migrationStorageAccName ${apiSlotStorageAccountName:0:24} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
               --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
