@@ -2,7 +2,7 @@
 
 # Title:        az-slot-api-resource-deploy.sh
 # Description:  Helper script to provision Azure slot deployment resources for Azure functionapp api
-# Usage:        ./az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --storageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash --isUstpDeployment
+# Usage:        ./az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiFunctionName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --cosmosIdName cosmosManagedIdName --apiStorageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash --isUstpDeployment
 #
 # Exitcodes
 # ==========
@@ -18,7 +18,7 @@ info_sha=''
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --storageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash"
+        echo "USAGE: az-slot-api-resource-deploy.sh -h --resourceGroup resourceGroupName --idResourceGroup managedIdResourceGroup --webappName webappName --apiFunctionName functionappName --slotName staging --kvIdName kvManagedIdName --sqlIdName sqlManagedIdName --apiStorageAccName apiStorageAccountName --databaseName cosmosDbName --infoSha environmentHash"
         exit 0
         ;;
     --resourceGroup)
@@ -31,8 +31,13 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --apiName)
-        api_name="${2}"
+    --apiFunctionName)
+        api_function_name="${2}"
+        shift 2
+        ;;
+
+    --migrationFunctionName)
+        migration_function_name="${2}"
         shift 2
         ;;
 
@@ -54,8 +59,12 @@ while [[ $# -gt 0 ]]; do
         sql_id_name="${2}"
         shift 2
         ;;
-    --storageAccName)
-        storage_acc_name="${2}"
+    --apiStorageAccName)
+        api_storage_acc_name="${2}"
+        shift 2
+        ;;
+    --migrationStorageAccName)
+        migration_storage_acc_name="${2}"
         shift 2
         ;;
     --databaseName)
@@ -78,14 +87,21 @@ done
 
 #Function App Slot Deployment and Configuration
 echo "Creating Storage account for Node API Slot..."
-az storage account create --name "$storage_acc_name" --resource-group "$app_rg" -o json
-storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$storage_acc_name" --query '[0].value' -o tsv)
+az storage account create --name "$api_storage_acc_name" --resource-group "$app_rg" -o json
 
-echo "Creating Node API Staging Slot..."
-az functionapp deployment slot create --name "$api_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_name"
+az storage account create --name "$migration_storage_acc_name" --resource-group "$app_rg" -o json
+
+api_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$api_storage_acc_name" --query '[0].value' -o tsv)
+migration_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$migration_storage_acc_name" --query '[0].value' -o tsv)
+
+
+echo "Creating API Function Staging Slot..."
+az functionapp deployment slot create --name "$api_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_function_name"
+
+echo "Creating Node API Function Staging Slot..."
+az functionapp deployment slot create --name "$migration_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$migration_function_name"
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
-
 databaseName=$database_name
 
 if [[  ${is_ustp_deployment} == true ]]; then
@@ -102,13 +118,16 @@ echo "Database Name :${databaseName}"
 
 commitSha=$(git rev-parse HEAD)
 
-az functionapp config appsettings set -g "$app_rg" -n "$api_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${storage_acc_key}"
+az functionapp config appsettings set -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${api_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${api_storage_acc_key}"
 
+az functionapp config appsettings set -g "$app_rg" -n "$migration_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${migration_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${migration_storage_acc_key}"
 
 echo "Setting CORS Allowed origins for the API..."
-az functionapp cors add -g "$app_rg" --name "$api_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
+az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
 
-echo "Assigning managed Identities..."
+echo "Setting CORS Allowed origins for Migration function"
+az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://portal.azure.us"
+
 # Identities occasionally come through with improper id for usage here, this constructs that
 kv_ref_id=$(az identity list -g "$id_rg" --query "[?name == '$kv_id_name'].id" -o tsv)
 identities="$kv_ref_id"
@@ -118,11 +137,21 @@ if [[ ${sql_id_name} != null && ${sql_id_name} != '' ]]; then
     identities="$identities $sql_ref_id"
 fi
 
+
+echo "Assigning managed Identities API Function App..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
-az functionapp identity assign -g "$app_rg" -n "$api_name" --slot "$slot_name" --identities $identities
+az functionapp identity assign -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --identities $identities
 
-echo "Setting KeyVaultReferenceIdentity..."
-az functionapp update --resource-group "$app_rg"  --name "$api_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
+echo "Assigning managed Identities to Migration Function App..."
+# shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
+az functionapp identity assign -g "$app_rg" -n "$migration_function_name" --slot "$slot_name" --identities $identities
 
+echo "Setting KeyVaultReferenceIdentity API Function App..."
+az functionapp update --resource-group "$app_rg"  --name "$api_function_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
+
+echo "Setting KeyVaultReferenceIdentity for Migration Function App..."
+az functionapp update --resource-group "$app_rg"  --name "$api_function_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
+
+#TODO: deal with traffic routing if we want to test
 # shellcheck disable=SC2086
-az webapp traffic-routing set --distribution ${slot_name}=0 --name "${api_name}" --resource-group "${app_rg}"
+az webapp traffic-routing set --distribution ${slot_name}=0 --name "${api_function_name}" --resource-group "${app_rg}"

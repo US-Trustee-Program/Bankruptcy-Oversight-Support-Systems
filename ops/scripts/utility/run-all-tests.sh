@@ -6,7 +6,7 @@
 #   From the root directory, run the following command:
 #     ./ops/scripts/utility/run-all-tests.sh
 
-PROJECTS=("backend/functions" "common" "user-interface")
+PROJECTS=("backend" "common" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit

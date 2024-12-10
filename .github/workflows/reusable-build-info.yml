@@ -19,9 +19,9 @@ on:
       webappName:
         description: "Expected Web Application name [used for Azure Resource]"
         value: ${{ jobs.build-info.outputs.webappName }}
-      apiName:
+      apiFunctionName:
         description: ""
-        value: ${{ jobs.build-info.outputs.apiName }}
+        value: ${{ jobs.build-info.outputs.apiFunctionName }}
       azResourceGrpAppEncrypted:
         description: ""
         value: ${{ jobs.build-info.outputs.azResourceGrpAppEncrypted }}
@@ -31,6 +31,9 @@ on:
       environmentHash:
         description: ""
         value: ${{ jobs.build-info.outputs.environmentHash }}
+      migrationFunctionName:
+        description: ""
+        value: ${{ jobs.build-info.outputs.migrationFunctionName }}
       slotName:
         description: ""
         value: ${{ jobs.build-info.outputs.slotName }}
@@ -56,12 +59,13 @@ jobs:
     outputs:
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
-      apiName: ${{ steps.build-info.outputs.apiName }}
+      apiFunctionName: ${{ steps.build-info.outputs.apiFunctionName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
+      migrationFunctionName: ${{ steps.build-info.outputs.migrationFunctionName }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
       initialDeployment: ${{ steps.check-initial-deployment.outputs.initialDeployment }}
     steps:
@@ -101,9 +105,11 @@ jobs:
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ inputs.environment }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
           webappName="${stackName}-webapp"
-          echo "Webapp Artifact: $webappName"
-          apiName="${stackName}-node-api"
-          echo "Api Artifact: $apiName"
+          echo "Webapp Name: $webappName"
+          apiFunctionName="${stackName}-node-api"
+          echo "Api Function Name: $apiFunctionName"
+          migrationFunctionName="${stackName}-migration"
+          echo "Migration Function Name: $migrationFunctionName"
 
           # Deployment flags
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
@@ -115,7 +121,8 @@ jobs:
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
-          echo "apiName=${apiName}" >> $GITHUB_OUTPUT
+          echo "apiFunctionName=${apiFunctionName}" >> $GITHUB_OUTPUT
+          echo "migrationFunctionName=${migrationFunctionName}" >> $GITHUB_OUTPUT
           echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
@@ -143,7 +150,7 @@ jobs:
       - name: Check Initial Deployment
         id: check-initial-deployment
         run: |
-          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiName }})
+          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiFunctionName }})
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
           echo "Initial Deployment: ${initialDeployment}"
 
