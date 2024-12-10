@@ -316,6 +316,3 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
   }
 }
-output webappName string = webapp.name
-output webappId string = webapp.id
-output webappUrl string = webapp.properties.hostNameSslStates[0].name

@@ -72,7 +72,7 @@ else
 fi
 
 
-PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit

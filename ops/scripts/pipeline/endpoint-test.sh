@@ -2,7 +2,7 @@
 
 # Title:        endpoint-test.sh
 # Description:  Verify 200 response from frontend and backend
-# Usage:        ./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix
+# Usage:        ./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName --hostSuffix hostSuffix
 #
 # Exitcodes
 # ==========
@@ -18,11 +18,11 @@ isLocalRun=''
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
+    echo "./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName --hostSuffix hostSuffix"
     exit 0
     ;;
 
-  --apiName)
+  --apiFunctionName)
     api_name="${2}"
     shift 2
     ;;

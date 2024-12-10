@@ -7,6 +7,7 @@ export type Auditable = {
 };
 
 export const SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'SYSTEM', name: 'SYSTEM' };
+export const ACMS_SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'ACMS', name: 'ACMS' };
 
 /**
  * Decorates and returns the record with the Auditable properties. Any necessary overriding of the properties must be

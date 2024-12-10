@@ -12,7 +12,7 @@ jobs:
   sca-scan-backend:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
-      path: backend/functions
+      path: backend
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-common:

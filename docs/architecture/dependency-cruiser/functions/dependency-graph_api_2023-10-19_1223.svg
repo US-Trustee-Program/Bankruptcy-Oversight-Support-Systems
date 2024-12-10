@@ -398,7 +398,7 @@
 <path fill="none" stroke="black" d="M381.78,-237C462.45,-237 614.88,-237 614.88,-237 614.88,-237 614.88,-1971.04 614.88,-1971.04 614.88,-1971.04 603.58,-1971.04 603.58,-1971.04"/>
 <polygon fill="black" stroke="black" points="598.58,-1971.04 603.59,-1968.79 599.87,-1971.04 603.58,-1971.04 603.58,-1971.04 603.58,-1971.04 599.87,-1971.04 603.58,-1973.29 598.58,-1971.04"/>
 </g>
-<!-- node_modules/@azure/functions -->
+<!-- node_modules/@azure/function-apps -->
 <g id="node11" class="node">
 <title>node_modules/@azure/functions</title>
 <g id="a_node11"><a xlink:href="node_modules/@azure/functions" xlink:title="functions">
@@ -410,7 +410,7 @@
 </a>
 </g>
 </g>
-<!-- attorneys/attorneys.function.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- attorneys/attorneys.function.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge13" class="edge">
 <title>attorneys/attorneys.function.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M381.94,-241.44C406.41,-241.44 430.88,-241.44 430.88,-241.44 430.88,-241.44 430.88,-483.34 430.88,-483.34 430.88,-483.34 839.81,-483.34 839.81,-483.34"/>
@@ -470,7 +470,7 @@
 </g>
 <text text-anchor="middle" x="870.12" y="-1809.09" font-family="Helvetica,sans-Serif" font-size="9.00" fill="orange">no&#45;circular</text>
 </g>
-<!-- lib/adapters/utils/application&#45;context&#45;creator.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- lib/adapters/utils/application&#45;context&#45;creator.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge201" class="edge">
 <title>lib/adapters/utils/application&#45;context&#45;creator.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M597.72,-1974C675.2,-1974 791.88,-1974 791.88,-1974 791.88,-1974 791.88,-496.66 791.88,-496.66 791.88,-496.66 840.02,-496.66 840.02,-496.66"/>
@@ -731,7 +731,7 @@
 <path fill="none" stroke="black" d="M389.88,-34.32C389.88,-150.88 389.88,-1321 389.88,-1321 389.88,-1321 684.88,-1321 684.88,-1321 684.88,-1321 684.88,-1472.8 684.88,-1472.8"/>
 <polygon fill="black" stroke="black" points="684.88,-1477.8 682.63,-1472.8 684.88,-1476.52 684.88,-1472.8 684.88,-1472.8 684.88,-1472.8 684.88,-1476.52 687.13,-1472.8 684.88,-1477.8"/>
 </g>
-<!-- case&#45;assignments/case.assignment.function.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- case&#45;assignments/case.assignment.function.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge31" class="edge">
 <title>case&#45;assignments/case.assignment.function.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M395.88,-34.2C395.88,-99.11 395.88,-485.56 395.88,-485.56 395.88,-485.56 839.77,-485.56 839.77,-485.56"/>
@@ -749,7 +749,7 @@
 <path fill="none" stroke="black" d="M397.42,-25C481.17,-25 616.88,-25 616.88,-25 616.88,-25 616.88,-2298.9 616.88,-2298.9 616.88,-2298.9 839.71,-2298.9 839.71,-2298.9"/>
 <polygon fill="black" stroke="black" points="844.71,-2298.9 839.71,-2301.15 843.43,-2298.9 839.71,-2298.9 839.71,-2298.9 839.71,-2298.9 843.43,-2298.9 839.71,-2296.65 844.71,-2298.9"/>
 </g>
-<!-- lib/adapters/types/basic.d.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- lib/adapters/types/basic.d.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge189" class="edge">
 <title>lib/adapters/types/basic.d.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M900.83,-2299.66C919.52,-2299.66 940.88,-2299.66 940.88,-2299.66 940.88,-2299.66 940.88,-490 940.88,-490 940.88,-490 907.05,-490 907.05,-490"/>
@@ -863,7 +863,7 @@
 <path fill="none" stroke="black" d="M375.02,-3264.99C403.09,-3264.99 434.88,-3264.99 434.88,-3264.99 434.88,-3264.99 434.88,-2177.78 434.88,-2177.78 434.88,-2177.78 480.88,-2177.78 480.88,-2177.78 480.88,-2177.78 480.88,-1989.5 480.88,-1989.5"/>
 <polygon fill="black" stroke="black" points="480.88,-1984.5 483.13,-1989.5 480.88,-1985.79 480.88,-1989.5 480.88,-1989.5 480.88,-1989.5 480.88,-1985.79 478.63,-1989.5 480.88,-1984.5"/>
 </g>
-<!-- cases/cases.function.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- cases/cases.function.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge46" class="edge">
 <title>cases/cases.function.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M375.09,-3259.07C399.66,-3259.07 425.88,-3259.07 425.88,-3259.07 425.88,-3259.07 425.88,-492.22 425.88,-492.22 425.88,-492.22 839.84,-492.22 839.84,-492.22"/>
@@ -1289,7 +1289,7 @@
 <path fill="none" stroke="black" d="M387.84,-448.77C421.77,-448.77 458.88,-448.77 458.88,-448.77 458.88,-448.77 458.88,-1854 458.88,-1854 458.88,-1854 480.88,-1854 480.88,-1854 480.88,-1854 480.88,-1958.76 480.88,-1958.76"/>
 <polygon fill="black" stroke="black" points="480.88,-1963.76 478.63,-1958.76 480.88,-1962.48 480.88,-1958.76 480.88,-1958.76 480.88,-1958.76 480.88,-1962.48 483.13,-1958.76 480.88,-1963.76"/>
 </g>
-<!-- healthcheck/healthcheck.function.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- healthcheck/healthcheck.function.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge60" class="edge">
 <title>healthcheck/healthcheck.function.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M382.88,-456.05C382.88,-468.07 382.88,-487.78 382.88,-487.78 382.88,-487.78 839.73,-487.78 839.73,-487.78"/>
@@ -2501,7 +2501,7 @@
 </a>
 </g>
 </g>
-<!-- lib/adapters/gateways/mock&#45;cases.gateway.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- lib/adapters/gateways/mock&#45;cases.gateway.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge176" class="edge">
 <title>lib/adapters/gateways/mock&#45;cases.gateway.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M186.24,-1788.08C210.65,-1788.08 233.88,-1788.08 233.88,-1788.08 233.88,-1788.08 233.88,-490 233.88,-490 233.88,-490 839.68,-490 839.68,-490"/>
@@ -2567,7 +2567,7 @@
 <path fill="none" stroke="black" d="M580.13,-1488.99C597.1,-1488.99 611.88,-1488.99 611.88,-1488.99 611.88,-1488.99 611.88,-1968.08 611.88,-1968.08 611.88,-1968.08 603.9,-1968.08 603.9,-1968.08"/>
 <polygon fill="black" stroke="black" points="598.9,-1968.08 603.9,-1965.83 600.18,-1968.08 603.9,-1968.08 603.9,-1968.08 603.9,-1968.08 600.18,-1968.08 603.9,-1970.33 598.9,-1968.08"/>
 </g>
-<!-- lib/adapters/services/logger.service.test.ts&#45;&gt;node_modules/@azure/functions -->
+<!-- lib/adapters/services/logger.service.test.ts&#45;&gt;node_modules/@azure/function-apps -->
 <g id="edge180" class="edge">
 <title>lib/adapters/services/logger.service.test.ts&#45;&gt;node_modules/@azure/functions</title>
 <path fill="none" stroke="black" d="M545.88,-1478.8C545.88,-1378.64 545.88,-494.44 545.88,-494.44 545.88,-494.44 839.8,-494.44 839.8,-494.44"/>

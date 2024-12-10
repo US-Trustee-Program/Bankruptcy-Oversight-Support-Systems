@@ -6,7 +6,7 @@ on:
       webAppName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -51,7 +51,7 @@ jobs:
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --webappName ${{ inputs.webappName }} \
-              --apiName ${{ inputs.apiName }} \
+              --apiFunctionName ${{ inputs.apiFunctionName }} \
               --slotName ${{ inputs.slotName }} \
               --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
               --network-rg ${{ steps.rgNetwork.outputs.out }} \

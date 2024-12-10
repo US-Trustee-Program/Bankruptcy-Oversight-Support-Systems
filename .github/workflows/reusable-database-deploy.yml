@@ -9,7 +9,10 @@ on:
       azResourceGrpNetworkEncrypted:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      migrationFunctionName:
         required: true
         type: string
       environmentHash:
@@ -57,7 +60,7 @@ jobs:
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
         run: |
-          allowedNetworks=$(az network vnet subnet list -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiName }}'].id" -o json)
+          allowedNetworks=$(az network vnet subnet list -g ${{ steps.rgNetwork.outputs.out }} --vnet-name ${{ vars.AZ_NETWORK_VNET_NAME }} --query "[?name=='snet-${{ inputs.apiFunctionName }}' || name=='snet-${{inputs.migrationFunctionName}}'].id" -o json)
 
           ./ops/scripts/pipeline/az-cosmos-deploy.sh \
             -g ${{ secrets.AZURE_RG }} \

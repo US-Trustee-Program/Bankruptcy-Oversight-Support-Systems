@@ -2,7 +2,7 @@ import MockData from './test-utilities/mock-data';
 import { REGION_02_GROUP_NY, REGION_02_GROUP_SE } from './test-utilities/mock-user';
 import { getCourtDivisionCodes, getGroupDesignators } from './users';
 
-describe('users helper functions tests', () => {
+describe('users helper function-apps tests', () => {
   describe('getCourtDivisionCodes tests', () => {
     test('should get division codes from a user with offices', () => {
       const user = MockData.getCamsUser({
