@@ -1,7 +1,7 @@
 #! /bin/bash
 
 if [[ $OUT == "" ]]; then
-  FILE_NAME=$PACK_OUT;
+  FILE_NAME=$1;
 else
   FILE_NAME=$OUT;
 fi
