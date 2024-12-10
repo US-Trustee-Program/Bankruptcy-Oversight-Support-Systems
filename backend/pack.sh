@@ -16,3 +16,4 @@ cp -r ../../node_modules/* node_modules/
 mkdir -p "$PACK_TEMP_DIR"
 zip -q -r "$PACK_TEMP_DIR/$FILE_NAME.zip" ./dist ./node_modules ./package.json ./host.json --exclude "*.map" --exclude "*.ts"
 mv "$PACK_TEMP_DIR/$FILE_NAME.zip" .
+rm -rf node_modules
