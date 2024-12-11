@@ -97,13 +97,9 @@ jobs:
 
       - name: Execute Build
         run: |
-
           npm run build-common
-
           npm ci
-
           npm run build:api
-
           npm run build:migration
 
       - name: Package API
