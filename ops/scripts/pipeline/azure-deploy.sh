@@ -170,16 +170,16 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${api_function_subnet_address_prefix_param}"
         shift 2
         ;;
-    --migrationFunctionSubnetName)
+    --migrationSubnetName)
         inputParams+=("${1}")
-        migration_function_subnet_name_param="migrationFunctionSubnetName=${2}"
-        deployment_parameters="${deployment_parameters} ${migration_function_subnet_name_param}"
+        migration_subnet_name_param="migrationSubnetName=${2}"
+        deployment_parameters="${deployment_parameters} ${migration_subnet_name_param}"
         shift 2
         ;;
-    --migrationFunctionSubnetAddressPrefix)
+    --migrationSubnetAddressPrefix)
         inputParams+=("${1}")
-        migration_function_subnet_address_prefix_param="migrationFunctionSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${migration_function_subnet_address_prefix_param}"
+        migration_subnet_address_prefix_param="migrationSubnetAddressPrefix=${2}"
+        deployment_parameters="${deployment_parameters} ${migration_subnet_address_prefix_param}"
         shift 2
         ;;
     --privateEndpointSubnetName)
