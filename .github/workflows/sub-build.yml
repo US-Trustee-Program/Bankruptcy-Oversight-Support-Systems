@@ -97,7 +97,6 @@ jobs:
 
       - name: Execute Build
         run: |
-          npm run use-bash
 
           npm run build-common
 
