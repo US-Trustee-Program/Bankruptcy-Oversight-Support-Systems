@@ -64,6 +64,7 @@ param migrationSubnetName string = 'snet-${migrationFunctionName}'
 ])
 param functionPlanType string = 'P1v2'
 
+param functionPlanName string = 'plan-${stackName}-functions'
 
 
 @description('Name of deployment slot for frontend and backend')
@@ -203,7 +204,7 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
       planType: functionPlanType
-      planName: 'plan-${stackName}-functions'
+      planName: functionPlanName
       apiFunctionName: apiFunctionName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
       migrationFunctionName: migrationFunctionName
