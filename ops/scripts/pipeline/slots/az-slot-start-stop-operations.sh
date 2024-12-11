@@ -60,6 +60,8 @@ if [[ ${operation} == 'stop' ]]; then
 elif [[ ${operation} == 'start' ]]; then
     echo "Starting Node API ${slot_name} slot..."
     az functionapp start -g "${app_rg}" --name "${api_function_name}" --slot "${slot_name}"
+    echo "Stopping Migration Function ${slot_name} slot..."
+    az functionapp start -g "${app_rg}" --name "${migration_function_name}" --slot "${slot_name}"
     echo "Starting Webapp ${slot_name} slot..."
     az webapp start -g "${app_rg}" --name "${webapp_name}" --slot "${slot_name}"
 

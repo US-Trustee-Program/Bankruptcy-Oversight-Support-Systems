@@ -139,6 +139,8 @@ jobs:
       - name: Deploy Azure Function Migration slot
         id: deploy-migration-slot-step
         run: |
+          az functionapp start -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --slot ${{ inputs.slotName }}
+
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.migrationFunctionName }} \
