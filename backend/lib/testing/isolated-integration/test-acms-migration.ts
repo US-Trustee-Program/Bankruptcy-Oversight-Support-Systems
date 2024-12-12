@@ -1,4 +1,4 @@
-import migrateConsolidation from '../../../function-apps/migration/activity/migrateConsolidation';
+import migrateConsolidation from '../../../function-apps/migration/queueTrigger/migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../../function-apps/azure/testing-helpers';
 import * as dotenv from 'dotenv';
 
@@ -17,7 +17,7 @@ async function testAcmsMigration() {
 
   try {
     const leadCaseId = '819929871';
-    const result = await migrateConsolidation.handler(leadCaseId, invocationContext);
+    const result = await migrateConsolidation(leadCaseId, invocationContext);
     console.log(result);
   } catch (error) {
     console.error(MODULE_NAME, error);
