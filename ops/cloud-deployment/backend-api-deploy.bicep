@@ -88,7 +88,10 @@ param loginProvider string
 param isUstpDeployment bool
 
 @description('List of origins to allow. Need to include protocol')
-param corsAllowOrigins array = []
+param apiCorsAllowOrigins array = []
+
+@description('List of origins to allow. Need to include protocol')
+param migrationCorsAllowOrigins array = []
 
 param sqlServerResourceGroupName string = ''
 
@@ -455,7 +458,7 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   name: 'web'
   properties: {
     cors: {
-      allowedOrigins: corsAllowOrigins
+      allowedOrigins: apiCorsAllowOrigins
     }
     numberOfWorkers: 1
     alwaysOn: true
@@ -486,7 +489,7 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   name: 'web'
   properties: {
     cors: {
-      allowedOrigins: corsAllowOrigins
+      allowedOrigins: migrationCorsAllowOrigins
     }
     numberOfWorkers: 1
     alwaysOn: true

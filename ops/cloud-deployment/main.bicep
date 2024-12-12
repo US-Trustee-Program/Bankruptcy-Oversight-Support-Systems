@@ -214,7 +214,8 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-      corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
+      apiCorsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
+      migrationCorsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
