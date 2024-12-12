@@ -1,5 +1,8 @@
 import * as df from 'durable-functions';
 import { app } from '@azure/functions';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 import httpStart from './client/acms-migration-trigger.function';
 import { main } from './orchestration/orchestrator';
@@ -26,8 +29,8 @@ df.app.activity(GET_PAGE_COUNT, getPageCount);
 df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
 
 app.storageQueue(MIGRATE_CONSOLIDATION, {
-  queueName: 'test-queue-triggered-function', // TODO: Externalize this queue name
-  connection: 'MyStorageConnectionAppSetting',
+  queueName: process.env.CAMS_STORAGE_QUEUE_NAME,
+  connection: process.env.CAMS_STORAGE_QUEUE_CONNECTION_STRING,
   handler: migrateConsolidation,
 });
 
