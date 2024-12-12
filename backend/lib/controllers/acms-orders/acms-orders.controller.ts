@@ -18,13 +18,7 @@ class AcmsOrdersController {
     try {
       return await this.useCase.migrateConsolidation(context, leadCaseId);
     } catch (originalError) {
-      const error = getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Migration consolidation failed in the use case.',
-      );
-      context.logger.error(MODULE_NAME, error.message, error);
-      return { leadCaseId, childCaseCount: 0, success: false };
+      throw getCamsError(originalError, MODULE_NAME, 'Migration consolidation failed.');
     }
   }
 
@@ -37,7 +31,7 @@ class AcmsOrdersController {
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME, 'Failed to get page count.');
       context.logger.error(MODULE_NAME, error.message, error);
-      return 0;
+      throw error;
     }
   }
 
@@ -50,7 +44,7 @@ class AcmsOrdersController {
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME, 'Failed to find lead case ids.');
       context.logger.error(MODULE_NAME, error.message, error);
-      return [];
+      throw error;
     }
   }
 }

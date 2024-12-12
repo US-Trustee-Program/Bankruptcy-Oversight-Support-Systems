@@ -73,13 +73,11 @@ export class AcmsOrders {
       const gateway = Factory.getAcmsGateway(context);
       return await gateway.getPageCount(context, predicate);
     } catch (originalError) {
-      const error = getCamsError(
+      throw getCamsError(
         originalError,
         MODULE_NAME,
         'Failed to get page count from the ACMS gateway.',
       );
-      context.logger.error(MODULE_NAME, error.message, error);
-      return 0;
     }
   }
 
@@ -91,13 +89,11 @@ export class AcmsOrders {
       const gateway = Factory.getAcmsGateway(context);
       return gateway.getLeadCaseIds(context, predicateAndPage);
     } catch (originalError) {
-      const error = getCamsError(
+      throw getCamsError(
         originalError,
         MODULE_NAME,
         'Failed to get lead case ids from the ACMS gateway.',
       );
-      context.logger.error(MODULE_NAME, error.message, error);
-      return [];
     }
   }
 
