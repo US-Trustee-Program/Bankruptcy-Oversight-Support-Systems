@@ -15,7 +15,11 @@ async function migrateConsolidation(
   const controller = new AcmsOrdersController();
 
   try {
-    return await controller.migrateConsolidation(appContext, leadCaseId);
+    const result = await controller.migrateConsolidation(appContext, leadCaseId);
+    invocationContext.debug(
+      `Migration result for leadCaseId ${leadCaseId}: ${result.success ? 'successful' : 'failed'}`,
+    );
+    return result;
   } catch (originalError) {
     throw getCamsError(originalError, MODULE_NAME);
   }

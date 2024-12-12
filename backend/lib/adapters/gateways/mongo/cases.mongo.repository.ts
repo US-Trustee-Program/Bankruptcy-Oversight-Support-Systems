@@ -20,9 +20,11 @@ const { and, equals, regex } = QueryBuilder;
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
   private static instance: CasesMongoRepository;
+  private context: ApplicationContext;
 
   private constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+    this.context = context;
   }
 
   public static getInstance(context: ApplicationContext) {
@@ -67,11 +69,27 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async createTransferFrom(transferFrom: TransferFrom): Promise<TransferFrom> {
-    return this.create<TransferFrom>(transferFrom);
+    try {
+      return this.create<TransferFrom>(transferFrom);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to create transferFrom for: ${transferFrom.caseId}.`,
+      );
+    }
   }
 
   async createTransferTo(transferOut: TransferTo): Promise<TransferTo> {
-    return this.create<TransferTo>(transferOut);
+    try {
+      return this.create<TransferTo>(transferOut);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to create transferTo for: ${transferOut.caseId}.`,
+      );
+    }
   }
 
   async getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
@@ -87,11 +105,27 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async createConsolidationFrom(consolidationFrom: ConsolidationFrom): Promise<ConsolidationFrom> {
-    return this.create<ConsolidationFrom>(consolidationFrom);
+    try {
+      return this.create<ConsolidationFrom>(consolidationFrom);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
+      );
+    }
   }
 
   async createConsolidationTo(consolidationOut: ConsolidationTo): Promise<ConsolidationTo> {
-    return this.create<ConsolidationTo>(consolidationOut);
+    try {
+      return this.create<ConsolidationTo>(consolidationOut);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to create consolidationTo for: ${consolidationOut.caseId}.`,
+      );
+    }
   }
 
   async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
@@ -110,6 +144,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async createCaseHistory(history: CaseHistory) {
     try {
       await this.create<CaseHistory>(history);
+      this.context.logger.debug(MODULE_NAME, `Created case history for: ${history.caseId}.`);
     } catch (originalError) {
       throw getCamsError(
         originalError,

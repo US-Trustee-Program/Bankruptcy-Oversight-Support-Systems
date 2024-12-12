@@ -149,6 +149,9 @@ export class AcmsOrders {
         };
 
         const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
+        if (otherCase) {
+          context.logger.debug(MODULE_NAME, `Found case summary for: ${otherCase.caseId}.`);
+        }
         const fromLink: ConsolidationFrom = {
           caseId: basics.leadCaseId,
           consolidationType,
