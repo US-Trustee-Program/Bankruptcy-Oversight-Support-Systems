@@ -54,7 +54,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const adapter = this.getAdapter<Transfer>();
       return await adapter.find(query);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME, `Failed to get transfers for ${caseId}.`);
     }
   }
 
@@ -64,7 +64,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const id = await adapter.insertOne(itemToCreate);
       return { ...itemToCreate, id };
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME, `Failed to create item.`);
     }
   }
 
@@ -93,14 +93,18 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
-    const query = QueryBuilder.build(
-      and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
-    );
     try {
+      const query = QueryBuilder.build(
+        and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
+      );
       const adapter = this.getAdapter<ConsolidationTo | ConsolidationFrom>();
       return await adapter.find(query);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to retrieve consolidation for ${caseId}.`,
+      );
     }
   }
 
@@ -129,15 +133,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
-    const query = QueryBuilder.build(
-      and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
-    );
-
     try {
+      const query = QueryBuilder.build(
+        and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
+      );
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME, `Failed to get case history for ${caseId}.`);
     }
   }
 
