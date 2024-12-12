@@ -1,4 +1,3 @@
-import { InvocationContext } from '@azure/functions';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
@@ -32,13 +31,14 @@ describe('getPageCount test', () => {
     const error = new CamsError('TEST_MODULE', { message: 'getPageCount Error' });
     jest.spyOn(AcmsOrdersController.prototype, 'getPageCount').mockRejectedValue(error);
 
-    const context: InvocationContext = {} as InvocationContext;
+    const context = createMockAzureFunctionContext();
     const input: AcmsPredicateAndPage = {
       divisionCode: '101',
       chapter: '15',
       pageNumber: 1,
     };
 
-    await expect(module.handler(input, context)).rejects.toThrow(error);
+    const actual = await module.handler(input, context);
+    expect(actual).toEqual(0);
   });
 });

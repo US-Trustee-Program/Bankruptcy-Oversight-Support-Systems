@@ -504,6 +504,34 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
         name: 'Deny all'
         description: 'Deny all access'
       }
+      {
+        ipAddress: '52.244.134.181'
+        action: 'Allow'
+        priority: 1001
+        name: 'Portal mwip 1'
+        description: 'Allow Azure Portal Middleware IPs'
+      }
+      {
+        ipAddress: '52.244.176.112'
+        action: 'Allow'
+        priority: 1002
+        name: 'Portal mwip 2'
+        description: 'Allow Azure Portal Middleware IPs'
+      }
+      {
+        ipAddress: '52.247.148.42'
+        action: 'Allow'
+        priority: 1003
+        name: 'Portal mwip 3'
+        description: 'Allow Azure Portal Middleware IPs'
+      }
+      {
+        ipAddress: '52.247.163.6'
+        action: 'Allow'
+        priority: 1004
+        name: 'Portal mwip 4'
+        description: 'Allow Azure Portal Middleware IPs'
+      }
     ]
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false

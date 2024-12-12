@@ -16,12 +16,19 @@ async function migrateConsolidation(
 
   try {
     const result = await controller.migrateConsolidation(appContext, leadCaseId);
-    invocationContext.debug(
+    logger.debug(
+      MODULE_NAME,
       `Migration result for leadCaseId ${leadCaseId}: ${result.success ? 'successful' : 'failed'}`,
     );
     return result;
   } catch (originalError) {
-    throw getCamsError(originalError, MODULE_NAME);
+    const error = getCamsError(
+      originalError,
+      MODULE_NAME,
+      `Failed to migrate consolidation for ${leadCaseId}.`,
+    );
+    logger.camsError(error);
+    return { leadCaseId, childCaseCount: 0, success: false };
   }
 }
 
