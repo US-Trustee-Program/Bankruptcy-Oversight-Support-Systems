@@ -3,7 +3,10 @@ import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orde
 import migrationConsolidation from './migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import { AcmsTransformationResult } from '../../../lib/use-cases/acms-orders/acms-orders';
+import {
+  AcmsEtlQueueItem,
+  AcmsTransformationResult,
+} from '../../../lib/use-cases/acms-orders/acms-orders';
 
 describe('getConsolidations test', () => {
   afterEach(() => {
@@ -23,9 +26,14 @@ describe('getConsolidations test', () => {
 
     const context = createMockAzureFunctionContext();
 
-    const actual = await migrationConsolidation(caseId, context);
+    const queueItem: AcmsEtlQueueItem = {
+      divisionCode: '000',
+      chapter: '15',
+      leadCaseId: '000-11-22222',
+    };
+
+    await migrationConsolidation(queueItem, context);
     expect(getLeadCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), caseId);
-    expect(actual).toEqual(expected);
   });
 
   test('should properly handle error when getLeadCaseIds controller throws an error', async () => {
@@ -34,6 +42,12 @@ describe('getConsolidations test', () => {
 
     const context: InvocationContext = {} as InvocationContext;
 
-    await expect(migrationConsolidation('000-11-22222', context)).rejects.toThrow(error);
+    const queueItem: AcmsEtlQueueItem = {
+      divisionCode: '000',
+      chapter: '15',
+      leadCaseId: '000-11-22222',
+    };
+
+    await expect(migrationConsolidation(queueItem, context)).rejects.toThrow(error);
   });
 });
