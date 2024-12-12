@@ -69,16 +69,36 @@ export class AcmsOrders {
     context: ApplicationContext,
     predicate: AcmsPredicate,
   ): Promise<number> {
-    const gateway = Factory.getAcmsGateway(context);
-    return await gateway.getPageCount(context, predicate);
+    try {
+      const gateway = Factory.getAcmsGateway(context);
+      return await gateway.getPageCount(context, predicate);
+    } catch (originalError) {
+      const error = getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to get page count from the ACMS gateway.',
+      );
+      context.logger.error(MODULE_NAME, error.message, error);
+      return 0;
+    }
   }
 
   public async getLeadCaseIds(
     context: ApplicationContext,
     predicateAndPage: AcmsPredicateAndPage,
   ): Promise<string[]> {
-    const gateway = Factory.getAcmsGateway(context);
-    return gateway.getLeadCaseIds(context, predicateAndPage);
+    try {
+      const gateway = Factory.getAcmsGateway(context);
+      return gateway.getLeadCaseIds(context, predicateAndPage);
+    } catch (originalError) {
+      const error = getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to get lead case ids from the ACMS gateway.',
+      );
+      context.logger.error(MODULE_NAME, error.message, error);
+      return [];
+    }
   }
 
   public async migrateConsolidation(
