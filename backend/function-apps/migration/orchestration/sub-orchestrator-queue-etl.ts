@@ -7,9 +7,12 @@ import {
 import { GET_CONSOLIDATIONS } from '../loadConsolidations';
 import { OrchestrationContext } from 'durable-functions';
 
-export const etlQueueOutput = output.storageQueue({
-  queueName: 'outqueue',
-  connection: 'MyStorageConnectionAppSetting',
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+const etlQueueOutput = output.storageQueue({
+  queueName: process.env.CAMS_STORAGE_QUEUE_NAME,
+  connection: process.env.CAMS_STORAGE_QUEUE_CONNECTION_STRING,
 });
 
 export function* subOrchestratorETL(context: OrchestrationContext) {
