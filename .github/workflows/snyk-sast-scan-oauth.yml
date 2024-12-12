@@ -1,0 +1,23 @@
+name: Test workflow for using Snyk oauth
+on: push
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Setup Snyk
+        uses: snyk/actions/setup@master
+        id: snyk
+        with:
+          snyk-version: latest
+      - name: Configure Snyk to use snykgov endpoint
+        run: |
+          export SNYK_API="https://api.snykgov.io"
+          snyk auth --auth-type=oauth --client-secret ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+          snyk config
+          # run test of dependencies
+          snyk test
+          # run test of the code
+          snyk code test
