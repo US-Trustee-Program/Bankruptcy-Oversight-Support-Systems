@@ -3,11 +3,11 @@ import { app } from '@azure/functions';
 
 import httpStart from './client/acms-migration-trigger.function';
 import { main } from './orchestration/orchestrator';
-import { subOrchestratorETL } from './orchestration/sub-orchestrator-etl';
+import { subOrchestratorETL } from './orchestration/sub-orchestrator-queue-etl';
 import { subOrchestratorPaging } from './orchestration/sub-orchestrator-paging';
 import getConsolidations from './activity/getConsolidations';
 import getPageCount from './activity/getPageCount';
-import migrateConsolidation from './activity/migrateConsolidation';
+import migrateConsolidation from './queueTrigger/migrateConsolidation';
 import flattenBoundingArrays from './activity/flattenBoundingArrays';
 
 export const SUB_ORCHESTRATOR_ETL = 'SubOrchestratorETL';
@@ -23,8 +23,13 @@ df.app.orchestration(SUB_ORCHESTRATOR_ETL, subOrchestratorETL);
 df.app.orchestration(SUB_ORCHESTRATOR_PAGING, subOrchestratorPaging);
 df.app.activity(GET_CONSOLIDATIONS, getConsolidations);
 df.app.activity(GET_PAGE_COUNT, getPageCount);
-df.app.activity(MIGRATE_CONSOLIDATION, migrateConsolidation);
 df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
+
+app.storageQueue(MIGRATE_CONSOLIDATION, {
+  queueName: 'test-queue-triggered-function', // TODO: Externalize this queue name
+  connection: 'MyStorageConnectionAppSetting',
+  handler: migrateConsolidation,
+});
 
 app.http('dfClient', {
   route: 'migrations/consolidation',

@@ -1,5 +1,6 @@
+import { InvocationContext } from '@azure/functions';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
-import module from './migrateConsolidation';
+import migrationConsolidation from './migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { AcmsTransformationResult } from '../../../lib/use-cases/acms-orders/acms-orders';
@@ -22,7 +23,7 @@ describe('getConsolidations test', () => {
 
     const context = createMockAzureFunctionContext();
 
-    const actual = await module.handler(caseId, context);
+    const actual = await migrationConsolidation(caseId, context);
     expect(getLeadCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), caseId);
     expect(actual).toEqual(expected);
   });
@@ -31,16 +32,8 @@ describe('getConsolidations test', () => {
     const error = new CamsError('TEST_MODULE', { message: 'getConsolidation Error' });
     jest.spyOn(AcmsOrdersController.prototype, 'migrateConsolidation').mockRejectedValue(error);
 
-    const context = createMockAzureFunctionContext();
+    const context: InvocationContext = {} as InvocationContext;
 
-    const caseId = '000-11-22222';
-    const expected: AcmsTransformationResult = {
-      leadCaseId: caseId,
-      childCaseCount: 0,
-      success: false,
-    };
-
-    const actual = await module.handler(caseId, context);
-    expect(actual).toEqual(expected);
+    await expect(migrationConsolidation('000-11-22222', context)).rejects.toThrow(error);
   });
 });

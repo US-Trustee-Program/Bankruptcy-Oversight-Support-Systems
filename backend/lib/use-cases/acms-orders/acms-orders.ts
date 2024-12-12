@@ -27,6 +27,14 @@ export type AcmsPredicateAndPage = AcmsPredicate & {
   pageNumber: number;
 };
 
+export type AcmsEtlQueueItem = AcmsPredicate & {
+  leadCaseId: string;
+};
+
+export function isAcmsEtlQueryItem(item: unknown): item is AcmsEtlQueueItem {
+  return typeof item === 'object' && 'leadCaseId' in item;
+}
+
 export type AcmsConsolidationChildCase = {
   caseId: string;
   consolidationType: string;
@@ -38,6 +46,7 @@ export type AcmsConsolidation = {
   childCases: AcmsConsolidationChildCase[];
 };
 
+// TODO: These results can be written to a queue to report on.
 export type AcmsTransformationResult = {
   leadCaseId: string;
   childCaseCount: number;
