@@ -26,5 +26,6 @@
     "durableTask": {
       "hubName": "%MyTaskHub%"
     }
-  }
+  },
+  "functionTimeout": "01:00:00"
 }
