@@ -34,7 +34,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       CasesMongoRepository.referenceCount++;
       return CasesMongoRepository.instance;
     } catch (e) {
-      throw getCamsError(e, 'Failed to get instance of cases repository.');
+      throw getCamsError(e, MODULE_NAME, 'Failed to get instance of cases repository.');
     }
   }
 
