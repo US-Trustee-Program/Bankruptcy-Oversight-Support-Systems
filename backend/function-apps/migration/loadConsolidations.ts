@@ -21,12 +21,10 @@ export const FLATTEN_BOUNDING_ARRAYS = 'flattenBoundingArrays';
 
 dotenv.config();
 
-df.app.orchestration(MAIN_ORCHESTRATOR, main);
-df.app.orchestration(SUB_ORCHESTRATOR_ETL, subOrchestratorETL);
-df.app.orchestration(SUB_ORCHESTRATOR_PAGING, subOrchestratorPaging);
-df.app.activity(GET_CONSOLIDATIONS, getConsolidations);
-df.app.activity(GET_PAGE_COUNT, getPageCount);
-df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
+const taskQueue = output.storageQueue({
+  queueName: process.env.CAMS_MIGRATION_TASK_QUEUE,
+  connection: 'AzureWebJobs',
+});
 
 const successQueue = output.storageQueue({
   queueName: process.env.CAMS_MIGRATION_TASK_SUCCESS_QUEUE,
@@ -38,14 +36,18 @@ const failQueue = output.storageQueue({
   connection: 'AzureWebJobs',
 });
 
+df.app.orchestration(MAIN_ORCHESTRATOR, main);
+df.app.orchestration(SUB_ORCHESTRATOR_ETL, subOrchestratorETL);
+df.app.orchestration(SUB_ORCHESTRATOR_PAGING, subOrchestratorPaging);
+df.app.activity(GET_CONSOLIDATIONS, { handler: getConsolidations, extraOutputs: [taskQueue] });
+df.app.activity(GET_PAGE_COUNT, getPageCount);
+df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
+
 app.storageQueue(MIGRATE_CONSOLIDATION, {
   queueName: process.env.CAMS_MIGRATION_TASK_QUEUE,
   connection: 'AzureWebJobs',
   handler: migrateConsolidation,
   extraOutputs: [successQueue, failQueue],
-  // extraInputs: [],
-  // return: null,
-  // trigger: null,
 });
 
 app.http('dfClient', {

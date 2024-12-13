@@ -1,13 +1,24 @@
-import { InvocationContext } from '@azure/functions';
-import { AcmsPredicateAndPage } from '../../../lib/use-cases/acms-orders/acms-orders';
+import * as dotenv from 'dotenv';
+import { InvocationContext, output } from '@azure/functions';
+import {
+  AcmsEtlQueueItem,
+  AcmsPredicateAndPage,
+} from '../../../lib/use-cases/acms-orders/acms-orders';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 
+dotenv.config();
+
 const MODULE_NAME = 'IMPORT_ACTION_GET_CONSOLIDATIONS';
 
+const etlQueueOutput = output.storageQueue({
+  queueName: process.env.CAMS_MIGRATION_TASK_QUEUE,
+  connection: 'AzureWebJobs',
+});
+
 async function getConsolidations(
-  input: AcmsPredicateAndPage,
+  predicateAndPage: AcmsPredicateAndPage,
   invocationContext: InvocationContext,
 ) {
   const logger = ContextCreator.getLogger(invocationContext);
@@ -15,7 +26,21 @@ async function getConsolidations(
   const controller = new AcmsOrdersController();
 
   try {
-    return await controller.getLeadCaseIds(context, input);
+    const leadCaseIds = await controller.getLeadCaseIds(context, predicateAndPage);
+
+    const queueItems = [];
+    for (let i = 0; i < leadCaseIds.length; i++) {
+      const leadCaseIdString = leadCaseIds[i].toString();
+      const queueItem: AcmsEtlQueueItem = {
+        divisionCode: predicateAndPage.divisionCode,
+        chapter: predicateAndPage.chapter,
+        leadCaseId: leadCaseIdString,
+      };
+      queueItems.push(queueItem);
+    }
+    invocationContext.extraOutputs.set(etlQueueOutput, queueItems);
+
+    return leadCaseIds;
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME, 'Failed to get lead case ids.');
     logger.camsError(error);
@@ -23,6 +48,4 @@ async function getConsolidations(
   }
 }
 
-export default {
-  handler: getConsolidations,
-};
+export default getConsolidations;
