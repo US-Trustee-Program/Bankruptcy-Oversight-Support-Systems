@@ -28,10 +28,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CasesMongoRepository.instance)
-      CasesMongoRepository.instance = new CasesMongoRepository(context);
-    CasesMongoRepository.referenceCount++;
-    return CasesMongoRepository.instance;
+    try {
+      if (!CasesMongoRepository.instance)
+        CasesMongoRepository.instance = new CasesMongoRepository(context);
+      CasesMongoRepository.referenceCount++;
+      return CasesMongoRepository.instance;
+    } catch (e) {
+      throw getCamsError(e, 'Failed to get instance of cases repository.');
+    }
   }
 
   public static dropInstance() {

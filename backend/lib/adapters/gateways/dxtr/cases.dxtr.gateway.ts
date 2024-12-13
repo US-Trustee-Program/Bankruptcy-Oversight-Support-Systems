@@ -363,7 +363,9 @@ export default class CasesDxtrGateway implements CasesInterface {
     const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
 
     if (!bCase) {
-      throw new NotFoundError(MODULENAME, { message: 'Case summary not found for case ID.' });
+      throw new NotFoundError(MODULENAME, {
+        message: `Case summary not found for case ID: ${caseId}.`,
+      });
     }
     bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);

@@ -113,6 +113,7 @@ export class AcmsOrders {
       const acms = Factory.getAcmsGateway(context);
 
       const basics = await acms.getConsolidationDetails(context, acmsLeadCaseId);
+      report.leadCaseId = basics.leadCaseId;
       const leadCase = await dxtr.getCaseSummary(context, basics.leadCaseId);
 
       // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
