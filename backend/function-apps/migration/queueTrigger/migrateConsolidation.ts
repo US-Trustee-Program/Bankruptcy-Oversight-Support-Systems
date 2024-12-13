@@ -1,24 +1,49 @@
-import { InvocationContext } from '@azure/functions';
+import { InvocationContext, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import { isAcmsEtlQueryItem } from '../../../lib/use-cases/acms-orders/acms-orders';
+import { isAcmsEtlQueueItem } from '../../../lib/use-cases/acms-orders/acms-orders';
+
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
 
-async function migrateConsolidation(queueItem: unknown, invocationContext: InvocationContext) {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
-  const controller = new AcmsOrdersController();
+const successQueue = output.storageQueue({
+  queueName: process.env.CAMS_MIGRATION_TASK_SUCCESS_QUEUE,
+  connection: 'AzureWebJobs',
+});
 
+const failQueue = output.storageQueue({
+  queueName: process.env.CAMS_MIGRATION_TASK_FAIL_QUEUE,
+  connection: 'AzureWebJobs',
+});
+
+async function migrateConsolidation(message: unknown, context: InvocationContext) {
   try {
-    if (!isAcmsEtlQueryItem(queueItem)) {
+    const logger = ContextCreator.getLogger(context);
+    const appContext = await ContextCreator.getApplicationContext({
+      invocationContext: context,
+      logger,
+    });
+    const controller = new AcmsOrdersController();
+
+    const maybeQueueItem =
+      typeof message === 'object'
+        ? message
+        : typeof message === 'string'
+          ? JSON.parse(message)
+          : {};
+
+    if (!isAcmsEtlQueueItem(maybeQueueItem)) {
       throw new CamsError(MODULE_NAME, { message: 'Invalid ACMS migration ETL queue entry.' });
     }
-    const { leadCaseId } = queueItem;
-    const _result = await controller.migrateConsolidation(appContext, leadCaseId);
-    // TODO: Write result to queue to to build a report with???
+    const { leadCaseId } = maybeQueueItem;
+    const result = await controller.migrateConsolidation(appContext, leadCaseId);
+
+    const destinationQueue = result.success ? successQueue : failQueue;
+    context.extraOutputs.set(destinationQueue, [result]);
   } catch (originalError) {
     throw getCamsError(originalError, MODULE_NAME);
   }

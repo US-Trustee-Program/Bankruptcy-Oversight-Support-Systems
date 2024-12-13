@@ -31,7 +31,7 @@ export type AcmsEtlQueueItem = AcmsPredicate & {
   leadCaseId: string;
 };
 
-export function isAcmsEtlQueryItem(item: unknown): item is AcmsEtlQueueItem {
+export function isAcmsEtlQueueItem(item: unknown): item is AcmsEtlQueueItem {
   return typeof item === 'object' && 'leadCaseId' in item;
 }
 
