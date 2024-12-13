@@ -11,8 +11,8 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const etlQueueOutput = output.storageQueue({
-  queueName: process.env.CAMS_STORAGE_QUEUE_NAME,
-  connection: process.env.CAMS_STORAGE_QUEUE_CONNECTION_STRING,
+  queueName: process.env.CAMS_MIGRATION_TASK_QUEUE,
+  connection: 'AzureWebJobs',
 });
 
 export function* subOrchestratorETL(context: OrchestrationContext) {

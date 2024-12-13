@@ -1,8 +1,6 @@
-import * as df from 'durable-functions';
-import { app } from '@azure/functions';
 import * as dotenv from 'dotenv';
-
-dotenv.config();
+import * as df from 'durable-functions';
+import { app, output } from '@azure/functions';
 
 import httpStart from './client/acms-migration-trigger.function';
 import { main } from './orchestration/orchestrator';
@@ -21,6 +19,8 @@ export const GET_CONSOLIDATIONS = 'getConsolidations';
 export const MIGRATE_CONSOLIDATION = 'migrateConsolidation';
 export const FLATTEN_BOUNDING_ARRAYS = 'flattenBoundingArrays';
 
+dotenv.config();
+
 df.app.orchestration(MAIN_ORCHESTRATOR, main);
 df.app.orchestration(SUB_ORCHESTRATOR_ETL, subOrchestratorETL);
 df.app.orchestration(SUB_ORCHESTRATOR_PAGING, subOrchestratorPaging);
@@ -28,10 +28,21 @@ df.app.activity(GET_CONSOLIDATIONS, getConsolidations);
 df.app.activity(GET_PAGE_COUNT, getPageCount);
 df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
 
+const successQueue = output.storageQueue({
+  queueName: process.env.CAMS_MIGRATION_TASK_SUCCESS_QUEUE,
+  connection: 'AzureWebJobs',
+});
+
+const failQueue = output.storageQueue({
+  queueName: process.env.CAMS_MIGRATION_TASK_FAIL_QUEUE,
+  connection: 'AzureWebJobs',
+});
+
 app.storageQueue(MIGRATE_CONSOLIDATION, {
-  queueName: process.env.CAMS_STORAGE_QUEUE_NAME,
-  connection: process.env.CAMS_STORAGE_QUEUE_CONNECTION_STRING,
+  queueName: process.env.CAMS_MIGRATION_TASK_QUEUE,
+  connection: 'AzureWebJobs',
   handler: migrateConsolidation,
+  extraOutputs: [successQueue, failQueue],
 });
 
 app.http('dfClient', {
