@@ -9,7 +9,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import QueryBuilder from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
-import { getCamsError } from '../../../common-errors/error-utilities';
+import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
@@ -33,8 +33,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         CasesMongoRepository.instance = new CasesMongoRepository(context);
       CasesMongoRepository.referenceCount++;
       return CasesMongoRepository.instance;
-    } catch (e) {
-      throw getCamsError(e, MODULE_NAME, 'Failed to get instance of cases repository.');
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: 'Failed to get instance of cases repository.',
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -58,7 +63,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const adapter = this.getAdapter<Transfer>();
       return await adapter.find(query);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, `Failed to get transfers for ${caseId}.`);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to get transfers for ${caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -68,7 +78,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const id = await adapter.insertOne(itemToCreate);
       return { ...itemToCreate, id };
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, `Failed to create item.`);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to create item.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -76,11 +91,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       return this.create<TransferFrom>(transferFrom);
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to create transferFrom for: ${transferFrom.caseId}.`,
-      );
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to create transferFrom for: ${transferFrom.caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -88,11 +104,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       return this.create<TransferTo>(transferOut);
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to create transferTo for: ${transferOut.caseId}.`,
-      );
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to create transferTo for: ${transferOut.caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -104,11 +121,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const adapter = this.getAdapter<ConsolidationTo | ConsolidationFrom>();
       return await adapter.find(query);
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to retrieve consolidation for ${caseId}.`,
-      );
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve consolidation for ${caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
     }
   }
 
@@ -116,11 +135,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       return this.create<ConsolidationFrom>(consolidationFrom);
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
-      );
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -128,11 +148,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       return this.create<ConsolidationTo>(consolidationOut);
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to create consolidationTo for: ${consolidationOut.caseId}.`,
-      );
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to create consolidationTo for: ${consolidationOut.caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -144,7 +165,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, `Failed to get case history for ${caseId}.`);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to get case history for ${caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
@@ -153,11 +179,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       await this.create<CaseHistory>(history);
       this.context.logger.debug(MODULE_NAME, `Created case history for: ${history.caseId}.`);
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
-      );
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message:
+            'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 }
