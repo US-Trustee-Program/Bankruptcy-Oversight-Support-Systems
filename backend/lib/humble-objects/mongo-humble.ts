@@ -1,4 +1,4 @@
-import { Collection, Db, MongoClient } from 'mongodb';
+import { Collection, Db, MongoClient, Logger } from 'mongodb';
 import { Closable } from '../deferrable/defer-close';
 
 export class CollectionHumble<T> {
@@ -46,6 +46,7 @@ export class DatabaseHumble {
 
   constructor(client: MongoClient, name: string) {
     this.database = new Db(client, name);
+    Logger.setLevel('debug');
   }
 
   public collection<T>(collectionName: string): CollectionHumble<T> {
