@@ -25,7 +25,7 @@ export default class HealthcheckCosmosDb {
     this.context = context;
     const { connectionString, databaseName } = this.context.config.documentDbConfig;
     this.databaseName = databaseName;
-    this.client = new DocumentClient(connectionString);
+    this.client = new DocumentClient(connectionString, context);
     deferClose(this.client, context);
   }
 
