@@ -1,16 +1,23 @@
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
+export type CamsStackInfo = {
+  module: string;
+  message?: string;
+};
+
 export interface CamsErrorOptions {
   status?: number;
   message?: string;
   originalError?: Error;
   data?: object;
+  camsStackInfo?: CamsStackInfo;
 }
 
 export class CamsError extends Error {
   isCamsError: true;
   status: number;
   module: string;
+  camsStack: CamsStackInfo[];
   originalError?: Error;
   data?: object;
 
@@ -23,6 +30,7 @@ export class CamsError extends Error {
     this.originalError = options.originalError;
     this.data = options.data;
     this.isCamsError = true;
+    this.camsStack = [];
   }
 }
 
