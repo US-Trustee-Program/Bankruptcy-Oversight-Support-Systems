@@ -30,7 +30,7 @@ export class CamsError extends Error {
     this.originalError = options.originalError;
     this.data = options.data;
     this.isCamsError = true;
-    this.camsStack = [];
+    this.camsStack = options.camsStackInfo ? [options.camsStackInfo] : [];
   }
 }
 

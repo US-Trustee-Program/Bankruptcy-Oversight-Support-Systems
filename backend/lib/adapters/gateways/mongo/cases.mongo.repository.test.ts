@@ -95,7 +95,15 @@ describe('Cases repository', () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
     const caseId = '111-82-80331';
     await expect(async () => await repo.getConsolidation(caseId)).rejects.toThrow(
-      `Failed to retrieve consolidation for ${caseId}.`,
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to retrieve consolidation for ${caseId}.`,
+          },
+        ]),
+      }),
     );
   });
 
@@ -127,7 +135,15 @@ describe('Cases repository', () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
     const caseId = '111-82-80331';
     await expect(async () => await repo.getCaseHistory(caseId)).rejects.toThrow(
-      `Failed to get case history for ${caseId}.`,
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to get case history for ${caseId}.`,
+          },
+        ]),
+      }),
     );
   });
 
