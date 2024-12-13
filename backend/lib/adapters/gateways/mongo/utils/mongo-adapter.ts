@@ -7,6 +7,7 @@ import { ConditionOrConjunction, Sort } from '../../../../query/query-builder';
 import { DocumentCollectionAdapter } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
+import { MongoServerError } from 'mongodb';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -30,7 +31,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while querying with: ${query}`);
+      throw this.handleError(originalError, `Failed while querying with: ${JSON.stringify(query)}`);
     }
   }
 
@@ -47,7 +48,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while sorting with: ${sort}`);
+      throw this.handleError(originalError, `Failed while sorting with: ${JSON.stringify(sort)}`);
     }
   }
 
@@ -60,7 +61,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return result;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while querying with: ${query}`);
+      throw this.handleError(originalError, `Failed while querying with: ${JSON.stringify(query)}`);
     }
   }
 
@@ -100,7 +101,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return mongoItem.id;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${item}`);
+      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(item)}`);
     }
   }
 
@@ -120,7 +121,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return insertedIds;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${items}`);
+      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(items)}`);
     }
   }
 
@@ -134,7 +135,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${query}`);
+      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`);
     }
   }
 
@@ -148,7 +149,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${query}`);
+      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`);
     }
   }
 
@@ -157,7 +158,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while counting: ${query}`);
+      throw this.handleError(originalError, `Failed while counting: ${JSON.stringify(query)}`);
     }
   }
 
@@ -183,7 +184,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   private handleError(error: unknown, message: string): CamsError {
-    return getCamsErrorWithStack(error as Error, this.moduleName, {
+    if (error instanceof MongoServerError) {
+      error = new Error(error.errorResponse.message);
+    }
+    const mongoError = error as MongoServerError;
+    return getCamsErrorWithStack(mongoError.cause ?? (error as Error), this.moduleName, {
       camsStackInfo: { module: this.moduleName, message },
     });
   }
