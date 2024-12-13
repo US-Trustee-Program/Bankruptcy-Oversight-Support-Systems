@@ -43,6 +43,9 @@ app.storageQueue(MIGRATE_CONSOLIDATION, {
   connection: 'AzureWebJobs',
   handler: migrateConsolidation,
   extraOutputs: [successQueue, failQueue],
+  // extraInputs: [],
+  // return: null,
+  // trigger: null,
 });
 
 app.http('dfClient', {
