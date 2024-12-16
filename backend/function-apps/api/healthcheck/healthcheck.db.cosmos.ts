@@ -64,7 +64,7 @@ export default class HealthcheckCosmosDb {
 
       return items.length > 0;
     } catch (e) {
-      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, 'Failed db read check.', e);
     }
     return false;
   }
@@ -78,7 +78,7 @@ export default class HealthcheckCosmosDb {
       await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
       return true;
     } catch (e) {
-      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, 'Failed db write check.', e);
     }
     return false;
   }
@@ -101,7 +101,7 @@ export default class HealthcheckCosmosDb {
         return true;
       }
     } catch (e) {
-      this.context.logger.error(MODULE_NAME, `${e.name}: ${e.message}`);
+      this.context.logger.error(MODULE_NAME, 'Failed db delete check.', e);
     }
     return false;
   }
