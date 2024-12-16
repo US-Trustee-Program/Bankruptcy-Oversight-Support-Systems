@@ -8,7 +8,11 @@ import { getCamsError } from '../../common-errors/error-utilities';
 const MODULE_NAME = 'ACMS-ORDERS-CONTROLLER';
 
 class AcmsOrdersController {
-  private readonly useCase = new AcmsOrders();
+  private readonly useCase: AcmsOrders;
+
+  constructor() {
+    this.useCase = new AcmsOrders();
+  }
 
   public async migrateConsolidation(
     context: ApplicationContext,

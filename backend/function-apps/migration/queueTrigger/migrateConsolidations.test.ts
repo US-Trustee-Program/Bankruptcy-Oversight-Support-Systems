@@ -1,4 +1,3 @@
-import { InvocationContext } from '@azure/functions';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import migrationConsolidation from './migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
@@ -25,6 +24,7 @@ describe('getConsolidations test', () => {
       .mockResolvedValue(expected);
 
     const context = createMockAzureFunctionContext();
+    const outputQueueSpy = jest.spyOn(context.extraOutputs, 'set');
 
     const queueItem: AcmsEtlQueueItem = {
       divisionCode: '000',
@@ -34,6 +34,32 @@ describe('getConsolidations test', () => {
 
     await migrationConsolidation(queueItem, context);
     expect(getLeadCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), caseId);
+    expect(outputQueueSpy).toHaveBeenCalledWith(expect.anything(), [expected]);
+  });
+
+  test('should handle false result', async () => {
+    const caseId = '000-11-22222';
+    const expected: AcmsTransformationResult = {
+      leadCaseId: caseId,
+      childCaseCount: 0,
+      success: false,
+    };
+    const getLeadCaseIdsSpy = jest
+      .spyOn(AcmsOrdersController.prototype, 'migrateConsolidation')
+      .mockResolvedValue(expected);
+
+    const context = createMockAzureFunctionContext();
+    const outputQueueSpy = jest.spyOn(context.extraOutputs, 'set');
+
+    const queueItem: AcmsEtlQueueItem = {
+      divisionCode: '000',
+      chapter: '15',
+      leadCaseId: '000-11-22222',
+    };
+
+    await migrationConsolidation(queueItem, context);
+    expect(getLeadCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), caseId);
+    expect(outputQueueSpy).toHaveBeenCalledWith(expect.anything(), [expected]);
   });
 
   test('should properly handle error when getLeadCaseIds controller throws an error', async () => {
@@ -49,5 +75,20 @@ describe('getConsolidations test', () => {
     };
 
     await expect(migrationConsolidation(queueItem, context)).rejects.toThrow(error);
+  });
+
+  test('should throw an error if the queue messsage is malformed', async () => {
+    const errorMessage = 'Invalid ACMS migration ETL queue entry.';
+
+    const context = createMockAzureFunctionContext();
+    const badQueueItem = {};
+
+    await expect(migrationConsolidation(badQueueItem, context)).rejects.toThrow(errorMessage);
+
+    await expect(migrationConsolidation(JSON.stringify(badQueueItem), context)).rejects.toThrow(
+      errorMessage,
+    );
+
+    await expect(migrationConsolidation(0, context)).rejects.toThrow(errorMessage);
   });
 });
