@@ -1,7 +1,7 @@
 import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
-import AcmsOrders, { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders';
+import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './acms-orders';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
@@ -13,9 +13,6 @@ import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditabl
 import { ConsolidationFrom } from '../../../../common/src/cams/events';
 
 const mockAcmsGateway: AcmsGateway = {
-  getPageCount: function (..._ignore): Promise<number> {
-    throw new Error('Function not implemented.');
-  },
   getLeadCaseIds: function (..._ignore): Promise<string[]> {
     throw new Error('Function not implemented.');
   },
@@ -35,22 +32,6 @@ describe('ACMS Orders', () => {
     jest.restoreAllMocks();
   });
 
-  test('should return a page count', async () => {
-    const expected = 5;
-    const getPageCount = jest.spyOn(mockAcmsGateway, 'getPageCount').mockResolvedValue(expected);
-    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
-
-    const predicate: AcmsPredicate = {
-      divisionCode: '000',
-      chapter: '00',
-    };
-    const useCase = new AcmsOrders();
-    const actual = await useCase.getPageCount(context, predicate);
-
-    expect(getPageCount).toHaveBeenCalledWith(context, predicate);
-    expect(actual).toEqual(expected);
-  });
-
   test('should return a page of consolidation orders', async () => {
     const expected: string[] = ['811100000', '1231111111'];
     const getConsolidationOrders = jest
@@ -58,10 +39,9 @@ describe('ACMS Orders', () => {
       .mockResolvedValue(expected);
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
 
-    const predicateAndPage: AcmsPredicateAndPage = {
+    const predicateAndPage: AcmsPredicate = {
       divisionCode: '000',
       chapter: '00',
-      pageNumber: 1,
     };
 
     const useCase = new AcmsOrders();
@@ -538,12 +518,10 @@ describe('ACMS Orders', () => {
       chapter: '00',
     };
 
-    const predicateAndPage: AcmsPredicateAndPage = {
+    const predicateAndPage: AcmsPredicate = {
       ...predicate,
-      pageNumber: 1,
     };
 
-    await expect(useCase.getPageCount(context, predicate)).rejects.toThrow();
     await expect(useCase.getLeadCaseIds(context, predicateAndPage)).rejects.toThrow();
   });
 

@@ -19,7 +19,7 @@ import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
-import { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders/acms-orders';
+import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
 
 export interface Releasable {
   release: () => void;
@@ -100,11 +100,7 @@ export interface OrdersGateway {
 }
 
 export interface AcmsGateway {
-  getPageCount(context: ApplicationContext, predicate: AcmsPredicate): Promise<number>;
-  getLeadCaseIds(
-    context: ApplicationContext,
-    predicateAndPage: AcmsPredicateAndPage,
-  ): Promise<string[]>;
+  getLeadCaseIds(context: ApplicationContext, predicateAndPage: AcmsPredicate): Promise<string[]>;
   getConsolidationDetails(
     context: ApplicationContext,
     leadCaseId: string,

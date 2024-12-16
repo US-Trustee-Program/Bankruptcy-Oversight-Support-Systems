@@ -6,17 +6,18 @@ import { CamsError } from '../../../lib/common-errors/cams-error';
 import { isAcmsEtlQueueItem } from '../../../lib/use-cases/acms-orders/acms-orders';
 
 import * as dotenv from 'dotenv';
+import { CAMS_MIGRATION_FAIL_QUEUE, CAMS_MIGRATION_SUCCESS_QUEUE } from '../loadConsolidations';
 dotenv.config();
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
 
 const successQueue = output.storageQueue({
-  queueName: process.env.CAMS_MIGRATION_TASK_SUCCESS_QUEUE,
+  queueName: CAMS_MIGRATION_SUCCESS_QUEUE,
   connection: 'AzureWebJobs',
 });
 
 const failQueue = output.storageQueue({
-  queueName: process.env.CAMS_MIGRATION_TASK_FAIL_QUEUE,
+  queueName: CAMS_MIGRATION_FAIL_QUEUE,
   connection: 'AzureWebJobs',
 });
 

@@ -1,24 +1,22 @@
 import * as dotenv from 'dotenv';
 import { InvocationContext, output } from '@azure/functions';
-import {
-  AcmsEtlQueueItem,
-  AcmsPredicateAndPage,
-} from '../../../lib/use-cases/acms-orders/acms-orders';
+import { AcmsEtlQueueItem, AcmsPredicate } from '../../../lib/use-cases/acms-orders/acms-orders';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { CAMS_MIGRATION_QUEUE } from '../loadConsolidations';
 
 dotenv.config();
 
 const MODULE_NAME = 'IMPORT_ACTION_GET_CONSOLIDATIONS';
 
 const etlQueueOutput = output.storageQueue({
-  queueName: process.env.CAMS_MIGRATION_TASK_QUEUE,
+  queueName: CAMS_MIGRATION_QUEUE,
   connection: 'AzureWebJobs',
 });
 
-async function getConsolidations(
-  predicateAndPage: AcmsPredicateAndPage,
+async function queueMigrateConsolidation(
+  predicate: AcmsPredicate,
   invocationContext: InvocationContext,
 ) {
   const logger = ContextCreator.getLogger(invocationContext);
@@ -26,14 +24,14 @@ async function getConsolidations(
   const controller = new AcmsOrdersController();
 
   try {
-    const leadCaseIds = await controller.getLeadCaseIds(context, predicateAndPage);
+    const leadCaseIds = await controller.getLeadCaseIds(context, predicate);
 
     const queueItems = [];
     for (let i = 0; i < leadCaseIds.length; i++) {
       const leadCaseIdString = leadCaseIds[i].toString();
       const queueItem: AcmsEtlQueueItem = {
-        divisionCode: predicateAndPage.divisionCode,
-        chapter: predicateAndPage.chapter,
+        divisionCode: predicate.divisionCode,
+        chapter: predicate.chapter,
         leadCaseId: leadCaseIdString,
       };
       queueItems.push(queueItem);
@@ -48,4 +46,4 @@ async function getConsolidations(
   }
 }
 
-export default getConsolidations;
+export default queueMigrateConsolidation;
