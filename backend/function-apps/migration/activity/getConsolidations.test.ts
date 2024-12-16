@@ -1,5 +1,5 @@
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
-import module from './getConsolidations';
+import getConsolidations from './getConsolidations';
 import { AcmsPredicateAndPage } from '../../../lib/use-cases/acms-orders/acms-orders';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../../lib/common-errors/cams-error';
@@ -22,7 +22,7 @@ describe('getConsolidations test', () => {
       pageNumber: 1,
     };
 
-    const actual = await module.handler(input, context);
+    const actual = await getConsolidations(input, context);
     expect(getLeadCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), input);
     expect(actual).toEqual(expected);
   });
@@ -38,7 +38,7 @@ describe('getConsolidations test', () => {
       pageNumber: 1,
     };
 
-    const actual = await module.handler(input, context);
+    const actual = await getConsolidations(input, context);
     expect(actual).toEqual([]);
   });
 });
