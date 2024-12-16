@@ -1,12 +1,12 @@
+import * as dotenv from 'dotenv';
 import { InvocationContext, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { isAcmsEtlQueueItem } from '../../../lib/use-cases/acms-orders/acms-orders';
-
-import * as dotenv from 'dotenv';
 import { CAMS_MIGRATION_FAIL_QUEUE, CAMS_MIGRATION_SUCCESS_QUEUE } from '../loadConsolidations';
+
 dotenv.config();
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
@@ -22,14 +22,14 @@ const failQueue = output.storageQueue({
 });
 
 async function migrateConsolidation(message: unknown, context: InvocationContext) {
-  try {
-    const logger = ContextCreator.getLogger(context);
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext: context,
-      logger,
-    });
-    const controller = new AcmsOrdersController();
+  const logger = ContextCreator.getLogger(context);
+  const appContext = await ContextCreator.getApplicationContext({
+    invocationContext: context,
+    logger,
+  });
+  const controller = new AcmsOrdersController();
 
+  try {
     const maybeQueueItem =
       typeof message === 'object'
         ? message
@@ -46,7 +46,11 @@ async function migrateConsolidation(message: unknown, context: InvocationContext
     const destinationQueue = result.success ? successQueue : failQueue;
     context.extraOutputs.set(destinationQueue, [result]);
   } catch (originalError) {
-    throw getCamsError(originalError, MODULE_NAME);
+    const errorMessage = {
+      message,
+      error: getCamsError(originalError, MODULE_NAME),
+    };
+    context.extraOutputs.set(successQueue, [errorMessage]);
   }
 }
 
