@@ -188,13 +188,16 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   private handleError(error: unknown, message: string): CamsError {
     let mongoError: MongoServerError;
+    let err: Error;
     if (!isCamsError(error)) {
       mongoError = error as MongoServerError;
+      err = {
+        name: mongoError.name,
+        message: mongoError.message,
+      } as unknown as Error;
+    } else {
+      err = error;
     }
-    const err: Error = {
-      name: mongoError.name,
-      message: mongoError.message,
-    } as unknown as Error;
     return getCamsErrorWithStack(err, this.moduleName, {
       camsStackInfo: { module: this.moduleName, message: err.message },
       message,
