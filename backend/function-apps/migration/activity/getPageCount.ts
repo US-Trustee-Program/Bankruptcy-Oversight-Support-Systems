@@ -14,7 +14,9 @@ async function getPageCount(input: AcmsPredicateAndPage, invocationContext: Invo
   try {
     return await controller.getPageCount(context, input);
   } catch (originalError) {
-    throw getCamsError(originalError, MODULE_NAME);
+    const error = getCamsError(originalError, MODULE_NAME, 'Failed to get page count.');
+    logger.camsError(error);
+    return 0;
   }
 }
 

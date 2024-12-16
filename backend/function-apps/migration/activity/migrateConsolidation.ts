@@ -15,9 +15,20 @@ async function migrateConsolidation(
   const controller = new AcmsOrdersController();
 
   try {
-    return await controller.migrateConsolidation(appContext, leadCaseId);
+    const result = await controller.migrateConsolidation(appContext, leadCaseId);
+    logger.debug(
+      MODULE_NAME,
+      `Migration result for leadCaseId ${leadCaseId}: ${result.success ? 'successful' : 'failed'}`,
+    );
+    return result;
   } catch (originalError) {
-    throw getCamsError(originalError, MODULE_NAME);
+    const error = getCamsError(
+      originalError,
+      MODULE_NAME,
+      `Failed to migrate consolidation for ${leadCaseId}.`,
+    );
+    logger.camsError(error);
+    return { leadCaseId, childCaseCount: 0, success: false };
   }
 }
 

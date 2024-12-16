@@ -17,7 +17,9 @@ async function getConsolidations(
   try {
     return await controller.getLeadCaseIds(context, input);
   } catch (originalError) {
-    throw getCamsError(originalError, MODULE_NAME);
+    const error = getCamsError(originalError, MODULE_NAME, 'Failed to get lead case ids.');
+    logger.camsError(error);
+    return [];
   }
 }
 
