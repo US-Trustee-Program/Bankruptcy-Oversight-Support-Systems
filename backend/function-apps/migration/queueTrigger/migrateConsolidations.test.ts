@@ -40,7 +40,7 @@ describe('getConsolidations test', () => {
     const error = new CamsError('TEST_MODULE', { message: 'getConsolidation Error' });
     jest.spyOn(AcmsOrdersController.prototype, 'migrateConsolidation').mockRejectedValue(error);
 
-    const context: InvocationContext = {} as InvocationContext;
+    const context = createMockAzureFunctionContext();
 
     const queueItem: AcmsEtlQueueItem = {
       divisionCode: '000',
