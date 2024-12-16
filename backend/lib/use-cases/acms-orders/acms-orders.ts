@@ -46,7 +46,6 @@ export type AcmsConsolidation = {
   childCases: AcmsConsolidationChildCase[];
 };
 
-// TODO: These results can be written to a queue to report on.
 export type AcmsTransformationResult = {
   leadCaseId: string;
   childCaseCount: number;
