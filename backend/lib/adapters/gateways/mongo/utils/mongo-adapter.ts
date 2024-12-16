@@ -1,5 +1,5 @@
 import { CamsError } from '../../../../common-errors/cams-error';
-import { getCamsError } from '../../../../common-errors/error-utilities';
+import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
@@ -7,6 +7,7 @@ import { ConditionOrConjunction, Sort } from '../../../../query/query-builder';
 import { DocumentCollectionAdapter } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
+import { MongoServerError } from 'mongodb';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -14,7 +15,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   constructor(moduleName: string, collection: CollectionHumble<T>) {
     this.collectionHumble = collection;
-    this.moduleName = moduleName;
+    this.moduleName = moduleName + '_ADAPTER';
   }
 
   public async find(query: ConditionOrConjunction, sort?: Sort): Promise<T[]> {
@@ -30,7 +31,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while querying with: ${JSON.stringify(query)}`);
     }
   }
 
@@ -47,7 +48,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while sorting with: ${JSON.stringify(sort)}`);
     }
   }
 
@@ -60,7 +61,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return result;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while querying with: ${JSON.stringify(query)}`);
     }
   }
 
@@ -80,7 +81,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return mongoItem.id;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(
+        originalError,
+        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
+      );
     }
   }
 
@@ -97,7 +101,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return mongoItem.id;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(item)}`);
     }
   }
 
@@ -117,7 +121,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return insertedIds;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(items)}`);
     }
   }
 
@@ -131,7 +135,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`);
     }
   }
 
@@ -145,7 +149,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`);
     }
   }
 
@@ -154,7 +158,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, `Failed while counting: ${JSON.stringify(query)}`);
     }
   }
 
@@ -163,7 +167,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
-      throw getCamsError(originalError, this.moduleName);
+      throw this.handleError(originalError, 'Failed while counting all documents.');
     }
   }
 
@@ -177,6 +181,16 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       moduleName,
       client.database(database).collection<T>(collection),
     );
+  }
+
+  private handleError(error: unknown, message: string): CamsError {
+    if (error instanceof MongoServerError) {
+      error = new Error(error.errorResponse.message);
+    }
+    const mongoError = error as MongoServerError;
+    return getCamsErrorWithStack(mongoError.cause ?? (error as Error), this.moduleName, {
+      camsStackInfo: { module: this.moduleName, message },
+    });
   }
 }
 

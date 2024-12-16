@@ -7,7 +7,7 @@ import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 
 const { and, orderBy } = QueryBuilder;
 
-const MODULE_NAME = 'TEST_ADAPTER';
+const MODULE_NAME = 'TEST_MODULE';
 
 const find = jest.fn();
 const findOne = jest.fn();
@@ -143,7 +143,7 @@ describe('Mongo adapter', () => {
     expect(result).toEqual(testObject.id);
   });
 
-  test('should throw an error calling replaceOne for a nonexistant record and upsert=false', async () => {
+  test('should throw an error calling replaceOne for a nonexistent record and upsert=false', async () => {
     const testObject: TestType = { id: '12345', foo: 'bar' };
     replaceOne.mockResolvedValue({
       acknowledged: false,
@@ -266,9 +266,12 @@ describe('Mongo adapter', () => {
 
   test('should handle errors', async () => {
     const originalError = new Error('Test Exception');
-    const expectedError = new UnknownError(MODULE_NAME, { originalError });
+    const expectedError = new UnknownError(MODULE_NAME, {
+      originalError,
+      camsStackInfo: { message: expect.any(String), module: 'MODULE_NAME' },
+    });
     Object.values(spies).forEach((spy) => {
-      spy.mockRejectedValue(expectedError);
+      spy.mockRejectedValue(originalError);
     });
 
     await expect(adapter.replaceOne(testQuery, {})).rejects.toThrow(expectedError);

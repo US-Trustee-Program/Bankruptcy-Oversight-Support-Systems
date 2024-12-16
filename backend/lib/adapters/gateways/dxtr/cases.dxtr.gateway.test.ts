@@ -269,8 +269,9 @@ describe('Test DXTR Gateway', () => {
   });
 
   test('should throw an error if a case summary is not found', async () => {
+    const caseId = '000-00-00000';
     const expectedError = new NotFoundError('CASES-DXTR-GATEWAY', {
-      message: 'Case summary not found for case ID.',
+      message: `Case summary not found for case ID: ${caseId}.`,
     });
     querySpy.mockResolvedValue({
       results: {
@@ -282,9 +283,9 @@ describe('Test DXTR Gateway', () => {
       message: '',
       success: true,
     });
-    await expect(
-      testCasesDxtrGateway.getCaseSummary(applicationContext, '000-00-00000'),
-    ).rejects.toThrow(expectedError);
+    await expect(testCasesDxtrGateway.getCaseSummary(applicationContext, caseId)).rejects.toThrow(
+      expectedError,
+    );
   });
 
   test('should call executeQuery with the expected properties for a case', async () => {

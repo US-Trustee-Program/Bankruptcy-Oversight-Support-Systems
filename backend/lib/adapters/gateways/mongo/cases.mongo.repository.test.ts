@@ -93,8 +93,17 @@ describe('Cases repository', () => {
 
   test('should throw error in getConsolidation when find throws', async () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
-    expect(async () => await repo.getConsolidation('111-82-80331')).rejects.toThrow(
-      'Unknown Error',
+    const caseId = '111-82-80331';
+    await expect(async () => await repo.getConsolidation(caseId)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to retrieve consolidation for ${caseId}.`,
+          },
+        ]),
+      }),
     );
   });
 
@@ -124,7 +133,18 @@ describe('Cases repository', () => {
 
   test('should throw error in getCaseHistory when find throws', async () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
-    expect(async () => await repo.getCaseHistory('111-82-80331')).rejects.toThrow('Unknown Error');
+    const caseId = '111-82-80331';
+    await expect(async () => await repo.getCaseHistory(caseId)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to get case history for ${caseId}.`,
+          },
+        ]),
+      }),
+    );
   });
 
   test('should createTransferTo', async () => {
@@ -196,7 +216,7 @@ describe('Cases repository', () => {
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockRejectedValue(new CamsError('COSMOS_DB_REPOSITORY_CASES'));
-    expect(async () => await repo.createCaseHistory(caseHistory)).rejects.toThrow(
+    await expect(async () => await repo.createCaseHistory(caseHistory)).rejects.toThrow(
       'Unknown CAMS Error',
     );
   });

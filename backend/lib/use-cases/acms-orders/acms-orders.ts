@@ -69,16 +69,32 @@ export class AcmsOrders {
     context: ApplicationContext,
     predicate: AcmsPredicate,
   ): Promise<number> {
-    const gateway = Factory.getAcmsGateway(context);
-    return await gateway.getPageCount(context, predicate);
+    try {
+      const gateway = Factory.getAcmsGateway(context);
+      return await gateway.getPageCount(context, predicate);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to get page count from the ACMS gateway.',
+      );
+    }
   }
 
   public async getLeadCaseIds(
     context: ApplicationContext,
     predicateAndPage: AcmsPredicateAndPage,
   ): Promise<string[]> {
-    const gateway = Factory.getAcmsGateway(context);
-    return gateway.getLeadCaseIds(context, predicateAndPage);
+    try {
+      const gateway = Factory.getAcmsGateway(context);
+      return gateway.getLeadCaseIds(context, predicateAndPage);
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to get lead case ids from the ACMS gateway.',
+      );
+    }
   }
 
   public async migrateConsolidation(
@@ -97,6 +113,7 @@ export class AcmsOrders {
       const acms = Factory.getAcmsGateway(context);
 
       const basics = await acms.getConsolidationDetails(context, acmsLeadCaseId);
+      report.leadCaseId = basics.leadCaseId;
       const leadCase = await dxtr.getCaseSummary(context, basics.leadCaseId);
 
       // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
@@ -149,6 +166,9 @@ export class AcmsOrders {
         };
 
         const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
+        if (otherCase) {
+          context.logger.debug(MODULE_NAME, `Found case summary for: ${otherCase.caseId}.`);
+        }
         const fromLink: ConsolidationFrom = {
           caseId: basics.leadCaseId,
           consolidationType,

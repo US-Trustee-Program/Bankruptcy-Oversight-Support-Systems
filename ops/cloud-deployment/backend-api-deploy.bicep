@@ -88,7 +88,10 @@ param loginProvider string
 param isUstpDeployment bool
 
 @description('List of origins to allow. Need to include protocol')
-param corsAllowOrigins array = []
+param apiCorsAllowOrigins array = []
+
+@description('List of origins to allow. Need to include protocol')
+param migrationCorsAllowOrigins array = []
 
 param sqlServerResourceGroupName string = ''
 
@@ -450,12 +453,45 @@ var ipSecurityRestrictionsRules = concat(
     : []
 )
 
+var middlewareIpSecurityRestrictionsRules = [
+  {
+    ipAddress: '52.244.134.181/32'
+    action: 'Allow'
+    priority: 1001
+    name: 'Portal mwip 1'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+  {
+    ipAddress: '52.244.176.112/32'
+    action: 'Allow'
+    priority: 1002
+    name: 'Portal mwip 2'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+  {
+    ipAddress: '52.247.148.42/32'
+    action: 'Allow'
+    priority: 1003
+    name: 'Portal mwip 3'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+  {
+    ipAddress: '52.247.163.6/32'
+    action: 'Allow'
+    priority: 1004
+    name: 'Portal mwip 4'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+]
+
+var migrationIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
+
 resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   parent: apiFunctionApp
   name: 'web'
   properties: {
     cors: {
-      allowedOrigins: corsAllowOrigins
+      allowedOrigins: apiCorsAllowOrigins
     }
     numberOfWorkers: 1
     alwaysOn: true
@@ -478,6 +514,7 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: apiApplicationSettings
+    ftpsState: 'Disabled'
   }
 }
 
@@ -486,7 +523,7 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   name: 'web'
   properties: {
     cors: {
-      allowedOrigins: corsAllowOrigins
+      allowedOrigins: migrationCorsAllowOrigins
     }
     numberOfWorkers: 1
     alwaysOn: true
@@ -494,9 +531,9 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: ipSecurityRestrictionsRules
+    ipSecurityRestrictions: migrationIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: [
+    scmIpSecurityRestrictions: concat([
       {
         ipAddress: 'Any'
         action: 'Deny'
@@ -504,11 +541,12 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
         name: 'Deny all'
         description: 'Deny all access'
       }
-    ]
+    ], middlewareIpSecurityRestrictionsRules)
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
     appSettings: migrationApplicationSettings
+    ftpsState: 'Disabled'
   }
 }
 

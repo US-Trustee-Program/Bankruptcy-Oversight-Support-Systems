@@ -95,13 +95,22 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       SELECT DISTINCT CONSOLIDATED_CASE_NUMBER AS leadCaseId
       FROM [dbo].[CMMDB]
       WHERE CASE_DIV = @divisionCode
-      AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
+      AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101' OR CLOSED_BY_UST_DATE > '20170101'
       AND CONSOLIDATED_CASE_NUMBER != '0'`;
 
     // Valid ACMS chapters: 09, 11, 12, 13, 15, 7A, 7N, AC
     // 'AC' is the predecesor to chapter 15. We are not importing these old cases into CAMS.
     // '7A' and '7N' are treated inclusively as chapter 7 cases when importing into CAMS.
     // Leading zero padding is added for chapter 9.
+
+    // TODO: refactor to just get lead case id's, something like below
+    // select case_div, case_year, case_number
+    // from CMMDB
+    // where
+    // CONSOLIDATION_TYPE != ' '
+    // AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101' OR CLOSED_BY_UST_DATE > '20170101'
+    // and CONSOLIDATED_CASE_NUMBER = '0'
+    // and PREDICATE
 
     if (predicateAndPage.chapter === '7') {
       query += ` AND CURR_CASE_CHAPT IN ('7A', '7N')`;

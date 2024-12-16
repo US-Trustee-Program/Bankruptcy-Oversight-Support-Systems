@@ -24,7 +24,7 @@ export async function handler(
   }
 }
 
-app.http('handler', {
+app.http('me', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler,
