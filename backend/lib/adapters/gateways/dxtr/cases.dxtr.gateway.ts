@@ -16,7 +16,7 @@ import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '../../../../../commo
 import { CaseBasics, CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../common/src/cams/parties';
 
-const MODULENAME = 'CASES-DXTR-GATEWAY';
+const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
@@ -203,7 +203,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       }
       return suggestedCases.filter((sc) => transferPetitionCode.includes(sc.petitionCode));
     } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
+      throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
   }
 
@@ -351,7 +351,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       }
       return foundCases;
     } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message });
+      throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
   }
 
@@ -363,7 +363,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
 
     if (!bCase) {
-      throw new NotFoundError(MODULENAME, {
+      throw new NotFoundError(MODULE_NAME, {
         message: `Case summary not found for case ID: ${caseId}.`,
       });
     }
@@ -443,7 +443,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       handleQueryResult<CaseSummary>(
         applicationContext,
         queryResult,
-        MODULENAME,
+        MODULE_NAME,
         this.caseDetailsQueryCallback,
       ),
     );
@@ -506,7 +506,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       handleQueryResult<TransactionDates>(
         applicationContext,
         queryResult,
-        MODULENAME,
+        MODULE_NAME,
         this.transactionQueryCallback,
       ),
     );
@@ -580,7 +580,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       handleQueryResult<Party>(
         applicationContext,
         queryResult,
-        MODULENAME,
+        MODULE_NAME,
         this.partyQueryCallback,
       ),
     );
@@ -649,7 +649,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       handleQueryResult<DebtorAttorney>(
         context,
         queryResult,
-        MODULENAME,
+        MODULE_NAME,
         this.debtorAttorneyQueryCallback,
       ),
     );
@@ -673,7 +673,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     let debtor: Party;
-    applicationContext.logger.debug(MODULENAME, `Party results received from DXTR:`, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR:`, queryResult);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
       debtor = { name: removeExtraSpaces(record.name) };
@@ -692,7 +692,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const dismissedDates: Date[] = [];
     const reopenedDates: Date[] = [];
     applicationContext.logger.debug(
-      MODULENAME,
+      MODULE_NAME,
       `Transaction results received from DXTR:`,
       queryResult,
     );
@@ -716,19 +716,19 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULENAME, `Case results received from DXTR:`, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Case results received from DXTR:`, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseSummary>).recordset[0];
   }
 
   casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseSummary[]>).recordset;
   }
 
   casesBasicQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULENAME, `Results received from DXTR `, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
   }
