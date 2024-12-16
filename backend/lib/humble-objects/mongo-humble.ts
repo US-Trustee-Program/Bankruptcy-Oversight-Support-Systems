@@ -1,6 +1,5 @@
 import { Collection, Db, MongoClient } from 'mongodb';
 import { Closable } from '../deferrable/defer-close';
-import { ApplicationContext } from '../adapters/types/basic';
 
 export class CollectionHumble<T> {
   private collection: Collection<T>;
@@ -57,17 +56,8 @@ export class DatabaseHumble {
 export class DocumentClient implements Closable {
   protected client: MongoClient;
 
-  constructor(connectionString: string, context: ApplicationContext) {
+  constructor(connectionString: string) {
     this.client = new MongoClient(connectionString);
-    this.client.on('commandStarted', (event) =>
-      context.logger.debug('MONGO_CLIENT', 'Mongo commandStarted:', event),
-    );
-    this.client.on('commandSucceeded', (event) =>
-      context.logger.debug('MONGO_CLIENT', 'Mongo commandSucceeded', event),
-    );
-    this.client.on('commandFailed', (event) =>
-      context.logger.debug('MONGO_CLIENT', 'Mongo commandFailed', event),
-    );
   }
 
   public database(databaseName: string): DatabaseHumble {

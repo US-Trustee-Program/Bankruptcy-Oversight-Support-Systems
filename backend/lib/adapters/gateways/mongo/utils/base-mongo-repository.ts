@@ -13,7 +13,7 @@ export abstract class BaseMongoRepository {
     this.collectionName = collectionName;
     const { connectionString, databaseName } = context.config.documentDbConfig;
     this.databaseName = databaseName;
-    this.client = new DocumentClient(connectionString, context);
+    this.client = new DocumentClient(connectionString);
   }
 
   protected getAdapter<T>() {
