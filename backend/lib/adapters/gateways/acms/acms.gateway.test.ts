@@ -5,87 +5,10 @@ import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
   AcmsPredicate,
-  AcmsPredicateAndPage,
 } from '../../../use-cases/acms-orders/acms-orders';
 import { UnknownError } from '../../../common-errors/unknown-error';
 
-const PAGE_SIZE = 10;
-
 describe('ACMS gateway tests', () => {
-  const pageCountCases = [
-    { leadCaseCount: 245, pageCount: 25 },
-    { leadCaseCount: 250, pageCount: 25 },
-    { leadCaseCount: 251, pageCount: 26 },
-    { pageCount: 0 },
-  ];
-  test.each(pageCountCases)(
-    'should execute query and calculate page count for $leadCaseCount consolidations',
-    async (params: { leadCaseCount: number; pageCount: number }) => {
-      const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: [{ leadCaseCount: params.leadCaseCount }],
-        message: '',
-      });
-      const predicate: AcmsPredicate = {
-        chapter: '15',
-        divisionCode: '081',
-      };
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      const result = await gateway.getPageCount(context, predicate);
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        expect.any(String),
-        expect.arrayContaining([
-          expect.objectContaining({ name: 'chapter', value: predicate.chapter }),
-          expect.objectContaining({ name: 'divisionCode', value: predicate.divisionCode }),
-        ]),
-      );
-      expect(result).toEqual(params.pageCount);
-    },
-  );
-
-  const pageNumber = [1, 3, 5];
-  test.each(pageNumber)(
-    'should return page number %s of consolidation lead case numbers',
-    async (pageNumber) => {
-      const databaseResult = [
-        { leadCaseId: '811100000' },
-        { leadCaseId: '1231111111' },
-        { leadCaseId: '711122222' },
-      ];
-      const expectedResult = databaseResult.map((record) => record.leadCaseId);
-
-      const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-        success: true,
-        results: databaseResult,
-        message: '',
-      });
-
-      const predicate: AcmsPredicateAndPage = {
-        chapter: '15',
-        divisionCode: '081',
-        pageNumber,
-      };
-
-      const context = await createMockApplicationContext();
-      const gateway = new AcmsGatewayImpl(context);
-      const result = await gateway.getLeadCaseIds(context, predicate);
-
-      expect(spy).toHaveBeenCalledWith(
-        context,
-        expect.any(String),
-        expect.arrayContaining([
-          expect.objectContaining({ name: 'chapter', value: predicate.chapter }),
-          expect.objectContaining({ name: 'divisionCode', value: predicate.divisionCode }),
-          expect.objectContaining({ name: 'offset', value: PAGE_SIZE * (pageNumber - 1) }),
-          expect.objectContaining({ name: 'limit', value: PAGE_SIZE }),
-        ]),
-      );
-      expect(result).toEqual(expectedResult);
-    },
-  );
-
   const chapters = [
     { chapter: '9', querySubString: null, inputVariable: '09' },
     { chapter: '11', querySubString: null, inputVariable: '11' },
@@ -112,15 +35,10 @@ describe('ACMS gateway tests', () => {
       chapter: params.chapter,
       divisionCode: '081',
     };
-    const predicateAndPage: AcmsPredicateAndPage = {
-      ...predicate,
-      pageNumber: 0,
-    };
 
     const context = await createMockApplicationContext();
     const gateway = new AcmsGatewayImpl(context);
-    await gateway.getPageCount(context, predicate);
-    await gateway.getLeadCaseIds(context, predicateAndPage);
+    await gateway.getLeadCaseIds(context, predicate);
 
     if (params.inputVariable) {
       expect(spy).toHaveBeenCalledWith(
@@ -187,26 +105,6 @@ describe('ACMS gateway tests', () => {
     expect(result).toEqual(expectedResult);
   });
 
-  test('should handle exceptions from executeQuery when calling getPageCount', async () => {
-    const mockError = new Error('test error');
-    jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
-
-    const context = await createMockApplicationContext();
-    const gateway = new AcmsGatewayImpl(context);
-    await expect(async () => {
-      return await gateway.getPageCount(context, {
-        chapter: '11',
-        divisionCode: '010',
-      } as AcmsPredicate);
-    }).rejects.toThrow(
-      new UnknownError('ACMS_GATEWAY', {
-        status: 500,
-        message: mockError.message,
-        originalError: mockError,
-      }),
-    );
-  });
-
   test('should get administrative consolidation details from ACMS', async () => {
     const leadCaseId = '0000000000';
     const databaseResult: AcmsConsolidationChildCase[] = [
@@ -265,8 +163,7 @@ describe('ACMS gateway tests', () => {
       return await gateway.getLeadCaseIds(context, {
         chapter: '11',
         divisionCode: '010',
-        pageNumber: 1,
-      } as AcmsPredicateAndPage);
+      } as AcmsPredicate);
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
         status: 500,

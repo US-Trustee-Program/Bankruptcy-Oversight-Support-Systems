@@ -1,6 +1,6 @@
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
-import getConsolidations from './getConsolidations';
-import { AcmsPredicateAndPage } from '../../../lib/use-cases/acms-orders/acms-orders';
+import queueMigrateConsolidation from './queueMigrateConsolidation';
+import { AcmsPredicate } from '../../../lib/use-cases/acms-orders/acms-orders';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 
@@ -16,13 +16,12 @@ describe('getConsolidations test', () => {
       .mockResolvedValue(expected);
 
     const context = createMockAzureFunctionContext();
-    const input: AcmsPredicateAndPage = {
+    const input: AcmsPredicate = {
       divisionCode: '101',
       chapter: '15',
-      pageNumber: 1,
     };
 
-    const actual = await getConsolidations(input, context);
+    const actual = await queueMigrateConsolidation(input, context);
     expect(getLeadCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), input);
     expect(actual).toEqual(expected);
   });
@@ -32,13 +31,12 @@ describe('getConsolidations test', () => {
     jest.spyOn(AcmsOrdersController.prototype, 'getLeadCaseIds').mockRejectedValue(error);
 
     const context = createMockAzureFunctionContext();
-    const input: AcmsPredicateAndPage = {
+    const input: AcmsPredicate = {
       divisionCode: '101',
       chapter: '15',
-      pageNumber: 1,
     };
 
-    const actual = await getConsolidations(input, context);
+    const actual = await queueMigrateConsolidation(input, context);
     expect(actual).toEqual([]);
   });
 });

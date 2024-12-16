@@ -2,7 +2,6 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import AcmsOrders, {
   AcmsTransformationResult,
   AcmsPredicate,
-  AcmsPredicateAndPage,
 } from '../../use-cases/acms-orders/acms-orders';
 import { getCamsError } from '../../common-errors/error-utilities';
 
@@ -22,22 +21,9 @@ class AcmsOrdersController {
     }
   }
 
-  public async getPageCount(
-    context: ApplicationContext,
-    predicate: AcmsPredicate,
-  ): Promise<number> {
-    try {
-      return await this.useCase.getPageCount(context, predicate);
-    } catch (originalError) {
-      const error = getCamsError(originalError, MODULE_NAME, 'Failed to get page count.');
-      context.logger.error(MODULE_NAME, error.message, error);
-      throw error;
-    }
-  }
-
   public async getLeadCaseIds(
     context: ApplicationContext,
-    predicate: AcmsPredicateAndPage,
+    predicate: AcmsPredicate,
   ): Promise<string[]> {
     try {
       return await this.useCase.getLeadCaseIds(context, predicate);

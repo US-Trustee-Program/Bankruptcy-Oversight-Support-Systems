@@ -6,6 +6,7 @@ import { CaseSummary } from '../../../../common/src/cams/cases';
 import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
@@ -21,10 +22,6 @@ export type TriggerRequest = AcmsBounds & {
 export type AcmsPredicate = {
   divisionCode: string;
   chapter: string;
-};
-
-export type AcmsPredicateAndPage = AcmsPredicate & {
-  pageNumber: number;
 };
 
 export type AcmsEtlQueueItem = AcmsPredicate & {
@@ -50,52 +47,17 @@ export type AcmsTransformationResult = {
   leadCaseId: string;
   childCaseCount: number;
   success: boolean;
-};
-
-export type AcmsAggregate = {
-  successful: {
-    leadCaseCount: number;
-    childCaseCount: number;
-  };
-  failed: {
-    leadCaseIds: string[];
-    leadCaseCount: number;
-    childCaseCount: number;
-  };
-};
-
-export type AcmsPageReport = AcmsAggregate & {
-  predicateAndPage: AcmsPredicateAndPage;
-};
-
-export type AcmsPartitionReport = AcmsAggregate & {
-  predicate: AcmsPredicate;
+  error?: CamsError;
 };
 
 export class AcmsOrders {
-  public async getPageCount(
-    context: ApplicationContext,
-    predicate: AcmsPredicate,
-  ): Promise<number> {
-    try {
-      const gateway = Factory.getAcmsGateway(context);
-      return await gateway.getPageCount(context, predicate);
-    } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to get page count from the ACMS gateway.',
-      );
-    }
-  }
-
   public async getLeadCaseIds(
     context: ApplicationContext,
-    predicateAndPage: AcmsPredicateAndPage,
+    predicate: AcmsPredicate,
   ): Promise<string[]> {
     try {
       const gateway = Factory.getAcmsGateway(context);
-      return gateway.getLeadCaseIds(context, predicateAndPage);
+      return gateway.getLeadCaseIds(context, predicate);
     } catch (originalError) {
       throw getCamsError(
         originalError,
