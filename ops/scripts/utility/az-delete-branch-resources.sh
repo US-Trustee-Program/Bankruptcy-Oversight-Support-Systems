@@ -136,5 +136,4 @@ if [[ "${dbExists}" == "true" ]]; then
   az cosmosdb mongodb database delete -g bankruptcy-oversight-support-systems -a cosmos-mongo-ustp-cams-dev -n "${e2e_db}" --yes
 fi
 
-
 echo "Completed resource clean up operations."
