@@ -9,7 +9,8 @@
 # Exitcodes
 # ==========
 # 0   No error
-# 1   Required parameter not provided
+# 1   Unrecognized parameter provided
+# 2   Required parameter not provided
 # 10+ Validation check errors
 
 
@@ -18,28 +19,24 @@
 ############################################################
 Help()
 {
-   # Display Help
-   echo "This script prints branch names and their short hashes or checks a"
-   echo "known short hash against existing branches. Default lists remote"
-   echo "branches and their short hashes."
-   echo
-   echo "Syntax: ./ops/scripts/utility/check-env-hashes.sh [-l|h|r|e {hash}]"
-   echo "options:"
-   echo "a     Database account name. **Required**"
-   echo "b     Branch hash id. **Required**"
-   echo "g     App resource group name. **Required**"
-   echo "h     Print this Help and exit."
-   echo "i     Ignore validation flag. **Not set by default**"
-   echo "n     Network resource group name. **Required**"
-   echo "r     Database resource group name. **Required**"
-   echo "      Example usage: -b 0a3de4 -r db-resource-group -a my-cosmos-account -n network-resource-group -g app-resource-group -i"
-   echo
+  echo "Usage: $0 [options]"
+  echo ""
+  echo "Options:"
+  echo "  --help                        Display this help message."
+  echo "  --app-resource-group=<rg>     Application resource group name. **REQUIRED**"
+  echo "  --db-account=<account>        Database account name. **REQUIRED**"
+  echo "  --db-resource-group=<rg>      Database resource group name. **REQUIRED**"
+  echo "  --network-resource-group=<rg> Network resource group name. **REQUIRED**"
+  echo "  --short-hash=<hash>           Branch hash ID. **REQUIRED**"
+  echo "  --ignore-validation           Ignore validation checks."
+  echo ""
+  exit 0
 }
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 ############################################################
-# Error                                                     #
+# Error                                                    #
 ############################################################
 function error() {
     local msg=$1
@@ -50,44 +47,50 @@ function error() {
 
 ignore=false # if true, ignore validation
 
-while getopts ":hb:r:a:n:g:i" option; do
-  case $option in
-    h) # display help
+# Parse named parameters
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help)
       Help
-      exit;;
-    b) # Branch hash id
-      hash_id=${OPTARG}
       ;;
-    r) # Database resource group name
-      db_rg=${OPTARG}
+    --app-resource-group=*)
+      app_rg="${1#*=}"
+      shift
       ;;
-    a) # Database account name
-      db_account=${OPTARG}
+    --db-account=*)
+      db_account="${1#*=}"
+      shift
       ;;
-    n) # Network resource group name
-      net_rg=${OPTARG}
+    --db-resource-group=*)
+      db_rg="${1#*=}"
+      shift
       ;;
-    g) # App resource group name
-      rg_name=${OPTARG}
+    --network-resource-group=*)
+      net_rg="${1#*=}"
+      shift
       ;;
-    i) # Ignore validation
+    --short-hash=*)
+      hash_id="${1#*=}"
+      shift
+      ;;
+    --ignore-validation)
       ignore=true
+      shift
       ;;
-    \?) # Invalid option
-      echo "Run with the '-h' option to see valid usage."
+    *)
+      echo "Invalid option: $1"
+      echo "Run with '--help' to see valid usage."
       exit 1
       ;;
   esac
 done
 
-echo "Begin clean up of Azure resources for ${hash_id}"
-
-if [[ -z "${hash_id}" || -z "${db_rg}" || -z "${db_account}" ]]; then
-  error "Branch hash id, database resource group name, and database account name are all required." 1
+if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${hash_id:-}" ]]; then
+  error "Not all required parameters provided. Run this script with the --help flag for details." 2
 fi
 
 # Check that resource groups exists
-app_rg="${rg_name}-${hash_id}"
+app_rg="${app_rg}-${hash_id}"
 network_rg="${net_rg}-${hash_id}"
 e2e_db="cams-e2e-${hash_id}"
 rgAppExists=$(az group exists -n "${app_rg}")
