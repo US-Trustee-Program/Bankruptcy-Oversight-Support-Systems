@@ -105,6 +105,8 @@ if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" || ${dbExists} != "tr
     fi
 fi
 
+echo "Begin clean up of Azure resources for ${hash_id}."
+
 # Disconnect VNET integration from App Service components prior to deleting resources
 if [[ "${rgAppExists}" == "true" ]]; then
     echo "Start disconnecting VNET integration"
