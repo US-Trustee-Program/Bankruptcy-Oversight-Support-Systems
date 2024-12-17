@@ -2,10 +2,6 @@
 
 # A utility script useful for identifying deployed branch environments
 
-# Usage
-#   From the root directory, run the following command:
-#     ./ops/scripts/utility/check-env-hashes.sh [-l|h|r|e {hash}]
-
 ############################################################
 # Help                                                     #
 ############################################################
@@ -16,14 +12,29 @@ Help()
    echo "known short hash against existing branches. Default lists remote"
    echo "branches and their short hashes."
    echo
-   echo "Syntax: ./ops/scripts/utility/check-env-hashes.sh [-l|h|r|e {hash}]"
-   echo "options:"
-   echo "l     Check local branches."
-   echo "h     Print this Help and exit."
-   echo "r     Check remote branches."
-   echo "e     Check against a specific known short hash."
-   echo "      Example usage: -e 0a3de4"
-   echo
+   echo "Usage: $0 [options]"
+     echo ""
+     echo "Options:"
+     echo "  --help                             Display this help message."
+     echo "  --app-resource-group-base=<rg>     Application resource group name. **REQUIRED**"
+     echo "  --db-account=<account>             Database account name. **REQUIRED**"
+     echo "  --db-resource-group=<rg>           Database resource group name. **REQUIRED**"
+     echo "  --network-resource-group-base=<rg> Network resource group name. **REQUIRED**"
+     echo "  --existing-hash=<hash>             Branch hash ID for a specific resource. **OPTIONAL**"
+     echo "  --local-branches                   Run against local branches. Overrides default behavior."
+     echo "  --remote-branches                  Run against remote branches. Default behavior. Needed only in conjunction with --local-branches."
+     echo ""
+     exit 0
+}
+
+############################################################
+# Error                                                    #
+############################################################
+function error() {
+    local msg=$1
+    local code=$2
+    echo "ERROR: ${msg}" >>/dev/stderr
+    exit "${code}"
 }
 
 ############################################################
@@ -33,27 +44,52 @@ Help()
 ############################################################
 LOCAL=true
 REMOTE=true
-while getopts ":hlre:" option; do
-  case $option in
-    h) # display help
+# Parse named parameters
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help)
       Help
-      exit;;
-    l) # Local branches
+      ;;
+    --app-resource-group-base=*)
+      app_rg_base="${1#*=}"
+      shift
+      ;;
+    --db-account=*)
+      db_account="${1#*=}"
+      shift
+      ;;
+    --db-resource-group=*)
+      db_rg="${1#*=}"
+      shift
+      ;;
+    --network-resource-group-base=*)
+      network_rg_base="${1#*=}"
+      shift
+      ;;
+    --existing-hash=*)
+      inputHash="${1#*=}"
+      shift
+      ;;
+    --local-branches)
       LOCAL=true
       REMOTE=false
+      shift
       ;;
-    r) # Remote branches
+    --remote-branches)
       REMOTE=true
+      shift
       ;;
-    e) # Existing environment
-      inputHash=${OPTARG}
-      ;;
-    \?) # Invalid option
-      echo "Run with the '-h' option to see valid usage."
+    *)
+      echo "Invalid option: $1"
+      echo "Run with '--help' to see valid usage."
       exit 1
       ;;
   esac
 done
+
+if [[ -z "${inputHash}" && ( -z "${app_rg_base}" || -z "${db_account}" || -z "${db_rg}" || -z "${network_rg_base}" ) ]]; then
+  error "Not all required parameters provided. Run this script with the --help flag for details." 2
+fi
 
 branches=()
 if [[ "$LOCAL" = "true" ]]; then
@@ -71,8 +107,13 @@ for branch in "${branches[@]}"; do
   hash=$(echo -n "$branch" | openssl sha256 | awk '{print $2}')
   # Extract the first 6 characters of the hash
   shortHash="${hash:0:6}"
+
   if [[ -z "$inputHash" ]]; then
-    echo "Branch: \"$branch\", Short Hash: \"$shortHash\""
+  # Check if resources exist
+  rgAppExists=$(az group exists -n "${app_rg_base}-${shortHash}")
+  rgNetExists=$(az group exists -n "${network_rg_base}-${shortHash}")
+  dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "cams-e2e-${shortHash}")
+    echo "Branch: \"$branch\", Short Hash: \"$shortHash\", app exists: ${rgAppExists}, network exists: ${rgNetExists}, db exists: ${dbExists}"
   else
     if [ "$shortHash" == "$inputHash" ]; then
       echo "Matching branch found: $branch"
@@ -82,7 +123,7 @@ for branch in "${branches[@]}"; do
   fi
 done
 
-# If -e was used but no branch was found
+# If --existing-hash was used but no branch was found
 if [[ -n "$inputHash" && "$found" = "false" ]]; then
     echo "No branch found with the short hash: $inputHash"
     exit 0
