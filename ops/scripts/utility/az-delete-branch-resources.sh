@@ -13,7 +13,6 @@
 # 2   Required parameter not provided
 # 10+ Validation check errors
 
-
 ############################################################
 # Help                                                     #
 ############################################################
@@ -33,8 +32,6 @@ Help()
   exit 0
 }
 
-set -euo pipefail # ensure job step fails in CI pipeline when error occurs
-
 ############################################################
 # Error                                                    #
 ############################################################
@@ -45,6 +42,12 @@ function error() {
     exit "${code}"
 }
 
+############################################################
+############################################################
+# Main program                                             #
+############################################################
+############################################################
+set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 ignore=false # if true, ignore validation
 
 # Parse named parameters
