@@ -9,10 +9,38 @@
 # Exitcodes
 # ==========
 # 0   No error
+# 1   Required parameter not provided
 # 10+ Validation check errors
+
+
+############################################################
+# Help                                                     #
+############################################################
+Help()
+{
+   # Display Help
+   echo "This script prints branch names and their short hashes or checks a"
+   echo "known short hash against existing branches. Default lists remote"
+   echo "branches and their short hashes."
+   echo
+   echo "Syntax: ./ops/scripts/utility/check-env-hashes.sh [-l|h|r|e {hash}]"
+   echo "options:"
+   echo "a     Database account name. **Required**"
+   echo "b     Branch hash id. **Required**"
+   echo "g     App resource group name. **Required**"
+   echo "h     Print this Help and exit."
+   echo "i     Ignore validation flag. **Not set by default**"
+   echo "n     Network resource group name. **Required**"
+   echo "r     Database resource group name. **Required**"
+   echo "      Example usage: -b 0a3de4 -r db-resource-group -a my-cosmos-account -n network-resource-group -g app-resource-group -i"
+   echo
+}
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+############################################################
+# Error                                                     #
+############################################################
 function error() {
     local msg=$1
     local code=$2
@@ -20,19 +48,54 @@ function error() {
     exit "${code}"
 }
 
-hash_id=$1 # Short hash id generated based on the branch name
-ignore=$2  # if true, ignore validation
+ignore=false # if true, ignore validation
+
+while getopts ":hb:r:a:n:g:i" option; do
+  case $option in
+    h) # display help
+      Help
+      exit;;
+    b) # Branch hash id
+      hash_id=${OPTARG}
+      ;;
+    r) # Database resource group name
+      db_rg=${OPTARG}
+      ;;
+    a) # Database account name
+      db_account=${OPTARG}
+      ;;
+    n) # Network resource group name
+      net_rg=${OPTARG}
+      ;;
+    g) # App resource group name
+      rg_name=${OPTARG}
+      ;;
+    i) # Ignore validation
+      ignore=true
+      ;;
+    \?) # Invalid option
+      echo "Run with the '-h' option to see valid usage."
+      exit 1
+      ;;
+  esac
+done
 
 echo "Begin clean up of Azure resources for ${hash_id}"
 
+if [[ -z "${hash_id}" || -z "${db_rg}" || -z "${db_account}" ]]; then
+  error "Branch hash id, database resource group name, and database account name are all required." 1
+fi
+
 # Check that resource groups exists
-app_rg="rg-cams-app-dev-${hash_id}"
-network_rg="rg-cams-network-dev-${hash_id}"
+app_rg="${rg_name}-${hash_id}"
+network_rg="${net_rg}-${hash_id}"
+e2e_db="cams-e2e-${hash_id}"
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
-if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" ]]; then
+dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
+if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" || ${dbExists} != "true" ]]; then
     if [[ "${ignore}" != "true" ]]; then
-        error "Expected resource group missing." 11
+        error "Expected resource group and/or database missing." 11
     fi
 fi
 
@@ -59,5 +122,11 @@ if [[ "${rgNetExists}" == "true" ]]; then
     echo "Start deleting resource group ${network_rg}"
     az group delete -n "${network_rg}" --yes
 fi
+
+if [[ "${dbExists}" == "true" ]]; then
+  echo "Start deleting e2e test database ${e2e_db}"
+  az cosmosdb mongodb database delete -g bankruptcy-oversight-support-systems -a cosmos-mongo-ustp-cams-dev -n "${e2e_db}" --yes
+fi
+
 
 echo "Completed resource clean up operations."
