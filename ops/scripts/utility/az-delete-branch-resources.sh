@@ -122,12 +122,12 @@ fi
 
 # Delete by resource group
 if [[ "${rgAppExists}" == "true" ]]; then
-    echo "Start deleting resource group ${app_rg}"
+    echo "Start deleting app resource group ${app_rg}"
     az group delete -n "${app_rg}" --yes
 fi
 
 if [[ "${rgNetExists}" == "true" ]]; then
-    echo "Start deleting resource group ${network_rg}"
+    echo "Start deleting network resource group ${network_rg}"
     az group delete -n "${network_rg}" --yes
 fi
 
