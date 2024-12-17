@@ -22,7 +22,7 @@ Help()
      echo "  --network-resource-group-base=<rg> Network resource group name. **REQUIRED**"
      echo "  --existing-hash=<hash>             Branch hash ID for a specific resource. **OPTIONAL**"
      echo "  --local-branches                   Run against local branches. Overrides default behavior."
-     echo "  --remote-branches                  Run against remote branches. Default behavior. Flag is useful for running both local and remote."
+     echo "  --remote-branches                  Run against remote branches. Default behavior. Needed only in conjunction with --local-branches."
      echo ""
      exit 0
 }
