@@ -1,23 +1,19 @@
-import * as dotenv from 'dotenv';
 import { InvocationContext, output } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { isAcmsEtlQueueItem } from '../../../lib/use-cases/acms-orders/acms-orders';
-import { CAMS_MIGRATION_FAIL_QUEUE, CAMS_MIGRATION_SUCCESS_QUEUE } from '../loadConsolidations';
-
-dotenv.config();
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
 
 const successQueue = output.storageQueue({
-  queueName: CAMS_MIGRATION_SUCCESS_QUEUE,
+  queueName: 'migration-task-success',
   connection: 'AzureWebJobs',
 });
 
 const failQueue = output.storageQueue({
-  queueName: CAMS_MIGRATION_FAIL_QUEUE,
+  queueName: 'migration-task-fail',
   connection: 'AzureWebJobs',
 });
 
