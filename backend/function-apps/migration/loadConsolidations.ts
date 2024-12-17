@@ -1,4 +1,3 @@
-import * as dotenv from 'dotenv';
 import * as df from 'durable-functions';
 import { app, output } from '@azure/functions';
 
@@ -14,24 +13,21 @@ export const MAIN_ORCHESTRATOR = 'orchestrator';
 export const QUEUE_MIGRATION = 'queueMigrateConsolidation';
 export const MIGRATE_CONSOLIDATION = 'migrateConsolidation';
 export const FLATTEN_BOUNDING_ARRAYS = 'flattenBoundingArrays';
-export const CAMS_MIGRATION_QUEUE = 'migration-task';
 export const CAMS_MIGRATION_SUCCESS_QUEUE = 'migration-task-success';
 export const CAMS_MIGRATION_FAIL_QUEUE = 'migration-task-fail';
 
-dotenv.config();
-
 const migrationQueue = output.storageQueue({
-  queueName: CAMS_MIGRATION_QUEUE,
+  queueName: 'migration-task',
   connection: 'AzureWebJobs',
 });
 
 const successQueue = output.storageQueue({
-  queueName: CAMS_MIGRATION_SUCCESS_QUEUE,
+  queueName: 'migration-task-success',
   connection: 'AzureWebJobs',
 });
 
 const failQueue = output.storageQueue({
-  queueName: CAMS_MIGRATION_FAIL_QUEUE,
+  queueName: 'migration-task-fail',
   connection: 'AzureWebJobs',
 });
 
@@ -44,7 +40,7 @@ df.app.activity(QUEUE_MIGRATION, {
 df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
 
 app.storageQueue(MIGRATE_CONSOLIDATION, {
-  queueName: CAMS_MIGRATION_QUEUE,
+  queueName: 'migration-task',
   connection: 'AzureWebJobs',
   handler: migrateConsolidation,
   extraOutputs: [successQueue, failQueue],
