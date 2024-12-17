@@ -73,17 +73,10 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: actions/checkout@v3
-      - name: Clean up e2e test database
-        run: |
-          echo "Adding suffix to database name.."
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e-${{ needs.check.outputs.targetBranchHashId }}"
-
-          az cosmosdb mongodb database delete \
-          --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
-          --name "${e2eDatabaseName}" \
-          --resource-group  ${{ secrets.AZURE_RG }} \
-          --yes
-
-          echo "Finished Removing Database..."
-
-      - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ needs.check.outputs.targetBranchHashId }} false
+      - run: |
+          ./ops/scripts/utility/az-delete-branch-resources.sh \
+          -b ${{ needs.check.outputs.targetBranchHashId }} \
+          -g ${{ secrets.AZ_APP_RG }} \
+          -n ${{ secrets.AZ_NETWORK_RG }} \
+          -r ${{ secrets.AZURE_RG }} \
+          -a ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}

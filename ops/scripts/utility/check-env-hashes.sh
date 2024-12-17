@@ -18,10 +18,14 @@ Help()
    echo
    echo "Syntax: ./ops/scripts/utility/check-env-hashes.sh [-l|h|r|e {hash}]"
    echo "options:"
-   echo "l     Check local branches."
-   echo "h     Print this Help and exit."
-   echo "r     Check remote branches."
+   echo "a     Database account name. Required unless using -e flag."
+   echo "d     Database resource group name. Required unless using -e flag."
    echo "e     Check against a specific known short hash."
+   echo "g     App resource group name. Required unless using -e flag."
+   echo "h     Print this Help and exit."
+   echo "l     Check local branches."
+   echo "n     Network resource group name. Required unless using -e flag."
+   echo "r     Check remote branches."
    echo "      Example usage: -e 0a3de4"
    echo
 }
@@ -33,8 +37,20 @@ Help()
 ############################################################
 LOCAL=true
 REMOTE=true
-while getopts ":hlre:" option; do
+while getopts ":a:d:e:g:hln:r" option; do
   case $option in
+    a) # Database account name
+      db_account=${OPTARG}
+      ;;
+    d) # Database resource group name
+      db_rg=${OPTARG}
+      ;;
+    e) # Existing environment
+      inputHash=${OPTARG}
+      ;;
+    g) # App resource group base name
+      app_rg_base=${OPTARG}
+      ;;
     h) # display help
       Help
       exit;;
@@ -42,11 +58,11 @@ while getopts ":hlre:" option; do
       LOCAL=true
       REMOTE=false
       ;;
+    n) # Network resource group base name
+      network_rg_base=${OPTARG}
+      ;;
     r) # Remote branches
       REMOTE=true
-      ;;
-    e) # Existing environment
-      inputHash=${OPTARG}
       ;;
     \?) # Invalid option
       echo "Run with the '-h' option to see valid usage."
@@ -71,8 +87,13 @@ for branch in "${branches[@]}"; do
   hash=$(echo -n "$branch" | openssl sha256 | awk '{print $2}')
   # Extract the first 6 characters of the hash
   shortHash="${hash:0:6}"
+
   if [[ -z "$inputHash" ]]; then
-    echo "Branch: \"$branch\", Short Hash: \"$shortHash\""
+  # Check if resources exist
+  rgAppExists=$(az group exists -n "${app_rg_base}-${shortHash}")
+  rgNetExists=$(az group exists -n "${network_rg_base}-${shortHash}")
+  dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "cams-e2e-${shortHash}")
+    echo "Branch: \"$branch\", Short Hash: \"$shortHash\", app exists: ${rgAppExists}, network exists: ${rgNetExists}, db exists: ${dbExists}"
   else
     if [ "$shortHash" == "$inputHash" ]; then
       echo "Matching branch found: $branch"
