@@ -57,7 +57,8 @@ export class AcmsOrders {
   ): Promise<string[]> {
     try {
       const gateway = Factory.getAcmsGateway(context);
-      return gateway.getLeadCaseIds(context, predicate);
+      const leadCaseIds = await gateway.getLeadCaseIds(context, predicate);
+      return leadCaseIds;
     } catch (originalError) {
       throw getCamsError(
         originalError,

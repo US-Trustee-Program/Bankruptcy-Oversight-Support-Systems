@@ -30,7 +30,8 @@ class AcmsOrdersController {
     predicate: AcmsPredicate,
   ): Promise<string[]> {
     try {
-      return await this.useCase.getLeadCaseIds(context, predicate);
+      const leadCaseIds = await this.useCase.getLeadCaseIds(context, predicate);
+      return leadCaseIds;
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME, 'Failed to find lead case ids.');
       context.logger.error(MODULE_NAME, error.message, error);
