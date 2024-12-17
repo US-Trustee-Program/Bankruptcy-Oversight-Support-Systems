@@ -13,8 +13,6 @@ export const MAIN_ORCHESTRATOR = 'orchestrator';
 export const QUEUE_MIGRATION = 'queueMigrateConsolidation';
 export const MIGRATE_CONSOLIDATION = 'migrateConsolidation';
 export const FLATTEN_BOUNDING_ARRAYS = 'flattenBoundingArrays';
-export const CAMS_MIGRATION_SUCCESS_QUEUE = 'migration-task-success';
-export const CAMS_MIGRATION_FAIL_QUEUE = 'migration-task-fail';
 
 const migrationQueue = output.storageQueue({
   queueName: 'migration-task',
