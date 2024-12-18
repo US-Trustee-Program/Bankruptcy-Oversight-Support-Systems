@@ -9,7 +9,7 @@
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "azure-function-context-mock": "^0.0.7",
-    "dependency-cruiser": "^16.7.0",
+    "dependency-cruiser": "^16.8.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
