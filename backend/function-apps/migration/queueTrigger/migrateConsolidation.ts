@@ -23,9 +23,8 @@ async function migrateConsolidation(message: unknown, context: InvocationContext
     invocationContext: context,
     logger,
   });
-  const controller = new AcmsOrdersController();
-
   try {
+    const controller = new AcmsOrdersController();
     const maybeQueueItem =
       typeof message === 'object'
         ? message
@@ -38,6 +37,7 @@ async function migrateConsolidation(message: unknown, context: InvocationContext
     }
     const { leadCaseId } = maybeQueueItem;
     const result = await controller.migrateConsolidation(appContext, leadCaseId);
+    logger.debug(MODULE_NAME, `Migration status of ${leadCaseId}: ${result.success}.`);
 
     const destinationQueue = result.success ? successQueue : failQueue;
     context.extraOutputs.set(destinationQueue, [result]);
@@ -46,6 +46,7 @@ async function migrateConsolidation(message: unknown, context: InvocationContext
       message,
       error: getCamsError(originalError, MODULE_NAME),
     };
+    logger.error(MODULE_NAME, JSON.stringify(message), errorMessage.error);
     context.extraOutputs.set(successQueue, [errorMessage]);
   }
 }
