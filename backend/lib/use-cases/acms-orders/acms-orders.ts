@@ -58,6 +58,11 @@ export class AcmsOrders {
     try {
       const gateway = Factory.getAcmsGateway(context);
       const leadCaseIds = await gateway.getLeadCaseIds(context, predicate);
+      context.logger.debug(
+        MODULE_NAME,
+        `Found ${leadCaseIds.length} lead cases for ${predicate.chapter}:${predicate.divisionCode}.`,
+        leadCaseIds,
+      );
       return leadCaseIds;
     } catch (originalError) {
       throw getCamsError(
@@ -79,6 +84,7 @@ export class AcmsOrders {
       success: true,
     };
     try {
+      context.logger.debug(MODULE_NAME, `Beginning migration of ${acmsLeadCaseId}.`);
       const casesRepo = Factory.getCasesRepository(context);
       const dxtr = Factory.getCasesGateway(context);
       const acms = Factory.getAcmsGateway(context);
@@ -202,6 +208,7 @@ export class AcmsOrders {
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
       }
+      context.logger.debug(MODULE_NAME, `Finished migration of ${acmsLeadCaseId}.`, report);
     } catch (error) {
       report.success = false;
       const camsError = getCamsError(

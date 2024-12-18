@@ -25,7 +25,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     input.push({
       name: 'divisionCode',
-      type: mssql.VarChar,
+      type: mssql.Int,
       value: predicate.divisionCode,
     });
 
@@ -57,6 +57,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       leadCaseId: string;
     };
 
+    context.logger.debug(MODULE_NAME, `Querying for parameters: ${JSON.stringify(input)}`);
     try {
       const { results } = await this.executeQuery<ResultType>(context, query, input);
       const leadCaseIdsResults = results as ResultType[];
