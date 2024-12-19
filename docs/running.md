@@ -99,6 +99,8 @@ npm run start:migration
 
 ##### .env File
 
+<!-- TODO: FINALIZE THIS we now share an env between both function apps -->
+
 You will need to have a file named `.env` placed in the `backend/functions` directory. The contents
 of that file must be:
 
@@ -186,6 +188,8 @@ You will need to have the
 installed.
 
 ##### Local Settings File
+
+<!-- TODO: UPDATE THIS IF NEEDED WITH NEW CHANGES -->
 
 You will need to have a file named local.settings.json placed in the `backend/functions` directory. The
 contents of that file must be:
