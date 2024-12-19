@@ -90,7 +90,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createTransferFrom(transferFrom: TransferFrom): Promise<TransferFrom> {
     try {
-      return this.create<TransferFrom>(transferFrom);
+      return await this.create<TransferFrom>(transferFrom);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -103,7 +103,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createTransferTo(transferOut: TransferTo): Promise<TransferTo> {
     try {
-      return this.create<TransferTo>(transferOut);
+      return await this.create<TransferTo>(transferOut);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -134,7 +134,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createConsolidationFrom(consolidationFrom: ConsolidationFrom): Promise<ConsolidationFrom> {
     try {
-      return this.create<ConsolidationFrom>(consolidationFrom);
+      return await this.create<ConsolidationFrom>(consolidationFrom);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -147,7 +147,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createConsolidationTo(consolidationOut: ConsolidationTo): Promise<ConsolidationTo> {
     try {
-      return this.create<ConsolidationTo>(consolidationOut);
+      return await this.create<ConsolidationTo>(consolidationOut);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
