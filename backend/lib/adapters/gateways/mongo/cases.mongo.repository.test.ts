@@ -1,9 +1,19 @@
-import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
-import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
+import {
+  ACMS_SYSTEM_USER_REFERENCE,
+  Auditable,
+  SYSTEM_USER_REFERENCE,
+} from '../../../../../common/src/cams/auditable';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from '../../../../../common/src/cams/events';
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -64,6 +74,22 @@ describe('Cases repository', () => {
     const result = await repo.getTransfers('111-82-80331');
     expect(findSpy).toHaveBeenCalledWith(query);
     expect(result).toEqual(transfers);
+  });
+
+  test('getTransfers should catch errors thrown by adapter.find', async () => {
+    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    const caseId = '123-12-12345';
+    await expect(async () => await repo.getTransfers(caseId)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to get transfers for ${caseId}.`,
+          },
+        ]),
+      }),
+    );
   });
 
   test('should getConsolidation', async () => {
@@ -147,6 +173,23 @@ describe('Cases repository', () => {
     );
   });
 
+  test('createTransferTo should catch errors thrown by adapter.insertOne', async () => {
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockRejectedValue(new Error('test error'));
+    await expect(async () => await repo.createTransferTo(transferOut)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to create transferTo for ${transferOut.caseId}.`,
+          },
+        ]),
+      }),
+    );
+  });
+
   test('should createTransferTo', async () => {
     const insertOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
@@ -154,6 +197,23 @@ describe('Cases repository', () => {
     const result = await repo.createTransferTo(transferOut);
     expect(result).not.toBeNull();
     expect(insertOneSpy).toHaveBeenCalledWith(transferOut);
+  });
+
+  test('createTransferFrom should catch errors thrown by adapter.insertOne', async () => {
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockRejectedValue(new Error('test error'));
+    await expect(async () => await repo.createTransferFrom(transferIn)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: `Failed to create item.`, //`Failed to create transferFrom for ${transferIn.caseId}.`,
+          },
+        ]),
+      }),
+    );
   });
 
   test('should createTransferFrom', async () => {
@@ -218,6 +278,39 @@ describe('Cases repository', () => {
       .mockRejectedValue(new CamsError('COSMOS_DB_REPOSITORY_CASES'));
     await expect(async () => await repo.createCaseHistory(caseHistory)).rejects.toThrow(
       'Unknown CAMS Error',
+    );
+  });
+
+  test('should deleteMigrations', async () => {
+    const deleteSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+      .mockResolvedValue(4);
+    const { or, equals } = QueryBuilder;
+    const query = QueryBuilder.build(
+      or(
+        equals<Auditable['updatedBy']>('updatedBy', ACMS_SYSTEM_USER_REFERENCE),
+        equals<ConsolidationFrom['documentType']>('documentType', 'CONSOLIDATION_FROM'),
+        equals<ConsolidationTo['documentType']>('documentType', 'CONSOLIDATION_TO'),
+      ),
+    );
+    await repo.deleteMigrations();
+    expect(deleteSpy).toHaveBeenCalledWith(query);
+  });
+
+  test('should handle errors during deleteMigrations', async () => {
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+      .mockRejectedValue(new Error('test error'));
+    await expect(async () => await repo.deleteMigrations()).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: 'Failed while deleting migrations.',
+          },
+        ]),
+      }),
     );
   });
 });

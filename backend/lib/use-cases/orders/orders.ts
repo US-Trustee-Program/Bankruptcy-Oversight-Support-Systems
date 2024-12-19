@@ -418,6 +418,8 @@ export class OrdersUseCase {
             orderDate: childCase.orderDate,
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_TO',
+            updatedBy: context.session.user,
+            updatedOn: new Date().toISOString(),
           };
           await casesRepo.createConsolidationTo(consolidationTo);
 
@@ -428,6 +430,8 @@ export class OrdersUseCase {
             orderDate: childCase.orderDate,
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_FROM',
+            updatedBy: context.session.user,
+            updatedOn: new Date().toISOString(),
           };
           await casesRepo.createConsolidationFrom(consolidationFrom);
 

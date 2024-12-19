@@ -140,6 +140,8 @@ export class AcmsOrders {
           documentType: 'CONSOLIDATION_TO',
           orderDate: childCase.consolidationDate,
           otherCase: leadCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: childCase.consolidationDate,
         };
 
         const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
@@ -152,6 +154,8 @@ export class AcmsOrders {
           documentType: 'CONSOLIDATION_FROM',
           orderDate: childCase.consolidationDate,
           otherCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: childCase.consolidationDate,
         };
         childCaseSummaries.set(otherCase.caseId, otherCase);
 

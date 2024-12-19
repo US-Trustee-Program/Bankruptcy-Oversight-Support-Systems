@@ -11,11 +11,12 @@ import QueryBuilder from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { ACMS_SYSTEM_USER_REFERENCE, Auditable } from '../../../../../common/src/cams/auditable';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, equals, regex } = QueryBuilder;
+const { and, or, equals, regex } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -183,6 +184,28 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         camsStackInfo: {
           message:
             'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
+  async deleteMigrations(): Promise<void> {
+    try {
+      const adapter = this.getAdapter<Auditable>();
+      const query = QueryBuilder.build(
+        or(
+          equals<Auditable['updatedBy']>('updatedBy', ACMS_SYSTEM_USER_REFERENCE),
+          equals<ConsolidationFrom['documentType']>('documentType', 'CONSOLIDATION_FROM'),
+          equals<ConsolidationTo['documentType']>('documentType', 'CONSOLIDATION_TO'),
+        ),
+      );
+      const count = await adapter.deleteMany(query);
+      this.context.logger.info(MODULE_NAME, `Deleted ${count} migration records.`);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: 'Failed while deleting migrations.',
           module: MODULE_NAME,
         },
       });

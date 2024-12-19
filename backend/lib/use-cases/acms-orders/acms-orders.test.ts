@@ -99,6 +99,8 @@ describe('ACMS Orders', () => {
           consolidationType,
           orderDate,
           otherCase: caseSummaryMap.get(bCase.caseId),
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: orderDate,
         },
       });
     });
@@ -125,7 +127,14 @@ describe('ACMS Orders', () => {
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationTo({
-        override: { caseId, consolidationType, orderDate, otherCase: leadCase },
+        override: {
+          caseId,
+          consolidationType,
+          orderDate,
+          otherCase: leadCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: orderDate,
+        },
       });
     });
 
@@ -317,18 +326,38 @@ describe('ACMS Orders', () => {
   });
 
   test('should not write links for links that have already been written', async () => {
+    const mockConsolidationFrom = MockData.getConsolidationFrom({
+      override: {
+        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-01',
+      },
+    });
+    const mockConsolidationTo = MockData.getConsolidationTo({
+      override: {
+        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-01',
+      },
+    });
+
     const createConsolidationFromSpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
-      .mockResolvedValue(MockData.getConsolidationFrom());
+      .mockResolvedValue(mockConsolidationFrom);
     const createConsolidationToSpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
-      .mockResolvedValue(MockData.getConsolidationTo());
+      .mockResolvedValue(mockConsolidationTo);
     const createCaseHistorySpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
 
     const leadCase = MockData.getCaseSummary();
-    const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+    const childCases = [
+      MockData.getCaseSummary({
+        override: {
+          caseId: mockConsolidationFrom.caseId,
+        },
+      }),
+      MockData.getCaseSummary(),
+    ];
     const details: AcmsConsolidation = {
       leadCaseId: leadCase.caseId,
       childCases: [
@@ -346,17 +375,19 @@ describe('ACMS Orders', () => {
     };
 
     // Create a single existing link for the first record coming back from ACMS
-    const existingToLink: ConsolidationFrom = {
+    const existingFromLink: ConsolidationFrom = {
       consolidationType: 'substantive',
       caseId: leadCase.caseId,
       documentType: 'CONSOLIDATION_FROM',
       orderDate: '2024-01-01',
       otherCase: childCases[0],
+      updatedBy: mockConsolidationFrom.updatedBy,
+      updatedOn: mockConsolidationFrom.updatedOn,
     };
     const existingChildCaseId = childCases[0].caseId;
     jest
       .spyOn(CasesMongoRepository.prototype, 'getConsolidation')
-      .mockResolvedValue([existingToLink]);
+      .mockResolvedValue([existingFromLink]);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
@@ -376,6 +407,8 @@ describe('ACMS Orders', () => {
           consolidationType,
           orderDate,
           otherCase: caseSummaryMap.get(bCase.caseId),
+          updatedBy: mockConsolidationFrom.updatedBy,
+          updatedOn: orderDate,
         },
       });
     });
@@ -411,7 +444,14 @@ describe('ACMS Orders', () => {
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationTo({
-        override: { caseId, consolidationType, orderDate, otherCase: leadCase },
+        override: {
+          caseId,
+          consolidationType,
+          orderDate,
+          otherCase: leadCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: orderDate,
+        },
       });
     });
 
@@ -476,6 +516,8 @@ describe('ACMS Orders', () => {
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
         otherCase: childCases[0],
+        updatedBy: context.session.user,
+        updatedOn: new Date().toISOString(),
       },
       {
         consolidationType: 'substantive',
@@ -483,6 +525,8 @@ describe('ACMS Orders', () => {
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
         otherCase: childCases[1],
+        updatedBy: context.session.user,
+        updatedOn: '2024-02-01',
       },
     ];
     jest
