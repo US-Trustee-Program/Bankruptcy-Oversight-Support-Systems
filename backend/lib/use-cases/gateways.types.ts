@@ -115,7 +115,8 @@ export interface CasesRepository extends Releasable {
   createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
-  createCaseHistory(history: CaseHistory);
+  createCaseHistory(history: CaseHistory): Promise<void>;
+  deleteMigrations(): Promise<void>;
 }
 
 export interface OfficesRepository extends Releasable {

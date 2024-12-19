@@ -1,5 +1,6 @@
 import { CaseSummary } from './cases';
 import { ConsolidationType } from './orders';
+import { Auditable } from './auditable';
 
 type EventBase = {
   caseId: string;
@@ -26,13 +27,15 @@ type ConsolidationDetails = {
 
 // Pointer to the LEAD Case.
 export type ConsolidationTo = EventBase &
-  ConsolidationDetails & {
+  ConsolidationDetails &
+  Auditable & {
     documentType: 'CONSOLIDATION_TO';
   };
 
 // Pointer to child case. One for each child.
 export type ConsolidationFrom = EventBase &
-  ConsolidationDetails & {
+  ConsolidationDetails &
+  Auditable & {
     documentType: 'CONSOLIDATION_FROM';
   };
 

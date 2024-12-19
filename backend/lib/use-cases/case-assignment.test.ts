@@ -25,7 +25,7 @@ const findAssignmentsByCaseId = jest
   .mockResolvedValue([]);
 const createAssignmentHistory = jest
   .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
-  .mockResolvedValue('123');
+  .mockResolvedValue();
 jest.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
 const updateAssignment = jest
   .spyOn(MockMongoRepository.prototype, 'update')

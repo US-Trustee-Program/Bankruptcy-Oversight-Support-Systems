@@ -356,6 +356,11 @@ function getConsolidationReference(
     documentType: 'CONSOLIDATION_FROM',
     orderDate: randomDate(),
     otherCase: getCaseSummary(),
+    updatedBy: options.override?.updatedBy ?? {
+      id: '123',
+      name: faker.person.fullName(),
+    },
+    updatedOn: options.override?.updatedOn ?? someDateAfterThisDate('2024-12-01'),
   };
   return {
     ...reference,

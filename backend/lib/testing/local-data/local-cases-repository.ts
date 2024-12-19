@@ -14,6 +14,7 @@ export class LocalCasesRepository implements CasesRepository {
   caseHistoryContainer: CaseHistory[] = [];
   consolidationsContainer: Consolidation[] = [];
   transfersContainer: Transfer[] = [];
+  async deleteMigrations(): Promise<void> {}
 
   release() {
     return;
