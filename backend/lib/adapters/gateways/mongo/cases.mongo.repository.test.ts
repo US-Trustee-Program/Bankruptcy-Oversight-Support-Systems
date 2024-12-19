@@ -183,7 +183,11 @@ describe('Cases repository', () => {
         camsStack: expect.arrayContaining([
           {
             module: expect.anything(),
-            message: `Failed to create transferTo for ${transferOut.caseId}.`,
+            message: 'Failed to create item.',
+          },
+          {
+            module: expect.anything(),
+            message: `Failed to create transferTo for: ${transferOut.caseId}.`,
           },
         ]),
       }),
@@ -209,7 +213,11 @@ describe('Cases repository', () => {
         camsStack: expect.arrayContaining([
           {
             module: expect.anything(),
-            message: `Failed to create item.`, //`Failed to create transferFrom for ${transferIn.caseId}.`,
+            message: 'Failed to create item.',
+          },
+          {
+            module: expect.anything(),
+            message: `Failed to create transferFrom for: ${transferIn.caseId}.`,
           },
         ]),
       }),
