@@ -41,12 +41,13 @@ CAMS_SERVER_PORT={the port the backend is served on}
 CAMS_SERVER_PROTOCOL=http[s]
 CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING={optional instrumentation key for extended logging features}
 CAMS_PA11Y={a string: true | false}
-CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly
+CAMS_FEATURE_FLAG_CLIENT_ID={Client-side ID obtained from Launch Darkly}
 CAMS_INFO_SHA={expect commit sha used to build current version}
 CAMS_LAUNCH_DARKLY_ENV="development"
 CAMS_LOGIN_PROVIDER={"okta" || "mock" || "none"}
 CAMS_LOGIN_PROVIDER_CONFIG=issuer={http://localhost:7071/api/oauth2/default}|clientId={IDP client id if needed} (Replace issuer and clientid with proper okta config for okta)
 CAMS_DISABLE_LOCAL_CACHE={true || false}
+OKTA_URL={base URL of Okta instance}
 
 
 ```
@@ -60,7 +61,7 @@ CAMS_DISABLE_LOCAL_CACHE={true || false}
 
 The API for the CAMS application is implemented with Azure Functions written in Node.js.
 
-Note that any commands listed in this section should be run from the `backend/functions` directory.
+Note that any commands listed in this section should be run from the `backend/` directory.
 
 ### <a id="backend-requirements"></a>Requirements
 
@@ -73,17 +74,26 @@ your `node_modules` folder has been deleted, you will first need to run the foll
 install dependencies:
 
 ```shell
-npm install
+npm run clean:all
+npm ci
+npm run build:all
 ```
 
-To run the functions app directly, ensure you have met the [prerequisites](#backend-prerequisites)
+To run the API function app directly, ensure you have met the [prerequisites](#backend-prerequisites)
 and execute:
 
 ```shell
-npm start
+npm run start:api
 ```
 
 This will serve the functions app on port 7071.
+
+To run the Migration function app directly, ensure you have met the [prerequisites](#backend-prerequisites)
+and execute:
+
+```shell
+npm run start:migration
+```
 
 #### <a id="backend-prerequisites"></a>Prerequisites
 
@@ -121,11 +131,22 @@ MSSQL_DATABASE_DXTR={the name of the DXTR database}
 MSSQL_ENCRYPT={a string: true | false}
 MSSQL_TRUST_UNSIGNED_CERT={a string: true | false}
 
+ACMS_MSSQL_HOST={the FQDN of the ACMS SQL database}
+ACMS_MSSQL_DATABASE_DXTR={the name of the ACMS database}
+ACMS_MSSQL_ENCRYPT={a string: true | false}
+ACMS_MSSQL_TRUST_UNSIGNED_CERT={a string: true | false}
+
 # Required for SQL Auth. Required for connecting to SQL with SQL Identity.
 MSSQL_USER={the SQL Server Admin username}
 MSSQL_PASS={the SQL Server Admin user password}
+ACMS_MSSQL_USER={the ACMS SQL Server Admin username}
+ACMS_MSSQL_PASS={the ACMS SQL Server Admin user password}
 # Required for connecting to CAMS SQL server database with managed identity
 MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
+ACMS_MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access to the ACMS DB}
+
+AzureWebJobsStorage={Connection String to Azure Functions Storage account}
+MyTaskHub={Durable Functions Task Hub Name}
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.

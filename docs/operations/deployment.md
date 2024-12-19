@@ -99,4 +99,27 @@ Note required environment variables and secrets defined in build tool for pipeli
 | AZ_KV_APP_CONFIG_NAME | Secrets | --- | Specifies existing Application Configuration KeyVault |
 | AZ_KV_APP_CONFIG_MANAGED_ID | Secrets | --- | Used by bicep to provide an existing managed identity access the Application Configuration KeyVault Secrets |
 | AZ_KV_APP_CONFIG_RG_NAME | Secrets | --- | Used by bicep to provide scope for the managed identity |
+| **KeyVault Secrets** | --- | --- | --- |
+| ADMIN-KEY | --- | --- | --- |
+| FEATURE-FLAG-SDK-KEY | --- | --- | --- |
+| CAMS-USER-GROUP-GATEWAY-CONFIG | --- | --- | --- |
+| MONGO-CONNECTION-STRING | --- | --- | --- |
+| MSSQL-CLIENT-ID | --- | --- | --- |
+| MSSQL-TRUST-UNSIGNED-CERT | --- | --- | --- |
+| MSSQL-ENCRYPT | --- | --- | --- |
+| MSSQL-HOST | --- | --- | --- |
+| MSSQL-DATABASE-DXTR | --- | --- | --- |
+| MSSQL-USER | --- | --- | --- |
+| MSSQL-PASS | --- | --- | --- |
+| MSSQL-ENCRYPT | --- | --- | --- |
+| MSSQL-TRUST-UNSIGNED-CERT | --- | --- | --- |
+| ACMS-MSSQL-CLIENT-ID | --- | --- | --- |
+| ACMS-MSSQL-TRUST-UNSIGNED-CERT | --- | --- | --- |
+| ACMS-MSSQL-ENCRYPT | --- | --- | --- |
+| ACMS-MSSQL-HOST | --- | --- | --- |
+| ACMS-MSSQL-DATABASE-DXTR | --- | --- | --- |
+| ACMS-MSSQL-USER | --- | --- | --- |
+| ACMS-MSSQL-PASS | --- | --- | --- |
+| ACMS-MSSQL-ENCRYPT | --- | --- | --- |
+| ACMS-MSSQL-TRUST-UNSIGNED-CERT | --- | --- | --- |
 | --- | --- | --- | --- |
