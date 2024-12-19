@@ -1,6 +1,5 @@
 import { CamsError } from '../../../../common-errors/cams-error';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
-import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import QueryBuilder from '../../../../query/query-builder';
 import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
@@ -261,14 +260,20 @@ describe('Mongo adapter', () => {
       data: expect.anything(),
     });
 
-    expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(error);
+    await expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(error);
   });
 
   test('should handle errors', async () => {
     const originalError = new Error('Test Exception');
-    const expectedError = new UnknownError(MODULE_NAME, {
-      originalError,
-      camsStackInfo: { message: expect.any(String), module: 'MODULE_NAME' },
+    const expectedError = expect.objectContaining({
+      isCamsError: true,
+      message: expect.any(String),
+      camsStack: [
+        expect.objectContaining({
+          module: `${MODULE_NAME}_ADAPTER`,
+          message: expect.any(String),
+        }),
+      ],
     });
     Object.values(spies).forEach((spy) => {
       spy.mockRejectedValue(originalError);

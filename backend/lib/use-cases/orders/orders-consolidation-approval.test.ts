@@ -118,7 +118,7 @@ describe('Orders use case', () => {
       });
     const mockCreateHistory = jest
       .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
-      .mockResolvedValue(crypto.randomUUID());
+      .mockResolvedValue();
 
     const _mockGetConsolidation = jest
       .spyOn(MockMongoRepository.prototype, 'getConsolidation')
@@ -256,7 +256,7 @@ describe('Orders use case', () => {
 
     const mockCreateHistory = jest
       .spyOn(MockMongoRepository.prototype, 'createCaseHistory')
-      .mockResolvedValue('');
+      .mockResolvedValue();
 
     const mockCreateAssignment = jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
