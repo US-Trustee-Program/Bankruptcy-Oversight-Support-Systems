@@ -77,7 +77,9 @@ describe('offices repo', () => {
       const officeCode = 'office_code';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
-      expect(async () => await repo.getOfficeAttorneys(officeCode)).rejects.toThrow(camsError);
+      await expect(async () => await repo.getOfficeAttorneys(officeCode)).rejects.toThrow(
+        camsError,
+      );
     });
 
     test('putOfficeStaff error handling', async () => {

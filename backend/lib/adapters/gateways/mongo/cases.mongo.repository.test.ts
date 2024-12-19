@@ -49,6 +49,7 @@ describe('Cases repository', () => {
   afterEach(async () => {
     await closeDeferred(context);
     jest.restoreAllMocks();
+    repo.release();
   });
 
   test('should getTransfers', async () => {
@@ -244,6 +245,28 @@ describe('Cases repository', () => {
     expect(result).not.toBeNull();
   });
 
+  test('createConsolidationTo should catch errors thrown by adapter.insertOne', async () => {
+    const consolidaitonTo = MockData.getConsolidationTo();
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockRejectedValue(new Error('test error'));
+    await expect(async () => await repo.createConsolidationTo(consolidaitonTo)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: 'Failed to create item.',
+          },
+          {
+            module: expect.anything(),
+            message: `Failed to create consolidationTo for: ${consolidaitonTo.caseId}.`,
+          },
+        ]),
+      }),
+    );
+  });
+
   test('should createConsolidationFrom', async () => {
     const consolidationFrom = MockData.getConsolidationFrom();
     const insertOneSpy = jest
@@ -252,6 +275,29 @@ describe('Cases repository', () => {
     const result = await repo.createConsolidationFrom(consolidationFrom);
     expect(insertOneSpy).toHaveBeenCalledWith(consolidationFrom);
     expect(result).not.toBeNull();
+  });
+
+  test('createConsolidationFrom should catch errors thrown by adapter.insertOne', async () => {
+    const consolidationFrom = MockData.getConsolidationFrom();
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockRejectedValue(new Error('test error'));
+    await expect(async () => await repo.createConsolidationFrom(consolidationFrom)).rejects.toThrow(
+      expect.objectContaining({
+        message: 'Unknown Error',
+        camsStack: expect.arrayContaining([
+          {
+            module: expect.anything(),
+            message: 'Failed to create item.',
+          },
+          {
+            module: expect.anything(),
+            message: `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
+          },
+        ]),
+      }),
+    );
   });
 
   test('should createCaseHistory', async () => {
