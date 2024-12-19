@@ -14,11 +14,11 @@ export default async function handler(
   const logger = ContextCreator.getLogger(invocationContext);
 
   try {
-    const applicationContext = await ContextCreator.applicationContextCreator<AdminRequestBody>(
+    const applicationContext = await ContextCreator.getApplicationContext<AdminRequestBody>({
       invocationContext,
       logger,
       request,
-    );
+    });
     if (applicationContext.request.body.apiKey !== process.env.ADMIN_KEY) {
       throw new UnauthorizedError(MODULE_NAME, {
         message: 'API key was missing or did not match.',
@@ -36,5 +36,5 @@ app.http('admin', {
   methods: ['DELETE'],
   authLevel: 'anonymous',
   handler,
-  route: 'admin/{procedure}',
+  route: 'dev-tools/{procedure}',
 });
