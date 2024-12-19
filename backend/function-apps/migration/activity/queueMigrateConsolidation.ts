@@ -8,7 +8,7 @@ const MODULE_NAME = 'IMPORT_ACTION_GET_CONSOLIDATIONS';
 
 const etlQueueOutput = output.storageQueue({
   queueName: 'migration-task',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
 });
 
 async function queueMigrateConsolidation(

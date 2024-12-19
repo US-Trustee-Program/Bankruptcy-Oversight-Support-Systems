@@ -15,11 +15,12 @@ describe('Consolidations Repository tests', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new ConsolidationOrdersMongoRepository(context);
+    repo = ConsolidationOrdersMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {
     await closeDeferred(context);
+    repo.release();
     jest.restoreAllMocks();
   });
 
