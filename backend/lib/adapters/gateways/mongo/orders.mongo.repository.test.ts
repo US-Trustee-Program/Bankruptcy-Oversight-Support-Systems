@@ -21,6 +21,7 @@ describe('orders repo', () => {
 
   afterEach(async () => {
     await closeDeferred(context);
+    repo.release();
   });
 
   test('search function happy path should return orders when a predicate is supplied', async () => {

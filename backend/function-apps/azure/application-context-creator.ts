@@ -18,23 +18,23 @@ function getLogger(invocationContext: InvocationContext) {
   return new LoggerImpl(invocationContext.invocationId, logWrapper);
 }
 
-async function applicationContextCreator(
+async function applicationContextCreator<B = unknown>(
   invocationContext: InvocationContext,
   logger: LoggerImpl,
   request?: HttpRequest,
-): Promise<ApplicationContext> {
-  const context = await getApplicationContext({ invocationContext, logger, request });
+): Promise<ApplicationContext<B>> {
+  const context = await getApplicationContext<B>({ invocationContext, logger, request });
 
   context.session = await getApplicationContextSession(context);
 
   return context;
 }
 
-async function getApplicationContext(args: {
+async function getApplicationContext<B = unknown>(args: {
   invocationContext: InvocationContext;
   logger: LoggerImpl;
   request?: HttpRequest;
-}): Promise<ApplicationContext> {
+}): Promise<ApplicationContext<B>> {
   const { invocationContext, logger, request } = args;
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
@@ -44,11 +44,11 @@ async function getApplicationContext(args: {
     featureFlags,
     logger,
     invocationId: invocationContext.invocationId,
-    request: request ? await azureToCamsHttpRequest(request) : undefined,
+    request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
     session: undefined,
     closables: [],
     releasables: [],
-  } satisfies ApplicationContext;
+  } satisfies ApplicationContext<B>;
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {

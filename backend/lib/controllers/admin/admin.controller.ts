@@ -8,22 +8,17 @@ import { BadRequestError } from '../../common-errors/bad-request';
 const MODULE_NAME = 'ADMIN-CONTROLLER';
 
 export class AdminController implements CamsController {
-  private readonly useCase: AdminUseCase;
-
-  constructor(context: ApplicationContext) {
-    this.useCase = new AdminUseCase(context);
-  }
-
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<object | undefined>> {
     const procedure = context.request.params.procedure;
+    const useCase = new AdminUseCase();
     if (procedure !== 'deleteMigrations') {
       throw new BadRequestError(MODULE_NAME, { message: 'Procedure not found' });
     }
 
     try {
-      await this.useCase.deleteMigrations();
+      await useCase.deleteMigrations(context);
       return { statusCode: 204 };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

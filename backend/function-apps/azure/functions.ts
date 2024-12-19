@@ -13,14 +13,16 @@ function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   }, {} as CamsDict);
 }
 
-export async function azureToCamsHttpRequest(request: HttpRequest): Promise<CamsHttpRequest> {
+export async function azureToCamsHttpRequest<B = unknown>(
+  request: HttpRequest,
+): Promise<CamsHttpRequest<B>> {
   return {
     method: request.method as CamsHttpMethod,
     url: request.url,
     headers: azureToCamsDict(request.headers),
     query: azureToCamsDict(request.query),
     params: request.params,
-    body: request.body ? await request.json() : undefined,
+    body: request.body ? ((await request.json()) as unknown as B) : undefined,
   };
 }
 
