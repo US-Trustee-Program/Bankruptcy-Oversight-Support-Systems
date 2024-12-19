@@ -9,12 +9,12 @@ const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
 
 const successQueue = output.storageQueue({
   queueName: 'migration-task-success',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
 });
 
 const failQueue = output.storageQueue({
   queueName: 'migration-task-fail',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
 });
 
 async function migrateConsolidation(message: unknown, context: InvocationContext) {

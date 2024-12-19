@@ -25,6 +25,10 @@
   "extensions": {
     "durableTask": {
       "hubName": "%MyTaskHub%"
+    },
+    "queues": {
+      "batchSize": 1,
+      "maxPollingInterval": "00:00:02"
     }
   },
   "functionTimeout": "01:00:00"

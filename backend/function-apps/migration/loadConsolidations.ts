@@ -16,17 +16,17 @@ export const FLATTEN_BOUNDING_ARRAYS = 'flattenBoundingArrays';
 
 const migrationQueue = output.storageQueue({
   queueName: 'migration-task',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
 });
 
 const successQueue = output.storageQueue({
   queueName: 'migration-task-success',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
 });
 
 const failQueue = output.storageQueue({
   queueName: 'migration-task-fail',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
 });
 
 df.app.orchestration(MAIN_ORCHESTRATOR, main);
@@ -39,7 +39,7 @@ df.app.activity(FLATTEN_BOUNDING_ARRAYS, flattenBoundingArrays);
 
 app.storageQueue(MIGRATE_CONSOLIDATION, {
   queueName: 'migration-task',
-  connection: 'AzureWebJobs',
+  connection: 'AzureWebJobsStorage',
   handler: migrateConsolidation,
   extraOutputs: [successQueue, failQueue],
 });

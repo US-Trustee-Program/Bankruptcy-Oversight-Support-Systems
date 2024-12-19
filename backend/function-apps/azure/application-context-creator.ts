@@ -48,7 +48,7 @@ async function getApplicationContext<B = unknown>(args: {
     session: undefined,
     closables: [],
     releasables: [],
-  } satisfies ApplicationContext<B>;
+  } satisfies ApplicationContext<B | unknown>;
 }
 
 async function getApplicationContextSession(context: ApplicationContext) {

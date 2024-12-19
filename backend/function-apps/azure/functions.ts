@@ -5,6 +5,8 @@ import { ApplicationContext } from '../../lib/adapters/types/basic';
 import { getCamsError } from '../../lib/common-errors/error-utilities';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
+const MODULE_NAME = 'FUNCTIONS-MODULE';
+
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
   if (!it) return {};
   return Array.from(it).reduce((acc, record) => {
@@ -16,14 +18,18 @@ function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
 export async function azureToCamsHttpRequest<B = unknown>(
   request: HttpRequest,
 ): Promise<CamsHttpRequest<B>> {
-  return {
-    method: request.method as CamsHttpMethod,
-    url: request.url,
-    headers: azureToCamsDict(request.headers),
-    query: azureToCamsDict(request.query),
-    params: request.params,
-    body: request.body ? ((await request.json()) as unknown as B) : undefined,
-  };
+  try {
+    return {
+      method: request.method as CamsHttpMethod,
+      url: request.url,
+      headers: azureToCamsDict(request.headers),
+      query: azureToCamsDict(request.query),
+      params: request.params,
+      body: request.body ? ((await request.json()) as unknown as B) : undefined,
+    };
+  } catch (originalError) {
+    throw getCamsError(originalError, MODULE_NAME);
+  }
 }
 
 export function toAzureSuccess<T extends object = undefined>(
