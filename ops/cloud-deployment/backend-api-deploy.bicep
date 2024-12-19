@@ -195,6 +195,12 @@ resource migrationFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-
   }
 }
 
+module migrationQueues './lib/storage/storage-queues.bicep' = {
+  name: 'migration-queues-module'
+  params: {
+    storageAccountName: migrationFunctionStorageName
+  }
+}
 
 //Function App Resources
 var userAssignedIdentities = union(

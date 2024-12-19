@@ -23,7 +23,7 @@ export function createMockAzureFunctionRequest(
   request: Partial<CamsHttpRequest> = {},
 ): HttpRequest {
   const { headers, method, body, ...other } = request;
-  const requestBody = body ? JSON.stringify(body) : '';
+  const requestBody = body ? JSON.stringify(body) : undefined;
 
   const requestInit = {
     method: method ?? 'GET',

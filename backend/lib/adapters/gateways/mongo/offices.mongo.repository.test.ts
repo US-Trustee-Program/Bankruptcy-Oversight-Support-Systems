@@ -19,12 +19,16 @@ describe('offices repo', () => {
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
-    repo = new OfficesMongoRepository(context);
+  });
+
+  beforeEach(async () => {
+    repo = OfficesMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {
     await closeDeferred(context);
     jest.restoreAllMocks();
+    repo.release();
   });
 
   test('getOfficeAttorneys', async () => {
@@ -77,18 +81,16 @@ describe('offices repo', () => {
       const officeCode = 'office_code';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
-      expect(async () => await repo.getOfficeAttorneys(officeCode)).rejects.toThrow(camsError);
+      await expect(() => repo.getOfficeAttorneys(officeCode)).rejects.toThrow(camsError);
     });
 
     test('putOfficeStaff error handling', async () => {
       const session = await createMockApplicationContextSession();
       const officeCode = 'test_office_code';
 
-      jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
+      jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
 
-      expect(async () => await repo.putOfficeStaff(officeCode, session.user)).rejects.toThrow(
-        camsError,
-      );
+      await expect(() => repo.putOfficeStaff(officeCode, session.user)).rejects.toThrow(camsError);
     });
   });
 });
