@@ -29,6 +29,9 @@
     "queues": {
       "batchSize": 1,
       "maxPollingInterval": "00:00:02"
+    },
+    "http": {
+      "routePrefix": "migration"
     }
   },
   "functionTimeout": "01:00:00"
