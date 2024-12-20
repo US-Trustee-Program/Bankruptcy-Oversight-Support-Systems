@@ -146,15 +146,14 @@ ACMS_MSSQL_PASS={the ACMS SQL Server Admin user password}
 # Required for connecting to CAMS SQL server database with managed identity
 MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
 ACMS_MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access to the ACMS DB}
-
-AzureWebJobsStorage={Connection String to Azure Functions Storage account}
-MyTaskHub={Durable Functions Task Hub Name}
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.
 
 !> If you do not have access to the admin password, ask an `owner` of the SQL Server resource in
 Azure for the value
+
+?> Note that when you run `npm run start:api` or `npm run start:migration`, the script will copy `backend/.env` into the appropriate directory, quietly overwriting any changes made to previous copies. All changes should be handled in `backend/.env` to avoid frustration and misconfiguration.
 
 ##### Cosmos Database
 
@@ -190,8 +189,6 @@ You will need to have the
 installed.
 
 ##### Local Settings File
-
-<!-- TODO: UPDATE THIS IF NEEDED WITH NEW CHANGES -->
 
 You must have a file named `local.settings.json` placed in each of the `backend/function-apps/api`
 and `backend/function-apps/migration` directories.
