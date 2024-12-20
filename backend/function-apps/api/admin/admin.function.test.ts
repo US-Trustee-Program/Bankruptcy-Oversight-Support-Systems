@@ -9,7 +9,7 @@ import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error
 
 const ADMIN_KEY = 'good-key';
 
-describe.skip('Admin function tests', () => {
+describe('Admin function tests', () => {
   const originalEnv = { ...process.env };
   const context = new InvocationContext();
 

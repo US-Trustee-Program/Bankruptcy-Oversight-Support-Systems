@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-// import { AdminController } from '../../../lib/controllers/admin/admin.controller';
+import { AdminController } from '../../../lib/controllers/admin/admin.controller';
 import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
 import { AdminRequestBody } from '../../../lib/adapters/types/http';
 
@@ -24,16 +24,9 @@ export default async function handler(
         message: 'API key was missing or did not match.',
       });
     }
-    logger.info(
-      MODULE_NAME,
-      `${request.params?.procedure} procedure triggered by ${JSON.stringify(request.user)}.`,
-    );
-    return toAzureSuccess({
-      body: { data: { procedure: request.params?.procedure, user: request.user?.username } },
-    });
-    // const controller = new AdminController();
-    // const response = await controller.handleRequest(applicationContext);
-    // return toAzureSuccess(response);
+    const controller = new AdminController();
+    const response = await controller.handleRequest(applicationContext);
+    return toAzureSuccess(response);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }
