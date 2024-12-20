@@ -34,7 +34,6 @@ async function queueMigrateConsolidation(
     }
     logger.debug(MODULE_NAME, `Putting ${leadCaseIds.length} items in the queue.`, leadCaseIds);
     invocationContext.extraOutputs.set(etlQueueOutput, queueItems);
-    logger.debug(MODULE_NAME, 'Done setting the extraOutput.');
     return leadCaseIds;
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME, 'Failed to get lead case ids.');

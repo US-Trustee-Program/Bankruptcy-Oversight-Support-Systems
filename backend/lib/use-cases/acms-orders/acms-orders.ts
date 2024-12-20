@@ -76,14 +76,12 @@ export class AcmsOrders {
     context: ApplicationContext,
     acmsLeadCaseId: string,
   ): Promise<AcmsTransformationResult> {
-    // TODO: Add child case count to the report??
     const report: AcmsTransformationResult = {
       leadCaseId: acmsLeadCaseId,
       childCaseCount: 0,
       success: true,
     };
     try {
-      context.logger.debug(MODULE_NAME, `Beginning migration of ${acmsLeadCaseId}.`);
       const casesRepo = Factory.getCasesRepository(context);
       const dxtr = Factory.getCasesGateway(context);
       const acms = Factory.getAcmsGateway(context);
@@ -211,7 +209,6 @@ export class AcmsOrders {
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
       }
-      context.logger.debug(MODULE_NAME, `Finished migration of ${acmsLeadCaseId}.`, report);
     } catch (error) {
       report.success = false;
       const camsError = getCamsError(
