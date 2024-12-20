@@ -45,7 +45,7 @@ app.storageQueue(MIGRATE_CONSOLIDATION, {
 });
 
 app.http('dfClient', {
-  route: 'migrations/consolidation',
+  route: 'consolidation',
   extraInputs: [df.input.durableClient()],
   handler: httpStart,
 });
