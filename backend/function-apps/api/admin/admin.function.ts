@@ -26,10 +26,10 @@ export default async function handler(
     }
     logger.info(
       MODULE_NAME,
-      `${request.params.procedure} procedure triggered by ${request.user.username}.`,
+      `${request.params?.procedure} procedure triggered by ${JSON.stringify(request.user)}.`,
     );
     return toAzureSuccess({
-      body: { data: { procedure: request.params.procedure, user: request.user.username } },
+      body: { data: { procedure: request.params?.procedure, user: request.user?.username } },
     });
     // const controller = new AdminController();
     // const response = await controller.handleRequest(applicationContext);
