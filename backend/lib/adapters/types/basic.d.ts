@@ -13,13 +13,13 @@ export interface LoggerHelper {
   camsError: (error: CamsError) => void;
 }
 
-export interface ApplicationContext {
+export interface ApplicationContext<B = unknown> {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
   logger: LoggerHelper;
   session?: CamsSession;
   invocationId: string;
-  request?: CamsHttpRequest;
+  request?: CamsHttpRequest<B>;
   closables: Closable[];
   releasables: Releasable[];
 }

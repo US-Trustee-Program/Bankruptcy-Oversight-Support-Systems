@@ -1,7 +1,7 @@
 import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
-import AcmsOrders, { AcmsConsolidation, AcmsPredicate, AcmsPredicateAndPage } from './acms-orders';
+import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './acms-orders';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
@@ -13,9 +13,6 @@ import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditabl
 import { ConsolidationFrom } from '../../../../common/src/cams/events';
 
 const mockAcmsGateway: AcmsGateway = {
-  getPageCount: function (..._ignore): Promise<number> {
-    throw new Error('Function not implemented.');
-  },
   getLeadCaseIds: function (..._ignore): Promise<string[]> {
     throw new Error('Function not implemented.');
   },
@@ -35,22 +32,6 @@ describe('ACMS Orders', () => {
     jest.restoreAllMocks();
   });
 
-  test('should return a page count', async () => {
-    const expected = 5;
-    const getPageCount = jest.spyOn(mockAcmsGateway, 'getPageCount').mockResolvedValue(expected);
-    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
-
-    const predicate: AcmsPredicate = {
-      divisionCode: '000',
-      chapter: '00',
-    };
-    const useCase = new AcmsOrders();
-    const actual = await useCase.getPageCount(context, predicate);
-
-    expect(getPageCount).toHaveBeenCalledWith(context, predicate);
-    expect(actual).toEqual(expected);
-  });
-
   test('should return a page of consolidation orders', async () => {
     const expected: string[] = ['811100000', '1231111111'];
     const getConsolidationOrders = jest
@@ -58,10 +39,9 @@ describe('ACMS Orders', () => {
       .mockResolvedValue(expected);
     jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
 
-    const predicateAndPage: AcmsPredicateAndPage = {
+    const predicateAndPage: AcmsPredicate = {
       divisionCode: '000',
       chapter: '00',
-      pageNumber: 1,
     };
 
     const useCase = new AcmsOrders();
@@ -119,6 +99,8 @@ describe('ACMS Orders', () => {
           consolidationType,
           orderDate,
           otherCase: caseSummaryMap.get(bCase.caseId),
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: orderDate,
         },
       });
     });
@@ -145,7 +127,14 @@ describe('ACMS Orders', () => {
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationTo({
-        override: { caseId, consolidationType, orderDate, otherCase: leadCase },
+        override: {
+          caseId,
+          consolidationType,
+          orderDate,
+          otherCase: leadCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: orderDate,
+        },
       });
     });
 
@@ -337,18 +326,38 @@ describe('ACMS Orders', () => {
   });
 
   test('should not write links for links that have already been written', async () => {
+    const mockConsolidationFrom = MockData.getConsolidationFrom({
+      override: {
+        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-01',
+      },
+    });
+    const mockConsolidationTo = MockData.getConsolidationTo({
+      override: {
+        updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-01',
+      },
+    });
+
     const createConsolidationFromSpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationFrom')
-      .mockResolvedValue(MockData.getConsolidationFrom());
+      .mockResolvedValue(mockConsolidationFrom);
     const createConsolidationToSpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createConsolidationTo')
-      .mockResolvedValue(MockData.getConsolidationTo());
+      .mockResolvedValue(mockConsolidationTo);
     const createCaseHistorySpy = jest
       .spyOn(CasesMongoRepository.prototype, 'createCaseHistory')
       .mockResolvedValue();
 
     const leadCase = MockData.getCaseSummary();
-    const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
+    const childCases = [
+      MockData.getCaseSummary({
+        override: {
+          caseId: mockConsolidationFrom.caseId,
+        },
+      }),
+      MockData.getCaseSummary(),
+    ];
     const details: AcmsConsolidation = {
       leadCaseId: leadCase.caseId,
       childCases: [
@@ -366,17 +375,19 @@ describe('ACMS Orders', () => {
     };
 
     // Create a single existing link for the first record coming back from ACMS
-    const existingToLink: ConsolidationFrom = {
+    const existingFromLink: ConsolidationFrom = {
       consolidationType: 'substantive',
       caseId: leadCase.caseId,
       documentType: 'CONSOLIDATION_FROM',
       orderDate: '2024-01-01',
       otherCase: childCases[0],
+      updatedBy: mockConsolidationFrom.updatedBy,
+      updatedOn: mockConsolidationFrom.updatedOn,
     };
     const existingChildCaseId = childCases[0].caseId;
     jest
       .spyOn(CasesMongoRepository.prototype, 'getConsolidation')
-      .mockResolvedValue([existingToLink]);
+      .mockResolvedValue([existingFromLink]);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
       [leadCase.caseId, leadCase],
@@ -396,6 +407,8 @@ describe('ACMS Orders', () => {
           consolidationType,
           orderDate,
           otherCase: caseSummaryMap.get(bCase.caseId),
+          updatedBy: mockConsolidationFrom.updatedBy,
+          updatedOn: orderDate,
         },
       });
     });
@@ -431,7 +444,14 @@ describe('ACMS Orders', () => {
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationTo({
-        override: { caseId, consolidationType, orderDate, otherCase: leadCase },
+        override: {
+          caseId,
+          consolidationType,
+          orderDate,
+          otherCase: leadCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: orderDate,
+        },
       });
     });
 
@@ -496,6 +516,8 @@ describe('ACMS Orders', () => {
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
         otherCase: childCases[0],
+        updatedBy: context.session.user,
+        updatedOn: new Date().toISOString(),
       },
       {
         consolidationType: 'substantive',
@@ -503,6 +525,8 @@ describe('ACMS Orders', () => {
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
         otherCase: childCases[1],
+        updatedBy: context.session.user,
+        updatedOn: '2024-02-01',
       },
     ];
     jest
@@ -538,12 +562,10 @@ describe('ACMS Orders', () => {
       chapter: '00',
     };
 
-    const predicateAndPage: AcmsPredicateAndPage = {
+    const predicateAndPage: AcmsPredicate = {
       ...predicate,
-      pageNumber: 1,
     };
 
-    await expect(useCase.getPageCount(context, predicate)).rejects.toThrow();
     await expect(useCase.getLeadCaseIds(context, predicateAndPage)).rejects.toThrow();
   });
 

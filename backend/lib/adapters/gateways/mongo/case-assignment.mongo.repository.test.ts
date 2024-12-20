@@ -6,18 +6,19 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseAssignmentMongoRepository } from './case-assignment.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 
-describe('offices repo', () => {
+describe('case assignment repo tests', () => {
   let context: ApplicationContext;
   let repo: CaseAssignmentMongoRepository;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new CaseAssignmentMongoRepository(context);
+    repo = CaseAssignmentMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {
     await closeDeferred(context);
     jest.restoreAllMocks();
+    repo.release();
   });
 
   describe('test happy paths', () => {

@@ -90,7 +90,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  createCaseHistory(..._ignore): Promise<string> {
+  createCaseHistory(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  deleteMigrations(): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

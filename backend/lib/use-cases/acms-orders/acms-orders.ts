@@ -6,6 +6,8 @@ import { CaseSummary } from '../../../../common/src/cams/cases';
 import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsError } from '../../common-errors/cams-error';
+import { AdminRequestBody } from '../../adapters/types/http';
 
 const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
@@ -14,18 +16,20 @@ export type AcmsBounds = {
   chapters: string[];
 };
 
-export type TriggerRequest = AcmsBounds & {
-  apiKey: string;
-};
+export type TriggerRequest = AcmsBounds & AdminRequestBody;
 
 export type AcmsPredicate = {
   divisionCode: string;
   chapter: string;
 };
 
-export type AcmsPredicateAndPage = AcmsPredicate & {
-  pageNumber: number;
+export type AcmsEtlQueueItem = AcmsPredicate & {
+  leadCaseId: string;
 };
+
+export function isAcmsEtlQueueItem(item: unknown): item is AcmsEtlQueueItem {
+  return typeof item === 'object' && 'leadCaseId' in item;
+}
 
 export type AcmsConsolidationChildCase = {
   caseId: string;
@@ -42,52 +46,23 @@ export type AcmsTransformationResult = {
   leadCaseId: string;
   childCaseCount: number;
   success: boolean;
-};
-
-export type AcmsAggregate = {
-  successful: {
-    leadCaseCount: number;
-    childCaseCount: number;
-  };
-  failed: {
-    leadCaseIds: string[];
-    leadCaseCount: number;
-    childCaseCount: number;
-  };
-};
-
-export type AcmsPageReport = AcmsAggregate & {
-  predicateAndPage: AcmsPredicateAndPage;
-};
-
-export type AcmsPartitionReport = AcmsAggregate & {
-  predicate: AcmsPredicate;
+  error?: CamsError;
 };
 
 export class AcmsOrders {
-  public async getPageCount(
-    context: ApplicationContext,
-    predicate: AcmsPredicate,
-  ): Promise<number> {
-    try {
-      const gateway = Factory.getAcmsGateway(context);
-      return await gateway.getPageCount(context, predicate);
-    } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to get page count from the ACMS gateway.',
-      );
-    }
-  }
-
   public async getLeadCaseIds(
     context: ApplicationContext,
-    predicateAndPage: AcmsPredicateAndPage,
+    predicate: AcmsPredicate,
   ): Promise<string[]> {
     try {
       const gateway = Factory.getAcmsGateway(context);
-      return gateway.getLeadCaseIds(context, predicateAndPage);
+      const leadCaseIds = await gateway.getLeadCaseIds(context, predicate);
+      context.logger.debug(
+        MODULE_NAME,
+        `Found ${leadCaseIds.length} lead cases for ${predicate.chapter}:${predicate.divisionCode}.`,
+        leadCaseIds,
+      );
+      return leadCaseIds;
     } catch (originalError) {
       throw getCamsError(
         originalError,
@@ -101,7 +76,6 @@ export class AcmsOrders {
     context: ApplicationContext,
     acmsLeadCaseId: string,
   ): Promise<AcmsTransformationResult> {
-    // TODO: Add child case count to the report??
     const report: AcmsTransformationResult = {
       leadCaseId: acmsLeadCaseId,
       childCaseCount: 0,
@@ -163,6 +137,8 @@ export class AcmsOrders {
           documentType: 'CONSOLIDATION_TO',
           orderDate: childCase.consolidationDate,
           otherCase: leadCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: childCase.consolidationDate,
         };
 
         const otherCase = await dxtr.getCaseSummary(context, childCase.caseId);
@@ -175,6 +151,8 @@ export class AcmsOrders {
           documentType: 'CONSOLIDATION_FROM',
           orderDate: childCase.consolidationDate,
           otherCase,
+          updatedBy: ACMS_SYSTEM_USER_REFERENCE,
+          updatedOn: childCase.consolidationDate,
         };
         childCaseSummaries.set(otherCase.caseId, otherCase);
 

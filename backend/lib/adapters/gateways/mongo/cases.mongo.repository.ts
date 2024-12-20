@@ -11,11 +11,12 @@ import QueryBuilder from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { ACMS_SYSTEM_USER_REFERENCE, Auditable } from '../../../../../common/src/cams/auditable';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, equals, regex } = QueryBuilder;
+const { and, or, equals, regex } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -28,19 +29,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   public static getInstance(context: ApplicationContext) {
-    try {
-      if (!CasesMongoRepository.instance)
-        CasesMongoRepository.instance = new CasesMongoRepository(context);
-      CasesMongoRepository.referenceCount++;
-      return CasesMongoRepository.instance;
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: 'Failed to get instance of cases repository.',
-          module: MODULE_NAME,
-        },
-      });
-    }
+    if (!CasesMongoRepository.instance)
+      CasesMongoRepository.instance = new CasesMongoRepository(context);
+    CasesMongoRepository.referenceCount++;
+    return CasesMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -89,7 +81,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createTransferFrom(transferFrom: TransferFrom): Promise<TransferFrom> {
     try {
-      return this.create<TransferFrom>(transferFrom);
+      return await this.create<TransferFrom>(transferFrom);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -102,7 +94,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createTransferTo(transferOut: TransferTo): Promise<TransferTo> {
     try {
-      return this.create<TransferTo>(transferOut);
+      return await this.create<TransferTo>(transferOut);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -133,7 +125,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createConsolidationFrom(consolidationFrom: ConsolidationFrom): Promise<ConsolidationFrom> {
     try {
-      return this.create<ConsolidationFrom>(consolidationFrom);
+      return await this.create<ConsolidationFrom>(consolidationFrom);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -146,7 +138,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async createConsolidationTo(consolidationOut: ConsolidationTo): Promise<ConsolidationTo> {
     try {
-      return this.create<ConsolidationTo>(consolidationOut);
+      return await this.create<ConsolidationTo>(consolidationOut);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -183,6 +175,28 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         camsStackInfo: {
           message:
             'Unable to create assignment history. Please try again later. If the problem persists, please contact USTP support.',
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
+  async deleteMigrations(): Promise<void> {
+    try {
+      const adapter = this.getAdapter<Auditable>();
+      const query = QueryBuilder.build(
+        or(
+          equals<Auditable['updatedBy']>('updatedBy', ACMS_SYSTEM_USER_REFERENCE),
+          equals<ConsolidationFrom['documentType']>('documentType', 'CONSOLIDATION_FROM'),
+          equals<ConsolidationTo['documentType']>('documentType', 'CONSOLIDATION_TO'),
+        ),
+      );
+      const count = await adapter.deleteMany(query);
+      this.context.logger.info(MODULE_NAME, `Deleted ${count} migration records.`);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: 'Failed while deleting migrations.',
           module: MODULE_NAME,
         },
       });

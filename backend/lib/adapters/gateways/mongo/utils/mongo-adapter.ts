@@ -1,4 +1,4 @@
-import { CamsError } from '../../../../common-errors/cams-error';
+import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
@@ -48,7 +48,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while sorting with: ${JSON.stringify(sort)}`);
+      throw this.handleError(
+        originalError,
+        `Failed to retrieve all with sort: ${JSON.stringify(sort)}`,
+      );
     }
   }
 
@@ -184,12 +187,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   private handleError(error: unknown, message: string): CamsError {
-    if (error instanceof MongoServerError) {
-      error = new Error(error.errorResponse.message);
+    let mongoError: MongoServerError;
+    let err: Error;
+    if (!isCamsError(error)) {
+      mongoError = error as MongoServerError;
+      err = {
+        name: mongoError.name,
+        message: mongoError.message,
+      } as unknown as Error;
+    } else {
+      err = error;
     }
-    const mongoError = error as MongoServerError;
-    return getCamsErrorWithStack(mongoError.cause ?? (error as Error), this.moduleName, {
-      camsStackInfo: { module: this.moduleName, message },
+    return getCamsErrorWithStack(err, this.moduleName, {
+      camsStackInfo: { module: this.moduleName, message: err.message },
+      message,
     });
   }
 }
