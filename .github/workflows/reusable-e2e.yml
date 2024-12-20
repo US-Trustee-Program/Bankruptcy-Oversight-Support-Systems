@@ -77,12 +77,9 @@ jobs:
           echo "Seeding E2E CosmosDB..."
           curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiFunctionName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
-      - name: Restart API and Install Node dependencies
+      - name: Install Node dependencies
         working-directory: test/e2e
         run: |
-          az functionapp restart --name ${{ inputs.apiFunctionName }} --resource-group ${{ steps.rgApp.outputs.out }} & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
-          az functionapp restart --name ${{ inputs.apiFunctionName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging
-          sleep 10
           npm ci
           npx playwright install chromium msedge
 
@@ -90,8 +87,6 @@ jobs:
         id: e2eTests
         working-directory: test/e2e
         run: |
-          echo "Wait 60s for seed to finish and apps to restart..."
-          sleep 60
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
           OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html

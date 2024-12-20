@@ -18,7 +18,7 @@ jobs:
     needs: [setup]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
-      apiName: ${{ needs.setup.outputs.apiName }}
+      apiName: ${{ needs.setup.outputs.apiFunctionName }}
       slotName: ${{ needs.setup.outputs.slotName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       stackName: ${{ needs.setup.outputs.stackName }}
