@@ -52,6 +52,8 @@ const CONSOLIDATE_TO: Consolidation = {
   orderDate: '01-12-2024',
   consolidationType: 'administrative',
   documentType: 'CONSOLIDATION_TO',
+  updatedBy: MockData.getCamsUser(),
+  updatedOn: '01-12-2024',
 };
 
 const CONSOLIDATE_FROM: Consolidation = {
@@ -60,6 +62,8 @@ const CONSOLIDATE_FROM: Consolidation = {
   orderDate: '01-12-2024',
   consolidationType: 'administrative',
   documentType: 'CONSOLIDATION_FROM',
+  updatedBy: MockData.getCamsUser(),
+  updatedOn: '01-12-2024',
 };
 
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);

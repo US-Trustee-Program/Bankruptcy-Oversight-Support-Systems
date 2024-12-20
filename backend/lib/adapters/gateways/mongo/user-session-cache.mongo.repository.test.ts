@@ -20,11 +20,12 @@ describe('User session cache Cosmos repository tests', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = new UserSessionCacheMongoRepository(context);
+    repo = UserSessionCacheMongoRepository.getInstance(context);
     jest.resetAllMocks();
   });
 
   afterEach(async () => {
+    repo.release();
     await closeDeferred(context);
   });
 

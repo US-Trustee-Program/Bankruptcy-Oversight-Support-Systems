@@ -3,7 +3,6 @@ import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
   AcmsPredicate,
-  AcmsPredicateAndPage,
 } from '../../../use-cases/acms-orders/acms-orders';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
@@ -12,7 +11,6 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
 
 const MODULE_NAME = 'ACMS_GATEWAY';
-const PAGE_SIZE = 10;
 
 export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway {
   constructor(context: ApplicationContext) {
@@ -22,17 +20,25 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     super(config, MODULE_NAME);
   }
 
-  async getPageCount(context: ApplicationContext, predicate: AcmsPredicate): Promise<number> {
+  async getLeadCaseIds(context: ApplicationContext, predicate: AcmsPredicate): Promise<string[]> {
     const input: DbTableFieldSpec[] = [];
+
+    input.push({
+      name: 'divisionCode',
+      type: mssql.Int,
+      value: predicate.divisionCode,
+    });
+
     let query = `
-      SELECT COUNT(DISTINCT CONSOLIDATED_CASE_NUMBER) AS leadCaseCount
+      SELECT ((CASE_DIV * 10000000) + (CASE_YEAR * 100000) + CASE_NUMBER) AS leadCaseId
       FROM [dbo].[CMMDB]
       WHERE CASE_DIV = @divisionCode
-      AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101'
-      AND CONSOLIDATED_CASE_NUMBER != '0'`;
+      AND (CLOSED_BY_COURT_DATE > 19800101 OR CLOSED_BY_UST_DATE > 19800101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))
+      AND CONSOLIDATED_CASE_NUMBER = 0
+      AND CONSOLIDATION_TYPE != ' '`;
 
     // Valid ACMS chapters: 09, 11, 12, 13, 15, 7A, 7N, AC
-    // 'AC' is the predecessor to chapter 15. We are not importing these old cases into CAMS.
+    // 'AC' is the predecesor to chapter 15. We are not importing these old cases into CAMS.
     // '7A' and '7N' are treated inclusively as chapter 7 cases when importing into CAMS.
     // Leading zero padding is added for chapter 9.
 
@@ -47,88 +53,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       });
     }
 
-    input.push({
-      name: 'divisionCode',
-      type: mssql.VarChar,
-      value: predicate.divisionCode,
-    });
-
-    type ResultType = {
-      leadCaseCount: number;
-    };
-
-    try {
-      const results = await this.executeQuery<ResultType>(context, query, input);
-      // TODO: handle falsy result
-      const result = results.results[0];
-      return result.leadCaseCount ? Math.ceil(result.leadCaseCount / PAGE_SIZE) : 0;
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, originalError.message);
-    }
-  }
-
-  async getLeadCaseIds(
-    context: ApplicationContext,
-    predicateAndPage: AcmsPredicateAndPage,
-  ): Promise<string[]> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push({
-      name: 'divisionCode',
-      type: mssql.VarChar,
-      value: predicateAndPage.divisionCode,
-    });
-
-    input.push({
-      name: `limit`,
-      type: mssql.Int,
-      value: PAGE_SIZE,
-    });
-
-    input.push({
-      name: `offset`,
-      type: mssql.Int,
-      value: PAGE_SIZE * (predicateAndPage.pageNumber - 1),
-    });
-
-    let query = `
-      SELECT DISTINCT CONSOLIDATED_CASE_NUMBER AS leadCaseId
-      FROM [dbo].[CMMDB]
-      WHERE CASE_DIV = @divisionCode
-      AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101' OR CLOSED_BY_UST_DATE > '20170101'
-      AND CONSOLIDATED_CASE_NUMBER != '0'`;
-
-    // Valid ACMS chapters: 09, 11, 12, 13, 15, 7A, 7N, AC
-    // 'AC' is the predecesor to chapter 15. We are not importing these old cases into CAMS.
-    // '7A' and '7N' are treated inclusively as chapter 7 cases when importing into CAMS.
-    // Leading zero padding is added for chapter 9.
-
-    // TODO: refactor to just get lead case id's, something like below
-    // select case_div, case_year, case_number
-    // from CMMDB
-    // where
-    // CONSOLIDATION_TYPE != ' '
-    // AND CLOSED_BY_COURT_DATE = '0' OR CLOSED_BY_COURT_DATE > '20170101' OR CLOSED_BY_UST_DATE > '20170101'
-    // and CONSOLIDATED_CASE_NUMBER = '0'
-    // and PREDICATE
-
-    if (predicateAndPage.chapter === '7') {
-      query += ` AND CURR_CASE_CHAPT IN ('7A', '7N')`;
-    } else {
-      query += ` AND CURR_CASE_CHAPT = @chapter`;
-      input.push({
-        name: 'chapter',
-        type: mssql.VarChar,
-        value: ('00' + predicateAndPage.chapter).slice(-2),
-      });
-    }
-
-    query += ` ORDER BY CONSOLIDATED_CASE_NUMBER DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY`;
-
     type ResultType = {
       leadCaseId: string;
     };
 
+    context.logger.debug(MODULE_NAME, `Querying for parameters: ${JSON.stringify(input)}`);
     try {
       const { results } = await this.executeQuery<ResultType>(context, query, input);
       const leadCaseIdsResults = results as ResultType[];

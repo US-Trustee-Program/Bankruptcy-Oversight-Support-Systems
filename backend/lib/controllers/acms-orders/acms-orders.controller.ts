@@ -2,14 +2,17 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import AcmsOrders, {
   AcmsTransformationResult,
   AcmsPredicate,
-  AcmsPredicateAndPage,
 } from '../../use-cases/acms-orders/acms-orders';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ACMS-ORDERS-CONTROLLER';
 
 class AcmsOrdersController {
-  private readonly useCase = new AcmsOrders();
+  private readonly useCase: AcmsOrders;
+
+  constructor() {
+    this.useCase = new AcmsOrders();
+  }
 
   public async migrateConsolidation(
     context: ApplicationContext,
@@ -22,25 +25,13 @@ class AcmsOrdersController {
     }
   }
 
-  public async getPageCount(
-    context: ApplicationContext,
-    predicate: AcmsPredicate,
-  ): Promise<number> {
-    try {
-      return await this.useCase.getPageCount(context, predicate);
-    } catch (originalError) {
-      const error = getCamsError(originalError, MODULE_NAME, 'Failed to get page count.');
-      context.logger.error(MODULE_NAME, error.message, error);
-      throw error;
-    }
-  }
-
   public async getLeadCaseIds(
     context: ApplicationContext,
-    predicate: AcmsPredicateAndPage,
+    predicate: AcmsPredicate,
   ): Promise<string[]> {
     try {
-      return await this.useCase.getLeadCaseIds(context, predicate);
+      const leadCaseIds = await this.useCase.getLeadCaseIds(context, predicate);
+      return leadCaseIds;
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME, 'Failed to find lead case ids.');
       context.logger.error(MODULE_NAME, error.message, error);
