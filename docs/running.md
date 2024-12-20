@@ -99,8 +99,6 @@ npm run start:migration
 
 ##### .env File
 
-<!-- TODO: FINALIZE THIS we now share an env between both function apps -->
-
 You will need to have a file named `.env` placed in the `backend` directory. The contents of that
 file must be:
 
