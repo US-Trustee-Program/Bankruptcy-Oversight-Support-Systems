@@ -14,9 +14,14 @@ information about where the error was caught so that we can specifically address
 
 ## Status
 
-Accepted
+SUPERCEDED
 
 ## Consequences
 
 Errors will be logged close to where they are discovered, but developers need to be careful to always log errors before
 throwing.
+
+
+## TODO
+
+This ADR needs to be updated with the new approved approach to capture errors close to the origin, wrap with a CAMS error then throw to the upstream controller to log.
