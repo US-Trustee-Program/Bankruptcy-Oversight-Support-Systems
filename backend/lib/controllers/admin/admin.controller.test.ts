@@ -11,7 +11,6 @@ describe('Admin controller tests', () => {
     controller = new AdminController();
   });
 
-  // TODO: test the controller
   test('should return 204 for successful deletion', async () => {
     const context = await createMockApplicationContext();
     context.request.params.procedure = 'deleteMigrations';
