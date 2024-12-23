@@ -30,7 +30,9 @@ done
 deployVnet='false'
 vnetCount=
 
-if [ "$initial_deployment" == 'false' ]; then
+
+# shellcheck disable=SC2086 # REASON: Qoutes are necessary for pipeline
+if [ $initial_deployment == "false" ]; then
     vnetCount=$(az network vnet list -g "${vnet_rg}" --query "length([?name=='${vnet_name}'])" || true)
     if [ "$vnetCount" == '1' ]; then
         deployVnet='false'
