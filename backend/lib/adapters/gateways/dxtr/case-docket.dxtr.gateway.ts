@@ -118,7 +118,8 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     FROM [dbo].[AO_DE] AS D
     JOIN [dbo].[AO_CS] AS C ON C.CS_CASEID=D.CS_CASEID AND C.COURT_ID=D.COURT_ID
     JOIN [dbo].[AO_CS_DIV] AS CD ON C.CS_DIV = CD.CS_DIV
-    WHERE CD.CS_DIV_ACMS=@courtDiv AND C.CASE_ID=@dxtrCaseId
+    WHERE CD.CS_DIV_ACMS=@courtDiv
+    AND C.CASE_ID=@dxtrCaseId
     ORDER BY DE_SEQNO
     `;
 
@@ -321,7 +322,8 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
         JOIN [dbo].[AO_DC] AS DC ON C.CS_CASEID = DC.CS_CASEID AND C.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
         JOIN [dbo].[AO_CS_DIV] DIV ON C.CS_DIV = DIV.CS_DIV
         JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
-      WHERE DIV.CS_DIV_ACMS=@courtDiv AND C.CASE_ID=@dxtrCaseId
+      WHERE DIV.CS_DIV_ACMS=@courtDiv
+      AND C.CASE_ID=@dxtrCaseId
       AND DC.COURT_STATUS != 'unk'
     `;
 
