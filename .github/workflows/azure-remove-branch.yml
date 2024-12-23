@@ -22,9 +22,14 @@ jobs:
           echo "List Azure resource groups of current branch deployment"
           az group list --query "[?tags.branchName].{ Name:name Branch:tags.branchName HashId:tags.branchHashId }" -o table
 
+      - name: List event options
+        run: |
+          echo "github.event:    ${{ github.event }}"
+          echo "Github.event.delete:   ${{ github.event.delete || ''}}"
+          echo "github.event.pull_request:   ${{ github.event.pull_request || ''}}"
   check:
     runs-on: ubuntu-latest
-    if: inputs.hashId != '' || github.event.action == 'closed'
+    if: ${{ inputs.hashId != '' || (github.event.pull_request == 'pull_request' && github.event.action == 'closed')  || github.event.delete }}
     environment: "Develop"
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
@@ -34,12 +39,27 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - name: Branch Deletion
+        id: branch-deletion
+        if: ${{ github.event.delete }}
+        run: |
+
+          branchRef="${{ github.ref_name }}"
+          hash=$(echo -n "${branchRef}"" | openssl sha256 | awk '{print $2}')
+          shortHash="${hash:0:6}"
+          echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
       - name: Genereate branch hash id
         id: hash
-        if: github.event.action == 'closed'
+        if: ${{ github.event.pull_request }}
         run: |
-          hash=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
+          branchRef="${{ github.ref_name }}"
+
+          if [ ${{ github.event.action == 'closed' }} ]; then
+            branchRef="${{ github.event.pull_request.head.ref }}"
+          fi
+
+          hash=$(echo -n "${branchRef}"" | openssl sha256 | awk '{print $2}')
           shortHash="${hash:0:6}"
           echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
