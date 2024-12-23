@@ -57,13 +57,13 @@ jobs:
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiFunctionName: ${{ steps.build-info.outputs.apiFunctionName }}
+      migrationFunctionName: ${{ steps.build-info.outputs.migrationFunctionName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ steps.build-info.outputs.slotName }}
-      migrationFunctionName: ${{ steps.build-info.outputs.migrationFunctionName }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-      execVnetDeploy: ${{ steps.check-deployment.outputs.deployVnet }}
+      execVnetDeploy: ${{ steps.check-deployment.outputs.execVnetDeploy }}
       initialDeployment: ${{ steps.check-deployment.outputs.initialDeployment }}
     steps:
       - name: Checkout
