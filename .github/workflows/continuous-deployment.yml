@@ -20,14 +20,6 @@ on:
         options:
           - "false"
           - "true"
-      deployVnet:
-        description: "deployVnet: Enable Vnet creation. False is environment already provisioned"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
       enableBicepDeployment:
         description:
           "enableBicepDeployment: Execute main.bicep deployment for application component Azure
@@ -47,7 +39,6 @@ jobs:
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
-      deployVnet: ${{ inputs.deployVnet }}
 
   accessibility-test:
     defaults:
