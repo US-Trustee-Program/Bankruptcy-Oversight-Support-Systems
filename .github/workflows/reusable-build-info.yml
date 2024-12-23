@@ -155,7 +155,7 @@ jobs:
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
           echo "Initial Deployment: ${initialDeployment}"
 
-          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "vnet-${{ steps.build-info.outputs.stackName }}" --is-initial-deployment "${initialDeployment}")
+          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "${{ vars.AZ_NETWORK_VNET_NAME }}" --is-initial-deployment "${initialDeployment}")
           echo "deployVnet=${deployVnet}" >> $GITHUB_OUTPUT
           echo "Deploy Vnet: ${deployVnet}"
 
