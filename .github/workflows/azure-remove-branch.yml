@@ -24,7 +24,7 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: inputs.hashId != '' || github.event_name == 'pull_request' || github.event.action == 'closed' || github.event_name == 'delete'
+    if: ${{ inputs.hashId != '' }} || ${{ (github.event_name == 'pull_request') && (github.event.action == 'closed') }} || ${{github.event_name == 'delete'}}
     environment: "Develop"
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
@@ -39,7 +39,7 @@ jobs:
         id: hash
         if: github.event.action == 'closed' || github.event.type == 'delete'
         run: |
-          branchRef="${{github.ref_name}}"
+          branchRef="${{ github.ref_name }}"
 
           if [ ${{ github.event.action == 'closed' }} ]; then
             branchRef="${{ github.event.pull_request.head.ref }}"
