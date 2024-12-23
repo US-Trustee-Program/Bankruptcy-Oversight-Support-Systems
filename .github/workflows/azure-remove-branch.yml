@@ -1,5 +1,7 @@
 name: Clean up Flexion Azure Resources
 
+# Some arbitrary text to test pull requests
+
 on:
   delete:
   workflow_dispatch:
