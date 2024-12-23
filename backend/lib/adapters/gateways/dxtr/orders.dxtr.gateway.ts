@@ -589,13 +589,6 @@ export class DxtrOrdersGateway implements OrdersGateway {
     if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
 
     const regions = REGIONS_TO_SYNC;
-
-    const params: DbTableFieldSpec[] = [];
-    params.push({
-      name: 'txId',
-      type: mssql.BigInt,
-      value: txId,
-    });
     return { maxTxId, chapters, regions };
   }
 
