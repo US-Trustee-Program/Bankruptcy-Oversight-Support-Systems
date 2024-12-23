@@ -321,7 +321,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
         JOIN [dbo].[AO_DC] AS DC ON C.CS_CASEID = DC.CS_CASEID AND C.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
         JOIN [dbo].[AO_CS_DIV] DIV ON C.CS_DIV = DIV.CS_DIV
         JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
-      WHERE C.CS_DIV_ACMS=@courtDiv AND C.CASE_ID=@dxtrCaseId
+      WHERE DIV.CS_DIV_ACMS=@courtDiv AND C.CASE_ID=@dxtrCaseId
       AND DC.COURT_STATUS != 'unk'
     `;
 
