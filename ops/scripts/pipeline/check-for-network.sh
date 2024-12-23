@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# Title:        az-check-network.sh --resource-group <app_rg> --vnet-name <vnet_name>
+# Title:        az-check-network.sh --resource-group <app_rg> --vnet-name <vnet_name> --is-initial-deployment
 # Description:  Helper script to check if a vnet exists
 
+initial_deployment=''
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -15,6 +16,10 @@ while [[ $# -gt 0 ]]; do
         vnet_name="${2}"
         shift 2
         ;;
+    --is-initial-deployment)
+        initial_deployment="${2}"
+        shift 2
+        ;;
     *)
         echo "Invalid param: ${1}"
         exit 2
@@ -22,12 +27,18 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-vnetExists='false'
+deployVnet='false'
+vnetCount=
 
-vnetCount=$(az network vnet list -g "${vnet_rg}" --query "length([?name=='${vnet_name}'])" || true)
-
-if [ "$vnetCount" == '1' ]; then
-    vnetExists='true'
+if [ "$initial_deployment" == 'false' ]; then
+    vnetCount=$(az network vnet list -g "${vnet_rg}" --query "length([?name=='${vnet_name}'])" || true)
+    if [ "$vnetCount" == '1' ]; then
+        deployVnet='false'
+    else
+        deployVnet='true'
+    fi
+else
+    deployVnet='true'
 fi
 
-echo $vnetExists
+echo $deployVnet
