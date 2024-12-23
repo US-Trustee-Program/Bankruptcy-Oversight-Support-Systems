@@ -160,6 +160,7 @@ export default class CasesDxtrGateway implements CasesInterface {
           substring(REC,108,2) AS petitionCode,
           substring(REC,34,2) AS debtorTypeCode
           FROM [dbo].[AO_CS] AS C1
+          JOIN [dbo].[AO_CS_DIV] AS C2 ON C1.CS_DIV = C2.CS_DIV
           JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
           JOIN [dbo].[AO_PY] AS P1
           ON P1.CS_CASEID = C1.CS_CASEID AND P1.COURT_ID = C1.COURT_ID AND P1.PY_ROLE = 'db'
@@ -179,7 +180,7 @@ export default class CasesDxtrGateway implements CasesInterface {
           AND C1.CS_CHAPTER = @chapter
           AND C1.CS_DATE_FILED >= @datefiled
           AND (C1.COURT_ID != @originalCourt
-              OR C1.CS_DIV_ACMS != @originalDivision)
+              OR C2.CS_DIV_ACMS != @originalDivision)
         ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;
