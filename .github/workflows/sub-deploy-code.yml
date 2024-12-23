@@ -122,7 +122,7 @@ jobs:
           --src ./${{ inputs.migrationFunctionName }}.zip
 
   endpoint-test-application: # TODO: healthcheck/endpoint test on new migration function app?
-    needs: [deploy-webapp, deploy-api]
+    needs: [deploy-webapp, deploy-api, deploy-migration-app]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
