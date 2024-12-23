@@ -588,7 +588,6 @@ export class DxtrOrdersGateway implements OrdersGateway {
     if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
     if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
 
-    // TODO: This filter will be applied to Cosmos order documents based on user context in the future. This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
     const regions = REGIONS_TO_SYNC;
 
     const params: DbTableFieldSpec[] = [];
