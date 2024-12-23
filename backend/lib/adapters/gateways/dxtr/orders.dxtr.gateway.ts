@@ -14,6 +14,29 @@ import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.
 import { CaseDocketEntry } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
+const REGIONS_TO_SYNC = [
+  '01',
+  '02',
+  '03',
+  '04',
+  '05',
+  '06',
+  '07',
+  '08',
+  '09',
+  '10',
+  '11',
+  '12',
+  '13',
+  '14',
+  '15',
+  '16',
+  '17',
+  '18',
+  '19',
+  '20',
+  '21',
+];
 
 export interface DxtrTransfer extends TransferOrder, DxtrOrder {}
 
@@ -61,22 +84,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     txId: string,
   ): Promise<RawOrderSync> {
     try {
-      let maxTxId: number = parseInt(txId);
-
-      // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
-      const chapters: string[] = ['15'];
-      if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
-      if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
-
-      // TODO: This filter will be applied to Cosmos order documents based on user context in the future. This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
-      const regions: string[] = ['02'];
-
-      const params: DbTableFieldSpec[] = [];
-      params.push({
-        name: 'txId',
-        type: mssql.BigInt,
-        value: txId,
-      });
+      const { maxTxId, chapters, regions } = this.setUpCommonParameters(txId, context);
 
       // Get raw order which are a subset of case detail associated with a transfer order
       const rawOrders = await this.getConsolidationOrders(context, txId, chapters, regions);
@@ -93,50 +101,13 @@ export class DxtrOrdersGateway implements OrdersGateway {
         `Retrieved ${rawDocketEntries.length} raw orders from DXTR.`,
       );
 
-      // Get documents for transfer docket entries
+      // Get documents for consolidation docket entries
       const documents = await this.getConsolidationOrderDocuments(context, txId, chapters, regions);
-      context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
-
-      const mappedDocuments = documents.reduce((map, document) => {
-        const { txId } = document;
-        delete document.txId;
-        map.set(txId, document);
-        return map;
-      }, new Map());
-      context.logger.info(
-        MODULE_NAME,
-        `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
-      );
-
-      // Add documents to docket entries
-      const docketEntries = rawDocketEntries.map((de) => {
-        const txId = parseInt(de.txId);
-        if (maxTxId < txId) maxTxId = txId;
-
-        if (mappedDocuments.has(de.txId)) {
-          de.documents = translateModel([mappedDocuments.get(de.txId)]);
-        }
-
-        if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
-          de.docketSuggestedCaseNumber = de.rawRec.split('WARN:')[1].trim();
-        }
-        delete de.rawRec;
-        delete de.txId;
-        return de;
-      });
-
-      const mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]> = docketEntries.reduce(
-        (map, docketEntry) => {
-          const dxtrCaseId = docketEntry.dxtrCaseId;
-          delete docketEntry.dxtrCaseId;
-          if (map.has(dxtrCaseId)) {
-            map.get(dxtrCaseId).push(docketEntry);
-          } else {
-            map.set(dxtrCaseId, [docketEntry]);
-          }
-          return map;
-        },
-        new Map<string, DxtrOrderDocketEntry[]>(),
+      const { maxTxId: newMaxTxId, mappedDocketEntries } = this.processDocketEntries(
+        context,
+        documents,
+        rawDocketEntries,
+        maxTxId,
       );
 
       const consolidations = rawOrders
@@ -150,7 +121,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
         .sort(dxtrOrdersSorter);
       context.logger.info(
         MODULE_NAME,
-        `Processed ${consolidations.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
+        `Processed ${consolidations.length} orders and their documents from DXTR. New maxTxId is ${newMaxTxId}.`,
       );
 
       // Prefer the docket entry filing date over the TX table order date as the order date for the consolidation.
@@ -167,7 +138,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
       return {
         consolidations,
         transfers: undefined,
-        maxTxId: maxTxId.toString(),
+        maxTxId: newMaxTxId.toString(),
       };
     } catch (originalError) {
       throw new CamsError(MODULE_NAME, { originalError });
@@ -179,22 +150,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     txId: string,
   ): Promise<OrderSync> {
     try {
-      let maxTxId: number = parseInt(txId);
-
-      // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
-      const chapters: string[] = ['15'];
-      if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
-      if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
-
-      // TODO: This filter will be applied to Cosmos order documents based on user context in the future. This temporarily limits the regions to region 2 for now. We need to discuss whether we copy orders from all regions into Cosmos on day one.
-      const regions: string[] = ['02'];
-
-      const params: DbTableFieldSpec[] = [];
-      params.push({
-        name: 'txId',
-        type: mssql.BigInt,
-        value: txId,
-      });
+      const { maxTxId, chapters, regions } = this.setUpCommonParameters(txId, context);
 
       // Get raw order which are a subset of case detail associated with a transfer order
       const rawOrders = await this.getTransferOrders(context, txId, chapters, regions);
@@ -213,48 +169,11 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
       // Get documents for transfer docket entries
       const documents = await this.getTransferOrderDocuments(context, txId, chapters, regions);
-      context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
-
-      const mappedDocuments = documents.reduce((map, document) => {
-        const { txId } = document;
-        delete document.txId;
-        map.set(txId, document);
-        return map;
-      }, new Map());
-      context.logger.info(
-        MODULE_NAME,
-        `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
-      );
-
-      // Add documents to docket entries
-      const docketEntries = rawDocketEntries.map((de) => {
-        const txId = parseInt(de.txId);
-        if (maxTxId < txId) maxTxId = txId;
-
-        if (mappedDocuments.has(de.txId)) {
-          de.documents = translateModel([mappedDocuments.get(de.txId)]);
-        }
-
-        if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
-          de.docketSuggestedCaseNumber = de.rawRec.split('WARN:')[1].trim();
-        }
-        delete de.rawRec;
-        delete de.txId;
-        return de;
-      });
-
-      const mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]> = docketEntries.reduce(
-        (map, docketEntry) => {
-          const dxtrCaseId = docketEntry.dxtrCaseId;
-          delete docketEntry.dxtrCaseId;
-          if (map.has(dxtrCaseId)) {
-            map.get(dxtrCaseId).push(docketEntry);
-          } else {
-            map.set(dxtrCaseId, [docketEntry]);
-          }
-          return map;
-        },
-        new Map<string, DxtrOrderDocketEntry[]>(),
+      const { maxTxId: newMaxTxId, mappedDocketEntries } = this.processDocketEntries(
+        context,
+        documents,
+        rawDocketEntries,
+        maxTxId,
       );
 
       const orders = rawOrders
@@ -280,15 +199,15 @@ export class DxtrOrdersGateway implements OrdersGateway {
         .sort(dxtrOrdersSorter);
       context.logger.info(
         MODULE_NAME,
-        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${maxTxId}.`,
+        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${newMaxTxId}.`,
       );
 
       // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
-      // autoincrementing PK as a string, not an integer value.
+      // auto-incrementing PK as a string, not an integer value.
       return {
         consolidations: undefined,
         transfers: orders,
-        maxTxId: maxTxId.toString(),
+        maxTxId: newMaxTxId.toString(),
       };
     } catch (originalError) {
       throw new CamsError(MODULE_NAME, { message: originalError.message });
@@ -659,5 +578,69 @@ export class DxtrOrdersGateway implements OrdersGateway {
     } else {
       return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
     }
+  }
+
+  private setUpCommonParameters(txId: string, context: ApplicationContext<unknown>) {
+    const maxTxId: number = parseInt(txId);
+
+    // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
+    const chapters: string[] = ['15'];
+    if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
+    if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
+
+    const regions = REGIONS_TO_SYNC;
+    return { maxTxId, chapters, regions };
+  }
+
+  private processDocketEntries(
+    context: ApplicationContext<unknown>,
+    documents: Array<DxtrOrderDocument>,
+    rawDocketEntries: Array<DxtrOrderDocketEntry>,
+    maxTxId: number,
+  ): { maxTxId: number; mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]> } {
+    context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
+
+    const mappedDocuments = documents.reduce((map, document) => {
+      const { txId } = document;
+      delete document.txId;
+      map.set(txId, document);
+      return map;
+    }, new Map());
+    context.logger.info(
+      MODULE_NAME,
+      `Reduced ${Array.from(mappedDocuments.values()).length} documents from DXTR.`,
+    );
+
+    // Add documents to docket entries
+    const docketEntries = rawDocketEntries.map((de) => {
+      const txId = parseInt(de.txId);
+      if (maxTxId < txId) maxTxId = txId;
+
+      if (mappedDocuments.has(de.txId)) {
+        de.documents = translateModel([mappedDocuments.get(de.txId)]);
+      }
+
+      if (de.rawRec && de.rawRec.toUpperCase().includes('WARN:')) {
+        de.docketSuggestedCaseNumber = de.rawRec.split('WARN:')[1].trim();
+      }
+      delete de.rawRec;
+      delete de.txId;
+      return de;
+    });
+
+    const mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]> = docketEntries.reduce(
+      (map, docketEntry) => {
+        const dxtrCaseId = docketEntry.dxtrCaseId;
+        delete docketEntry.dxtrCaseId;
+        if (map.has(dxtrCaseId)) {
+          map.get(dxtrCaseId).push(docketEntry);
+        } else {
+          map.set(dxtrCaseId, [docketEntry]);
+        }
+        return map;
+      },
+      new Map<string, DxtrOrderDocketEntry[]>(),
+    );
+    return { maxTxId, mappedDocketEntries };
   }
 }
