@@ -255,28 +255,28 @@ export default class CasesDxtrGateway implements CasesInterface {
     const CASE_SEARCH_QUERY_ORDER =
       'ORDER BY cs.CS_DATE_FILED DESC OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY';
 
-    const parametersList: string[] = [];
-    const replacementVariables: DbTableFieldSpec[] = [];
+    const conditions: string[] = [];
+    const params: DbTableFieldSpec[] = [];
 
     const recordCount = predicate.limit ? predicate.limit + 1 : DEFAULT_SEARCH_LIMIT + 1;
-    replacementVariables.push({
+    params.push({
       name: `limit`,
       type: mssql.Int,
       value: recordCount,
     });
-    replacementVariables.push({
+    params.push({
       name: `offset`,
       type: mssql.Int,
       value: predicate.offset ?? 0,
     });
 
     if (predicate.caseNumber) {
-      replacementVariables.push({
+      params.push({
         name: 'caseNumber',
         type: mssql.VarChar,
         value: predicate.caseNumber,
       });
-      parametersList.push("cs.CASE_ID LIKE @caseNumber+'%' ");
+      conditions.push("cs.CASE_ID LIKE @caseNumber+'%' ");
     }
     if (!predicate.caseNumber && predicate.caseIds && predicate.caseIds.length > 0) {
       const divisionsAndCaseNumbers = predicate.caseIds.reduce((acc, caseId) => {
@@ -298,13 +298,12 @@ export default class CasesDxtrGateway implements CasesInterface {
           `( cs_div.CS_DIV_ACMS = '${divisionCode}' AND cs.CASE_ID IN ('${caseNumbers.join("', '")}')) `,
         );
       });
-      const params = `(${divisionAndCaseNumberParams.join(' OR ')})`;
-      parametersList.push(params);
+      conditions.push(`(${divisionAndCaseNumberParams.join(' OR ')})`);
     }
 
     if (predicate.divisionCodes) {
       predicate.divisionCodes.forEach((divisionCode, idx) => {
-        replacementVariables.push({
+        params.push({
           name: `divisionCode${idx}`,
           type: mssql.VarChar,
           value: divisionCode,
@@ -314,7 +313,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         .map((_, idx) => `@divisionCode${idx}`)
         .join(', ');
       if (divisionCodeVars.length) {
-        parametersList.push(`cs_div.CS_DIV_ACMS IN (${divisionCodeVars})`);
+        conditions.push(`cs_div.CS_DIV_ACMS IN (${divisionCodeVars})`);
       }
     }
     const chapters: string[] = [];
@@ -326,10 +325,10 @@ export default class CasesDxtrGateway implements CasesInterface {
       chapters.push('15');
     }
 
-    parametersList.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
+    conditions.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
     const CASE_SEARCH_QUERY_PREDICATE =
-      parametersList.length > 0 ? 'WHERE ' + parametersList.join(' AND ') : '';
+      conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
 
     const CASE_SEARCH_QUERY = [
       CASE_SEARCH_SELECT,
@@ -341,7 +340,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       context,
       context.config.dxtrDbConfig,
       CASE_SEARCH_QUERY,
-      replacementVariables,
+      params,
     );
 
     if (queryResult.success) {
