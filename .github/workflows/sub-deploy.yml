@@ -27,7 +27,7 @@ on:
       environmentHash:
         required: true
         type: string
-      execVnetDeploy:
+      deployVnet:
         required: true
         type: string
       slotName:
@@ -57,7 +57,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
-      execVnetDeploy: ${{ inputs.execVnetDeploy }}
+      deployVnet: ${{ inputs.deployVnet }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret

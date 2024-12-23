@@ -137,7 +137,7 @@ jobs:
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
       webAppName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
+      deployVnet: ${{ needs.setup.outputs.deployVnet }}
       slotName: ${{ needs.setup.outputs.slotName }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}

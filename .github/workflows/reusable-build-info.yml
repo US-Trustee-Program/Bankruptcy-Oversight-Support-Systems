@@ -34,9 +34,9 @@ on:
       slotName:
         description: ""
         value: ${{ jobs.build-info.outputs.slotName }}
-      execVnetDeploy:
+      deployVnet:
         description: ""
-        value: ${{ jobs.build-info.outputs.execVnetDeploy }}
+        value: ${{ jobs.build-info.outputs.deployVnet }}
       deployBicep:
         description: ""
         value: ${{ jobs.build-info.outputs.deployBicep }}
@@ -63,7 +63,7 @@ jobs:
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ steps.build-info.outputs.slotName }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-      execVnetDeploy: ${{ steps.check-deployment.outputs.execVnetDeploy }}
+      deployVnet: ${{ steps.check-deployment.outputs.deployVnet }}
       initialDeployment: ${{ steps.check-deployment.outputs.initialDeployment }}
     steps:
       - name: Checkout
@@ -155,9 +155,9 @@ jobs:
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
           echo "Initial Deployment: ${initialDeployment}"
 
-          execVnetDeploy=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "vnet-${{ steps.build-info.outputs.stackName }}" --is-initial-deployment "${initialDeployment}")
-          echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
-          echo "Deploy Vnet: ${execVnetDeploy}"
+          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "vnet-${{ steps.build-info.outputs.stackName }}" --is-initial-deployment "${initialDeployment}")
+          echo "deployVnet=${deployVnet}" >> $GITHUB_OUTPUT
+          echo "Deploy Vnet: ${deployVnet}"
 
       - name: Check Bicep Deployment
         id: check-bicep
