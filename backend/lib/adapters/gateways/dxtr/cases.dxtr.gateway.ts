@@ -117,8 +117,8 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
 
     const CASE_SUGGESTION_QUERY = `SELECT
-        cs.CS_DIV as courtDivisionCode,
-        cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+        cs_div.CS_DIV_ACMS as courtDivisionCode,
+        cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CS_SHORT_TITLE as caseTitle,
         FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
         cs.CS_CASEID as dxtrId,
@@ -179,7 +179,7 @@ export default class CasesDxtrGateway implements CasesInterface {
           AND C1.CS_CHAPTER = @chapter
           AND C1.CS_DATE_FILED >= @datefiled
           AND (C1.COURT_ID != @originalCourt
-              OR C1.CS_DIV != @originalDivision)
+              OR C1.CS_DIV_ACMS != @originalDivision)
         ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;
@@ -213,8 +213,8 @@ export default class CasesDxtrGateway implements CasesInterface {
   ): Promise<CaseBasics[]> {
     const CASE_SEARCH_SELECT = `
       SELECT
-      cs.CS_DIV as courtDivisionCode,
-      cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+      cs_div.CS_DIV_ACMS as courtDivisionCode,
+      cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
       cs.CS_SHORT_TITLE as caseTitle,
       FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
       cs.CS_CASEID as dxtrId,
@@ -294,7 +294,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
       divisionsAndCaseNumbers.forEach((caseNumbers, divisionCode) => {
         divisionAndCaseNumberParams.push(
-          `( cs.CS_DIV = '${divisionCode}' AND cs.CASE_ID IN ('${caseNumbers.join("', '")}')) `,
+          `( cs_div.CS_DIV_ACMS = '${divisionCode}' AND cs.CASE_ID IN ('${caseNumbers.join("', '")}')) `,
         );
       });
       const params = `(${divisionAndCaseNumberParams.join(' OR ')})`;
@@ -313,7 +313,7 @@ export default class CasesDxtrGateway implements CasesInterface {
         .map((_, idx) => `@divisionCode${idx}`)
         .join(', ');
       if (divisionCodeVars.length) {
-        parametersList.push(`cs.CS_DIV IN (${divisionCodeVars})`);
+        parametersList.push(`cs_div.CS_DIV_ACMS IN (${divisionCodeVars})`);
       }
     }
     const chapters: string[] = [];
@@ -393,8 +393,8 @@ export default class CasesDxtrGateway implements CasesInterface {
     });
 
     const CASE_DETAIL_QUERY = `SELECT
-        cs.CS_DIV as courtDivisionCode,
-        cs.CS_DIV+'-'+cs.CASE_ID as caseId,
+        cs_div.CS_DIV_ACMS as courtDivisionCode,
+        cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CS_SHORT_TITLE as caseTitle,
         FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
         cs.CS_CASEID as dxtrId,
@@ -425,9 +425,10 @@ export default class CasesDxtrGateway implements CasesInterface {
           substring(REC,108,2) AS petitionCode,
           substring(REC,34,2) AS debtorTypeCode
           FROM [dbo].[AO_CS] AS C1
+          JOIN [dbo].[AO_CS_DIV] AS C2 ON C1.CS_DIV = C2.CS_DIV
           JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
           WHERE C1.CASE_ID = @dxtrCaseId
-          AND C1.CS_DIV = @courtDiv
+          AND C2.CS_DIV_ACMS = @courtDiv
         ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
         ORDER BY
           cs.CS_DATE_FILED DESC`;

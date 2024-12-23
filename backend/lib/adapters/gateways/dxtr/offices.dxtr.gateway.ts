@@ -84,7 +84,7 @@ export default class OfficesDxtrGateway implements OfficesGateway {
   async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const input: DbTableFieldSpec[] = [];
     const query = `
-    SELECT a.[CS_DIV] AS courtDivisionCode
+    SELECT a.[CS_DIV_ACMS] AS courtDivisionCode
       ,a.[GRP_DES] AS groupDesignator
       ,a.[COURT_ID] AS courtId
       ,a.[OFFICE_CODE] AS officeCode
