@@ -24,7 +24,7 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: inputs.hashId != '' || github.event.action == 'closed'
+    if: inputs.hashId != '' || github.event_name == 'pull_request' || github.event.ref_type == 'branch'
     environment: "Develop"
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
@@ -37,9 +37,14 @@ jobs:
 
       - name: Genereate branch hash id
         id: hash
-        if: github.event.action == 'closed'
         run: |
-          hash=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
+          branchRef="${{github.event.ref}}"
+
+          if [ ${{ github.event.action == 'closed'}} ]; then
+            branchRef="${{ github.event.pull_request.head.ref }}"
+          fi
+
+          hash=$(echo -n "${branchRef}"" | openssl sha256 | awk '{print $2}')
           shortHash="${hash:0:6}"
           echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
