@@ -8,6 +8,7 @@ export interface ModalProps {
   modalId: string;
   className?: string;
   heading: React.ReactNode;
+  headingTooltip?: string;
   content: React.ReactNode;
   forceAction?: boolean;
   actionButtonGroup: SubmitCancelBtnProps;
@@ -21,6 +22,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
   const { isVisible, show, hide } = useComponent();
+  const headingTooltip = props.headingTooltip ?? undefined;
   const [openModalButtonRef, setOpenModalButtonRef] =
     useState<React.RefObject<OpenModalButtonRef> | null>(null);
   const [firstElement, setFirstElement] = useState<HTMLElement | null>(null);
@@ -213,12 +215,17 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           {...data}
           ref={modalShellRef}
           data-testid={`modal-content-${props.modalId}`}
+          role="dialog"
           aria-modal="true"
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
               {props.heading && (
-                <h2 className="usa-modal__heading" id={props.modalId + '-heading'}>
+                <h2
+                  className="usa-modal__heading"
+                  id={props.modalId + '-heading'}
+                  title={headingTooltip ?? undefined}
+                >
                   {props.heading}
                 </h2>
               )}

@@ -45,6 +45,7 @@ export type ShowOptionParams = {
 type ShowOptions = {
   status: OrderStatus;
   heading: string;
+  title?: string;
 };
 
 export type ConfirmationModalImperative = ModalRefType & {
@@ -73,6 +74,7 @@ function ConsolidationOrderModalComponent(
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
     heading: '',
+    title: '',
   });
   const [reason] = useState<string>('');
 
@@ -137,6 +139,7 @@ function ConsolidationOrderModalComponent(
       setOptions({
         status: options.status,
         heading: 'Verify Case Consolidation',
+        title: 'Verify Case Consolidation.',
       });
     } else if (options.status === 'rejected') {
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
@@ -265,6 +268,7 @@ function ConsolidationOrderModalComponent(
       modalId={id}
       className={`confirm-modal consolidation-order-modal`}
       heading={`${options.heading}`}
+      headingTooltip={options.title}
       data-testid={`confirm-modal-${id}`}
       onClose={() => {
         // reset();
