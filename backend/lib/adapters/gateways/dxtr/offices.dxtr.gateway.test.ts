@@ -1,4 +1,3 @@
-import { CamsError } from '../../../common-errors/cams-error';
 import OfficesDxtrGateway from './offices.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -15,15 +14,9 @@ describe('offices gateway tests', () => {
       expect(office).toEqual('Boston');
     });
 
-    test('should throw an error for an invalid ID', () => {
+    test('should return a placeholder name for an invalid ID', () => {
       const gateway = new OfficesDxtrGateway();
-      const expectedException = new CamsError('OFFICES-GATEWAY', {
-        message: 'Cannot find office by ID',
-        data: { id: 'AAA' },
-      });
-      expect(() => {
-        gateway.getOfficeName('AAA');
-      }).toThrow(expectedException);
+      expect(gateway.getOfficeName('AAA')).toEqual('UNKNOWN_AAA');
     });
   });
 

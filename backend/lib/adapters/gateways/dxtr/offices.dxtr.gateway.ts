@@ -12,7 +12,18 @@ const MODULE_NAME = 'OFFICES-GATEWAY';
 
 // Remove invalid divisions at the gateway rather than forcing the
 // more important use case code to include logic to remove them.
-const INVALID_DIVISION_CODES = ['070', '990', '991', '992', '993', '994', '995', '996', '999'];
+const INVALID_DIVISION_CODES = [
+  '070',
+  '314',
+  '990',
+  '991',
+  '992',
+  '993',
+  '994',
+  '995',
+  '996',
+  '999',
+];
 const INVALID_DIVISION_CODES_SQL = INVALID_DIVISION_CODES.map((code) => "'" + code + "'").join(',');
 
 type DxtrFlatOfficeDetails = {
@@ -98,7 +109,7 @@ export default class OfficesDxtrGateway implements OfficesGateway {
     JOIN [dbo].[AO_COURT] c on a.COURT_ID = c.COURT_ID
     JOIN [dbo].[AO_GRP_DES] d on a.GRP_DES = d.GRP_DES
     JOIN [dbo].[AO_REGION] r on d.REGION_ID = r.REGION_ID
-    WHERE a.[CS_DIV] not in (${INVALID_DIVISION_CODES_SQL})
+    WHERE a.[CS_DIV_ACMS] not in (${INVALID_DIVISION_CODES_SQL})
     ORDER BY a.GRP_DES, a.OFFICE_CODE`;
 
     const queryResult: QueryResults = await executeQuery(

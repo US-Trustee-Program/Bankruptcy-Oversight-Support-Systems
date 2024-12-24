@@ -10,7 +10,6 @@ import {
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import { CamsError } from '../../common-errors/cams-error';
 import AttorneysList from '../attorneys';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
@@ -130,12 +129,9 @@ export function buildOfficeCode(regionId: string, courtDivisionCode: string): st
   return `USTP_CAMS_Region_${formattedRegionId}_Office_${formattedOfficeName}`;
 }
 
-export function getOfficeName(id: string): string {
-  if (USTP_OFFICE_NAME_MAP.has(id)) return USTP_OFFICE_NAME_MAP.get(id);
-  throw new CamsError(MODULE_NAME, {
-    message: 'Cannot find office by ID',
-    data: { id },
-  });
+export function getOfficeName(divisionCode: string): string {
+  if (USTP_OFFICE_NAME_MAP.has(divisionCode)) return USTP_OFFICE_NAME_MAP.get(divisionCode);
+  return 'UNKNOWN_' + divisionCode;
 }
 
 function cleanOfficeName(name: string) {
