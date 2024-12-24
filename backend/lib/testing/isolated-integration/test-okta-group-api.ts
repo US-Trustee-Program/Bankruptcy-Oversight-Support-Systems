@@ -1,15 +1,18 @@
+import * as dotenv from 'dotenv';
 import { InvocationContext } from '@azure/functions';
 import { LoggerImpl } from '../../adapters/services/logger.service';
-import applicationContextCreator from '../../../function-apps/azure/application-context-creator';
+import ContextCreator from '../../../function-apps/azure/application-context-creator';
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { getUserGroupGatewayConfig } from '../../configs/user-groups-gateway-configuration';
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 
+dotenv.config({ path: '../../../.env' });
+
 const MODULE_NAME = 'ITEST';
 
 async function testOktaGroupApi() {
-  const context = await applicationContextCreator.getApplicationContext({
+  const context = await ContextCreator.getApplicationContext({
     invocationContext: new InvocationContext(),
     logger: new LoggerImpl('integration-test'),
   });
