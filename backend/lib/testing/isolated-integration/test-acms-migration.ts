@@ -1,8 +1,8 @@
+import * as dotenv from 'dotenv';
 import migrateConsolidation from '../../../function-apps/migration/queueTrigger/migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../../function-apps/azure/testing-helpers';
-import * as dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ path: '../../../.env' });
 
 const MODULE_NAME = 'ITEST';
 
