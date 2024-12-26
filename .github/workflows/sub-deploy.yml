@@ -21,7 +21,7 @@ on:
       migrationFunctionName:
         required: true
         type: string
-      webAppName:
+      webappName:
         required: true
         type: string
       environmentHash:
@@ -81,7 +81,7 @@ jobs:
     needs: [deploy-infra]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
-      webAppName: ${{ inputs.webappName }}
+      webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       migrationFunctionName: ${{ inputs.migrationFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
