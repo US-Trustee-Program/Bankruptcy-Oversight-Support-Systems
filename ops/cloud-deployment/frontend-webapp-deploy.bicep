@@ -102,7 +102,7 @@ param ustpIssueCollectorHash string = ''
 @secure()
 param camsReactSelectHash string
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 
