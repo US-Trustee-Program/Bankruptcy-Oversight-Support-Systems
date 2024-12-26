@@ -125,7 +125,7 @@ jobs:
         unit-test-backend,
         unit-test-common,
       ]
-    if:
+    if: |
       ((github.ref == 'refs/heads/main') || (github.ref == 'refs/heads/dependency-updates-auto') ||
       (inputs.deployBranch == 'true'))
     with:
@@ -135,7 +135,7 @@ jobs:
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
       slotName: ${{ needs.setup.outputs.slotName }}
@@ -153,7 +153,7 @@ jobs:
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}

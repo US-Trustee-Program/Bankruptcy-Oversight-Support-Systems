@@ -271,7 +271,12 @@ jobs:
           az functionapp stop -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --slot ${{ inputs.slotName }}
 
   endpoint-test-application-post-swap:
-    needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+    needs:
+      [
+        swap-nodeapi-deployment-slot,
+        swap-webapp-deployment-slot,
+        swap-migration-app-deployment-slot,
+      ]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
