@@ -62,6 +62,22 @@ jobs:
       deployBicep: ${{ inputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
 
+  build-frontend-deployment-artifact:
+    name: Build Frontend for deployment
+    uses: ./.github/workflows/reusable-build-frontend.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ inputs.webappName }}
+      environment: ${{ inputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      isDeployment: true
+
   deploy-db:
     name: ComosDb
     uses: ./.github/workflows/reusable-database-deploy.yml

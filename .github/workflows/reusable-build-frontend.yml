@@ -34,7 +34,7 @@ on:
         required: true
         type: string
 jobs:
-  frontend:
+  build-frontend:
     defaults:
       run:
         working-directory: user-interface

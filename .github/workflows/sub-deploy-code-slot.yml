@@ -35,25 +35,8 @@ on:
         type: string
 
 jobs:
-  build-frontend-deployment:
-    name: Build Frontend deployment
-    uses: ./.github/workflows/reusable-build-frontend.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      nodeVersion: ${{ vars.NODE_VERSION }}
-      camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
-      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
-      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
-      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
-      webappName: ${{ inputs.webappName }}
-      environment: ${{ inputs.ghaEnvironment }}
-      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      isDeployment: true
-
   deploy-code:
     if: ${{ inputs.initialDeployment == 'true' }}
-    needs: [build-frontend-deployment]
     name: Slot Code Deployment
     uses: ./.github/workflows/sub-deploy-code.yml
     with:
@@ -67,7 +50,6 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   deploy-webapp-slot:
-    needs: [build-frontend-deployment]
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
