@@ -63,6 +63,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   build-frontend-deployment-artifact:
+    needs: [deploy-infra]
     name: Build Frontend for deployment
     uses: ./.github/workflows/reusable-build-frontend.yml
     secrets: inherit # pragma: allowlist secret
