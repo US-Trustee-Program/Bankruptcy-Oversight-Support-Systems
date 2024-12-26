@@ -12,6 +12,8 @@
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+#TODO: Remove hostSuffix reference from this script is it pointless
+
 slot_name=''
 expected_git_sha=''
 isLocalRun=''
@@ -37,6 +39,11 @@ while [[ $# -gt 0 ]]; do
     shift 2
     ;;
 
+  --hostSuffix)
+    host_suffix="${2}"
+    shift 2
+    ;;
+
   --gitSha)
     expected_git_sha="${2}"
     shift 2
@@ -46,6 +53,7 @@ while [[ $# -gt 0 ]]; do
     isLocalRun="true"
     api_name=""
     webapp_name=""
+    host_suffix=""
     shift
     ;;
   *)
@@ -53,6 +61,8 @@ while [[ $# -gt 0 ]]; do
     ;;
   esac
 done
+
+echo "REMOVE HOST SUFFIX $host_suffix"
 
 webStatusCode=""
 apiStatusCode=""

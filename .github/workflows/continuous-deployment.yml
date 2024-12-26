@@ -111,6 +111,7 @@ jobs:
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
   deploy:
     name: Cloud Resource Deployment
