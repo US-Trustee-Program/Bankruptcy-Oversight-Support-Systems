@@ -102,7 +102,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
-      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites.us
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
