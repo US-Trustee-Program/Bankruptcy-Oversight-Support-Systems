@@ -199,7 +199,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
     >
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
         className="usa-modal-overlay"
         aria-controls={props.modalId}
