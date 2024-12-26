@@ -66,25 +66,6 @@ var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/
 @description('The prefered minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
 param preferedMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
 
-resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
-  location: location
-  name: planName
-  sku: planTypeToSkuMap[planType]
-  kind: 'app,linux'
-  properties: {
-    perSiteScaling: false
-    elasticScaleEnabled: false
-    maximumElasticWorkerCount: 1
-    isSpot: false
-    reserved: hostOSType
-    isXenon: false
-    hyperV: false
-    targetWorkerCount: 0
-    targetWorkerSizeId: 0
-    zoneRedundant: false
-  }
-}
-
 @description('Flag to enable Vercode access')
 param allowVeracodeScan bool = false
 
@@ -129,66 +110,30 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
-module appInsights './lib/app-insights/app-insights.bicep' =
-  if (createApplicationInsights) {
-    name: '${webappName}-application-insights-module'
-    params: {
-      location: location
-      kind: 'web'
-      appInsightsName: 'appi-${webappName}'
-      applicationType: 'web'
-      workspaceResourceId: analyticsWorkspaceId
-    }
+
+resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
+  location: location
+  name: planName
+  sku: planTypeToSkuMap[planType]
+  kind: 'app,linux'
+  properties: {
+    perSiteScaling: false
+    elasticScaleEnabled: false
+    maximumElasticWorkerCount: 1
+    isSpot: false
+    reserved: hostOSType
+    isXenon: false
+    hyperV: false
+    targetWorkerCount: 0
+    targetWorkerSizeId: 0
+    zoneRedundant: false
   }
-module healthAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
-  if (createAlerts) {
-    name: '${webappName}-healthcheck-alert-rule-module'
-    params: {
-      alertName: '${webappName}-health-check-alert'
-      appId: webapp.id
-      timeAggregation: 'Average'
-      operator: 'LessThan'
-      targetResourceType: 'Microsoft.Web/sites'
-      metricName: 'HealthCheckStatus'
-      severity: 2
-      threshold: 100
-      actionGroupName: actionGroupName
-      actionGroupResourceGroupName: actionGroupResourceGroupName
-    }
-  }
-module httpAlertRule './lib/monitoring-alerts/metrics-alert-rule.bicep' =
-  if (createAlerts) {
-    name: '${webappName}-http-error-alert-rule-module'
-    params: {
-      alertName: '${webappName}-http-error-alert'
-      appId: webapp.id
-      timeAggregation: 'Total'
-      operator: 'GreaterThanOrEqual'
-      targetResourceType: 'Microsoft.Web/sites'
-      metricName: 'Http5xx'
-      severity: 1
-      threshold: 1
-      actionGroupName: actionGroupName
-      actionGroupResourceGroupName: actionGroupResourceGroupName
-    }
-  }
-module diagnosticSettings './lib/app-insights/diagnostics-settings-webapp.bicep' =
-  if (createApplicationInsights) {
-  name: '${webappName}-diagnostic-settings-module'
-  params: {
-    webappName: webappName
-    workspaceResourceId: analyticsWorkspaceId
-  }
-  dependsOn: [
-    appInsights
-    webapp
-  ]
 }
 
 /*
   Create webapp
 */
-resource webapp 'Microsoft.Web/sites@2022-03-01' = {
+resource webapp 'Microsoft.Web/sites@2023-12-01' = {
   name: webappName
   location: location
   kind: 'app'
@@ -199,6 +144,22 @@ resource webapp 'Microsoft.Web/sites@2022-03-01' = {
     virtualNetworkSubnetId: webappSubnetId
   }
 }
+
+module webappInsights 'lib/app-insights/webapp-insights.bicep' = {
+  name: '${webappName}-appi-settings-module'
+  params: {
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: actionGroupResourceGroupName
+    analyticsWorkspaceId: analyticsWorkspaceId
+    createAlerts: createAlerts
+    createApplicationInsights: createApplicationInsights
+    webappName: webappName
+  }
+  dependsOn: [
+    webapp
+  ]
+}
+
 var applicationSettings = concat(
   [
     {
@@ -230,7 +191,7 @@ var applicationSettings = concat(
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-          value: appInsights.outputs.connectionString
+          value: webappInsights.outputs.connectionString
         }
       ]
     : []
@@ -258,7 +219,7 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
-resource webappConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+resource webappConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: webapp
   name: 'web'
   properties: union(

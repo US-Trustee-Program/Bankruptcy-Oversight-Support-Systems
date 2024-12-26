@@ -210,7 +210,7 @@ var userAssignedIdentities = union(
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 
-resource apiFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
+resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: apiFunctionName
   location: location
   kind: 'functionapp,linux'
@@ -232,7 +232,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
 }
 
 
-resource migrationFunctionApp 'Microsoft.Web/sites@2022-09-01' = {
+resource migrationFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: migrationFunctionName
   location: location
   kind: 'functionapp,linux'
@@ -492,7 +492,7 @@ var middlewareIpSecurityRestrictionsRules = [
 
 var migrationIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
 
-resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: apiFunctionApp
   name: 'web'
   properties: {
@@ -524,7 +524,7 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
   }
 }
 
-resource migrationFunctionConfig 'Microsoft.Web/sites/config@2022-09-01' = {
+resource migrationFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: migrationFunctionApp
   name: 'web'
   properties: {
