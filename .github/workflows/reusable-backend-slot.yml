@@ -3,7 +3,7 @@ name: Azure Deployment - Backend Slot Creation
 on:
   workflow_call:
     inputs:
-      webAppName:
+      webappName:
         required: true
         type: string
       apiFunctionName:
