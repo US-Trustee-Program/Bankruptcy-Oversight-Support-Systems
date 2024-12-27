@@ -12,8 +12,8 @@
     "reload-orders": "npm run delete-orders; npm run sync-orders",
     "test-data:sql": "mkdir -p data; tsx --env-file=.env test-data/index.ts sql > data/test-data.sql",
     "test-data:json": "mkdir -p data; tsx --env-file=.env test-data/index.ts json > data/test-data.json",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint": "cd .. && eslint dev-tools",
+    "lint:fix": "cd .. && eslint dev-tools --fix"
   },
   "author": "",
   "license": "ISC",
