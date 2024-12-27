@@ -1,33 +1,40 @@
 repos:
-  -   repo: https://github.com/pre-commit/pre-commit-hooks
-      rev: v5.0.0
-      hooks:
-        -   id: trailing-whitespace
-        -   id: end-of-file-fixer
-            exclude: '^.*/package-lock.json$'
-        -   id: check-yaml
-        -   id: check-added-large-files
-  -   repo: https://github.com/pre-commit/mirrors-eslint
-      rev: 'v9.17.0'  # Use the sha / tag you want to point at
-      hooks:
-        - id: eslint
-          files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
-          types: [ file ]
-          additional_dependencies:
-          -   eslint@8.57.0
-          -   eslint-config-prettier
-          -   eslint-plugin-prettier
-          -   eslint-plugin-react
-          -   typescript
-          -   '@typescript-eslint/eslint-plugin'
-          -   '@typescript-eslint/parser'
-          -   'eslint-plugin-jsx-a11y'
-  -   repo: https://github.com/Yelp/detect-secrets
-      rev: v1.5.0
-      hooks:
-      -   id: detect-secrets
-          args: [ '--baseline', '.secrets.baseline' ]
-          exclude: package.lock.json
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: "^.*/package-lock.json$"
+      - id: check-yaml
+      - id: check-added-large-files
+  # - repo: local
+  #   hooks:
+  #     - id: local-biome-check
+  #       name: local-biome-check
+  #       entry: ./biome-precommit.sh
+  #       language: script
+
+  # -   repo: https://github.com/pre-commit/mirrors-eslint
+  #     rev: 'v9.17.0'  # Use the sha / tag you want to point at
+  #     hooks:
+  #       - id: eslint
+  #         files: \.[jt]sx?$  # *.js, *.jsx, *.ts and *.tsx
+  #         types: [ file ]
+  #         additional_dependencies:
+  #         -   eslint@8.57.0
+  #         -   eslint-config-prettier
+  #         -   eslint-plugin-prettier
+  #         -   eslint-plugin-react
+  #         -   typescript
+  #         -   '@typescript-eslint/eslint-plugin'
+  #         -   '@typescript-eslint/parser'
+  #         -   'eslint-plugin-jsx-a11y'
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: package.lock.json
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.30.0
     hooks:
@@ -36,4 +43,4 @@ repos:
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:
-    -   id: shellcheck
+      - id: shellcheck
