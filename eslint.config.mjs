@@ -1,5 +1,4 @@
 import commonEslintConfig from './common/eslint.config.mjs';
-import tseslint from 'typescript-eslint';
 import backendEslintConfig from './backend/eslint.config.mjs';
 import frontendEslintConfig from './user-interface/eslint.config.mjs';
 import e2eEslintConfig from './test/e2e/eslint.config.mjs';
