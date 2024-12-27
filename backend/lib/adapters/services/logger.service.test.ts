@@ -58,14 +58,14 @@ describe('Basic logger service tests', () => {
     );
   });
 
-  test('Test sanitize function to Fix CWE 117 Improper Output Neutralization for Logs', async () => {
+  test('should remove newlines from logged strings', async () => {
     logger.info('FOO-MODULE_NAME', '\r\ntest\r\nmessage\r\n');
     expect(mockLog).toHaveBeenCalledWith(
       `[INFO] [FOO-MODULE_NAME] [INVOCATION ${invocationId}]  test message`,
     );
   });
 
-  test('Test disallowed properties to ensure PII is not logged', async () => {
+  test('should not log properties similar to disallowed properties', async () => {
     logger.info('FOO-MODULE_NAME', 'test message', {
       sSN: '111-11-1111',
       tAxid: '11-1111111',
