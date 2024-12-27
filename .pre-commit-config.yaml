@@ -19,6 +19,7 @@ repos:
           -   eslint-plugin-prettier
           -   eslint-plugin-react
           -   typescript
+          -   typescript-eslint
           -   '@typescript-eslint/eslint-plugin'
           -   '@typescript-eslint/parser'
           -   eslint-plugin-jsx-a11y
