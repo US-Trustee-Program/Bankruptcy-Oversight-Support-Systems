@@ -1,0 +1,101 @@
+name: Build Frontend
+
+on:
+  workflow_call:
+    inputs:
+      nodeVersion:
+        required: true
+        type: string
+      isDeployment:
+        default: false
+        type: boolean
+      camsServerHostname:
+        required: true
+        type: string
+      camsServerPort:
+        required: true
+        type: string
+      camsServerProtocol:
+        required: true
+        type: string
+      camsBasePath:
+        required: true
+        type: string
+      webappName:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      launchDarklyEnvironment:
+        required: true
+        type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
+jobs:
+  build-frontend:
+    defaults:
+      run:
+        working-directory: user-interface
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          cache: "npm"
+          cache-dependency-path: user-interface/package-lock.json
+
+      - name: Execute Build
+        run: |
+          pushd ../common
+          npm ci
+          popd
+
+          appiString=$(az monitor app-insights component show --app appi-${{ inputs.webappName }} -g  ${{ steps.rgApp.outputs.out }} --query "connectionString" -o tsv || true)
+
+          npm ci
+          export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
+          export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
+          export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
+          export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
+          export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${appiString}"
+          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
+          export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
+          export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
+          export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
+          export CAMS_INFO_SHA=${{ github.sha }}
+          npm run build --if-present
+
+      - name: Package
+        if: inputs.isDeployment
+        run: |
+          pushd ./build
+          zip -r ./${{ inputs.webappName }}.zip .
+          popd
+          mkdir ./artifacts
+          mv ./build/${{ inputs.webappName }}.zip ./artifacts/
+
+      - name: Upload Frontend Artifact
+        if: inputs.isDeployment
+        uses: actions/upload-artifact@v4.4.0
+        with:
+          name: ${{ inputs.webappName }}-build
+          path: user-interface/artifacts/
+          if-no-files-found: error

@@ -75,7 +75,7 @@ jobs:
           fi
 
           echo "Seeding E2E CosmosDB..."
-          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiFunctionName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
+          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiFunctionName }}.azurewebsites.us/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
 
       - name: Install Node dependencies
         working-directory: test/e2e
@@ -89,7 +89,7 @@ jobs:
         run: |
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4.4.0
