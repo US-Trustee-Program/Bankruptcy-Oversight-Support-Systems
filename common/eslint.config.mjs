@@ -1,6 +1,9 @@
-import tseslint from 'typescript-eslint';
 import jest from 'eslint-plugin-jest';
 import noJestEslintConfig from './no-jest.eslint.config.mjs';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+const tseslint = require('typescript-eslint');
 
 const commonEslintConfig = tseslint.config(
   noJestEslintConfig,
