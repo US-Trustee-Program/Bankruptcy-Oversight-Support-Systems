@@ -11,7 +11,7 @@ module.exports = {
     'dist/',
     '<rootDir>/node_modules/',
     '.dependency-cruiser.js',
-    'jest.config.js',
+    'jest.config.cjs',
     '.*test.[jt]s',
     '.*.d.ts',
     '.*mock.*',
