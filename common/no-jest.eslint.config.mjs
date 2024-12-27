@@ -3,11 +3,11 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-const tseslint = require('typescript-eslint');
+const tsEslint = require('typescript-eslint');
 
-const noJestEslintConfig = tseslint.config(
+const noJestEslintConfig = tsEslint.config(
   eslint.configs.recommended,
-  tseslint.configs.recommended,
+  tsEslint.configs.recommended,
   {
     ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
   },
