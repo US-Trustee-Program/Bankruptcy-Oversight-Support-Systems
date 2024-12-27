@@ -15,10 +15,21 @@
     "build:common": "pushd common && npm run build && popd",
     "clean-and-build": "npm run clean:all && npm run ci:all && npm run build",
     "lint:ci": "npm run lint:common && npm run lint:backend && npm run lint:ui && npm run lint:dev-tools && npm run lint:e2e",
+    "lint": "eslint . -c eslint.config.mjs",
     "lint:common": "cd common && npm run lint && cd ..",
     "lint:backend": "cd backend && npm run lint && cd ..",
     "lint:ui": "cd user-interface && npm run lint && cd ..",
     "lint:dev-tools": "cd dev-tools && npm run lint && cd ..",
     "lint:e2e": "cd test/e2e && npm run lint && cd ../.."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jest": "^28.10.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.2"
   }
 }

@@ -1,30 +1,6 @@
-// @ts-check
-
-import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+import commonEslintConfig from '../../common/eslint.config.mjs';
 
-export default tseslint.config(
-  eslint.configs.recommended,
-  tseslint.configs.recommended,
-  {
-    ignores: ['**/node_modules/**/*'],
-  },
-  {
-    rules: {
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          args: 'all',
-          argsIgnorePattern: '^_',
-          caughtErrors: 'all',
-          caughtErrorsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
-    },
-  },
-  eslintPluginPrettierRecommended,
-);
+const e2eEslintConfig = tseslint.config(commonEslintConfig);
+
+export default e2eEslintConfig;
