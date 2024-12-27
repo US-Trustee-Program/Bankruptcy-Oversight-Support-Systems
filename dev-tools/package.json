@@ -12,12 +12,12 @@
     "reload-orders": "npm run delete-orders; npm run sync-orders",
     "test-data:sql": "mkdir -p data; tsx --env-file=.env test-data/index.ts sql > data/test-data.sql",
     "test-data:json": "mkdir -p data; tsx --env-file=.env test-data/index.ts json > data/test-data.json",
-    "biome-lint": "npx biome lint .",
-    "biome-lint:write": "npx biome lint --write .",
-    "biome-format": "npx biome format .",
-    "biome-format:write": "npx biome format --write .",
-    "biome-check": "npx biome check .",
-    "biome-check:write": "npx biome check --write ."
+    "biome-lint": "cd ../ && npx biome lint ./dev-tools --config-path ./dev-tools/biome.json",
+    "biome-lint:write": "cd ../ && npx biome lint --write ./dev-tools --config-path ./dev-tools/biome.json",
+    "biome-format": "cd ../ && npx biome format ./dev-tools --config-path ./dev-tools/biome.json",
+    "biome-format:write": "cd ../ && npx biome format --write ./dev-tools --config-path ./dev-tools/biome.json",
+    "biome-check": "cd ../ && npx biome check ./dev-tools --config-path ./dev-tools/biome.json",
+    "biome-check:write": "cd ../ && npx biome check --write ./dev-tools --config-path ./dev-tools/biome.json"
   },
   "author": "",
   "license": "ISC",

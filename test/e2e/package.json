@@ -6,22 +6,20 @@
   "scripts": {
     "clean": "rm -rf node_modules & rm -rf test-results & rm -rf playwright-report",
     "ui": "playwright test --ui",
-    "headless": "playwright test"
+    "headless": "playwright test",
+    "biome-lint": "cd ../../ && npx biome lint ./test/e2e --config-path ./test/e2e/biome.json",
+    "biome-lint:write": "cd ../../ && npx biome lint --write ./test/e2e --config-path ./test/e2e/biome.json",
+    "biome-format": "cd ../../ && npx biome format ./test/e2e --config-path ./test/e2e/biome.json",
+    "biome-format:write": "cd ../../ && npx biome format --write ./test/e2e --config-path ./test/e2e/biome.json",
+    "biome-check": "cd ../../ && npx biome check ./test/e2e --config-path ./test/e2e/biome.json",
+    "biome-check:write": "cd ../../ && npx biome check --write ./test/e2e --config-path ./test/e2e/biome.json"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.49.1",
     "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
     "dotenv": "^16.4.7",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-n": "^16.6.2",
-    "eslint-plugin-prettier": "^5.2.1",
-    "eslint-plugin-promise": "^6.6.0",
-    "prettier": "^3.4.2",
     "typescript": "^5.7.2"
   },
   "dependencies": {

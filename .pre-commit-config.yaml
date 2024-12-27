@@ -7,12 +7,12 @@ repos:
         exclude: "^.*/package-lock.json$"
       - id: check-yaml
       - id: check-added-large-files
-  # - repo: local
-  #   hooks:
-  #     - id: local-biome-check
-  #       name: local-biome-check
-  #       entry: ./biome-precommit.sh
-  #       language: script
+  - repo: local
+    hooks:
+      - id: local-biome-check
+        name: local-biome-check
+        entry: ./ops/scripts/utility/biome-precommit.sh
+        language: script
 
   # -   repo: https://github.com/pre-commit/mirrors-eslint
   #     rev: 'v9.17.0'  # Use the sha / tag you want to point at
