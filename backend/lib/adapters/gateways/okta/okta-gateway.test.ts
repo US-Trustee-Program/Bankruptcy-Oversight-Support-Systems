@@ -100,7 +100,7 @@ describe('Okta gateway tests', () => {
     });
   });
 
-  test('Should throw UnauthorizedError if not given valid input ', async () => {
+  test('should throw UnauthorizedError if not given valid input', async () => {
     const token = 'testToken';
     jest.spyOn(Verifier, 'verifyAccessToken').mockRejectedValue(new Error('Test error'));
     await expect(gateway.getUser(token)).rejects.toThrow('Unauthorized');

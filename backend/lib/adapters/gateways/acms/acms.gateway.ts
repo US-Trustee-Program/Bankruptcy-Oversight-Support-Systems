@@ -38,7 +38,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       AND CONSOLIDATION_TYPE != ' '`;
 
     // Valid ACMS chapters: 09, 11, 12, 13, 15, 7A, 7N, AC
-    // 'AC' is the predecesor to chapter 15. We are not importing these old cases into CAMS.
+    // 'AC' is the predecessor to chapter 15. We are not importing these old cases into CAMS.
     // '7A' and '7N' are treated inclusively as chapter 7 cases when importing into CAMS.
     // Leading zero padding is added for chapter 9.
 

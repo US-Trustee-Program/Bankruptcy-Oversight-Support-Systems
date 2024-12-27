@@ -46,6 +46,7 @@ describe('Name helper tests', () => {
     ).toEqual('First Middle Last Jr.');
   });
 
+  /* eslint-disable-next-line jest/no-identical-title */
   test('should get first, middle name, last name, and generation', async () => {
     expect(
       getFullName(

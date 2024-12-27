@@ -37,7 +37,11 @@ describe('healthcheck db tests', () => {
 
     expect(result.cosmosDbWriteStatus).toEqual(true);
   });
-  test('should handle no documents to delete', async () => {});
+
+  /* eslint-disable-next-line jest/expect-expect */
+  test('should handle no documents to delete', async () => {
+    // TODO: test this
+  });
 
   describe('error handling', () => {
     const error = new Error('some error');
