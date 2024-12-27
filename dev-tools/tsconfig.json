@@ -15,9 +15,5 @@
     "esm": true
   },
   "references": [{ "path": "../common" }],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "data"
-  ],
+  "exclude": ["node_modules", "dist", "data"]
 }

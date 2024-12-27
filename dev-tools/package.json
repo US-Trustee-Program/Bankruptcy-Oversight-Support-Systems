@@ -12,8 +12,12 @@
     "reload-orders": "npm run delete-orders; npm run sync-orders",
     "test-data:sql": "mkdir -p data; tsx --env-file=.env test-data/index.ts sql > data/test-data.sql",
     "test-data:json": "mkdir -p data; tsx --env-file=.env test-data/index.ts json > data/test-data.json",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "biome-lint": "npx biome lint .",
+    "biome-lint:write": "npx biome lint --write .",
+    "biome-format": "npx biome format .",
+    "biome-format:write": "npx biome format --write .",
+    "biome-check": "npx biome check .",
+    "biome-check:write": "npx biome check --write ."
   },
   "author": "",
   "license": "ISC",
@@ -22,15 +26,11 @@
     "@azure/identity": "^4.5.0",
     "@faker-js/faker": "^9.3.0",
     "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
     "dotenv": "^16.4.7",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-n": "^16.6.2",
-    "eslint-plugin-prettier": "^5.2.1",
-    "eslint-plugin-promise": "^6.6.0",
     "tsx": "^4.19.2"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4"
+  }
 }
