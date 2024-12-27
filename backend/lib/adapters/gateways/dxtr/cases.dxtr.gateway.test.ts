@@ -54,12 +54,9 @@ describe('Test DXTR Gateway', () => {
       return Promise.resolve(mockResults);
     });
 
-    try {
-      await testCasesDxtrGateway.searchCases(applicationContext, {});
-      expect(true).toBeFalsy();
-    } catch (e) {
-      expect((e as CamsError).message).toEqual(errorMessage);
-    }
+    await expect(testCasesDxtrGateway.searchCases(applicationContext, {})).rejects.toThrow(
+      errorMessage,
+    );
   });
 
   test('should return a single case when supplied a caseId', async () => {

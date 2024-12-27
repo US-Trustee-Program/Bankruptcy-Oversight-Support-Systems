@@ -122,7 +122,7 @@ describe('Test case docket DXTR Gateway', () => {
       );
     });
 
-    test('should translate the gateway domain model to the use case model ', () => {
+    test('should translate the gateway domain model to the use case model', () => {
       const files = [
         {
           sequenceNumber: 0,
@@ -198,7 +198,7 @@ describe('Test case docket DXTR Gateway', () => {
       expect(caseDocketEntries).toEqual(expectedCaseDocketEntryDocuments);
     });
 
-    test('should translate the gateway domain model to the use case model with a single record ', () => {
+    test('should translate the gateway domain model to the use case model with a single record', () => {
       const files = [
         {
           sequenceNumber: 0,

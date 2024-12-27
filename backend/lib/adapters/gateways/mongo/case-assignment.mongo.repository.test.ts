@@ -69,7 +69,7 @@ describe('case assignment repo tests', () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
-      expect(async () => await repo.create(assignment)).rejects.toThrow(
+      await expect(() => repo.create(assignment)).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
@@ -82,7 +82,7 @@ describe('case assignment repo tests', () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
       jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
-      await expect(async () => await repo.update(assignment)).rejects.toThrow(
+      await expect(() => repo.update(assignment)).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
@@ -94,7 +94,7 @@ describe('case assignment repo tests', () => {
     test('should handle error on findAssignmentsByAssignee', async () => {
       const userId = 'userId-Joe Nobel';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-      await expect(async () => await repo.findAssignmentsByAssignee(userId)).rejects.toThrow(
+      await expect(() => repo.findAssignmentsByAssignee(userId)).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
@@ -106,7 +106,7 @@ describe('case assignment repo tests', () => {
     test('should handle error on findAssignmentsByCaseId', async () => {
       const caseId = '111-22-33333';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-      await expect(async () => await repo.findAssignmentsByCaseId([caseId])).rejects.toThrow(
+      await expect(() => repo.findAssignmentsByCaseId([caseId])).rejects.toThrow(
         getCamsError(
           error,
           'MONGO_COSMOS_DB_REPOSITORY_ASSIGNMENTS',
