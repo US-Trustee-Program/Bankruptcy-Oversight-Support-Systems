@@ -1,9 +1,9 @@
-import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const tsEslint = require('typescript-eslint');
+const eslint = require('@eslint/js');
+const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommended');
 
 const noJestEslintConfig = tsEslint.config(
   eslint.configs.recommended,
