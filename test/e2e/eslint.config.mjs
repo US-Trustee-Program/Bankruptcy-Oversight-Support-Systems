@@ -1,9 +1,21 @@
-import commonEslintConfig from '../../common/eslint.config.mjs';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+import tsEslintConfig from '../../common/ts-eslint.config.mjs';
+import jestEslintConfig from '../../common/jest-eslint.config.mjs';
 
-const tsEslint = require('typescript-eslint');
+const codeConfig = tsEslintConfig.map((configObject) => ({
+  files: ['**/*.ts'],
+  ...configObject,
+}));
+const testConfig = jestEslintConfig.map((configObject) => ({
+  files: ['**/*.test.ts'],
+  ...configObject,
+}));
 
-const e2eEslintConfig = tsEslint.config(commonEslintConfig);
+const e2eEslintConfig = [
+  {
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
+  },
+  ...codeConfig,
+  ...testConfig,
+];
 
 export default e2eEslintConfig;
