@@ -4,7 +4,6 @@ const require = createRequire(import.meta.url);
 
 const tsEslint = require('typescript-eslint');
 const jest = require('eslint-plugin-jest');
-const jestVersion = require('jest/package.json').version;
 
 const jestEslintConfig = tsEslint.config(
   tsEslintConfig,
@@ -24,7 +23,7 @@ const jestEslintConfig = tsEslint.config(
   {
     settings: {
       jest: {
-        version: jestVersion,
+        version: '29.7.0',
       },
     },
   },
