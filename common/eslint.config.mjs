@@ -1,25 +1,21 @@
 import tsEslintConfig from './ts-eslint.config.mjs';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+import jestEslintConfig from './jest-eslint.config.mjs';
 
-const tsEslint = require('typescript-eslint');
-const jest = require('eslint-plugin-jest');
+const codeConfig = tsEslintConfig.map((configObject) => ({
+  files: ['**/*.ts'],
+  ...configObject,
+}));
+const testConfig = jestEslintConfig.map((configObject) => ({
+  files: ['**/*.test.ts'],
+  ...configObject,
+}));
 
-const commonEslintConfig = tsEslint.config(
-  tsEslintConfig,
+const commonEslintConfig = [
   {
-    plugins: jest.configs['flat/recommended']['plugins'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
   },
-  {
-    languageOptions: {
-      globals: jest.configs['flat/recommended']['languageOptions']['globals'],
-    },
-  },
-  {
-    rules: {
-      ...jest.configs['flat/recommended']['rules'],
-    },
-  },
-);
+  ...codeConfig,
+  ...testConfig,
+];
 
 export default commonEslintConfig;
