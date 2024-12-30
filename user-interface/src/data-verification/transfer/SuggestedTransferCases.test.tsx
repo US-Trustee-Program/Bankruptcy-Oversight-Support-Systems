@@ -59,6 +59,7 @@ const suggestedCases = MockData.buildArray(MockData.getCaseSummary, 2);
 const caseSummaryError = new Error('Case summary not found for case ID.');
 
 const mockErrorMessage = 'Some mock error';
+const emptySuggestedCasesId = 'button-radio-case-not-listed-radio-button-click-target';
 
 async function waitForLoadToComplete(orderId: string) {
   const testId = `loading-spinner-${orderId}-suggestions`;
@@ -107,7 +108,7 @@ async function fillCaseNotListedForm(
     expect(caseTable).toBeInTheDocument();
   });
 
-  const radio = screen.getByTestId('suggested-cases-radio-empty');
+  const radio = screen.getByTestId(emptySuggestedCasesId);
   fireEvent.click(radio);
 
   const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
@@ -218,7 +219,7 @@ describe('SuggestedTransferCases component', () => {
       expect(caseTable).toBeInTheDocument();
     });
 
-    const radio = screen.getByTestId('suggested-cases-radio-0');
+    const radio = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
     fireEvent.click(radio);
 
     expect(onCaseSelection).toHaveBeenCalledWith(expect.objectContaining({ ...suggestedCases[0] }));
@@ -264,12 +265,12 @@ describe('SuggestedTransferCases component', () => {
     ref.current?.cancel();
 
     suggestedCases.forEach((_, idx) => {
-      const radioBtn = screen.getByTestId(`suggested-cases-radio-${idx}`);
+      const radioBtn = screen.getByTestId(`radio-suggested-cases-checkbox-${idx}`);
       expect(radioBtn).not.toBeChecked();
     });
 
     await waitFor(() => {
-      const radioBtn = screen.getByTestId('suggested-cases-radio-empty');
+      const radioBtn = screen.getByTestId(emptySuggestedCasesId);
       expect(radioBtn).not.toBeChecked();
     });
 
@@ -335,7 +336,7 @@ describe('SuggestedTransferCases component', () => {
       expect(caseTable).toBeInTheDocument();
     });
 
-    const radio = screen.getByTestId('suggested-cases-radio-empty');
+    const radio = screen.getByTestId(emptySuggestedCasesId);
     fireEvent.click(radio);
 
     const input = findCaseNumberInput(order.id);

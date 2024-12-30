@@ -66,7 +66,7 @@ test.describe('Transfer Orders', () => {
     const firstOrderId = firstOrder.id;
 
     // Start testing the UI
-    await page.getByTestId('suggested-cases-radio-empty').click();
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
@@ -115,7 +115,7 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId(`button-accordion-cancel-button-${firstOrderId}`).click();
     await expect(page.getByTestId(`validated-cases-row-0`)).not.toBeVisible();
 
-    await page.getByTestId('suggested-cases-radio-empty').click();
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     const courtInputValue = (
       await page.locator(`#court-selection-${orderId}-combo-box-input`).inputValue()
@@ -135,7 +135,7 @@ test.describe('Transfer Orders', () => {
 
     // open accordian by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
-    await page.getByTestId('suggested-cases-radio-empty').click();
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     // fill in inputs
     await page.locator(`#court-selection-${orderId}-expand`).click();

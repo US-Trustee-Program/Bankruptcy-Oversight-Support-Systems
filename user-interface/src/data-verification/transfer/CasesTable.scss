@@ -1,0 +1,11 @@
+.suggested-cases-radio-button {
+  .usa-radio__input+label button {
+    margin-top: 0;
+  }
+  .usa-radio__label::before {
+    margin-top: -0.35rem;
+  }
+}
+.suggested-cases-radio-button.usa-form-group {
+  margin-top: 0;
+}
