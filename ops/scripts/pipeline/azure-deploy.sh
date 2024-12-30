@@ -21,7 +21,7 @@ requiredUSTPParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-gro
 requiredFlexionParams=("--mssqlRequestTimeout" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanName" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--migrationSubnetName" "--migrationSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
+allParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanName" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--migrationSubnetName" "--migrationSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--allowVeracodeScan")
 
 
 function az_vnet_exists_func() {
@@ -326,12 +326,6 @@ while [[ $# -gt 0 ]]; do
         inputParams+=("${1}")
         login_provider_config_param="loginProviderConfig=${2}"
         deployment_parameters="${deployment_parameters} ${login_provider_config_param}"
-        shift 2
-        ;;
-    --azHostSuffix)
-        inputParams+=("${1}")
-        az_host_suffix_param="azHostSuffix=${2}"
-        deployment_parameters="${deployment_parameters} ${az_host_suffix_param}"
         shift 2
         ;;
     --allowVeracodeScan)

@@ -33,56 +33,24 @@ on:
       launchDarklyEnvironment:
         required: true
         type: string
+      azResourceGrpAppEncrypted:
+        required: true
+        type: string
 jobs:
-  frontend:
-    defaults:
-      run:
-        working-directory: user-interface
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: ${{ inputs.nodeVersion }}
-          cache: "npm"
-          cache-dependency-path: user-interface/package-lock.json
-
-      - name: Execute Build
-        run: |
-          pushd ../common
-          npm ci
-          popd
-
-          npm ci
-          export CAMS_SERVER_HOSTNAME=${{ inputs.camsServerHostname }}
-          export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
-          export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
-          export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
-          export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${{ secrets.AZ_APPINSIGHTS_WEBAPP_CONNECTION_STRING }}"
-          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
-          export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
-          export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
-          export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
-          export CAMS_INFO_SHA=${{ github.sha }}
-          npm run build --if-present
-
-      - name: Package
-        run: |
-          pushd ./build
-          zip -r ./${{ inputs.webappName }}.zip .
-          popd
-          mkdir ./artifacts
-          mv ./build/${{ inputs.webappName }}.zip ./artifacts/
-
-      - name: Upload Frontend Artifact
-        uses: actions/upload-artifact@v4.4.0
-        with:
-          name: ${{ inputs.webappName }}-build
-          path: user-interface/artifacts/
-          if-no-files-found: error
+  build-frontend-predeployment:
+    name: Build Frontend Predeployment
+    uses: ./.github/workflows/reusable-build-frontend.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ inputs.webappName }}
+      environment: ${{ inputs.environment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
 
   backend:
     defaults:
