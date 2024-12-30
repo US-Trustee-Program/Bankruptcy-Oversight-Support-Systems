@@ -196,7 +196,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return className;
   }
 
-  // biome-ignore lint: no-unused-vars, what are we doing here?
   function setListItemClass(index: number, option: ComboOption) {
     const classNames = [];
     if (option.hidden) {
@@ -451,7 +450,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               onClick={openDropdown}
               onFocus={handleOnInputFocus}
               disabled={comboboxDisabled}
-              aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+              aria-label={`${
+                ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''
+              }Enter text to filter options. Use up and down arrows to open dropdown list.`}
               aria-describedby={`${props.id}-aria-description`}
               aria-live={props['aria-live'] ?? undefined}
               aria-haspopup="listbox"
@@ -497,7 +498,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
+                    aria-label={`${
+                      multiSelect === true ? 'multi-select' : 'single-select'
+                    } option: ${ariaLabelPrefix ?? ''} ${option.label} ${
+                      isSelected(option)! ? 'selected' : 'unselected'
+                    }`}
                   >
                     {
                       <>

@@ -15,7 +15,7 @@ PROJECTS=("./backend" "./common" "./dev-tools" "./test/e2e" "./user-interface") 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
   echo "Linting and Formatting ${str}."
-  npm run biome-check:write
+  npm run biome-lint
   popd || exit
 done
 

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   ConsolidationControls,
   Ref,
@@ -28,16 +27,14 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const confirmationModalRef = {
     current: {
-      // biome-ignore lint: no-unused-vars
       show: (options: ShowOptionParams) => {},
       hide: () => {},
     },
   };
   const jointAdministrationRef = {
     current: {
-      // biome-ignore lint: no-unused-vars
       disable: (value: boolean) => {},
-      // biome-ignore lint: no-unused-vars
+
       check: (value: boolean) => {},
       isChecked: () => true,
     },
@@ -53,15 +50,14 @@ export function useConsolidationControlsMock(): ConsolidationControls {
         },
       ],
       clearValue: () => {},
-      // biome-ignore lint: no-unused-vars
+
       disable: (value: boolean) => {},
     },
   };
   const leadCaseNumberRef = {
     current: {
-      // biome-ignore lint: no-unused-vars
       setValue: (value: string) => {},
-      // biome-ignore lint: no-unused-vars
+
       disable: (value: boolean) => {},
       clearValue: () => {},
       resetValue: () => {},
@@ -75,16 +71,14 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const substantiveRef = {
     current: {
-      // biome-ignore lint: no-unused-vars
       disable: (value: boolean) => {},
-      // biome-ignore lint: no-unused-vars
+
       check: (value: boolean) => {},
       isChecked: () => true,
     },
   };
   const toggleLeadCaseFormRef = {
     current: {
-      // biome-ignore lint: no-unused-vars
       setChecked: (value: boolean | CheckboxState) => {},
       getLabel: () => {
         return '';
@@ -93,19 +87,18 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
 
   const showConfirmationModal = (
-    // biome-ignore lint: no-unused-vars
     selectedCases: ConsolidationOrderCase[],
-    // biome-ignore lint: no-unused-vars
+
     leadCase: ConsolidationOrderCase,
-    // biome-ignore lint: no-unused-vars
+
     status: OrderStatus,
-    // biome-ignore lint: no-unused-vars
+
     consolidationType?: ConsolidationType,
   ) => {};
-  // biome-ignore lint: no-unused-vars, what are we doing here?
+
   const disableLeadCaseForm = (disabled: boolean) => {};
   const clearAllCheckBoxes = () => {};
-  // biome-ignore lint: no-unused-vars
+
   const disableButton = (button: Ref<ButtonRef>, state: boolean) => {};
   const unsetConsolidationType = () => {};
 
