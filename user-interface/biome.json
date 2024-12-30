@@ -27,6 +27,7 @@
     "rules": {
       "recommended": false,
       "a11y": {
+        "useButtonType": "off",
         "noAccessKey": "error",
         "noAriaUnsupportedElements": "error",
         "noAutofocus": "error",
@@ -62,9 +63,11 @@
         "noMultipleSpacesInRegularExpressionLiterals": "error",
         "noUselessCatch": "error",
         "noUselessTypeConstraint": "error",
-        "noWith": "error"
+        "noWith": "error",
+        "noUselessFragments": "off"
       },
       "correctness": {
+        "noVoidElementsWithChildren": "error",
         "noChildrenProp": "error",
         "noConstAssign": "error",
         "noConstantCondition": "error",
@@ -92,13 +95,19 @@
         "useValidForDirection": "error",
         "useYield": "error"
       },
-      "security": { "noDangerouslySetInnerHtmlWithChildren": "error" },
+      "security": {
+        "noDangerouslySetInnerHtmlWithChildren": "error",
+        "noDangerouslySetInnerHtml": "error"
+      },
       "style": {
         "noNamespace": "error",
         "useAsConstAssertion": "error",
-        "useBlockStatements": "off"
+        "useBlockStatements": "off",
+        "useFragmentSyntax": "error",
+        "noImplicitBoolean": "off"
       },
       "suspicious": {
+        "noArrayIndexKey": "off",
         "noAsyncPromiseExecutor": "error",
         "noCatchAssign": "error",
         "noClassAssign": "error",
