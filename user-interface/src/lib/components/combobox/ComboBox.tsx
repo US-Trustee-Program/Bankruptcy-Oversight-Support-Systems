@@ -196,6 +196,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return className;
   }
 
+  // biome-ignore lint: Address this?
   function setListItemClass(index: number, option: ComboOption) {
     const classNames = [];
     if (option.hidden) {
