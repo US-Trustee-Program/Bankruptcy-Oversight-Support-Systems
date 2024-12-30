@@ -1,4 +1,4 @@
-@import '../../styles/abstracts/colors';
+@use '../../styles/abstracts/colors';
 
 #case-detail-court-docket-panel {
   margin-left: 2rem;
@@ -22,7 +22,7 @@
       .docket-content {
         line-height: 24px;
         ::highlight(search-results) {
-          background-color: $yellow-20;
+          background-color: colors.$yellow-20;
           color: black;
         }
         .docket-full-text {

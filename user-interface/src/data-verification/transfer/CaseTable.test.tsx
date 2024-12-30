@@ -96,12 +96,12 @@ describe('CaseTable component', () => {
       const expectedColumnCount = 7;
       expect(getNumberOfColumns(table)).toEqual(expectedColumnCount);
 
-      const radio0 = screen.queryByTestId('test-case-table-radio-0');
+      const radio0 = screen.queryByTestId('button-radio-test-case-table-checkbox-0-click-target');
       expect(radio0).toBeInTheDocument();
     });
 
     test('should call onSelect when a case is selected', () => {
-      const radio0 = screen.queryByTestId('test-case-table-radio-0');
+      const radio0 = screen.queryByTestId('button-radio-test-case-table-checkbox-0-click-target');
       expect(radio0).toBeInTheDocument();
 
       fireEvent.click(radio0!);

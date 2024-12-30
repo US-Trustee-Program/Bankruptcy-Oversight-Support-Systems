@@ -9,7 +9,7 @@ export interface RadioProps {
   label: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
-  value: string;
+  value: string | number;
   checked?: boolean;
   required?: boolean;
   title?: string;

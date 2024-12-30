@@ -1,7 +1,9 @@
+import './CasesTable.scss';
 import { CaseNumber } from '@/lib/components/CaseNumber';
+import Radio from '@/lib/components/uswds/Radio';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseSummary } from '@common/cams/cases';
-import { SyntheticEvent, forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useState } from 'react';
 
 export type CaseTableImperative = {
   clearAllCheckboxes: () => void;
@@ -19,11 +21,13 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
-  function handleCaseSelection(e: SyntheticEvent<HTMLInputElement>) {
-    const idx = parseInt(e.currentTarget.value);
-    setSelectedIdx(idx);
-    const bCase = cases[idx];
-    if (onSelect) onSelect(bCase);
+  function handleCaseSelection(value: string) {
+    const idx = parseInt(value);
+    if (!isNaN(idx)) {
+      setSelectedIdx(idx);
+      const bCase = cases[idx];
+      if (onSelect) onSelect(bCase);
+    }
   }
 
   function clearAllCheckboxes() {
@@ -54,15 +58,17 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
             return (
               <tr key={'empty'} data-testid={'empty-row'}>
                 <td>
-                  <input
-                    type="radio"
-                    onChange={handleCaseSelection}
-                    value={idx}
+                  <Radio
+                    id={`case-not-listed-radio-button`}
                     name="case-selection"
-                    data-testid={'suggested-cases-radio-empty'}
-                    checked={idx === selectedIdx}
+                    label=""
                     title={`case not listed`}
-                  ></input>
+                    value={idx}
+                    checked={idx === selectedIdx}
+                    onChange={handleCaseSelection}
+                    data-testid={'suggested-cases-radio-empty'}
+                    className="suggested-cases-radio-button"
+                  />
                 </td>
                 <td colSpan={6}>Case not listed.</td>
               </tr>
@@ -74,15 +80,17 @@ function _CaseTable(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
             <tr key={key} data-testid={key}>
               {onSelect && (
                 <td>
-                  <input
-                    type="radio"
+                  <Radio
+                    id={`${id}-checkbox-${idx}`}
+                    label=""
                     onChange={handleCaseSelection}
                     value={idx}
                     name="case-selection"
                     data-testid={`${id}-radio-${idx}`}
                     checked={idx === selectedIdx}
                     title={`select ${bCase.caseTitle}`}
-                  ></input>
+                    className="suggested-cases-radio-button"
+                  />
                 </td>
               )}
               <td>
