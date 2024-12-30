@@ -171,7 +171,7 @@ jobs:
         run: |
           ./ops/scripts/pipeline/slots/az-slot-start-stop-operations.sh \
             --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --apiName ${{ steps.build-info.outputs.apiName }} \
+            --apiFunctionName ${{ steps.build-info.outputs.apiFunctionName }} \
             --webappName ${{ steps.build-info.outputs.webappName }} \
             --slotName ${{ steps.build-info.outputs.slotName }} \
             --operation 'start'
