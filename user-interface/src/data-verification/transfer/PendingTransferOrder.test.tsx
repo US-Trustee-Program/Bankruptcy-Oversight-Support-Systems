@@ -11,6 +11,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
+import userEvent from '@testing-library/user-event';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -113,7 +114,7 @@ describe('PendingTransferOrder component', () => {
 
       let case0;
       await waitFor(() => {
-        case0 = screen.getByTestId('suggested-cases-radio-0');
+        case0 = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
         expect(case0).toBeInTheDocument();
       });
 
@@ -122,7 +123,7 @@ describe('PendingTransferOrder component', () => {
 
       if (!case0) throw Error();
 
-      fireEvent.click(case0);
+      await userEvent.click(case0);
 
       await waitFor(() => {
         expect(approveButton).toBeEnabled();
@@ -134,7 +135,7 @@ describe('PendingTransferOrder component', () => {
 
       let case0;
       await waitFor(() => {
-        case0 = screen.getByTestId('suggested-cases-radio-0');
+        case0 = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
         expect(case0).toBeInTheDocument();
       });
 
@@ -143,8 +144,9 @@ describe('PendingTransferOrder component', () => {
 
       if (!case0) throw Error();
 
-      fireEvent.click(case0);
-      expect(case0).toBeChecked();
+      await userEvent.click(case0);
+      const case0RadioBtn = screen.getByTestId('radio-suggested-cases-checkbox-0');
+      expect(case0RadioBtn).toBeChecked();
 
       await waitFor(() => {
         expect(approveButton).toBeEnabled();
@@ -580,7 +582,7 @@ describe('PendingTransferOrder component', () => {
         expect(caseTable).toBeInTheDocument();
       });
 
-      const radio = screen.getByTestId('suggested-cases-radio-empty');
+      const radio = screen.getByTestId('button-radio-case-not-listed-radio-button-click-target');
       fireEvent.click(radio);
       await waitForCaseEntryForm();
 
