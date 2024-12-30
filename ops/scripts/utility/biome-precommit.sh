@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# A utility script useful for cleaning all project directories
+# A utility script useful for using biome linter on all directories
 
 # Usage
 #   From the root directory, run the following command:
@@ -15,7 +15,7 @@ PROJECTS=("./backend" "./common" "./dev-tools" "./test/e2e" "./user-interface") 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
   echo "Linting and Formatting ${str}."
-  npm run biome-lint:write
+  npm run biome-lint
   popd || exit
 done
 
