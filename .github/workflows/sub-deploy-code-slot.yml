@@ -264,26 +264,6 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       slotName: 'self'
     secrets: inherit # pragma: allowlist secret
-  stop-slots:
-    needs: [endpoint-test-application-post-swap]
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.ghaEnvironment }}
-    steps:
-      - uses: cloudposse/github-action-secret-outputs@main
-        id: rgApp
-        with:
-          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
-          op: decode
-          in: ${{ inputs.azResourceGrpAppEncrypted }}
-      - name: Start App Slots
-        id: start-app-slots
-        run: |
-          ./ops/scripts/pipeline/slots/az-slot-start-stop-operations.sh \
-            --resourceGroup ${{ steps.rgApp.outputs.out }} \
-            --apiName ${{ inputs.apiName }} \
-            --webappName ${{ inputs.webappName }} \
-            --slotName ${{ inputs.slotName }} \
-            --operation 'stop'
   enable-access:
     runs-on: ubuntu-latest
     needs: [endpoint-test-application-post-swap]
