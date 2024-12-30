@@ -27,7 +27,8 @@ export function addApiAfterHook(hook: (response: Response) => Promise<void>) {
 export default class Api {
   public static headers: Record<string, string> = {};
 
-  public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
+  public static host =
+    `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
 
   public static createPath(path: string, params: ObjectKeyVal) {
     if (params && Object.keys(params).length > 0) {

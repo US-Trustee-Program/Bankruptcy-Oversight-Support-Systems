@@ -1,5 +1,5 @@
-import "../uswds/forms.scss";
-import "./ComboBox.scss";
+import '../uswds/forms.scss';
+import './ComboBox.scss';
 import {
   forwardRef,
   PropsWithChildren,
@@ -7,13 +7,13 @@ import {
   useImperativeHandle,
   useRef,
   useState,
-} from "react";
-import Icon from "../uswds/Icon";
-import Button, { UswdsButtonStyle } from "../uswds/Button";
-import PillBox from "../PillBox";
-import useOutsideClick from "@/lib/hooks/UseOutsideClick";
-import { ComboBoxRef } from "@/lib/type-declarations/input-fields";
-import { Pill } from "../Pill";
+} from 'react';
+import Icon from '../uswds/Icon';
+import Button, { UswdsButtonStyle } from '../uswds/Button';
+import PillBox from '../PillBox';
+import useOutsideClick from '@/lib/hooks/UseOutsideClick';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import { Pill } from '../Pill';
 
 export type ComboOption = {
   value: string;
@@ -24,16 +24,15 @@ export type ComboOption = {
 
 export type ComboOptionList = ComboOption | Array<ComboOption>;
 
-type InputProps = JSX.IntrinsicElements["input"] &
-  JSX.IntrinsicElements["select"] &
+type InputProps = JSX.IntrinsicElements['input'] &
+  JSX.IntrinsicElements['select'] &
   PropsWithChildren;
 
-export interface ComboBoxProps
-  extends Omit<InputProps, "onChange" | "onFocus"> {
+export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> {
   label?: string;
   ariaLabelPrefix?: string;
   ariaDescription?: string;
-  autoComplete?: "off";
+  autoComplete?: 'off';
   icon?: string;
   options: ComboOption[];
   onUpdateSelection?: (options: ComboOption[]) => void;
@@ -68,9 +67,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== STATE ==========
 
-  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(
-    disabled ?? false
-  );
+  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(disabled ?? false);
   const [selections, setSelections] = useState<ComboOption[]>(() => {
     if (props.value) {
       const selection = options.find((option) => option.value === props.value);
@@ -79,14 +76,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return [];
   });
 
-  const [expandIcon, setExpandIcon] = useState<string>("expand_more");
+  const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
-  const [expandedClass, setExpandedClass] = useState<string>("closed");
+  const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{
     bottom: number;
   } | null>(null);
-  const [filteredOptions, setFilteredOptions] =
-    useState<ComboOption[]>(options);
+  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(options);
 
   // ========== REFS ==========
 
@@ -99,23 +95,23 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== MISC FUNCTIONS ==========
 
   function clearFilter() {
-    if (filterRef.current) filterRef.current.value = "";
-    filterDropdown("");
+    if (filterRef.current) filterRef.current.value = '';
+    filterDropdown('');
   }
 
   function closeDropdown(shouldFocusOnInput: boolean = true) {
-    setExpandIcon("expand_more");
+    setExpandIcon('expand_more');
     setExpanded(false);
-    setExpandedClass("closed");
+    setExpandedClass('closed');
     clearFilter();
     if (shouldFocusOnInput) filterRef.current?.focus();
     if (onClose) onClose(selections);
   }
 
   function openDropdown() {
-    setExpandIcon("expand_less");
+    setExpandIcon('expand_less');
     setExpanded(true);
-    setExpandedClass("expanded");
+    setExpandedClass('expanded');
   }
 
   function disable(shouldDisable: boolean) {
@@ -131,10 +127,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function filterDropdown(filter: string) {
     const newOptions = [...filteredOptions];
     newOptions?.forEach((option) => {
-      if (
-        !filter ||
-        option.label.toLowerCase().includes(filter.toLowerCase())
-      ) {
+      if (!filter || option.label.toLowerCase().includes(filter.toLowerCase())) {
         option.hidden = false;
       } else {
         option.hidden = true;
@@ -144,12 +137,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function focusAndHandleScroll(ev: React.KeyboardEvent, el: Element) {
-    const listContainer = document.querySelector(
-      `#${props.id} .item-list-container`
-    );
+    const listContainer = document.querySelector(`#${props.id} .item-list-container`);
 
     if (listContainer) {
-      const list = listContainer.querySelector("ul");
+      const list = listContainer.querySelector('ul');
       if (list) {
         (el as HTMLElement).focus({
           preventScroll: !elementIsVerticallyScrollable(listContainer, list),
@@ -169,9 +160,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function isOutsideClick(ev: MouseEvent) {
     if (comboBoxRef.current && expanded) {
-      const boundingRect = (
-        comboBoxRef.current as HTMLDivElement
-      ).getBoundingClientRect();
+      const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
       const containerRight = boundingRect.x + boundingRect.width;
       const containerBottom = boundingRect.y + boundingRect.height;
       const targetX = ev.clientX;
@@ -202,8 +191,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function getInputClassName(): string {
-    let className = "usa-tooltip combo-box-input";
-    if (multiSelect !== true && selections.length) className += " hide-input";
+    let className = 'usa-tooltip combo-box-input';
+    if (multiSelect !== true && selections.length) className += ' hide-input';
     return className;
   }
 
@@ -211,11 +200,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function setListItemClass(index: number, option: ComboOption) {
     const classNames = [];
     if (option.hidden) {
-      classNames.push("hidden");
+      classNames.push('hidden');
     } else {
-      if (isSelected(option)) classNames.push("selected");
+      if (isSelected(option)) classNames.push('selected');
     }
-    return classNames.join(" ");
+    return classNames.join(' ');
   }
 
   // ========== HANDLERS ==========
@@ -231,7 +220,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleClearAllKeyDown(ev: React.KeyboardEvent) {
-    if (ev.key === "Enter") {
+    if (ev.key === 'Enter') {
       handleClearAllClick();
     }
   }
@@ -269,64 +258,54 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (onUpdateFilter) onUpdateFilter(ev.target.value);
   }
 
-  function handleKeyDown(
-    ev: React.KeyboardEvent,
-    index: number,
-    option?: ComboOption
-  ) {
+  function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
     const list = document.querySelector(`#${props.id} .item-list-container ul`);
     const input = filterRef.current;
 
     switch (ev.key) {
-      case "Tab":
+      case 'Tab':
         closeDropdown(false);
         break;
-      case "Escape":
+      case 'Escape':
         closeDropdown();
         ev.preventDefault();
         break;
-      case "ArrowDown":
+      case 'ArrowDown':
         openDropdown();
         if (list && index < filteredOptions.length) {
           while (
-            list.children[index].classList.contains("hidden") &&
+            list.children[index].classList.contains('hidden') &&
             index < filteredOptions.length
           ) {
             ++index;
           }
         }
         if (index >= 0 && index < filteredOptions.length) {
-          const button = list?.children[index].querySelector("button");
+          const button = list?.children[index].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
         } else {
           if (input) focusAndHandleScroll(ev, input);
         }
         break;
-      case "ArrowUp":
+      case 'ArrowUp':
         openDropdown();
         if (list && index > 0) {
-          while (
-            index > 1 &&
-            list.children[index - 2].classList.contains("hidden")
-          ) {
+          while (index > 1 && list.children[index - 2].classList.contains('hidden')) {
             --index;
           }
         }
         if (index > 1 && index <= filteredOptions.length) {
-          const button = list?.children[index - 2].querySelector("button");
+          const button = list?.children[index - 2].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
         } else if (index === 1) {
           if (input) focusAndHandleScroll(ev, input);
         } else if (index === 0) {
-          const button =
-            list?.children[list.children.length - 1].querySelector("button");
+          const button = list?.children[list.children.length - 1].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
         }
         break;
-      case "Enter":
-        if (
-          !(ev.target as HTMLInputElement).classList.contains("combo-box-input")
-        ) {
+      case 'Enter':
+        if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           handleDropdownItemSelection(option as ComboOption);
           ev.preventDefault();
         }
@@ -359,9 +338,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
     const screenBottom = window.scrollY + window.innerHeight;
-    const inputContainer = document.querySelector(
-      `#${props.id} .input-container`
-    );
+    const inputContainer = document.querySelector(`#${props.id} .input-container`);
     const topYPos = inputContainer?.getBoundingClientRect().top;
     const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
     const heightOfAllListItems = filteredOptions.length * 43;
@@ -410,24 +387,17 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== JSX ==========
 
   return (
-    <div
-      id={props.id}
-      className="usa-form-group combo-box-form-group"
-      ref={comboBoxRef}
-    >
-      <div
-        className={`combo-box-label ${multiSelect === true ? "multi-select" : "single-select"}`}
-      >
+    <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
+      <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
         <label
           className="usa-label"
-          id={props.id + "-label"}
+          id={props.id + '-label'}
           htmlFor={`${props.id}-combo-box-input`}
         >
-          {label}{" "}
-          {props.required && <span className="required-form-field">*</span>}
+          {label} {props.required && <span className="required-form-field">*</span>}
         </label>
         <span id={`${props.id}-aria-description`} hidden>
-          {ariaDescription ?? ""}
+          {ariaDescription ?? ''}
         </span>
       </div>
       {multiSelect === true && (
@@ -449,7 +419,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={handleClearAllClick}
               onKeyDown={handleClearAllKeyDown}
-              aria-label={`clear all selections ${label ? `for ${label}` : ""}`}
+              aria-label={`clear all selections ${label ? `for ${label}` : ''}`}
               disabled={comboboxDisabled}
             >
               clear
@@ -481,9 +451,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               onClick={openDropdown}
               onFocus={handleOnInputFocus}
               disabled={comboboxDisabled}
-              aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ": " : ""}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+              aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
               aria-describedby={`${props.id}-aria-description`}
-              aria-live={props["aria-live"] ?? undefined}
+              aria-live={props['aria-live'] ?? undefined}
               aria-haspopup="listbox"
               aria-expanded={expanded}
               aria-controls={`${props.id}-item-list`}
@@ -516,7 +486,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               {filteredOptions.map((option, idx) => (
                 <li
                   className={setListItemClass(idx, option)}
-                  aria-hidden={option.hidden ? "true" : "false"}
+                  aria-hidden={option.hidden ? 'true' : 'false'}
                   data-testid={`${props.id}-item-${idx}`}
                   key={`${props.id}-${idx}`}
                 >
@@ -527,7 +497,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={`${multiSelect === true ? "multi-select" : "single-select"} option: ${ariaLabelPrefix ?? ""} ${option.label} ${isSelected(option)! ? "selected" : "unselected"}`}
+                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
                   >
                     {
                       <>

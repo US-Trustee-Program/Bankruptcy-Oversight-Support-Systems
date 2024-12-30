@@ -2,15 +2,11 @@
 import {
   ConsolidationControls,
   Ref,
-} from "@/data-verification/consolidation/consolidationControls";
-import { ShowOptionParams } from "@/data-verification/consolidation/ConsolidationOrderModal";
-import { CheckboxState } from "@/lib/components/uswds/Checkbox";
-import {
-  ConsolidationOrderCase,
-  ConsolidationType,
-  OrderStatus,
-} from "@common/cams/orders";
-import { ButtonRef } from "@/lib/components/uswds/Button";
+} from '@/data-verification/consolidation/consolidationControls';
+import { ShowOptionParams } from '@/data-verification/consolidation/ConsolidationOrderModal';
+import { CheckboxState } from '@/lib/components/uswds/Checkbox';
+import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+import { ButtonRef } from '@/lib/components/uswds/Button';
 
 export function useConsolidationControlsMock(): ConsolidationControls {
   const approveButton = {
@@ -50,8 +46,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     current: {
       getValue: () => [
         {
-          value: "",
-          label: "",
+          value: '',
+          label: '',
           selected: false,
           hidden: false,
         },
@@ -69,7 +65,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       disable: (value: boolean) => {},
       clearValue: () => {},
       resetValue: () => {},
-      getValue: () => "",
+      getValue: () => '',
     },
   };
   const rejectButton = {
@@ -91,7 +87,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       // biome-ignore lint: no-unused-vars
       setChecked: (value: boolean | CheckboxState) => {},
       getLabel: () => {
-        return "";
+        return '';
       },
     },
   };
@@ -104,7 +100,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     // biome-ignore lint: no-unused-vars
     status: OrderStatus,
     // biome-ignore lint: no-unused-vars
-    consolidationType?: ConsolidationType
+    consolidationType?: ConsolidationType,
   ) => {};
   // biome-ignore lint: no-unused-vars, what are we doing here?
   const disableLeadCaseForm = (disabled: boolean) => {};
