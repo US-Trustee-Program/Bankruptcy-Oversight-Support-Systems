@@ -32,7 +32,7 @@ test.describe('Consolidation Orders', () => {
     await logout(page);
   });
 
-  test.skip('should select correct consolidationType radio when approving a consolidation', async ({
+  test('should select correct consolidationType radio when approving a consolidation', async ({
     page,
   }) => {
     // get pending consolidation order id
@@ -97,7 +97,7 @@ test.describe('Consolidation Orders', () => {
     );
   });
 
-  test.skip('should open case-not-listed form, fill form and click validate button', async ({
+  test('should open case-not-listed form, fill form and click validate button', async ({
     page,
   }) => {
     // get pending consolidation order id

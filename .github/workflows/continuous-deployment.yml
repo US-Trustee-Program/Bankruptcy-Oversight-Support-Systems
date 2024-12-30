@@ -102,7 +102,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
-      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites.us
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
@@ -111,6 +111,7 @@ jobs:
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
   deploy:
     name: Cloud Resource Deployment
@@ -125,7 +126,7 @@ jobs:
         unit-test-backend,
         unit-test-common,
       ]
-    if:
+    if: |
       ((github.ref == 'refs/heads/main') || (github.ref == 'refs/heads/dependency-updates-auto') ||
       (inputs.deployBranch == 'true'))
     with:
@@ -135,7 +136,7 @@ jobs:
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
       slotName: ${{ needs.setup.outputs.slotName }}
@@ -153,7 +154,7 @@ jobs:
       stackName: ${{ needs.setup.outputs.stackName }}
       apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       migrationFunctionName: ${{ needs.setup.outputs.migrationFunctionName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}

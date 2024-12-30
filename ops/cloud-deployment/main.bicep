@@ -19,7 +19,7 @@ param linkVnetIds array = []
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = networkResourceGroupName
 
@@ -69,8 +69,6 @@ param functionPlanName string = 'plan-${stackName}-functions'
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
-
-param azHostSuffix string = '.us'
 
 param sqlServerName string = ''
 
@@ -180,7 +178,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
-      targetApiServerHost: '${apiFunctionName}.azurewebsites${azHostSuffix} ${apiFunctionName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
+      targetApiServerHost: '${apiFunctionName}.azurewebsites.us ${apiFunctionName}-${slotName}.azurewebsites.us' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
       camsReactSelectHash: camsReactSelectHash
       webappSubnetId: network.outputs.webappSubnetId
@@ -214,8 +212,8 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-      apiCorsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
-      migrationCorsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}','https://portal.azure.us']
+      apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us']
+      migrationCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName

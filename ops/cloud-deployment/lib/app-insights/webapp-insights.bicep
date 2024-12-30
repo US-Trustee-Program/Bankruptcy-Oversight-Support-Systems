@@ -1,4 +1,4 @@
-param functionAppName string
+param webappName string
 
 param analyticsWorkspaceId string
 
@@ -10,38 +10,38 @@ param actionGroupName string
 
 param actionGroupResourceGroupName string
 
-resource functionApp 'Microsoft.Web/sites@2023-12-01' existing = {
-  name: functionAppName
+resource webapp 'Microsoft.Web/sites@2023-12-01' existing = {
+  name: webappName
 }
 
-module appInsights '../app-insights/app-insights.bicep' = if (createApplicationInsights)  {
-  name: '${functionAppName}-application-insights-module'
+module appInsights './app-insights.bicep' = if (createApplicationInsights) {
+  name: '${webappName}-application-insights-module'
   params: {
-    location: functionApp.location
+    location: webapp.location
     kind: 'web'
-    appInsightsName: 'appi-${functionAppName}'
+    appInsightsName: 'appi-${webappName}'
     applicationType: 'web'
     workspaceResourceId: analyticsWorkspaceId
   }
 }
 
-module diagnosticSettings '../app-insights/diagnostics-settings-func.bicep' = if (createApplicationInsights) {
-  name: '${functionAppName}-diagnostic-settings-module'
+module diagnosticSettings './diagnostics-settings-webapp.bicep' = if (createApplicationInsights) {
+  name: '${webappName}-diagnostic-settings-module'
   params: {
-    functionAppName: functionAppName
+    webappName: webappName
     workspaceResourceId: analyticsWorkspaceId
   }
   dependsOn: [
     appInsights
-    functionApp
+    webapp
   ]
 }
 
 module healthAlertRule '../monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${functionAppName}-healthcheck-alert-rule-module'
+  name: '${webappName}-healthcheck-alert-rule-module'
   params: {
-    alertName: '${functionAppName}-health-check-alert'
-    appId: functionApp.id
+    alertName: '${webappName}-health-check-alert'
+    appId: webapp.id
     timeAggregation: 'Average'
     operator: 'LessThan'
     targetResourceType: 'Microsoft.Web/sites'
@@ -54,10 +54,10 @@ module healthAlertRule '../monitoring-alerts/metrics-alert-rule.bicep' = if (cre
 }
 
 module httpAlertRule '../monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
-  name: '${functionAppName}-http-error-alert-rule-module'
+  name: '${webappName}-http-error-alert-rule-module'
   params: {
-    alertName: '${functionAppName}-http-error-alert'
-    appId: functionApp.id
+    alertName: '${webappName}-http-error-alert'
+    appId: webapp.id
     timeAggregation: 'Total'
     operator: 'GreaterThanOrEqual'
     targetResourceType: 'Microsoft.Web/sites'

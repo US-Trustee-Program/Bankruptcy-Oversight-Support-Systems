@@ -40,7 +40,7 @@ jobs:
         run: |
 
           branchRef="${{ github.event.ref}}"
-          hash=$(echo -n "${branchRef}"" | openssl sha256 | awk '{print $2}')
+          hash=$(echo -n "${branchRef}" | openssl sha256 | awk '{print $2}')
           shortHash="${hash:0:6}"
           echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
