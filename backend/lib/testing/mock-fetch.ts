@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 function ok(body: unknown, status?: number) {
   return (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     return Promise.resolve({

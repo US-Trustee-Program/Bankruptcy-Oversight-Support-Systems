@@ -6,11 +6,9 @@ import { ApplicationContext } from '../types/basic';
 
 // Setting default Jest mocks for mssql
 //NOTE: using const here causes these tests to error out with 'Cannot access {var} before initialization
-// eslint-disable-next-line no-var
+
 var connectionError = new ConnectionError('');
-// eslint-disable-next-line no-var
 var requestError = new RequestError('');
-// eslint-disable-next-line no-var
 var mssqlError = new MSSQLError('');
 
 type AggregateError = Error & {
@@ -94,7 +92,10 @@ describe('Tests database client exceptions', () => {
       mssqlError.name = 'TestMSSQLMessage';
       mssqlError.message = expectedErrorMessage;
       mssqlError.code = '1';
-      mssqlError.originalError = { message: 'original error', name: 'originalError' };
+      mssqlError.originalError = {
+        message: 'original error',
+        name: 'originalError',
+      };
       throw mssqlError;
     });
 
@@ -147,8 +148,16 @@ describe('Tests database client exceptions', () => {
             name: '03',
             message: 'Nested aggregate errors',
             errors: [
-              { message: 'Nested aggregate error 04', name: '04', code: '' } as MSSQLError,
-              { message: 'Nested aggregate error 05', name: '05', code: '' } as MSSQLError,
+              {
+                message: 'Nested aggregate error 04',
+                name: '04',
+                code: '',
+              } as MSSQLError,
+              {
+                message: 'Nested aggregate error 05',
+                name: '05',
+                code: '',
+              } as MSSQLError,
             ],
           } as AggregateError,
         } as ConnectionError,

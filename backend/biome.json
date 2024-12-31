@@ -54,8 +54,8 @@
         "noUnsafeFinally": "error",
         "noUnsafeOptionalChaining": "error",
         "noUnusedLabels": "error",
-        "noUnusedVariables": "off",
-        "useArrayLiterals": "off",
+        "noUnusedVariables": "error",
+        "useArrayLiterals": "error",
         "useIsNan": "error",
         "useValidForDirection": "error",
         "useYield": "error"
@@ -77,7 +77,7 @@
         "noDuplicateObjectKeys": "error",
         "noDuplicateParameters": "error",
         "noEmptyBlockStatements": "off",
-        "noExplicitAny": "off",
+        "noExplicitAny": "error",
         "noExtraNonNullAssertion": "error",
         "noFallthroughSwitchClause": "error",
         "noFunctionAssign": "error",
@@ -112,7 +112,7 @@
   },
   "overrides": [
     {
-      "include": ["*.ts", "*.tsx", "*.mts", "*.cts"],
+      "include": ["*test*.ts", "*mock*.ts"],
       "linter": {
         "rules": {
           "correctness": {
@@ -124,7 +124,8 @@
             "noSetterReturn": "off",
             "noUndeclaredVariables": "off",
             "noUnreachable": "off",
-            "noUnreachableSuper": "off"
+            "noUnreachableSuper": "off",
+            "noUnusedVariables": "off"
           },
           "style": {
             "noArguments": "error",
@@ -139,7 +140,8 @@
             "noImportAssign": "off",
             "noRedeclare": "off",
             "noUnsafeNegation": "off",
-            "useGetterReturn": "off"
+            "useGetterReturn": "off",
+            "noExplicitAny": "off"
           }
         }
       }

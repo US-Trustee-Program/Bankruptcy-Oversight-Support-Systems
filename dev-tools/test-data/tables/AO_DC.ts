@@ -359,7 +359,6 @@ export class AO_DC_Record implements TableRecordHelper {
   validate(): void {
     /// TODO: implement this schema validation
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
     return [
       this.FILE_NAME,

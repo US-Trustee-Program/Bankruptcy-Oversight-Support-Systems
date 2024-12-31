@@ -97,7 +97,6 @@ export class AO_DE_Record implements TableRecordHelper {
   validate(): void {
     /// TODO: implement this schema validation
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
     return [
       this.CS_CASEID,

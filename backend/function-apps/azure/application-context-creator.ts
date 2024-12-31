@@ -11,7 +11,7 @@ import { getUserSessionUseCase } from '../../lib/factory';
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
 function getLogger(invocationContext: InvocationContext) {
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  // biome-ignore lint: no explicit any type
   const logWrapper: Console['log'] = (...args: any[]) => {
     invocationContext.log(args);
   };
@@ -23,7 +23,11 @@ async function applicationContextCreator<B = unknown>(
   logger: LoggerImpl,
   request?: HttpRequest,
 ): Promise<ApplicationContext<B>> {
-  const context = await getApplicationContext<B>({ invocationContext, logger, request });
+  const context = await getApplicationContext<B>({
+    invocationContext,
+    logger,
+    request,
+  });
 
   context.session = await getApplicationContextSession(context);
 

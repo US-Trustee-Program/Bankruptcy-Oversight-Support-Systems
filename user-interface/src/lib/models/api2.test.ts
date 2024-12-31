@@ -150,7 +150,6 @@ describe('_Api2 functions', async () => {
   });
 });
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: ApiType) {
   const stuff = ['some stuff'];
   const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: stuff });
@@ -163,7 +162,6 @@ async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: A
     patchSpy.mock.calls.length +
     postSpy.mock.calls.length +
     putSpy.mock.calls.length;
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-expect-error
   expect(actual.data).toEqual(stuff);
   expect(spyCalls).toEqual(1);

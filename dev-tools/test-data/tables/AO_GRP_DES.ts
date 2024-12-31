@@ -38,7 +38,6 @@ export class AO_GRP_DES_Record implements TableRecordHelper {
   validate(): void {
     /// TODO: implement this schema validation
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
     return [this.GRP_DES, this.REGION_ID];
   }

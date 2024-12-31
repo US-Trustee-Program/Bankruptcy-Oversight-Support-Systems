@@ -6,7 +6,6 @@ export type TxType = 'O' | '1'; // Yes, that is a Oh not a Zero. The "O" stands 
 
 export interface TableRecordHelper {
   validate(): void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): Array<any>;
 }
 

@@ -55,7 +55,6 @@ export function handleHighlight(
     }, [] as Range[]);
 
     // TypeScript does not ship experimental browser type definitions which are being used here.
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
     const searchResultsHighlight = new Highlight(...ranges.flat());
     browserApi.CSS.highlights.set('search-results', searchResultsHighlight);

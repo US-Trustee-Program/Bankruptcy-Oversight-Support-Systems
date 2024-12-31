@@ -13,7 +13,6 @@ export function assert(condition: boolean, message: string = 'Assertion failed.'
 
 const COMMA_SEPARATOR = ', ';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sqlEscapeValue(value: any): string {
   if (typeof value === 'string') return `'${value.replace("'", "''")}'`;
   if (typeof value === 'number') return `${value}`;
@@ -22,7 +21,6 @@ function sqlEscapeValue(value: any): string {
   return value;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function sqlEscape(record: Array<any>) {
   return record.map((column) => {
     return sqlEscapeValue(column);
@@ -32,7 +30,6 @@ function sqlEscape(record: Array<any>) {
 export function toSqlInsertStatement(
   tableName: string,
   columnNames: ColumnNames,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   record: Array<any>,
 ): string {
   return `
@@ -56,7 +53,6 @@ export function toSqlUpdateStatement(
   columnNames: ColumnNames,
   predicateColumns: string[],
   omitColumnsNames: string[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   record: Array<any>,
 ): string {
   const predicateColumnIndexes = predicateColumns.reduce((accumulator, value) => {
@@ -120,7 +116,12 @@ export function removeExtraSpaces(s: string | undefined): string | undefined {
 }
 
 export function concatenateName(
-  props: { firstName?: string; lastName?: string; middleName?: string; generation?: string } = {},
+  props: {
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    generation?: string;
+  } = {},
 ) {
   return removeExtraSpaces(
     [props.firstName, props.middleName, props.lastName, props.generation].join(' '),

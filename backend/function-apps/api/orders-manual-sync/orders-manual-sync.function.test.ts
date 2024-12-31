@@ -28,11 +28,12 @@ const syncResponse: SyncOrdersStatus = {
 };
 
 describe('Orders Sync Function tests', () => {
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
   test('Should call orders controller method syncOrders', async () => {
-    const { camsHttpResponse } = buildTestResponseSuccess<SyncOrdersStatus>({ data: syncResponse });
+    const { camsHttpResponse } = buildTestResponseSuccess<SyncOrdersStatus>({
+      data: syncResponse,
+    });
     const request = createMockAzureFunctionRequest({
       url: 'http://domain/api/orders-sync',
       params: {},

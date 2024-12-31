@@ -153,7 +153,6 @@ export class AO_PY_Record implements AO_PY_RecordProps, TableRecordHelper {
     // assert(!this.ADDRESS_EVENT || this.ADDRESS_EVENT.length === 1);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
     return [
       this.CS_CASEID,

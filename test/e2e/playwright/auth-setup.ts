@@ -1,6 +1,5 @@
 import { Page, expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
-/* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
