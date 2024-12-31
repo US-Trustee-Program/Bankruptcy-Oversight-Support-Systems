@@ -36,8 +36,7 @@ describe('common court library tests', () => {
     expect(newOfficeList).toEqual(expect.arrayContaining([...expectedOffices]));
   });
 
-  /* eslint-disable-next-line jest/no-identical-title */
-  test('should filter court offices list by court division', async () => {
+  test('should filter court offices list by court division #2', async () => {
     const newOfficeList = filterCourtByDivision('555', COURT_DIVISIONS);
     expect(newOfficeList).toBeNull();
   });

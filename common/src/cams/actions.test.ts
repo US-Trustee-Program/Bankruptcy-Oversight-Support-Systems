@@ -2,21 +2,20 @@ import Actions, { Action } from './actions';
 
 describe('Actions', () => {
   describe('contains', () => {
-    const resource1 = {
-      _actions: [Actions.ManageAssignments],
-    };
-    /* eslint-disable-next-line jest/no-standalone-expect */
-    expect(Actions.contains(resource1, Actions.ManageAssignments)).toBeTruthy();
+    test('should determine if a resource contains a given action', () => {
+      const resource1 = {
+        _actions: [Actions.ManageAssignments],
+      };
+      expect(Actions.contains(resource1, Actions.ManageAssignments)).toBeTruthy();
 
-    const resource2 = {
-      _actions: [],
-    };
-    /* eslint-disable-next-line jest/no-standalone-expect */
-    expect(Actions.contains(resource2, Actions.ManageAssignments)).toBeFalsy();
+      const resource2 = {
+        _actions: [],
+      };
+      expect(Actions.contains(resource2, Actions.ManageAssignments)).toBeFalsy();
 
-    const resource3 = {};
-    /* eslint-disable-next-line jest/no-standalone-expect */
-    expect(Actions.contains(resource3, Actions.ManageAssignments)).toBeFalsy();
+      const resource3 = {};
+      expect(Actions.contains(resource3, Actions.ManageAssignments)).toBeFalsy();
+    });
   });
 
   describe('merge', () => {
