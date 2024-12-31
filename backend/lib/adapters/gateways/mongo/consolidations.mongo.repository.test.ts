@@ -113,36 +113,35 @@ describe('Consolidations Repository tests', () => {
         override: { consolidationId, courtDivisionCode: '081' },
       });
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-      expect(
-        async () =>
-          await repo.search({
-            divisionCodes: ['081'],
-            consolidationId: consolidationOrder.consolidationId,
-          }),
+      await expect(() =>
+        repo.search({
+          divisionCodes: ['081'],
+          consolidationId: consolidationOrder.consolidationId,
+        }),
       ).rejects.toThrow(camsError);
     });
 
-    test('should properly handle error when calling delete ', async () => {
+    test('should properly handle error when calling delete', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
 
-      expect(async () => await repo.delete(consolidationId)).rejects.toThrow(camsError);
+      await expect(() => repo.delete(consolidationId)).rejects.toThrow(camsError);
     });
 
     test('should properly handle error when calling read', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
-      expect(async () => await repo.read(consolidationId)).rejects.toThrow(camsError);
+      await expect(() => repo.read(consolidationId)).rejects.toThrow(camsError);
     });
 
     test('should properly handle error when calling create', async () => {
       const consolidationOrder = MockData.getConsolidationOrder({ override: { consolidationId } });
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(camsError);
-      expect(async () => await repo.create(consolidationOrder)).rejects.toThrow(camsError);
+      await expect(() => repo.create(consolidationOrder)).rejects.toThrow(camsError);
     });
 
-    test('should properly handle Error when calling createMany ', async () => {
+    test('should properly handle Error when calling createMany', async () => {
       const consolidationOrders = MockData.buildArray(MockData.getConsolidationOrder, 3);
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(error);
-      expect(async () => await repo.createMany(consolidationOrders)).rejects.toThrow(camsError);
+      await expect(() => repo.createMany(consolidationOrders)).rejects.toThrow(camsError);
     });
   });
 });

@@ -194,7 +194,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return className;
   }
 
-  function setListItemClass(index: number, option: ComboOption) {
+  function setListItemClass(_index: number, option: ComboOption) {
     const classNames = [];
     if (option.hidden) {
       classNames.push('hidden');

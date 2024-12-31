@@ -8,7 +8,8 @@
     "strict": false,
     "resolveJsonModule": true,
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "allowSyntheticDefaultImports": true
   },
   "exclude": [
     "node_modules",

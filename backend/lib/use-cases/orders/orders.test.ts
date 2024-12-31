@@ -395,10 +395,6 @@ describe('Orders use case', () => {
     expect(actual).toEqual([newConsolidation]);
   });
 
-  //test('should reject a split consolidation order', () => {
-  //  // This is the same logic as a split approved consolidation order, except the existing child case guard logic is not executed.
-  //});
-
   test('should throw an error if a child case is part of another consolidation', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
@@ -528,7 +524,7 @@ describe('Orders use case', () => {
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
-  test('test that approved orders identify the user who made the change', async () => {
+  test('should identify the user who approved the change', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const approval: ConsolidationOrderActionApproval = {
@@ -598,7 +594,7 @@ describe('Orders use case', () => {
     );
   });
 
-  test('test that rejected orders identify the user who made the change', async () => {
+  test('should identify the user who rejected the change', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
     const rejection: ConsolidationOrderActionRejection = {
