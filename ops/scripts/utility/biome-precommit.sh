@@ -4,13 +4,10 @@
 
 # Usage
 #   From the root directory, run the following command:
-#     ./ops/scripts/utility/clean-all-projects.sh
+#     ./ops/scripts/utility/biome-precommit.sh
 
-# PROJECTS=("./backend" "./common" "./dev-tools" "./test/e2e" "./user-interface") TODO: go through these and validate formatting changes
 PROJECTS=("./backend" "./common" "./dev-tools" "./test/e2e" "./user-interface") # temporarily ones that don't require changes
 
-# this should be the command we run
-#  npm run biome-lint:write && npm run biome-format:write
 
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit

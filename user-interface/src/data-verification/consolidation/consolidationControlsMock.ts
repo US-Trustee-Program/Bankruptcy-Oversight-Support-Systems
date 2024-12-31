@@ -1,11 +1,11 @@
-import {
+import type {
   ConsolidationControls,
   Ref,
 } from '@/data-verification/consolidation/consolidationControls';
-import { ShowOptionParams } from '@/data-verification/consolidation/ConsolidationOrderModal';
-import { CheckboxState } from '@/lib/components/uswds/Checkbox';
-import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import { ButtonRef } from '@/lib/components/uswds/Button';
+import type { ShowOptionParams } from '@/data-verification/consolidation/ConsolidationOrderModal';
+import type { CheckboxState } from '@/lib/components/uswds/Checkbox';
+import type { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+import type { ButtonRef } from '@/lib/components/uswds/Button';
 
 export function useConsolidationControlsMock(): ConsolidationControls {
   const approveButton = {
@@ -34,7 +34,6 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   const jointAdministrationRef = {
     current: {
       disable: (value: boolean) => {},
-
       check: (value: boolean) => {},
       isChecked: () => true,
     },
@@ -57,7 +56,6 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   const leadCaseNumberRef = {
     current: {
       setValue: (value: string) => {},
-
       disable: (value: boolean) => {},
       clearValue: () => {},
       resetValue: () => {},
@@ -72,7 +70,6 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   const substantiveRef = {
     current: {
       disable: (value: boolean) => {},
-
       check: (value: boolean) => {},
       isChecked: () => true,
     },
@@ -88,11 +85,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
 
   const showConfirmationModal = (
     selectedCases: ConsolidationOrderCase[],
-
     leadCase: ConsolidationOrderCase,
-
     status: OrderStatus,
-
     consolidationType?: ConsolidationType,
   ) => {};
 
