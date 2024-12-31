@@ -1,11 +1,11 @@
-import tsEslintConfig from '../common/ts-eslint.config.mjs';
-import jestEslintConfig from '../common/jest-eslint.config.mjs';
+import eslintTsConfig from '../common/eslint-ts.config.mjs';
+import eslintJestConfig from '../common/eslint-jest.config.mjs';
 
-const codeConfig = tsEslintConfig.map((configObject) => ({
+const codeConfig = eslintTsConfig.map((configObject) => ({
   files: ['**/*.ts'],
   ...configObject,
 }));
-const testConfig = jestEslintConfig.map((configObject) => ({
+const testConfig = eslintJestConfig.map((configObject) => ({
   files: ['**/*.test.ts'],
   ...configObject,
 }));

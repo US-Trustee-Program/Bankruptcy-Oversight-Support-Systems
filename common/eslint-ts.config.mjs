@@ -1,11 +1,17 @@
-import jsEslintConfig from './js-eslint.config.mjs';
+import eslintJsConfig from './eslint-js.config.mjs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const tsEslint = require('typescript-eslint');
 
-const tsEslintConfig = tsEslint.config(
-  jsEslintConfig,
+/**
+ * eslintTsConfig
+ *
+ * This ConfigArray is intended to be the base eslint configuration for all TypeScript
+ * family files (e.g. `.ts`, `.tsx`).
+ */
+const eslintTsConfig = tsEslint.config(
+  eslintJsConfig,
   tsEslint.configs.recommended,
   {
     ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
@@ -36,4 +42,4 @@ const tsEslintConfig = tsEslint.config(
   },
 );
 
-export default tsEslintConfig;
+export default eslintTsConfig;
