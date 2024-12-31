@@ -2,7 +2,6 @@
  * For a detailed explanation regarding each configuration property, visit:
  * https://jestjs.io/docs/configuration
  */
-
 module.exports = {
   clearMocks: true,
   coverageDirectory: 'coverage',
@@ -11,7 +10,7 @@ module.exports = {
     'dist/',
     '<rootDir>/node_modules/',
     '.dependency-cruiser.js',
-    'jest.config.js',
+    'jest.config.cjs',
     '.*test.[jt]s',
     '.*.d.ts',
     '.*mock.*',

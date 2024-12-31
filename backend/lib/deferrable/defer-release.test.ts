@@ -32,7 +32,7 @@ describe('Defer Release', () => {
   });
 
   test('should not fail if a proper accumulator is not passed', async () => {
-    expect(releaseDeferred({})).resolves.toBeFalsy();
+    await expect(releaseDeferred({})).resolves.toBeFalsy();
   });
 
   test('should silently handle release errors', async () => {

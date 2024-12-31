@@ -319,11 +319,7 @@ describe('Case management tests', () => {
         args.includeCaseAssignments,
       );
       expect(actual).toEqual(caseList);
-      if (args.includeCaseAssignments) {
-        expect(assignmentsSpy).toHaveBeenCalled();
-      } else {
-        expect(assignmentsSpy).not.toHaveBeenCalled();
-      }
+      expect(!!assignmentsSpy.mock.calls.length).toEqual(args.includeCaseAssignments);
     });
 
     test('should return cases and actions for the user', async () => {

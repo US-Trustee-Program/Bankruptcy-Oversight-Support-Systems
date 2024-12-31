@@ -46,7 +46,7 @@ describe('Name helper tests', () => {
     ).toEqual('First Middle Last Jr.');
   });
 
-  test('should get first, middle name, last name, and generation', async () => {
+  test('should get first, middle name, last name, and generation when no names exist', async () => {
     expect(
       getFullName(
         {

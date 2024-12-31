@@ -31,7 +31,7 @@ describe('Defer Close', () => {
   });
 
   test('should not fail if a proper accumulator is not passed', async () => {
-    expect(closeDeferred({})).resolves.toBeFalsy();
+    await expect(closeDeferred({})).resolves.toBeFalsy();
   });
 
   test('should silently handle close errors', async () => {
