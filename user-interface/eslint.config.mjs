@@ -5,8 +5,10 @@ const require = createRequire(import.meta.url);
 const tsEslint = require('typescript-eslint');
 const jsxA11y = require('eslint-plugin-jsx-a11y');
 const reactPlugin = require('eslint-plugin-react');
+const reactVersionConfig = { settings: { react: { version: 'detect' } } };
 
 const frontendEslintConfig = tsEslint.config(
+  reactVersionConfig,
   eslintTsConfig,
   jsxA11y['flatConfigs']['recommended'],
   reactPlugin.configs.flat.recommended,
