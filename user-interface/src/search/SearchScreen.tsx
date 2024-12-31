@@ -19,6 +19,9 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
+import Modal from '@/lib/components/uswds/modal/Modal';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 
 export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
@@ -29,6 +32,9 @@ export default function SearchScreen() {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
   });
+
+  const infoModalRef = useRef(null);
+  const infoModalId = 'info-modal';
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
@@ -153,6 +159,15 @@ export default function SearchScreen() {
     setSearchPredicate(temporarySearchPredicate);
   }
 
+  const infoModalActionButtonGroup = {
+    modalId: infoModalId,
+    modalRef: infoModalRef as React.RefObject<ModalRefType>,
+    cancelButton: {
+      label: 'Return',
+      uswdsStyle: UswdsButtonStyle.Default,
+    },
+  };
+
   useEffect(() => {
     getCourts();
     getChapters();
@@ -165,6 +180,7 @@ export default function SearchScreen() {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1>Case Search</h1>
+          <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
         </div>
         <div className="grid-col-1"></div>
       </div>
@@ -273,6 +289,20 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-1"></div>
       </div>
+      <Modal
+        ref={infoModalRef}
+        modalId={infoModalId}
+        className="search-info-modal"
+        heading="Case Search - Using This Page"
+        content={
+          <>
+            Case Search allows you to search for any case in the system, across regions and offices.
+            Use the filters to find the case you’re interested in. You can view details about a case
+            in the search results by clicking on its case number.
+          </>
+        }
+        actionButtonGroup={infoModalActionButtonGroup}
+      ></Modal>
     </MainContent>
   );
 }
