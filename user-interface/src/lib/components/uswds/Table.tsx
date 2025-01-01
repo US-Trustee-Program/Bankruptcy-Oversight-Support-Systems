@@ -1,3 +1,4 @@
+import './Table.scss';
 import React, { forwardRef, PropsWithChildren } from 'react';
 
 type TableHeaderDataProps = PropsWithChildren &
@@ -35,13 +36,14 @@ export function TableHeaderData(props: TableHeaderDataProps) {
 type TableRowDataProps = PropsWithChildren &
   JSX.IntrinsicElements['td'] & {
     dataSortValue?: string;
+    dataLabel?: string;
   };
 
 // TODO: if this is sorted we need to add data-sort-active="true"
 export function TableRowData(props: TableRowDataProps) {
-  const { children, dataSortValue, ...otherProperties } = props;
+  const { children, dataSortValue, dataLabel, ...otherProperties } = props;
   return (
-    <td data-sort-value={dataSortValue} {...otherProperties}>
+    <td data-sort-value={dataSortValue} data-cell={dataLabel} {...otherProperties}>
       {children}
     </td>
   );
@@ -143,7 +145,7 @@ export type TableProps = PropsWithChildren &
 export interface TableRef extends HTMLTableElement {}
 // TODO: How are we going to handle props for the div AND THE table?? And be able to support the forwardRef?
 export const TableComponent = (
-  { id, uswdsStyle, className, title, children, ...otherProperties }: TableProps,
+  { id, uswdsStyle, className, caption, children, ...otherProperties }: TableProps,
   ref?: React.Ref<TableRef>,
 ) => {
   const containerClass =
@@ -161,7 +163,7 @@ export const TableComponent = (
   return (
     <div id={id} className={containerClass} ref={ref}>
       <table className={tableClass} {...otherProperties}>
-        {title && <caption>{title}</caption>}
+        {caption && <caption>{caption}</caption>}
         {children}
       </table>
     </div>

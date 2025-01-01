@@ -1,3 +1,4 @@
+import './SearchScreen.scss';
 import { useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
@@ -10,7 +11,6 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getOfficeList } from '@/data-verification/dataVerificationHelper';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -184,11 +184,11 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-1"></div>
       </div>
-      <div className="grid-row grid-gap-lg">
+      <div className="grid-row grid-gap-lg search-pane">
         <div className="grid-col-1"></div>
         <div className="grid-col-2">
           <h2>Search By</h2>
-          <div className={`filter-and-search`} data-testid="filter-and-search-panel">
+          <div className="filter-and-search" data-testid="filter-and-search-panel">
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
