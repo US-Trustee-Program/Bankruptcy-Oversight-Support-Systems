@@ -1,3 +1,5 @@
+@use '../lib/components/uswds/Table.scss';
+
 .search-screen {
 
   h1 {
@@ -13,5 +15,39 @@
 
   .search-submit-button {
     margin-top: 1.5rem;
+  }
+
+}
+
+@media screen and (max-width: 850px) {
+  .search-screen {
+    .search-pane.grid-row.grid-gap-lg {
+      display: block;
+      margin: 0 10%;
+
+      .grid-col-1 {
+        width: 0;
+      }
+      .grid-col-2 {
+        width: auto;
+      }
+      .grid-col-8 {
+        width: auto;
+      }
+      .filter-and-search {
+        margin-bottom: 3rem;
+        .usa-form-group {
+          margin-top: 1rem;
+          padding: 0 0.5rem;
+          .usa-hint {
+            font-size: 0.8rem;
+          }
+          .pills-and-clear-all {
+            justify-content: left;
+          }
+        }
+      }
+      @include Table.small-table;
+    }
   }
 }
