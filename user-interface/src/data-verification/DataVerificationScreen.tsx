@@ -50,6 +50,8 @@ export default function DataVerificationScreen() {
 
   const api = useApi2();
 
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+
   if (!session?.user?.roles?.includes(CamsRole.DataVerifier)) {
     globalAlert?.error('Invalid Permissions');
     return <></>;
@@ -171,6 +173,7 @@ export default function DataVerificationScreen() {
           orderType={orderType}
           statusType={orderStatusType}
           onOrderUpdate={handleTransferOrderUpdate}
+          fieldHeaders={accordionFieldHeaders}
           hidden={isHidden}
         ></TransferOrderAccordion>
       ) : (
@@ -182,6 +185,7 @@ export default function DataVerificationScreen() {
           orderType={orderType}
           statusType={orderStatusType}
           onOrderUpdate={handleConsolidationOrderUpdate}
+          fieldHeaders={accordionFieldHeaders}
           hidden={isHidden}
         ></ConsolidationOrderAccordion>
       );
@@ -283,11 +287,11 @@ export default function DataVerificationScreen() {
                     <div className="data-verification-accordion-header" data-testid="orders-header">
                       <div className="grid-row grid-gap-lg">
                         <div className="grid-col-6 text-no-wrap">
-                          <h3>Court District</h3>
+                          <h3>{accordionFieldHeaders[0]}</h3>
                         </div>
-                        <h3 className="grid-col-2 text-no-wrap">Order Filed</h3>
-                        <h3 className="grid-col-2 text-no-wrap">Event Type</h3>
-                        <h3 className="grid-col-2 text-no-wrap">Event Status</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[1]}</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[2]}</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[3]}</h3>
                       </div>
                     </div>
                     <AccordionGroup>{...accordionItems}</AccordionGroup>
