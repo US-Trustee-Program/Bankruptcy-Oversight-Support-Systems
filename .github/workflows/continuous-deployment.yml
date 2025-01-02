@@ -3,9 +3,6 @@ name: Continuous Deployment
 concurrency: ${{ github.ref }}-${{ github.workflow }}
 
 on:
-  pull_request:
-    branches:
-      - "dependency-updates-auto"
   push:
     paths-ignore:
       - "docs/**"
