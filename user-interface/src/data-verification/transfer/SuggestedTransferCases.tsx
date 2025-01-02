@@ -183,7 +183,7 @@ function _SuggestedTransferCases(
               data-testid={'suggested-cases-found'}
             >
               Select the new case from the list below. If the case is not listed, select &quot;case
-              not listed&quot; and enter the new court division and enter the new case number.
+              not listed&quot; and enter the new court division and case number.
             </div>
           )}
           {suggestedCases && suggestedCases?.length === 0 && (
