@@ -21,6 +21,7 @@ describe('StaffAssignmentRow tests', () => {
   function renderWithProps(props: Partial<TestComponentProps> = {}) {
     const defaultProps: TestComponentProps = {
       bCase,
+      labels: [],
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -33,6 +34,7 @@ describe('StaffAssignmentRow tests', () => {
 
   type TestComponentProps = {
     bCase: ResourceActions<CaseBasics>;
+    labels: [];
   };
 
   function TestComponent(props: TestComponentProps) {
@@ -46,7 +48,12 @@ describe('StaffAssignmentRow tests', () => {
       <div>
         <table>
           <tbody>
-            <StaffAssignmentRow bCase={props.bCase} idx={0} options={options} />
+            <StaffAssignmentRow
+              labels={props.labels}
+              bCase={props.bCase}
+              idx={0}
+              options={options}
+            />
           </tbody>
         </table>
         <AssignAttorneyModal modalId={'test-modal-id'} ref={modalRef} />
