@@ -50,4 +50,5 @@ jobs:
         uses: benc-uk/workflow-dispatch@v1
         with:
             workflow: continuous-deployment.yml
-            ref: 'refs/head/dependency-updates-auto'
+            repo: US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
+            ref: ${{ github.ref }}
