@@ -36,6 +36,7 @@ export type CaseDetail = CaseSummary & {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
+  transferDate?: string;
   courtId: string;
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
