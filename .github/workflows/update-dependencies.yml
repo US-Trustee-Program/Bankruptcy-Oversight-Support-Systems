@@ -45,3 +45,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./ops/scripts/utility/audit.sh -c
+
+      - name: Trigger Continuous Deployment
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+            workflow: continuous-deployment.yml
+            repo: US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
+            ref: 'refs/heads/dependency-updates-auto'
+            inputs: '{"deployBranch": "true", "enableBicepDeployment": "true"}'
