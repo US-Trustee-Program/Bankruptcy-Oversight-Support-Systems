@@ -189,7 +189,7 @@ describe('SuggestedTransferCases component', () => {
       const description = screen.getByTestId('suggested-cases-found');
       expect(description).toBeInTheDocument();
       expect(description).toHaveTextContent(
-        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and enter the new case number.',
+        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and case number.',
       );
     });
   });
