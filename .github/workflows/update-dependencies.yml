@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
       - name: Import GPG
         id: import-gpg
@@ -28,6 +26,7 @@ jobs:
 
       - name: Update
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_AUTHOR_NAME: ${{ steps.import-gpg.outputs.name }}
           GIT_AUTHOR_EMAIL: ${{ steps.import-gpg.outputs.email }}
         run: ./ops/scripts/utility/update-dependencies.sh -c
@@ -46,3 +45,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./ops/scripts/utility/audit.sh -c
+
+      - name: Trigger Continuous Deployment
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+            workflow: continuous-deployment.yml
+            ref: 'refs/head/dependency-updates-auto'
