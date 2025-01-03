@@ -51,4 +51,5 @@ jobs:
         with:
             workflow: continuous-deployment.yml
             repo: US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
-            ref: ${{ github.ref }}
+            ref: 'refs/heads/dependency-updates-auto'
+            inputs: '{"deployBranch": "true", "enableBicepDeployment": "true"}'
