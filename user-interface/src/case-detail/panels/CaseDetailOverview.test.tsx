@@ -290,7 +290,7 @@ describe('Case detail basic information panel', () => {
 
       expect(screen.queryByTestId('verified-transfer-header')).not.toBeInTheDocument();
       const ambiguousTransferText = screen.queryByTestId('ambiguous-transfer-text');
-      expect(ambiguousTransferText?.textContent).toEqual(
+      expect(ambiguousTransferText).toHaveTextContent(
         'This case was transfered to another court. Review the docket for further details.',
       );
     });
@@ -304,7 +304,7 @@ describe('Case detail basic information panel', () => {
 
       expect(screen.queryByTestId('verified-transfer-header')).not.toBeInTheDocument();
       const ambiguousTransferText = screen.queryByTestId('ambiguous-transfer-text');
-      expect(ambiguousTransferText?.textContent).toEqual(
+      expect(ambiguousTransferText).toHaveTextContent(
         'This case was transfered from another court. Review the docket for further details.',
       );
     });
