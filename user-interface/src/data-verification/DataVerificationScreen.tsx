@@ -46,7 +46,7 @@ export default function DataVerificationScreen() {
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
 
-  const regionNumber = '02';
+  const regionHeader = 'Region 02';
 
   const api = useApi2();
 
@@ -206,7 +206,7 @@ export default function DataVerificationScreen() {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1>Data Verification</h1>
-          <h2>Region {regionNumber}</h2>
+          <h2>{regionHeader}</h2>
           {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
           {!isOrderListLoading && (
             <>
