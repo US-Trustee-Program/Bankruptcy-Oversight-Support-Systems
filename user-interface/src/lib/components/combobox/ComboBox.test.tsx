@@ -449,7 +449,7 @@ describe('test cams combobox', () => {
     await userEvent.type(inputField, 'test test');
 
     inputField.focus();
-    userEvent.tab();
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(inputField.value).toEqual('');
