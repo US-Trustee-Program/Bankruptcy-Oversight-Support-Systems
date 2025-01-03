@@ -42,17 +42,17 @@ describe('Testing the clipboard with caseId', () => {
 
   test('clicking copy button should write caseId to clipboard', async () => {
     copyCaseNumber(testCaseDetail.caseId);
-    waitFor(() => {
+    await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
     });
   });
 
-  test('should only copy to clipboard if we have a valid case number', () => {
+  test('should only copy to clipboard if we have a valid case number', async () => {
     copyCaseNumber('abcdefg#!@#$%');
     expect(writeTextMock).not.toHaveBeenCalled();
 
     copyCaseNumber(testCaseDetail.caseId);
-    waitFor(() => {
+    await waitFor(() => {
       expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
       expect(writeTextMock).toHaveBeenCalledTimes(1);
     });

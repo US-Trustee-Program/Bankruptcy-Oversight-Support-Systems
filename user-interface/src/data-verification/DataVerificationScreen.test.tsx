@@ -45,13 +45,13 @@ describe('Review Orders screen', () => {
     });
     const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
 
-    await fireEvent.click(approvedOrderFilter);
+    fireEvent.click(approvedOrderFilter);
 
     await waitFor(() => {
       expect(approvedOrderFilter).toHaveClass('active');
     });
 
-    await fireEvent.click(approvedOrderFilter);
+    fireEvent.click(approvedOrderFilter);
 
     await waitFor(() => {
       expect(approvedOrderFilter).toHaveClass('inactive');
@@ -81,8 +81,8 @@ describe('Review Orders screen', () => {
 
     const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
     const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
-    await fireEvent.click(approvedOrderFilter);
-    await fireEvent.click(rejectedOrderFilter);
+    fireEvent.click(approvedOrderFilter);
+    fireEvent.click(rejectedOrderFilter);
 
     for (const order of ordersResponse.data) {
       await waitFor(async () => {
@@ -154,11 +154,11 @@ describe('Review Orders screen', () => {
       expect(loadingSpinner).not.toBeInTheDocument();
     });
     const pendingOrderFilter = screen.getByTestId(`order-status-filter-pending`);
-    await fireEvent.click(pendingOrderFilter);
+    fireEvent.click(pendingOrderFilter);
     const consolidationOrderFilter = screen.getByTestId(`order-status-filter-consolidation`);
-    await fireEvent.click(consolidationOrderFilter);
+    fireEvent.click(consolidationOrderFilter);
     const transferOrderFilter = screen.getByTestId(`order-status-filter-transfer`);
-    await fireEvent.click(transferOrderFilter);
+    fireEvent.click(transferOrderFilter);
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-too-many-filters');
@@ -198,8 +198,8 @@ describe('Review Orders screen', () => {
 
     const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
     const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
-    await fireEvent.click(approvedOrderFilter);
-    await fireEvent.click(rejectedOrderFilter);
+    fireEvent.click(approvedOrderFilter);
+    fireEvent.click(rejectedOrderFilter);
 
     for (const order of transferOrders) {
       await waitFor(() => {
@@ -282,8 +282,8 @@ describe('Review Orders screen', () => {
       rejectFilter = screen.getByTestId(`order-status-filter-rejected`);
     });
 
-    await fireEvent.click(approveFilter!);
-    await fireEvent.click(rejectFilter!);
+    fireEvent.click(approveFilter!);
+    fireEvent.click(rejectFilter!);
 
     await waitFor(() => {
       // Check if all the orders are listed by default.
@@ -299,7 +299,7 @@ describe('Review Orders screen', () => {
       transferFilter = screen.getByTestId(`order-status-filter-transfer`);
       expect(transferFilter).toBeInTheDocument();
     });
-    await fireEvent.click(transferFilter!);
+    fireEvent.click(transferFilter!);
 
     // make sure only consolidations are visible
     await waitFor(async () => {
@@ -318,8 +318,8 @@ describe('Review Orders screen', () => {
     // deselect consolidation filter and select transfer filter
     const consolidationFilter = screen.getByTestId(`order-status-filter-consolidation`);
     expect(consolidationFilter).toBeInTheDocument();
-    await fireEvent.click(transferFilter!);
-    await fireEvent.click(consolidationFilter);
+    fireEvent.click(transferFilter!);
+    fireEvent.click(consolidationFilter);
 
     // make sure only transfers are visible
     for (const order of transferOrders) {
