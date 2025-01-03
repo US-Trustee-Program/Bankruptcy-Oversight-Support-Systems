@@ -153,7 +153,7 @@ describe('test cams combobox', () => {
 
     await userEvent.click(pillBox!.children[0]);
 
-    waitFor(() => {
+    await waitFor(() => {
       pillBox = document.querySelector(`#${comboboxId}-pill-box`);
       expect(pillBox!.children.length).toEqual(0);
     });
