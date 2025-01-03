@@ -51,4 +51,4 @@ jobs:
         with:
             workflow: continuous-deployment.yml
             repo: US-Trustee-Program/Bankruptcy-Oversight-Support-Systems
-            ref: ${{ github.ref }}
+            ref: 'refs/head/dependency-updates-auto'
