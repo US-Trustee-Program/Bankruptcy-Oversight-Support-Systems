@@ -136,7 +136,7 @@ function ConsolidationOrderModalComponent(
       setLeadCase(options.leadCase);
       setOptions({
         status: options.status,
-        heading: 'Verify Case Consolidation',
+        heading: 'Verify Case Consolidation.',
       });
     } else if (options.status === 'rejected') {
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
@@ -233,6 +233,7 @@ function ConsolidationOrderModalComponent(
       <div>
         <div className="modal-consolidation-type">
           This will confirm the <strong>{consolidationTypeMap.get(consolidationType!)}</strong> of
+          the following cases.
         </div>
         <div
           data-testid="modal-case-list-container"
