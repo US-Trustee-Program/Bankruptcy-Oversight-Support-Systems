@@ -63,6 +63,7 @@ describe('Test DXTR Gateway', () => {
     const closedDate = '2023-10-31';
     const dismissedDate = '2023-11-15';
     const reopenedDate = '2023-12-31';
+    const transferDate = '2023-12-31';
 
     const expectedParty = {
       name: 'John Q. Smith',
@@ -116,6 +117,10 @@ describe('Test DXTR Gateway', () => {
       {
         txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
         txCode: 'OCO',
+      },
+      {
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
+        txCode: 'CTO',
       },
     ];
 
@@ -177,6 +182,7 @@ describe('Test DXTR Gateway', () => {
       closedDate,
       dismissedDate,
       reopenedDate,
+      transferDate,
     };
 
     expect(actualResult).toStrictEqual(expectedResult);
