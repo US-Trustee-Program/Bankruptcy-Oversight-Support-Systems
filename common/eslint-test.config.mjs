@@ -11,7 +11,7 @@ const jest = require('eslint-plugin-jest');
  * This ConfigArray is intended to be the base eslint configuration for all JavaScript
  * family test files (e.g. `.test.[j|t]s`, `.test.[j|t]sx`) that are tested with Jest.
  */
-const eslintJestConfig = tsEslint.config(
+const eslintTestConfig = tsEslint.config(
   eslintTsConfig,
   {
     plugins: jest.configs['flat/recommended']['plugins'],
@@ -35,4 +35,4 @@ const eslintJestConfig = tsEslint.config(
   },
 );
 
-export default eslintJestConfig;
+export default eslintTestConfig;
