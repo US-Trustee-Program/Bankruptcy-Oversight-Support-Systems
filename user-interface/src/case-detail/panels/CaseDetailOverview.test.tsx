@@ -281,6 +281,34 @@ describe('Case detail basic information panel', () => {
   });
 
   describe('Transferred case information tests', () => {
+    test('should display information about case being transfered out when there is no verified transfer', async () => {
+      const transferredCase = {
+        ...BASE_TEST_CASE_DETAIL,
+        transferDate: '2024-12-01',
+      };
+      renderWithProps({ caseDetail: transferredCase });
+
+      expect(screen.queryByTestId('verified-transfer-header')).not.toBeInTheDocument();
+      const ambiguousTransferText = screen.queryByTestId('ambiguous-transfer-text');
+      expect(ambiguousTransferText?.textContent).toEqual(
+        'This case was transfered to another court. Review the docket for further details.',
+      );
+    });
+
+    test('should display information about case being transfered in when there is no verified transfer', async () => {
+      const transferredCase = {
+        ...BASE_TEST_CASE_DETAIL,
+        petitionCode: 'TI',
+      };
+      renderWithProps({ caseDetail: transferredCase });
+
+      expect(screen.queryByTestId('verified-transfer-header')).not.toBeInTheDocument();
+      const ambiguousTransferText = screen.queryByTestId('ambiguous-transfer-text');
+      expect(ambiguousTransferText?.textContent).toEqual(
+        'This case was transfered from another court. Review the docket for further details.',
+      );
+    });
+
     test('should display old case information', () => {
       const transferredCase = {
         ...BASE_TEST_CASE_DETAIL,
@@ -288,6 +316,8 @@ describe('Case detail basic information panel', () => {
       };
 
       renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
+
+      expect(screen.queryByTestId('ambiguous-transfer-text')).not.toBeInTheDocument();
 
       const oldCaseIdLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(oldCaseIdLink).toBeInTheDocument();
@@ -311,6 +341,8 @@ describe('Case detail basic information panel', () => {
       };
 
       renderWithProps({ caseDetail: transferredCase, showReopenDate: false });
+
+      expect(screen.queryByTestId('ambiguous-transfer-text')).not.toBeInTheDocument();
 
       const newCaseNumberLink = screen.queryByTestId('case-detail-transfer-link-0');
       expect(newCaseNumberLink).toBeInTheDocument();
