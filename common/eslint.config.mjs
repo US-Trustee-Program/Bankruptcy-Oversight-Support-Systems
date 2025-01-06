@@ -12,7 +12,7 @@ const testConfig = eslintTestConfig.map((configObject) => ({
 
 const commonEslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
   },
   ...codeConfig,
   ...testConfig,

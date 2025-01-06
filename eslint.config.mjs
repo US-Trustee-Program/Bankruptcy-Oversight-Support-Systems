@@ -32,7 +32,7 @@ const jsConfig = eslintJsConfig.map((configObject) => ({
 
 const eslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
   },
   ...frontendSourceConfig,
   ...frontendTestConfig,
