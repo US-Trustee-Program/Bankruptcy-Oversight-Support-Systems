@@ -1,13 +1,14 @@
-import frontendEslintConfig from './user-interface/eslint.config.mjs';
 import eslintJsConfig from './common/eslint-js.config.mjs';
 import eslintTsConfig from './common/eslint-ts.config.mjs';
 import eslintTestConfig from './common/eslint-test.config.mjs';
+import eslintUiTestConfig from './user-interface/eslint-ui-test.config.mjs';
+import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
 
-const frontendSourceConfig = frontendEslintConfig.map((configObject) => ({
+const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
   files: ['user-interface/**/*.ts', 'user-interface/**/*.tsx'],
   ...configObject,
 }));
-const frontendTestConfig = frontendEslintConfig.map((configObject) => ({
+const frontendTestConfig = eslintUiTestConfig.map((configObject) => ({
   files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx'],
   ...configObject,
 }));
