@@ -327,11 +327,8 @@ export default class CasesDxtrGateway implements CasesInterface {
       for (const chapter of predicate.chapters) {
         chapters.push(chapter);
       }
-    } else {
-      chapters.push('15');
+      conditions.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
     }
-
-    conditions.push(`cs.CS_CHAPTER IN ('${chapters.join("', '")}')`);
 
     const CASE_SEARCH_QUERY_PREDICATE =
       conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
