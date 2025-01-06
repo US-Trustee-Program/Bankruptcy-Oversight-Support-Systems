@@ -24,13 +24,15 @@ describe('getCaseIdParts', () => {
 describe('Test DXTR Gateway', () => {
   let applicationContext;
   let testCasesDxtrGateway;
-  const querySpy = jest.spyOn(database, 'executeQuery');
+  let querySpy;
 
   beforeEach(async () => {
     const featureFlagSpy = jest.spyOn(featureFlags, 'getFeatureFlags');
     featureFlagSpy.mockImplementation(async () => {
       return {};
     });
+    querySpy = jest.spyOn(database, 'executeQuery');
+
     applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
     testCasesDxtrGateway = new CasesDxtrGateway();
@@ -39,7 +41,7 @@ describe('Test DXTR Gateway', () => {
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   // TODO: Find a way to cover the different scenarios where executeQuery throws an error
@@ -653,7 +655,7 @@ describe('Test DXTR Gateway', () => {
     });
 
     afterEach(() => {
-      jest.resetAllMocks();
+      jest.restoreAllMocks();
     });
 
     test('should return empty array', async () => {
@@ -702,6 +704,32 @@ describe('Test DXTR Gateway', () => {
       });
 
       expect(actual).toEqual([testCase]);
+    });
+
+    test('should call execute query with no chapters if none exist in the searchPredicate', async () => {
+      await testCasesDxtrGateway.searchCases(applicationContext, {
+        caseNumber: '00-00000',
+      });
+
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.not.stringContaining('cs.CS_CHAPTER IN'),
+        expect.anything(),
+      );
+    });
+
+    test('should call execute query with chapters within the searchPredicate', async () => {
+      await testCasesDxtrGateway.searchCases(applicationContext, {
+        chapters: ['15'],
+      });
+
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.stringContaining("cs.CS_CHAPTER IN ('15')"),
+        expect.anything(),
+      );
     });
 
     test('should return an error', async () => {
