@@ -20,6 +20,7 @@ repos:
           -   eslint-plugin-jsx-a11y
           -   eslint-plugin-prettier
           -   eslint-plugin-react
+          -   eslint-plugin-testing-library
           -   '@eslint/js'
           -   typescript
           -   typescript-eslint

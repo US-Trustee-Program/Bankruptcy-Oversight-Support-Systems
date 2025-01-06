@@ -1,13 +1,14 @@
-import frontendEslintConfig from './user-interface/eslint.config.mjs';
 import eslintJsConfig from './common/eslint-js.config.mjs';
 import eslintTsConfig from './common/eslint-ts.config.mjs';
-import eslintJestConfig from './common/eslint-jest.config.mjs';
+import eslintTestConfig from './common/eslint-test.config.mjs';
+import eslintUiTestConfig from './user-interface/eslint-ui-test.config.mjs';
+import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
 
-const frontendSourceConfig = frontendEslintConfig.map((configObject) => ({
+const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
   files: ['user-interface/**/*.ts', 'user-interface/**/*.tsx'],
   ...configObject,
 }));
-const vitestConfig = frontendEslintConfig.map((configObject) => ({
+const frontendTestConfig = eslintUiTestConfig.map((configObject) => ({
   files: ['user-interface/**/*.test.ts', 'user-interface/**/*.test.tsx'],
   ...configObject,
 }));
@@ -15,7 +16,7 @@ const sourceConfig = eslintTsConfig.map((configObject) => ({
   files: ['backend/**/*.ts', 'common/**/*.ts', 'dev-tools/**/*.ts', 'test/e2e/**/*.ts'],
   ...configObject,
 }));
-const jestConfig = eslintJestConfig.map((configObject) => ({
+const testConfig = eslintTestConfig.map((configObject) => ({
   files: [
     'backend/**/*.test.ts',
     'common/**/*.test.ts',
@@ -31,12 +32,12 @@ const jsConfig = eslintJsConfig.map((configObject) => ({
 
 const eslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
   },
   ...frontendSourceConfig,
-  ...vitestConfig,
+  ...frontendTestConfig,
   ...sourceConfig,
-  ...jestConfig,
+  ...testConfig,
   ...jsConfig,
 ];
 
