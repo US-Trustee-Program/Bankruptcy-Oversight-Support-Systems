@@ -1,0 +1,82 @@
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
+import { CaseNotesController } from './case.notes.controller';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { NORMAL_CASE_ID } from '../../testing/testing-constants';
+import { getCamsError } from '../../common-errors/error-utilities';
+
+describe('Case note controller tests', () => {
+  let applicationContext: ApplicationContext;
+
+  const user = {
+    ...MockData.getCamsUserReference(),
+    name: 'Mock Name',
+    offices: [REGION_02_GROUP_NY],
+    roles: [CamsRole.CaseAssignmentManager],
+  };
+
+  beforeEach(async () => {
+    applicationContext = await createMockApplicationContext();
+    applicationContext.session = await createMockApplicationContextSession({ user });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('should call createCaseNote on a case if POST request', async () => {
+    const createSpy = jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+
+    const mockCase = MockData.getCaseBasics();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: {
+        caseId: mockCase.caseId,
+      },
+      body: 'some test string',
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await controller.handleRequest(applicationContext);
+
+    expect(createSpy).toHaveBeenCalled();
+  });
+
+  test('should call getCaseNotes for a case if GET', async () => {
+    const caseNotes = [MockData.getCaseNote()];
+    const getSpy = jest
+      .spyOn(CaseNotesUseCase.prototype, 'getCaseNotes')
+      .mockResolvedValue(caseNotes);
+    const mockCase = MockData.getCaseBasics({ override: { caseId: caseNotes[0].caseId } });
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: {
+        caseId: mockCase.caseId,
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await controller.handleRequest(applicationContext);
+
+    expect(getSpy).toHaveBeenCalled();
+  });
+
+  test('should handle errors', async () => {
+    const error = new Error('Case notes test error');
+    jest.spyOn(CaseNotesUseCase.prototype, 'getCaseNotes').mockRejectedValue(error);
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: {
+        caseId: NORMAL_CASE_ID,
+      },
+    });
+    const expectedCamsError = getCamsError(error, 'CASE-NOTES-CONTROLLER');
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
+  });
+});
