@@ -43,7 +43,7 @@ describe('StaffAssignmentScreen', () => {
       limit: DEFAULT_SEARCH_LIMIT,
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
-      chapters: expect.arrayContaining(['15']),
+      chapters: ['15'],
     };
 
     const SearchResults = vi
