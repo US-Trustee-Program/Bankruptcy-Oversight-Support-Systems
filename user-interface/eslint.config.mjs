@@ -12,7 +12,7 @@ const testConfig = eslintUiTestConfig.map((configObject) => ({
 
 const frontendEslintConfig = [
   {
-    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*'],
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
   },
   ...codeConfig,
   ...testConfig,
