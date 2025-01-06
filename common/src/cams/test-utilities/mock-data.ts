@@ -5,6 +5,7 @@ import {
   CaseDetail,
   CaseDocketEntry,
   CaseDocketEntryDocument,
+  CaseNote,
   CaseSummary,
 } from '../cases';
 import {
@@ -460,6 +461,19 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
   };
 }
 
+function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
+  const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  return {
+    id: randomId(),
+    documentType: 'NOTE',
+    caseId: randomCaseId(),
+    content: 'Test Note',
+    updatedOn: firstDate,
+    updatedBy: getCamsUserReference(),
+    ...override,
+  };
+}
+
 function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
@@ -582,6 +596,7 @@ export const MockData = {
   randomOffice,
   randomUstpOffice,
   getAttorneyAssignment,
+  getCaseNote,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,
