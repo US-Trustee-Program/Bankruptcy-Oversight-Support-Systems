@@ -19,12 +19,25 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import useFeatureFlags, {
+  CHAPTER_ELEVEN_ENABLED,
+  CHAPTER_TWELVE_ENABLED,
+} from '@/lib/hooks/UseFeatureFlags';
+
+function getChapters(): string[] {
+  const chapters = ['15'];
+  const featureFlags = useFeatureFlags();
+  if (featureFlags[CHAPTER_ELEVEN_ENABLED]) chapters.push('11');
+  if (featureFlags[CHAPTER_TWELVE_ENABLED]) chapters.push('12');
+  return chapters;
+}
 
 function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     divisionCodes: getCourtDivisionCodes(user),
+    chapters: getChapters(),
   };
 
   return predicate;
