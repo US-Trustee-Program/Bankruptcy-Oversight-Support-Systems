@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DataVerificationScreen from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
 import { formatDate } from '@/lib/utils/datetime';
@@ -45,17 +45,13 @@ describe('Review Orders screen', () => {
     });
     const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
 
-    act(() => {
-      fireEvent.click(approvedOrderFilter);
-    });
+    fireEvent.click(approvedOrderFilter);
 
     await waitFor(() => {
       expect(approvedOrderFilter).toHaveClass('active');
     });
 
-    act(() => {
-      fireEvent.click(approvedOrderFilter);
-    });
+    fireEvent.click(approvedOrderFilter);
 
     await waitFor(() => {
       expect(approvedOrderFilter).toHaveClass('inactive');

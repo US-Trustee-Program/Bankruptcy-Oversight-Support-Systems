@@ -1,18 +1,21 @@
-import eslintTsConfig from '../common/eslint-ts.config.mjs';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
+import eslintUiConfig from './eslint-ui.config.mjs';
+import eslintUiTestConfig from './eslint-ui-test.config.mjs';
 
-const tsEslint = require('typescript-eslint');
-const jsxA11y = require('eslint-plugin-jsx-a11y');
-const reactPlugin = require('eslint-plugin-react');
-const reactVersionConfig = { settings: { react: { version: 'detect' } } };
+const codeConfig = eslintUiConfig.map((configObject) => ({
+  files: ['**/*.ts', '**/*.tsx'],
+  ...configObject,
+}));
+const testConfig = eslintUiTestConfig.map((configObject) => ({
+  files: ['**/*.test.ts', '**/*.test.tsx'],
+  ...configObject,
+}));
 
-const frontendEslintConfig = tsEslint.config(
-  reactVersionConfig,
-  eslintTsConfig,
-  jsxA11y['flatConfigs']['recommended'],
-  reactPlugin.configs.flat.recommended,
-  reactPlugin.configs.flat['jsx-runtime'],
-);
+const frontendEslintConfig = [
+  {
+    ignores: ['**/build/**/*', '**/dist/**/*', '**/node_modules/**/*', '**/coverage/**/*'],
+  },
+  ...codeConfig,
+  ...testConfig,
+];
 
 export default frontendEslintConfig;
