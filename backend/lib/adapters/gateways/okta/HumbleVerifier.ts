@@ -49,7 +49,8 @@ export async function verifyAccessToken(
   token: string,
   audience: string,
 ): Promise<CamsJwt> {
-  const oktaJwtVerifier = new OktaJwtVerifier({ issuer });
+  const jwksRequestsPerMinute = 50;
+  const oktaJwtVerifier = new OktaJwtVerifier({ issuer, jwksRequestsPerMinute });
   const oktaJwt: Jwt = await oktaJwtVerifier.verifyAccessToken(token, audience);
 
   return {
