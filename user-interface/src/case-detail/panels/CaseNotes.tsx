@@ -94,7 +94,9 @@ export default function CaseNotes(props: CaseNotesProps) {
         >
           Add Note
         </Button>
-        {areCaseNotesLoading && <LoadingSpinner caption="Loading case notes..." />}
+        {areCaseNotesLoading && (
+          <LoadingSpinner id="notes-loading-indicator" caption="Loading case notes..." />
+        )}
         {!areCaseNotesLoading && (
           <>
             {caseNotes.length < 1 && (
@@ -111,7 +113,7 @@ export default function CaseNotes(props: CaseNotesProps) {
               </div>
             )}
             {caseNotes.length > 0 && (
-              <table data-testid="history-table" className="usa-table usa-table--borderless">
+              <table data-testid="case-notes-table" className="usa-table usa-table--borderless">
                 <thead>
                   <tr>
                     <th>Note</th>
