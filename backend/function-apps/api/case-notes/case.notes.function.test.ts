@@ -133,11 +133,9 @@ describe('Case Notes Function Tests', () => {
       },
       data: expectedNoteList,
     });
-    const getNotesSpy = jest
-      .spyOn(CaseNotesController.prototype, 'handleRequest')
-      .mockResolvedValue(camsHttpResponse);
+    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
-    await handler(request, context);
-    expect(getNotesSpy).toHaveReturnedWith(azureHttpResponse);
+    const response = await handler(request, context);
+    expect(response).toEqual(azureHttpResponse);
   });
 });

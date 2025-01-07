@@ -10,7 +10,7 @@ import { CaseNote } from '../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
-const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 01-12345.';
+const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
 
 export class CaseNotesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -25,7 +25,7 @@ export class CaseNotesController implements CamsController {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
-        this.validateRequestParameters(context.request.params.caseId);
+        this.validateRequestParameters(context.request.params.caseId, context.request.body);
         const caseId = context.request.params.caseId;
         const note = context.request.body as string;
         await caseNotesUseCase.createCaseNote(context.session.user, caseId, note);
@@ -46,13 +46,15 @@ export class CaseNotesController implements CamsController {
     }
   }
 
-  private validateRequestParameters(caseId: string) {
+  private validateRequestParameters(caseId: string, note: unknown) {
     const badParams = [];
     const messages = [];
     if (!caseId) {
       badParams.push('caseId');
     } else if (!caseId.match(VALID_CASEID_PATTERN)) {
       messages.push(INVALID_CASEID_MESSAGE);
+    } else if (!note) {
+      badParams.push('case note');
     }
     if (badParams.length > 0) {
       const isPlural = badParams.length > 1;
