@@ -44,13 +44,20 @@ type Jwt = {
   isNotBefore(): boolean;
 };
 
+// Yuck. This kinda violates the pure nature of a humble.
+// But we need to maintain an OktaJwtVerifier singleton.
+const verifierMap = new Map<string, OktaJwtVerifier>();
+
 export async function verifyAccessToken(
   issuer: string,
   token: string,
   audience: string,
 ): Promise<CamsJwt> {
   const jwksRequestsPerMinute = 50;
-  const oktaJwtVerifier = new OktaJwtVerifier({ issuer, jwksRequestsPerMinute });
+  if (!verifierMap.has(issuer)) {
+    verifierMap.set(issuer, new OktaJwtVerifier({ issuer, jwksRequestsPerMinute }));
+  }
+  const oktaJwtVerifier = verifierMap.get(issuer);
   const oktaJwt: Jwt = await oktaJwtVerifier.verifyAccessToken(token, audience);
 
   return {
