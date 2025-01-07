@@ -66,7 +66,50 @@ describe('Case note controller tests', () => {
     expect(getSpy).toHaveBeenCalled();
   });
 
-  test('should handle errors', async () => {
+  test('should throw error when no caseId is provided', async () => {
+    jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: {
+        caseId: '',
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Required parameter caseId is absent.',
+    );
+  });
+
+  test('should throw error when malformed caseId is provided', async () => {
+    jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: {
+        caseId: 'n-1f23',
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'caseId must be formatted like 111-01-12345.',
+    );
+  });
+
+  test('should throw error when no case note is provided', async () => {
+    jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: {
+        caseId: NORMAL_CASE_ID,
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Required parameter case note is absent.',
+    );
+  });
+
+  test('should handle errors thrown from useCase', async () => {
     const error = new Error('Case notes test error');
     jest.spyOn(CaseNotesUseCase.prototype, 'getCaseNotes').mockRejectedValue(error);
     applicationContext.request = mockCamsHttpRequest({
