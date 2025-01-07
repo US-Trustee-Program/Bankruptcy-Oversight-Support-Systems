@@ -44,8 +44,8 @@ type Jwt = {
   isNotBefore(): boolean;
 };
 
-// Yuck. This kinda violates the pure nature of a humble.
-// But we need to maintain an OktaJwtVerifier singleton.
+// This kinda violates the pure nature of a humble.
+// We need to maintain an OktaJwtVerifier singleton.
 const verifierMap = new Map<string, OktaJwtVerifier>();
 
 export async function verifyAccessToken(
