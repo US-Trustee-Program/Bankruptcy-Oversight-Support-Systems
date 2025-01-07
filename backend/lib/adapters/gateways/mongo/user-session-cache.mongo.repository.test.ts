@@ -83,6 +83,7 @@ describe('User session cache Cosmos repository tests', () => {
         signature: expect.anything(),
         ttl: expect.any(Number),
       }),
+      true,
     );
     const maxTtl = Math.floor(camsJwtClaims.exp - Date.now() / 1000);
     expect(argument.ttl).toBeLessThan(maxTtl + 1);
