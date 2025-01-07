@@ -1,5 +1,5 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
-import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseDetail, CaseDocket, CaseNote, CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { Consolidation } from '@common/cams/events';
@@ -226,6 +226,14 @@ async function getCaseHistory(caseId: string) {
   return api().get<CaseHistory[]>(`/cases/${caseId}/history`);
 }
 
+async function getCaseNotes(caseId: string) {
+  return api().get<CaseNote[]>(`/cases/${caseId}/notes`);
+}
+
+async function postCaseNote(caseId: string, note: string): Promise<void> {
+  await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note });
+}
+
 async function getCourts() {
   const path = `/courts`;
   return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
@@ -290,6 +298,8 @@ export const _Api2 = {
   getCaseAssignments,
   getCaseAssociations,
   getCaseHistory,
+  postCaseNote,
+  getCaseNotes,
   getCourts,
   getMe,
   getOfficeAttorneys,
