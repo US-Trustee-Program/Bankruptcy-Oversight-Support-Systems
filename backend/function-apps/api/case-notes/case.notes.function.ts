@@ -20,10 +20,8 @@ export default async function handler(
       request,
     );
     const caseNotesController: CaseNotesController = new CaseNotesController(applicationContext);
-    const noteResponse = toAzureSuccess(
-      await caseNotesController.handleRequest(applicationContext),
-    );
-    return noteResponse;
+    const controllerResponse = await caseNotesController.handleRequest(applicationContext);
+    return toAzureSuccess(controllerResponse);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }

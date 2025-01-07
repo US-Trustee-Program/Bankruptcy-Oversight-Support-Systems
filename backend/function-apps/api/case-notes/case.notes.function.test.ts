@@ -62,7 +62,7 @@ describe('Case Notes Function Tests', () => {
   });
 
   // TODO: did we need this stuff for a controller test?
-  test.skip('Return the function response with the note Id created for the new case note', async () => {
+  test('Return the function response with the note Id created for the new case note', async () => {
     const caseId = NORMAL_CASE_ID;
     const requestOverride: Partial<CamsHttpRequest> = {
       params: {
@@ -91,7 +91,7 @@ describe('Case Notes Function Tests', () => {
     expect(response).toEqual(azureHttpResponse);
   });
 
-  test.skip('Should return an HTTP Error if the controller throws an error during note creation', async () => {
+  test('Should return an HTTP Error if the controller throws an error during note creation', async () => {
     const error = new UnknownError('MOCK_CASE_NOTE_MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
     jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
@@ -111,7 +111,7 @@ describe('Case Notes Function Tests', () => {
     expect(response).toEqual(azureHttpResponse);
   });
 
-  test.skip('Should return a list of notes when valid caseId is supplied for GET request', async () => {
+  test('Should return a list of notes when valid caseId is supplied for GET request', async () => {
     const caseId = '001-67-89012';
     const requestOverride: Partial<CamsHttpRequest> = {
       method: 'GET',
