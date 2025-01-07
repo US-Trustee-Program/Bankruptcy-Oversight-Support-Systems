@@ -104,6 +104,23 @@ describe('Consolidations Repository tests', () => {
     expect(createManySpy).toHaveBeenCalledWith(consolidationOrders);
   });
 
+  const createManyEmptyCases = [
+    ['empty', []],
+    ['undefined', undefined],
+    ['null', null],
+  ];
+  test.each(createManyEmptyCases)(
+    'should not call insertMany with %s list',
+    async (_caseName: string, list: []) => {
+      const createManySpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'insertMany')
+        .mockRejectedValue('This should not throw.');
+      await repo.createMany(list);
+
+      expect(createManySpy).not.toHaveBeenCalled();
+    },
+  );
+
   describe('error handling', () => {
     const error = new Error('some error');
     const camsError = getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS');
