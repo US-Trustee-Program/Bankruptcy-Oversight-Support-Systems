@@ -31,10 +31,12 @@ export class UserSessionUseCase {
 
     try {
       const session = await sessionCacheRepository.read(token);
+      context.logger.debug(MODULE_NAME, 'Found session in cache.');
       return session;
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
         // This is a cache miss. Continue.
+        context.logger.debug(MODULE_NAME, 'Did not find session in cache.');
       } else {
         throw originalError;
       }
@@ -48,6 +50,7 @@ export class UserSessionUseCase {
         });
       }
 
+      context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
       const { user, jwt } = await authGateway.getUser(token);
       user.roles = getRoles(jwt.claims.groups);
       user.offices = await getOffices(context, jwt.claims.groups);
@@ -67,6 +70,7 @@ export class UserSessionUseCase {
         issuer: jwt.claims.iss,
       };
 
+      context.logger.debug(MODULE_NAME, 'Putting session in cache.');
       await sessionCacheRepository.upsert(session);
       return session;
     } catch (error) {
