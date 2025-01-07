@@ -25,15 +25,15 @@ export class CaseNotesController implements CamsController {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
-        this.validateRequestParameters(context.request.params.caseId, context.request.body);
-        const caseId = context.request.params.caseId;
-        const note = context.request.body as string;
+        this.validateRequestParameters(context.request.params.id, context.request.body);
+        const caseId = context.request.params.id;
+        const note = context.request.body['note'];
         await caseNotesUseCase.createCaseNote(context.session.user, caseId, note);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
         });
       } else {
-        const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
+        const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.id);
         return httpSuccess({
           body: { data: caseNotes },
           statusCode: HttpStatusCodes.CREATED,

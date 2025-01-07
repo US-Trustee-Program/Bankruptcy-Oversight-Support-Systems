@@ -26,6 +26,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
+import CaseNotes from './panels/CaseNotes';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailOverview'));
@@ -393,6 +394,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 caseId={caseId}
                 initiallySelectedNavLink={navState}
                 showAssociatedCasesList={false}
+                showCaseNotes={true} //TODO: Feature Flag implementation
               />
             </div>
             <div className="grid-col-8">
@@ -420,6 +422,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     caseBasicInfo.consolidation !== undefined &&
                     caseBasicInfo.consolidation.length > 0
                   }
+                  showCaseNotes={true} //TODO: Feature Flag implementation
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                   <div
@@ -582,6 +585,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       />
                     }
                   />
+                  <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
                 </Routes>
               </Suspense>
               <Outlet />

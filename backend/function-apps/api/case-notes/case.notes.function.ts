@@ -31,5 +31,5 @@ app.http('case-notes', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
-  route: 'case/{id?}/notes',
+  route: 'cases/{id?}/notes',
 });
