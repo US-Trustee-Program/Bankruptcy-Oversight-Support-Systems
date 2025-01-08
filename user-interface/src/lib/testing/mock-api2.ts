@@ -268,7 +268,7 @@ async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
 }
 
 async function postCaseNote(caseId: string, note: string): Promise<void> {
-  await put(`/cases/${caseId}/notes`, { note }, {});
+  await post(`/cases/${caseId}/notes`, { note }, {});
 }
 
 async function putConsolidationOrderApproval(

@@ -12,8 +12,8 @@ export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
 
 function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   const { id, label, ariaDescription, ...otherProps } = props;
-  const labelId = `${id}-textarea-label`;
-  const textAreaId = `${id}-textarea`;
+  const labelId = `textarea-label-${id}`;
+  const textAreaId = `textarea-${id}`;
 
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
@@ -87,8 +87,9 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
         className={`${props.className ?? ''} usa-textarea`}
         data-testid={textAreaId}
         onChange={handleOnChange}
-        value={inputValue}
         disabled={inputDisabled}
+        value={inputValue}
+        aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
       ></textarea>
     </div>
   );
