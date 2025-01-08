@@ -85,32 +85,21 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
 
-      // TODO: simplify this logic if possible.
-      if (!result.acknowledged) {
-        if (upsert) {
-          throw new UnknownError(this.moduleName, {
-            message: 'Failed to insert document into database.',
-          });
-        } else {
-          throw new NotFoundError(this.moduleName, {
-            message: `Failed to update document. Query matched ${result.matchedCount} items.`,
-          });
-        }
-      } else {
-        if (upsert) {
-          if (result.upsertedCount < 1) {
-            throw new UnknownError(this.moduleName, {
-              message: 'Failed to insert document into database.',
-            });
-          }
-        } else if (result.matchedCount === 0) {
-          throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
-        } else if (result.modifiedCount === 0) {
-          throw new UnknownError(this.moduleName, {
-            message: `Failed to update document. Query matched ${result.matchedCount} items.`,
-          });
-        }
-      }
+      const unknownError = new UnknownError(this.moduleName, {
+        message: 'Failed to insert document into database.',
+      });
+      const notFoundError = new NotFoundError(this.moduleName, {
+        message: 'No matching item found.',
+      });
+      const unknownMatchError = new NotFoundError(this.moduleName, {
+        message: `Failed to update document. Query matched ${result.matchedCount} items.`,
+      });
+
+      if (!result.acknowledged) throw upsert ? unknownError : unknownMatchError;
+      if (upsert && result.upsertedCount < 1) throw unknownError;
+      if (!upsert && result.matchedCount === 0) throw notFoundError;
+      if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
+
       return mongoItem.id;
     } catch (originalError) {
       throw this.handleError(
