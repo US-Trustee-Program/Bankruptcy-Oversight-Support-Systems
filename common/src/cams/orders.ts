@@ -151,7 +151,7 @@ export function isConsolidationOrder(order: Order): order is ConsolidationOrder 
   return order.orderType === 'consolidation';
 }
 
-type TransferOrderActionRejection = {
+export type TransferOrderActionRejection = {
   id: string;
   caseId: string;
   orderType: 'transfer';
