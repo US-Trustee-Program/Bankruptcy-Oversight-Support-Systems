@@ -74,6 +74,11 @@ fi
 
 PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
 
+# Update root level
+npm ci
+npm update --save
+
+# Update sub-projects
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
   npm run clean
