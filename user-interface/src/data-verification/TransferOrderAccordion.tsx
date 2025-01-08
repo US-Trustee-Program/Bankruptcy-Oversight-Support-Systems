@@ -1,3 +1,4 @@
+import './TransferOrderAccordion.scss';
 import { useRef, useState } from 'react';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -10,7 +11,6 @@ import {
 } from './transfer/PendingTransferOrder';
 import { ApprovedTransferOrder } from './transfer/ApprovedTransferOrder';
 import { RejectedTransferOrder } from './transfer/RejectedTransferOrder';
-import './TransferOrderAccordion.scss';
 
 export interface TransferOrderAccordionProps {
   order: TransferOrder;

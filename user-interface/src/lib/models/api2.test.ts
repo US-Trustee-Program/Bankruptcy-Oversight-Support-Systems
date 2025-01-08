@@ -6,7 +6,11 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentAction } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import { randomUUID } from 'crypto';
-import { TransferOrderAction } from '@common/cams/orders';
+import {
+  ConsolidationOrderActionRejection,
+  TransferOrderAction,
+  TransferOrderActionRejection,
+} from '@common/cams/orders';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -78,6 +82,8 @@ describe('extractPathFromUri', () => {
 describe('_Api2 functions', async () => {
   let api: ApiType;
   let api2: Api2Type;
+  const dirtyInput = '<p>abc<iframe//src=jAva&Tab;script:alert(3)>def</p>';
+  const cleanInput = '<p>abc</p>';
 
   beforeEach(async () => {
     vi.resetModules();
@@ -103,6 +109,60 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderRejection, 'some-id', api);
     await callApiFunction(api2.Api2.searchCases, 'some-id', api);
+    await callApiFunction(api2.Api2.getCaseNotes, 'some-id', api);
+  });
+
+  test('should call postCaseNote api function', async () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: ['some-note'] });
+    api2.Api2.postCaseNote('some-id', 'some note');
+    expect(postSpy).toHaveBeenCalled();
+  });
+
+  test('should sanitize input on postCaseNote function', async () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const path = '/cases/some-id/notes';
+    api2.Api2.postCaseNote('some-id', dirtyInput);
+    expect(postSpy).toHaveBeenCalledWith(path, { note: cleanInput }, {});
+  });
+
+  test('should sanitize input on putConsolidationOrderRejection functions', async () => {
+    const postSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
+    const path = '/consolidations/reject';
+    const baseOrder = MockData.getConsolidationOrder();
+    const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
+      ...baseOrder,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      status: 'rejected',
+      reason: dirtyInput,
+    };
+    const cleanConsolidationOrder = {
+      ...baseOrder,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      status: 'rejected',
+      reason: cleanInput,
+    };
+
+    api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
+    expect(postSpy).toHaveBeenCalledWith(path, cleanConsolidationOrder, {});
+  });
+
+  test('should sanitize input on patchTransferOrder on transfer rejection', async () => {
+    const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
+    const dirtyTransferOrder: TransferOrderActionRejection = {
+      ...MockData.getTransferOrder(),
+      status: 'rejected',
+      reason: dirtyInput,
+    };
+
+    const cleanTransferOrder = {
+      ...dirtyTransferOrder,
+      reason: cleanInput,
+    };
+
+    const path = `/orders/${dirtyTransferOrder.id}`;
+
+    api2.Api2.patchTransferOrder(dirtyTransferOrder);
+    expect(postSpy).toHaveBeenCalledWith(path, cleanTransferOrder, {});
   });
 
   test('should handle no body properly', async () => {

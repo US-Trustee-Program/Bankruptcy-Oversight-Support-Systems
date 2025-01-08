@@ -8,6 +8,7 @@ import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseNote } from '@common/cams/cases';
 import { useEffect, useRef, useState } from 'react';
+import DOMPurify from 'dompurify';
 
 export interface CaseNotesProps {
   caseId: string;
@@ -40,6 +41,7 @@ export default function CaseNotes(props: CaseNotesProps) {
     if (caseNoteInput.length > 0) {
       textAreaRef.current?.disable(true);
       buttonRef.current?.disableButton(true);
+      DOMPurify.sanitize(caseNoteInput);
       api
         .postCaseNote(props.caseId, caseNoteInput)
         .then(() => {
@@ -59,9 +61,10 @@ export default function CaseNotes(props: CaseNotesProps) {
   }
 
   function showCaseNotes(note: CaseNote, idx: number) {
+    const purifiedCaseNote = DOMPurify.sanitize(note.content);
     return (
       <tr key={idx}>
-        <td data-testid={`note-preview-${idx}`}>{note.content}</td>
+        <td data-testid={`note-preview-${idx}`}>{purifiedCaseNote}</td>
         <td data-testid={`changed-by-${idx}`}>{note.updatedBy && <>{note.updatedBy.name}</>}</td>
         <td data-testid={`created-date-${idx}`}>
           <span className="text-no-wrap">{formatDate(note.updatedOn)}</span>
