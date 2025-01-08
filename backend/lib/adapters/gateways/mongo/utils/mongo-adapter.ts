@@ -68,18 +68,47 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async replaceOne(query: ConditionOrConjunction, item: T, upsert: boolean = false) {
+  /**
+   * Replace an existing item. Optionally create if one does not exist.
+   * @param {ConditionOrConjunction} query Query used to find the item to replace.
+   * @param item The item to be persisted.
+   * @param {boolean} [upsert=false] Flag indicating whether the upsert operation should be performed if no matching item is found.
+   * @returns {string} Returns the id of the item replaced or upserted.
+   */
+  public async replaceOne(
+    query: ConditionOrConjunction,
+    item: T,
+    upsert: boolean = false,
+  ): Promise<string> {
     const mongoQuery = toMongoQuery(query);
     const mongoItem = createOrGetId<T>(item);
     try {
       const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
+
+      // TODO: simplify this logic if possible.
       if (!result.acknowledged) {
         if (upsert) {
           throw new UnknownError(this.moduleName, {
             message: 'Failed to insert document into database.',
           });
         } else {
+          throw new NotFoundError(this.moduleName, {
+            message: `Failed to update document. Query matched ${result.matchedCount} items.`,
+          });
+        }
+      } else {
+        if (upsert) {
+          if (result.upsertedCount < 1) {
+            throw new UnknownError(this.moduleName, {
+              message: 'Failed to insert document into database.',
+            });
+          }
+        } else if (result.matchedCount === 0) {
           throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
+        } else if (result.modifiedCount === 0) {
+          throw new UnknownError(this.moduleName, {
+            message: `Failed to update document. Query matched ${result.matchedCount} items.`,
+          });
         }
       }
       return mongoItem.id;
