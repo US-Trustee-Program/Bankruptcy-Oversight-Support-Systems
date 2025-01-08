@@ -128,3 +128,41 @@ describe('Testing TextArea for ariaDescription', () => {
     expect(usaHintEl).toHaveTextContent(description);
   });
 });
+describe('Test in odd cases', () => {
+  const ref = React.createRef<TextAreaRef>();
+  const youChangedMe = vi.fn();
+  const id = 'input-1';
+  const textAreaId = `textarea-${id}`;
+  // const labelId = `textarea-label-${id}`;
+  const label = 'test TextArea';
+  const newValue = 'new value';
+  const testClassName = 'test-class-name';
+  beforeEach(() => {
+    render(
+      <div>
+        <TextArea
+          ref={ref}
+          id={id}
+          label={label}
+          onChange={youChangedMe}
+          className={testClassName}
+        />
+      </div>,
+    );
+  });
+  test('test null on reset if no value provided to props', async () => {
+    const inputEl = screen.getByTestId(textAreaId);
+
+    ref.current?.setValue(newValue);
+    await waitFor(() => {
+      expect(inputEl).toHaveValue(newValue);
+    });
+    ref.current?.resetValue();
+    await waitFor(() => {
+      expect(inputEl).toHaveValue('');
+    });
+    inputEl.focus();
+    ref.current?.clearValue();
+    expect(inputEl).toHaveFocus();
+  });
+});

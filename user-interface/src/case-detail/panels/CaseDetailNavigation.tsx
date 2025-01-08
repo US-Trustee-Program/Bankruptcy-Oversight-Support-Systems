@@ -105,7 +105,7 @@ function CaseDetailNavigationComponent({
             <li className="usa-sidenav__item">
               <NavLink
                 to={`/case-detail/${caseId}/notes`}
-                data-testid="associated-cases-link"
+                data-testid="case-notes-link"
                 className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
                 onClick={() => setActiveNav(NavState.CASE_NOTES)}
                 title="view case notes"
