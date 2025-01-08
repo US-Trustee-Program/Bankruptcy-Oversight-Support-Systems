@@ -140,6 +140,7 @@ describe('Case Notes Function Tests', () => {
     expect(response).toEqual(azureHttpResponse);
   });
 });
+
 describe('Case Notes Feature Flag Tests', () => {
   let context;
 
@@ -156,6 +157,7 @@ describe('Case Notes Feature Flag Tests', () => {
   afterEach(() => {
     jest.resetAllMocks();
   });
+
   jest.mock('../../../lib/adapters/utils/feature-flag.ts');
 
   test('Should return an Unauthorized Error if case-notes-enabled is false', async () => {
@@ -163,6 +165,12 @@ describe('Case Notes Feature Flag Tests', () => {
       body: {
         caseId: '001-67-89123',
       },
+    };
+
+    const expected = {
+      headers: expect.anything(),
+      jsonBody: 'Unauthorized',
+      status: 401,
     };
 
     const request = createMockAzureFunctionRequest({
@@ -176,12 +184,15 @@ describe('Case Notes Feature Flag Tests', () => {
       },
       data: [],
     });
+
     jest.spyOn(featureFlags, 'getFeatureFlags').mockResolvedValue({
       'case-notes-enabled': false,
     });
+
     jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
-    await expect(response).toBe(expect.objectContaining({ jsonBody: 'Unauthorized' }));
+
+    expect(response).toEqual(expect.objectContaining(expected));
   });
 });

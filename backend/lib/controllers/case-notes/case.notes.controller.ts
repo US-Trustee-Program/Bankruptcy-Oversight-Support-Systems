@@ -4,13 +4,17 @@ import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { UnknownError } from '../../common-errors/unknown-error';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
 import { CaseNote } from '../../../../common/src/cams/cases';
+import { CaseNotesError } from './case.notes.exception';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
+const VALID_NOTE_PATTERN = RegExp(
+  /<script[\s\S]*?>[\s\S]*?<\/script>|(?:\b(?:db\.|mongo\.|find|insert|update|delete|aggregate|create|drop|remove|replace|count|distinct|mapReduce|save)\b)/i,
+);
+const INVALID_NOTE_MESSAGE = 'note content contains invalid keywords.';
 
 export class CaseNotesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -55,6 +59,8 @@ export class CaseNotesController implements CamsController {
       messages.push(INVALID_CASEID_MESSAGE);
     } else if (!note) {
       badParams.push('case note');
+    } else if (!(note as string).match(VALID_NOTE_PATTERN)) {
+      messages.push(INVALID_NOTE_MESSAGE);
     }
     if (badParams.length > 0) {
       const isPlural = badParams.length > 1;
@@ -62,8 +68,7 @@ export class CaseNotesController implements CamsController {
       messages.push(message);
     }
     if (messages.length) {
-      //TODO: Change this?
-      throw new UnknownError(MODULE_NAME, { message: messages.join(' ') });
+      throw new CaseNotesError(MODULE_NAME, { message: messages.join(' ') });
     }
   }
 }
