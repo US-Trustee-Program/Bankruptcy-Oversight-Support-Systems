@@ -50,7 +50,7 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   }
 
   function ariaDescribedBy() {
-    return `textarea-hint-${props.id ?? Math.random().toString(36).slice(2, 7)}`;
+    return `textarea-hint-${props.id}`;
   }
 
   function handleOnChange(ev: React.ChangeEvent<HTMLTextAreaElement>): void {

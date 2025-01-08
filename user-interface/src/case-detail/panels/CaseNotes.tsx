@@ -122,8 +122,8 @@ export default function CaseNotes(props: CaseNotesProps) {
                 <thead>
                   <tr>
                     <th>Note</th>
-                    <th>Created On</th>
                     <th>Created By</th>
+                    <th>Created On</th>
                   </tr>
                 </thead>
                 <tbody>{renderCaseNotes()}</tbody>

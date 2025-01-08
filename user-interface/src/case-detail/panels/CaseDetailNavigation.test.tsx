@@ -22,6 +22,7 @@ describe('Navigation tests', () => {
     ['court-docket-link'],
     ['audit-history-link'],
     ['associated-cases-link'],
+    ['case-notes-link'],
   ])('should render each navigation element in component', async (linkId: string) => {
     render(
       <BrowserRouter>
