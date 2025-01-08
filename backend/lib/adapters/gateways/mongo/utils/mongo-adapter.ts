@@ -231,7 +231,6 @@ function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
   return mongoItem;
 }
 
-// TODO: sus.
 export function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
   const cleanItem = { ...item };
   delete cleanItem._id;
