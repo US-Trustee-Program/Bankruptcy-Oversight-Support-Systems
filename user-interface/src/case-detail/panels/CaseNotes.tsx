@@ -1,6 +1,6 @@
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import TextArea from '@/lib/components/uswds/TextArea';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Api2 } from '@/lib/models/api2';
@@ -18,6 +18,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   const [areCaseNotesLoading, setAreCaseNotesLoading] = useState<boolean>(false);
   const [caseNoteInput, setCaseNoteInput] = useState<string>('');
   const textAreaRef = useRef<TextAreaRef>(null);
+  const buttonRef = useRef<ButtonRef>(null);
   const globalAlert = useGlobalAlert();
 
   const api = Api2;
@@ -38,6 +39,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   async function putCaseNote() {
     if (caseNoteInput.length > 0) {
       textAreaRef.current?.disable(true);
+      buttonRef.current?.disableButton(true);
       api
         .postCaseNote(props.caseId, caseNoteInput)
         .then(() => {
@@ -49,6 +51,7 @@ export default function CaseNotes(props: CaseNotesProps) {
         })
         .finally(() => {
           textAreaRef.current?.disable(false);
+          buttonRef.current?.disableButton(false);
         });
     }
   }
@@ -85,12 +88,14 @@ export default function CaseNotes(props: CaseNotesProps) {
           onChange={(event) => {
             setCaseNoteInput(event.target.value);
           }}
+          ref={textAreaRef}
         />
         <Button
           id="button-submit-case-note"
           uswdsStyle={UswdsButtonStyle.Default}
           onClick={putCaseNote}
           aria-label="submit new case note."
+          ref={buttonRef}
         >
           Add Note
         </Button>
