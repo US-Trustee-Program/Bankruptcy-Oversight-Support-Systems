@@ -38,7 +38,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        caseId: mockCase.caseId,
+        id: mockCase.caseId,
       },
       body: 'some test string',
     });
@@ -57,7 +57,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'GET',
       params: {
-        caseId: mockCase.caseId,
+        id: mockCase.caseId,
       },
     });
     const controller = new CaseNotesController(applicationContext);
@@ -85,7 +85,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        caseId: 'n-1f23',
+        id: 'n-1f23',
       },
     });
     const controller = new CaseNotesController(applicationContext);
@@ -100,7 +100,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        caseId: NORMAL_CASE_ID,
+        id: NORMAL_CASE_ID,
       },
     });
     const controller = new CaseNotesController(applicationContext);
