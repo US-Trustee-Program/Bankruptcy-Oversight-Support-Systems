@@ -68,20 +68,38 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async replaceOne(query: ConditionOrConjunction, item: T, upsert: boolean = false) {
+  /**
+   * Replace an existing item. Optionally create if one does not exist.
+   * @param {ConditionOrConjunction} query Query used to find the item to replace.
+   * @param item The item to be persisted.
+   * @param {boolean} [upsert=false] Flag indicating whether the upsert operation should be performed if no matching item is found.
+   * @returns {string} Returns the id of the item replaced or upserted.
+   */
+  public async replaceOne(
+    query: ConditionOrConjunction,
+    item: T,
+    upsert: boolean = false,
+  ): Promise<string> {
     const mongoQuery = toMongoQuery(query);
     const mongoItem = createOrGetId<T>(item);
     try {
       const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
-      if (!result.acknowledged) {
-        if (upsert) {
-          throw new UnknownError(this.moduleName, {
-            message: 'Failed to insert document into database.',
-          });
-        } else {
-          throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
-        }
-      }
+
+      const unknownError = new UnknownError(this.moduleName, {
+        message: 'Failed to insert document into database.',
+      });
+      const notFoundError = new NotFoundError(this.moduleName, {
+        message: 'No matching item found.',
+      });
+      const unknownMatchError = new NotFoundError(this.moduleName, {
+        message: `Failed to update document. Query matched ${result.matchedCount} items.`,
+      });
+
+      if (!result.acknowledged) throw upsert ? unknownError : unknownMatchError;
+      if (upsert && result.upsertedCount < 1) throw unknownError;
+      if (!upsert && result.matchedCount === 0) throw notFoundError;
+      if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
+
       return mongoItem.id;
     } catch (originalError) {
       throw this.handleError(
@@ -213,7 +231,6 @@ function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
   return mongoItem;
 }
 
-// TODO: sus.
 export function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
   const cleanItem = { ...item };
   delete cleanItem._id;
