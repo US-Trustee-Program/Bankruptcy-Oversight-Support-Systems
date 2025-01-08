@@ -27,6 +27,7 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes from './panels/CaseNotes';
+import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailOverview'));
@@ -188,6 +189,7 @@ interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
+  const featureFlags = useFeatureFlags();
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
@@ -394,7 +396,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 caseId={caseId}
                 initiallySelectedNavLink={navState}
                 showAssociatedCasesList={false}
-                showCaseNotes={true} //TODO: Feature Flag implementation
+                caseNotesEnabled={true} //TODO: Feature Flag implementation
               />
             </div>
             <div className="grid-col-8">
@@ -422,7 +424,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     caseBasicInfo.consolidation !== undefined &&
                     caseBasicInfo.consolidation.length > 0
                   }
-                  showCaseNotes={true} //TODO: Feature Flag implementation
+                  caseNotesEnabled={true} //TODO: Feature Flag implementation
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                   <div
@@ -585,7 +587,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       />
                     }
                   />
-                  <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
+                  {featureFlags[CASE_NOTES_ENABLED] && (
+                    <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
+                  )}
                 </Routes>
               </Suspense>
               <Outlet />

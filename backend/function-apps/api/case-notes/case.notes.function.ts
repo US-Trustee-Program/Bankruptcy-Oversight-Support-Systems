@@ -3,6 +3,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
+import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
 
@@ -20,6 +21,11 @@ export default async function handler(
       request,
     );
     const caseNotesController: CaseNotesController = new CaseNotesController(applicationContext);
+
+    if (applicationContext.featureFlags['case-notes-enabled'] === false) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
+
     const controllerResponse = await caseNotesController.handleRequest(applicationContext);
     return toAzureSuccess(controllerResponse);
   } catch (error) {

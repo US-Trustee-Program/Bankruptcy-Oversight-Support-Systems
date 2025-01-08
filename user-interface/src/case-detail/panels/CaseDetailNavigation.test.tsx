@@ -30,7 +30,7 @@ describe('Navigation tests', () => {
           caseId="12345"
           initiallySelectedNavLink={NavState.CASE_OVERVIEW}
           showAssociatedCasesList={true}
-          showCaseNotes={true}
+          caseNotesEnabled={true}
         />
       </BrowserRouter>,
     );

@@ -20,7 +20,7 @@ export function mapNavState(path: string) {
 export interface CaseDetailNavigationProps {
   caseId: string | undefined;
   showAssociatedCasesList: boolean;
-  showCaseNotes: boolean;
+  caseNotesEnabled: boolean;
   initiallySelectedNavLink: NavState;
   className?: string;
 }
@@ -40,7 +40,7 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 function CaseDetailNavigationComponent({
   caseId,
   showAssociatedCasesList,
-  showCaseNotes,
+  caseNotesEnabled,
   initiallySelectedNavLink,
   className,
 }: CaseDetailNavigationProps) {
@@ -101,7 +101,7 @@ function CaseDetailNavigationComponent({
               </NavLink>
             </li>
           )}
-          {showCaseNotes && (
+          {caseNotesEnabled && (
             <li className="usa-sidenav__item">
               <NavLink
                 to={`/case-detail/${caseId}/notes`}
