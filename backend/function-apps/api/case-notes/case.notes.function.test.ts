@@ -12,16 +12,17 @@ import {
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { NORMAL_CASE_ID } from '../../../lib/testing/testing-constants';
 import { CaseNote } from '../../../../common/src/cams/cases';
+import * as featureFlags from '../../../lib/adapters/utils/feature-flag';
+
+const defaultRequestProps: Partial<CamsHttpRequest> = {
+  method: 'POST',
+  body: {
+    caseId: '081-67-89123',
+    note: 'Sample note text',
+  },
+};
 
 describe('Case Notes Function Tests', () => {
-  const defaultRequestProps: Partial<CamsHttpRequest> = {
-    method: 'POST',
-    body: {
-      caseId: '081-67-89123',
-      note: 'Sample note text',
-    },
-  };
-
   let context;
 
   beforeEach(() => {
@@ -35,7 +36,7 @@ describe('Case Notes Function Tests', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   test('should handle successful response', async () => {
@@ -137,5 +138,50 @@ describe('Case Notes Function Tests', () => {
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
+  });
+});
+describe('Case Notes Feature Flag Tests', () => {
+  let context;
+
+  beforeEach(() => {
+    jest
+      .spyOn(ContextCreator, 'getApplicationContextSession')
+      .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
+    context = new InvocationContext({
+      logHandler: () => {},
+      invocationId: 'id',
+    });
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+  jest.mock('../../../lib/adapters/utils/feature-flag.ts');
+
+  test('Should return an Unauthorized Error if case-notes-enabled is false', async () => {
+    const requestOverride = {
+      body: {
+        caseId: '001-67-89123',
+      },
+    };
+
+    const request = createMockAzureFunctionRequest({
+      ...defaultRequestProps,
+      ...requestOverride,
+    });
+
+    const { camsHttpResponse } = buildTestResponseSuccess<CaseNote[]>({
+      meta: {
+        self: request.url,
+      },
+      data: [],
+    });
+    jest.spyOn(featureFlags, 'getFeatureFlags').mockResolvedValue({
+      'case-notes-enabled': false,
+    });
+    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+    await expect(response).toBe(expect.objectContaining({ jsonBody: 'Unauthorized' }));
   });
 });
