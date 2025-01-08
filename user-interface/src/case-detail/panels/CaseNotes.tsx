@@ -31,7 +31,7 @@ export default function CaseNotes(props: CaseNotesProps) {
         setCaseNotes(response.data);
       })
       .catch(() => {
-        globalAlert?.error('Could not retrieve case notes');
+        globalAlert?.error('Could not retrieve case notes.');
       })
       .finally(() => setAreCaseNotesLoading(false));
   }
@@ -47,12 +47,14 @@ export default function CaseNotes(props: CaseNotesProps) {
           fetchCaseNotes();
         })
         .catch(() => {
-          globalAlert?.error('Could not insert case note');
+          globalAlert?.error('Could not insert case note.');
         })
         .finally(() => {
           textAreaRef.current?.disable(false);
           buttonRef.current?.disableButton(false);
         });
+    } else {
+      globalAlert?.error('Cannot submit an empty case note.');
     }
   }
 

@@ -78,7 +78,7 @@ describe('audit history tests', () => {
     render(<CaseNotes caseId={caseId} />);
 
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not retrieve case notes');
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not retrieve case notes.');
     });
   });
 
@@ -128,7 +128,27 @@ describe('audit history tests', () => {
     await userEvent.click(button);
 
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not insert case note');
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not insert case note.');
+    });
+  });
+
+  test('should call globalAlert.error when attempting to create a note with no content', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.reject());
+
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    render(<CaseNotes caseId={caseId} />);
+
+    const textArea = screen.getByTestId(textAreaTestId);
+    expect(textArea).toBeInTheDocument();
+
+    const button = screen.getByTestId('button-button-submit-case-note');
+    expect(button).toBeInTheDocument();
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Cannot submit an empty case note.');
     });
   });
 });
