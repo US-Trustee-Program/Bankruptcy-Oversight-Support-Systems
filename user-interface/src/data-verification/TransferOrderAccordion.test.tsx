@@ -210,7 +210,7 @@ describe('TransferOrderAccordion', () => {
     await waitFor(async () => {
       const actionText = findActionText(mockedApprovedOrder.id, true);
       expect(actionText).toHaveTextContent(
-        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName})to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
+        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from ${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName}) to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court ${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
       );
     });
   });
