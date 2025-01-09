@@ -267,7 +267,7 @@ async function getOrderSuggestions(caseId: string) {
 }
 
 async function patchTransferOrder(data: FlexibleTransferOrderAction) {
-  if (data.status === 'rejected' && data.reason) {
+  if (data.status === 'rejected' && data.reason && isValidUserInput(data.reason)) {
     data.reason = sanitizeText(data.reason);
   }
   await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
@@ -281,7 +281,7 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 }
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
-  if (data.reason) {
+  if (data.reason && isValidUserInput(data.reason)) {
     data.reason = sanitizeText(data.reason);
   }
   return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
