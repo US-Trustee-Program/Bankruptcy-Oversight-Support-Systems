@@ -2,7 +2,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
 import { FromCaseSummary } from './FromCaseSummary';
-import DOMPurify from 'dompurify';
+import { sanitizeText } from '@/lib/utils/sanitize-text';
 
 type RejectedTransferOrderProps = {
   order: TransferOrder;
@@ -35,7 +35,7 @@ export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
             <>
               {' '}
               for the following reason:
-              <blockquote>{DOMPurify.sanitize(order.reason)}</blockquote>
+              <blockquote>{sanitizeText(order.reason)}</blockquote>
             </>
           )}
           {!order.reason && <>.</>}
