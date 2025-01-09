@@ -7,6 +7,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { OfficesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -89,6 +90,19 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   public async findAndDeleteStaff(_officeCode: string, _id: string): Promise<void> {
-    throw new Error('Not implemented');
+    const query = QueryBuilder.build(
+      and(
+        equals<OfficeStaff['officeCode']>('officeCode', _officeCode),
+        equals<OfficeStaff['id']>('id', _id),
+        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+      ),
+    );
+
+    const deletedCount = await this.getAdapter<OfficeStaff>().deleteOne(query);
+    if (deletedCount === 0) {
+      throw new UnknownError(MODULE_NAME, { message: 'Failed to delete office staff.' });
+    } else if (deletedCount > 1) {
+      throw new UnknownError(MODULE_NAME, { message: 'Deleted more than one office staff.' });
+    }
   }
 }
