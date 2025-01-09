@@ -7,16 +7,11 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
 import { CaseNote } from '../../../../common/src/cams/cases';
 import { CaseNotesError } from './case.notes.exception';
+import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
-const MONGO_INJECTED_PATTERN = RegExp(
-  /\b(?:db\.[a-zA-Z]+|mongo\.[a-zA-Z]+|(?:find|insert|update|delete|aggregate|create|drop|remove|replace|count|distinct|mapReduce|save)\b\s*(?:\(|{))/i,
-);
-const JAVASCRIPT_INJECTED_PATTERN = RegExp(
-  /\b(?:eval|Function|with|document\.|window\.|alert|prompt|confirm|fetch\s*\(|setTimeout|setInterval)|<script[\s\S]*?>[\s\S]*?<\/script>/i,
-);
 const INVALID_NOTE_MESSAGE = 'Note content contains invalid keywords.';
 
 export class CaseNotesController implements CamsController {
@@ -62,9 +57,7 @@ export class CaseNotesController implements CamsController {
       messages.push(INVALID_CASEID_MESSAGE);
     } else if (!note) {
       badParams.push('case note');
-    } else if ((note as string).match(MONGO_INJECTED_PATTERN)) {
-      messages.push(INVALID_NOTE_MESSAGE);
-    } else if ((note as string).match(JAVASCRIPT_INJECTED_PATTERN)) {
+    } else if (!isValidUserInput(note as string)) {
       messages.push(INVALID_NOTE_MESSAGE);
     }
     if (badParams.length > 0) {
