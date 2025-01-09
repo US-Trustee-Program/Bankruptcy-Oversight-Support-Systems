@@ -10,7 +10,6 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import { NORMAL_CASE_ID } from '../../../lib/testing/testing-constants';
 import { CaseNote } from '../../../../common/src/cams/cases';
 import * as featureFlags from '../../../lib/adapters/utils/feature-flag';
 
@@ -59,36 +58,6 @@ describe('Case Notes Function Tests', () => {
     const { azureHttpResponse } = buildTestResponseError(error);
     jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockRejectedValue(error);
     const response = await handler(req, context);
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  // TODO: did we need this stuff for a controller test?
-  test('Return the function response with the note Id created for the new case note', async () => {
-    const caseId = NORMAL_CASE_ID;
-    const requestOverride: Partial<CamsHttpRequest> = {
-      params: {
-        caseId,
-      },
-    };
-    const expectedCaseNotes = [
-      MockData.getCaseNote({ caseId: NORMAL_CASE_ID }),
-      MockData.getCaseNote({ caseId: NORMAL_CASE_ID }),
-    ];
-    const request = createMockAzureFunctionRequest({
-      ...defaultRequestProps,
-      ...requestOverride,
-    });
-
-    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseNote[]>({
-      meta: {
-        self: request.url,
-      },
-      data: expectedCaseNotes,
-    });
-
-    jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
-
-    const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
   });
 
