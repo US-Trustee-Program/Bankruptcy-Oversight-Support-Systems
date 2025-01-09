@@ -40,7 +40,9 @@ describe('Case note controller tests', () => {
       params: {
         id: mockCase.caseId,
       },
-      body: 'some test string',
+      body: {
+        note: 'some test string',
+      },
     });
     const controller = new CaseNotesController(applicationContext);
     await controller.handleRequest(applicationContext);
@@ -73,6 +75,7 @@ describe('Case note controller tests', () => {
       params: {
         caseId: '',
       },
+      body: {},
     });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
@@ -87,6 +90,7 @@ describe('Case note controller tests', () => {
       params: {
         id: 'n-1f23',
       },
+      body: {},
     });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
@@ -102,12 +106,93 @@ describe('Case note controller tests', () => {
       params: {
         id: NORMAL_CASE_ID,
       },
+      body: {},
     });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
       'Required parameter case note is absent.',
     );
   });
+
+  const validNotes = [
+    ["Let's remove this item."],
+    ['We need to find a better way.'],
+    ['This is a safe string.'],
+    ["Let's fetch some data."],
+    ['This is just a plain sentence.'],
+  ];
+  test.each(validNotes)(
+    'should succeed when caseId and valid case note are provided',
+    async (note: string) => {
+      const createSpy = jest
+        .spyOn(CaseNotesUseCase.prototype, 'createCaseNote')
+        .mockResolvedValue();
+
+      applicationContext.request = mockCamsHttpRequest({
+        method: 'POST',
+        params: {
+          id: NORMAL_CASE_ID,
+        },
+        body: {
+          note: note,
+        },
+      });
+      const controller = new CaseNotesController(applicationContext);
+      controller.handleRequest(applicationContext);
+      expect(createSpy).toHaveBeenCalled();
+    },
+  );
+
+  const testXSSNotes = [
+    ['<script></script>'],
+    ['<script>foo</script>'],
+    ["<script>alert('XSS');</script>"],
+    ['Use setTimeout(() => {}, 1000);'],
+    ["document.querySelector('#id');"],
+    ["fetch('/api/data');"],
+  ];
+  test.each(testXSSNotes)('should throw error when XSS note is provided', async (note: string) => {
+    jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'POST',
+      params: {
+        id: NORMAL_CASE_ID,
+      },
+      body: {
+        note: note,
+      },
+    });
+
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Note content contains invalid keywords.',
+    );
+  });
+
+  const testMongoInjectedNotes = [
+    ["db.remove({ key: 'value' });"],
+    ['mongo.aggregate([{ key: 1 }]);'],
+  ];
+  test.each(testMongoInjectedNotes)(
+    'should throw error when Mongo Injected note is provided',
+    async (note: string) => {
+      jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+      applicationContext.request = mockCamsHttpRequest({
+        method: 'POST',
+        params: {
+          id: NORMAL_CASE_ID,
+        },
+        body: {
+          note: note,
+        },
+      });
+
+      const controller = new CaseNotesController(applicationContext);
+      await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+        'Note content contains invalid keywords.',
+      );
+    },
+  );
 
   test('should handle errors thrown from useCase', async () => {
     const error = new Error('Case notes test error');

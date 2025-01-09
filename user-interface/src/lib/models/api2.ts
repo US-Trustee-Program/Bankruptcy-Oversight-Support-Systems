@@ -22,7 +22,7 @@ import Api from './api';
 import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
 import { DAY } from '../utils/datetime';
-import DOMPurify from 'dompurify';
+import { sanitizeText } from '../utils/sanitize-text';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -232,7 +232,7 @@ async function getCaseNotes(caseId: string) {
 }
 
 async function postCaseNote(caseId: string, note: string): Promise<void> {
-  const sanitizedNote = DOMPurify.sanitize(note);
+  const sanitizedNote = sanitizeText(note);
   await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note: sanitizedNote });
 }
 
@@ -265,7 +265,7 @@ async function getOrderSuggestions(caseId: string) {
 
 async function patchTransferOrder(data: FlexibleTransferOrderAction) {
   if (data.status === 'rejected' && data.reason) {
-    data.reason = DOMPurify.sanitize(data.reason);
+    data.reason = sanitizeText(data.reason);
   }
   await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
 }
@@ -279,7 +279,7 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
   if (data.reason) {
-    data.reason = DOMPurify.sanitize(data.reason);
+    data.reason = sanitizeText(data.reason);
   }
   return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
     '/consolidations/reject',

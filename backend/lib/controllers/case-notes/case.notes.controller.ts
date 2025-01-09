@@ -11,10 +11,13 @@ import { CaseNotesError } from './case.notes.exception';
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
-const VALID_NOTE_PATTERN = RegExp(
-  /<script[\s\S]*?>[\s\S]*?<\/script>|(?:\b(?:db\.|mongo\.|find|insert|update|delete|aggregate|create|drop|remove|replace|count|distinct|mapReduce|save)\b)/i,
+const MONGO_INJECTED_PATTERN = RegExp(
+  /\b(?:db\.[a-zA-Z]+|mongo\.[a-zA-Z]+|(?:find|insert|update|delete|aggregate|create|drop|remove|replace|count|distinct|mapReduce|save)\b\s*(?:\(|{))/i,
 );
-const INVALID_NOTE_MESSAGE = 'note content contains invalid keywords.';
+const JAVASCRIPT_INJECTED_PATTERN = RegExp(
+  /\b(?:eval|Function|with|document\.|window\.|alert|prompt|confirm|fetch\s*\(|setTimeout|setInterval)|<script[\s\S]*?>[\s\S]*?<\/script>/i,
+);
+const INVALID_NOTE_MESSAGE = 'Note content contains invalid keywords.';
 
 export class CaseNotesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -29,9 +32,9 @@ export class CaseNotesController implements CamsController {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
-        this.validateRequestParameters(context.request.params.id, context.request.body);
         const caseId = context.request.params.id;
         const note = context.request.body['note'];
+        this.validateRequestParameters(caseId, note);
         await caseNotesUseCase.createCaseNote(context.session.user, caseId, note);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
@@ -59,7 +62,9 @@ export class CaseNotesController implements CamsController {
       messages.push(INVALID_CASEID_MESSAGE);
     } else if (!note) {
       badParams.push('case note');
-    } else if (!(note as string).match(VALID_NOTE_PATTERN)) {
+    } else if ((note as string).match(MONGO_INJECTED_PATTERN)) {
+      messages.push(INVALID_NOTE_MESSAGE);
+    } else if ((note as string).match(JAVASCRIPT_INJECTED_PATTERN)) {
       messages.push(INVALID_NOTE_MESSAGE);
     }
     if (badParams.length > 0) {
