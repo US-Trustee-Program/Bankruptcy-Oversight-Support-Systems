@@ -52,6 +52,24 @@ describe('Navigation tests', () => {
     });
   });
 
+  test('should not display CaseNotes tab if feature flag is disabled', () => {
+    const mockFeatureFlags = {
+      'case-notes-enabled': false,
+    };
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    render(
+      <BrowserRouter>
+        <CaseDetailNavigation
+          caseId="12345"
+          initiallySelectedNavLink={NavState.CASE_OVERVIEW}
+          showAssociatedCasesList={true}
+        />
+      </BrowserRouter>,
+    );
+    const link = screen.queryByTestId('case-notes-link');
+    expect(link).not.toBeInTheDocument();
+  });
+
   test(`mapNavState should return ${NavState.CASE_OVERVIEW} when the url does not contain a path after the case number`, () => {
     const result = mapNavState('case-detail/1234');
 
