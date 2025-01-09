@@ -11,11 +11,14 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { CamsSession } from '../../../../../common/src/cams/session';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
   let repo: OfficesMongoRepository;
+  let session: CamsSession;
   const { and, equals, contains } = QueryBuilder;
+  const officeCode = 'test_office_code';
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
@@ -23,6 +26,7 @@ describe('offices repo', () => {
 
   beforeEach(async () => {
     repo = OfficesMongoRepository.getInstance(context);
+    session = await createMockApplicationContextSession();
   });
 
   afterEach(async () => {
@@ -50,9 +54,6 @@ describe('offices repo', () => {
   });
 
   test('putOfficeStaff', async () => {
-    const session = await createMockApplicationContextSession();
-    const officeCode = 'test_office_code';
-
     const ttl = 86400;
     const staff = createAuditRecord<OfficeStaff>({
       id: session.user.id,
@@ -71,6 +72,15 @@ describe('offices repo', () => {
       { ...staff, updatedOn: expect.anything() },
       true,
     );
+  });
+
+  test('should build correct query to delete staff', async () => {
+    const deleteOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+      .mockResolvedValue(1);
+
+    await repo.findAndDeleteStaff(officeCode, session.user.id);
+    expect(deleteOneSpy).toHaveBeenCalled();
   });
 
   describe('error handling', () => {
@@ -98,5 +108,7 @@ describe('offices repo', () => {
         expectedError,
       );
     });
+
+    // TODO: test error cases for findAndDeleteStaff
   });
 });
