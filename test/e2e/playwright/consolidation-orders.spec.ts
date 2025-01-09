@@ -93,7 +93,7 @@ test.describe('Consolidation Orders', () => {
 
     const modalConsolidationText = await page.waitForSelector('.modal-consolidation-type');
     expect(await modalConsolidationText.textContent()).toEqual(
-      'This will confirm the Substantive Consolidation of',
+      'This will confirm the Substantive Consolidation of the following cases.',
     );
   });
 
