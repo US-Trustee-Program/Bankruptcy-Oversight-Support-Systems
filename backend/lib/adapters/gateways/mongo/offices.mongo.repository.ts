@@ -87,4 +87,8 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  public async findAndDeleteStaff(_officeCode: string, _id: string): Promise<void> {
+    throw new Error('Not implemented');
+  }
 }

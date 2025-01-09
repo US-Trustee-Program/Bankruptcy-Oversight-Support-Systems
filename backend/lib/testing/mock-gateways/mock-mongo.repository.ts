@@ -46,6 +46,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findAndDeleteStaff(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   getOfficeAttorneys(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
