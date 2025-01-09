@@ -133,7 +133,6 @@ describe('Test in odd cases', () => {
   const youChangedMe = vi.fn();
   const id = 'input-1';
   const textAreaId = `textarea-${id}`;
-  // const labelId = `textarea-label-${id}`;
   const label = 'test TextArea';
   const newValue = 'new value';
   const testClassName = 'test-class-name';

@@ -1,3 +1,4 @@
+import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
@@ -20,7 +21,6 @@ export function mapNavState(path: string) {
 export interface CaseDetailNavigationProps {
   caseId: string | undefined;
   showAssociatedCasesList: boolean;
-  caseNotesEnabled: boolean;
   initiallySelectedNavLink: NavState;
   className?: string;
 }
@@ -40,11 +40,11 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
 function CaseDetailNavigationComponent({
   caseId,
   showAssociatedCasesList,
-  caseNotesEnabled,
   initiallySelectedNavLink,
   className,
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
+  const featureFlags = useFeatureFlags();
 
   return (
     <>
@@ -101,7 +101,7 @@ function CaseDetailNavigationComponent({
               </NavLink>
             </li>
           )}
-          {caseNotesEnabled && (
+          {featureFlags[CASE_NOTES_ENABLED] && (
             <li className="usa-sidenav__item">
               <NavLink
                 to={`/case-detail/${caseId}/notes`}
