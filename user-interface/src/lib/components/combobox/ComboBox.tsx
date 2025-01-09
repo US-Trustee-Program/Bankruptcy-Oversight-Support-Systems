@@ -281,8 +281,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         if (index >= 0 && index < filteredOptions.length) {
           const button = list?.children[index].querySelector('button');
           if (list && button) focusAndHandleScroll(ev, button);
-          //} else {
-          //  if (input) focusAndHandleScroll(ev, input);
         }
         break;
       case 'ArrowUp':
@@ -298,9 +296,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         } else if (index === 1) {
           if (input) focusAndHandleScroll(ev, input);
           closeDropdown(true);
-          //} else if (index === 0) {
-          //  const button = list?.children[list.children.length - 1].querySelector('button');
-          //  if (list && button) focusAndHandleScroll(ev, button);
         }
         break;
       case 'Enter':
@@ -336,16 +331,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
-    //const screenBottom = window.scrollY + window.innerHeight;
-    //const screenTop = screenBottom - window.innerHeight;
-    //const screenMiddle = screenBottom - (screenBottom - screenTop) / 2;
     const inputContainer = document.querySelector(`#${props.id} .input-container`);
     const topYPos = inputContainer?.getBoundingClientRect().top;
     const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
     const windowMiddle = window.innerHeight / 2;
-    //const heightOfAllListItems = filteredOptions.length * 43;
-
-    //if (bottomYPos && heightOfAllListItems > screenBottom - bottomYPos) {
     if (topYPos && topYPos > windowMiddle) {
       if (topYPos && bottomYPos) {
         const inputHeight = bottomYPos - topYPos;
