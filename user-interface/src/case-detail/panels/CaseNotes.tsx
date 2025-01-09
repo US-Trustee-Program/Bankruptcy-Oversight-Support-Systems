@@ -48,6 +48,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           fetchCaseNotes();
         })
         .catch(() => {
+          //TODO: if it returns malicious input do not show else show
           globalAlert?.error('Could not insert case note.');
         })
         .finally(() => {

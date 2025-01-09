@@ -23,6 +23,7 @@ import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
 import { DAY } from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
+import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -233,7 +234,9 @@ async function getCaseNotes(caseId: string) {
 
 async function postCaseNote(caseId: string, note: string): Promise<void> {
   const sanitizedNote = sanitizeText(note);
-  await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note: sanitizedNote });
+  if (isValidUserInput(sanitizedNote)) {
+    await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note: sanitizedNote });
+  }
 }
 
 async function getCourts() {
