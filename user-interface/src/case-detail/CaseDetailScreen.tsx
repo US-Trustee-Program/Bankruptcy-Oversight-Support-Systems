@@ -396,7 +396,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 caseId={caseId}
                 initiallySelectedNavLink={navState}
                 showAssociatedCasesList={false}
-                caseNotesEnabled={true} //TODO: Feature Flag implementation
               />
             </div>
             <div className="grid-col-8">
@@ -423,8 +422,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   showAssociatedCasesList={
                     caseBasicInfo.consolidation !== undefined &&
                     caseBasicInfo.consolidation.length > 0
-                  }
-                  caseNotesEnabled={true} //TODO: Feature Flag implementation
+                  } //TODO: Feature Flag implementation
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                   <div
