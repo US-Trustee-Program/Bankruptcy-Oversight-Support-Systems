@@ -90,6 +90,7 @@ describe('offices use case tests', () => {
         release: () => {},
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        findAndDeleteStaff: jest.fn(),
         close: jest.fn(),
       };
     });
@@ -117,6 +118,7 @@ describe('offices use case tests', () => {
         release: () => {},
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        findAndDeleteStaff: jest.fn(),
         close: jest.fn(),
       };
     });
