@@ -89,11 +89,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  public async findAndDeleteStaff(_officeCode: string, _id: string): Promise<void> {
+  public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
     const query = QueryBuilder.build(
       and(
-        equals<OfficeStaff['officeCode']>('officeCode', _officeCode),
-        equals<OfficeStaff['id']>('id', _id),
+        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
+        equals<OfficeStaff['id']>('id', id),
         equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
       ),
     );
