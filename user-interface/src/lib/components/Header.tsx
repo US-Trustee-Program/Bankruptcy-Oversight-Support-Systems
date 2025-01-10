@@ -93,7 +93,7 @@ export const Header = () => {
             </div>
           </div>
           <div className="cams-main-navigation">
-            <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
+            <nav aria-label="Main menu" className="usa-nav cams-nav-bar" role="navigation">
               <ul className="usa-nav__primary">
                 <li className="usa-nav__primary-item">
                   <NavLink

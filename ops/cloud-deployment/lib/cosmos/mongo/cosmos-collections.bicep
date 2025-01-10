@@ -16,41 +16,43 @@ resource database 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2023-1
   name: databaseName
 }
 
-resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = [for c in databaseCollections: {
-  parent: database
-  name: c.name
-  properties: {
-    resource: {
-      id: c.name
-      shardKey: {
-        '${c.partitionKey1}': 'Hash'
+resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = [
+  for c in databaseCollections: {
+    parent: database
+    name: c.name
+    properties: {
+      resource: {
+        id: c.name
+        shardKey: {
+          '${c.partitionKey1}': 'Hash'
+        }
+        indexes: [
+          {
+            key: {
+              keys: [
+                '_id'
+              ]
+            }
+          }
+          {
+            key: {
+              keys: [
+                '$**'
+              ]
+            }
+          }
+          {
+            key: {
+              keys: [
+                '${c.partitionKey1}'
+              ]
+            }
+          }
+        ]
       }
-      indexes: [
-        {
-          key: {
-            keys: [
-              '_id'
-            ]
-          }
-        }
-        {
-          key: {
-            keys: [
-              '$**'
-            ]
-          }
-       }
-       {
-          key: {
-            keys: [
-              '${c.partitionKey1}'
-            ]
-          }
-        }
-      ]
     }
   }
-}]
+]
 
 resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
@@ -75,15 +77,23 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
               '$**'
             ]
           }
-       }
-       {
+        }
+        {
           key: {
             keys: [
               'signature'
             ]
           }
           options: {
-            unique:true
+            unique: true
+          }
+        }
+        {
+          key: {
+            keys: ['_ts']
+          }
+          options: {
+            expireAfterSeconds: -1
           }
         }
       ]
@@ -114,17 +124,16 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
               '$**'
             ]
           }
-       }
-       {
-          key:  {
-            keys:['_ts']
-
+        }
+        {
+          key: {
+            keys: ['_ts']
           }
           options: {
             expireAfterSeconds: -1
           }
-       }
-       {
+        }
+        {
           key: {
             keys: [
               'officeCode'
@@ -132,7 +141,7 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
             ]
           }
           options: {
-            unique:true
+            unique: true
           }
         }
       ]

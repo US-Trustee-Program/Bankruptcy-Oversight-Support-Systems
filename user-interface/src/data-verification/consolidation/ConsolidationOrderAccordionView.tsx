@@ -43,35 +43,44 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
         data-testid={`accordion-heading-${viewModel.order.id}`}
       >
         <div
-          className="grid-col-6 text-no-wrap"
-          aria-label={`Court district ${viewModel.order.courtName}.`}
+          className="accordion-header-field grid-col-6 text-no-wrap"
+          aria-label={`${viewModel.accordionFieldHeaders[0]} - ${viewModel.order.courtName}.`}
+          data-cell={viewModel.accordionFieldHeaders[0]}
         >
           {viewModel.order.courtName}
         </div>
         <div
-          className="grid-col-2 text-no-wrap"
-          title="Order Filed"
-          aria-label={`Order Filed ${viewModel.formattedOrderFiledDate}.`}
+          className="accordion-header-field grid-col-2 text-no-wrap"
+          title={viewModel.accordionFieldHeaders[1]}
+          aria-label={`${viewModel.accordionFieldHeaders[1]} on ${viewModel.formattedOrderFiledDate}.`}
+          data-cell={viewModel.accordionFieldHeaders[1]}
         >
           {viewModel.formattedOrderFiledDate}
         </div>
-        <div className="grid-col-2 order-type text-no-wrap">
+        <div
+          className="accordion-header-field grid-col-2 order-type text-no-wrap"
+          data-cell={viewModel.accordionFieldHeaders[2]}
+        >
           <span
             className="event-type-label"
-            aria-label={`Event type ${viewModel.orderType.get(viewModel.order.orderType)}.`}
+            aria-label={`${viewModel.accordionFieldHeaders[2]} - ${viewModel.orderType.get(viewModel.order.orderType)}.`}
+            data-cell={viewModel.accordionFieldHeaders[2]}
           >
             {viewModel.orderType.get(viewModel.order.orderType)}
           </span>
         </div>
-        <div className="grid-col-2 order-status text-no-wrap">
+        <div
+          className="accordion-header-field grid-col-2 order-status text-no-wrap"
+          data-cell={viewModel.accordionFieldHeaders[3]}
+        >
           <span
             className={`${viewModel.order.status} event-status-label`}
-            aria-label={`Event status ${viewModel.statusType.get(viewModel.order.status)}.`}
+            aria-label={`${viewModel.accordionFieldHeaders[3]} - ${viewModel.statusType.get(viewModel.order.status)}.`}
           >
             {viewModel.statusType.get(viewModel.order.status)}
           </span>
         </div>
-        <div aria-label={printAriaLabel()}></div>
+        <div className="expand-aria-label" aria-label={printAriaLabel()}></div>
       </section>
       <>
         {viewModel.order.status === 'pending' && (

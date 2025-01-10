@@ -71,6 +71,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     vi.resetAllMocks();
   });
 
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
       order,
@@ -80,6 +82,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       onOrderUpdate: onOrderUpdateMockFunc,
       onExpand: onExpandMockFunc,
       regionsMap: regionMap,
+      fieldHeaders: accordionFieldHeaders,
     };
 
     const renderProps = { ...defaultProps, ...props };

@@ -81,6 +81,8 @@ describe('TransferOrderAccordion', () => {
     },
   ];
 
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+
   function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
     const defaultProps: TransferOrderAccordionProps = {
       order: order,
@@ -90,6 +92,7 @@ describe('TransferOrderAccordion', () => {
       onOrderUpdate: () => {},
       onExpand: () => {},
       regionsMap: regionMap,
+      fieldHeaders: accordionFieldHeaders,
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -207,7 +210,7 @@ describe('TransferOrderAccordion', () => {
     await waitFor(async () => {
       const actionText = findActionText(mockedApprovedOrder.id, true);
       expect(actionText).toHaveTextContent(
-        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName})to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
+        `Transferred ${getCaseNumber(mockedApprovedOrder.caseId)} from ${mockedApprovedOrder.courtName} (${mockedApprovedOrder.courtDivisionName}) to ${getCaseNumber(mockedApprovedOrder.newCase?.caseId)} and court ${mockedApprovedOrder.newCase?.courtName} (${mockedApprovedOrder.newCase?.courtDivisionName}).`,
       );
     });
   });

@@ -35,8 +35,10 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
     try {
       const query = QueryBuilder.build(equals('documentType', data.documentType));
       const adapter = this.getAdapter<T>();
-      const id = await adapter.replaceOne(query, data, true);
-      return { ...data, id } as T;
+      const result = await adapter.replaceOne(query, data, true);
+      if (result.modifiedCount + result.upsertedCount > 0) {
+        return { ...data, id: result.id } as T;
+      }
     } catch (e) {
       throw getCamsError(e, MODULE_NAME);
     }

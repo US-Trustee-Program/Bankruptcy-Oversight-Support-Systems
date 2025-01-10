@@ -136,18 +136,27 @@ describe('Mongo adapter', () => {
       matchedCount: 1,
       modifiedCount: 1,
       upsertedId: _id,
+      upsertedCount: 0,
     });
+
+    const expected = {
+      id: testObject.id,
+      modifiedCount: 1,
+      upsertedCount: 0,
+    };
+
     const result = await adapter.replaceOne(testQuery, testObject);
-    expect(result).not.toEqual(_id);
-    expect(result).toEqual(testObject.id);
+    expect(result).not.toEqual({ ...expected, id: _id });
+    expect(result).toEqual(expected);
   });
 
   test('should throw an error calling replaceOne for a nonexistent record and upsert=false', async () => {
     const testObject: TestType = { id: '12345', foo: 'bar' };
     replaceOne.mockResolvedValue({
-      acknowledged: false,
+      acknowledged: true,
       matchedCount: 0,
       modifiedCount: 0,
+      upsertedCount: 0,
       upsertedId: null,
     });
     await expect(adapter.replaceOne(testQuery, testObject)).rejects.toThrow(
@@ -155,33 +164,71 @@ describe('Mongo adapter', () => {
     );
   });
 
-  test('should return a single Id from replaceOne when upsert = true', async () => {
+  const matchedCountCases = [
+    ['acknowledged and found 1', true, 1],
+    ['acknowledged and found 2', true, 2],
+    ['not acknowledged', false, 0],
+  ];
+  test.each(matchedCountCases)(
+    'should throw an error when %s items were found but nothing was modified',
+    async (_caseName: string, acknowledged: boolean, matchedCount: number) => {
+      const testObject: TestType = { id: '12345', foo: 'bar' };
+      replaceOne.mockResolvedValue({
+        acknowledged,
+        matchedCount,
+        modifiedCount: 0,
+        upsertedCount: 0,
+        upsertedId: null,
+      });
+      await expect(adapter.replaceOne(testQuery, testObject)).rejects.toThrow(
+        `Failed to update document. Query matched ${matchedCount} items.`,
+      );
+    },
+  );
+
+  test('should return a single Id from replaceOne when upsert = true and no match was made', async () => {
     const testObject: TestType = { id: '12345', foo: 'bar' };
     const _id = 'mongoGeneratedId';
 
     replaceOne.mockResolvedValue({
       acknowledged: true,
       matchedCount: 0,
-      modifiedCount: 1,
+      modifiedCount: 0,
+      upsertedCount: 1,
       upsertedId: _id,
     });
+
+    const expected = {
+      id: testObject.id,
+      modifiedCount: 0,
+      upsertedCount: 1,
+    };
+
     const result = await adapter.replaceOne(testQuery, testObject, true);
-    expect(result).toEqual(testObject.id);
-    expect(result).not.toEqual(_id);
+    expect(result).toEqual(expected);
+    expect(result).not.toEqual({ ...expected, id: _id });
   });
 
-  test('should throw an error if replaceOne does not match.', async () => {
-    const testObject: TestType = { id: '12345', foo: 'bar' };
-    replaceOne.mockResolvedValue({
-      acknowledged: false,
-      matchedCount: 0,
-      modifiedCount: 0,
-      upsertedId: null,
-    });
-    await expect(adapter.replaceOne(testQuery, testObject, true)).rejects.toThrow(
-      'Failed to insert document into database.',
-    );
-  });
+  const upsertFailureCases = [
+    ['acknowledged', true],
+    ['not acknowledged', false],
+  ];
+  test.each(upsertFailureCases)(
+    'should throw an error if upsert fails when %s',
+    async (_caseName: string, acknowledged: boolean) => {
+      const testObject: TestType = { id: '12345', foo: 'bar' };
+      replaceOne.mockResolvedValue({
+        acknowledged,
+        matchedCount: 0,
+        modifiedCount: 0,
+        upsertedCount: 0,
+        upsertedId: null,
+      });
+      await expect(adapter.replaceOne(testQuery, testObject, true)).rejects.toThrow(
+        'Failed to insert document into database.',
+      );
+    },
+  );
 
   test('should return a single Id from insertOne', async () => {
     const id = '123456';

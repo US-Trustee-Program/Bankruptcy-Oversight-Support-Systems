@@ -60,6 +60,16 @@ cat ./ops/scripts/utility/audit-comment.md >> "$TEMP_FILE"
 RESULTS=0
 
 PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
+
+# Audit root level
+npm ci
+if ! npm audit
+then
+  RESULTS=1
+  echo "The root has \`npm audit\` findings. Note that these packages are only used for linting." >> "$TEMP_FILE"
+fi
+
+# Audit sub-projects
 for dir in "${PROJECTS[@]}"; do
   pushd "${dir}" || exit
   npm ci

@@ -223,7 +223,7 @@ describe('Table component', () => {
   });
 
   test('should render the caption if title is passed to table', () => {
-    render(<Table data-testid="test-table" title="test caption"></Table>);
+    render(<Table data-testid="test-table" title="test caption" caption="test caption"></Table>);
 
     const table = screen.queryByTestId('test-table');
     expect(table).toBeInTheDocument();

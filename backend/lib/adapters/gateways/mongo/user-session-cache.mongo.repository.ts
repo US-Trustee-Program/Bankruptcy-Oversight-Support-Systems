@@ -89,7 +89,7 @@ export class UserSessionCacheMongoRepository
         ttl,
       };
       const adapter = this.getAdapter<CachedCamsSession>();
-      await adapter.replaceOne(query, cached);
+      await adapter.replaceOne(query, cached, true);
       return session;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
