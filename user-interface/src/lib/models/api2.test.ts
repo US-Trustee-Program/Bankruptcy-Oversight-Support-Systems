@@ -128,8 +128,6 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.putConsolidationOrderRejection, 'some-id', api);
     await callApiFunction(api2.Api2.searchCases, 'some-id', api);
     await callApiFunction(api2.Api2.getCaseNotes, 'some-id', api);
-    // TODO: Don't forget to test this method.
-    // await callApiFunction(api2.Api2.postCaseNote, ['some-id', 'note'], api);
   });
 
   test('should call postCaseNote api function', async () => {
