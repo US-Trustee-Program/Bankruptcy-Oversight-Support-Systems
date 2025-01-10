@@ -159,7 +159,7 @@ export type TransferOrderActionRejection = {
   reason?: string;
 };
 
-type TransferOrderActionApproval = {
+export type TransferOrderActionApproval = {
   id: string;
   caseId: string;
   orderType: 'transfer';

@@ -28,6 +28,7 @@ export default defineConfig({
         '**/data-verification/consolidation/*Mock.ts',
         '**/*.d.ts',
         '**/**humble.ts',
+        '*.config.*js',
         ...coverageConfigDefaults.exclude,
       ],
       thresholds: {

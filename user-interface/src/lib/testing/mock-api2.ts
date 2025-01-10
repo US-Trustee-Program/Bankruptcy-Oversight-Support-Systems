@@ -259,7 +259,11 @@ async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSum
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
 
-async function patchTransferOrder(_data: FlexibleTransferOrderAction): Promise<void> {
+async function patchTransferOrderApproval(_data: FlexibleTransferOrderAction): Promise<void> {
+  return Promise.resolve();
+}
+
+async function patchTransferOrderRejection(_data: FlexibleTransferOrderAction): Promise<void> {
   return Promise.resolve();
 }
 
@@ -309,7 +313,8 @@ export const MockApi2 = {
   getOffices,
   getOrders,
   getOrderSuggestions,
-  patchTransferOrder,
+  patchTransferOrderApproval,
+  patchTransferOrderRejection,
   postStaffAssignments,
   postCaseNote,
   putConsolidationOrderApproval,
