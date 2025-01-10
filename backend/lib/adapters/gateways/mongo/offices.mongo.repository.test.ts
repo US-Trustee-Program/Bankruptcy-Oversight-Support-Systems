@@ -12,6 +12,7 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsSession } from '../../../../../common/src/cams/session';
+import { DEFAULT_STAFF_TTL } from '../../../use-cases/admin/admin';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
@@ -54,13 +55,12 @@ describe('offices repo', () => {
   });
 
   test('putOfficeStaff', async () => {
-    const ttl = 86400;
     const staff = createAuditRecord<OfficeStaff>({
       id: session.user.id,
       documentType: 'OFFICE_STAFF',
       officeCode,
       ...session.user,
-      ttl,
+      ttl: DEFAULT_STAFF_TTL,
     });
     const replaceOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
