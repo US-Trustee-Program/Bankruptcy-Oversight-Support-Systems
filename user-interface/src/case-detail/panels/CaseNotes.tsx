@@ -9,6 +9,8 @@ import { formatDate } from '@/lib/utils/datetime';
 import { CaseNote } from '@common/cams/cases';
 import { useEffect, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
+import { HttpResponse } from '@okta/okta-auth-js';
+import HttpStatusCodes from '../../../../common/dist/api/http-status-codes';
 
 export interface CaseNotesProps {
   caseId: string;
@@ -47,9 +49,10 @@ export default function CaseNotes(props: CaseNotesProps) {
           textAreaRef.current?.clearValue();
           fetchCaseNotes();
         })
-        .catch(() => {
-          //TODO: if it returns malicious input do not show else show
-          globalAlert?.error('Could not insert case note.');
+        .catch((e: HttpResponse) => {
+          if (e.status !== HttpStatusCodes.FORBIDDEN) {
+            globalAlert?.error('Could not insert case note.');
+          }
         })
         .finally(() => {
           textAreaRef.current?.disable(false);

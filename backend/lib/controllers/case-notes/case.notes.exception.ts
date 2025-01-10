@@ -4,8 +4,8 @@ import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 export interface CaseNotesErrorOptions extends CamsErrorOptions {}
 
-export class CaseNotesError extends CamsError {
+export class CaseNotesForbidden extends CamsError {
   constructor(module: string, options: CaseNotesErrorOptions = {}) {
-    super(module, { status: HttpStatusCodes.BAD_REQUEST, ...options });
+    super(module, { status: HttpStatusCodes.FORBIDDEN, ...options });
   }
 }
