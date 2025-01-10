@@ -106,7 +106,6 @@ describe('offices repo', () => {
       );
     });
 
-    // TODO: test error cases for findAndDeleteStaff
     test('should throw error for failure to delete', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(0);
 
