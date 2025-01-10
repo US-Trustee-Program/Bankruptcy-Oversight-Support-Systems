@@ -21,6 +21,14 @@ import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
 
+export type ReplaceResult = {
+  id: string;
+  modifiedCount: number;
+  upsertedCount: number;
+};
+
+export type UpsertResult = ReplaceResult;
+
 export interface Releasable {
   release: () => void;
 }
@@ -121,7 +129,7 @@ export interface CasesRepository extends Releasable {
 
 export interface OfficesRepository extends Releasable {
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
-  putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<void>;
+  putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
 }
 
@@ -149,7 +157,11 @@ export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
   findOne: (query: ConditionOrConjunction) => Promise<T>;
   getAll: (sort?: Sort) => Promise<T[]>;
-  replaceOne: (query: ConditionOrConjunction, item: unknown, upsert?: boolean) => Promise<string>;
+  replaceOne: (
+    query: ConditionOrConjunction,
+    item: unknown,
+    upsert?: boolean,
+  ) => Promise<ReplaceResult>;
   insertOne: (item: unknown) => Promise<string>;
   insertMany: (items: unknown[]) => Promise<string[]>;
   deleteOne: (query: ConditionOrConjunction) => Promise<number>;

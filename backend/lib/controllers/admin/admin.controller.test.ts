@@ -36,15 +36,18 @@ describe('Admin controller tests', () => {
 
   test('should return 201 for successful addition of staff', async () => {
     const context = await createMockApplicationContext();
+    const id = 'user-idp-id';
     context.request.method = 'POST';
     context.request.params.procedure = 'createStaff';
     context.request.body = {
       officeCode: 'TEST_OFFICE_GROUP',
-      id: 'user-okta-id',
+      id,
       name: 'Last, First',
       roles: [CamsRole.CaseAssignmentManager],
     };
-    jest.spyOn(AdminUseCase.prototype, 'addOfficeStaff').mockResolvedValue();
+    jest
+      .spyOn(AdminUseCase.prototype, 'addOfficeStaff')
+      .mockResolvedValue({ id, modifiedCount: 0, upsertedCount: 1 });
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ statusCode: 201 });
   });

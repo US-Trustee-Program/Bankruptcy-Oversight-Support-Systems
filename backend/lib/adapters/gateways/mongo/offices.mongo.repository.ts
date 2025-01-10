@@ -5,10 +5,10 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { OfficesRepository } from '../../../use-cases/gateways.types';
+import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { DEFAULT_STAFF_TTL } from '../../../use-cases/admin/admin';
+import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -53,7 +53,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     officeCode: string,
     user: CamsUserReference,
     ttl: number = DEFAULT_STAFF_TTL,
-  ): Promise<void> {
+  ): Promise<ReplaceResult> {
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
@@ -65,7 +65,13 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       and(equals<string>('id', staff.id), equals<string>('officeCode', officeCode)),
     );
     try {
-      await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
+      const result = await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
+      if (result.modifiedCount + result.upsertedCount !== 1) {
+        throw new UnknownError(MODULE_NAME, {
+          message: `While upserting user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
+        });
+      }
+      return result;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to write user ${user.id} to ${officeCode}.`,

@@ -1,5 +1,6 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { AdminUseCase, CreateStaffRequestBody, DEFAULT_STAFF_TTL } from './admin';
+import { AdminUseCase, CreateStaffRequestBody } from './admin';
+import { DEFAULT_STAFF_TTL } from '../offices/offices';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
@@ -39,11 +40,11 @@ describe('Test Migration Admin Use Case', () => {
   test.each(successCases)(
     'should create new office staff entry with %s ttl provided',
     async (_caseName: string, ttl: number, expectedTtl: number) => {
+      const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       const createSpy = jest
         .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
-        .mockResolvedValue();
+        .mockResolvedValue({ id: user.id, modifiedCount: 0, upsertedCount: 1 });
 
-      const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       const expectedUser: Staff = {
         id: user.id,
         name: user.name,

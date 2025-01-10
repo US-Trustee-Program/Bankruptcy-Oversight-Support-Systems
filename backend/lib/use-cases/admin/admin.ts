@@ -2,9 +2,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import Factory from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { Staff } from '../../../../common/src/cams/users';
+import { UpsertResult } from '../gateways.types';
+import { DEFAULT_STAFF_TTL } from '../offices/offices';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
-export const DEFAULT_STAFF_TTL = 60 * 60 * 23; // Set to 23 hours until we figure out issue with upsert
 
 export type CreateStaffRequestBody = Staff & {
   officeCode: string;
@@ -35,7 +36,7 @@ export class AdminUseCase {
   public async addOfficeStaff(
     context: ApplicationContext,
     requestBody: CreateStaffRequestBody,
-  ): Promise<void> {
+  ): Promise<UpsertResult> {
     const officesRepo = Factory.getOfficesRepository(context);
     const ttl = requestBody.ttl ?? DEFAULT_STAFF_TTL;
     const userWithRoles: Staff = {
@@ -45,7 +46,7 @@ export class AdminUseCase {
     };
 
     try {
-      await officesRepo.putOfficeStaff(requestBody.officeCode, userWithRoles, ttl);
+      return await officesRepo.putOfficeStaff(requestBody.officeCode, userWithRoles, ttl);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed to create staff document.' },
