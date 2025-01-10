@@ -10,6 +10,7 @@ import {
   FlexibleTransferOrderAction,
   Order,
   TransferOrder,
+  TransferOrderActionRejection,
 } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
@@ -234,7 +235,7 @@ async function getCaseNotes(caseId: string) {
 
 async function postCaseNote(caseId: string, note: string): Promise<void> {
   const sanitizedNote = sanitizeText(note);
-  if (isValidUserInput(sanitizedNote)) {
+  if (sanitizedNote.length > 0 && isValidUserInput(sanitizedNote)) {
     await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note: sanitizedNote });
   }
 }
@@ -266,11 +267,15 @@ async function getOrderSuggestions(caseId: string) {
   return api().get<CaseSummary[]>(`/orders-suggestions/${caseId}/`, {});
 }
 
-async function patchTransferOrder(data: FlexibleTransferOrderAction) {
-  if (data.status === 'rejected' && data.reason && isValidUserInput(data.reason)) {
-    data.reason = sanitizeText(data.reason);
-  }
+async function patchTransferOrderApproval(data: Partial<FlexibleTransferOrderAction>) {
   await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+}
+
+async function patchTransferOrderRejection(data: Partial<TransferOrderActionRejection>) {
+  if (data.reason && isValidUserInput(data.reason)) {
+    data.reason = sanitizeText(data.reason);
+    await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+  }
 }
 
 async function putConsolidationOrderApproval(data: ConsolidationOrderActionApproval) {
@@ -283,11 +288,11 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
   if (data.reason && isValidUserInput(data.reason)) {
     data.reason = sanitizeText(data.reason);
+    return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
+      '/consolidations/reject',
+      data,
+    );
   }
-  return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
-    '/consolidations/reject',
-    data,
-  );
 }
 
 async function searchCases(
@@ -317,7 +322,8 @@ export const _Api2 = {
   getOffices,
   getOrders,
   getOrderSuggestions,
-  patchTransferOrder,
+  patchTransferOrderApproval,
+  patchTransferOrderRejection,
   postStaffAssignments,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
