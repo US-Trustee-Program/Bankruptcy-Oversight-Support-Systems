@@ -4,6 +4,7 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { Staff } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
+export const DEFAULT_STAFF_TTL = 60 * 60 * 23; // Set to 23 hours until we figure out issue with upsert
 
 export type CreateStaffRequestBody = Staff & {
   officeCode: string;
@@ -36,7 +37,7 @@ export class AdminUseCase {
     requestBody: CreateStaffRequestBody,
   ): Promise<void> {
     const officesRepo = Factory.getOfficesRepository(context);
-    const ttl = requestBody.ttl ?? 86400;
+    const ttl = requestBody.ttl ?? DEFAULT_STAFF_TTL;
     const userWithRoles: Staff = {
       id: requestBody.id,
       name: requestBody.name,
