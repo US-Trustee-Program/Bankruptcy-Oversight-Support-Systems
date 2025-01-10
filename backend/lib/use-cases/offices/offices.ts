@@ -11,6 +11,7 @@ import {
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import AttorneysList from '../attorneys';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 
@@ -90,6 +91,8 @@ export class OfficesUseCase {
       const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
 
       const users = await userGroupSource.getUserGroupUsers(context, config, officeGroup);
+      let successCount = 0;
+      let failureCount = 0;
       for (const user of users) {
         if (!userMap.has(user.id)) {
           userMap.set(user.id, user);
@@ -97,13 +100,30 @@ export class OfficesUseCase {
         // TODO: the following line is partially covered and I cannot see how we would reach the negative case
         const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
         office.staff.push(userWithRoles);
-        await repository.putOfficeStaff(office.officeCode, userWithRoles);
+        try {
+          await repository.putOfficeStaff(office.officeCode, userWithRoles);
+          successCount++;
+        } catch (originalError) {
+          const camsError = getCamsErrorWithStack(originalError, MODULE_NAME, {
+            data: { office: office.officeCode, user: user.id },
+          });
+          context.logger.camsError(camsError);
+          failureCount++;
+        }
       }
 
-      context.logger.info(
-        MODULE_NAME,
-        `Synced ${users.length} users to the ${office.officeName} office.`,
-      );
+      if (successCount > 0) {
+        context.logger.info(
+          MODULE_NAME,
+          `Synced ${successCount} users to the ${office.officeName} office.`,
+        );
+      }
+      if (failureCount > 0) {
+        context.logger.info(
+          MODULE_NAME,
+          `Failed to sync ${failureCount} users to the ${office.officeName} office.`,
+        );
+      }
       officesWithUsers.push(office);
     }
 
