@@ -10,8 +10,8 @@ import { USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cam
 import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -91,6 +91,7 @@ describe('offices use case tests', () => {
         release: () => {},
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        findAndDeleteStaff: jest.fn(),
         close: jest.fn(),
       };
     });
@@ -118,6 +119,7 @@ describe('offices use case tests', () => {
         release: () => {},
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
+        findAndDeleteStaff: jest.fn(),
         close: jest.fn(),
       };
     });
@@ -130,7 +132,7 @@ describe('offices use case tests', () => {
     expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
-  test('should persist offices', async () => {
+  test('should persist offices and continue trying after error', async () => {
     const seattleGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
     const seattleOfficeCode = 'USTP_CAMS_Region_18_Office_Seattle';
     const trialAttorneyGroup: CamsUserGroup = { id: 'four', name: 'USTP CAMS Trial Attorney' };
@@ -169,8 +171,13 @@ describe('offices use case tests', () => {
         },
       );
 
-    const putSpy = jest.spyOn(MockOfficesRepository, 'putOfficeStaff').mockResolvedValue();
+    const putSpy = jest
+      .spyOn(MockOfficesRepository, 'putOfficeStaff')
+      .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })
+      .mockRejectedValueOnce(new Error('some unknown error'))
+      .mockResolvedValue({ id: users[3].id, modifiedCount: 0, upsertedCount: 1 });
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
@@ -179,5 +186,10 @@ describe('offices use case tests', () => {
       expect(putSpy).toHaveBeenCalledWith(seattleOfficeCode, seattleUsers[idx]);
     });
     expect(stateRepoSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(expect.anything(), `Synced 2 users to the Seattle office.`);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      `Failed to sync 1 users to the Seattle office.`,
+    );
   });
 });

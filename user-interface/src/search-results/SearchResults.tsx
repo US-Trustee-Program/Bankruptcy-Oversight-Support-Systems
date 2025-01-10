@@ -20,13 +20,17 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
+const searchResultsHeaderLabels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
+
 export type SearchResultsHeaderProps = {
   id: string;
+  labels: string[];
 };
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
   bCase: CaseBasics;
+  labels: string[];
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
@@ -163,11 +167,18 @@ export function SearchResults(props: SearchResultsProps) {
       )}
       {!isSearching && !emptyResponse && (
         <div>
-          <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
-            <Header id={id} />
+          <Table
+            id={id}
+            className="case-list"
+            scrollable="true"
+            uswdsStyle={['striped']}
+            title="search results."
+            caption={`Search yielded ${searchResults?.data.length} results.`}
+          >
+            <Header id={id} labels={searchResultsHeaderLabels} />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return <Row bCase={bCase} idx={idx} key={idx} />;
+                return <Row bCase={bCase} labels={searchResultsHeaderLabels} idx={idx} key={idx} />;
               })}
             </TableBody>
           </Table>

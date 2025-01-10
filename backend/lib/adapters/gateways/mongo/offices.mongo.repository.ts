@@ -4,9 +4,11 @@ import { Auditable, createAuditRecord } from '../../../../../common/src/cams/aud
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../../query/query-builder';
-import { getCamsError } from '../../../common-errors/error-utilities';
-import { OfficesRepository } from '../../../use-cases/gateways.types';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { UnknownError } from '../../../common-errors/unknown-error';
+import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -47,8 +49,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     OfficesMongoRepository.dropInstance();
   }
 
-  async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {
-    const ttl = 86400;
+  async putOfficeStaff(
+    officeCode: string,
+    user: CamsUserReference,
+    ttl: number = DEFAULT_STAFF_TTL,
+  ): Promise<ReplaceResult> {
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
@@ -60,9 +65,17 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       and(equals<string>('id', staff.id), equals<string>('officeCode', officeCode)),
     );
     try {
-      await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
+      const result = await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
+      if (result.modifiedCount + result.upsertedCount !== 1) {
+        throw new UnknownError(MODULE_NAME, {
+          message: `While upserting user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
+        });
+      }
+      return result;
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write user ${user.id} to ${officeCode}.`,
+      });
     }
   }
 
@@ -80,6 +93,28 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       return result.map((doc) => getCamsUserReference(doc));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
+    const query = QueryBuilder.build(
+      and(
+        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
+        equals<OfficeStaff['id']>('id', id),
+        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+      ),
+    );
+
+    try {
+      const deletedCount = await this.getAdapter<OfficeStaff>().deleteOne(query);
+      if (deletedCount === 0) {
+        throw new UnknownError(MODULE_NAME, { message: 'Failed to delete office staff.' });
+      } else if (deletedCount > 1) {
+        throw new UnknownError(MODULE_NAME, { message: 'Deleted more than one office staff.' });
+      }
+    } catch (originalError) {
+      const error = getCamsError(originalError, MODULE_NAME);
+      throw error;
     }
   }
 }

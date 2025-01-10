@@ -19,3 +19,7 @@ export type CamsJwt = {
   claims: CamsJwtClaims;
   header: CamsJwtHeader;
 };
+
+export function isCamsJwt(maybe: unknown): maybe is CamsJwt {
+  return !!maybe && typeof maybe === 'object' && 'claims' in maybe && 'header' in maybe;
+}

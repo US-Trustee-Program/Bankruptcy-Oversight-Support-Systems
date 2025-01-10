@@ -4,7 +4,7 @@ import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
 import { CamsUser } from '../../../../../common/src/cams/users';
-import { CamsJwt } from '../../../../../common/src/cams/jwt';
+import { CamsJwt, isCamsJwt } from '../../../../../common/src/cams/jwt';
 import { isCamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME = 'OKTA-GATEWAY';
@@ -22,6 +22,40 @@ type OktaUserInfo = {
   email_verified: boolean;
 };
 
+type OktaJwtParseError = {
+  name: string;
+  message: string;
+  userMessage: string;
+  jwtString: string;
+  parsedHeader: Record<string, string | number | object>;
+  parsedBody: Record<string, string | number | object>;
+  innerError: {
+    errno: number;
+    code: string;
+    syscall: string;
+  };
+};
+
+function isJwtParseError(maybe: unknown): maybe is OktaJwtParseError {
+  return !!maybe && typeof maybe === 'object' && 'name' in maybe && maybe.name === 'JwtParseError';
+}
+
+async function verifyAccessTokenWithRetry(
+  issuer: string,
+  token: string,
+  audience: string,
+  retry = true,
+): Promise<object> {
+  try {
+    return await verifyAccessToken(issuer, token, audience);
+  } catch (originalError) {
+    if (retry && isJwtParseError(originalError) && originalError.innerError.code === 'ECONNRESET') {
+      return await verifyAccessToken(issuer, token, audience);
+    }
+    throw originalError;
+  }
+}
+
 async function verifyToken(token: string): Promise<CamsJwt> {
   const { issuer, audience, provider } = getAuthorizationConfig();
   if (provider !== 'okta') {
@@ -34,13 +68,22 @@ async function verifyToken(token: string): Promise<CamsJwt> {
     throw new ServerConfigError(MODULE_NAME, { message: 'Audience not provided.' });
   }
   try {
-    const maybeCamsJwt = await verifyAccessToken(issuer, token, audience);
+    const maybeCamsJwt = await verifyAccessTokenWithRetry(issuer, token, audience);
+    if (!isCamsJwt(maybeCamsJwt)) {
+      throw new UnauthorizedError(MODULE_NAME, {
+        message: 'Unable to verify token.',
+      });
+    }
     if (!maybeCamsJwt.claims.groups) {
-      throw new Error('Access token claims missing groups.');
+      throw new UnauthorizedError(MODULE_NAME, {
+        message: 'Access token claims missing groups.',
+      });
     }
     return maybeCamsJwt as CamsJwt;
   } catch (originalError) {
-    throw new UnauthorizedError(MODULE_NAME, { originalError });
+    throw isCamsError(originalError)
+      ? originalError
+      : new UnauthorizedError(MODULE_NAME, { originalError });
   }
 }
 
@@ -49,11 +92,6 @@ async function getUser(accessToken: string): Promise<{ user: CamsUser; jwt: Cams
 
   try {
     const jwt = await verifyToken(accessToken);
-    if (!jwt) {
-      throw new UnauthorizedError(MODULE_NAME, {
-        message: 'Unable to verify token.',
-      });
-    }
 
     const response = await fetch(userInfoUri, {
       method: 'GET',

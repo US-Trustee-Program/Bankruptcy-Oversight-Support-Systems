@@ -68,7 +68,7 @@ describe('User session cache Cosmos repository tests', () => {
     const camsJwtClaims = jwt.decode(newSession.accessToken) as CamsJwtClaims;
     const insertOne = jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockResolvedValue('oid-guid');
+      .mockResolvedValue({ id: 'oid-guid', modifiedCount: 1, upsertedCount: 0 });
     const tokenParts = newSession.accessToken.split('.');
     const signature = tokenParts[2];
     const expectedQuery = QueryBuilder.build(equals('signature', signature));
@@ -83,6 +83,7 @@ describe('User session cache Cosmos repository tests', () => {
         signature: expect.anything(),
         ttl: expect.any(Number),
       }),
+      true,
     );
     const maxTtl = Math.floor(camsJwtClaims.exp - Date.now() / 1000);
     expect(argument.ttl).toBeLessThan(maxTtl + 1);
