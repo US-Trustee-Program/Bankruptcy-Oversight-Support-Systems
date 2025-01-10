@@ -47,8 +47,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     OfficesMongoRepository.dropInstance();
   }
 
-  async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {
-    const ttl = 86400;
+  async putOfficeStaff(
+    officeCode: string,
+    user: CamsUserReference,
+    ttl: number = 86400,
+  ): Promise<void> {
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
