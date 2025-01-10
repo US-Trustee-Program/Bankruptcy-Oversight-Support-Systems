@@ -27,8 +27,8 @@ export class AdminController implements CamsController {
         return { statusCode: 204 };
       } else if (procedure === createStaff && context.request.method === 'POST') {
         const requestBody: CreateStaffRequestBody = context.request.body as CreateStaffRequestBody;
-        await useCase.addOfficeStaff(context, requestBody);
-        return { statusCode: 201 };
+        const result = await useCase.addOfficeStaff(context, requestBody);
+        return { statusCode: result.upsertedCount === 1 ? 201 : 204 };
       } else if (procedure === deleteStaff && context.request.method === 'DELETE') {
         await useCase.deleteStaff(
           context,

@@ -52,7 +52,10 @@ export class CaseAssignmentMongoRepository
   async update(caseAssignment: CaseAssignment): Promise<string> {
     const query = equals<CaseAssignment['id']>('id', caseAssignment.id);
     try {
-      return await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
+      const result = await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
+      if (result.modifiedCount > 0) {
+        return result.id;
+      }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update assignment.');
     }

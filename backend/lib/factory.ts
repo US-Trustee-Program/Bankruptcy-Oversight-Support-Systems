@@ -56,6 +56,7 @@ let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 
 let mockOrdersRepository: MockMongoRepository;
+let mockOfficesRepository: MockMongoRepository;
 let mockConsolidationsRepository: MockMongoRepository;
 let mockCasesRepository: MockMongoRepository;
 let mockUserSessionCacheRepository: MockMongoRepository;
@@ -116,10 +117,10 @@ export const getOfficesGateway = (context: ApplicationContext): OfficesGateway =
 
 export const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
   if (context.config.get('dbMock')) {
-    if (!mockOrdersRepository) {
-      mockOrdersRepository = MockMongoRepository.getInstance(context);
+    if (!mockOfficesRepository) {
+      mockOfficesRepository = MockMongoRepository.getInstance(context);
     }
-    return mockOrdersRepository;
+    return mockOfficesRepository;
   }
   const repo = OfficesMongoRepository.getInstance(context);
   deferRelease(repo, context);

@@ -35,17 +35,22 @@ describe('Runtime State Repo', () => {
     expect(actual).toEqual(expected);
   });
 
-  test('should upsert a runtime state document', async () => {
-    const replaceOne = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockImplementation((_resource) => {
-        return Promise.resolve(expected.id);
-      });
-    const toCreate = { ...expected };
-    delete toCreate.id;
-    await repo.upsert(toCreate);
-    expect(replaceOne).toHaveBeenCalledWith(expect.anything(), expect.anything(), true);
-  });
+  const successCases = [
+    ['modify', 1, 0],
+    ['upsert', 0, 1],
+  ];
+  test.each(successCases)(
+    'should %s a runtime state document',
+    async (_caseName: string, modifiedCount: number, upsertedCount: number) => {
+      const replaceOne = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: expected.id, modifiedCount, upsertedCount });
+      const toCreate = { ...expected };
+      delete toCreate.id;
+      await repo.upsert(toCreate);
+      expect(replaceOne).toHaveBeenCalledWith(expect.anything(), expect.anything(), true);
+    },
+  );
 
   test('should throw any other error encountered', async () => {
     const someError = new Error('Some other unknown error');

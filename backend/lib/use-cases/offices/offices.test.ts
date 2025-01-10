@@ -172,9 +172,9 @@ describe('offices use case tests', () => {
 
     const putSpy = jest
       .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
-      .mockResolvedValueOnce()
+      .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })
       .mockRejectedValueOnce(new Error('some unknown error'))
-      .mockResolvedValue();
+      .mockResolvedValue({ id: users[3].id, modifiedCount: 0, upsertedCount: 1 });
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 
