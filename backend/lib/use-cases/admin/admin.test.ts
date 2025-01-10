@@ -1,12 +1,12 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase, CreateStaffRequestBody } from './admin';
 import { DEFAULT_STAFF_TTL } from '../offices/offices';
-import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { Staff } from '../../../../common/src/cams/users';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 describe('Test Migration Admin Use Case', () => {
   let context: ApplicationContext;
@@ -42,7 +42,7 @@ describe('Test Migration Admin Use Case', () => {
     async (_caseName: string, ttl: number, expectedTtl: number) => {
       const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
       const createSpy = jest
-        .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
+        .spyOn(MockOfficesRepository, 'putOfficeStaff')
         .mockResolvedValue({ id: user.id, modifiedCount: 0, upsertedCount: 1 });
 
       const expectedUser: Staff = {
@@ -63,7 +63,7 @@ describe('Test Migration Admin Use Case', () => {
   test('should add to camsStack upon create error', async () => {
     const message = 'Some error occurred.';
     jest
-      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
+      .spyOn(MockOfficesRepository, 'putOfficeStaff')
       .mockRejectedValue(new CamsError(module, { message }));
 
     const user = MockData.getCamsUser({ roles: [CamsRole.CaseAssignmentManager] });
@@ -86,9 +86,7 @@ describe('Test Migration Admin Use Case', () => {
   });
 
   test('should remove office staff entry', async () => {
-    const deleteSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'findAndDeleteStaff')
-      .mockResolvedValue();
+    const deleteSpy = jest.spyOn(MockOfficesRepository, 'findAndDeleteStaff').mockResolvedValue();
 
     await useCase.deleteStaff(context, testOffice, 'John Doe');
     expect(deleteSpy).toHaveBeenCalledWith(testOffice, 'John Doe');
@@ -97,7 +95,7 @@ describe('Test Migration Admin Use Case', () => {
   test('should add to camsStack upon delete error', async () => {
     const message = 'Some error occurred.';
     jest
-      .spyOn(MockMongoRepository.prototype, 'findAndDeleteStaff')
+      .spyOn(MockOfficesRepository, 'findAndDeleteStaff')
       .mockRejectedValue(new CamsError(module, { message }));
 
     await expect(useCase.deleteStaff(context, testOffice, 'John Doe')).rejects.toThrow(
