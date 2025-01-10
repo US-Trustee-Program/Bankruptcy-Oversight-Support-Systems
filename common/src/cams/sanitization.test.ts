@@ -25,4 +25,10 @@ describe('Input sanitization tests', () => {
     const actual = isValidUserInput(input);
     expect(actual).toEqual(false);
   });
+
+  const testMongoQueryInjections = [['$and()'], ["$eq:{'this should fail'}"], ['$not:{}']];
+  test.each(testMongoQueryInjections)('should detech invalid strings', (input: string) => {
+    const actual = isValidUserInput(input);
+    expect(actual).toEqual(false);
+  });
 });

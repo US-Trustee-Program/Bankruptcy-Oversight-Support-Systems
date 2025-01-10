@@ -82,11 +82,6 @@ describe('extractPathFromUri', () => {
 const inputPassedThroughApi = 'This is just a plain sentence.';
 const inputBlockedFromApi = "<script>alert('XSS');</script>";
 
-// the following aren't working as expected.  The data is not sanitized at all.
-//  ['Use setTimeout;', 'Use setTimeout(() => {}, 1000);'],
-//  ['document.querySelector', "document.querySelector('#id');"],
-//  ['fetch', "fetch('/api/data');"],
-
 describe('_Api2 functions', async () => {
   let api: ApiType;
   let api2: Api2Type;
