@@ -1,5 +1,5 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { AdminUseCase, CreateStaffRequestBody } from './admin';
+import { AdminUseCase, CreateStaffRequestBody, DEFAULT_STAFF_TTL } from './admin';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
@@ -32,7 +32,7 @@ describe('Test Migration Admin Use Case', () => {
   });
 
   const successCases = [
-    ['undefined', undefined, 86400],
+    ['undefined', undefined, DEFAULT_STAFF_TTL],
     ['-1', -1, -1],
     ['3600', 3600, 3600],
   ];
