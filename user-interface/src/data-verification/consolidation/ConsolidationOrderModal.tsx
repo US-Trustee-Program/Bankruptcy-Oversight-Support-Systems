@@ -45,7 +45,6 @@ export type ShowOptionParams = {
 type ShowOptions = {
   status: OrderStatus;
   heading: string;
-  title?: string;
 };
 
 export type ConfirmationModalImperative = ModalRefType & {
@@ -74,7 +73,6 @@ function ConsolidationOrderModalComponent(
   const [options, setOptions] = useState<ShowOptions>({
     status: 'pending',
     heading: '',
-    title: '',
   });
   const [reason] = useState<string>('');
 
@@ -139,7 +137,6 @@ function ConsolidationOrderModalComponent(
       setOptions({
         status: options.status,
         heading: 'Verify Case Consolidation',
-        title: 'Verify Case Consolidation.',
       });
     } else if (options.status === 'rejected') {
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
@@ -236,6 +233,7 @@ function ConsolidationOrderModalComponent(
       <div>
         <div className="modal-consolidation-type">
           This will confirm the <strong>{consolidationTypeMap.get(consolidationType!)}</strong> of
+          the following cases.
         </div>
         <div
           data-testid="modal-case-list-container"
@@ -250,7 +248,13 @@ function ConsolidationOrderModalComponent(
             ))}
           </ul>
         </div>
-        <div className="modal-assignments-list">
+        <div
+          className="modal-assignments-list"
+          aria-label={
+            `with ${getCaseNumber(leadCase?.caseId)} as the Lead Case. All cases will be ` +
+            `assigned to ${formatListForDisplay(getAssigneeNames(leadCase?.attorneyAssignments ?? []))}.`
+          }
+        >
           with <strong>{getCaseNumber(leadCase?.caseId)}</strong> as the Lead Case. All cases will
           be assigned to{' '}
           <strong>
@@ -268,7 +272,6 @@ function ConsolidationOrderModalComponent(
       modalId={id}
       className={`confirm-modal consolidation-order-modal`}
       heading={`${options.heading}`}
-      headingTooltip={options.title}
       data-testid={`confirm-modal-${id}`}
       onClose={() => {
         // reset();
