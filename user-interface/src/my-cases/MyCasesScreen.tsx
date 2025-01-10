@@ -66,7 +66,7 @@ export const MyCasesScreen = () => {
       <Modal
         ref={infoModalRef}
         modalId={infoModalId}
-        className="assign-attorney-modal"
+        className="my-cases-info-modal"
         heading="My Cases - Using This Page"
         content={
           <>

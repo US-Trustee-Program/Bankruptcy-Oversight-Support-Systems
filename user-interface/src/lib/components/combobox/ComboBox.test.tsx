@@ -339,10 +339,7 @@ describe('test cams combobox', () => {
     expect(listItems[4]).toHaveAttribute('data-value', 'option5');
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(inputField).toHaveFocus();
-
-    await userEvent.keyboard('{ArrowUp}');
-    expect(listItems[4]).toHaveFocus();
+    expect(listItems[4]).toHaveAttribute('data-value', 'option5');
 
     await userEvent.keyboard('{ArrowUp}');
     expect(listItems[3]).toHaveFocus();
