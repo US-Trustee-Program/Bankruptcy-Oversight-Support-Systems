@@ -11,11 +11,14 @@ import { CamsRole } from '../../../../../common/src/cams/roles';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { CamsSession } from '../../../../../common/src/cams/session';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
   let repo: OfficesMongoRepository;
+  let session: CamsSession;
   const { and, equals, contains } = QueryBuilder;
+  const officeCode = 'test_office_code';
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
@@ -23,6 +26,7 @@ describe('offices repo', () => {
 
   beforeEach(async () => {
     repo = OfficesMongoRepository.getInstance(context);
+    session = await createMockApplicationContextSession();
   });
 
   afterEach(async () => {
@@ -50,9 +54,6 @@ describe('offices repo', () => {
   });
 
   test('putOfficeStaff', async () => {
-    const session = await createMockApplicationContextSession();
-    const officeCode = 'test_office_code';
-
     const ttl = 86400;
     const staff = createAuditRecord<OfficeStaff>({
       id: session.user.id,
@@ -73,21 +74,27 @@ describe('offices repo', () => {
     );
   });
 
+  test('should build correct query to delete staff', async () => {
+    const deleteOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+      .mockResolvedValue(1);
+
+    await repo.findAndDeleteStaff(officeCode, session.user.id);
+    expect(deleteOneSpy).toHaveBeenCalled();
+  });
+
   describe('error handling', () => {
+    const module = 'OFFICES_MONGO_REPOSITORY';
     const error = new Error('some error');
-    const camsError = getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS');
+    const camsError = getCamsError(error, module);
 
     test('getOfficeAttorneys error handling', async () => {
-      const officeCode = 'office_code';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
       await expect(() => repo.getOfficeAttorneys(officeCode)).rejects.toThrow(camsError);
     });
 
     test('putOfficeStaff error handling', async () => {
-      const session = await createMockApplicationContextSession();
-      const officeCode = 'test_office_code';
-
       jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
 
       const expectedError = {
@@ -96,6 +103,30 @@ describe('offices repo', () => {
       };
       await expect(() => repo.putOfficeStaff(officeCode, session.user)).rejects.toThrow(
         expectedError,
+      );
+    });
+
+    test('should throw error for failure to delete', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(0);
+
+      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
+        expect.objectContaining({ module, message: 'Failed to delete office staff.' }),
+      );
+    });
+
+    test('should throw error for deleting too many items', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(2);
+
+      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
+        expect.objectContaining({ module, message: 'Deleted more than one office staff.' }),
+      );
+    });
+
+    test('should throw CamsError', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
+
+      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
+        expect.objectContaining({ module, message: 'Unknown Error' }),
       );
     });
   });
