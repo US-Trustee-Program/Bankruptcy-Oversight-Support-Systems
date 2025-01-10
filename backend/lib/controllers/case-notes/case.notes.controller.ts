@@ -6,7 +6,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
 import { CaseNote } from '../../../../common/src/cams/cases';
-import { CaseNotesError } from './case.notes.exception';
+import { CaseNotesForbidden } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
@@ -66,7 +66,7 @@ export class CaseNotesController implements CamsController {
       messages.push(message);
     }
     if (messages.length) {
-      throw new CaseNotesError(MODULE_NAME, { message: messages.join(' ') });
+      throw new CaseNotesForbidden(MODULE_NAME, { message: messages.join(' ') });
     }
   }
 }

@@ -5,6 +5,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDate } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
@@ -71,7 +72,7 @@ describe('audit history tests', () => {
   });
 
   test('should call globalAlert.error when getCaseNotes receives an error', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockRejectedValue({ status: 404 });
+    vi.spyOn(Api2, 'getCaseNotes').mockRejectedValue({ status: HttpStatusCodes.NOT_FOUND });
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
@@ -111,9 +112,11 @@ describe('audit history tests', () => {
     expect(textArea).toHaveValue('');
   });
 
-  test('should call globalAlert.error when postCaseNote receives an error', async () => {
+  test('should call globalAlert.error when postCaseNote receives a common error', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.reject());
+    vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({
+      status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+    });
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
@@ -129,6 +132,29 @@ describe('audit history tests', () => {
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not insert case note.');
+    });
+  });
+
+  test('should call globalAlert.error when postCaseNote receives a forbidden request error', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({
+      status: HttpStatusCodes.FORBIDDEN,
+    });
+
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    render(<CaseNotes caseId={caseId} />);
+
+    const textArea = screen.getByTestId(textAreaTestId);
+    expect(textArea).toBeInTheDocument();
+    await userEvent.type(textArea, 'test note');
+
+    const button = screen.getByTestId('button-button-submit-case-note');
+    expect(button).toBeInTheDocument();
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).not.toHaveBeenCalled();
     });
   });
 
