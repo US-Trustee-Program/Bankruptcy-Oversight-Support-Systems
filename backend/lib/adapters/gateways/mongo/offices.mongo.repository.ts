@@ -7,6 +7,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { OfficesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -47,8 +48,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     OfficesMongoRepository.dropInstance();
   }
 
-  async putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void> {
-    const ttl = 86400;
+  async putOfficeStaff(
+    officeCode: string,
+    user: CamsUserReference,
+    ttl: number = 86400,
+  ): Promise<void> {
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
@@ -82,6 +86,28 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       return result.map((doc) => getCamsUserReference(doc));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
+    const query = QueryBuilder.build(
+      and(
+        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
+        equals<OfficeStaff['id']>('id', id),
+        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+      ),
+    );
+
+    try {
+      const deletedCount = await this.getAdapter<OfficeStaff>().deleteOne(query);
+      if (deletedCount === 0) {
+        throw new UnknownError(MODULE_NAME, { message: 'Failed to delete office staff.' });
+      } else if (deletedCount > 1) {
+        throw new UnknownError(MODULE_NAME, { message: 'Deleted more than one office staff.' });
+      }
+    } catch (originalError) {
+      const error = getCamsError(originalError, MODULE_NAME);
+      throw error;
     }
   }
 }
