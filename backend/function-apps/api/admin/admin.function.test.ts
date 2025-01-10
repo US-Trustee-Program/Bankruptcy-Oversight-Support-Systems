@@ -6,6 +6,7 @@ import {
 } from '../../azure/testing-helpers';
 import handler from './admin.function';
 import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
+import { CamsHttpMethod } from '../../../lib/adapters/types/http';
 
 const ADMIN_KEY = 'good-key';
 
@@ -37,19 +38,26 @@ describe('Admin function tests', () => {
     expect(response).toEqual(azureHttpResponse);
   });
 
-  test('admin handler should call controller when invoked', async () => {
-    const request = createMockAzureFunctionRequest({
-      method: 'DELETE',
-      body: { apiKey: ADMIN_KEY },
-    });
+  const successCases = [
+    ['DELETE', 204],
+    ['POST', 201],
+  ];
+  test.each(successCases)(
+    'admin handler should call controller when %s invoked',
+    async (method: string, statusCode: number) => {
+      const request = createMockAzureFunctionRequest({
+        method: method as CamsHttpMethod,
+        body: { apiKey: ADMIN_KEY },
+      });
 
-    const adminControllerSpy = jest
-      .spyOn(AdminController.prototype, 'handleRequest')
-      .mockResolvedValue({ statusCode: 204 });
+      const adminControllerSpy = jest
+        .spyOn(AdminController.prototype, 'handleRequest')
+        .mockResolvedValue({ statusCode });
 
-    const result = await handler(request, context);
+      const result = await handler(request, context);
 
-    expect(adminControllerSpy).toHaveBeenCalled();
-    expect(result.status).toEqual(204);
-  });
+      expect(adminControllerSpy).toHaveBeenCalled();
+      expect(result.status).toEqual(statusCode);
+    },
+  );
 });
