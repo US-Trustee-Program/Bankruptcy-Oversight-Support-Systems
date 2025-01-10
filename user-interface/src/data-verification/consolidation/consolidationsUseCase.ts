@@ -268,17 +268,19 @@ const consolidationUseCase = (
       api
         .putConsolidationOrderRejection(data)
         .then((response) => {
-          const newOrders = response.data;
-          store.setIsProcessing(false);
-          onOrderUpdate(
-            {
-              message: `Rejection of consolidation order was successful.`,
-              type: UswdsAlertStyle.Success,
-              timeOut: 8,
-            },
-            newOrders,
-            store.order,
-          );
+          if (response?.data) {
+            const newOrders = response.data;
+            store.setIsProcessing(false);
+            onOrderUpdate(
+              {
+                message: `Rejection of consolidation order was successful.`,
+                type: UswdsAlertStyle.Success,
+                timeOut: 8,
+              },
+              newOrders,
+              store.order,
+            );
+          }
         })
         .catch((_reason) => {
           store.setIsProcessing(false);
