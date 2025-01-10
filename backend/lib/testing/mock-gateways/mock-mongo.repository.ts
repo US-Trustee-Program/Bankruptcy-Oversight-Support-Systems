@@ -130,6 +130,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getNotesByCaseId(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   async getTransfers(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

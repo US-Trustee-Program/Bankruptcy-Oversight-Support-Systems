@@ -1,5 +1,5 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
-import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseDetail, CaseDocket, CaseNote, CaseSummary } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { Consolidation } from '@common/cams/events';
@@ -10,6 +10,7 @@ import {
   FlexibleTransferOrderAction,
   Order,
   TransferOrder,
+  TransferOrderActionRejection,
 } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
@@ -22,6 +23,8 @@ import Api from './api';
 import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
 import { DAY } from '../utils/datetime';
+import { sanitizeText } from '../utils/sanitize-text';
+import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -226,6 +229,17 @@ async function getCaseHistory(caseId: string) {
   return api().get<CaseHistory[]>(`/cases/${caseId}/history`);
 }
 
+async function getCaseNotes(caseId: string) {
+  return api().get<CaseNote[]>(`/cases/${caseId}/notes`);
+}
+
+async function postCaseNote(caseId: string, note: string): Promise<void> {
+  const sanitizedNote = sanitizeText(note);
+  if (sanitizedNote.length > 0 && isValidUserInput(sanitizedNote)) {
+    await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note: sanitizedNote });
+  }
+}
+
 async function getCourts() {
   const path = `/courts`;
   return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
@@ -253,8 +267,15 @@ async function getOrderSuggestions(caseId: string) {
   return api().get<CaseSummary[]>(`/orders-suggestions/${caseId}/`, {});
 }
 
-async function patchTransferOrder(data: FlexibleTransferOrderAction) {
+async function patchTransferOrderApproval(data: Partial<FlexibleTransferOrderAction>) {
   await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+}
+
+async function patchTransferOrderRejection(data: Partial<TransferOrderActionRejection>) {
+  if (data.reason && isValidUserInput(data.reason)) {
+    data.reason = sanitizeText(data.reason);
+    await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+  }
 }
 
 async function putConsolidationOrderApproval(data: ConsolidationOrderActionApproval) {
@@ -265,10 +286,13 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 }
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
-  return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
-    '/consolidations/reject',
-    data,
-  );
+  if (data.reason && isValidUserInput(data.reason)) {
+    data.reason = sanitizeText(data.reason);
+    return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
+      '/consolidations/reject',
+      data,
+    );
+  }
 }
 
 async function searchCases(
@@ -290,13 +314,16 @@ export const _Api2 = {
   getCaseAssignments,
   getCaseAssociations,
   getCaseHistory,
+  postCaseNote,
+  getCaseNotes,
   getCourts,
   getMe,
   getOfficeAttorneys,
   getOffices,
   getOrders,
   getOrderSuggestions,
-  patchTransferOrder,
+  patchTransferOrderApproval,
+  patchTransferOrderRejection,
   postStaffAssignments,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,

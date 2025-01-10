@@ -26,6 +26,8 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
+import CaseNotes from './panels/CaseNotes';
+import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailOverview'));
@@ -187,6 +189,8 @@ interface CaseDetailProps {
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
+  const featureFlags = useFeatureFlags();
+  const caseNotesEnabledFlag = featureFlags[CASE_NOTES_ENABLED];
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
@@ -582,6 +586,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       />
                     }
                   />
+                  {caseNotesEnabledFlag && (
+                    <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
+                  )}
                 </Routes>
               </Suspense>
               <Outlet />

@@ -3,7 +3,7 @@ import { ObjectKeyVal } from '../type-declarations/basic';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Actions, { ResourceActions } from '@common/cams/actions';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
-import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseDetail, CaseDocket, CaseNote, CaseSummary } from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { AttorneyUser } from '@common/cams/users';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
@@ -259,8 +259,20 @@ async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSum
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
 
-async function patchTransferOrder(_data: FlexibleTransferOrderAction): Promise<void> {
+async function patchTransferOrderApproval(_data: FlexibleTransferOrderAction): Promise<void> {
   return Promise.resolve();
+}
+
+async function patchTransferOrderRejection(_data: FlexibleTransferOrderAction): Promise<void> {
+  return Promise.resolve();
+}
+
+async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
+  return get<CaseNote[]>(`/cases/${caseId}/notes`);
+}
+
+async function postCaseNote(caseId: string, note: string): Promise<void> {
+  await post(`/cases/${caseId}/notes`, { note }, {});
 }
 
 async function putConsolidationOrderApproval(
@@ -295,13 +307,16 @@ export const MockApi2 = {
   getCaseAssociations,
   getCaseHistory,
   getCourts,
+  getCaseNotes,
   getMe,
   getOfficeAttorneys,
   getOffices,
   getOrders,
   getOrderSuggestions,
-  patchTransferOrder,
+  patchTransferOrderApproval,
+  patchTransferOrderRejection,
   postStaffAssignments,
+  postCaseNote,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
   searchCases,
