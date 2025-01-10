@@ -12,7 +12,7 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 import { createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsSession } from '../../../../../common/src/cams/session';
-import { DEFAULT_STAFF_TTL } from '../../../use-cases/admin/admin';
+import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
@@ -64,7 +64,7 @@ describe('offices repo', () => {
     });
     const replaceOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockResolvedValue('inserted-id');
+      .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
 
     await repo.putOfficeStaff(officeCode, session.user);
     expect(replaceOneSpy).toHaveBeenCalledWith(

@@ -4,7 +4,7 @@ import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import { ConditionOrConjunction, Sort } from '../../../../query/query-builder';
-import { DocumentCollectionAdapter } from '../../../../use-cases/gateways.types';
+import { DocumentCollectionAdapter, ReplaceResult } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { MongoServerError } from 'mongodb';
@@ -88,7 +88,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     query: ConditionOrConjunction,
     item: T,
     upsert: boolean = false,
-  ): Promise<string> {
+  ): Promise<ReplaceResult> {
     const mongoQuery = toMongoQuery(query);
     const mongoItem = createOrGetId<T>(item);
     try {
@@ -105,11 +105,15 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       });
 
       if (!result.acknowledged) throw upsert ? unknownError : unknownMatchError;
-      if (upsert && result.upsertedCount < 1) throw unknownError;
+      if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) throw unknownError;
       if (!upsert && result.matchedCount === 0) throw notFoundError;
       if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
 
-      return mongoItem.id;
+      return {
+        id: mongoItem.id,
+        modifiedCount: result.modifiedCount,
+        upsertedCount: result.upsertedCount,
+      };
     } catch (originalError) {
       throw this.handleError(
         originalError,

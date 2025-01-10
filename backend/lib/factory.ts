@@ -46,6 +46,7 @@ import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-s
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
 import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 import { deferRelease } from './deferrable/defer-release';
+import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -115,11 +116,8 @@ export const getOfficesGateway = (context: ApplicationContext): OfficesGateway =
 };
 
 export const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
-  if (context.config.get('dbMock')) {
-    if (!mockOrdersRepository) {
-      mockOrdersRepository = MockMongoRepository.getInstance(context);
-    }
-    return mockOrdersRepository;
+  if (context.config.authConfig.provider === 'mock') {
+    return MockOfficesRepository;
   }
   const repo = OfficesMongoRepository.getInstance(context);
   deferRelease(repo, context);
