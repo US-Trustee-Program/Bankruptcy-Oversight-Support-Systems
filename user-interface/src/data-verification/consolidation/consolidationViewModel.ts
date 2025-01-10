@@ -12,6 +12,7 @@ import { ShowConfirmationModal } from '@/data-verification/consolidation/consoli
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 
 interface ConsolidationViewModel {
+  accordionFieldHeaders: string[];
   approveButton: React.Ref<ButtonRef>;
   caseTableActions: React.Ref<OrderTableImperative>;
   clearButton: React.Ref<ButtonRef>;

@@ -49,6 +49,8 @@ describe('Consolidation UseCase tests', () => {
     expect(store.foundValidCaseNumber).toBe(false);
   }
 
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+
   function initUseCase() {
     const props = {
       order: mockOrder,
@@ -56,6 +58,7 @@ describe('Consolidation UseCase tests', () => {
       orderType: orderType,
       courts: MockData.getCourts(),
       regionsMap: new Map(),
+      fieldHeaders: accordionFieldHeaders,
       onOrderUpdate: onOrderUpdateSpy,
       onExpand,
     };
