@@ -1,4 +1,4 @@
-const MONGO_INJECTED_PATTERN = RegExp(
+const MONGO_CONSOLE_INJECTED_PATTERN = RegExp(
   /\b(?:db\.[a-zA-Z]+|mongo\.[a-zA-Z]+|(?:find|insert|update|delete|aggregate|create|drop|remove|replace|count|distinct|mapReduce|save)\b\s*(?:\(|{))/i,
 );
 const JAVASCRIPT_INJECTED_PATTERN = RegExp(
@@ -10,7 +10,7 @@ const MONGO_QUERY_INJECTED_PATTERN = RegExp(
 
 export function isValidUserInput(input: string) {
   if (
-    input.match(MONGO_INJECTED_PATTERN) ||
+    input.match(MONGO_CONSOLE_INJECTED_PATTERN) ||
     input.match(JAVASCRIPT_INJECTED_PATTERN) ||
     input.match(MONGO_QUERY_INJECTED_PATTERN)
   ) {
