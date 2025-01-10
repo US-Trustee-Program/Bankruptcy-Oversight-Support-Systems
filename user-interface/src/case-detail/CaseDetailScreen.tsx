@@ -190,6 +190,7 @@ interface CaseDetailProps {
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
   const featureFlags = useFeatureFlags();
+  const caseNotesEnabledFlag = featureFlags[CASE_NOTES_ENABLED];
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
@@ -585,7 +586,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       />
                     }
                   />
-                  {featureFlags[CASE_NOTES_ENABLED] && (
+                  {caseNotesEnabledFlag && (
                     <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
                   )}
                 </Routes>
