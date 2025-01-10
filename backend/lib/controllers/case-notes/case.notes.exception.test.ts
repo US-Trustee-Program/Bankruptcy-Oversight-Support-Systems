@@ -5,7 +5,7 @@ describe('CAMS Case Notes Exception', () => {
   const testModuleName = 'Test';
   test('caseNotesError constructor', async () => {
     const error = new CaseNotesForbidden(testModuleName);
-    expect(error.status).toBe(HttpStatusCodes.BAD_REQUEST);
+    expect(error.status).toBe(HttpStatusCodes.FORBIDDEN);
     expect(error.module).toBe(testModuleName);
     expect(error.message).toBe('Unknown CAMS Error');
   });
