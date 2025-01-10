@@ -11,6 +11,7 @@ import { ConnectionPool, config } from 'mssql';
 import {
   AcmsGateway,
   CaseAssignmentRepository,
+  CaseNotesRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
   OfficesRepository,
@@ -46,6 +47,7 @@ import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-s
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
 import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 import { deferRelease } from './deferrable/defer-release';
+import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 
 let casesGateway: CasesInterface;
@@ -79,6 +81,13 @@ export const getCasesGateway = (context: ApplicationContext): CasesInterface => 
 export const getAssignmentRepository = (context: ApplicationContext): CaseAssignmentRepository => {
   if (context.config.get('dbMock')) return new MockMongoRepository();
   const repo = CaseAssignmentMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+export const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRepository => {
+  if (context.config.get('dbMock')) return new MockMongoRepository();
+  const repo = CaseNotesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -240,6 +249,7 @@ export const Factory = {
   getAttorneyGateway,
   getCasesGateway,
   getAssignmentRepository,
+  getCaseNotesRepository,
   getCaseDocketUseCase,
   getSqlConnection,
   getOrdersGateway,

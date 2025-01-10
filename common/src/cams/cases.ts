@@ -1,6 +1,7 @@
 import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
+import { Auditable } from './auditable';
 
 export type FlatOfficeDetail = {
   officeName: string;
@@ -61,3 +62,10 @@ export type CaseDocketEntry = {
 };
 
 export type CaseDocket = Array<CaseDocketEntry>;
+
+export type CaseNote = Auditable & {
+  id?: string;
+  caseId: string;
+  content: string;
+  documentType: 'NOTE';
+};

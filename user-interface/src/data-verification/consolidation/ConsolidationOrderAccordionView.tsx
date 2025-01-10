@@ -14,6 +14,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import ComboBox from '@/lib/components/combobox/ComboBox';
+import { sanitizeText } from '@/lib/utils/sanitize-text';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -315,7 +316,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   <>
                     {' '}
                     for the following reason:
-                    <blockquote>{viewModel.order.reason}</blockquote>
+                    <blockquote>{sanitizeText(viewModel.order.reason)}</blockquote>
                   </>
                 )}
                 {!viewModel.order.reason && <>.</>}

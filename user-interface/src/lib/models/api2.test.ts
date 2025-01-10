@@ -6,7 +6,11 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentAction } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import { randomUUID } from 'crypto';
-import { TransferOrderAction } from '@common/cams/orders';
+import {
+  ConsolidationOrderActionRejection,
+  TransferOrderAction,
+  TransferOrderActionRejection,
+} from '@common/cams/orders';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -75,6 +79,9 @@ describe('extractPathFromUri', () => {
   });
 });
 
+const inputPassedThroughApi = 'This is just a plain sentence.';
+const inputBlockedFromApi = "<script>alert('XSS');</script>";
+
 describe('_Api2 functions', async () => {
   let api: ApiType;
   let api2: Api2Type;
@@ -101,8 +108,89 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getOrders, null, api);
     await callApiFunction(api2.Api2.getOrderSuggestions, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);
-    await callApiFunction(api2.Api2.putConsolidationOrderRejection, 'some-id', api);
     await callApiFunction(api2.Api2.searchCases, 'some-id', api);
+    await callApiFunction(api2.Api2.getCaseNotes, 'some-id', api);
+  });
+
+  test('should call postCaseNote api function', async () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: ['some-note'] });
+    api2.Api2.postCaseNote('some-id', 'some note');
+    expect(postSpy).toHaveBeenCalled();
+  });
+
+  test('should get through input validation and call postCaseNote', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const path = '/cases/some-id/notes';
+    api2.Api2.postCaseNote('some-id', inputPassedThroughApi);
+    expect(postSpy).toHaveBeenCalledWith(path, { note: inputPassedThroughApi }, {});
+  });
+
+  test('should be rejected by input validation and not call postCaseNote', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    api2.Api2.postCaseNote('some-id', inputBlockedFromApi);
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not call putConsolidationOrderRejection functions with malicious input', () => {
+    const postSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
+    const baseOrder = MockData.getConsolidationOrder();
+    const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
+      ...baseOrder,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      status: 'rejected',
+      reason: inputBlockedFromApi,
+    };
+
+    api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
+    expect(postSpy).not.toHaveBeenCalledWith();
+  });
+
+  test('should call putConsolidationOrderRejection functions with non-malicious input', () => {
+    const postSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
+    const path = '/consolidations/reject';
+    const baseOrder = MockData.getConsolidationOrder();
+    const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
+      ...baseOrder,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      status: 'rejected',
+      reason: inputPassedThroughApi,
+    };
+
+    const cleanConsolidationOrder = {
+      ...baseOrder,
+      rejectedCases: [baseOrder.childCases[0].caseId],
+      status: 'rejected',
+      reason: inputPassedThroughApi,
+    };
+
+    api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
+    expect(postSpy).toHaveBeenCalledWith(path, cleanConsolidationOrder, {});
+  });
+
+  test('should not call patchTransferOrderRejection with malicious input', () => {
+    const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
+    const dirtyTransferOrder: TransferOrderActionRejection = {
+      ...MockData.getTransferOrder(),
+      status: 'rejected',
+      reason: inputBlockedFromApi,
+    };
+
+    api2.Api2.patchTransferOrderRejection(dirtyTransferOrder);
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  test('should call patchTransferOrderRejection with non-malicious input', () => {
+    const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
+    const transferOrder: TransferOrderActionRejection = {
+      ...MockData.getTransferOrder(),
+      status: 'rejected',
+      reason: inputPassedThroughApi,
+    };
+
+    const path = `/orders/${transferOrder.id}`;
+
+    api2.Api2.patchTransferOrderRejection(transferOrder);
+    expect(postSpy).toHaveBeenCalledWith(path, transferOrder, {});
   });
 
   test('should handle no body properly', async () => {
@@ -127,7 +215,7 @@ describe('_Api2 functions', async () => {
       newCase: MockData.getCaseSummary(),
       status: 'approved',
     };
-    await api2.Api2.patchTransferOrder(approval);
+    await api2.Api2.patchTransferOrderApproval(approval);
     expect(patchSpy).toHaveBeenCalled();
   });
 
@@ -138,7 +226,10 @@ describe('_Api2 functions', async () => {
     vi.spyOn(api.default, 'post').mockRejectedValue(error);
     vi.spyOn(api.default, 'put').mockRejectedValue(error);
     await expect(api2.Api2.getAttorneys()).rejects.toThrow(error);
-    await expect(api2.Api2.patchTransferOrder({})).rejects.toThrow(error);
+    await expect(api2.Api2.patchTransferOrderApproval({})).rejects.toThrow(error);
+    await expect(api2.Api2.patchTransferOrderRejection({ reason: 'some-string' })).rejects.toThrow(
+      error,
+    );
     await expect(api2.Api2.searchCases({})).rejects.toThrow(error);
     await expect(
       api2.Api2.putConsolidationOrderApproval({

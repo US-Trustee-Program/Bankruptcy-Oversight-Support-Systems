@@ -33,10 +33,3 @@ if (appInsightsConnectionString) {
 export function useAppInsights() {
   return { reactPlugin, appInsights };
 }
-
-/*
-import { useAppInsightsContext, useTrackEvent } from '@microsoft/applicationinsights-react-js';
-
-const appInsights = useAppInsightsContext();
-const trackSearchEvent = useTrackEvent(foo, 'search', '', true);
-*/

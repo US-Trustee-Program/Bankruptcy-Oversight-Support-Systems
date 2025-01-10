@@ -1,3 +1,4 @@
+import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 
@@ -10,6 +11,8 @@ export function mapNavState(path: string) {
       return NavState.AUDIT_HISTORY;
     case 'associated-cases':
       return NavState.ASSOCIATED_CASES;
+    case 'notes':
+      return NavState.CASE_NOTES;
     default:
       return NavState.CASE_OVERVIEW;
   }
@@ -27,6 +30,7 @@ export enum NavState {
   COURT_DOCKET,
   AUDIT_HISTORY,
   ASSOCIATED_CASES,
+  CASE_NOTES,
 }
 
 export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): string {
@@ -40,6 +44,8 @@ function CaseDetailNavigationComponent({
   className,
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
+  const featureFlags = useFeatureFlags();
+  const caseNotesEnabledFlag = featureFlags[CASE_NOTES_ENABLED];
 
   return (
     <>
@@ -93,6 +99,19 @@ function CaseDetailNavigationComponent({
                 title="view associated cases"
               >
                 Associated Cases
+              </NavLink>
+            </li>
+          )}
+          {caseNotesEnabledFlag && (
+            <li className="usa-sidenav__item">
+              <NavLink
+                to={`/case-detail/${caseId}/notes`}
+                data-testid="case-notes-link"
+                className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
+                onClick={() => setActiveNav(NavState.CASE_NOTES)}
+                title="view case notes"
+              >
+                Case Notes
               </NavLink>
             </li>
           )}
