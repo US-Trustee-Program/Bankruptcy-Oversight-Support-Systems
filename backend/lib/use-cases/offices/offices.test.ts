@@ -130,7 +130,7 @@ describe('offices use case tests', () => {
     expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
-  test('should persist offices', async () => {
+  test('should persist offices and continue trying after error', async () => {
     const seattleGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
     const seattleOfficeCode = 'USTP_CAMS_Region_18_Office_Seattle';
     const trialAttorneyGroup: CamsUserGroup = { id: 'four', name: 'USTP CAMS Trial Attorney' };
@@ -169,8 +169,13 @@ describe('offices use case tests', () => {
         },
       );
 
-    const putSpy = jest.spyOn(MockOfficesRepository, 'putOfficeStaff').mockResolvedValue();
+    const putSpy = jest
+      .spyOn(MockOfficesRepository, 'putOfficeStaff')
+      .mockResolvedValueOnce()
+      .mockRejectedValueOnce(new Error('some unknown error'))
+      .mockResolvedValue();
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
+    const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 
     const useCase = new OfficesUseCase();
     await useCase.syncOfficeStaff(applicationContext);
@@ -179,5 +184,10 @@ describe('offices use case tests', () => {
       expect(putSpy).toHaveBeenCalledWith(seattleOfficeCode, seattleUsers[idx]);
     });
     expect(stateRepoSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith(expect.anything(), `Synced 2 users to the Seattle office.`);
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      `Failed to sync 1 users to the Seattle office.`,
+    );
   });
 });

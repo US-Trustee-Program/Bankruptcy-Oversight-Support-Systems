@@ -4,7 +4,7 @@ import { Auditable, createAuditRecord } from '../../../../../common/src/cams/aud
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
 import QueryBuilder from '../../../query/query-builder';
-import { getCamsError } from '../../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { OfficesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
@@ -62,7 +62,9 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     try {
       await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write user ${user.id} to ${officeCode}.`,
+      });
     }
   }
 
