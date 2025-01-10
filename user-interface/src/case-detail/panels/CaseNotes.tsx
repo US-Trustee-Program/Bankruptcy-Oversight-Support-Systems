@@ -10,7 +10,7 @@ import { CaseNote } from '@common/cams/cases';
 import { useEffect, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
-import HttpStatusCodes from '../../../../common/dist/api/http-status-codes';
+import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
 
 export interface CaseNotesProps {
   caseId: string;
