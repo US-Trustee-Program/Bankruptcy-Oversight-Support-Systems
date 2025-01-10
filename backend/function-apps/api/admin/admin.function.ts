@@ -33,7 +33,7 @@ export default async function handler(
 }
 
 app.http('admin', {
-  methods: ['DELETE'],
+  methods: ['DELETE', 'POST'],
   authLevel: 'anonymous',
   handler,
   route: 'dev-tools/{procedure}',

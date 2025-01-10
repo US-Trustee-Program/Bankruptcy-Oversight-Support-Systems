@@ -5,6 +5,11 @@ import { Staff } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
 
+export type CreateStaffRequestBody = Staff & {
+  officeCode: string;
+  ttl?: number;
+};
+
 export class AdminUseCase {
   public async deleteMigrations(context: ApplicationContext): Promise<void> {
     try {
@@ -19,23 +24,27 @@ export class AdminUseCase {
 
   /**
    * addOfficeStaff
+   * @template {T extends CamsError}
    * @param {ApplicationContext} context Application context.
-   * @param {string} officeCode The AD Group for the office to add the user to.
-   * @param {Staff} userWithRoles User name, id, and list of roles.
-   * @param {number} [ttl=86400] Mongo-compliant time to live with a default of 24 hours. Use -1 for
-   * no ttl.
-   * @throws {CamsError} Throws a CamsError or any type that extends CamsError.
+   * @param {CreateStaffRequestBody} requestBody Request must include the office code, the user's
+   * id, the user's name, and the roles they have. Optionally provide a Mongo-compliant ttl. If not
+   * provided, ttl defaults to 24 hours. For no ttl, provide -1.
+   * @throws {T} Throws a CamsError or any type that extends CamsError.
    */
   public async addOfficeStaff(
     context: ApplicationContext,
-    officeCode: string,
-    userWithRoles: Staff,
-    ttl: number = 86400,
+    requestBody: CreateStaffRequestBody,
   ): Promise<void> {
     const officesRepo = Factory.getOfficesRepository(context);
+    const ttl = requestBody.ttl ?? 86400;
+    const userWithRoles: Staff = {
+      id: requestBody.id,
+      name: requestBody.name,
+      roles: requestBody.roles,
+    };
 
     try {
-      await officesRepo.putOfficeStaff(officeCode, userWithRoles, ttl);
+      await officesRepo.putOfficeStaff(requestBody.officeCode, userWithRoles, ttl);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed to create staff document.' },
