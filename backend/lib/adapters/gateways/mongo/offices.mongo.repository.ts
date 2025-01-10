@@ -98,11 +98,16 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       ),
     );
 
-    const deletedCount = await this.getAdapter<OfficeStaff>().deleteOne(query);
-    if (deletedCount === 0) {
-      throw new UnknownError(MODULE_NAME, { message: 'Failed to delete office staff.' });
-    } else if (deletedCount > 1) {
-      throw new UnknownError(MODULE_NAME, { message: 'Deleted more than one office staff.' });
+    try {
+      const deletedCount = await this.getAdapter<OfficeStaff>().deleteOne(query);
+      if (deletedCount === 0) {
+        throw new UnknownError(MODULE_NAME, { message: 'Failed to delete office staff.' });
+      } else if (deletedCount > 1) {
+        throw new UnknownError(MODULE_NAME, { message: 'Deleted more than one office staff.' });
+      }
+    } catch (originalError) {
+      const error = getCamsError(originalError, MODULE_NAME);
+      throw error;
     }
   }
 }

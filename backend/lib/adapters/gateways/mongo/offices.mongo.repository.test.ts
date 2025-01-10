@@ -84,20 +84,17 @@ describe('offices repo', () => {
   });
 
   describe('error handling', () => {
+    const module = 'OFFICES_MONGO_REPOSITORY';
     const error = new Error('some error');
-    const camsError = getCamsError(error, 'COSMOS_DB_REPOSITORY_CONSOLIDATION_ORDERS');
+    const camsError = getCamsError(error, module);
 
     test('getOfficeAttorneys error handling', async () => {
-      const officeCode = 'office_code';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
       await expect(() => repo.getOfficeAttorneys(officeCode)).rejects.toThrow(camsError);
     });
 
     test('putOfficeStaff error handling', async () => {
-      const session = await createMockApplicationContextSession();
-      const officeCode = 'test_office_code';
-
       jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
 
       const expectedError = {
@@ -110,5 +107,28 @@ describe('offices repo', () => {
     });
 
     // TODO: test error cases for findAndDeleteStaff
+    test('should throw error for failure to delete', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(0);
+
+      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
+        expect.objectContaining({ module, message: 'Failed to delete office staff.' }),
+      );
+    });
+
+    test('should throw error for deleting too many items', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(2);
+
+      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
+        expect.objectContaining({ module, message: 'Deleted more than one office staff.' }),
+      );
+    });
+
+    test('should throw CamsError', async () => {
+      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
+
+      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
+        expect.objectContaining({ module, message: 'Unknown Error' }),
+      );
+    });
   });
 });
