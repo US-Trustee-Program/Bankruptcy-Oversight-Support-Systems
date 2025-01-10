@@ -90,7 +90,13 @@ describe('offices repo', () => {
 
       jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
 
-      await expect(() => repo.putOfficeStaff(officeCode, session.user)).rejects.toThrow(camsError);
+      const expectedError = {
+        ...camsError,
+        message: `Failed to write user ${session.user.id} to ${officeCode}.`,
+      };
+      await expect(() => repo.putOfficeStaff(officeCode, session.user)).rejects.toThrow(
+        expectedError,
+      );
     });
   });
 });

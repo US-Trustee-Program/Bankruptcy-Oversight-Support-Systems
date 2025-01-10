@@ -31,7 +31,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while querying with: ${JSON.stringify(query)}`);
+      throw this.handleError(
+        originalError,
+        `Failed while querying with: ${JSON.stringify(query)}`,
+        { query },
+      );
     }
   }
 
@@ -51,6 +55,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       throw this.handleError(
         originalError,
         `Failed to retrieve all with sort: ${JSON.stringify(sort)}`,
+        { sort },
       );
     }
   }
@@ -64,7 +69,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return result;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while querying with: ${JSON.stringify(query)}`);
+      throw this.handleError(
+        originalError,
+        `Failed while querying with: ${JSON.stringify(query)}`,
+        { query },
+      );
     }
   }
 
@@ -105,6 +114,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       throw this.handleError(
         originalError,
         `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
+        { query, item },
       );
     }
   }
@@ -122,7 +132,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return mongoItem.id;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(item)}`);
+      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(item)}`, {
+        item,
+      });
     }
   }
 
@@ -142,7 +154,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return insertedIds;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(items)}`);
+      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(items)}`, {
+        items,
+      });
     }
   }
 
@@ -156,7 +170,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`);
+      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`, {
+        query,
+      });
     }
   }
 
@@ -170,7 +186,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`);
+      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`, {
+        query,
+      });
     }
   }
 
@@ -179,7 +197,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while counting: ${JSON.stringify(query)}`);
+      throw this.handleError(originalError, `Failed while counting: ${JSON.stringify(query)}`, {
+        query,
+      });
     }
   }
 
@@ -204,7 +224,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     );
   }
 
-  private handleError(error: unknown, message: string): CamsError {
+  private handleError(error: unknown, message: string, data?: object): CamsError {
     let mongoError: MongoServerError;
     let err: Error;
     if (!isCamsError(error)) {
@@ -219,6 +239,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     return getCamsErrorWithStack(err, this.moduleName, {
       camsStackInfo: { module: this.moduleName, message: err.message },
       message,
+      data,
     });
   }
 }
