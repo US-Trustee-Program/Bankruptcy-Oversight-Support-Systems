@@ -136,10 +136,18 @@ describe('Mongo adapter', () => {
       matchedCount: 1,
       modifiedCount: 1,
       upsertedId: _id,
+      upsertedCount: 0,
     });
+
+    const expected = {
+      id: testObject.id,
+      modifiedCount: 1,
+      upsertedCount: 0,
+    };
+
     const result = await adapter.replaceOne(testQuery, testObject);
-    expect(result).not.toEqual(_id);
-    expect(result).toEqual(testObject.id);
+    expect(result).not.toEqual({ ...expected, id: _id });
+    expect(result).toEqual(expected);
   });
 
   test('should throw an error calling replaceOne for a nonexistent record and upsert=false', async () => {
@@ -189,9 +197,16 @@ describe('Mongo adapter', () => {
       upsertedCount: 1,
       upsertedId: _id,
     });
+
+    const expected = {
+      id: testObject.id,
+      modifiedCount: 0,
+      upsertedCount: 1,
+    };
+
     const result = await adapter.replaceOne(testQuery, testObject, true);
-    expect(result).toEqual(testObject.id);
-    expect(result).not.toEqual(_id);
+    expect(result).toEqual(expected);
+    expect(result).not.toEqual({ ...expected, id: _id });
   });
 
   const upsertFailureCases = [

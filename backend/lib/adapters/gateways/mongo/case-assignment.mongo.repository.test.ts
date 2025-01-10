@@ -33,7 +33,9 @@ describe('case assignment repo tests', () => {
     test('should update assignment', async () => {
       const fakeAttorney = MockData.getAttorneyUser();
       const assignment = MockData.getAttorneyAssignment({ name: fakeAttorney.name });
-      jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue(assignment.id);
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: assignment.id, modifiedCount: 1, upsertedCount: 0 });
       const actual = await repo.update(assignment);
       expect(actual).toEqual(assignment.id);
     });

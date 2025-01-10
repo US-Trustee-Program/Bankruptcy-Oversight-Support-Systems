@@ -11,6 +11,7 @@ import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/atto
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -171,10 +172,10 @@ describe('offices use case tests', () => {
       );
 
     const putSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
-      .mockResolvedValueOnce()
+      .spyOn(MockOfficesRepository, 'putOfficeStaff')
+      .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })
       .mockRejectedValueOnce(new Error('some unknown error'))
-      .mockResolvedValue();
+      .mockResolvedValue({ id: users[3].id, modifiedCount: 0, upsertedCount: 1 });
     const stateRepoSpy = jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const logSpy = jest.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 

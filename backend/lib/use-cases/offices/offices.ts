@@ -14,6 +14,7 @@ import AttorneysList from '../attorneys';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
+export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
 
 export class OfficesUseCase {
   public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
