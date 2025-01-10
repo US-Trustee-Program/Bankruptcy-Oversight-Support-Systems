@@ -39,11 +39,15 @@ type TableRowDataProps = PropsWithChildren &
     dataLabel?: string;
   };
 
-// TODO: if this is sorted we need to add data-sort-active="true"
 export function TableRowData(props: TableRowDataProps) {
   const { children, dataSortValue, dataLabel, ...otherProperties } = props;
   return (
-    <td data-sort-value={dataSortValue} data-cell={dataLabel} {...otherProperties}>
+    <td
+      data-sort-value={dataSortValue}
+      data-cell={dataLabel}
+      data-sort-active={dataSortValue && dataSortValue.length > 0 ? 'true' : undefined}
+      {...otherProperties}
+    >
       {children}
     </td>
   );
@@ -143,7 +147,6 @@ export type TableProps = PropsWithChildren &
 
 /* eslint-disable-next-line @typescript-eslint/no-empty-object-type */
 export interface TableRef extends HTMLTableElement {}
-// TODO: How are we going to handle props for the div AND THE table?? And be able to support the forwardRef?
 export const TableComponent = (
   { id, uswdsStyle, className, caption, children, ...otherProperties }: TableProps,
   ref?: React.Ref<TableRef>,
