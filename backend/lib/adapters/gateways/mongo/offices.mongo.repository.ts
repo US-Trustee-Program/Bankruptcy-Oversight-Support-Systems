@@ -8,6 +8,7 @@ import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/erro
 import { OfficesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { DEFAULT_STAFF_TTL } from '../../../use-cases/admin/admin';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -51,7 +52,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   async putOfficeStaff(
     officeCode: string,
     user: CamsUserReference,
-    ttl: number = 86400,
+    ttl: number = DEFAULT_STAFF_TTL,
   ): Promise<void> {
     const staff = createAuditRecord<OfficeStaff>({
       id: user.id,
