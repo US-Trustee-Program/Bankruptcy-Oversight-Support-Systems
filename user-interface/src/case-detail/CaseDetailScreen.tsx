@@ -422,7 +422,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   showAssociatedCasesList={
                     caseBasicInfo.consolidation !== undefined &&
                     caseBasicInfo.consolidation.length > 0
-                  } //TODO: Feature Flag implementation
+                  }
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                   <div
