@@ -44,7 +44,6 @@ import ConsolidationOrdersMongoRepository from './adapters/gateways/mongo/consol
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
-import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 import { deferRelease } from './deferrable/defer-release';
 
@@ -116,8 +115,11 @@ export const getOfficesGateway = (context: ApplicationContext): OfficesGateway =
 };
 
 export const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
-  if (context.config.authConfig.provider === 'mock') {
-    return MockOfficesRepository;
+  if (context.config.get('dbMock')) {
+    if (!mockOrdersRepository) {
+      mockOrdersRepository = MockMongoRepository.getInstance(context);
+    }
+    return mockOrdersRepository;
   }
   const repo = OfficesMongoRepository.getInstance(context);
   deferRelease(repo, context);

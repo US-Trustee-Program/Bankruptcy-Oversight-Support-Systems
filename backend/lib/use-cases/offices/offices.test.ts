@@ -10,7 +10,6 @@ import { USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cam
 import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
 
 describe('offices use case tests', () => {
@@ -170,7 +169,7 @@ describe('offices use case tests', () => {
       );
 
     const putSpy = jest
-      .spyOn(MockOfficesRepository, 'putOfficeStaff')
+      .spyOn(MockMongoRepository.prototype, 'putOfficeStaff')
       .mockResolvedValueOnce()
       .mockRejectedValueOnce(new Error('some unknown error'))
       .mockResolvedValue();

@@ -121,7 +121,7 @@ export interface CasesRepository extends Releasable {
 
 export interface OfficesRepository extends Releasable {
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
-  putOfficeStaff(officeCode: string, user: CamsUserReference): Promise<void>;
+  putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<void>;
 }
 
 // TODO: Move these models to a top level models file?
