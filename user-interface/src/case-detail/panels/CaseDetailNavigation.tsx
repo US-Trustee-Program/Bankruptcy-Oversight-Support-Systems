@@ -45,6 +45,7 @@ function CaseDetailNavigationComponent({
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<NavState>(initiallySelectedNavLink);
   const featureFlags = useFeatureFlags();
+  const caseNotesEnabledFlag = featureFlags[CASE_NOTES_ENABLED];
 
   return (
     <>
@@ -101,7 +102,7 @@ function CaseDetailNavigationComponent({
               </NavLink>
             </li>
           )}
-          {featureFlags[CASE_NOTES_ENABLED] && (
+          {caseNotesEnabledFlag && (
             <li className="usa-sidenav__item">
               <NavLink
                 to={`/case-detail/${caseId}/notes`}
