@@ -9,3 +9,9 @@ export class CaseNotesForbidden extends CamsError {
     super(module, { status: HttpStatusCodes.FORBIDDEN, ...options });
   }
 }
+
+export class CaseNotesInvalid extends CamsError {
+  constructor(module: string, options: CaseNotesErrorOptions = {}) {
+    super(module, { status: HttpStatusCodes.BAD_REQUEST, ...options });
+  }
+}

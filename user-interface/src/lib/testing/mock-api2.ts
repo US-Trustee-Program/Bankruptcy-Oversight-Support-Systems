@@ -3,7 +3,14 @@ import { ObjectKeyVal } from '../type-declarations/basic';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Actions, { ResourceActions } from '@common/cams/actions';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
-import { CaseBasics, CaseDetail, CaseDocket, CaseNote, CaseSummary } from '@common/cams/cases';
+import {
+  CaseBasics,
+  CaseDetail,
+  CaseDocket,
+  CaseNote,
+  CaseNoteInput,
+  CaseSummary,
+} from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { AttorneyUser } from '@common/cams/users';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
@@ -271,8 +278,8 @@ async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
   return get<CaseNote[]>(`/cases/${caseId}/notes`);
 }
 
-async function postCaseNote(caseId: string, note: string): Promise<void> {
-  await post(`/cases/${caseId}/notes`, { note }, {});
+async function postCaseNote(note: CaseNoteInput): Promise<void> {
+  await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
 
 async function putConsolidationOrderApproval(
