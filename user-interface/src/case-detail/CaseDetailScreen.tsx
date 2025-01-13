@@ -45,13 +45,18 @@ interface DocumentRange {
   last: number;
 }
 
-interface sortAndFilterOptions {
+interface docketSortAndFilterOptions {
   searchInDocketText: string;
   selectedFacets: string[];
   sortDirection: SortDirection;
   documentNumber: number | null;
   selectedDateRange: DateRange;
 }
+
+//interface caseNoteSortAndFilterOptions {
+//  searchInDocketText: string;
+//  sortDirection: SortDirection;
+//}
 
 export function findDocketLimits(docket: CaseDocket): DocketLimits {
   const dateRange: DateRange = { start: undefined, end: undefined };
@@ -108,9 +113,19 @@ function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
   return selectedFacets.includes(docketEntry.summaryText);
 }
 
-export function applySortAndFilters(
+/*
+export function applyCaseNoteSortAndFilters(
+  caseNotes: CaseNote[] | undefined,
+  options: caseNoteSortAndFilterOptions,
+) {
+  const filteredCaseNotes = caseNotes;
+  const alertOptions: AlertOptions;
+}
+*/
+
+export function applyDocketEntrySortAndFilters(
   docketEntries: CaseDocketEntry[] | undefined,
-  options: sortAndFilterOptions,
+  options: docketSortAndFilterOptions,
 ) {
   if (docketEntries === undefined) {
     return { filteredDocketEntries: docketEntries, alertOptions: undefined };
@@ -204,6 +219,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [associatedCases, setAssociatedCases] = useState<EventCaseReference[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
+  //const [searchCaseNoteTitleText, setSearchCaseNoteTitleText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const location = useLocation();
@@ -212,6 +228,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [documentRange, setDocumentRange] = useState<DocumentRange>({ first: 0, last: 0 });
   const [documentNumberError, setDocumentNumberError] = useState<boolean>(false);
   const findInDocketRef = useRef<InputRef>(null);
+  const caseNoteTitleSearchRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
@@ -280,6 +297,13 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setSearchInDocketText(searchString);
   }
 
+  /*
+  function searchCaseNotesByTitle(ev: React.ChangeEvent<HTMLInputElement>) {
+    const searchString = ev.target.value.toLowerCase();
+    setSearchCaseNoteTitleText(searchString);
+  }
+  */
+
   function searchDocumentNumber(ev: React.ChangeEvent<HTMLInputElement>) {
     const newDocumentNumber = parseInt(ev.target.value.trim());
     if (isNaN(newDocumentNumber)) {
@@ -293,6 +317,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   function clearFilters() {
     setSearchInDocketText('');
+    //setSearchCaseNoteTitleText('');
     findInDocketRef.current?.clearValue();
     setDocumentNumber(null);
     findByDocketNumberRef.current?.clearValue();
@@ -376,13 +401,26 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     }
   }, [location]);
 
-  const { filteredDocketEntries, alertOptions } = applySortAndFilters(caseDocketEntries, {
+  const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+    caseDocketEntries,
+    {
+      searchInDocketText,
+      selectedFacets,
+      sortDirection,
+      documentNumber,
+      selectedDateRange,
+    },
+  );
+
+  /*
+  const { filteredNotes, alertOptions } = applyCaseNoteSortAndFilters(caseDocketEntries, {
     searchInDocketText,
     selectedFacets,
     sortDirection,
     documentNumber,
     selectedDateRange,
   });
+  */
 
   return (
     <MainContent className="case-detail" data-testid="case-detail">
@@ -539,6 +577,37 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       >
                         <span aria-hidden="true">Clear All Filters</span>
                       </button>
+                    </div>
+                  </div>
+                )}
+                {navState === NavState.CASE_NOTES && (
+                  <div
+                    className={`filter-and-search padding-y-4`}
+                    data-testid="filter-and-search-panel"
+                    aria-live="polite"
+                  >
+                    <h3 className="filter-header" aria-label="Case Note Filters">
+                      Filters
+                    </h3>
+                    <div className="filter-info-text">
+                      As filters are applied, notes will be sorted or filtered automatically.
+                    </div>
+                    <div className="case-note-search form-field" data-testid="case-note-search">
+                      <div className="usa-search usa-search--small">
+                        <Input
+                          className="search-icon"
+                          id="basic-search-field"
+                          name="basic-search"
+                          label="Find case note by title"
+                          aria-label="Find case notes by title. Results will be updated while you type."
+                          aria-live="polite"
+                          icon="search"
+                          position="right"
+                          autoComplete="off"
+                          //onChange={searchCaseNotesByTitle}
+                          ref={caseNoteTitleSearchRef}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

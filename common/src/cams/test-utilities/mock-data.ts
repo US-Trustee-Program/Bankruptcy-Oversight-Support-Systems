@@ -465,6 +465,7 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
   return {
     id: randomId(),
+    title: 'Note Title',
     documentType: 'NOTE',
     caseId: randomCaseId(),
     content: 'Test Note',

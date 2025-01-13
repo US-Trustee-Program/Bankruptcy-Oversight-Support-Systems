@@ -1,0 +1,35 @@
+.case-notes-panel {
+  margin-left: 2rem;
+
+  .case-notes-form-container {
+    padding-bottom: 2rem;
+  }
+
+  #textarea-note-creation {
+    width: 100%;
+  }
+
+  #searchable-case-notes {
+    list-style-type: none;
+    padding-left: 0;
+
+    .case-note {
+      padding-left: 0;
+      margin-left: 0;
+      padding-bottom: 2rem;
+
+      .case-note-title-and-date {
+        padding-bottom: 1rem;
+
+        .case-note-date {
+          font-style: italic;
+          text-align: right;
+        }
+      }
+
+      .case-note-author {
+        padding-top: 1rem;
+      }
+    }
+ }
+}

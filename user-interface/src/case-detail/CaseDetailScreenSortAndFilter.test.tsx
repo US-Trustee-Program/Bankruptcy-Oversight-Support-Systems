@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import CaseDetailScreen, {
-  applySortAndFilters,
+  applyDocketEntrySortAndFilters,
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
@@ -263,13 +263,16 @@ describe('Case Detail sort, search, and filter tests', () => {
     });
 
     test('should filter the list of docket entries per the search text', async () => {
-      const { filteredDocketEntries, alertOptions } = applySortAndFilters(testCaseDocketEntries, {
-        searchInDocketText: 'number 2',
-        selectedFacets: [],
-        sortDirection: 'Oldest',
-        documentNumber: null,
-        selectedDateRange: {},
-      });
+      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+        testCaseDocketEntries,
+        {
+          searchInDocketText: 'number 2',
+          selectedFacets: [],
+          sortDirection: 'Oldest',
+          documentNumber: null,
+          selectedDateRange: {},
+        },
+      );
 
       expect(filteredDocketEntries?.length).toEqual(1);
       const actualEntry = filteredDocketEntries ? filteredDocketEntries[0] : null;
@@ -279,16 +282,19 @@ describe('Case Detail sort, search, and filter tests', () => {
     });
 
     test('should filter the list of docket entries per the selected facets', async () => {
-      const { filteredDocketEntries, alertOptions } = applySortAndFilters(testCaseDocketEntries, {
-        searchInDocketText: '',
-        selectedFacets: [
-          testCaseDocketEntries[1].summaryText,
-          testCaseDocketEntries[3].summaryText,
-        ],
-        sortDirection: 'Oldest',
-        documentNumber: null,
-        selectedDateRange: {},
-      });
+      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+        testCaseDocketEntries,
+        {
+          searchInDocketText: '',
+          selectedFacets: [
+            testCaseDocketEntries[1].summaryText,
+            testCaseDocketEntries[3].summaryText,
+          ],
+          sortDirection: 'Oldest',
+          documentNumber: null,
+          selectedDateRange: {},
+        },
+      );
 
       expect(filteredDocketEntries?.length).toEqual(2);
       const actualEntriesOne = filteredDocketEntries ? filteredDocketEntries[0] : null;
@@ -305,13 +311,16 @@ describe('Case Detail sort, search, and filter tests', () => {
       const oldestEntry = testCaseDocketEntries[0];
 
       const docketEntries = testCaseDocketEntries.slice(0, 3);
-      const { filteredDocketEntries, alertOptions } = applySortAndFilters(docketEntries, {
-        searchInDocketText: '',
-        selectedFacets: [],
-        sortDirection: 'Oldest',
-        documentNumber: null,
-        selectedDateRange: {},
-      });
+      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+        docketEntries,
+        {
+          searchInDocketText: '',
+          selectedFacets: [],
+          sortDirection: 'Oldest',
+          documentNumber: null,
+          selectedDateRange: {},
+        },
+      );
 
       expect(filteredDocketEntries?.length).toEqual(3);
       const first = filteredDocketEntries ? filteredDocketEntries[0] : null;
@@ -330,13 +339,16 @@ describe('Case Detail sort, search, and filter tests', () => {
       const oldestEntry = testCaseDocketEntries[0];
 
       const docketEntries = testCaseDocketEntries.slice(0, 3);
-      const { filteredDocketEntries, alertOptions } = applySortAndFilters(docketEntries, {
-        searchInDocketText: '',
-        selectedFacets: [],
-        sortDirection: 'Newest',
-        documentNumber: null,
-        selectedDateRange: {},
-      });
+      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+        docketEntries,
+        {
+          searchInDocketText: '',
+          selectedFacets: [],
+          sortDirection: 'Newest',
+          documentNumber: null,
+          selectedDateRange: {},
+        },
+      );
 
       expect(filteredDocketEntries?.length).toEqual(3);
       const first = filteredDocketEntries ? filteredDocketEntries[0] : null;

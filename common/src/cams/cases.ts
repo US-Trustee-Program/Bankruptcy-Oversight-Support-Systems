@@ -63,9 +63,14 @@ export type CaseDocketEntry = {
 
 export type CaseDocket = Array<CaseDocketEntry>;
 
-export type CaseNote = Auditable & {
-  id?: string;
+export type CaseNote = CaseNoteInput &
+  Auditable & {
+    id?: string;
+    documentType: 'NOTE';
+  };
+
+export type CaseNoteInput = {
+  title: string;
   caseId: string;
   content: string;
-  documentType: 'NOTE';
 };
