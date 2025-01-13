@@ -8,19 +8,24 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
 import Input from '@/lib/components/uswds/Input';
+import { AlertOptions } from './CaseDetailCourtDocket';
 
 export interface CaseNotesProps {
   caseId: string;
+  areCaseNotesLoading?: boolean;
+  hasNotes: boolean;
+  caseNotes?: CaseNote[];
+  alertOptions?: AlertOptions;
+  onNoteCreation: () => void;
 }
 
 export default function CaseNotes(props: CaseNotesProps) {
-  const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
-  const [areCaseNotesLoading, setAreCaseNotesLoading] = useState<boolean>(false);
+  const { caseNotes, areCaseNotesLoading } = props;
   const [caseNoteContentInput, setCaseNoteContentInput] = useState<string>('');
   const [caseNoteTitleInput, setCaseNoteTitleInput] = useState<string>('');
   const titleInputRef = useRef<TextAreaRef>(null);
@@ -29,19 +34,6 @@ export default function CaseNotes(props: CaseNotesProps) {
   const globalAlert = useGlobalAlert();
 
   const api = Api2;
-
-  async function fetchCaseNotes() {
-    setAreCaseNotesLoading(true);
-    api
-      .getCaseNotes(props.caseId)
-      .then((response) => {
-        setCaseNotes(response.data);
-      })
-      .catch(() => {
-        globalAlert?.error('Could not retrieve case notes.');
-      })
-      .finally(() => setAreCaseNotesLoading(false));
-  }
 
   async function putCaseNote() {
     if (caseNoteContentInput.length > 0 && caseNoteTitleInput.length > 0) {
@@ -58,7 +50,7 @@ export default function CaseNotes(props: CaseNotesProps) {
         .then(() => {
           titleInputRef.current?.clearValue();
           contentInputRef.current?.clearValue();
-          fetchCaseNotes();
+          if (props.onNoteCreation) props.onNoteCreation();
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
@@ -113,14 +105,10 @@ export default function CaseNotes(props: CaseNotesProps) {
   }
 
   function renderCaseNotes() {
-    return caseNotes.map((note, idx: number) => {
+    return caseNotes?.map((note, idx: number) => {
       return showCaseNotes(note, idx);
     });
   }
-
-  useEffect(() => {
-    fetchCaseNotes();
-  }, []);
 
   return (
     <div className="case-notes-panel">
@@ -159,20 +147,21 @@ export default function CaseNotes(props: CaseNotesProps) {
         )}
         {!areCaseNotesLoading && (
           <>
-            {caseNotes.length < 1 && (
-              <div data-testid="empty-notes-test-id">
-                <Alert
-                  message="No notes exist for this case."
-                  type={UswdsAlertStyle.Info}
-                  role={'status'}
-                  timeout={0}
-                  title=""
-                  show={true}
-                  inline={true}
-                />
-              </div>
-            )}
-            {caseNotes.length > 0 && (
+            {!caseNotes ||
+              (caseNotes.length < 1 && (
+                <div data-testid="empty-notes-test-id">
+                  <Alert
+                    message="No notes exist for this case."
+                    type={UswdsAlertStyle.Info}
+                    role={'status'}
+                    timeout={0}
+                    title=""
+                    show={true}
+                    inline={true}
+                  />
+                </div>
+              ))}
+            {caseNotes && caseNotes.length > 0 && (
               <ol id="searchable-case-notes" data-testid="searchable-case-notes">
                 {renderCaseNotes()}
               </ol>

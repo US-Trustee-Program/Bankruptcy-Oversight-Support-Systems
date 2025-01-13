@@ -13,7 +13,7 @@ import {
   InputRef,
 } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
-import { CaseDetail, CaseDocket, CaseDocketEntry } from '@common/cams/cases';
+import { CaseDetail, CaseDocket, CaseDocketEntry, CaseNote } from '@common/cams/cases';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
@@ -53,10 +53,10 @@ interface docketSortAndFilterOptions {
   selectedDateRange: DateRange;
 }
 
-//interface caseNoteSortAndFilterOptions {
-//  searchInDocketText: string;
-//  sortDirection: SortDirection;
-//}
+interface caseNoteSortAndFilterOptions {
+  caseNoteSearchText: string;
+  sortDirection: SortDirection;
+}
 
 export function findDocketLimits(docket: CaseDocket): DocketLimits {
   const dateRange: DateRange = { start: undefined, end: undefined };
@@ -108,20 +108,38 @@ function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: numb
   if (docketEntry.documentNumber === documentNumber) return docketEntry;
 }
 
+function notesSearchFilter(note: CaseNote, searchString: string) {
+  return (
+    note.title.toLowerCase().includes(searchString) ||
+    note.content.toLowerCase().includes(searchString)
+  );
+}
+
 function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
   if (selectedFacets.length === 0) return docketEntry;
   return selectedFacets.includes(docketEntry.summaryText);
 }
 
-/*
 export function applyCaseNoteSortAndFilters(
   caseNotes: CaseNote[] | undefined,
   options: caseNoteSortAndFilterOptions,
 ) {
-  const filteredCaseNotes = caseNotes;
-  const alertOptions: AlertOptions;
+  if (caseNotes === undefined) {
+    return { filteredCaseNotes: caseNotes, notesAlertOptions: undefined };
+  }
+  const filteredCaseNotes = caseNotes.filter((caseNote) =>
+    notesSearchFilter(caseNote, options.caseNoteSearchText),
+  );
+  const notesAlertOptions =
+    filteredCaseNotes?.length === 0
+      ? {
+          message: "The search criterial didn't match any notes in this case",
+          title: 'Case Note Not Found',
+          type: UswdsAlertStyle.Warning,
+        }
+      : undefined;
+  return { filteredCaseNotes, notesAlertOptions };
 }
-*/
 
 export function applyDocketEntrySortAndFilters(
   docketEntries: CaseDocketEntry[] | undefined,
@@ -134,7 +152,7 @@ export function applyDocketEntrySortAndFilters(
     const filteredDocketEntries = docketEntries.filter((docketEntry) =>
       documentNumberFilter(docketEntry, options.documentNumber!),
     );
-    const alertOptions =
+    const docketAlertOptions =
       filteredDocketEntries.length === 0
         ? {
             message: 'The document number you entered is not found in the docket.',
@@ -142,7 +160,7 @@ export function applyDocketEntrySortAndFilters(
             type: UswdsAlertStyle.Warning,
           }
         : undefined;
-    return { filteredDocketEntries, alertOptions };
+    return { filteredDocketEntries, docketAlertOptions };
   } else {
     let dateFilteredDocketEntries = [...docketEntries];
     if (options.selectedDateRange) {
@@ -150,20 +168,20 @@ export function applyDocketEntrySortAndFilters(
         dateRangeFilter(docketEntry, options.selectedDateRange),
       );
       if (dateFilteredDocketEntries.length === 0) {
-        const alertOptions = {
+        const docketAlertOptions = {
           message:
             'The date filter selected is out of range. No dockets found during the given period.',
           title: 'No Document Found in Specified Date Range',
           type: UswdsAlertStyle.Warning,
         };
-        return { dateFilteredDocketEntries, alertOptions };
+        return { dateFilteredDocketEntries, docketAlertOptions };
       }
     }
     const filteredDocketEntries = dateFilteredDocketEntries
       .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchInDocketText))
       .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
       .sort(docketSorterClosure(options.sortDirection));
-    return { filteredDocketEntries, alertOptions: undefined };
+    return { filteredDocketEntries, docketAlertOptions: undefined };
   }
 }
 
@@ -201,6 +219,7 @@ interface CaseDetailProps {
   caseDetail?: CaseDetail;
   caseDocketEntries?: CaseDocketEntry[];
   associatedCases?: EventCaseReference[];
+  caseNotes?: CaseNote[];
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
@@ -209,17 +228,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const { caseId } = useParams();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
+  const [areCaseNotesLoading, setAreCaseNotesLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
   const api = useApi2();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
+  const [caseNotes, setCaseNotes] = useState<CaseNote[]>();
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
   const [associatedCases, setAssociatedCases] = useState<EventCaseReference[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
-  //const [searchCaseNoteTitleText, setSearchCaseNoteTitleText] = useState('');
+  const [caseNoteSearchText, setCaseNoteSearchText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
   const location = useLocation();
@@ -264,12 +285,27 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         const limits = findDocketLimits(response.data);
         setDocumentRange(limits.documentRange);
         setCaseDocketSummaryFacets(facets);
-        setIsDocketLoading(false);
       })
       .catch(() => {
         setCaseDocketEntries([]);
-        setIsDocketLoading(false);
-      });
+      })
+      .finally(() => setIsDocketLoading(false));
+  }
+
+  async function fetchCaseNotes() {
+    setAreCaseNotesLoading(true);
+    api
+      .getCaseNotes(caseId!)
+      .then((response) => {
+        if (response) {
+          setCaseNotes(response.data);
+        }
+      })
+      .catch(() => {
+        globalAlert?.error('Could not retrieve case notes.');
+        setCaseNotes([]);
+      })
+      .finally(() => setAreCaseNotesLoading(false));
   }
 
   async function fetchAssociatedCases() {
@@ -279,13 +315,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       .then((response) => {
         if (response) {
           setAssociatedCases(response.data);
-          setIsAssociatedCasesLoading(false);
         }
       })
       .catch(() => {
         setAssociatedCases([]);
-        setIsAssociatedCasesLoading(false);
-      });
+      })
+      .finally(() => setIsAssociatedCasesLoading(false));
   }
 
   function toggleSort() {
@@ -297,12 +332,10 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setSearchInDocketText(searchString);
   }
 
-  /*
   function searchCaseNotesByTitle(ev: React.ChangeEvent<HTMLInputElement>) {
     const searchString = ev.target.value.toLowerCase();
-    setSearchCaseNoteTitleText(searchString);
+    setCaseNoteSearchText(searchString);
   }
-  */
 
   function searchDocumentNumber(ev: React.ChangeEvent<HTMLInputElement>) {
     const newDocumentNumber = parseInt(ev.target.value.trim());
@@ -317,7 +350,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   function clearFilters() {
     setSearchInDocketText('');
-    //setSearchCaseNoteTitleText('');
+    setCaseNoteSearchText('');
     findInDocketRef.current?.clearValue();
     setDocumentNumber(null);
     findByDocketNumberRef.current?.clearValue();
@@ -352,6 +385,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   function handleCaseAssignment(assignment: CallbackProps) {
     const assignments: CaseAssignment[] = [];
+
     assignment.selectedAttorneyList.forEach((attorney) => {
       assignments.push({
         userId: attorney.id,
@@ -359,11 +393,17 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         role: CamsRole.TrialAttorney,
       } as CaseAssignment);
     });
+
     const updatedCaseBasicInfo: CaseDetail = {
       ...caseBasicInfo!,
       assignments,
     };
+
     setCaseBasicInfo(updatedCaseBasicInfo);
+  }
+
+  function handleNotesCreation() {
+    fetchCaseNotes();
   }
 
   useEffect(() => {
@@ -395,13 +435,21 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
+    if (props.caseNotes) {
+      setCaseNotes(props.caseNotes);
+    } else {
+      fetchCaseNotes();
+    }
+  }, []);
+
+  useEffect(() => {
     setNavState(mapNavState(location.pathname));
     if (navState !== NavState.COURT_DOCKET) {
       setSelectedFacets([]);
     }
   }, [location]);
 
-  const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+  const { filteredDocketEntries, docketAlertOptions } = applyDocketEntrySortAndFilters(
     caseDocketEntries,
     {
       searchInDocketText,
@@ -412,15 +460,10 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     },
   );
 
-  /*
-  const { filteredNotes, alertOptions } = applyCaseNoteSortAndFilters(caseDocketEntries, {
-    searchInDocketText,
-    selectedFacets,
+  const { filteredCaseNotes, notesAlertOptions } = applyCaseNoteSortAndFilters(caseNotes, {
+    caseNoteSearchText,
     sortDirection,
-    documentNumber,
-    selectedDateRange,
   });
-  */
 
   return (
     <MainContent className="case-detail" data-testid="case-detail">
@@ -604,7 +647,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           icon="search"
                           position="right"
                           autoComplete="off"
-                          //onChange={searchCaseNotesByTitle}
+                          onChange={searchCaseNotesByTitle}
                           ref={caseNoteTitleSearchRef}
                         />
                       </div>
@@ -635,7 +678,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       <CaseDetailCourtDocket
                         caseId={caseBasicInfo.caseId}
                         docketEntries={filteredDocketEntries}
-                        alertOptions={alertOptions}
+                        alertOptions={docketAlertOptions}
                         searchString={searchInDocketText}
                         hasDocketEntries={!!caseDocketEntries && caseDocketEntries?.length > 1}
                         isDocketLoading={isDocketLoading}
@@ -656,7 +699,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     }
                   />
                   {caseNotesEnabledFlag && (
-                    <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
+                    <Route
+                      path="notes"
+                      element={
+                        <CaseNotes
+                          caseId={caseId ?? ''}
+                          hasNotes={!!caseNotes && caseNotes?.length > 1}
+                          caseNotes={filteredCaseNotes}
+                          areCaseNotesLoading={areCaseNotesLoading}
+                          alertOptions={notesAlertOptions}
+                          onNoteCreation={handleNotesCreation}
+                        />
+                      }
+                    />
                   )}
                 </Routes>
               </Suspense>
