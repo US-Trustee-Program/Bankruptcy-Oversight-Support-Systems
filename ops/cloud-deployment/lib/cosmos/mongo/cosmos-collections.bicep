@@ -148,3 +148,43 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
     }
   }
 }
+
+resource usersCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'users'
+  properties: {
+    resource: {
+      id: 'users'
+      shardKey: {
+        id: 'string'
+      }
+      indexes: [
+        {
+          key: {
+            keys: [
+              '_id'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              '$**'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              'id'
+              'documentType'
+            ]
+          }
+          options: {
+            unique: true
+          }
+        }
+      ]
+    }
+  }
+}
