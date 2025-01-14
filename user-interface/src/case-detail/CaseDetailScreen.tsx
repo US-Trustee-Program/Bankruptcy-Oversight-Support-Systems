@@ -708,6 +708,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           caseId={caseId ?? ''}
                           hasCaseNotes={hasCaseNotes}
                           caseNotes={filteredCaseNotes}
+                          searchString={caseNoteSearchText}
                           areCaseNotesLoading={areCaseNotesLoading}
                           alertOptions={notesAlertOptions}
                           onNoteCreation={handleNotesCreation}

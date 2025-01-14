@@ -20,11 +20,11 @@ export function handleHighlight(
       return;
     }
 
-    // Apply highlighting to the docket nodes.
-    const docketNode = _document.getElementById(elementId);
-    if (!docketNode) return;
+    // Apply highlighting to the dom nodes.
+    const domNode = _document.getElementById(elementId);
+    if (!domNode) return;
 
-    const treeWalker = _document.createTreeWalker(docketNode, NodeFilter.SHOW_TEXT);
+    const treeWalker = _document.createTreeWalker(domNode, NodeFilter.SHOW_TEXT);
     const allTextNodes = [];
     let currentNode = treeWalker.nextNode();
     while (currentNode) {

@@ -1,3 +1,5 @@
+@use '../../styles/abstracts/colors';
+
 .case-notes-panel {
   margin-left: 2rem;
 
@@ -29,6 +31,11 @@
 
       .case-note-author {
         padding-top: 1rem;
+      }
+
+      ::highlight(search-results) {
+        background-color: colors.$yellow-20;
+        color: black;
       }
     }
  }
