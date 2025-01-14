@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory, { getUserGroupGateway, getUsersRepository } from '../../factory';
+import Factory, { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
   PrivilegedIdentityUser,
@@ -22,6 +22,8 @@ export type CreateStaffRequestBody = Staff & {
 };
 
 export class AdminUseCase {
+  private privilegedIdentityClaimGroups: string[];
+
   public async deleteMigrations(context: ApplicationContext): Promise<void> {
     try {
       const casesRepo = Factory.getCasesRepository(context);
@@ -79,7 +81,25 @@ export class AdminUseCase {
     }
   }
 
-  // TODO: Expose this through the web API to drive drop down in the UI.
+  // TODO: Expose the PrivilegedIdentityUser functions through the web API to drive drop down in the UI.
+  public async getPrivilegedIdentityClaimGroups(context: ApplicationContext): Promise<string[]> {
+    // TODO: We could just query the Okta API for the group names, but we would have to refactor the CamsGroup to return the underlying IdP group name.
+    try {
+      if (!this.privilegedIdentityClaimGroups) {
+        const officeGateway = getOfficesGateway(context);
+
+        const offices = await officeGateway.getOffices(context);
+        const officeGroups = offices.map((office) => office.idpGroupId);
+        const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
+        this.privilegedIdentityClaimGroups = [...officeGroups, ...roleGroups];
+      }
+
+      return this.privilegedIdentityClaimGroups;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   public async getPrivilegedIdentityUsers(
     context: ApplicationContext,
   ): Promise<CamsUserReference[]> {
@@ -112,7 +132,7 @@ export class AdminUseCase {
   public async augmentUser(
     context: ApplicationContext,
     userId: string,
-    options: { groups: string[]; expires?: string } = { groups: [] },
+    options: { groups: string[]; expires?: string },
   ) {
     const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
       message: 'User does not have permission to be augmented.',
