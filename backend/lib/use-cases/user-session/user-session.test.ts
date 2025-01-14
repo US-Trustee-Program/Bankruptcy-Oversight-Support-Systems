@@ -14,7 +14,7 @@ import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { AugmentableUser } from '../../../../common/src/cams/users';
+import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 
 describe('user-session.gateway test', () => {
@@ -100,11 +100,11 @@ describe('user-session.gateway test', () => {
     expect(createSpy).not.toHaveBeenCalled();
   });
 
-  test('should augment an augmentable user', async () => {
+  test('should augment an privileged identity user', async () => {
     const user = MockData.getCamsUser({ offices: [], roles: [] });
 
-    const augmentedUser: AugmentableUser = {
-      documentType: 'AUGMENTABLE_USER',
+    const augmentedUser: PrivilegedIdentityUser = {
+      documentType: 'PRIVILEGED_IDENTITY_USER',
       ...getCamsUserReference(user),
       claims: {
         groups: [
@@ -120,7 +120,7 @@ describe('user-session.gateway test', () => {
     const jwtClaims: CamsJwtClaims = {
       ...claims,
       groups: [
-        'USTP CAMS Augmentable User',
+        'USTP CAMS Privileged Identity User',
         'USTP CAMS Data Verifier',
         'USTP CAMS Trial Attorney',
         'USTP CAMS Region 2 Office Manhattan',
@@ -143,7 +143,7 @@ describe('user-session.gateway test', () => {
 
     // session should return a unique set of roles
     expectedSession.user.roles = [
-      CamsRole.AugmentableUser,
+      CamsRole.PrivilegedIdentityUser,
       CamsRole.CaseAssignmentManager,
       CamsRole.DataVerifier,
       CamsRole.TrialAttorney,
@@ -165,8 +165,8 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({ user, jwt });
 
     // get the augmented user record to union in to the AD assigned roles and offices.
-    const getAugmentableUserSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'getAugmentableUser')
+    const getPrivilegedIdentityUserSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockResolvedValue(augmentedUser);
 
     // we want the session to be cached...
@@ -183,13 +183,13 @@ describe('user-session.gateway test', () => {
     expect(session.user.offices.length).toEqual(expectedSession.user.offices.length);
 
     expect(upsertSpy).toHaveBeenCalled();
-    expect(getAugmentableUserSpy).toHaveBeenCalled();
+    expect(getPrivilegedIdentityUserSpy).toHaveBeenCalled();
   });
 
   test('should return valid session and silently log augmentation error', async () => {
     const jwtClaims: CamsJwtClaims = {
       ...claims,
-      groups: ['USTP CAMS Augmentable User'],
+      groups: ['USTP CAMS Privileged Identity User'],
     };
     const jwt: CamsJwt = {
       header: jwtHeader,
@@ -200,7 +200,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({ user: mockUser, jwt });
     const errorMessage = 'some unknown error';
     jest
-      .spyOn(MockMongoRepository.prototype, 'getAugmentableUser')
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new Error(errorMessage));
     const loggerSpy = jest.spyOn(context.logger, 'error');
 

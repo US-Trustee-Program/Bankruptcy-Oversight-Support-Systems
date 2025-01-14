@@ -25,8 +25,8 @@ export type CamsUserGroup = {
   users?: CamsUser[];
 };
 
-export type AugmentableUser = CamsUserReference & {
-  documentType: 'AUGMENTABLE_USER';
+export type PrivilegedIdentityUser = CamsUserReference & {
+  documentType: 'PRIVILEGED_IDENTITY_USER';
   claims: {
     groups: string[];
   };

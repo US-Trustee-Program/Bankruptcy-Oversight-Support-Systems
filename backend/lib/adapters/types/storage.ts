@@ -5,5 +5,5 @@ export type StorageGateway = {
   get(key: string): string | null;
   getRoleMapping(): Map<string, CamsRole>;
   getUstpDivisionMeta(): Map<string, UstpDivisionMeta>;
-  getAugmentableUserRoleGroupName(): string;
+  getPrivilegedIdentityUserRoleGroupName(): string;
 };

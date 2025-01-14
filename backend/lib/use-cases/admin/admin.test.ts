@@ -5,7 +5,7 @@ import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
-import { AugmentableUser, Staff } from '../../../../common/src/cams/users';
+import { PrivilegedIdentityUser, Staff } from '../../../../common/src/cams/users';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { randomUUID } from 'node:crypto';
@@ -120,7 +120,7 @@ describe('Test Migration Admin Use Case', () => {
     ['expiration', '2025-01-14T00:00:00.000Z'],
   ];
   test.each(augmentUserSuccessCases)(
-    'should add roles and offices to AugmentableUser with %s',
+    'should add roles and offices to PrivilegedIdentityUser with %s',
     async (_caseName: string, expires: string) => {
       const users = MockData.buildArray(MockData.getCamsUser, 4);
       jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
@@ -129,15 +129,15 @@ describe('Test Migration Admin Use Case', () => {
         users,
       });
       const repoSpy = jest
-        .spyOn(MockMongoRepository.prototype, 'putAugmentableUser')
+        .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
         .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
 
       const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
 
-      const expected: AugmentableUser = {
+      const expected: PrivilegedIdentityUser = {
         id: users[0].id,
         name: users[0].name,
-        documentType: 'AUGMENTABLE_USER',
+        documentType: 'PRIVILEGED_IDENTITY_USER',
         claims: { groups },
         expires,
       };
@@ -160,16 +160,16 @@ describe('Test Migration Admin Use Case', () => {
     });
 
     jest
-      .spyOn(MockMongoRepository.prototype, 'putAugmentableUser')
+      .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
       .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
 
     await expect(useCase.augmentUser(context, user.id, { groups: [] })).rejects.toThrow(
-      'Failed to add augmentable user.',
+      'Failed to add privileged identity user.',
     );
   });
 
-  test('should throw an error if the user to augment is not an augmentable user', async () => {
-    const userId = 'non-augmentable-user';
+  test('should throw an error if the user to augment is not an privileged identity user', async () => {
+    const userId = 'non-privileged identity-user';
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
@@ -181,8 +181,8 @@ describe('Test Migration Admin Use Case', () => {
     );
   });
 
-  test('should throw an error if no users exist in the augmentable user group', async () => {
-    const userId = 'non-augmentable-user';
+  test('should throw an error if no users exist in the privileged identity user group', async () => {
+    const userId = 'non-privileged identity-user';
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
@@ -204,7 +204,7 @@ describe('Test Migration Admin Use Case', () => {
     );
   });
 
-  test('should return augmentable users', async () => {
+  test('should return privileged identity users', async () => {
     const id = 'test-group';
     const name = 'Test User Group';
     const users = MockData.buildArray(MockData.getCamsUser, 4);
@@ -214,42 +214,46 @@ describe('Test Migration Admin Use Case', () => {
       users,
     });
 
-    const result = await useCase.getAugmentableUsers(context);
+    const result = await useCase.getPrivilegedIdentityUsers(context);
     const expected = users.map((user) => getCamsUserReference(user));
     expect(result).toEqual(expected);
   });
 
   test('should throw errors encountered calling getUserGroupWithUsers', async () => {
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockRejectedValue(new Error('Boom'));
-    await expect(useCase.getAugmentableUsers(context)).rejects.toThrow(
-      'Unable to get augmentable users.',
+    await expect(useCase.getPrivilegedIdentityUsers(context)).rejects.toThrow(
+      'Unable to get privileged identity users.',
     );
   });
 
-  test('should return an AugmentableUser for a given user Id', async () => {
-    const user: AugmentableUser = {
-      documentType: 'AUGMENTABLE_USER',
+  test('should return an PrivilegedIdentityUser for a given user Id', async () => {
+    const user: PrivilegedIdentityUser = {
+      documentType: 'PRIVILEGED_IDENTITY_USER',
       ...MockData.getCamsUserReference(),
       claims: { groups: [] },
     };
-    jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockResolvedValue(user);
+    jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
 
-    const result = await useCase.getAugmentableUser(context, user.id);
+    const result = await useCase.getPrivilegedIdentityUser(context, user.id);
     expect(result).toEqual(user);
   });
 
   test('should throw a NotFound error if the user is not found', async () => {
     const error = new NotFoundError('ADMIN-USE-CASE');
-    jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockRejectedValue(error);
+    jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
 
-    await expect(useCase.getAugmentableUser(context, 'invalidUserId')).rejects.toThrow(error);
+    await expect(useCase.getPrivilegedIdentityUser(context, 'invalidUserId')).rejects.toThrow(
+      error,
+    );
   });
 
-  test('should throw an error if an error is encountered on getAugmentableUser', async () => {
+  test('should throw an error if an error is encountered on getPrivilegedIdentityUser', async () => {
     const error = new Error('some unknown error');
-    jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockRejectedValue(error);
+    jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
 
     const expected = new UnknownError(expect.anything());
-    await expect(useCase.getAugmentableUser(context, 'invalidUserId')).rejects.toThrow(expected);
+    await expect(useCase.getPrivilegedIdentityUser(context, 'invalidUserId')).rejects.toThrow(
+      expected,
+    );
   });
 });

@@ -5,7 +5,7 @@ import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/erro
 import { ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { AugmentableUser } from '../../../../../common/src/cams/users';
+import { PrivilegedIdentityUser } from '../../../../../common/src/cams/users';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME: string = 'USERS_MONGO_REPOSITORY';
@@ -40,37 +40,42 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     UsersMongoRepository.dropInstance();
   }
 
-  async putAugmentableUser(augmentableUser: AugmentableUser): Promise<ReplaceResult> {
-    type AuditableAugmentableUser = AugmentableUser & Auditable;
-    const user = createAuditRecord<AuditableAugmentableUser>(augmentableUser);
+  async putPrivilegedIdentityUser(
+    privilegedIdentityUser: PrivilegedIdentityUser,
+  ): Promise<ReplaceResult> {
+    type AuditablePrivilegedIdentityUser = PrivilegedIdentityUser & Auditable;
+    const user = createAuditRecord<AuditablePrivilegedIdentityUser>(privilegedIdentityUser);
     const query = QueryBuilder.build(
-      and(equals<string>('id', user.id), equals<string>('documentType', 'AUGMENTABLE_USER')),
+      and(
+        equals<string>('id', user.id),
+        equals<string>('documentType', 'PRIVILEGED_IDENTITY_USER'),
+      ),
     );
     try {
-      const result = await this.getAdapter<AugmentableUser>().replaceOne(query, user, true);
+      const result = await this.getAdapter<PrivilegedIdentityUser>().replaceOne(query, user, true);
       if (result.modifiedCount + result.upsertedCount !== 1) {
         throw new UnknownError(MODULE_NAME, {
-          message: `While upserting augmentable user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
+          message: `While upserting privileged identity user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
         });
       }
       return result;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to write augmentable user ${user.id}.`,
+        message: `Failed to write privileged identity user ${user.id}.`,
       });
     }
   }
 
-  async getAugmentableUser(id: string): Promise<AugmentableUser> {
+  async getPrivilegedIdentityUser(id: string): Promise<PrivilegedIdentityUser> {
     const query = QueryBuilder.build(
       and(
-        equals<AugmentableUser['documentType']>('documentType', 'AUGMENTABLE_USER'),
-        equals<AugmentableUser['id']>('id', id),
+        equals<PrivilegedIdentityUser['documentType']>('documentType', 'PRIVILEGED_IDENTITY_USER'),
+        equals<PrivilegedIdentityUser['id']>('id', id),
       ),
     );
 
     try {
-      const result = await this.getAdapter<AugmentableUser>().find(query);
+      const result = await this.getAdapter<PrivilegedIdentityUser>().find(query);
       if (!result || !result[0]) {
         throw new NotFoundError(MODULE_NAME);
       }

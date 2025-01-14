@@ -27,14 +27,14 @@ describe('User repository tests', () => {
     ['update', 1, 0],
   ];
   test.each(successfulPutCases)(
-    'should %s augmentable user',
+    'should %s Privileged Identity user',
     async (_caseName: string, modifiedCount: number, upsertedCount: number) => {
-      const user = MockData.getAugmentableUser();
+      const user = MockData.getPrivilegedIdentityUser();
       jest
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: user.id, modifiedCount, upsertedCount });
 
-      const actual = await repo.putAugmentableUser(user);
+      const actual = await repo.putPrivilegedIdentityUser(user);
       expect(actual).toEqual({
         id: user.id,
         modifiedCount,
@@ -50,33 +50,33 @@ describe('User repository tests', () => {
   test.each(unknownErrorPutCases)(
     'should throw UnknownError for %s',
     async (_caseName: string, modifiedCount: number, upsertedCount: number) => {
-      const user = MockData.getAugmentableUser();
+      const user = MockData.getPrivilegedIdentityUser();
       jest
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: user.id, modifiedCount, upsertedCount });
 
       const expected = new UnknownError(expect.anything(), {
-        message: `While upserting augmentable user ${user.id}, we modified ${modifiedCount} and created ${upsertedCount} documents.`,
+        message: `While upserting privileged identity user ${user.id}, we modified ${modifiedCount} and created ${upsertedCount} documents.`,
       });
-      await expect(repo.putAugmentableUser(user)).rejects.toThrow(expected);
+      await expect(repo.putPrivilegedIdentityUser(user)).rejects.toThrow(expected);
     },
   );
 
   test('should throw unknown error', async () => {
-    const user = MockData.getAugmentableUser();
+    const user = MockData.getPrivilegedIdentityUser();
     jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(new Error());
 
     const expected = new UnknownError(expect.anything(), {
-      message: `Failed to write augmentable user ${user.id}.`,
+      message: `Failed to write privileged identity user ${user.id}.`,
     });
-    await expect(repo.putAugmentableUser(user)).rejects.toThrow(expected);
+    await expect(repo.putPrivilegedIdentityUser(user)).rejects.toThrow(expected);
   });
 
-  test('should return augmentable user', async () => {
-    const user = MockData.getAugmentableUser();
+  test('should return privileged identity user', async () => {
+    const user = MockData.getPrivilegedIdentityUser();
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([user]);
 
-    const actual = await repo.getAugmentableUser('test-user');
+    const actual = await repo.getPrivilegedIdentityUser('test-user');
     expect(actual).toEqual(user);
   });
 
@@ -84,13 +84,13 @@ describe('User repository tests', () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
     const expected = new NotFoundError(expect.anything());
-    await expect(repo.getAugmentableUser('test-user')).rejects.toThrow(expected);
+    await expect(repo.getPrivilegedIdentityUser('test-user')).rejects.toThrow(expected);
   });
 
   test('should throw not found error for an undefined response', async () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(undefined);
 
     const expected = new NotFoundError(expect.anything());
-    await expect(repo.getAugmentableUser('test-user')).rejects.toThrow(expected);
+    await expect(repo.getPrivilegedIdentityUser('test-user')).rejects.toThrow(expected);
   });
 });

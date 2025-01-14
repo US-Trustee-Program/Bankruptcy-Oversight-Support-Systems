@@ -62,15 +62,15 @@ export class UserSessionUseCase {
       user.roles = getRoles(jwt.claims.groups);
       user.offices = await getOffices(context, jwt.claims.groups);
 
-      if (user.roles.includes(CamsRole.AugmentableUser)) {
+      if (user.roles.includes(CamsRole.PrivilegedIdentityUser)) {
         try {
-          const augmentableUser = await usersRepository.getAugmentableUser(user.id);
+          const privilegedIdentityUser = await usersRepository.getPrivilegedIdentityUser(user.id);
 
-          const roles = getRoles(augmentableUser.claims.groups);
+          const roles = getRoles(privilegedIdentityUser.claims.groups);
           const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
           user.roles = Array.from(rolesSet);
 
-          const offices = await getOffices(context, augmentableUser.claims.groups);
+          const offices = await getOffices(context, privilegedIdentityUser.claims.groups);
           const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
           user.offices = Array.from(officeSet);
         } catch (error) {
