@@ -29,7 +29,7 @@ import {
 import { CaseAssignment } from '../assignments';
 import { ResponseBody } from '../../api/response';
 import { Action, ResourceActions } from '../actions';
-import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
+import { AttorneyUser, AugmentableUser, CamsUser, CamsUserReference } from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
@@ -524,6 +524,14 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   };
 }
 
+function getAugmentableUser(override: Partial<AugmentableUser> = {}): AugmentableUser {
+  return {
+    ...getCamsUserReference(),
+    ...override,
+    documentType: 'AUGMENTABLE_USER',
+  };
+}
+
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
@@ -624,6 +632,7 @@ export const MockData = {
   getCamsUserReference,
   getCamsUser,
   getAttorneyUser,
+  getAugmentableUser,
   getCamsSession,
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,

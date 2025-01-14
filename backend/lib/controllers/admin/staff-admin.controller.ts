@@ -6,12 +6,11 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'ADMIN-CONTROLLER';
-const deleteMigrations = 'deleteMigrations';
 const deleteStaff = 'deleteStaff';
 const createStaff = 'createStaff';
-const SUPPORTED_PROCEDURES = [createStaff, deleteMigrations, deleteStaff];
+const SUPPORTED_PROCEDURES = [createStaff, deleteStaff];
 
-export class AdminController implements CamsController {
+export class StaffAdminController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<object | undefined>> {
@@ -22,10 +21,8 @@ export class AdminController implements CamsController {
     }
 
     try {
-      if (procedure === deleteMigrations && context.request.method === 'DELETE') {
-        await useCase.deleteMigrations(context);
-        return { statusCode: 204 };
-      } else if (procedure === createStaff && context.request.method === 'POST') {
+      // TODO: we should probably now treat this more RESTfully and not use procedure
+      if (procedure === createStaff && context.request.method === 'POST') {
         const requestBody: CreateStaffRequestBody = context.request.body as CreateStaffRequestBody;
         const result = await useCase.addOfficeStaff(context, requestBody);
         return { statusCode: result.upsertedCount === 1 ? 201 : 204 };

@@ -1,8 +1,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import Factory, { getUserGroupGateway, getUsersRepository } from '../../factory';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { CamsUserGroup, CamsUserReference, Staff } from '../../../../common/src/cams/users';
-import { AugmentableUser, UpsertResult } from '../gateways.types';
+import {
+  AugmentableUser,
+  CamsUserGroup,
+  CamsUserReference,
+  Staff,
+} from '../../../../common/src/cams/users';
+import { UpsertResult } from '../gateways.types';
 import { DEFAULT_STAFF_TTL } from '../offices/offices';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
@@ -88,6 +93,18 @@ export class AdminUseCase {
       return group.users!.map((user) => getCamsUserReference(user));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to get augmentable users.');
+    }
+  }
+
+  public async getAugmentableUser(
+    context: ApplicationContext,
+    userId: string,
+  ): Promise<AugmentableUser> {
+    try {
+      const gateway = Factory.getUsersRepository(context);
+      return await gateway.getAugmentableUser(userId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 

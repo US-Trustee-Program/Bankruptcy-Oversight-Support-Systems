@@ -2,9 +2,11 @@ import { ApplicationContext } from '../../types/basic';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { AugmentableUser, ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
+import { ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { AugmentableUser } from '../../../../../common/src/cams/users';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME: string = 'USERS_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'users';
@@ -48,13 +50,13 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
       const result = await this.getAdapter<AugmentableUser>().replaceOne(query, user, true);
       if (result.modifiedCount + result.upsertedCount !== 1) {
         throw new UnknownError(MODULE_NAME, {
-          message: `While upserting auditable user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
+          message: `While upserting augmentable user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
         });
       }
       return result;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to write auditable user ${user.id}.`,
+        message: `Failed to write augmentable user ${user.id}.`,
       });
     }
   }
@@ -69,6 +71,9 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
 
     try {
       const result = await this.getAdapter<AugmentableUser>().find(query);
+      if (!result || !result[0]) {
+        throw new NotFoundError(MODULE_NAME);
+      }
       return result[0];
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
