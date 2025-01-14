@@ -8,12 +8,13 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
 import Input from '@/lib/components/uswds/Input';
 import { AlertOptions } from './CaseDetailCourtDocket';
+import { handleHighlight } from '@/lib/utils/highlight-api';
 
 export interface CaseNotesProps {
   caseId: string;
@@ -22,10 +23,11 @@ export interface CaseNotesProps {
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
   onNoteCreation: () => void;
+  searchString: string;
 }
 
 export default function CaseNotes(props: CaseNotesProps) {
-  const { caseNotes, areCaseNotesLoading } = props;
+  const { caseNotes, areCaseNotesLoading, searchString } = props;
   const [caseNoteContentInput, setCaseNoteContentInput] = useState<string>('');
   const [caseNoteTitleInput, setCaseNoteTitleInput] = useState<string>('');
   const titleInputRef = useRef<TextAreaRef>(null);
@@ -34,6 +36,8 @@ export default function CaseNotes(props: CaseNotesProps) {
   const globalAlert = useGlobalAlert();
 
   const api = Api2;
+
+  const MINIMUM_SEARCH_CHARACTERS = 3;
 
   async function putCaseNote() {
     if (caseNoteContentInput.length > 0 && caseNoteTitleInput.length > 0) {
@@ -109,6 +113,16 @@ export default function CaseNotes(props: CaseNotesProps) {
       return showCaseNotes(note, idx);
     });
   }
+
+  useEffect(() => {
+    handleHighlight(
+      window,
+      document,
+      'searchable-case-notes',
+      searchString,
+      MINIMUM_SEARCH_CHARACTERS,
+    );
+  }, [searchString, caseNotes]);
 
   return (
     <div className="case-notes-panel">
