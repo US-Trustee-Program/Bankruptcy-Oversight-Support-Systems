@@ -1,5 +1,5 @@
 export enum CamsRole {
-  AugmentableUser = 'AugmentableUser',
+  PrivilegedIdentityUser = 'PrivilegedIdentityUser',
   SuperUser = 'SuperUser',
   CaseAssignmentManager = 'CaseAssignmentManager',
   TrialAttorney = 'TrialAttorney',

@@ -138,11 +138,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  putAugmentableUser(..._ignore): Promise<any> {
+  putPrivilegedIdentityUser(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  getAugmentableUser(..._ignore): Promise<any> {
+  getPrivilegedIdentityUser(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 }

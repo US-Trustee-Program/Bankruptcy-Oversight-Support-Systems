@@ -28,8 +28,8 @@ describe('map get', () => {
     expect(roleMap).toContain(CamsRole.DataVerifier);
   });
 
-  test('should return a key (user group name) calling getAugmentableUserRoleKey', () => {
-    const key = LocalStorageGateway.getAugmentableUserRoleGroupName();
-    expect(key).toEqual('USTP CAMS Augmentable User');
+  test('should return a key (user group name) calling getPrivilegedIdentityUserRoleKey', () => {
+    const key = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
+    expect(key).toEqual('USTP CAMS Privileged Identity User');
   });
 });

@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import Factory, { getUserGroupGateway, getUsersRepository } from '../../factory';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
-  AugmentableUser,
+  PrivilegedIdentityUser,
   CamsUserGroup,
   CamsUserReference,
   Staff,
@@ -80,9 +80,11 @@ export class AdminUseCase {
   }
 
   // TODO: Expose this through the web API to drive drop down in the UI.
-  public async getAugmentableUsers(context: ApplicationContext): Promise<CamsUserReference[]> {
+  public async getPrivilegedIdentityUsers(
+    context: ApplicationContext,
+  ): Promise<CamsUserReference[]> {
     try {
-      const groupName = LocalStorageGateway.getAugmentableUserRoleGroupName();
+      const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
       const groupsGateway = getUserGroupGateway(context);
       const group = await groupsGateway.getUserGroupWithUsers(
         context,
@@ -91,17 +93,17 @@ export class AdminUseCase {
       );
       return group.users!.map((user) => getCamsUserReference(user));
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to get augmentable users.');
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to get privileged identity users.');
     }
   }
 
-  public async getAugmentableUser(
+  public async getPrivilegedIdentityUser(
     context: ApplicationContext,
     userId: string,
-  ): Promise<AugmentableUser> {
+  ): Promise<PrivilegedIdentityUser> {
     try {
       const gateway = Factory.getUsersRepository(context);
-      return await gateway.getAugmentableUser(userId);
+      return await gateway.getPrivilegedIdentityUser(userId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -112,40 +114,40 @@ export class AdminUseCase {
     userId: string,
     options: { groups: string[]; expires?: string } = { groups: [] },
   ) {
-    const notAugmentableUserError = new BadRequestError(MODULE_NAME, {
+    const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
       message: 'User does not have permission to be augmented.',
     });
 
     try {
-      const groupName = LocalStorageGateway.getAugmentableUserRoleGroupName();
+      const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
       const groupsGateway = getUserGroupGateway(context);
-      const augmentableUserGroup: CamsUserGroup = await groupsGateway.getUserGroupWithUsers(
+      const privilegedIdentityUserGroup: CamsUserGroup = await groupsGateway.getUserGroupWithUsers(
         context,
         context.config.userGroupGatewayConfig,
         groupName,
       );
 
-      if (!augmentableUserGroup.users || !augmentableUserGroup.users.length) {
-        notAugmentableUserError.camsStack.push({
+      if (!privilegedIdentityUserGroup.users || !privilegedIdentityUserGroup.users.length) {
+        notPrivilegedIdentityUserError.camsStack.push({
           module: MODULE_NAME,
-          message: 'Augmentable group does not contain any users.',
+          message: 'Privileged Identity group does not contain any users.',
         });
-        throw notAugmentableUserError;
+        throw notPrivilegedIdentityUserError;
       }
 
-      const user = augmentableUserGroup.users.find((user) => user.id === userId);
+      const user = privilegedIdentityUserGroup.users.find((user) => user.id === userId);
 
       if (!user) {
-        notAugmentableUserError.camsStack.push({
+        notPrivilegedIdentityUserError.camsStack.push({
           module: MODULE_NAME,
-          message: `User ID ${userId} is not contained in the augmentable user group.`,
+          message: `User ID ${userId} is not contained in the privileged identity user group.`,
         });
-        throw notAugmentableUserError;
+        throw notPrivilegedIdentityUserError;
       }
 
       const userReference = getCamsUserReference(user);
-      const augmentableUser: AugmentableUser = {
-        documentType: 'AUGMENTABLE_USER',
+      const privilegedIdentityUser: PrivilegedIdentityUser = {
+        documentType: 'PRIVILEGED_IDENTITY_USER',
         ...userReference,
         claims: {
           groups: options.groups,
@@ -153,10 +155,10 @@ export class AdminUseCase {
         expires: options.expires,
       };
       const usersRepo = getUsersRepository(context);
-      const result = await usersRepo.putAugmentableUser(augmentableUser);
+      const result = await usersRepo.putPrivilegedIdentityUser(privilegedIdentityUser);
 
       if (result.upsertedCount === 0 && result.modifiedCount === 0) {
-        throw new UnknownError(MODULE_NAME, { message: 'Failed to add augmentable user.' });
+        throw new UnknownError(MODULE_NAME, { message: 'Failed to add privileged identity user.' });
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to augment user.');

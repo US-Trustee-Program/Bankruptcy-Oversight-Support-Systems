@@ -16,7 +16,7 @@ import { CaseDocket, CaseNote } from '../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
-  AugmentableUser,
+  PrivilegedIdentityUser,
   CamsUserGroup,
   CamsUserReference,
 } from '../../../common/src/cams/users';
@@ -143,8 +143,8 @@ export interface OfficesRepository extends Releasable {
 }
 
 export interface UsersRepository extends Releasable {
-  getAugmentableUser(id: string): Promise<AugmentableUser>;
-  putAugmentableUser(augmentableUser: AugmentableUser): Promise<ReplaceResult>;
+  getPrivilegedIdentityUser(id: string): Promise<PrivilegedIdentityUser>;
+  putPrivilegedIdentityUser(privilegedIdentityUser: PrivilegedIdentityUser): Promise<ReplaceResult>;
 }
 
 export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';
