@@ -1,7 +1,7 @@
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { describe } from 'vitest';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
-import CaseDetailScreen, { applyCaseNoteSortAndFilters } from './CaseDetailScreen';
+import CaseDetailScreen, { applyCaseNoteSortAndFilters, CaseDetailProps } from './CaseDetailScreen';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -22,6 +22,24 @@ describe('Case Note Tests', async () => {
   ];
   const basicInfoPath = `/case-detail/${testCaseDetail.caseId}/`;
 
+  function renderWithProps(props?: Partial<CaseDetailProps>, infoPath?: string) {
+    const defaultProps = {
+      caseDetail: testCaseDetail,
+      caseDocketEntries: [],
+      caseNotes: testFullCaseNotes,
+    };
+
+    const renderProps = { ...defaultProps, ...props };
+
+    render(
+      <MemoryRouter initialEntries={[infoPath ?? basicInfoPath]}>
+        <Routes>
+          <Route path="case-detail/:id/*" element={<CaseDetailScreen {...renderProps} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -32,18 +50,8 @@ describe('Case Note Tests', async () => {
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route
-            path="case-detail/:id/*"
-            element={
-              <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={testEmptyCaseNotes} />
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithProps({ caseNotes: testEmptyCaseNotes });
+
     await waitFor(() => {
       const notesNavLink = screen.queryByTestId('case-notes-link');
       expect(notesNavLink).not.toBeInTheDocument();
@@ -56,16 +64,8 @@ describe('Case Note Tests', async () => {
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route
-            path="case-detail/:id/*"
-            element={<CaseDetailScreen caseDetail={testCaseDetail} caseNotes={testFullCaseNotes} />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithProps();
+
     await waitFor(() => {
       const notesNavLink = screen.queryByTestId('case-notes-link');
       expect(notesNavLink).toBeInTheDocument();
@@ -78,16 +78,8 @@ describe('Case Note Tests', async () => {
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route
-            path="case-detail/:id/*"
-            element={<CaseDetailScreen caseDetail={testCaseDetail} caseNotes={testFullCaseNotes} />}
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithProps();
+
     await waitFor(() => {
       const notesNavLink = screen.queryByTestId('case-notes-link');
       expect(notesNavLink).toBeInTheDocument();
@@ -100,22 +92,8 @@ describe('Case Note Tests', async () => {
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route
-            path="case-detail/:id/*"
-            element={
-              <CaseDetailScreen
-                caseDetail={testCaseDetail}
-                caseDocketEntries={[]}
-                caseNotes={testFullCaseNotes}
-              />
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithProps();
+
     await waitFor(() => {
       const notesNavLink = screen.queryByTestId('case-notes-link');
       expect(notesNavLink).toBeInTheDocument();
@@ -150,22 +128,8 @@ describe('Case Note Tests', async () => {
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
-    render(
-      <MemoryRouter initialEntries={[basicInfoPath]}>
-        <Routes>
-          <Route
-            path="case-detail/:id/*"
-            element={
-              <CaseDetailScreen
-                caseDetail={testCaseDetail}
-                caseDocketEntries={[]}
-                caseNotes={testNotesToFilter}
-              />
-            }
-          />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderWithProps({ caseNotes: testNotesToFilter });
+
     await waitFor(() => {
       const notesNavLink = screen.queryByTestId('case-notes-link');
       expect(notesNavLink).toBeInTheDocument();
@@ -211,22 +175,7 @@ describe('Case Note Tests', async () => {
       vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
       let notesNavLink;
 
-      render(
-        <MemoryRouter initialEntries={[basicInfoPath]}>
-          <Routes>
-            <Route
-              path="case-detail/:id/*"
-              element={
-                <CaseDetailScreen
-                  caseDetail={testCaseDetail}
-                  caseDocketEntries={[]}
-                  caseNotes={testNotes}
-                />
-              }
-            />
-          </Routes>
-        </MemoryRouter>,
-      );
+      renderWithProps({ caseNotes: testNotes });
 
       await waitFor(() => {
         notesNavLink = screen.queryByTestId('case-notes-link');
