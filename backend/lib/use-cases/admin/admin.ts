@@ -9,7 +9,6 @@ import {
 } from '../../../../common/src/cams/users';
 import { UpsertResult } from '../gateways.types';
 import { DEFAULT_STAFF_TTL } from '../offices/offices';
-import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
@@ -111,7 +110,7 @@ export class AdminUseCase {
   public async augmentUser(
     context: ApplicationContext,
     userId: string,
-    options: { roles?: CamsRole[]; officeCodes?: string[]; expires?: string },
+    options: { groups: string[]; expires?: string } = { groups: [] },
   ) {
     const notAugmentableUserError = new BadRequestError(MODULE_NAME, {
       message: 'User does not have permission to be augmented.',
@@ -148,7 +147,10 @@ export class AdminUseCase {
       const augmentableUser: AugmentableUser = {
         documentType: 'AUGMENTABLE_USER',
         ...userReference,
-        ...options,
+        claims: {
+          groups: options.groups,
+        },
+        expires: options.expires,
       };
       const usersRepo = getUsersRepository(context);
       const result = await usersRepo.putAugmentableUser(augmentableUser);

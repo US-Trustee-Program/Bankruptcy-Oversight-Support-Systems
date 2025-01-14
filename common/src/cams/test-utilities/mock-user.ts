@@ -1,11 +1,19 @@
-import { USTP_OFFICE_DATA_MAP, USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICE_DATA_MAP, MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
 
-export const REGION_02_GROUP_NY = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan');
-export const REGION_02_GROUP_BU = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo');
-export const REGION_02_GROUP_SE = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_18_Office_Seattle');
-export const REGION_03_GROUP_WL = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_3_Office_Wilmington');
+export const REGION_02_GROUP_NY = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_2_Office_Manhattan',
+);
+export const REGION_02_GROUP_BU = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_2_Office_Buffalo',
+);
+export const REGION_02_GROUP_SE = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_18_Office_Seattle',
+);
+export const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_3_Office_Wilmington',
+);
 
 export type MockUser = {
   sub: string;
@@ -16,7 +24,7 @@ export type MockUser = {
 
 function addSuperUserOffices(user: CamsUser) {
   if (user.roles.includes(CamsRole.SuperUser)) {
-    user.offices = USTP_OFFICES_ARRAY;
+    user.offices = MOCKED_USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }
 }

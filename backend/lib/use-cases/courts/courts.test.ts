@@ -2,7 +2,7 @@ import { CourtsUseCase } from './courts';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OfficesUseCase } from '../offices/offices';
-import { USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 describe('Courts use case tests', () => {
@@ -15,8 +15,8 @@ describe('Courts use case tests', () => {
   });
 
   test('should get courts', async () => {
-    jest.spyOn(OfficesUseCase.prototype, 'getOffices').mockResolvedValue(USTP_OFFICES_ARRAY);
-    const expected = USTP_OFFICES_ARRAY.reduce((acc, office) => {
+    jest.spyOn(OfficesUseCase.prototype, 'getOffices').mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+    const expected = MOCKED_USTP_OFFICES_ARRAY.reduce((acc, office) => {
       acc.push(...ustpOfficeToCourtDivision(office));
       return acc;
     }, []);

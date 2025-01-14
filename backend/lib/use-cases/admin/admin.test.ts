@@ -132,21 +132,18 @@ describe('Test Migration Admin Use Case', () => {
         .spyOn(MockMongoRepository.prototype, 'putAugmentableUser')
         .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
 
-      const roles = [CamsRole.CaseAssignmentManager];
-      const officeCodes = ['my-test-office'];
+      const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
 
       const expected: AugmentableUser = {
         id: users[0].id,
         name: users[0].name,
         documentType: 'AUGMENTABLE_USER',
-        roles,
-        officeCodes,
+        claims: { groups },
         expires,
       };
 
       await useCase.augmentUser(context, users[0].id, {
-        roles,
-        officeCodes,
+        groups,
         expires,
       });
 
@@ -166,7 +163,7 @@ describe('Test Migration Admin Use Case', () => {
       .spyOn(MockMongoRepository.prototype, 'putAugmentableUser')
       .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
 
-    await expect(useCase.augmentUser(context, user.id, {})).rejects.toThrow(
+    await expect(useCase.augmentUser(context, user.id, { groups: [] })).rejects.toThrow(
       'Failed to add augmentable user.',
     );
   });
@@ -179,7 +176,7 @@ describe('Test Migration Admin Use Case', () => {
       users: [MockData.getCamsUser()],
     });
 
-    await expect(useCase.augmentUser(context, userId, {})).rejects.toThrow(
+    await expect(useCase.augmentUser(context, userId, { groups: [] })).rejects.toThrow(
       'User does not have permission to be augmented.',
     );
   });
@@ -192,7 +189,7 @@ describe('Test Migration Admin Use Case', () => {
       users: [],
     });
 
-    await expect(useCase.augmentUser(context, userId, {})).rejects.toThrow(
+    await expect(useCase.augmentUser(context, userId, { groups: [] })).rejects.toThrow(
       'User does not have permission to be augmented.',
     );
 
@@ -202,7 +199,7 @@ describe('Test Migration Admin Use Case', () => {
       users: undefined,
     });
 
-    await expect(useCase.augmentUser(context, userId, {})).rejects.toThrow(
+    await expect(useCase.augmentUser(context, userId, { groups: [] })).rejects.toThrow(
       'User does not have permission to be augmented.',
     );
   });
@@ -233,8 +230,7 @@ describe('Test Migration Admin Use Case', () => {
     const user: AugmentableUser = {
       documentType: 'AUGMENTABLE_USER',
       ...MockData.getCamsUserReference(),
-      roles: [],
-      officeCodes: [],
+      claims: { groups: [] },
     };
     jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockResolvedValue(user);
 
