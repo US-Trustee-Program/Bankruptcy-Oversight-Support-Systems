@@ -8,7 +8,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { CaseNoteInput } from '@common/cams/cases';
 
-describe('audit history tests', () => {
+describe('case note tests', () => {
   const caseId = '000-11-22222';
   const textAreaTestId = 'textarea-note-content';
   const noteTitleInputTestId = 'case-note-title-input';
@@ -23,6 +23,7 @@ describe('audit history tests', () => {
       caseId: '000-11-22222',
       hasCaseNotes: false,
       caseNotes: [],
+      searchString: '',
       onNoteCreation: vi.fn(),
       areCaseNotesLoading: false,
     };
