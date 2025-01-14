@@ -15,7 +15,9 @@ const ROLE_MAPPING =
   'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
   'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n';
 
-// TODO: We do not have Wilmington, DE which is already enabled in production.
+// TODO: We should delete this. How are we handling AD group from Seattle mapped to SE and AK groups??
+// This mapping doesn't include Wilmington, DE which is not soft live. However, we see the office assigned in STG and PRD.
+// Did we break the SE+AK mapping to Seattle? We no longer use this mapping table??
 export const OFFICE_MAPPING_PATH = '/officemapping.csv';
 const OFFICE_MAPPING =
   'ad_group_name,idp_group_name,group_designator\n' +
