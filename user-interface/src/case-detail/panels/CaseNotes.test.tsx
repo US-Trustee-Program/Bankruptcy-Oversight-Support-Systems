@@ -21,7 +21,7 @@ describe('audit history tests', () => {
   function renderWithProps(props?: Partial<CaseNotesProps>) {
     const defaultProps: CaseNotesProps = {
       caseId: '000-11-22222',
-      hasNotes: false,
+      hasCaseNotes: false,
       caseNotes: [],
       onNoteCreation: vi.fn(),
       areCaseNotesLoading: false,
@@ -61,7 +61,7 @@ describe('audit history tests', () => {
       data: caseNotes,
     });
 
-    renderWithProps({ caseId, hasNotes: true, caseNotes });
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
 
     const emptyCaseNotes = screen.queryByTestId('empty-notes-test-id');
     expect(emptyCaseNotes).not.toBeInTheDocument();

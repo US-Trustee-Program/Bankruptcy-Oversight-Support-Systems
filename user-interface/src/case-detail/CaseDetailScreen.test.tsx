@@ -81,7 +81,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={defaultTestCaseDetail} />
+        <CaseDetailScreen caseDetail={defaultTestCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
     await waitFor(() => {
@@ -92,7 +92,7 @@ describe('Case Detail screen tests', () => {
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={defaultTestCaseDetail} />
+        <CaseDetailScreen caseDetail={defaultTestCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
 
@@ -199,7 +199,7 @@ describe('Case Detail screen tests', () => {
       };
       render(
         <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
         </BrowserRouter>,
       );
 
@@ -254,7 +254,7 @@ describe('Case Detail screen tests', () => {
       };
       render(
         <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
         </BrowserRouter>,
       );
 
@@ -313,7 +313,7 @@ describe('Case Detail screen tests', () => {
       };
       render(
         <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
         </BrowserRouter>,
       );
 
@@ -380,7 +380,7 @@ describe('Case Detail screen tests', () => {
     };
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
 
@@ -413,7 +413,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
 
@@ -447,7 +447,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
 
@@ -481,7 +481,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
 
@@ -522,7 +522,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
 
@@ -562,7 +562,7 @@ describe('Case Detail screen tests', () => {
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
       </BrowserRouter>,
     );
     const expectedTitle = ` - ${testCaseDetail.caseTitle}`;
@@ -639,7 +639,7 @@ describe('Case Detail screen tests', () => {
 
       render(
         <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
         </BrowserRouter>,
       );
 
@@ -718,7 +718,7 @@ describe('Case Detail screen tests', () => {
       // use <MemoryRouter> when you want to manually control the history
       render(
         <MemoryRouter initialEntries={[routePath]}>
-          <CaseDetailScreen caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
         </MemoryRouter>,
       );
 

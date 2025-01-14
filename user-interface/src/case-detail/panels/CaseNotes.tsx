@@ -18,7 +18,7 @@ import { AlertOptions } from './CaseDetailCourtDocket';
 export interface CaseNotesProps {
   caseId: string;
   areCaseNotesLoading?: boolean;
-  hasNotes: boolean;
+  hasCaseNotes: boolean;
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
   onNoteCreation: () => void;
@@ -147,20 +147,19 @@ export default function CaseNotes(props: CaseNotesProps) {
         )}
         {!areCaseNotesLoading && (
           <>
-            {!caseNotes ||
-              (caseNotes.length < 1 && (
-                <div data-testid="empty-notes-test-id">
-                  <Alert
-                    message="No notes exist for this case."
-                    type={UswdsAlertStyle.Info}
-                    role={'status'}
-                    timeout={0}
-                    title=""
-                    show={true}
-                    inline={true}
-                  />
-                </div>
-              ))}
+            {!props.hasCaseNotes && (
+              <div data-testid="empty-notes-test-id">
+                <Alert
+                  message="No notes exist for this case."
+                  type={UswdsAlertStyle.Info}
+                  role={'status'}
+                  timeout={0}
+                  title=""
+                  show={true}
+                  inline={true}
+                />
+              </div>
+            )}
             {caseNotes && caseNotes.length > 0 && (
               <ol id="searchable-case-notes" data-testid="searchable-case-notes">
                 {renderCaseNotes()}

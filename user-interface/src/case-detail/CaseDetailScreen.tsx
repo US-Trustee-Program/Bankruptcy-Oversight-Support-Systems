@@ -126,19 +126,20 @@ export function applyCaseNoteSortAndFilters(
 ) {
   if (caseNotes === undefined) {
     return { filteredCaseNotes: caseNotes, notesAlertOptions: undefined };
+  } else {
+    const filteredCaseNotes = caseNotes.filter((caseNote) =>
+      notesSearchFilter(caseNote, options.caseNoteSearchText),
+    );
+    const notesAlertOptions =
+      filteredCaseNotes?.length === 0
+        ? {
+            message: "The search criteria didn't match any notes in this case",
+            title: 'Case Note Not Found',
+            type: UswdsAlertStyle.Warning,
+          }
+        : undefined;
+    return { filteredCaseNotes, notesAlertOptions };
   }
-  const filteredCaseNotes = caseNotes.filter((caseNote) =>
-    notesSearchFilter(caseNote, options.caseNoteSearchText),
-  );
-  const notesAlertOptions =
-    filteredCaseNotes?.length === 0
-      ? {
-          message: "The search criterial didn't match any notes in this case",
-          title: 'Case Note Not Found',
-          type: UswdsAlertStyle.Warning,
-        }
-      : undefined;
-  return { filteredCaseNotes, notesAlertOptions };
 }
 
 export function applyDocketEntrySortAndFilters(
@@ -235,7 +236,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const api = useApi2();
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
-  const [caseNotes, setCaseNotes] = useState<CaseNote[]>();
+  const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
@@ -256,6 +257,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
+  const hasCaseNotes = caseNotes && !!caseNotes.length;
 
   const globalAlert = useGlobalAlert();
 
@@ -299,9 +301,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     api
       .getCaseNotes(caseId!)
       .then((response) => {
-        if (response) {
-          setCaseNotes(response.data);
-        }
+        setCaseNotes(response.data);
       })
       .catch(() => {
         globalAlert?.error('Could not retrieve case notes.');
@@ -625,7 +625,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     </div>
                   </div>
                 )}
-                {navState === NavState.CASE_NOTES && (
+                {hasCaseNotes && navState === NavState.CASE_NOTES && (
                   <div
                     className={`filter-and-search padding-y-4`}
                     data-testid="filter-and-search-panel"
@@ -706,7 +706,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       element={
                         <CaseNotes
                           caseId={caseId ?? ''}
-                          hasNotes={!!caseNotes && caseNotes?.length > 1}
+                          hasCaseNotes={hasCaseNotes}
                           caseNotes={filteredCaseNotes}
                           areCaseNotesLoading={areCaseNotesLoading}
                           alertOptions={notesAlertOptions}
