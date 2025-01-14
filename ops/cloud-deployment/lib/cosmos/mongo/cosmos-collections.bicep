@@ -1,30 +1,30 @@
-@description('Cosmos DB account name, max length 44 characters')
-param accountName string
+@description('cosmos db account name, max length 44 characters')
+param accountname string
 
-@description('Target Database')
-param databaseName string
+@description('target database')
+param databasename string
 
-@description('List of objects with following properties: name, partitionKey1')
-param databaseCollections array
+@description('list of objects with following properties: name, partitionkey1')
+param databasecollections array
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
-  name: accountName
+resource account 'microsoft.documentdb/databaseaccounts@2023-04-15' existing = {
+  name: accountname
 }
 
-resource database 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases@2023-11-15' existing = {
+resource database 'microsoft.documentdb/databaseaccounts/mongodbdatabases@2023-11-15' existing = {
   parent: account
-  name: databaseName
+  name: databasename
 }
 
-resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = [
-  for c in databaseCollections: {
+resource datacollections 'microsoft.documentdb/databaseaccounts/mongodbdatabases/collections@2023-11-15' = [
+  for c in databasecollections: {
     parent: database
     name: c.name
     properties: {
       resource: {
         id: c.name
-        shardKey: {
-          '${c.partitionKey1}': 'Hash'
+        shardkey: {
+          '${c.partitionkey1}': 'hash'
         }
         indexes: [
           {
@@ -44,7 +44,7 @@ resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
           {
             key: {
               keys: [
-                '${c.partitionKey1}'
+                '${c.partitionkey1}'
               ]
             }
           }
@@ -54,14 +54,14 @@ resource dataCollections 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
   }
 ]
 
-resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+resource sessioncollection 'microsoft.documentdb/databaseaccounts/mongodbdatabases/collections@2023-11-15' = {
   parent: database
   name: 'user-session-cache'
   properties: {
     resource: {
       id: 'user-session-cache'
-      shardKey: {
-        signature: 'Hash'
+      shardkey: {
+        signature: 'hash'
       }
       indexes: [
         {
@@ -93,7 +93,7 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
             keys: ['_ts']
           }
           options: {
-            expireAfterSeconds: -1
+            expireafterseconds: -1
           }
         }
       ]
@@ -101,14 +101,14 @@ resource sessionCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
   }
 }
 
-resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+resource officescollection 'microsoft.documentdb/databaseaccounts/mongodbdatabases/collections@2023-11-15' = {
   parent: database
   name: 'offices'
   properties: {
     resource: {
       id: 'offices'
-      shardKey: {
-        officeCode: 'Hash'
+      shardkey: {
+        officecode: 'hash'
       }
       indexes: [
         {
@@ -130,13 +130,13 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
             keys: ['_ts']
           }
           options: {
-            expireAfterSeconds: -1
+            expireafterseconds: -1
           }
         }
         {
           key: {
             keys: [
-              'officeCode'
+              'officecode'
               'id'
             ]
           }
@@ -149,13 +149,13 @@ resource officesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabas
   }
 }
 
-resource usersCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+resource userscollection 'microsoft.documentdb/databaseaccounts/mongodbdatabases/collections@2023-11-15' = {
   parent: database
   name: 'users'
   properties: {
     resource: {
       id: 'users'
-      shardKey: {
+      shardkey: {
         id: 'string'
       }
       indexes: [
@@ -177,7 +177,7 @@ resource usersCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
           key: {
             keys: [
               'id'
-              'documentType'
+              'documenttype'
             ]
           }
           options: {

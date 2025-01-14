@@ -7,6 +7,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { Staff } from '../../../../common/src/cams/users';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
+import { UsersMongoRepository } from '../../adapters/gateways/mongo/user.repository';
+import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
+import { randomUUID } from 'node:crypto';
+import { AugmentableUser } from '../gateways.types';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 describe('Test Migration Admin Use Case', () => {
   let context: ApplicationContext;
@@ -106,6 +111,120 @@ describe('Test Migration Admin Use Case', () => {
           { module: expect.anything(), message: 'Failed to delete staff document.' },
         ]),
       }),
+    );
+  });
+
+  const augmentUserSuccessCases = [
+    ['no expiration', undefined],
+    ['expiration', '2025-01-14T00:00:00.000Z'],
+  ];
+  test.each(augmentUserSuccessCases)(
+    'should add roles and offices to AugmentableUser with %s',
+    async (_caseName: string, expires: string) => {
+      const users = MockData.buildArray(MockData.getCamsUser, 4);
+      jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+        id: randomUUID(),
+        name: 'Test User Group',
+        users,
+      });
+      const repoSpy = jest
+        .spyOn(UsersMongoRepository.prototype, 'putAugmentableUser')
+        .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
+
+      const roles = [CamsRole.CaseAssignmentManager];
+      const officeCodes = ['my-test-office'];
+
+      const expected: AugmentableUser = {
+        id: users[0].id,
+        name: users[0].name,
+        documentType: 'AUGMENTABLE_USER',
+        roles,
+        officeCodes,
+        expires,
+      };
+
+      await useCase.augmentUser(context, users[0].id, {
+        roles,
+        officeCodes,
+        expires,
+      });
+
+      expect(repoSpy).toHaveBeenCalledWith(expected);
+    },
+  );
+
+  test('should throw an error if augmentUser fails to augment the user', async () => {
+    const user = MockData.getCamsUser();
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      id: 'groupId',
+      name: 'Test User Group',
+      users: [user],
+    });
+
+    jest
+      .spyOn(UsersMongoRepository.prototype, 'putAugmentableUser')
+      .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
+
+    await expect(useCase.augmentUser(context, user.id, {})).rejects.toThrow(
+      'Failed to add augmentable user.',
+    );
+  });
+
+  test('should throw an error if the user to augment is not an augmentable user', async () => {
+    const userId = 'non-augmentable-user';
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      id: 'groupId',
+      name: 'Test User Group',
+      users: [MockData.getCamsUser()],
+    });
+
+    await expect(useCase.augmentUser(context, userId, {})).rejects.toThrow(
+      'User does not have permission to be augmented.',
+    );
+  });
+
+  test('should throw an error if no users exist in the augmentable user group', async () => {
+    const userId = 'non-augmentable-user';
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      id: 'groupId',
+      name: 'Test User Group',
+      users: [],
+    });
+
+    await expect(useCase.augmentUser(context, userId, {})).rejects.toThrow(
+      'User does not have permission to be augmented.',
+    );
+
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      id: 'groupId',
+      name: 'Test User Group',
+      users: undefined,
+    });
+
+    await expect(useCase.augmentUser(context, userId, {})).rejects.toThrow(
+      'User does not have permission to be augmented.',
+    );
+  });
+
+  test('should return augmentable users', async () => {
+    const id = 'test-group';
+    const name = 'Test User Group';
+    const users = MockData.buildArray(MockData.getCamsUser, 4);
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      id,
+      name,
+      users,
+    });
+
+    const result = await useCase.getAugmentableUsers(context);
+    const expected = users.map((user) => getCamsUserReference(user));
+    expect(result).toEqual(expected);
+  });
+
+  test('should throw errors encountered calling getUserGroupWithUsers', async () => {
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockRejectedValue(new Error('Boom'));
+    await expect(useCase.getAugmentableUsers(context)).rejects.toThrow(
+      'Unable to get augmentable users.',
     );
   });
 });

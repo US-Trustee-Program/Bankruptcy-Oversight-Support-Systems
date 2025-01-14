@@ -6,4 +6,5 @@ export type StorageGateway = {
   getUstpOffices(): UstpOfficeDetails[];
   getRoleMapping(): Map<string, CamsRole>;
   getUstpDivisionMeta(): Map<string, UstpDivisionMeta>;
+  getAugmentableUserRoleGroupName(): string;
 };

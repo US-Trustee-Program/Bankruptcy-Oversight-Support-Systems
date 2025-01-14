@@ -22,6 +22,7 @@ import {
   RuntimeState,
   RuntimeStateRepository,
   UserSessionCacheRepository,
+  UsersRepository,
 } from './use-cases/gateways.types';
 import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
@@ -49,6 +50,7 @@ import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
+import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -57,6 +59,7 @@ let acmsGateway: AcmsGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
+let usersRepository: UsersRepository;
 
 let mockOrdersRepository: MockMongoRepository;
 let mockConsolidationsRepository: MockMongoRepository;
@@ -197,6 +200,14 @@ export const getOfficeStaffSyncStateRepo = (
     officeStaffSyncStateRepo = getRuntimeStateRepository<OfficeStaffSyncState>(context);
   }
   return officeStaffSyncStateRepo;
+};
+
+export const getUsersRepository = (context: ApplicationContext): UsersRepository => {
+  // TODO: Return mock repository??
+  if (!usersRepository) {
+    usersRepository = new UsersMongoRepository(context);
+  }
+  return usersRepository;
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {

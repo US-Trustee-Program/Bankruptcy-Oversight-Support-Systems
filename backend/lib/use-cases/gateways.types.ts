@@ -20,6 +20,7 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
+import { CamsRole } from '../../../common/src/cams/roles';
 
 export type ReplaceResult = {
   id: string;
@@ -137,7 +138,19 @@ export interface OfficesRepository extends Releasable {
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
 }
 
+export interface UsersRepository extends Releasable {
+  getAugmentableUser(id: string): Promise<AugmentableUser>;
+  putAugmentableUser(augmentableUser: AugmentableUser): Promise<ReplaceResult>;
+}
+
 // TODO: Move these models to a top level models file?
+export type AugmentableUser = CamsUserReference & {
+  documentType: 'AUGMENTABLE_USER';
+  expires?: string;
+  officeCodes?: string[];
+  roles?: CamsRole[];
+};
+
 export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';
 
 export type RuntimeState = {

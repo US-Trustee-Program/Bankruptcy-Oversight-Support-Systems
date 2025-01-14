@@ -27,4 +27,9 @@ describe('map get', () => {
     const roleMap = LocalStorageGateway.get(ROLE_MAPPING_PATH);
     expect(roleMap).toContain(CamsRole.DataVerifier);
   });
+
+  test('should return a key (user group name) calling getAugmentableUserRoleKey', () => {
+    const key = LocalStorageGateway.getAugmentableUserRoleGroupName();
+    expect(key).toEqual('USTP CAMS Augmentable User');
+  });
 });
