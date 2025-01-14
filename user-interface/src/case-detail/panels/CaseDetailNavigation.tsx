@@ -78,6 +78,19 @@ function CaseDetailNavigationComponent({
               Court Docket
             </NavLink>
           </li>
+          {caseNotesEnabledFlag && (
+            <li className="usa-sidenav__item">
+              <NavLink
+                to={`/case-detail/${caseId}/notes`}
+                data-testid="case-notes-link"
+                className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
+                onClick={() => setActiveNav(NavState.CASE_NOTES)}
+                title="view case notes"
+              >
+                Case Notes
+              </NavLink>
+            </li>
+          )}
           <li className="usa-sidenav__item">
             <NavLink
               to={`/case-detail/${caseId}/audit-history`}
@@ -99,19 +112,6 @@ function CaseDetailNavigationComponent({
                 title="view associated cases"
               >
                 Associated Cases
-              </NavLink>
-            </li>
-          )}
-          {caseNotesEnabledFlag && (
-            <li className="usa-sidenav__item">
-              <NavLink
-                to={`/case-detail/${caseId}/notes`}
-                data-testid="case-notes-link"
-                className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.CASE_NOTES)}
-                onClick={() => setActiveNav(NavState.CASE_NOTES)}
-                title="view case notes"
-              >
-                Case Notes
               </NavLink>
             </li>
           )}
