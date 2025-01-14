@@ -27,9 +27,10 @@ export type CamsUserGroup = {
 
 export type AugmentableUser = CamsUserReference & {
   documentType: 'AUGMENTABLE_USER';
+  claims: {
+    groups: string[];
+  };
   expires?: string;
-  officeCodes?: string[];
-  roles?: CamsRole[];
 };
 
 export function getCourtDivisionCodes(user: CamsUser): string[] {

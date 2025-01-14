@@ -15,7 +15,7 @@ import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/m
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { AugmentableUser } from '../../../../common/src/cams/users';
-import { USTP_OFFICE_DATA_MAP } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -106,8 +106,14 @@ describe('user-session.gateway test', () => {
     const augmentedUser: AugmentableUser = {
       documentType: 'AUGMENTABLE_USER',
       ...getCamsUserReference(user),
-      roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier, CamsRole.TrialAttorney],
-      officeCodes: ['USTP_CAMS_Region_3_Office_Wilmington', 'USTP_CAMS_Region_2_Office_Buffalo'],
+      claims: {
+        groups: [
+          'USTP CAMS Case Assignment Manager',
+          'USTP CAMS Trial Attorney',
+          'USTP CAMS Region 3 Office Wilmington',
+          'USTP CAMS Region 2 Office Buffalo',
+        ],
+      },
     };
 
     // set the AD groups the user belongs to in the JWT
@@ -115,6 +121,7 @@ describe('user-session.gateway test', () => {
       ...claims,
       groups: [
         'USTP CAMS Augmentable User',
+        'USTP CAMS Data Verifier',
         'USTP CAMS Trial Attorney',
         'USTP CAMS Region 2 Office Manhattan',
         'USTP CAMS Region 2 Office Buffalo',
@@ -125,6 +132,7 @@ describe('user-session.gateway test', () => {
       claims: jwtClaims,
     };
 
+    // construct the expected session
     const expectedSession: CamsSession = {
       user: { ...user },
       provider,
@@ -133,7 +141,7 @@ describe('user-session.gateway test', () => {
       issuer: expect.stringMatching(urlRegex),
     };
 
-    // should return a unique set of roles
+    // session should return a unique set of roles
     expectedSession.user.roles = [
       CamsRole.AugmentableUser,
       CamsRole.CaseAssignmentManager,
@@ -141,12 +149,14 @@ describe('user-session.gateway test', () => {
       CamsRole.TrialAttorney,
     ];
 
-    // should return a unique set of offices
-    expectedSession.user.offices = [
-      USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan'),
-      USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_3_Office_Wilmington'),
-      USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo'),
-    ];
+    // session should return a unique set of offices
+    expectedSession.user.offices = MOCKED_USTP_OFFICES_ARRAY.filter((office) =>
+      [
+        'USTP CAMS Region 2 Office Manhattan',
+        'USTP CAMS Region 3 Office Wilmington',
+        'USTP CAMS Region 2 Office Buffalo',
+      ].includes(office.idpGroupId),
+    );
 
     // we don't want to pull the session from cache...
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));

@@ -6,7 +6,7 @@ import { CamsUser } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
-import { USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 
 const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
@@ -55,7 +55,7 @@ export async function verifyToken(accessToken: string): Promise<CamsJwt> {
 
 function addSuperUserOffices(user: CamsUser) {
   if (user.roles.includes(CamsRole.SuperUser)) {
-    user.offices = USTP_OFFICES_ARRAY;
+    user.offices = MOCKED_USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }
 }

@@ -35,7 +35,7 @@ import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
 import { sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
-import { USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
 
 type EntityType = 'company' | 'person';
@@ -84,7 +84,7 @@ function getCourts() {
 }
 
 function getOffices() {
-  return USTP_OFFICES_ARRAY;
+  return MOCKED_USTP_OFFICES_ARRAY;
 }
 
 function randomOffice() {
@@ -97,7 +97,7 @@ function getOffice(courtDivisionCode?: string) {
 }
 
 function randomUstpOffice() {
-  return USTP_OFFICES_ARRAY[randomInt(USTP_OFFICES_ARRAY.length - 1)];
+  return MOCKED_USTP_OFFICES_ARRAY[randomInt(MOCKED_USTP_OFFICES_ARRAY.length - 1)];
 }
 
 function randomDate(year = '2024') {
@@ -526,6 +526,9 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
 
 function getAugmentableUser(override: Partial<AugmentableUser> = {}): AugmentableUser {
   return {
+    claims: {
+      groups: [],
+    },
     ...getCamsUserReference(),
     ...override,
     documentType: 'AUGMENTABLE_USER',
@@ -536,7 +539,7 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
   if (override?.user?.roles.includes(CamsRole.SuperUser)) {
-    offices = USTP_OFFICES_ARRAY;
+    offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
   return {

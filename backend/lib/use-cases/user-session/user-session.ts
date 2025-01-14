@@ -14,7 +14,6 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { OfficesUseCase } from '../offices/offices';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -67,21 +66,13 @@ export class UserSessionUseCase {
         try {
           const augmentableUser = await usersRepository.getAugmentableUser(user.id);
 
-          if (augmentableUser.roles) {
-            const rolesSet = new Set<CamsRole>([...user.roles, ...augmentableUser.roles]);
-            user.roles = Array.from(rolesSet);
-          }
+          const roles = getRoles(augmentableUser.claims.groups);
+          const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
+          user.roles = Array.from(rolesSet);
 
-          if (augmentableUser.officeCodes) {
-            const officesUseCase = new OfficesUseCase();
-            const offices = await officesUseCase.getOffices(context);
-            const filteredOffices = offices.filter((office) =>
-              augmentableUser.officeCodes.includes(office.officeCode),
-            );
-
-            const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...filteredOffices]);
-            user.offices = Array.from(officeSet);
-          }
+          const offices = await getOffices(context, augmentableUser.claims.groups);
+          const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
+          user.offices = Array.from(officeSet);
         } catch (error) {
           // Silently log the failure so the user can continue without augmentation.
           context.logger.error(
