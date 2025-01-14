@@ -1,6 +1,7 @@
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
+import Api2 from '@/lib/models/api2';
 import CaseDetailScreen from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
@@ -9,6 +10,8 @@ import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 const caseId = '101-23-12345';
 
@@ -29,6 +32,36 @@ const debtorAttorney: DebtorAttorney = {
   cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
   phone: '234-123-1234',
 };
+const defaultTestCaseDetail: CaseDetail = {
+  caseId: caseId,
+  dxtrId: '123',
+  chapter: '15',
+  regionId: '02',
+  officeName: 'New York',
+  officeCode: '000',
+  caseTitle: 'The Beach Boys',
+  dateFiled: '01-04-1962',
+  judgeName: rickBHartName,
+  courtId: '01',
+  courtName: 'Court of Law',
+  courtDivisionName: 'Manhattan',
+  courtDivisionCode: '081',
+  debtorTypeLabel: 'Corporate Business',
+  petitionLabel: 'Voluntary',
+  closedDate: '01-08-1963',
+  dismissedDate: '01-08-1964',
+  assignments: [brianAssignment, carlAssignment],
+  debtor: {
+    name: 'Roger Rabbit',
+    address1: '123 Rabbithole Lane',
+    address2: 'Apt 117',
+    address3: 'Suite C',
+    cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+  },
+  debtorAttorney,
+  groupDesignator: '01',
+  regionName: 'Test Region',
+};
 
 describe('Case Detail screen tests', () => {
   const env = process.env;
@@ -44,41 +77,11 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should render CaseDetailHeader', async () => {
-    const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      dxtrId: '123',
-      chapter: '15',
-      regionId: '02',
-      officeName: 'New York',
-      officeCode: '000',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      courtId: '01',
-      courtName: 'Court of Law',
-      courtDivisionName: 'Manhattan',
-      courtDivisionCode: '081',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: [brianAssignment, carlAssignment],
-      debtor: {
-        name: 'Roger Rabbit',
-        address1: '123 Rabbithole Lane',
-        address2: 'Apt 117',
-        address3: 'Suite C',
-        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-      },
-      debtorAttorney,
-      groupDesignator: '01',
-      regionName: 'Test Region',
-    };
     const headerSpy = vi.spyOn(detailHeader, 'default');
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={defaultTestCaseDetail} />
       </BrowserRouter>,
     );
     await waitFor(() => {
@@ -87,46 +90,16 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
-    const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      dxtrId: '123',
-      chapter: '15',
-      regionId: '02',
-      officeName: 'New York',
-      officeCode: '000',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      courtId: '01',
-      courtName: 'Court of Law',
-      courtDivisionName: 'Manhattan',
-      courtDivisionCode: '081',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: [brianAssignment, carlAssignment],
-      debtor: {
-        name: 'Roger Rabbit',
-        address1: '123 Rabbithole Lane',
-        address2: 'Apt 117',
-        address3: 'Suite C',
-        cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
-      },
-      debtorAttorney,
-      groupDesignator: '01',
-      regionName: 'Test Region',
-    };
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} />
+        <CaseDetailScreen caseDetail={defaultTestCaseDetail} />
       </BrowserRouter>,
     );
 
     await waitFor(
       async () => {
         const title = screen.getByTestId('case-detail-heading-title');
-        const expectedTitle = ` - ${testCaseDetail.caseTitle}`;
+        const expectedTitle = ` - ${defaultTestCaseDetail.caseTitle}`;
         expect(title.innerHTML).toEqual(expectedTitle);
 
         const caseNumber = document.querySelector('.case-number');
@@ -148,7 +121,9 @@ describe('Case Detail screen tests', () => {
         expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
 
         const courtName = screen.getByTestId('court-name-and-district');
-        expect(courtName.innerHTML).toEqual(`Court of Law (${testCaseDetail.courtDivisionName})`);
+        expect(courtName.innerHTML).toEqual(
+          `Court of Law (${defaultTestCaseDetail.courtDivisionName})`,
+        );
 
         const region = screen.getByTestId('case-detail-region-id');
         expect(region.innerHTML).toEqual('Region 2 - New York Office');
@@ -171,10 +146,10 @@ describe('Case Detail screen tests', () => {
         expect(judgeName).toHaveTextContent(rickBHartName);
 
         const debtorName = screen.getByTestId('case-detail-debtor-name');
-        expect(debtorName).toHaveTextContent(testCaseDetail.debtor.name);
+        expect(debtorName).toHaveTextContent(defaultTestCaseDetail.debtor.name);
 
         const debtorType = screen.getByTestId('case-detail-debtor-type');
-        expect(debtorType).toHaveTextContent(testCaseDetail.debtorTypeLabel as string);
+        expect(debtorType).toHaveTextContent(defaultTestCaseDetail.debtorTypeLabel as string);
 
         const properties: Array<keyof Debtor> = [
           'address1',
@@ -184,9 +159,9 @@ describe('Case Detail screen tests', () => {
         ];
         properties.forEach((property) => {
           const testId = `case-detail-debtor-${property}`;
-          if (testCaseDetail.debtor[property]) {
+          if (defaultTestCaseDetail.debtor[property]) {
             const element = screen.getByTestId(testId);
-            expect(element.innerHTML).toEqual(testCaseDetail.debtor[property]);
+            expect(element.innerHTML).toEqual(defaultTestCaseDetail.debtor[property]);
           } else {
             const element = screen.queryByTestId(testId);
             expect(element).not.toBeInTheDocument();
@@ -206,18 +181,9 @@ describe('Case Detail screen tests', () => {
     'should display the reformatted region ID',
     async (regionId: string, officeName: string, expectedRegionId: string) => {
       const testCaseDetail: CaseDetail = {
-        caseId: caseId,
-        chapter: '15',
+        ...defaultTestCaseDetail,
         regionId,
         officeName,
-        caseTitle: 'The Beach Boys',
-        dateFiled: '01-04-1962',
-        judgeName: rickBHartName,
-        debtorTypeLabel: 'Corporate Business',
-        petitionLabel: 'Voluntary',
-        closedDate: '01-08-1963',
-        dismissedDate: '01-08-1964',
-        assignments: [brianAssignment, carlAssignment],
         debtor: {
           name: 'Roger Rabbit',
         },
@@ -267,17 +233,7 @@ describe('Case Detail screen tests', () => {
       cityStateZipCountry: MaybeString,
     ) => {
       const testCaseDetail: CaseDetail = {
-        caseId: caseId,
-        chapter: '15',
-        officeName: 'Redondo Beach',
-        caseTitle: 'The Beach Boys',
-        dateFiled: '01-04-1962',
-        judgeName: rickBHartName,
-        debtorTypeLabel: 'Corporate Business',
-        petitionLabel: 'Voluntary',
-        closedDate: '01-08-1963',
-        dismissedDate: '01-08-1964',
-        assignments: [brianAssignment, carlAssignment],
+        ...defaultTestCaseDetail,
         debtor: {
           name: 'Roger Rabbit',
           address1,
@@ -338,17 +294,7 @@ describe('Case Detail screen tests', () => {
     'should display debtor tax ID information with various IDs lines present/absent',
     async (ssn: MaybeString, taxId: MaybeString) => {
       const testCaseDetail: CaseDetail = {
-        caseId: caseId,
-        chapter: '15',
-        officeName: 'Redondo Beach',
-        caseTitle: 'The Beach Boys',
-        dateFiled: '01-04-1962',
-        judgeName: rickBHartName,
-        debtorTypeLabel: 'Corporate Business',
-        petitionLabel: 'Voluntary',
-        closedDate: '01-08-1963',
-        dismissedDate: '01-08-1964',
-        assignments: [brianAssignment, carlAssignment],
+        ...defaultTestCaseDetail,
         debtor: {
           name: 'Roger Rabbit',
           ssn,
@@ -398,18 +344,25 @@ describe('Case Detail screen tests', () => {
     20000,
   );
 
+  test('should call globalAlert.error when getCaseNotes receives an error', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockRejectedValue({ status: HttpStatusCodes.NOT_FOUND });
+
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    render(
+      <BrowserRouter>
+        <CaseDetailScreen caseDetail={defaultTestCaseDetail} />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not retrieve case notes.');
+    });
+  });
+
   test('should show "No judge assigned" when a judge name is unavailable.', async () => {
     const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      closedDate: '01-08-1963',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      dismissedDate: '01-08-1964',
-      assignments: [brianAssignment, carlAssignment],
+      ...defaultTestCaseDetail,
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -420,6 +373,7 @@ describe('Case Detail screen tests', () => {
       courtName: '',
       courtDivisionCode: '',
       courtDivisionName: '',
+      judgeName: '',
       groupDesignator: '',
       regionId: '',
       regionName: '',
@@ -441,20 +395,11 @@ describe('Case Detail screen tests', () => {
 
   test('should show "Information is not available." when a debtor attorney is unavailable.', async () => {
     const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
-      assignments: [brianAssignment, carlAssignment],
-      judgeName: 'Honorable Jason Smith',
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
+      ...defaultTestCaseDetail,
       debtor: {
         name: 'Roger Rabbit',
       },
+      debtorAttorney: undefined,
       courtId: '',
       dxtrId: '',
       officeCode: '',
@@ -483,16 +428,8 @@ describe('Case Detail screen tests', () => {
 
   test('should not display case dismissed date if not supplied in api response', async () => {
     const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      closedDate: '01-08-1963',
-      assignments: [brianAssignment, carlAssignment],
+      ...defaultTestCaseDetail,
+      dismissedDate: undefined,
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -516,7 +453,7 @@ describe('Case Detail screen tests', () => {
 
     await waitFor(
       async () => {
-        const dismissedDate = queryByTestId(document.body, 'case-detail-dismissed-date');
+        const dismissedDate = screen.queryByTestId('case-detail-dismissed-date');
         expect(dismissedDate).not.toBeInTheDocument();
       },
       { timeout: 5000 },
@@ -525,17 +462,8 @@ describe('Case Detail screen tests', () => {
 
   test('should not display closed by court date if reopened date is supplied and is later than CBC date', async () => {
     const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      closedDate: '01-08-1963',
-      reopenedDate: '04-15-1969',
-      assignments: [brianAssignment, carlAssignment],
+      ...defaultTestCaseDetail,
+      reopenedDate: '01-01-2025',
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -574,17 +502,9 @@ describe('Case Detail screen tests', () => {
 
   test('should not display reopened date if closed by court date is later than reopened date', async () => {
     const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
+      ...defaultTestCaseDetail,
       reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
-      assignments: [brianAssignment, carlAssignment],
       debtor: {
         name: 'Roger Rabbit',
       },
@@ -623,16 +543,7 @@ describe('Case Detail screen tests', () => {
 
   test('should display (unassigned) when no assignment exist for case', async () => {
     const testCaseDetail: CaseDetail = {
-      caseId: caseId,
-      chapter: '15',
-      officeName: 'Redondo Beach',
-      caseTitle: 'The Beach Boys',
-      dateFiled: '01-04-1962',
-      judgeName: rickBHartName,
-      debtorTypeLabel: 'Corporate Business',
-      petitionLabel: 'Voluntary',
-      closedDate: '01-08-1963',
-      dismissedDate: '01-08-1964',
+      ...defaultTestCaseDetail,
       assignments: [],
       debtor: {
         name: 'Roger Rabbit',
@@ -706,16 +617,7 @@ describe('Case Detail screen tests', () => {
       };
 
       const testCaseDetail: CaseDetail = {
-        caseId: caseId,
-        chapter: '15',
-        officeName: 'Redondo Beach',
-        caseTitle: 'The Beach Boys',
-        debtorTypeLabel: 'Corporate Business',
-        petitionLabel: 'Voluntary',
-        dateFiled: '01-04-1962',
-        closedDate: '01-08-1963',
-        dismissedDate: '01-08-1964',
-        assignments: [brianAssignment, carlAssignment],
+        ...defaultTestCaseDetail,
         debtor: {
           name: 'Roger Rabbit',
         },
@@ -790,16 +692,8 @@ describe('Case Detail screen tests', () => {
     'should highlight the correct nav link when loading the corresponding url directly in browser',
     async (routePath: string, expectedLink: string) => {
       const testCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
         caseId: '080-01-12345',
-        chapter: '15',
-        officeName: 'Redondo Beach',
-        caseTitle: 'The Beach Boys',
-        dateFiled: '01-04-1962',
-        judgeName: 'some judge',
-        debtorTypeLabel: 'Corporate Business',
-        petitionLabel: 'Voluntary',
-        closedDate: '01-08-1963',
-        dismissedDate: '01-08-1964',
         assignments: [],
         debtor: {
           name: 'Roger Rabbit',
