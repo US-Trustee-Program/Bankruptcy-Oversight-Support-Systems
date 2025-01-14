@@ -1,10 +1,6 @@
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import {
-  USTP_OFFICES_ARRAY,
-  UstpDivisionMeta,
-  UstpOfficeDetails,
-} from '../../../../../common/src/cams/offices';
+import { UstpDivisionMeta } from '../../../../../common/src/cams/offices';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'LOCAL_STORAGE_GATEWAY';
@@ -45,10 +41,6 @@ function get(path: string): string | null {
     return null;
   }
   return storage.get(path);
-}
-
-function getUstpOffices(): UstpOfficeDetails[] {
-  return USTP_OFFICES_ARRAY;
 }
 
 function getRoleMapping(): Map<string, CamsRole> {
@@ -107,7 +99,6 @@ function getUstpDivisionMeta(): Map<string, UstpDivisionMeta> {
 
 export const LocalStorageGateway: StorageGateway = {
   get,
-  getUstpOffices,
   getRoleMapping,
   getUstpDivisionMeta,
   getAugmentableUserRoleGroupName,

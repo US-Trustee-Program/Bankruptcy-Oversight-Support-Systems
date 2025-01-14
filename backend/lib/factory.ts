@@ -203,9 +203,13 @@ export const getOfficeStaffSyncStateRepo = (
 };
 
 export const getUsersRepository = (context: ApplicationContext): UsersRepository => {
-  // TODO: Return mock repository??
+  if (context.config.get('dbMock')) {
+    return MockMongoRepository.getInstance(context);
+  }
+
   if (!usersRepository) {
     usersRepository = new UsersMongoRepository(context);
+    deferRelease(usersRepository, context);
   }
   return usersRepository;
 };
@@ -277,6 +281,7 @@ export const Factory = {
   getUserSessionCacheRepository,
   getStorageGateway,
   getUserGroupGateway,
+  getUsersRepository,
 };
 
 export default Factory;

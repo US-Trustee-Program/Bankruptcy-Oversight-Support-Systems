@@ -1,5 +1,6 @@
 import {
   getAuthorizationGateway,
+  getOfficesGateway,
   getUserSessionCacheRepository,
   getUsersRepository,
 } from '../../factory';
@@ -17,16 +18,17 @@ import { OfficesUseCase } from '../offices/offices';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
-function getRoles(groups: string[]): CamsRole[] {
+function getRoles(idpGroups: string[]): CamsRole[] {
   const rolesMap = LocalStorageGateway.getRoleMapping();
-  return groups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
+  return idpGroups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
 }
 
 async function getOffices(
-  _context: ApplicationContext,
+  context: ApplicationContext,
   idpGroups: string[],
 ): Promise<UstpOfficeDetails[]> {
-  const ustpOffices = LocalStorageGateway.getUstpOffices();
+  const officesGateway = getOfficesGateway(context);
+  const ustpOffices = await officesGateway.getOffices(context);
   return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
 }
 
@@ -64,7 +66,11 @@ export class UserSessionUseCase {
       if (user.roles.includes(CamsRole.AugmentableUser)) {
         try {
           const augmentableUser = await usersRepository.getAugmentableUser(user.id);
-          if (augmentableUser.roles) user.roles.push(...augmentableUser.roles);
+
+          if (augmentableUser.roles) {
+            const rolesSet = new Set<CamsRole>([...user.roles, ...augmentableUser.roles]);
+            user.roles = Array.from(rolesSet);
+          }
 
           if (augmentableUser.officeCodes) {
             const officesUseCase = new OfficesUseCase();

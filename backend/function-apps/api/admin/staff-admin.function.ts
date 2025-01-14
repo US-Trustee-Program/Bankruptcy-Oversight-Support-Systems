@@ -1,7 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { AdminController } from '../../../lib/controllers/admin/admin.controller';
+import { StaffAdminController } from '../../../lib/controllers/admin/staff-admin.controller';
 import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
 import { AdminRequestBody } from '../../../lib/adapters/types/http';
 
@@ -24,7 +24,7 @@ export default async function handler(
         message: 'API key was missing or did not match.',
       });
     }
-    const controller = new AdminController();
+    const controller = new StaffAdminController();
     const response = await controller.handleRequest(applicationContext);
     return toAzureSuccess(response);
   } catch (error) {
@@ -36,5 +36,5 @@ app.http('admin', {
   methods: ['DELETE', 'POST'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/{procedure}',
+  route: 'dev-tools/staff/{procedure}',
 });

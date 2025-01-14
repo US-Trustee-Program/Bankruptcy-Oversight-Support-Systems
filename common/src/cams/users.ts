@@ -25,6 +25,13 @@ export type CamsUserGroup = {
   users?: CamsUser[];
 };
 
+export type AugmentableUser = CamsUserReference & {
+  documentType: 'AUGMENTABLE_USER';
+  expires?: string;
+  officeCodes?: string[];
+  roles?: CamsRole[];
+};
+
 export function getCourtDivisionCodes(user: CamsUser): string[] {
   if (!user.offices) return [];
   const reducer = (divisionCodes: string[], office: UstpOfficeDetails) => {

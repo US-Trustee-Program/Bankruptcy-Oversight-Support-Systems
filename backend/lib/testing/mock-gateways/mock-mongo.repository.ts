@@ -137,4 +137,12 @@ export class MockMongoRepository
   async getTransfers(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
+
+  putAugmentableUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getAugmentableUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
 }

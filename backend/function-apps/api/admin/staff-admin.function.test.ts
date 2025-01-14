@@ -1,10 +1,10 @@
 import { InvocationContext } from '@azure/functions';
-import { AdminController } from '../../../lib/controllers/admin/admin.controller';
+import { StaffAdminController } from '../../../lib/controllers/admin/staff-admin.controller';
 import {
   buildTestResponseError,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import handler from './admin.function';
+import handler from './staff-admin.function';
 import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
 import { CamsHttpMethod } from '../../../lib/adapters/types/http';
 
@@ -51,7 +51,7 @@ describe('Admin function tests', () => {
       });
 
       const adminControllerSpy = jest
-        .spyOn(AdminController.prototype, 'handleRequest')
+        .spyOn(StaffAdminController.prototype, 'handleRequest')
         .mockResolvedValue({ statusCode });
 
       const result = await handler(request, context);

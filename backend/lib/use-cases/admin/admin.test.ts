@@ -5,13 +5,14 @@ import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
-import { Staff } from '../../../../common/src/cams/users';
+import { AugmentableUser, Staff } from '../../../../common/src/cams/users';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
-import { UsersMongoRepository } from '../../adapters/gateways/mongo/user.repository';
 import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { randomUUID } from 'node:crypto';
-import { AugmentableUser } from '../gateways.types';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 describe('Test Migration Admin Use Case', () => {
   let context: ApplicationContext;
@@ -128,7 +129,7 @@ describe('Test Migration Admin Use Case', () => {
         users,
       });
       const repoSpy = jest
-        .spyOn(UsersMongoRepository.prototype, 'putAugmentableUser')
+        .spyOn(MockMongoRepository.prototype, 'putAugmentableUser')
         .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
 
       const roles = [CamsRole.CaseAssignmentManager];
@@ -162,7 +163,7 @@ describe('Test Migration Admin Use Case', () => {
     });
 
     jest
-      .spyOn(UsersMongoRepository.prototype, 'putAugmentableUser')
+      .spyOn(MockMongoRepository.prototype, 'putAugmentableUser')
       .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
 
     await expect(useCase.augmentUser(context, user.id, {})).rejects.toThrow(
@@ -226,5 +227,33 @@ describe('Test Migration Admin Use Case', () => {
     await expect(useCase.getAugmentableUsers(context)).rejects.toThrow(
       'Unable to get augmentable users.',
     );
+  });
+
+  test('should return an AugmentableUser for a given user Id', async () => {
+    const user: AugmentableUser = {
+      documentType: 'AUGMENTABLE_USER',
+      ...MockData.getCamsUserReference(),
+      roles: [],
+      officeCodes: [],
+    };
+    jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockResolvedValue(user);
+
+    const result = await useCase.getAugmentableUser(context, user.id);
+    expect(result).toEqual(user);
+  });
+
+  test('should throw a NotFound error if the user is not found', async () => {
+    const error = new NotFoundError('ADMIN-USE-CASE');
+    jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockRejectedValue(error);
+
+    await expect(useCase.getAugmentableUser(context, 'invalidUserId')).rejects.toThrow(error);
+  });
+
+  test('should throw an error if an error is encountered on getAugmentableUser', async () => {
+    const error = new Error('some unknown error');
+    jest.spyOn(MockMongoRepository.prototype, 'getAugmentableUser').mockRejectedValue(error);
+
+    const expected = new UnknownError(expect.anything());
+    await expect(useCase.getAugmentableUser(context, 'invalidUserId')).rejects.toThrow(expected);
   });
 });
