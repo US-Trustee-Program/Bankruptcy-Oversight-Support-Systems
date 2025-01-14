@@ -197,8 +197,10 @@ function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEnt
 }
 
 function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
-  if (reOpenDate) {
-    if (closedDate && reOpenDate > closedDate) {
+  if (reOpenDate && closedDate) {
+    const parsedReOpenDate = Date.parse(reOpenDate);
+    const parsedClosedDate = Date.parse(closedDate);
+    if (closedDate && parsedReOpenDate > parsedClosedDate) {
       return true;
     }
   }

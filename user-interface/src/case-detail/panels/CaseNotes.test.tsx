@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
-import CaseNotes from './CaseNotes';
+import CaseNotes, { CaseNotesProps } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
@@ -18,12 +18,25 @@ describe('audit history tests', () => {
     MockData.getCaseNote({ caseId }),
   ];
 
+  function renderWithProps(props?: Partial<CaseNotesProps>) {
+    const defaultProps: CaseNotesProps = {
+      caseId: '000-11-22222',
+      hasNotes: false,
+      caseNotes: [],
+      onNoteCreation: vi.fn(),
+      areCaseNotesLoading: false,
+    };
+
+    const renderProps = { ...defaultProps, ...props };
+    render(<CaseNotes {...renderProps} />);
+  }
+
   test('should display loading indicator if loading', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
       data: [],
     });
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps({ areCaseNotesLoading: true });
 
     const loadingIndicator = screen.queryByTestId('notes-loading-indicator');
     expect(loadingIndicator).toBeInTheDocument();
@@ -34,7 +47,7 @@ describe('audit history tests', () => {
       data: [],
     });
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps();
 
     const emptyCaseNotes = await screen.findByTestId('empty-notes-test-id');
     expect(emptyCaseNotes).toHaveTextContent('No notes exist for this case.');
@@ -48,7 +61,7 @@ describe('audit history tests', () => {
       data: caseNotes,
     });
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps({ caseId, hasNotes: true, caseNotes });
 
     const emptyCaseNotes = screen.queryByTestId('empty-notes-test-id');
     expect(emptyCaseNotes).not.toBeInTheDocument();
@@ -77,29 +90,15 @@ describe('audit history tests', () => {
     }
   });
 
-  test('should call globalAlert.error when getCaseNotes receives an error', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockRejectedValue({ status: HttpStatusCodes.NOT_FOUND });
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    render(<CaseNotes caseId={caseId} />);
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not retrieve case notes.');
-    });
-  });
-
   test('should send new case note to api and call fetch notes on success', async () => {
-    const getCaseNotesSpy = vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
-      data: caseNotes,
-    });
+    const spyOnNotesCreation = vi.fn();
     const postCaseNoteSpy = vi
       .spyOn(Api2, 'postCaseNote')
       .mockImplementation(async (): Promise<void> => {
         return Promise.resolve();
       });
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps({ onNoteCreation: spyOnNotesCreation });
 
     const testNoteContent = 'test note content';
     const testNoteTitle = 'test note title';
@@ -123,8 +122,8 @@ describe('audit history tests', () => {
       caseId: caseId,
     };
 
-    expect(getCaseNotesSpy).toHaveBeenNthCalledWith(2, caseId);
     expect(postCaseNoteSpy).toHaveBeenCalledWith(expectedCaseNoteInput);
+    expect(spyOnNotesCreation).toHaveBeenCalled();
 
     textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toHaveValue('');
@@ -138,7 +137,7 @@ describe('audit history tests', () => {
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps();
 
     const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
     expect(noteTitleInput).toBeInTheDocument();
@@ -165,7 +164,7 @@ describe('audit history tests', () => {
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps();
 
     const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
     expect(noteTitleInput).toBeInTheDocument();
@@ -190,7 +189,7 @@ describe('audit history tests', () => {
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps();
 
     const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
     expect(noteTitleInput).toBeInTheDocument();
@@ -213,7 +212,7 @@ describe('audit history tests', () => {
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps();
 
     const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
     expect(noteTitleInput).toBeInTheDocument();
@@ -237,7 +236,7 @@ describe('audit history tests', () => {
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(<CaseNotes caseId={caseId} />);
+    renderWithProps();
 
     const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
     expect(noteTitleInput).toBeInTheDocument();
