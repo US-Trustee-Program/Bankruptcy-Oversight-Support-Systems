@@ -125,7 +125,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             ref={titleInputRef}
           />
           <TextArea
-            id="note-creation"
+            id="note-content"
             label="Note Text"
             onChange={(event) => {
               setCaseNoteContentInput(event.target.value);
@@ -133,7 +133,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             ref={contentInputRef}
           />
           <Button
-            id="button-submit-case-note"
+            id="submit-case-note"
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={putCaseNote}
             aria-label="submit new case note."

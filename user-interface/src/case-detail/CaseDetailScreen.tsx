@@ -121,10 +121,10 @@ function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
 }
 
 export function applyCaseNoteSortAndFilters(
-  caseNotes: CaseNote[] | undefined,
+  caseNotes: CaseNote[],
   options: caseNoteSortAndFilterOptions,
 ) {
-  if (caseNotes === undefined) {
+  if (!caseNotes?.length) {
     return { filteredCaseNotes: caseNotes, notesAlertOptions: undefined };
   } else {
     const filteredCaseNotes = caseNotes.filter((caseNote) =>
@@ -628,7 +628,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 {hasCaseNotes && navState === NavState.CASE_NOTES && (
                   <div
                     className={`filter-and-search padding-y-4`}
-                    data-testid="filter-and-search-panel"
+                    data-testid="case-notes-filter-and-search-panel"
                     aria-live="polite"
                   >
                     <h3 className="filter-header" aria-label="Case Note Filters">
@@ -641,8 +641,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       <div className="usa-search usa-search--small">
                         <Input
                           className="search-icon"
-                          id="basic-search-field"
-                          name="basic-search"
+                          id="case-note-search-input"
+                          name="case-note-search-input"
                           label="Find case note by title"
                           aria-label="Find case notes by title. Results will be updated while you type."
                           aria-live="polite"

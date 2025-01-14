@@ -10,7 +10,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
-  const textAreaTestId = 'textarea-note-creation';
+  const textAreaTestId = 'textarea-note-content';
   const noteTitleInputTestId = 'case-note-title-input';
   const caseNotes = [
     MockData.getCaseNote({ caseId }),
@@ -113,7 +113,7 @@ describe('audit history tests', () => {
     await userEvent.type(textArea, testNoteContent);
     expect(textArea).toHaveValue(testNoteContent);
 
-    const button = screen.getByTestId('button-button-submit-case-note');
+    const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
     const expectedCaseNoteInput: CaseNoteInput = {
@@ -147,7 +147,7 @@ describe('audit history tests', () => {
     expect(textArea).toBeInTheDocument();
     await userEvent.type(textArea, 'test note');
 
-    const button = screen.getByTestId('button-button-submit-case-note');
+    const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
 
@@ -174,7 +174,7 @@ describe('audit history tests', () => {
     expect(textArea).toBeInTheDocument();
     await userEvent.type(textArea, 'test note');
 
-    const button = screen.getByTestId('button-button-submit-case-note');
+    const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
 
@@ -197,7 +197,7 @@ describe('audit history tests', () => {
     const textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toBeInTheDocument();
 
-    const button = screen.getByTestId('button-button-submit-case-note');
+    const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
 
@@ -221,7 +221,7 @@ describe('audit history tests', () => {
     const textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toBeInTheDocument();
 
-    const button = screen.getByTestId('button-button-submit-case-note');
+    const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
 
@@ -245,7 +245,7 @@ describe('audit history tests', () => {
     expect(textArea).toBeInTheDocument();
     await userEvent.type(textArea, 'test note');
 
-    const button = screen.getByTestId('button-button-submit-case-note');
+    const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
 

@@ -650,7 +650,6 @@ describe('Case Detail sort, search, and filter tests', () => {
       );
 
       let sortButton;
-
       sortButton = screen.queryByTestId('docket-entry-sort');
       expect(sortButton).not.toBeInTheDocument();
 
