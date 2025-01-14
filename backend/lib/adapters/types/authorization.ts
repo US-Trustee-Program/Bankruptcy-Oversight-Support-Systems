@@ -14,6 +14,11 @@ export interface OpenIdConnectGateway {
 }
 
 export interface UserGroupGateway {
+  getUserGroupWithUsers: (
+    context: ApplicationContext,
+    config: UserGroupGatewayConfig,
+    groupName: string,
+  ) => Promise<CamsUserGroup>;
   getUserGroups: (
     context: ApplicationContext,
     config: UserGroupGatewayConfig,

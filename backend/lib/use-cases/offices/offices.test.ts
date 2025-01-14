@@ -69,6 +69,7 @@ describe('offices use case tests', () => {
           .mockReturnValue(
             new Map<string, UstpDivisionMeta>([[legacyDivisionCode, { isLegacy: true }]]),
           ),
+        getAugmentableUserRoleGroupName: jest.fn(),
       };
     });
 

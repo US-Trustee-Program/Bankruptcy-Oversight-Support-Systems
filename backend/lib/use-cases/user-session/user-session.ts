@@ -1,4 +1,8 @@
-import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
+import {
+  getAuthorizationGateway,
+  getUserSessionCacheRepository,
+  getUsersRepository,
+} from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
@@ -9,6 +13,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { OfficesUseCase } from '../offices/offices';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -28,6 +33,7 @@ async function getOffices(
 export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
+    const usersRepository = getUsersRepository(context);
 
     try {
       const session = await sessionCacheRepository.read(token);
@@ -55,6 +61,32 @@ export class UserSessionUseCase {
       user.roles = getRoles(jwt.claims.groups);
       user.offices = await getOffices(context, jwt.claims.groups);
 
+      if (user.roles.includes(CamsRole.AugmentableUser)) {
+        try {
+          const augmentableUser = await usersRepository.getAugmentableUser(user.id);
+          if (augmentableUser.roles) user.roles.push(...augmentableUser.roles);
+
+          if (augmentableUser.officeCodes) {
+            const officesUseCase = new OfficesUseCase();
+            const offices = await officesUseCase.getOffices(context);
+            const filteredOffices = offices.filter((office) =>
+              augmentableUser.officeCodes.includes(office.officeCode),
+            );
+
+            const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...filteredOffices]);
+            user.offices = Array.from(officeSet);
+          }
+        } catch (error) {
+          // Silently log the failure so the user can continue without augmentation.
+          context.logger.error(
+            MODULE_NAME,
+            `Failed to augment user ${user.name} (${user.id}).`,
+            error.message,
+          );
+        }
+      }
+
+      // TODO: Maybe delete this 'restrict-case-assignment' feature flag.
       // Simulate the legacy behavior by appending roles and Manhattan office to the user
       // if the 'restrict-case-assignment' feature flag is not set.
       if (!context.featureFlags['restrict-case-assignment']) {

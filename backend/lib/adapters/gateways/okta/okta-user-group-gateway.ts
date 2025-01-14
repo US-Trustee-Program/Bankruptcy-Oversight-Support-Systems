@@ -81,6 +81,51 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
 }
 
 /**
+ * getUserGroup
+ *
+ * Retrieves a group by name.
+ *
+ * @param {ApplicationContext} context
+ * @param {UserGroupGatewayConfig} config
+ * @param {string} groupName
+ */
+async function getUserGroupWithUsers(
+  context: ApplicationContext,
+  config: UserGroupGatewayConfig,
+  groupName: string,
+): Promise<CamsUserGroup> {
+  try {
+    const client = await initialize(config);
+    const query: GroupApiListGroupsRequest = {
+      q: groupName,
+      limit: MAX_PAGE_SIZE,
+    };
+    const oktaGroups = await client.groupApi.listGroups(query);
+
+    let camsUserGroup: CamsUserGroup;
+    for await (const oktaGroup of oktaGroups) {
+      camsUserGroup = {
+        id: oktaGroup.id,
+        name: oktaGroup.profile.name,
+      };
+      camsUserGroup.users = await getUserGroupUsers(context, config, camsUserGroup);
+    }
+    context.logger.info(
+      MODULE_NAME,
+      `Retrieved ${groupName} group with ${camsUserGroup.users.length} users.`,
+    );
+    return camsUserGroup;
+  } catch (originalError) {
+    throw isCamsError(originalError)
+      ? originalError
+      : new UnknownError(MODULE_NAME, {
+          originalError,
+          message: `Failed to retrieve ${groupName} group.`,
+        });
+  }
+}
+
+/**
  * getUserGroups
  *
  * Retrieves a list of Okta groups and transforms them into a list of CamsUserGroup.
@@ -171,6 +216,7 @@ export const OktaUserGroupGateway: UserGroupGateway & {
   initialize(config: UserGroupGatewayConfig);
 } = {
   initialize,
+  getUserGroupWithUsers,
   getUserGroups,
   getUserGroupUsers,
 };
