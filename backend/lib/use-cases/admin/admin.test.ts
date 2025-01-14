@@ -13,6 +13,9 @@ import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 
 describe('Test Migration Admin Use Case', () => {
   let context: ApplicationContext;
@@ -247,7 +250,7 @@ describe('Test Migration Admin Use Case', () => {
     );
   });
 
-  test('should throw an error if an error is encountered on getPrivilegedIdentityUser', async () => {
+  test('should throw an error if an error is encountered with getPrivilegedIdentityUser', async () => {
     const error = new Error('some unknown error');
     jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockRejectedValue(error);
 
@@ -255,5 +258,23 @@ describe('Test Migration Admin Use Case', () => {
     await expect(useCase.getPrivilegedIdentityUser(context, 'invalidUserId')).rejects.toThrow(
       expected,
     );
+  });
+
+  test('should return a list of valid IdP groups names', async () => {
+    const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
+    const officeGroups = MOCKED_USTP_OFFICES_ARRAY.map((office) => office.idpGroupId);
+
+    const groups = await useCase.getPrivilegedIdentityClaimGroups(context);
+
+    expect(groups).toEqual(expect.arrayContaining(roleGroups));
+    expect(groups).toEqual(expect.arrayContaining(officeGroups));
+  });
+
+  test('should throw an error if an error is encountered with getPrivilegedIdentityClaimGroups', async () => {
+    const error = new Error('some unknown error');
+    jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockRejectedValue(error);
+
+    const expected = new UnknownError(expect.anything());
+    await expect(useCase.getPrivilegedIdentityClaimGroups(context)).rejects.toThrow(expected);
   });
 });
