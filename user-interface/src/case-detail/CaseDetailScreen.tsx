@@ -91,6 +91,13 @@ export function docketSorterClosure(sortDirection: SortDirection) {
   };
 }
 
+export function notesSorterClosure(sortDirection: SortDirection) {
+  return (left: CaseNote, right: CaseNote) => {
+    const direction = sortDirection === 'Newest' ? 1 : -1;
+    return left.updatedOn < right.updatedOn ? direction : direction * -1;
+  };
+}
+
 function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
   if (dateRange.start && docketEntry.dateFiled < dateRange.start) return false;
   if (dateRange.end && docketEntry.dateFiled > dateRange.end) return false;
@@ -127,17 +134,20 @@ export function applyCaseNoteSortAndFilters(
   if (!caseNotes?.length) {
     return { filteredCaseNotes: caseNotes, notesAlertOptions: undefined };
   } else {
-    const filteredCaseNotes = caseNotes.filter((caseNote) =>
+    const searchFilteredCaseNotes = caseNotes.filter((caseNote) =>
       notesSearchFilter(caseNote, options.caseNoteSearchText),
     );
     const notesAlertOptions =
-      filteredCaseNotes?.length === 0
+      searchFilteredCaseNotes?.length === 0
         ? {
             message: "The search criteria didn't match any notes in this case",
             title: 'Case Note Not Found',
             type: UswdsAlertStyle.Warning,
           }
         : undefined;
+    const filteredCaseNotes = searchFilteredCaseNotes.sort(
+      notesSorterClosure(options.sortDirection),
+    );
     return { filteredCaseNotes, notesAlertOptions };
   }
 }
@@ -245,7 +255,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [caseNoteSearchText, setCaseNoteSearchText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('Newest');
+  const [docketSortDirection, setDocketSortDirection] = useState<SortDirection>('Newest');
+  const [notesSortDirection, setNotesSortDirection] = useState<SortDirection>('Newest');
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
@@ -325,8 +336,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       .finally(() => setIsAssociatedCasesLoading(false));
   }
 
-  function toggleSort() {
-    setSortDirection(sortDirection === 'Newest' ? 'Oldest' : 'Newest');
+  function toggleDocketSort() {
+    setDocketSortDirection(docketSortDirection === 'Newest' ? 'Oldest' : 'Newest');
+  }
+
+  function toggleNotesSort() {
+    setNotesSortDirection(notesSortDirection === 'Newest' ? 'Oldest' : 'Newest');
   }
 
   function searchDocketText(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -350,9 +365,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setDocumentNumber(newDocumentNumber);
   }
 
-  function clearFilters() {
+  function clearDocketFilters() {
     setSearchInDocketText('');
-    setCaseNoteSearchText('');
     findInDocketRef.current?.clearValue();
     setDocumentNumber(null);
     findByDocketNumberRef.current?.clearValue();
@@ -360,6 +374,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     dateRangeRef.current?.clearValue();
     setSelectedFacets([]);
     facetPickerRef.current?.clearValue();
+    return;
+  }
+
+  function clearNotesFilters() {
+    setCaseNoteSearchText('');
+    caseNoteTitleSearchRef.current?.clearValue();
     return;
   }
 
@@ -456,7 +476,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     {
       searchInDocketText,
       selectedFacets,
-      sortDirection,
+      sortDirection: docketSortDirection,
       documentNumber,
       selectedDateRange,
     },
@@ -464,7 +484,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
   const { filteredCaseNotes, notesAlertOptions } = applyCaseNoteSortAndFilters(caseNotes, {
     caseNoteSearchText,
-    sortDirection,
+    sortDirection: notesSortDirection,
   });
 
   return (
@@ -527,15 +547,17 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           className="usa-button usa-button--outline sort-button"
                           id="basic-sort-button"
                           name="basic-sort"
-                          onClick={toggleSort}
+                          onClick={toggleDocketSort}
                           data-testid="docket-entry-sort"
-                          aria-label={'Sort ' + sortDirection + ' First'}
+                          aria-label={'Sort ' + docketSortDirection + ' First'}
                         >
                           <div aria-hidden="true">
-                            <span aria-hidden="true">Sort ({sortDirection})</span>
+                            <span aria-hidden="true">Sort ({docketSortDirection})</span>
                             <Icon
                               className="sort-button-icon"
-                              name={sortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'}
+                              name={
+                                docketSortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'
+                              }
                             />
                           </div>
                         </button>
@@ -616,7 +638,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         className="usa-button usa-button--outline clear-filters-button"
                         id="clear-filters-button"
                         name="clear-filters"
-                        onClick={clearFilters}
+                        onClick={clearDocketFilters}
                         data-testid="clear-filters"
                         aria-label="Clear All Filters"
                       >
@@ -637,6 +659,28 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="filter-info-text">
                       As filters are applied, notes will be sorted or filtered automatically.
                     </div>
+                    <div className="sort form-field">
+                      <div className="usa-sort usa-sort--small">
+                        <button
+                          className="usa-button usa-button--outline sort-button"
+                          id="basic-sort-button"
+                          name="basic-sort"
+                          onClick={toggleNotesSort}
+                          data-testid="case-notes-sort"
+                          aria-label={'Sort ' + notesSortDirection + ' First'}
+                        >
+                          <div aria-hidden="true">
+                            <span aria-hidden="true">Sort ({notesSortDirection})</span>
+                            <Icon
+                              className="sort-button-icon"
+                              name={
+                                notesSortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'
+                              }
+                            />
+                          </div>
+                        </button>
+                      </div>
+                    </div>
                     <div className="case-note-search form-field" data-testid="case-note-search">
                       <div className="usa-search usa-search--small">
                         <Input
@@ -653,6 +697,19 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           ref={caseNoteTitleSearchRef}
                         />
                       </div>
+                    </div>
+                    <div className="form-field">
+                      {/*--TODO: Add date sort button also --*/}
+                      <button
+                        className="usa-button usa-button--outline clear-filters-button"
+                        id="clear-filters-button"
+                        name="clear-filters"
+                        onClick={clearNotesFilters}
+                        data-testid="clear-filters"
+                        aria-label="Clear All Filters"
+                      >
+                        <span aria-hidden="true">Clear All Filters</span>
+                      </button>
                     </div>
                   </div>
                 )}
