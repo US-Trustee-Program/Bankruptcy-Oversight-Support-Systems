@@ -26,6 +26,7 @@ describe('case note tests', () => {
       searchString: '',
       onNoteCreation: vi.fn(),
       areCaseNotesLoading: false,
+      searchString: '',
     };
 
     const renderProps = { ...defaultProps, ...props };
