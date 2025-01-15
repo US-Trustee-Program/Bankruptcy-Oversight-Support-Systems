@@ -1,17 +1,16 @@
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from '../../use-cases/admin/admin';
-import { PriviledgedIdentityAdminController } from './priviledged-identity-admin.controller';
+import { PrivilegedIdentityAdminController } from './privileged-identity-admin.controller';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import * as featureFlagModule from '../../adapters/utils/feature-flag';
 
-describe('Priviledged identity admin controller tests', () => {
-  let controller: PriviledgedIdentityAdminController;
+describe('Privileged identity admin controller tests', () => {
+  let controller: PrivilegedIdentityAdminController;
 
   beforeEach(async () => {
-    controller = new PriviledgedIdentityAdminController();
+    controller = new PrivilegedIdentityAdminController();
   });
 
   afterEach(async () => {
@@ -23,14 +22,11 @@ describe('Priviledged identity admin controller tests', () => {
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'GET';
     context.request.params.resourceId = 'groups';
-
-    jest.spyOn(featureFlagModule, 'getFeatureFlags').mockResolvedValue({
-      'privileged-identity-management': false,
-    });
+    context.featureFlags['privileged-identity-management'] = false;
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       new UnauthorizedError(expect.anything(), {
-        message: 'Priviledged identity management feature is not enabled.',
+        message: 'Privileged identity management feature is not enabled.',
       }),
     );
   });
@@ -39,6 +35,7 @@ describe('Priviledged identity admin controller tests', () => {
     const context = await createMockApplicationContext();
     context.session.user.roles = [CamsRole.TrialAttorney];
     context.request.method = 'GET';
+    context.featureFlags['privileged-identity-management'] = true;
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       new UnauthorizedError(expect.anything()),
@@ -55,6 +52,7 @@ describe('Priviledged identity admin controller tests', () => {
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'GET';
     context.request.params.resourceId = 'groups';
+    context.featureFlags['privileged-identity-management'] = true;
 
     jest
       .spyOn(AdminUseCase.prototype, 'getRoleAndOfficeGroupNames')
@@ -73,6 +71,7 @@ describe('Priviledged identity admin controller tests', () => {
     const context = await createMockApplicationContext();
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'GET';
+    context.featureFlags['privileged-identity-management'] = true;
 
     jest.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUsers').mockResolvedValue(users);
     const response = await controller.handleRequest(context);
@@ -83,20 +82,21 @@ describe('Priviledged identity admin controller tests', () => {
     });
   });
 
-  test('should return a priviledged identity user', async () => {
+  test('should return a privileged identity user', async () => {
     const user = MockData.getPrivilegedIdentityUser();
 
     const context = await createMockApplicationContext();
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'GET';
     context.request.params.resourceId = 'userId';
+    context.featureFlags['privileged-identity-management'] = true;
 
     jest.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ headers: expect.anything(), body: { data: user }, statusCode: 200 });
   });
 
-  test('should upsert a priviledged identity user', async () => {
+  test('should upsert a privileged identity user', async () => {
     const context = await createMockApplicationContext();
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'PUT';
@@ -105,13 +105,14 @@ describe('Priviledged identity admin controller tests', () => {
       groups: ['group1', 'group2'],
       expires: '2025-01-01',
     };
+    context.featureFlags['privileged-identity-management'] = true;
 
     jest.spyOn(AdminUseCase.prototype, 'upsertPrivilegedIdentityUser').mockResolvedValue();
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ headers: expect.anything(), statusCode: 201 });
   });
 
-  test('should delete a priviledged identity user', async () => {
+  test('should delete a privileged identity user', async () => {
     const context = await createMockApplicationContext();
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'DELETE';
@@ -120,6 +121,7 @@ describe('Priviledged identity admin controller tests', () => {
       officeCode: 'TEST_OFFICE_GROUP',
       id: 'user-okta-id',
     };
+    context.featureFlags['privileged-identity-management'] = true;
 
     jest.spyOn(AdminUseCase.prototype, 'deletePrivilegedIdentityUser').mockResolvedValue();
     const response = await controller.handleRequest(context);
@@ -130,6 +132,7 @@ describe('Priviledged identity admin controller tests', () => {
     const context = await createMockApplicationContext();
     context.session.user.roles.push(CamsRole.SuperUser);
     context.request.method = 'HEAD';
+    context.featureFlags['privileged-identity-management'] = true;
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       new BadRequestError(expect.anything(), { message: 'Unsupported HTTP Method' }),

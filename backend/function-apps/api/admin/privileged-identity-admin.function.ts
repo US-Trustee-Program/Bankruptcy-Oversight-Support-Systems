@@ -1,9 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { PriviledgedIdentityAdminController } from '../../../lib/controllers/admin/priviledged-identity-admin.controller';
+import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
 
-const MODULE_NAME = 'PRIVILEDGED-IDENTITY-ADMIN-FUNCTION';
+const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
@@ -17,7 +17,7 @@ export default async function handler(
       logger,
       request,
     });
-    const controller = new PriviledgedIdentityAdminController();
+    const controller = new PrivilegedIdentityAdminController();
     const response = await controller.handleRequest(applicationContext);
     return toAzureSuccess(response);
   } catch (error) {
@@ -29,5 +29,5 @@ app.http('admin', {
   methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/priviledged-identity/{resourceId}',
+  route: 'dev-tools/privileged-identity/{resourceId}',
 });

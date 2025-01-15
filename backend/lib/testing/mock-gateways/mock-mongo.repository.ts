@@ -16,6 +16,7 @@ import {
   RuntimeState,
   RuntimeStateRepository,
   UserSessionCacheRepository,
+  UsersRepository,
 } from '../../use-cases/gateways.types';
 
 export class MockMongoRepository
@@ -26,6 +27,7 @@ export class MockMongoRepository
     OrdersRepository,
     OfficesRepository,
     RuntimeStateRepository,
+    UsersRepository,
     UserSessionCacheRepository
 {
   private static singleton: MockMongoRepository;
@@ -139,6 +141,10 @@ export class MockMongoRepository
   }
 
   getPrivilegedIdentityUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  deletePrivilegedIdentityUser(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 }

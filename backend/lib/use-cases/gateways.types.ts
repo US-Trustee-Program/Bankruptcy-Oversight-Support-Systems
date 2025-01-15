@@ -144,6 +144,7 @@ export interface OfficesRepository extends Releasable {
 export interface UsersRepository extends Releasable {
   getPrivilegedIdentityUser(id: string): Promise<PrivilegedIdentityUser>;
   putPrivilegedIdentityUser(privilegedIdentityUser: PrivilegedIdentityUser): Promise<ReplaceResult>;
+  deletePrivilegedIdentityUser(id: string): Promise<void>;
 }
 
 export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';

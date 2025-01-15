@@ -60,6 +60,7 @@ describe('user-session.gateway test', () => {
     context = await createMockApplicationContext({
       env: { CAMS_LOGIN_PROVIDER: 'okta', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
+    context.featureFlags['privileged-identity-management'] = true;
 
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
     jest
@@ -217,8 +218,8 @@ describe('user-session.gateway test', () => {
     );
   });
 
-  test('should not elevate a user if the priviledged-identity-managment feature flag is off', async () => {
-    context.featureFlags['priviledged-identity-managment'] = false;
+  test('should not elevate a user if the privileged-identity-management feature flag is off', async () => {
+    context.featureFlags['privileged-identity-management'] = false;
     const jwtClaims: CamsJwtClaims = {
       ...claims,
       groups: ['USTP CAMS Privileged Identity Management'],
