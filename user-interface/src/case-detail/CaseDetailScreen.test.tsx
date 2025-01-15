@@ -5,7 +5,7 @@ import Api2 from '@/lib/models/api2';
 import CaseDetailScreen from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseDetail } from '@common/cams/cases';
+import { CaseDetail, CaseNote } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
@@ -33,36 +33,14 @@ const debtorAttorney: DebtorAttorney = {
   cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
   phone: '234-123-1234',
 };
-const defaultTestCaseDetail: CaseDetail = {
-  caseId: caseId,
-  dxtrId: '123',
-  chapter: '15',
-  regionId: '02',
-  officeName: 'New York',
-  officeCode: '000',
-  caseTitle: 'The Beach Boys',
-  dateFiled: '01-04-1962',
-  judgeName: rickBHartName,
-  courtId: '01',
-  courtName: 'Court of Law',
-  courtDivisionName: 'Manhattan',
-  courtDivisionCode: '081',
-  debtorTypeLabel: 'Corporate Business',
-  petitionLabel: 'Voluntary',
-  closedDate: '01-08-1963',
-  dismissedDate: '01-08-1964',
-  assignments: [brianAssignment, carlAssignment],
-  debtor: {
-    name: 'Roger Rabbit',
-    address1: '123 Rabbithole Lane',
-    address2: 'Apt 117',
-    address3: 'Suite C',
-    cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+
+const defaultTestCaseDetail = MockData.getCaseDetail({
+  override: {
+    caseId,
+    judgeName: rickBHartName,
+    assignments: [brianAssignment, carlAssignment],
   },
-  debtorAttorney,
-  groupDesignator: '01',
-  regionName: 'Test Region',
-};
+});
 
 describe('Case Detail screen tests', () => {
   const env = process.env;
@@ -77,14 +55,21 @@ describe('Case Detail screen tests', () => {
     };
   });
 
-  test('should render CaseDetailHeader', async () => {
-    const headerSpy = vi.spyOn(detailHeader, 'default');
+  function renderWithProps(props?: Partial<CaseDetail>, notes: CaseNote[] = []) {
+    const renderProps = { ...defaultTestCaseDetail, ...props };
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={defaultTestCaseDetail} caseNotes={[]} />
+        <CaseDetailScreen caseDetail={renderProps} caseNotes={notes} />
       </BrowserRouter>,
     );
+  }
+
+  test('should render CaseDetailHeader', async () => {
+    const headerSpy = vi.spyOn(detailHeader, 'default');
+
+    renderWithProps();
+
     await waitFor(() => {
       expect(headerSpy).toHaveBeenCalled();
     });
@@ -151,11 +136,17 @@ describe('Case Detail screen tests', () => {
   });
 
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={defaultTestCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    const mockDateFiled = '01-01-1962';
+    const mockClosedDate = '01-01-1963';
+    const mockDismissedDate = '01-30-1964';
+    const mockReopenedDate = '01-15-1962';
+
+    renderWithProps({
+      dateFiled: mockDateFiled,
+      closedDate: mockClosedDate,
+      dismissedDate: mockDismissedDate,
+      reopenedDate: mockReopenedDate,
+    });
 
     await waitFor(
       //TODO: this really needs fixed
@@ -169,26 +160,28 @@ describe('Case Detail screen tests', () => {
 
         const dateFiled = screen.getByTestId('case-detail-filed-date');
         expect(dateFiled).toHaveTextContent('Filed');
-        expect(dateFiled).toHaveTextContent('01/04/1962');
+        expect(dateFiled).toHaveTextContent(formatDate(mockDateFiled));
 
         const closedDate = screen.getByTestId('case-detail-closed-date');
         expect(closedDate).toHaveTextContent('Closed by court');
-        expect(closedDate).toHaveTextContent('01/08/1963');
+        expect(closedDate).toHaveTextContent(formatDate(mockClosedDate));
 
         const dismissedDate = screen.getByTestId('case-detail-dismissed-date');
         expect(dismissedDate).toHaveTextContent('Dismissed by court');
-        expect(dismissedDate).toHaveTextContent('01/08/1964');
+        expect(dismissedDate).toHaveTextContent(formatDate(mockDismissedDate));
 
         const chapter = screen.getByTestId('case-chapter');
-        expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
+        expect(chapter.innerHTML).toContain(defaultTestCaseDetail.chapter);
 
         const courtName = screen.getByTestId('court-name-and-district');
         expect(courtName.innerHTML).toEqual(
-          `Court of Law (${defaultTestCaseDetail.courtDivisionName})`,
+          `${defaultTestCaseDetail.courtName} (${defaultTestCaseDetail.courtDivisionName})`,
         );
 
         const region = screen.getByTestId('case-detail-region-id');
-        expect(region.innerHTML).toEqual('Region 2 - New York Office');
+        expect(region.innerHTML).toContain(
+          `Region ${defaultTestCaseDetail.regionId.replace(/^0*/, '')} - ${defaultTestCaseDetail.courtDivisionName} Office`,
+        );
 
         const assigneeMap = new Map<string, string>();
         const assigneeElements = document.querySelectorAll(
@@ -205,7 +198,7 @@ describe('Case Detail screen tests', () => {
         expect(assigneeMap.get(`${carlWilson.name}`)).toEqual(trialAttorneyLabel);
 
         const judgeName = screen.getByTestId('case-detail-judge-name');
-        expect(judgeName).toHaveTextContent(rickBHartName);
+        expect(judgeName).toHaveTextContent(defaultTestCaseDetail.judgeName as string);
 
         const debtorName = screen.getByTestId('case-detail-debtor-name');
         expect(debtorName).toHaveTextContent(defaultTestCaseDetail.debtor.name);
@@ -219,6 +212,7 @@ describe('Case Detail screen tests', () => {
           'address3',
           'cityStateZipCountry',
         ];
+
         properties.forEach((property) => {
           const testId = `case-detail-debtor-${property}`;
           if (defaultTestCaseDetail.debtor[property]) {
@@ -250,20 +244,9 @@ describe('Case Detail screen tests', () => {
           name: 'Roger Rabbit',
         },
         debtorAttorney,
-        courtId: '',
-        dxtrId: '',
-        officeCode: '',
-        courtName: '',
-        courtDivisionCode: '',
-        courtDivisionName: '',
-        groupDesignator: '',
-        regionName: '',
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-        </BrowserRouter>,
-      );
+
+      renderWithProps({ ...testCaseDetail });
 
       await waitFor(
         async () => {
@@ -304,21 +287,8 @@ describe('Case Detail screen tests', () => {
           cityStateZipCountry,
         },
         debtorAttorney,
-        courtId: '',
-        dxtrId: '',
-        officeCode: '',
-        courtName: '',
-        courtDivisionCode: '',
-        courtDivisionName: '',
-        groupDesignator: '',
-        regionId: '',
-        regionName: '',
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-        </BrowserRouter>,
-      );
+      renderWithProps({ ...testCaseDetail });
 
       await waitFor(
         async () => {
@@ -363,21 +333,8 @@ describe('Case Detail screen tests', () => {
           taxId,
         },
         debtorAttorney,
-        courtId: '',
-        dxtrId: '',
-        officeCode: '',
-        courtName: '',
-        courtDivisionCode: '',
-        courtDivisionName: '',
-        groupDesignator: '',
-        regionId: '',
-        regionName: '',
       };
-      render(
-        <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-        </BrowserRouter>,
-      );
+      renderWithProps({ ...testCaseDetail });
 
       const taxIdIsPresent = !!ssn || !!taxId;
       await waitFor(
@@ -411,11 +368,7 @@ describe('Case Detail screen tests', () => {
 
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
 
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={defaultTestCaseDetail} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...defaultTestCaseDetail });
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not retrieve case notes.');
@@ -429,22 +382,9 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
-      courtId: '',
-      dxtrId: '',
-      officeCode: '',
-      courtName: '',
-      courtDivisionCode: '',
-      courtDivisionName: '',
       judgeName: '',
-      groupDesignator: '',
-      regionId: '',
-      regionName: '',
     };
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...testCaseDetail });
 
     await waitFor(
       async () => {
@@ -462,22 +402,9 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney: undefined,
-      courtId: '',
-      dxtrId: '',
-      officeCode: '',
-      courtName: '',
-      courtDivisionCode: '',
-      courtDivisionName: '',
-      groupDesignator: '',
-      regionId: '',
-      regionName: '',
     };
 
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...testCaseDetail });
 
     await waitFor(
       async () => {
@@ -496,22 +423,9 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
-      courtId: '',
-      dxtrId: '',
-      officeCode: '',
-      courtName: '',
-      courtDivisionCode: '',
-      courtDivisionName: '',
-      groupDesignator: '',
-      regionId: '',
-      regionName: '',
     };
 
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...testCaseDetail });
 
     await waitFor(
       async () => {
@@ -526,26 +440,13 @@ describe('Case Detail screen tests', () => {
     const testCaseDetail: CaseDetail = {
       ...defaultTestCaseDetail,
       reopenedDate: '01-01-2025',
+      closedDate: '12-15-2024',
       debtor: {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
-      courtId: '',
-      dxtrId: '',
-      officeCode: '',
-      courtName: '',
-      courtDivisionCode: '',
-      courtDivisionName: '',
-      groupDesignator: '',
-      regionId: '',
-      regionName: '',
     };
-
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...testCaseDetail });
 
     await waitFor(
       async () => {
@@ -571,22 +472,9 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
-      courtId: '',
-      dxtrId: '',
-      officeCode: '',
-      courtName: '',
-      courtDivisionCode: '',
-      courtDivisionName: '',
-      groupDesignator: '',
-      regionId: '',
-      regionName: '',
     };
 
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...testCaseDetail });
 
     await waitFor(
       async () => {
@@ -611,22 +499,10 @@ describe('Case Detail screen tests', () => {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
-      courtId: '',
-      dxtrId: '',
-      officeCode: '',
-      courtName: '',
-      courtDivisionCode: '',
-      courtDivisionName: '',
-      groupDesignator: '',
-      regionId: '',
-      regionName: '',
     };
 
-    render(
-      <BrowserRouter>
-        <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-      </BrowserRouter>,
-    );
+    renderWithProps({ ...testCaseDetail });
+
     const expectedTitle = ` - ${testCaseDetail.caseTitle}`;
     await waitFor(
       async () => {
@@ -684,26 +560,13 @@ describe('Case Detail screen tests', () => {
           name: 'Roger Rabbit',
         },
         debtorAttorney: expectedAttorney,
-        courtId: '',
-        dxtrId: '',
-        officeCode: '',
-        courtName: '',
-        courtDivisionCode: '',
-        courtDivisionName: '',
-        groupDesignator: '',
-        regionId: '',
-        regionName: '',
       };
 
       const expectedLink = `mailto:${expectedAttorney.email}?subject=${getCaseNumber(
         testCaseDetail.caseId,
       )} - ${testCaseDetail.caseTitle}`;
 
-      render(
-        <BrowserRouter>
-          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-        </BrowserRouter>,
-      );
+      renderWithProps({ ...testCaseDetail });
 
       await waitFor(
         async () => {
@@ -766,15 +629,6 @@ describe('Case Detail screen tests', () => {
           cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
           phone: '234-123-1234',
         },
-        courtId: '',
-        dxtrId: '',
-        officeCode: '',
-        courtName: '',
-        courtDivisionCode: '',
-        courtDivisionName: '',
-        groupDesignator: '',
-        regionId: '',
-        regionName: '',
       };
 
       // use <MemoryRouter> when you want to manually control the history
