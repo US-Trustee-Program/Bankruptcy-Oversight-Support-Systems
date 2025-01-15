@@ -100,10 +100,10 @@ describe('user-session.gateway test', () => {
     expect(createSpy).not.toHaveBeenCalled();
   });
 
-  test('should augment an privileged identity user', async () => {
+  test('should elevate an privileged identity user', async () => {
     const user = MockData.getCamsUser({ offices: [], roles: [] });
 
-    const augmentedUser: PrivilegedIdentityUser = {
+    const pimUser: PrivilegedIdentityUser = {
       documentType: 'PRIVILEGED_IDENTITY_USER',
       ...getCamsUserReference(user),
       claims: {
@@ -164,10 +164,10 @@ describe('user-session.gateway test', () => {
     // get the user from the auth provider with the AD assigned roles and offices.
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({ user, jwt });
 
-    // get the augmented user record to union in to the AD assigned roles and offices.
+    // get the PIM user record to union in to the AD assigned roles and offices.
     const getPrivilegedIdentityUserSpy = jest
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
-      .mockResolvedValue(augmentedUser);
+      .mockResolvedValue(pimUser);
 
     // we want the session to be cached...
     const upsertSpy = jest
@@ -186,7 +186,7 @@ describe('user-session.gateway test', () => {
     expect(getPrivilegedIdentityUserSpy).toHaveBeenCalled();
   });
 
-  test('should return valid session and silently log augmentation error', async () => {
+  test('should return valid session and silently log PIM elevation error', async () => {
     const jwtClaims: CamsJwtClaims = {
       ...claims,
       groups: ['USTP CAMS Privileged Identity Management'],
@@ -212,7 +212,7 @@ describe('user-session.gateway test', () => {
     });
     expect(loggerSpy).toHaveBeenCalledWith(
       expect.anything(),
-      `Failed to augment user ${mockUser.name} (${mockUser.id}).`,
+      `Failed to elevate permissions for user ${mockUser.name} (${mockUser.id}).`,
       errorMessage,
     );
   });

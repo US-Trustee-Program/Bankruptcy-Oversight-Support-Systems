@@ -15,4 +15,5 @@ export const defaultFeatureFlags: FeatureFlagSet = {
   'case-search-enabled': true,
   'case-notes-enabled': true,
   'restrict-case-assignment': true,
+  'privileged-identity-management': true,
 };

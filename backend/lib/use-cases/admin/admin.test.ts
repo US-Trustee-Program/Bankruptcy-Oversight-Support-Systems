@@ -17,7 +17,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 
-describe('Test Migration Admin Use Case', () => {
+describe('Admin Use Case', () => {
   let context: ApplicationContext;
   let useCase: AdminUseCase;
   const module = 'TEST-MODULE';
@@ -26,19 +26,6 @@ describe('Test Migration Admin Use Case', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
     useCase = new AdminUseCase();
-  });
-
-  test('should record use case module on CAMS stack', async () => {
-    await expect(useCase.deleteMigrations(context)).rejects.toThrow(
-      expect.objectContaining({
-        camsStack: [
-          {
-            message: 'Failed during migration deletion.',
-            module: 'ADMIN-USE-CASE',
-          },
-        ],
-      }),
-    );
   });
 
   const successCases = [
@@ -118,11 +105,11 @@ describe('Test Migration Admin Use Case', () => {
     );
   });
 
-  const augmentUserSuccessCases = [
+  const priviledgedIdentityUserSuccessCases = [
     ['no expiration', undefined],
     ['expiration', '2025-01-14T00:00:00.000Z'],
   ];
-  test.each(augmentUserSuccessCases)(
+  test.each(priviledgedIdentityUserSuccessCases)(
     'should add roles and offices to PrivilegedIdentityUser with %s',
     async (_caseName: string, expires: string) => {
       const users = MockData.buildArray(MockData.getCamsUser, 4);
@@ -145,7 +132,7 @@ describe('Test Migration Admin Use Case', () => {
         expires,
       };
 
-      await useCase.augmentUser(context, users[0].id, {
+      await useCase.upsertPrivilegedIdentityUser(context, users[0].id, {
         groups,
         expires,
       });
@@ -154,7 +141,7 @@ describe('Test Migration Admin Use Case', () => {
     },
   );
 
-  test('should throw an error if augmentUser fails to augment the user', async () => {
+  test('should throw an error if upsertPrivilegedIdentityUser fails to upsert the user', async () => {
     const user = MockData.getCamsUser();
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
@@ -166,12 +153,12 @@ describe('Test Migration Admin Use Case', () => {
       .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
       .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
 
-    await expect(useCase.augmentUser(context, user.id, { groups: [] })).rejects.toThrow(
-      'Failed to add privileged identity user.',
-    );
+    await expect(
+      useCase.upsertPrivilegedIdentityUser(context, user.id, { groups: [] }),
+    ).rejects.toThrow('Failed to add privileged identity user.');
   });
 
-  test('should throw an error if the user to augment is not an privileged identity user', async () => {
+  test('should throw an error if the user is not an privileged identity user', async () => {
     const userId = 'non-privileged identity-user';
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
@@ -179,9 +166,9 @@ describe('Test Migration Admin Use Case', () => {
       users: [MockData.getCamsUser()],
     });
 
-    await expect(useCase.augmentUser(context, userId, { groups: [] })).rejects.toThrow(
-      'User does not have permission to be augmented.',
-    );
+    await expect(
+      useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
+    ).rejects.toThrow('User does not have priviledged identity permission.');
   });
 
   test('should throw an error if no users exist in the privileged identity user group', async () => {
@@ -192,9 +179,9 @@ describe('Test Migration Admin Use Case', () => {
       users: [],
     });
 
-    await expect(useCase.augmentUser(context, userId, { groups: [] })).rejects.toThrow(
-      'User does not have permission to be augmented.',
-    );
+    await expect(
+      useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
+    ).rejects.toThrow('User does not have priviledged identity permission.');
 
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
@@ -202,9 +189,9 @@ describe('Test Migration Admin Use Case', () => {
       users: undefined,
     });
 
-    await expect(useCase.augmentUser(context, userId, { groups: [] })).rejects.toThrow(
-      'User does not have permission to be augmented.',
-    );
+    await expect(
+      useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
+    ).rejects.toThrow('User does not have priviledged identity permission.');
   });
 
   test('should return privileged identity users', async () => {
@@ -264,10 +251,10 @@ describe('Test Migration Admin Use Case', () => {
     const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
     const officeGroups = MOCKED_USTP_OFFICES_ARRAY.map((office) => office.idpGroupId);
 
-    const groups = await useCase.getPrivilegedIdentityClaimGroups(context);
+    const actual = await useCase.getRoleAndOfficeGroupNames(context);
 
-    expect(groups).toEqual(expect.arrayContaining(roleGroups));
-    expect(groups).toEqual(expect.arrayContaining(officeGroups));
+    expect(actual.roles).toEqual(expect.arrayContaining(roleGroups));
+    expect(actual.offices).toEqual(expect.arrayContaining(officeGroups));
   });
 
   test('should throw an error if an error is encountered with getPrivilegedIdentityClaimGroups', async () => {
@@ -275,6 +262,6 @@ describe('Test Migration Admin Use Case', () => {
     jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockRejectedValue(error);
 
     const expected = new UnknownError(expect.anything());
-    await expect(useCase.getPrivilegedIdentityClaimGroups(context)).rejects.toThrow(expected);
+    await expect(useCase.getRoleAndOfficeGroupNames(context)).rejects.toThrow(expected);
   });
 });

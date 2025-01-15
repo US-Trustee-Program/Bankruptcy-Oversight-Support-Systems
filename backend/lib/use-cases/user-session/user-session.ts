@@ -74,10 +74,10 @@ export class UserSessionUseCase {
           const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
           user.offices = Array.from(officeSet);
         } catch (error) {
-          // Silently log the failure so the user can continue without augmentation.
+          // Silently log the failure so the user can continue without permission elevation.
           context.logger.error(
             MODULE_NAME,
-            `Failed to augment user ${user.name} (${user.id}).`,
+            `Failed to elevate permissions for user ${user.name} (${user.id}).`,
             error.message,
           );
         }
