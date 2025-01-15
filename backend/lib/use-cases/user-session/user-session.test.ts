@@ -217,6 +217,30 @@ describe('user-session.gateway test', () => {
     );
   });
 
+  test('should not elevate a user if the priviledged-identity-managment feature flag is off', async () => {
+    context.featureFlags['priviledged-identity-managment'] = false;
+    const jwtClaims: CamsJwtClaims = {
+      ...claims,
+      groups: ['USTP CAMS Privileged Identity Management'],
+    };
+    const jwt: CamsJwt = {
+      header: jwtHeader,
+      claims: jwtClaims,
+    };
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+    jest.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(mockCamsSession);
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({ user: mockUser, jwt });
+    const getPimUserSpy = jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser');
+
+    const session = await gateway.lookup(context, jwtString, provider);
+    expect(session).toEqual({
+      ...expectedSession,
+      expires: expect.any(Number),
+      issuer: expect.stringMatching(urlRegex),
+    });
+    expect(getPimUserSpy).not.toHaveBeenCalled();
+  });
+
   test('should not add anything to cache if token is invalid', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest
