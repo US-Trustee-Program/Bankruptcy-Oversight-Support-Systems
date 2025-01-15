@@ -1,4 +1,4 @@
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
@@ -12,6 +12,7 @@ import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import HttpStatusCodes from '@common/api/http-status-codes';
+import MockApi2 from '@/lib/testing/mock-api2';
 
 const caseId = '101-23-12345';
 
@@ -88,6 +89,66 @@ describe('Case Detail screen tests', () => {
       expect(headerSpy).toHaveBeenCalled();
     });
   });
+  test('should getCaseDetails if no prop provided for caseDetail', async () => {
+    const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
+
+    render(
+      <MemoryRouter initialEntries={[basicInfoPath]}>
+        <Routes>
+          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const loadingSpinner = screen.queryByTestId('case-detail-loading-spinner');
+    expect(loadingSpinner).toBeInTheDocument();
+
+    await waitFor(() => {
+      const title = screen.getByTestId('case-detail-heading-title');
+      const expectedTitle = ` - Test Case Title`;
+      expect(title.innerHTML).toEqual(expectedTitle);
+    });
+
+    await waitFor(() => {
+      const chapter = screen.getByTestId('case-chapter');
+      expect(chapter.innerHTML).toEqual('Voluntary Chapter&nbsp;15');
+    });
+  });
+
+  test('should show global alert if not able to retrieve caseDetail', async () => {
+    const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
+    vi.spyOn(MockApi2, 'getCaseDetail').mockRejectedValue('error');
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    render(
+      <MemoryRouter initialEntries={[basicInfoPath]}>
+        <Routes>
+          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not get case information.');
+    });
+  });
+
+  test('should not show case associations if error throw in getCaseAssociations', async () => {
+    const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
+    vi.spyOn(MockApi2, 'getCaseAssociations').mockRejectedValue('error');
+
+    render(
+      <MemoryRouter initialEntries={[basicInfoPath]}>
+        <Routes>
+          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const associatedLink = screen.queryByTestId('associated-cases-link');
+      expect(associatedLink).not.toBeInTheDocument();
+    });
+  });
 
   test('should display case title, case number, dates, assignees, judge name, and debtor for the case', async () => {
     render(
@@ -97,6 +158,7 @@ describe('Case Detail screen tests', () => {
     );
 
     await waitFor(
+      //TODO: this really needs fixed
       async () => {
         const title = screen.getByTestId('case-detail-heading-title');
         const expectedTitle = ` - ${defaultTestCaseDetail.caseTitle}`;

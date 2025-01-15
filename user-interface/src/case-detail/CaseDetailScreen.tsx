@@ -30,7 +30,7 @@ import CaseNotes from './panels/CaseNotes';
 import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
-const CaseDetailBasicInfo = lazy(() => import('./panels/CaseDetailOverview'));
+const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
 
 type SortDirection = 'Oldest' | 'Newest';
@@ -280,7 +280,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
         setCaseBasicInfo(response.data);
       })
       .catch((_error) => {
-        globalAlert?.error(`Could not get case information.`);
+        globalAlert?.error('Could not get case information.');
       })
       .finally(() => {
         setIsLoading(false);
@@ -503,7 +503,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
               />
             </div>
             <div className="grid-col-8">
-              <LoadingSpinner caption="Loading case details..." />
+              <LoadingSpinner id="case-detail-loading-spinner" caption="Loading case details..." />
             </div>
             <div className="grid-col-1"></div>
           </div>
@@ -699,7 +699,6 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       </div>
                     </div>
                     <div className="form-field">
-                      {/*--TODO: Add date sort button also --*/}
                       <button
                         className="usa-button usa-button--outline clear-filters-button"
                         id="clear-filters-button"
@@ -721,7 +720,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                   <Route
                     index
                     element={
-                      <CaseDetailBasicInfo
+                      <CaseDetailOverview
                         caseDetail={caseBasicInfo}
                         showReopenDate={showReopenDate(
                           caseBasicInfo?.reopenedDate,

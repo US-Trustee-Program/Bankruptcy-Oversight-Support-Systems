@@ -31,7 +31,12 @@ const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNotes = MockData.buildArray(() => MockData.getCaseNote({ caseId: '101-12-12345' }), 5);
 const caseActions = [Actions.ManageAssignments];
 const caseDetails = MockData.getCaseDetail({
-  override: { _actions: caseActions, chapter: '15' },
+  override: {
+    _actions: caseActions,
+    chapter: '15',
+    caseTitle: 'Test Case Title',
+    petitionLabel: 'Voluntary',
+  },
 });
 const courts = MockData.getCourts().slice(0, 5);
 
