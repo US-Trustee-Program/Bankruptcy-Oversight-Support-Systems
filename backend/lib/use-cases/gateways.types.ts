@@ -133,7 +133,6 @@ export interface CasesRepository extends Releasable {
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
-  deleteMigrations(): Promise<void>;
 }
 
 export interface OfficesRepository extends Releasable {
