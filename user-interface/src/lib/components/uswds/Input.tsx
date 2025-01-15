@@ -107,10 +107,10 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
             aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
             ref={inputRef}
           />
-          {includeClearButton && !inputDisabled && (
+          {includeClearButton && !inputDisabled && inputValue.length > 0 && (
             <div className="usa-input-suffix" aria-hidden="true">
               <Button
-                id={`button-clear-${props.id}`}
+                id={`clear-${props.id}`}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 onClick={clearValue}
                 aria-label="clear text input."

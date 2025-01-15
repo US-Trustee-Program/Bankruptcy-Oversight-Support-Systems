@@ -82,6 +82,7 @@ export default function CaseNotes(props: CaseNotesProps) {
               className="case-note-header usa-tooltip"
               data-testid={`case-note-${idx}-header`}
               title={sanitizedCaseTitle}
+              aria-label={`Note Title: ${sanitizedCaseTitle}`}
             >
               {sanitizedCaseTitle}
             </h4>
@@ -150,7 +151,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             id="submit-case-note"
             uswdsStyle={UswdsButtonStyle.Default}
             onClick={putCaseNote}
-            aria-label="submit new case note."
+            aria-label="Add case note."
             ref={buttonRef}
           >
             Add Note
