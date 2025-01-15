@@ -6,7 +6,6 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { getFeatureFlags } from '../../adapters/utils/feature-flag';
 
 const MODULE_NAME = 'PRIVILEDGED-IDENTITY-ADMIN-CONTROLLER';
 
@@ -18,8 +17,7 @@ export class PriviledgedIdentityAdminController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<object | undefined>> {
     try {
-      const featureFlags = await getFeatureFlags(context.config);
-      if (!featureFlags['privileged-identity-management']) {
+      if (!context.featureFlags['privileged-identity-management']) {
         throw new UnauthorizedError(MODULE_NAME, { message: NOT_ENABLED });
       }
 
