@@ -98,10 +98,6 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  deleteMigrations(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
   update(..._ignore): Promise<any | void> {
     throw new Error('Method not implemented.');
   }

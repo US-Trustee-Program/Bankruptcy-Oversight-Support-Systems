@@ -1,19 +1,9 @@
-import {
-  ACMS_SYSTEM_USER_REFERENCE,
-  Auditable,
-  SYSTEM_USER_REFERENCE,
-} from '../../../../../common/src/cams/auditable';
-import {
-  ConsolidationFrom,
-  ConsolidationTo,
-  TransferFrom,
-  TransferTo,
-} from '../../../../../common/src/cams/events';
+import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import QueryBuilder from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -332,39 +322,6 @@ describe('Cases repository', () => {
       .mockRejectedValue(new CamsError('COSMOS_DB_REPOSITORY_CASES'));
     await expect(async () => await repo.createCaseHistory(caseHistory)).rejects.toThrow(
       'Unknown CAMS Error',
-    );
-  });
-
-  test('should deleteMigrations', async () => {
-    const deleteSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-      .mockResolvedValue(4);
-    const { or, equals } = QueryBuilder;
-    const query = QueryBuilder.build(
-      or(
-        equals<Auditable['updatedBy']>('updatedBy', ACMS_SYSTEM_USER_REFERENCE),
-        equals<ConsolidationFrom['documentType']>('documentType', 'CONSOLIDATION_FROM'),
-        equals<ConsolidationTo['documentType']>('documentType', 'CONSOLIDATION_TO'),
-      ),
-    );
-    await repo.deleteMigrations();
-    expect(deleteSpy).toHaveBeenCalledWith(query);
-  });
-
-  test('should handle errors during deleteMigrations', async () => {
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-      .mockRejectedValue(new Error('test error'));
-    await expect(async () => await repo.deleteMigrations()).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: 'Failed while deleting migrations.',
-          },
-        ]),
-      }),
     );
   });
 });
