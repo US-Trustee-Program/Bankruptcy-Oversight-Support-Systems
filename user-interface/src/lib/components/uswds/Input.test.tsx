@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import Input from './Input';
+import userEvent from '@testing-library/user-event';
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<InputRef>();
@@ -146,6 +147,27 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       expect(inputEl).toHaveClass('usa-input');
       expect(inputEl).toHaveClass('usa-tooltip');
       expect(inputEl).toHaveAttribute('data-position', 'right');
+    });
+
+    test('should not have clear button if input is empty and should appear once text is entered', async () => {
+      render(
+        <div>
+          <Input includeClearButton={true} id="input-1"></Input>
+        </div>,
+      );
+      let clearButton;
+      const inputEl = screen.getByTestId('input-1');
+      expect(inputEl).toBeInTheDocument();
+
+      clearButton = screen.queryByTestId('button-clear-input-1');
+      expect(clearButton).not.toBeInTheDocument();
+
+      await userEvent.type(inputEl, 'test input');
+
+      await waitFor(() => {
+        clearButton = screen.queryByTestId('button-clear-input-1');
+        expect(clearButton).toBeInTheDocument();
+      });
     });
   });
 });
