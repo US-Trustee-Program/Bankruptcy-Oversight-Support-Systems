@@ -62,16 +62,17 @@ export class UserSessionUseCase {
       user.roles = getRoles(jwt.claims.groups);
       user.offices = await getOffices(context, jwt.claims.groups);
 
+      // Overlay additional roles and offices.
       if (context.featureFlags['priviledged-identity-management']) {
         if (user.roles.includes(CamsRole.PrivilegedIdentityUser)) {
           try {
-            const privilegedIdentityUser = await usersRepository.getPrivilegedIdentityUser(user.id);
+            const pimUser = await usersRepository.getPrivilegedIdentityUser(user.id);
 
-            const roles = getRoles(privilegedIdentityUser.claims.groups);
+            const roles = getRoles(pimUser.claims.groups);
             const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
             user.roles = Array.from(rolesSet);
 
-            const offices = await getOffices(context, privilegedIdentityUser.claims.groups);
+            const offices = await getOffices(context, pimUser.claims.groups);
             const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
             user.offices = Array.from(officeSet);
           } catch (error) {
