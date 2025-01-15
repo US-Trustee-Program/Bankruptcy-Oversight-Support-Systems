@@ -1,4 +1,4 @@
-import { CaseNote } from '../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
@@ -22,6 +22,7 @@ describe('Test case-notes use case', () => {
   test('should create a case note when createCaseNote is called', async () => {
     const mockCase = MockData.getCaseBasics();
     const caseNoteContent = 'Some content relevant to the case.';
+    const caseNoteTitle = 'Some Case Note Title.';
     const user = MockData.getCamsUserReference();
 
     const context = await createMockApplicationContext();
@@ -31,14 +32,20 @@ describe('Test case-notes use case', () => {
       .mockImplementation(async () => {});
 
     const expectedNote: CaseNote = {
+      title: caseNoteTitle,
       documentType: 'NOTE',
       caseId: mockCase.caseId,
       updatedBy: user,
       updatedOn: expect.anything(),
       content: caseNoteContent,
     };
+    const caseNoteInput: CaseNoteInput = {
+      caseId: mockCase.caseId,
+      title: caseNoteTitle,
+      content: caseNoteContent,
+    };
+    await useCase.createCaseNote(user, caseNoteInput);
 
-    await useCase.createCaseNote(user, mockCase.caseId, caseNoteContent);
     expect(createSpy).toHaveBeenCalledWith(expectedNote);
   });
 });

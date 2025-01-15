@@ -21,7 +21,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
-  const { includeClearButton, ariaDescription, ...otherProps } = props;
+  const { includeClearButton, ariaDescription, errorMessage, ...otherProps } = props;
 
   const inputRef = useRef(null);
 
@@ -91,13 +91,13 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
           </div>
         )}
         <div
-          className={`usa-input-group ${props.errorMessage && props.errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
+          className={`usa-input-group ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
         >
           <input
             {...otherProps}
             className={`usa-input usa-tooltip ${props.className ?? ''}`}
-            aria-invalid={props.errorMessage ? 'true' : undefined}
-            aria-errormessage={props.errorMessage ? `${props.id}-input__error-message` : undefined}
+            aria-invalid={errorMessage ? 'true' : undefined}
+            aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
             data-position={props.position ?? 'right'}
             onChange={handleOnChange}
             onFocus={handleFocus}
@@ -125,9 +125,9 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
             </div>
           )}
         </div>
-        {props.errorMessage && props.errorMessage.length > 0 && (
+        {errorMessage && errorMessage.length > 0 && (
           <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
-            {props.errorMessage}
+            {errorMessage}
           </div>
         )}
       </div>

@@ -53,7 +53,7 @@ describe('Case Detail Header tests', () => {
             style={{ minHeight: '100px', height: '100px' }}
             data-testid="cams-header-test-id"
           ></header>
-          <CaseDetailScreen caseDetail={testCaseDetail} />
+          <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
           <div style={{ minHeight: '2000px', height: '2000px' }}></div>
         </div>
       </BrowserRouter>,
