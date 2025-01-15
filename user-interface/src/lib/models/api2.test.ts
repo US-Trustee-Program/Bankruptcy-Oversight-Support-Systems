@@ -114,20 +114,51 @@ describe('_Api2 functions', async () => {
 
   test('should call postCaseNote api function', async () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: ['some-note'] });
-    api2.Api2.postCaseNote('some-id', 'some note');
+    api2.Api2.postCaseNote({ caseId: 'some-id', title: 'some title', content: 'some note' });
     expect(postSpy).toHaveBeenCalled();
   });
 
-  test('should get through input validation and call postCaseNote', () => {
+  test('should get through input input content validation and call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const title = 'some title';
     const path = '/cases/some-id/notes';
-    api2.Api2.postCaseNote('some-id', inputPassedThroughApi);
-    expect(postSpy).toHaveBeenCalledWith(path, { note: inputPassedThroughApi }, {});
+    api2.Api2.postCaseNote({
+      caseId: 'some-id',
+      title,
+      content: inputPassedThroughApi,
+    });
+    expect(postSpy).toHaveBeenCalledWith(path, { title, content: inputPassedThroughApi }, {});
+  });
+
+  test('should get through input input title validation and call postCaseNote', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const content = 'come content';
+    const path = '/cases/some-id/notes';
+    api2.Api2.postCaseNote({
+      caseId: 'some-id',
+      title: inputPassedThroughApi,
+      content,
+    });
+    expect(postSpy).toHaveBeenCalledWith(path, { title: inputPassedThroughApi, content }, {});
   });
 
   test('should be rejected by input validation and not call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
-    api2.Api2.postCaseNote('some-id', inputBlockedFromApi);
+    api2.Api2.postCaseNote({
+      caseId: 'some-id',
+      title: inputBlockedFromApi,
+      content: inputBlockedFromApi,
+    });
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not call post if sanitized values are empty', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    api2.Api2.postCaseNote({
+      caseId: 'some-id',
+      title: '<script>foo</script>',
+      content: '<script>foo</script>',
+    });
     expect(postSpy).not.toHaveBeenCalled();
   });
 

@@ -3,7 +3,14 @@ import { ObjectKeyVal } from '../type-declarations/basic';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Actions, { ResourceActions } from '@common/cams/actions';
 import { Consolidation, ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
-import { CaseBasics, CaseDetail, CaseDocket, CaseNote, CaseSummary } from '@common/cams/cases';
+import {
+  CaseBasics,
+  CaseDetail,
+  CaseDocket,
+  CaseNote,
+  CaseNoteInput,
+  CaseSummary,
+} from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { AttorneyUser } from '@common/cams/users';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
@@ -21,9 +28,15 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
+const caseNotes = MockData.buildArray(() => MockData.getCaseNote({ caseId: '101-12-12345' }), 5);
 const caseActions = [Actions.ManageAssignments];
 const caseDetails = MockData.getCaseDetail({
-  override: { _actions: caseActions, chapter: '15' },
+  override: {
+    _actions: caseActions,
+    chapter: '15',
+    caseTitle: 'Test Case Title',
+    petitionLabel: 'Voluntary',
+  },
 });
 const courts = MockData.getCourts().slice(0, 5);
 
@@ -129,16 +142,13 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [],
     };
-  } else if (path.match(/\/cases\/999-99-00001/)) {
-    response = {
-      data: {
-        ...consolidationLeadCase,
-        consolidation,
-      },
-    };
   } else if (path.match(/\/cases\/[A-Z\d-]+\/docket/)) {
     response = {
       data: caseDocketEntries,
+    };
+  } else if (path.match(/\/cases\/[A-Z\d-]+\/notes/)) {
+    response = {
+      data: caseNotes,
     };
   } else if (path.match(/\/cases\/[A-Z\d-]+\/summary/i)) {
     response = {
@@ -175,6 +185,13 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/me/)) {
     response = {
       data: MockData.getCamsSession({ user: SUPERUSER.user }),
+    };
+  } else if (path.match(/\/cases\/999-99-00001/)) {
+    response = {
+      data: {
+        ...consolidationLeadCase,
+        consolidation,
+      },
     };
   } else {
     response = {
@@ -271,8 +288,8 @@ async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
   return get<CaseNote[]>(`/cases/${caseId}/notes`);
 }
 
-async function postCaseNote(caseId: string, note: string): Promise<void> {
-  await post(`/cases/${caseId}/notes`, { note }, {});
+async function postCaseNote(note: CaseNoteInput): Promise<void> {
+  await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
 
 async function putConsolidationOrderApproval(

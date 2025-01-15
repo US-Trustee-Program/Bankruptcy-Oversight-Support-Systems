@@ -47,6 +47,18 @@
       ]
     },
     {
+      "url": "http://localhost:3000/case-detail/999-99-00001/notes/",
+      "actions": [
+        "wait for element [data-testid='case-note-1'] to be visible",
+        "wait for element [data-testid='case-note-title-input'] to be visible",
+        "set field [data-testid='case-note-title-input'] to 'some Test title for pa11y'",
+        "wait for element [data-testid='textarea-note-content'] to be visible",
+        "set field [data-testid='textarea-note-content'] to 'some Test note for pa11y'",
+        "wait for element [data-testid='button-submit-case-note'] to be visible",
+        "click element [data-testid='button-submit-case-note']"
+      ]
+    },
+    {
       "url": "http://localhost:3000/search",
       "actions": [
         "wait for element .search-screen to be visible",

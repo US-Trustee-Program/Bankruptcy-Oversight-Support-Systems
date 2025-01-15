@@ -1,5 +1,12 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
-import { CaseBasics, CaseDetail, CaseDocket, CaseNote, CaseSummary } from '@common/cams/cases';
+import {
+  CaseBasics,
+  CaseDetail,
+  CaseDocket,
+  CaseNote,
+  CaseNoteInput,
+  CaseSummary,
+} from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { Consolidation } from '@common/cams/events';
@@ -233,10 +240,14 @@ async function getCaseNotes(caseId: string) {
   return api().get<CaseNote[]>(`/cases/${caseId}/notes`);
 }
 
-async function postCaseNote(caseId: string, note: string): Promise<void> {
-  const sanitizedNote = sanitizeText(note);
-  if (sanitizedNote.length > 0 && isValidUserInput(sanitizedNote)) {
-    await api().post<Partial<CaseNote>>(`/cases/${caseId}/notes`, { note: sanitizedNote });
+async function postCaseNote(note: CaseNoteInput): Promise<void> {
+  const sanitizedNote = sanitizeText(note.content);
+  const sanitizedTitle = sanitizeText(note.title);
+  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+    await api().post<CaseNoteInput>(`/cases/${note.caseId}/notes`, {
+      title: sanitizedTitle,
+      content: sanitizedNote,
+    });
   }
 }
 
