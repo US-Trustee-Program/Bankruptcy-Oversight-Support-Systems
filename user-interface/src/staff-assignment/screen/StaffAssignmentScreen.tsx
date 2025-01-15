@@ -45,6 +45,7 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
 
 export const StaffAssignmentScreen = () => {
   const screenTitle = 'Staff Assignment';
+  const excludeChildCases = true;
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -90,6 +91,7 @@ export const StaffAssignmentScreen = () => {
           <SearchResults
             id="search-results"
             searchPredicate={searchPredicate}
+            excludeChildCases={excludeChildCases}
             noResultsMessage="No cases currently assigned."
             header={StaffAssignmentHeader}
             row={StaffAssignmentRowClosure}

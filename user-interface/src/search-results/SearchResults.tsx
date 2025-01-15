@@ -41,6 +41,7 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   noResultsMessage?: string;
   header: (props: SearchResultsHeaderProps) => JSX.Element;
   row: (props: SearchResultsRowProps) => JSX.Element;
+  excludeChildCases?: boolean;
 };
 
 export function SearchResults(props: SearchResultsProps) {
@@ -54,6 +55,8 @@ export function SearchResults(props: SearchResultsProps) {
     row: Row,
     ...otherProps
   } = props;
+  const excludeChildCases = props.excludeChildCases ?? false;
+
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
@@ -107,7 +110,7 @@ export function SearchResults(props: SearchResultsProps) {
     setIsSearching(true);
     if (onStartSearching) onStartSearching();
     api
-      .searchCases(searchPredicate, { includeAssignments: true })
+      .searchCases(searchPredicate, { includeAssignments: true, excludeChildCases })
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {

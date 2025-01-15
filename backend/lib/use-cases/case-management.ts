@@ -48,7 +48,9 @@ export default class CaseManagement {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
+    excludeChildCases: boolean,
   ): Promise<ResourceActions<CaseBasics>[]> {
+    const casesRepo = Factory.getCasesRepository(context);
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
@@ -58,11 +60,31 @@ export default class CaseManagement {
             caseIdSet.add(caseAssignment.caseId);
           });
         }
+
         predicate.caseIds = Array.from(caseIdSet);
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length == 0) {
           return [];
+        }
+      }
+
+      // TODO: Looks like our premise here is faulty.  This was in the condition of predicate.assignments,
+      // however, if user is visiting the assignments screen, we won't have predicate.assignments.  Additionally,
+      // as a result, we don't have any predicate.caseIds.
+      if (excludeChildCases) {
+        const consolidationChildCases = await casesRepo.getConsolidations(
+          predicate.caseIds,
+          excludeChildCases,
+        );
+
+        if (consolidationChildCases.length > 0) {
+          const filteredCaseIds = predicate.caseIds.filter((caseId) =>
+            consolidationChildCases.some((consolidation) => {
+              return consolidation.caseId === caseId;
+            }),
+          );
+          predicate.caseIds = filteredCaseIds;
         }
       }
 

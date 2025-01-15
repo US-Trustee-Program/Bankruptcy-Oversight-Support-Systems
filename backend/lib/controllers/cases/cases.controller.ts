@@ -19,6 +19,7 @@ function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
 
 type SearchOptions = {
   includeAssignments?: string;
+  excludeChildCases?: string;
 };
 
 export class CasesController implements CamsController {
@@ -57,20 +58,23 @@ export class CasesController implements CamsController {
   public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
     const options = request.query as SearchOptions;
-    const includeAssignments = options?.includeAssignments === 'true';
-    const body = await this.paginateSearchCases(predicate, request.url, !!includeAssignments);
+    const body = await this.paginateSearchCases(predicate, request.url, options);
     return body;
   }
 
   async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
-    includeAssignments: boolean,
+    options: SearchOptions,
   ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
+    const includeAssignments = options?.includeAssignments === 'true';
+    const excludeChildCases = options?.excludeChildCases === 'true';
+
     const cases = await this.caseManagement.searchCases(
       this.applicationContext,
       predicate,
       includeAssignments,
+      excludeChildCases,
     );
 
     const pagination: Pagination = {

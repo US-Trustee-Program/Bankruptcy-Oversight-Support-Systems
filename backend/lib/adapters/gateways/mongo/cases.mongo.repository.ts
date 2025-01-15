@@ -7,7 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -16,7 +16,7 @@ import { ACMS_SYSTEM_USER_REFERENCE, Auditable } from '../../../../../common/src
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, or, equals, regex } = QueryBuilder;
+const { and, or, equals, regex, contains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -116,6 +116,38 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
           message: `Failed to retrieve consolidation for ${caseId}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
+    }
+  }
+
+  async getConsolidations(
+    caseIds: string[],
+    excludeChildCases: boolean = false,
+  ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+    try {
+      let query: ConditionOrConjunction;
+      if (excludeChildCases) {
+        query = QueryBuilder.build(
+          and(
+            equals<string>('otherCase.status', 'approved'),
+            equals<string>('documentType', 'CONSOLIDATION_TO'),
+            contains<string[]>('caseId', caseIds),
+          ),
+        );
+      } else {
+        query = QueryBuilder.build(
+          and(regex('documentType', '^CONSOLIDATION'), contains<string[]>('caseId', caseIds)),
+        );
+      }
+      const adapter = this.getAdapter<ConsolidationTo | ConsolidationFrom>();
+      return await adapter.find(query);
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve consolidation for ${caseIds.join(', ')}.`,
           module: MODULE_NAME,
         },
       });
