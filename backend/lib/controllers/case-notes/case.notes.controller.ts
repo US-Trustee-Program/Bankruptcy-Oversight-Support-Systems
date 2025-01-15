@@ -6,7 +6,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
 import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
-import { CaseNotesForbidden } from './case.notes.exception';
+import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
@@ -55,7 +55,11 @@ export class CaseNotesController implements CamsController {
     }
   }
 
-  private validateRequestParameters(caseId: string, noteContent: unknown, noteTitle: unknown) {
+  private validateRequestParameters(
+    caseId: string,
+    noteContent: string | null,
+    noteTitle: string | null,
+  ) {
     const badParams = [];
     const messages = [];
     if (!caseId) {
@@ -66,13 +70,13 @@ export class CaseNotesController implements CamsController {
 
     if (!noteTitle) {
       badParams.push('case note title');
-    } else if (!isValidUserInput(noteTitle as string)) {
+    } else if (!isValidUserInput(noteTitle)) {
       messages.push(INVALID_NOTE_TITLE_MESSAGE);
     }
 
     if (!noteContent) {
       badParams.push('case note content');
-    } else if (!isValidUserInput(noteContent as string)) {
+    } else if (!isValidUserInput(noteContent)) {
       messages.push(INVALID_NOTE_MESSAGE);
     }
 
@@ -82,7 +86,7 @@ export class CaseNotesController implements CamsController {
       messages.push(message);
     }
     if (messages.length) {
-      throw new CaseNotesForbidden(MODULE_NAME, { message: messages.join(' ') });
+      throw new ForbiddenCaseNotesError(MODULE_NAME, { message: messages.join(' ') });
     }
   }
 }
