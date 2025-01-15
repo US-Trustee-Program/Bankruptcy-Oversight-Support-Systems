@@ -62,24 +62,26 @@ export class UserSessionUseCase {
       user.roles = getRoles(jwt.claims.groups);
       user.offices = await getOffices(context, jwt.claims.groups);
 
-      if (user.roles.includes(CamsRole.PrivilegedIdentityUser)) {
-        try {
-          const privilegedIdentityUser = await usersRepository.getPrivilegedIdentityUser(user.id);
+      if (context.featureFlags['priviledged-identity-management']) {
+        if (user.roles.includes(CamsRole.PrivilegedIdentityUser)) {
+          try {
+            const privilegedIdentityUser = await usersRepository.getPrivilegedIdentityUser(user.id);
 
-          const roles = getRoles(privilegedIdentityUser.claims.groups);
-          const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
-          user.roles = Array.from(rolesSet);
+            const roles = getRoles(privilegedIdentityUser.claims.groups);
+            const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
+            user.roles = Array.from(rolesSet);
 
-          const offices = await getOffices(context, privilegedIdentityUser.claims.groups);
-          const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
-          user.offices = Array.from(officeSet);
-        } catch (error) {
-          // Silently log the failure so the user can continue without permission elevation.
-          context.logger.error(
-            MODULE_NAME,
-            `Failed to elevate permissions for user ${user.name} (${user.id}).`,
-            error.message,
-          );
+            const offices = await getOffices(context, privilegedIdentityUser.claims.groups);
+            const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
+            user.offices = Array.from(officeSet);
+          } catch (error) {
+            // Silently log the failure so the user can continue without permission elevation.
+            context.logger.error(
+              MODULE_NAME,
+              `Failed to elevate permissions for user ${user.name} (${user.id}).`,
+              error.message,
+            );
+          }
         }
       }
 
