@@ -120,7 +120,7 @@ describe('user-session.gateway test', () => {
     const jwtClaims: CamsJwtClaims = {
       ...claims,
       groups: [
-        'USTP CAMS Privileged Identity User',
+        'USTP CAMS Privileged Identity Management',
         'USTP CAMS Data Verifier',
         'USTP CAMS Trial Attorney',
         'USTP CAMS Region 2 Office Manhattan',
@@ -189,7 +189,7 @@ describe('user-session.gateway test', () => {
   test('should return valid session and silently log augmentation error', async () => {
     const jwtClaims: CamsJwtClaims = {
       ...claims,
-      groups: ['USTP CAMS Privileged Identity User'],
+      groups: ['USTP CAMS Privileged Identity Management'],
     };
     const jwt: CamsJwt = {
       header: jwtHeader,

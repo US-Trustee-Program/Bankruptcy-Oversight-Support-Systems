@@ -30,6 +30,6 @@ describe('map get', () => {
 
   test('should return a key (user group name) calling getPrivilegedIdentityUserRoleKey', () => {
     const key = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
-    expect(key).toEqual('USTP CAMS Privileged Identity User');
+    expect(key).toEqual('USTP CAMS Privileged Identity Management');
   });
 });
