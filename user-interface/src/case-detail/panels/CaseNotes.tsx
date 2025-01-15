@@ -67,7 +67,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           buttonRef.current?.disableButton(false);
         });
     } else {
-      globalAlert?.error('Case Note missing required information.');
+      globalAlert?.error('All case note input fields are required to submit a note.');
     }
   }
 

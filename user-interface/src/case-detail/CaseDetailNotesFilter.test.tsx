@@ -161,6 +161,19 @@ describe('Case Note Tests', async () => {
       const notesListAfter = screen.queryByTestId('searchable-case-notes');
       expect(notesListAfter).not.toBeInTheDocument();
     });
+
+    let clearButton;
+    await waitFor(() => {
+      clearButton = screen.queryByTestId('clear-filters');
+      expect(clearButton).toBeInTheDocument();
+    });
+
+    clearButton = screen.queryByTestId('clear-filters');
+    fireEvent.click(clearButton!);
+    await waitFor(() => {
+      searchInput = screen.queryByTestId('case-note-search-input');
+      expect(searchInput?.innerText).toBe(undefined);
+    });
   });
 
   const panelVisibleOptions = [[testFullCaseNotes], [[]]];

@@ -203,7 +203,9 @@ describe('case note tests', () => {
     await userEvent.click(button);
 
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Case Note missing required information.');
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        'All case note input fields are required to submit a note.',
+      );
     });
   });
 
@@ -227,7 +229,9 @@ describe('case note tests', () => {
     await userEvent.click(button);
 
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Case Note missing required information.');
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        'All case note input fields are required to submit a note.',
+      );
     });
   });
 
@@ -251,7 +255,9 @@ describe('case note tests', () => {
     await userEvent.click(button);
 
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Case Note missing required information.');
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        'All case note input fields are required to submit a note.',
+      );
     });
   });
 });
