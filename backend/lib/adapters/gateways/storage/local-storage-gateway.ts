@@ -10,8 +10,8 @@ export const ROLE_MAPPING_PATH = '/rolemapping.csv';
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
   'USTP_CAMS_Super_User,USTP CAMS Super User,SuperUser\n' +
-  'USTP_CAMS_PRIVILEGED_IDENTITY_USER,USTP CAMS Privileged Identity User,PrivilegedIdentityUser\n' +
-  'USTP_CAMS_Case_assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
+  'USTP_CAMS_Privileged_Identity_Management,USTP CAMS Privileged Identity Management,PrivilegedIdentityUser\n' +
+  'USTP_CAMS_Case_Assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
   'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
   'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n';
 
