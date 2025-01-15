@@ -71,7 +71,7 @@
         "set field [data-testid='basic-search-field'] to 99-99999",
         "click element #search-submit",
         "wait for element #search-error-alert to be visible",
-        "click element #button-clear-basic-search-field",
+        "click element #clear-basic-search-field",
         "click element #search-submit",
         "wait for element [data-testid='alert-default-state-alert'] to be visible",
         "click element [data-testid='button-court-selections-search-expand']",
