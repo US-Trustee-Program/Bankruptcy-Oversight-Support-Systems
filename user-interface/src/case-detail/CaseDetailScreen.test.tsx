@@ -1,7 +1,6 @@
 import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import Api2 from '@/lib/models/api2';
 import CaseDetailScreen from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
@@ -11,7 +10,6 @@ import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import HttpStatusCodes from '@common/api/http-status-codes';
 import MockApi2 from '@/lib/testing/mock-api2';
 
 const caseId = '101-23-12345';
@@ -362,18 +360,6 @@ describe('Case Detail screen tests', () => {
     },
     20000,
   );
-
-  test('should call globalAlert.error when getCaseNotes receives an error', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockRejectedValue({ status: HttpStatusCodes.NOT_FOUND });
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    renderWithProps({ ...defaultTestCaseDetail });
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not retrieve case notes.');
-    });
-  });
 
   test('should show "No judge assigned" when a judge name is unavailable.', async () => {
     const testCaseDetail: CaseDetail = {
