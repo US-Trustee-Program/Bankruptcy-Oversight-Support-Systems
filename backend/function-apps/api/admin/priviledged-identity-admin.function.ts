@@ -26,7 +26,7 @@ export default async function handler(
 }
 
 app.http('admin', {
-  methods: ['DELETE', 'GET', 'POST', 'PUT'],
+  methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
   route: 'dev-tools/priviledged-identity/{resourceId}',
