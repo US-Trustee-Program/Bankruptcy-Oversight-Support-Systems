@@ -72,8 +72,8 @@ export default function CaseNotes(props: CaseNotesProps) {
   }
 
   function showCaseNotes(note: CaseNote, idx: number) {
-    const purifiedCaseNote = sanitizeText(note.content);
-    const purifiedCaseTitle = sanitizeText(note.title);
+    const sanitizedCaseNote = sanitizeText(note.content);
+    const sanitizedCaseTitle = sanitizeText(note.title);
     return (
       <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
         <div className="grid-row case-note-title-and-date">
@@ -81,9 +81,9 @@ export default function CaseNotes(props: CaseNotesProps) {
             <h4
               className="case-note-header usa-tooltip"
               data-testid={`case-note-${idx}-header`}
-              title={purifiedCaseTitle}
+              title={sanitizedCaseTitle}
             >
-              {purifiedCaseTitle}
+              {sanitizedCaseTitle}
             </h4>
           </div>
           <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
@@ -97,7 +97,7 @@ export default function CaseNotes(props: CaseNotesProps) {
               data-testid={`case-note-${idx}-text`}
               aria-label="full text of case note"
             >
-              {purifiedCaseNote}
+              {sanitizedCaseNote}
             </div>
           </div>
         </div>
