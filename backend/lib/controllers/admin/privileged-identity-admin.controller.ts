@@ -7,12 +7,12 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 
-const MODULE_NAME = 'PRIVILEDGED-IDENTITY-ADMIN-CONTROLLER';
+const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-CONTROLLER';
 
 const UNSUPPORTED_HTTP_METHOD = 'Unsupported HTTP Method';
-const NOT_ENABLED = 'Priviledged identity management feature is not enabled.';
+const NOT_ENABLED = 'Privileged identity management feature is not enabled.';
 
-export class PriviledgedIdentityAdminController implements CamsController {
+export class PrivilegedIdentityAdminController implements CamsController {
   public async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<object | undefined>> {

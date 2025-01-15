@@ -126,9 +126,10 @@ export class AdminUseCase {
     }
   }
 
-  public async deletePrivilegedIdentityUser(_context: ApplicationContext, _userId: string) {
+  public async deletePrivilegedIdentityUser(context: ApplicationContext, userId: string) {
     try {
-      throw new Error('not implemented');
+      const gateway = Factory.getUsersRepository(context);
+      await gateway.deletePrivilegedIdentityUser(userId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -140,7 +141,7 @@ export class AdminUseCase {
     options: { groups: string[]; expires?: string },
   ) {
     const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
-      message: 'User does not have priviledged identity permission.',
+      message: 'User does not have privileged identity permission.',
     });
 
     try {

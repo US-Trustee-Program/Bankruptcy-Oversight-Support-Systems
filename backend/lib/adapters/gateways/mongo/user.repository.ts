@@ -84,4 +84,26 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  async deletePrivilegedIdentityUser(id: string): Promise<void> {
+    const query = QueryBuilder.build(
+      and(
+        equals<PrivilegedIdentityUser['id']>('id', id),
+        equals<PrivilegedIdentityUser['documentType']>('documentType', 'PRIVILEGED_IDENTITY_USER'),
+      ),
+    );
+
+    try {
+      const result = await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);
+      if (result !== 1) {
+        throw new UnknownError(MODULE_NAME);
+      }
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to delete privileged identity user ${id}.`,
+      );
+    }
+  }
 }

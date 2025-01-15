@@ -63,7 +63,7 @@ export class UserSessionUseCase {
       user.offices = await getOffices(context, jwt.claims.groups);
 
       // Overlay additional roles and offices.
-      if (context.featureFlags['priviledged-identity-management']) {
+      if (context.featureFlags['privileged-identity-management']) {
         if (user.roles.includes(CamsRole.PrivilegedIdentityUser)) {
           try {
             const pimUser = await usersRepository.getPrivilegedIdentityUser(user.id);

@@ -93,4 +93,25 @@ describe('User repository tests', () => {
     const expected = new NotFoundError(expect.anything());
     await expect(repo.getPrivilegedIdentityUser('test-user')).rejects.toThrow(expected);
   });
+
+  test('should delete privileged identity user', async () => {
+    const deleteSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+      .mockResolvedValue(1);
+
+    await repo.deletePrivilegedIdentityUser('test-user');
+    expect(deleteSpy).toHaveBeenCalled();
+  });
+
+  test('should throw when deleting privileged identity user errors', async () => {
+    const deleteSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+      .mockRejectedValue(new Error('some unknown error'));
+
+    const expected = new UnknownError(expect.anything(), {
+      message: 'Failed to delete privileged identity user test-user.',
+    });
+    await expect(repo.deletePrivilegedIdentityUser('test-user')).rejects.toThrow(expected);
+    expect(deleteSpy).toHaveBeenCalled();
+  });
 });

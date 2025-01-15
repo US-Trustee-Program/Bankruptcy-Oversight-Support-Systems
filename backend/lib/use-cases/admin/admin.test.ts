@@ -105,11 +105,11 @@ describe('Admin Use Case', () => {
     );
   });
 
-  const priviledgedIdentityUserSuccessCases = [
+  const privilegedIdentityUserSuccessCases = [
     ['no expiration', undefined],
     ['expiration', '2025-01-14T00:00:00.000Z'],
   ];
-  test.each(priviledgedIdentityUserSuccessCases)(
+  test.each(privilegedIdentityUserSuccessCases)(
     'should add roles and offices to PrivilegedIdentityUser with %s',
     async (_caseName: string, expires: string) => {
       const users = MockData.buildArray(MockData.getCamsUser, 4);
@@ -168,7 +168,7 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
-    ).rejects.toThrow('User does not have priviledged identity permission.');
+    ).rejects.toThrow('User does not have privileged identity permission.');
   });
 
   test('should throw an error if no users exist in the privileged identity user group', async () => {
@@ -181,7 +181,7 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
-    ).rejects.toThrow('User does not have priviledged identity permission.');
+    ).rejects.toThrow('User does not have privileged identity permission.');
 
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
@@ -191,7 +191,7 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
-    ).rejects.toThrow('User does not have priviledged identity permission.');
+    ).rejects.toThrow('User does not have privileged identity permission.');
   });
 
   test('should return privileged identity users', async () => {
@@ -263,5 +263,25 @@ describe('Admin Use Case', () => {
 
     const expected = new UnknownError(expect.anything());
     await expect(useCase.getRoleAndOfficeGroupNames(context)).rejects.toThrow(expected);
+  });
+
+  test('should delete privileged identity user', async () => {
+    const deleteSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'deletePrivilegedIdentityUser')
+      .mockResolvedValue();
+    const userId = 'user-id';
+    await useCase.deletePrivilegedIdentityUser(context, userId);
+    expect(deleteSpy).toHaveBeenCalledWith(userId);
+  });
+
+  test('should throw when error is encountered during delete of privileged identity user', async () => {
+    const error = new Error('some unknown error');
+    const deleteSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'deletePrivilegedIdentityUser')
+      .mockRejectedValue(error);
+
+    const userId = 'user-id';
+    await expect(useCase.deletePrivilegedIdentityUser(context, userId)).rejects.toThrow();
+    expect(deleteSpy).toHaveBeenCalledWith(userId);
   });
 });
