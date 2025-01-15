@@ -25,7 +25,7 @@ import {
   Order,
 } from '@common/cams/orders';
 import { CasesSearchPredicate } from '@common/api/search';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNotes = MockData.buildArray(() => MockData.getCaseNote({ caseId: '101-12-12345' }), 5);
@@ -176,7 +176,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   } else if (path.match(/\/offices/)) {
     response = {
-      data: USTP_OFFICES_ARRAY,
+      data: MOCKED_USTP_OFFICES_ARRAY,
     };
   } else if (path.match(/\/courts/)) {
     response = {
