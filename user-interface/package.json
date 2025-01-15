@@ -5,8 +5,6 @@
   "license": "CC0 v1.0",
   "description": "Bankruptcy Oversight Support System - Graphical Frontend User Interface",
   "dependencies": {
-    "@azure/msal-browser": "^3.28.1",
-    "@azure/msal-react": "^2.2.0",
     "@cams/common": "file:../common/dist",
     "@microsoft/applicationinsights-react-js": "^17.3.4",
     "@microsoft/applicationinsights-web": "^3.3.4",
