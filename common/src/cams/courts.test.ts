@@ -6,33 +6,31 @@ describe('common court library tests', () => {
   test('should filter court offices list by court division', async () => {
     const expectedOffices = [
       {
-        courtDivisionCode: '3N3',
+        officeName: 'New Orleans',
+        officeCode: '2',
+        courtId: '053L',
+        courtName: 'Eastern District of Louisiana',
+        courtDivisionCode: '302',
+        courtDivisionName: 'New Orleans',
         groupDesignator: 'NR',
-        courtId: '053N',
-        officeName: '',
-        officeCode: '3',
-        state: 'LA',
-        courtName: 'Middle District of Louisiana',
-        courtDivisionName: 'Baton Rouge',
-        regionId: '05',
+        regionId: '5',
         regionName: 'NEW ORLEANS',
       },
       {
-        courtDivisionCode: '3N4',
-        groupDesignator: 'NR',
+        officeName: 'Baton Rouge',
+        officeCode: '3',
         courtId: '053N',
-        officeName: '',
-        officeCode: '4',
-        state: 'LA',
         courtName: 'Middle District of Louisiana',
-        courtDivisionName: 'Opelousas',
-        regionId: '05',
+        courtDivisionCode: '313',
+        courtDivisionName: 'Baton Rouge',
+        groupDesignator: 'NR',
+        regionId: '5',
         regionName: 'NEW ORLEANS',
       },
     ];
-    const newOfficeList = filterCourtByDivision('3N3', COURT_DIVISIONS);
+    const newOfficeList = filterCourtByDivision('313', COURT_DIVISIONS);
 
-    expect(newOfficeList.length).toEqual(2);
+    expect(newOfficeList.length).toEqual(1);
     expect(newOfficeList).toEqual(expect.arrayContaining([...expectedOffices]));
   });
 
