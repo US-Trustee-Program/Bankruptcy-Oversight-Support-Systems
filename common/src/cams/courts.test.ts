@@ -6,17 +6,6 @@ describe('common court library tests', () => {
   test('should filter court offices list by court division', async () => {
     const expectedOffices = [
       {
-        officeName: 'New Orleans',
-        officeCode: '2',
-        courtId: '053L',
-        courtName: 'Eastern District of Louisiana',
-        courtDivisionCode: '302',
-        courtDivisionName: 'New Orleans',
-        groupDesignator: 'NR',
-        regionId: '5',
-        regionName: 'NEW ORLEANS',
-      },
-      {
         officeName: 'Baton Rouge',
         officeCode: '3',
         courtId: '053N',
