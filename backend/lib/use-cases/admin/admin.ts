@@ -21,8 +21,12 @@ export type CreateStaffRequestBody = Staff & {
   ttl?: number;
 };
 
+type RoleAndOfficeGroupNames = {
+  roles: string[];
+  offices: string[];
+};
 export class AdminUseCase {
-  private privilegedIdentityClaimGroups: string[];
+  private roleAndOfficeGroupNames: RoleAndOfficeGroupNames;
 
   /**
    * addOfficeStaff
@@ -70,20 +74,24 @@ export class AdminUseCase {
     }
   }
 
-  // TODO: Expose the PrivilegedIdentityUser functions through the web API to drive drop down in the UI.
-  public async getPrivilegedIdentityClaimGroups(context: ApplicationContext): Promise<string[]> {
-    // TODO: We could just query the Okta API for the group names, but we would have to refactor the CamsGroup to return the underlying IdP group name.
+  public async getRoleAndOfficeGroupNames(
+    context: ApplicationContext,
+  ): Promise<RoleAndOfficeGroupNames> {
     try {
-      if (!this.privilegedIdentityClaimGroups) {
+      if (!this.roleAndOfficeGroupNames) {
         const officeGateway = getOfficesGateway(context);
 
         const offices = await officeGateway.getOffices(context);
         const officeGroups = offices.map((office) => office.idpGroupId);
         const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
-        this.privilegedIdentityClaimGroups = [...officeGroups, ...roleGroups];
+
+        this.roleAndOfficeGroupNames = {
+          roles: roleGroups,
+          offices: officeGroups,
+        };
       }
 
-      return this.privilegedIdentityClaimGroups;
+      return this.roleAndOfficeGroupNames;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -118,13 +126,21 @@ export class AdminUseCase {
     }
   }
 
-  public async augmentUser(
+  public async deletePrivilegedIdentityUser(_context: ApplicationContext, _userId: string) {
+    try {
+      throw new Error('not implemented');
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async upsertPrivilegedIdentityUser(
     context: ApplicationContext,
     userId: string,
     options: { groups: string[]; expires?: string },
   ) {
     const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
-      message: 'User does not have permission to be augmented.',
+      message: 'User does not have priviledged identity permission.',
     });
 
     try {
@@ -170,7 +186,7 @@ export class AdminUseCase {
         throw new UnknownError(MODULE_NAME, { message: 'Failed to add privileged identity user.' });
       }
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to augment user.');
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to add privileged identity user.');
     }
   }
 }

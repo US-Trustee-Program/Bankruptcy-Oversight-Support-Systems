@@ -19,6 +19,7 @@ export default async function handler(
       logger,
       request,
     });
+    // TODO: change this guard to check if the user has a super user role.
     if (applicationContext.request.body.apiKey !== process.env.ADMIN_KEY) {
       throw new UnauthorizedError(MODULE_NAME, {
         message: 'API key was missing or did not match.',
