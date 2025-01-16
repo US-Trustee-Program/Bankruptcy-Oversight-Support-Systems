@@ -108,7 +108,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
             ref={inputRef}
           />
           {includeClearButton && !inputDisabled && inputValue.length > 0 && (
-            <div className="usa-input-suffix" aria-hidden="true">
+            <div className="usa-input-suffix">
               <Button
                 id={`clear-${props.id}`}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
