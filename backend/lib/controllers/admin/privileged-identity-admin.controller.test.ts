@@ -3,8 +3,9 @@ import { AdminUseCase } from '../../use-cases/admin/admin';
 import { PrivilegedIdentityAdminController } from './privileged-identity-admin.controller';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { CamsRole } from '../../../../common/src/cams/roles';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 
 describe('Privileged identity admin controller tests', () => {
   let controller: PrivilegedIdentityAdminController;
@@ -24,11 +25,11 @@ describe('Privileged identity admin controller tests', () => {
     context.request.params.resourceId = 'groups';
     context.featureFlags['privileged-identity-management'] = false;
 
-    await expect(controller.handleRequest(context)).rejects.toThrow(
-      new UnauthorizedError(expect.anything(), {
-        message: 'Privileged identity management feature is not enabled.',
-      }),
-    );
+    const expected = expect.objectContaining({
+      status: HttpStatusCodes.FORBIDDEN,
+      message: 'Privileged identity management feature is not enabled.',
+    });
+    await expect(controller.handleRequest(context)).rejects.toThrow(expected);
   });
 
   test('should not perform operations when user is not a super admin', async () => {
@@ -38,7 +39,7 @@ describe('Privileged identity admin controller tests', () => {
     context.featureFlags['privileged-identity-management'] = true;
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
-      new UnauthorizedError(expect.anything()),
+      new ForbiddenError(expect.anything()),
     );
   });
 
