@@ -19,6 +19,7 @@ function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
 
 type SearchOptions = {
   includeAssignments?: string;
+  excludeChildCases?: string;
 };
 
 export class CasesController implements CamsController {
@@ -57,20 +58,23 @@ export class CasesController implements CamsController {
   public async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
     const options = request.query as SearchOptions;
-    const includeAssignments = options?.includeAssignments === 'true';
-    const body = await this.paginateSearchCases(predicate, request.url, !!includeAssignments);
+    const body = await this.paginateSearchCases(predicate, request.url, options);
     return body;
   }
 
   async paginateSearchCases(
     predicate: CasesSearchPredicate,
     url: string,
-    includeAssignments: boolean,
+    options: SearchOptions,
   ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
+    const includeAssignments = options?.includeAssignments === 'true';
+    const excludeChildCases = options?.excludeChildCases === 'true';
+
     const cases = await this.caseManagement.searchCases(
       this.applicationContext,
       predicate,
       includeAssignments,
+      excludeChildCases,
     );
 
     const pagination: Pagination = {
@@ -79,7 +83,10 @@ export class CasesController implements CamsController {
       currentPage: getCurrentPage(cases.length, predicate),
     };
 
-    if (cases.length > predicate.limit) {
+    //TODO: Move excludeChildCases into the predicate
+    //TODO: we need to ahndle pagination in a better way than this if consolidations are filtered out
+    //Replace Pagination with infinity scrolling with a Load More button?
+    if (cases.length > predicate.limit || excludeChildCases) {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());

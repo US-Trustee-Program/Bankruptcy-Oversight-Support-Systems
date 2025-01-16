@@ -260,6 +260,31 @@ describe('Case management tests', () => {
       expect(actual).toEqual(expected);
     });
 
+    test('should filter cases that are children of a consolidation', async () => {
+      const officeName = 'Test Office';
+      const filteredCaseId = '111-22-33333';
+      const consolidationToFilter = MockData.getConsolidationTo({
+        override: { caseId: filteredCaseId },
+      });
+
+      jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
+
+      const expectedCases = MockData.buildArray(MockData.getCaseBasics, 4);
+      const filteredCase = MockData.getCaseBasics({ override: { caseId: filteredCaseId } });
+      const inputCases = [...expectedCases, filteredCase];
+
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(inputCases);
+      const consolidationMap = new Map();
+      consolidationMap.set(filteredCaseId, consolidationToFilter);
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getConsolidationChildCases')
+        .mockResolvedValue(consolidationMap);
+
+      const actual = await useCase.searchCases(applicationContext, {}, false, true);
+
+      expect(actual).toEqual(expectedCases);
+    });
+
     test('should throw an AssignmentError when CaseAssignmentUseCase.findAssignmentsByCaseId throws an error', async () => {
       const bCase = MockData.getCaseDetail({ override: { caseId: 'ThrowError' } });
 
@@ -379,6 +404,17 @@ describe('Case management tests', () => {
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         expectedError,
       );
+    });
+
+    test('should return empty array when no caseIds provided for searchCases when assignments are present', async () => {
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
+      const caseIds = ['081-00-12345', '081-11-23456', '091-12-34567'];
+      const assignments = caseIds.map((caseId) => MockData.getAttorneyAssignment({ caseId }));
+      jest
+        .spyOn(useCase.assignmentGateway, 'findAssignmentsByAssignee')
+        .mockResolvedValue(assignments);
+      const result = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
+      expect(result).toEqual([]);
     });
 
     test('should throw CamsError', async () => {

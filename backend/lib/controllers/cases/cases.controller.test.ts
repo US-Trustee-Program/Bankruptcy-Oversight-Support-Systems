@@ -359,7 +359,7 @@ describe('cases controller test', () => {
           query: args.options,
         });
         await controller.searchCases(camsHttpRequest);
-        expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected, args.result);
+        expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected, args.result, false);
       },
     );
 

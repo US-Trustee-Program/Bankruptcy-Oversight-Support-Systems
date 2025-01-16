@@ -90,6 +90,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getConsolidationChildCases(..._ignore): Promise<Map<string, ConsolidationTo>> {
+    throw new Error('Method not implemented.');
+  }
+
   getCaseHistory(..._ignore): Promise<CaseHistory[]> {
     throw new Error('Method not implemented.');
   }

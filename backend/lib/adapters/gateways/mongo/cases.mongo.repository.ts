@@ -16,7 +16,7 @@ import { ACMS_SYSTEM_USER_REFERENCE, Auditable } from '../../../../../common/src
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, or, equals, regex } = QueryBuilder;
+const { and, or, equals, regex, contains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -123,6 +123,36 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  async getConsolidationChildCases(caseIds: string[]): Promise<Map<string, ConsolidationTo>> {
+    try {
+      // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
+      const query = QueryBuilder.build(
+        and(
+          equals<string>('documentType', 'CONSOLIDATION_TO'),
+          contains<string[]>('caseId', caseIds),
+        ),
+      );
+      const adapter = this.getAdapter<ConsolidationTo>();
+      const consolidations = await adapter.find(query);
+
+      const consolidationsMap = new Map();
+      consolidations.forEach((consolidation) => {
+        if (caseIds.includes(consolidation.caseId)) {
+          consolidationsMap.set(consolidation.caseId, consolidation);
+        }
+      });
+      return consolidationsMap;
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve consolidations for ${caseIds.join(', ')}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
+    }
+  }
+
   async createConsolidationFrom(consolidationFrom: ConsolidationFrom): Promise<ConsolidationFrom> {
     try {
       return await this.create<ConsolidationFrom>(consolidationFrom);
@@ -152,7 +182,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
     try {
       const query = QueryBuilder.build(
-        and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
+        and(regex('documentType', '^AUDIT_'), equals<CaseHistory['caseId']>('caseId', caseId)),
       );
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);

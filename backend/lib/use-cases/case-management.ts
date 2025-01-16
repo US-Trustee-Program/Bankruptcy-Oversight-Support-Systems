@@ -48,7 +48,9 @@ export default class CaseManagement {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
+    excludeChildCases: boolean = false,
   ): Promise<ResourceActions<CaseBasics>[]> {
+    const casesRepo = Factory.getCasesRepository(context);
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
@@ -58,25 +60,43 @@ export default class CaseManagement {
             caseIdSet.add(caseAssignment.caseId);
           });
         }
+
         predicate.caseIds = Array.from(caseIdSet);
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length == 0) {
-          return [];
+          return []; // TODO: needs tested
         }
       }
 
-      const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
+      let cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
         context,
         predicate,
       );
 
-      const caseIds = [];
+      let caseIds = [];
       for (const casesKey in cases) {
         caseIds.push(cases[casesKey].caseId);
         const bCase = cases[casesKey];
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
+      }
+
+      if (excludeChildCases) {
+        const childConsolidationsMap = await casesRepo.getConsolidationChildCases(caseIds);
+        const idsToRemove: string[] = [];
+        const newCases: ResourceActions<CaseBasics>[] = [];
+        for (const caseKey in cases) {
+          if (childConsolidationsMap.has(cases[caseKey].caseId)) {
+            idsToRemove.push(cases[caseKey].caseId);
+          } else {
+            newCases.push(cases[caseKey]);
+          }
+        }
+        cases = newCases;
+        caseIds = caseIds.filter((caseId) => {
+          return !idsToRemove.includes(caseId);
+        });
       }
 
       if (includeAssignments) {
@@ -133,7 +153,7 @@ export default class CaseManagement {
       const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
       return caseSummary;
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+      throw getCamsError(originalError, MODULE_NAME); //TODO: needs tested
     }
   }
 

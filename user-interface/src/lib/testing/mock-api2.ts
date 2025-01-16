@@ -306,7 +306,7 @@ async function putConsolidationOrderRejection(
 
 async function searchCases(
   predicate: CasesSearchPredicate,
-  options: { includeAssignments?: boolean } = {},
+  options: { includeAssignments?: boolean; excludeChildCases?: boolean } = {},
 ): Promise<ResponseBody<CaseBasics[]>> {
   return post<CaseBasics[]>('/cases', predicate, options);
 }
