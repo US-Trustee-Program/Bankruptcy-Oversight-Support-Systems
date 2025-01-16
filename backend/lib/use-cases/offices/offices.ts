@@ -10,7 +10,6 @@ import {
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import AttorneysList from '../attorneys';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
@@ -41,15 +40,8 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    let attorneys: AttorneyUser[] = [];
-    if (context.featureFlags['restrict-case-assignment']) {
-      const repository = getOfficesRepository(context);
-      attorneys = await repository.getOfficeAttorneys(officeCode);
-    } else {
-      const attorneysUseCase = new AttorneysList();
-      attorneys = await attorneysUseCase.getAttorneyList(context);
-    }
-    return attorneys;
+    const repository = getOfficesRepository(context);
+    return await repository.getOfficeAttorneys(officeCode);
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {

@@ -7,7 +7,6 @@ import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MOCKED_USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cams/offices';
-import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
 import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
@@ -78,40 +77,7 @@ describe('offices use case tests', () => {
     expect(offices).toEqual(expectedOffices);
   });
 
-  test('should return default attorneys with feature flag off', async () => {
-    const localContext = {
-      ...applicationContext,
-      featureFlags: { ...applicationContext.featureFlags },
-    };
-    localContext.featureFlags['restrict-case-assignment'] = false;
-
-    const useCase = new OfficesUseCase();
-    const repoSpy = jest.fn().mockResolvedValue([]);
-    jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
-      return {
-        release: () => {},
-        putOfficeStaff: jest.fn(),
-        getOfficeAttorneys: repoSpy,
-        findAndDeleteStaff: jest.fn(),
-        close: jest.fn(),
-      };
-    });
-    const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
-
-    const officeCode = 'new-york';
-    const officeAttorneys = await useCase.getOfficeAttorneys(localContext, officeCode);
-    expect(officeAttorneys).toEqual(TRIAL_ATTORNEYS);
-    expect(repoSpy).not.toHaveBeenCalled();
-    expect(attorneysSpy).toHaveBeenCalledWith(localContext);
-  });
-
-  test('should return attorneys for office with feature flag on', async () => {
-    const localContext = {
-      ...applicationContext,
-      featureFlags: { ...applicationContext.featureFlags },
-    };
-    localContext.featureFlags['restrict-case-assignment'] = true;
-
+  test('should return attorneys for office', async () => {
     const useCase = new OfficesUseCase();
     const mockAttorneys = [];
     const repoSpy = jest.fn().mockResolvedValue(mockAttorneys);
@@ -127,7 +93,7 @@ describe('offices use case tests', () => {
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
 
     const officeCode = 'new-york';
-    const officeAttorneys = await useCase.getOfficeAttorneys(localContext, officeCode);
+    const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
     expect(officeAttorneys).toEqual(mockAttorneys);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
     expect(attorneysSpy).not.toHaveBeenCalled();
