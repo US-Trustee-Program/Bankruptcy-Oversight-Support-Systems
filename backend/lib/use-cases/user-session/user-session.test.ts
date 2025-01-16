@@ -104,6 +104,7 @@ describe('user-session.gateway test', () => {
   test('should elevate an privileged identity user', async () => {
     const user = MockData.getCamsUser({ offices: [], roles: [] });
 
+    const currentDate = new Date();
     const pimUser: PrivilegedIdentityUser = {
       documentType: 'PRIVILEGED_IDENTITY_USER',
       ...getCamsUserReference(user),
@@ -115,6 +116,7 @@ describe('user-session.gateway test', () => {
           'USTP CAMS Region 2 Office Buffalo',
         ],
       },
+      expires: new Date(currentDate.getFullYear() + 1, currentDate.getMonth()).toISOString(),
     };
 
     // set the AD groups the user belongs to in the JWT
@@ -157,6 +159,90 @@ describe('user-session.gateway test', () => {
         'USTP CAMS Region 3 Office Wilmington',
         'USTP CAMS Region 2 Office Buffalo',
       ].includes(office.idpGroupId),
+    );
+
+    // we don't want to pull the session from cache...
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+
+    // get the user from the auth provider with the AD assigned roles and offices.
+    jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({ user, jwt });
+
+    // get the PIM user record to union in to the AD assigned roles and offices.
+    const getPrivilegedIdentityUserSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
+      .mockResolvedValue(pimUser);
+
+    // we want the session to be cached...
+    const upsertSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValue(expectedSession);
+
+    const session = await gateway.lookup(context, jwtString, provider);
+
+    expect(session.user.roles).toEqual(expect.arrayContaining(expectedSession.user.roles));
+    expect(session.user.roles.length).toEqual(expectedSession.user.roles.length);
+
+    expect(session.user.offices).toEqual(expect.arrayContaining(expectedSession.user.offices));
+    expect(session.user.offices.length).toEqual(expectedSession.user.offices.length);
+
+    expect(upsertSpy).toHaveBeenCalled();
+    expect(getPrivilegedIdentityUserSpy).toHaveBeenCalled();
+  });
+
+  test('should not elevate an expired privileged identity user', async () => {
+    const user = MockData.getCamsUser({ offices: [], roles: [] });
+
+    const pimUser: PrivilegedIdentityUser = {
+      documentType: 'PRIVILEGED_IDENTITY_USER',
+      ...getCamsUserReference(user),
+      claims: {
+        groups: [
+          'USTP CAMS Case Assignment Manager',
+          'USTP CAMS Trial Attorney',
+          'USTP CAMS Region 3 Office Wilmington',
+          'USTP CAMS Region 2 Office Buffalo',
+        ],
+      },
+      expires: new Date(2024, 1, 1).toISOString(),
+    };
+
+    // set the AD groups the user belongs to in the JWT
+    const jwtClaims: CamsJwtClaims = {
+      ...claims,
+      groups: [
+        'USTP CAMS Privileged Identity Management',
+        'USTP CAMS Data Verifier',
+        'USTP CAMS Trial Attorney',
+        'USTP CAMS Region 2 Office Manhattan',
+        'USTP CAMS Region 2 Office Buffalo',
+      ],
+    };
+    const jwt: CamsJwt = {
+      header: jwtHeader,
+      claims: jwtClaims,
+    };
+
+    // construct the expected session
+    const expectedSession: CamsSession = {
+      user: { ...user },
+      provider,
+      accessToken: jwtString,
+      expires: expect.any(Number),
+      issuer: expect.stringMatching(urlRegex),
+    };
+
+    // session should return a unique set of roles
+    expectedSession.user.roles = [
+      CamsRole.PrivilegedIdentityUser,
+      CamsRole.DataVerifier,
+      CamsRole.TrialAttorney,
+    ];
+
+    // session should return a unique set of offices
+    expectedSession.user.offices = MOCKED_USTP_OFFICES_ARRAY.filter((office) =>
+      ['USTP CAMS Region 2 Office Manhattan', 'USTP CAMS Region 2 Office Buffalo'].includes(
+        office.idpGroupId,
+      ),
     );
 
     // we don't want to pull the session from cache...

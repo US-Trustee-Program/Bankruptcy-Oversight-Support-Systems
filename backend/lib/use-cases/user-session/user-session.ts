@@ -14,6 +14,8 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { UsersRepository } from '../gateways.types';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
@@ -63,27 +65,14 @@ export class UserSessionUseCase {
       user.offices = await getOffices(context, jwt.claims.groups);
 
       // Overlay additional roles and offices.
-      if (context.featureFlags['privileged-identity-management']) {
-        if (user.roles.includes(CamsRole.PrivilegedIdentityUser)) {
-          try {
-            const pimUser = await usersRepository.getPrivilegedIdentityUser(user.id);
-
-            const roles = getRoles(pimUser.claims.groups);
-            const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
-            user.roles = Array.from(rolesSet);
-
-            const offices = await getOffices(context, pimUser.claims.groups);
-            const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
-            user.offices = Array.from(officeSet);
-          } catch (error) {
-            // Silently log the failure so the user can continue without permission elevation.
-            context.logger.error(
-              MODULE_NAME,
-              `Failed to elevate permissions for user ${user.name} (${user.id}).`,
-              error.message,
-            );
-          }
-        }
+      if (
+        context.featureFlags['privileged-identity-management'] &&
+        user.roles.includes(CamsRole.PrivilegedIdentityUser)
+      ) {
+        const { roles: elevatedRoles, offices: elevatedOffices } =
+          await this.getElevatedRolesAndOffices(user, usersRepository, context);
+        user.roles = elevatedRoles;
+        user.offices = elevatedOffices;
       }
 
       // TODO: Maybe delete this 'restrict-case-assignment' feature flag.
@@ -113,5 +102,36 @@ export class UserSessionUseCase {
             originalError: error,
           });
     }
+  }
+
+  private async getElevatedRolesAndOffices(
+    user: CamsUserReference & {
+      offices?: UstpOfficeDetails[];
+      roles?: CamsRole[];
+    },
+    usersRepository: UsersRepository,
+    context: ApplicationContext<unknown>,
+  ): Promise<{ roles: CamsRole[]; offices: UstpOfficeDetails[] }> {
+    const result = { roles: user.roles, offices: user.offices };
+    try {
+      const pimUser = await usersRepository.getPrivilegedIdentityUser(user.id);
+      if (new Date() < new Date(pimUser.expires)) {
+        const roles = getRoles(pimUser.claims.groups);
+        const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
+
+        const offices = await getOffices(context, pimUser.claims.groups);
+        const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
+        result.roles = Array.from(rolesSet);
+        result.offices = Array.from(officeSet);
+      }
+    } catch (error) {
+      // Silently log the failure so the user can continue without permission elevation.
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to elevate permissions for user ${user.name} (${user.id}).`,
+        error.message,
+      );
+    }
+    return result;
   }
 }
