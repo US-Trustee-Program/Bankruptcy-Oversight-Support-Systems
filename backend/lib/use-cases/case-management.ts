@@ -49,7 +49,7 @@ export default class CaseManagement {
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
     excludeChildCases: boolean = false,
-  ): Promise<ResourceActions<CaseBasics>[]> {
+  ): Promise<{ cases: ResourceActions<CaseBasics>[]; originalCasesLength: number }> {
     const casesRepo = Factory.getCasesRepository(context);
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
@@ -65,7 +65,7 @@ export default class CaseManagement {
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length == 0) {
-          return []; // TODO: needs tested
+          return { cases: [], originalCasesLength: 0 }; // TODO: needs tested
         }
       }
 
@@ -73,7 +73,7 @@ export default class CaseManagement {
         context,
         predicate,
       );
-
+      const originalCasesLength = cases.length;
       let caseIds = [];
       for (const casesKey in cases) {
         caseIds.push(cases[casesKey].caseId);
@@ -94,6 +94,7 @@ export default class CaseManagement {
           }
         }
         cases = newCases;
+
         caseIds = caseIds.filter((caseId) => {
           return !idsToRemove.includes(caseId);
         });
@@ -110,7 +111,7 @@ export default class CaseManagement {
         }
       }
 
-      return cases;
+      return { cases, originalCasesLength };
     } catch (originalError) {
       if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {

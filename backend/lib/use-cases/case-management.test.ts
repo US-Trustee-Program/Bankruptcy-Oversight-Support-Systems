@@ -282,7 +282,7 @@ describe('Case management tests', () => {
 
       const actual = await useCase.searchCases(applicationContext, {}, false, true);
 
-      expect(actual).toEqual(expectedCases);
+      expect(actual).toEqual({ cases: expectedCases, originalCasesLength: 5 });
     });
 
     test('should throw an AssignmentError when CaseAssignmentUseCase.findAssignmentsByCaseId throws an error', async () => {
@@ -312,7 +312,7 @@ describe('Case management tests', () => {
     test('should return an empty array for no matches', async () => {
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
       const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
-      expect(actual).toEqual([]);
+      expect(actual).toEqual({ cases: [], originalCasesLength: 0 });
     });
 
     const optionsCases = [
@@ -343,7 +343,7 @@ describe('Case management tests', () => {
         { caseNumber },
         args.includeCaseAssignments,
       );
-      expect(actual).toEqual(caseList);
+      expect(actual).toEqual({ cases: caseList, originalCasesLength: 1 });
       expect(!!assignmentsSpy.mock.calls.length).toEqual(args.includeCaseAssignments);
     });
 
@@ -368,7 +368,7 @@ describe('Case management tests', () => {
       const expected = [{ ...bCase, officeCode, _actions }];
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([bCase]);
       const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual({ cases: expected, originalCasesLength: 1 });
     });
 
     test('should return search cases by assignment', async () => {
@@ -385,7 +385,7 @@ describe('Case management tests', () => {
 
       const actual = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
 
-      expect(actual).toEqual(cases);
+      expect(actual).toEqual({ cases, originalCasesLength: 3 });
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
       expect(searchCases).toHaveBeenCalledWith(expect.any(Object), {
         assignments: [user],
@@ -414,7 +414,7 @@ describe('Case management tests', () => {
         .spyOn(useCase.assignmentGateway, 'findAssignmentsByAssignee')
         .mockResolvedValue(assignments);
       const result = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
-      expect(result).toEqual([]);
+      expect(result).toEqual({ cases: [], originalCasesLength: 0 });
     });
 
     test('should throw CamsError', async () => {

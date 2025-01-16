@@ -70,7 +70,7 @@ export class CasesController implements CamsController {
     const includeAssignments = options?.includeAssignments === 'true';
     const excludeChildCases = options?.excludeChildCases === 'true';
 
-    const cases = await this.caseManagement.searchCases(
+    const { cases, originalCasesLength } = await this.caseManagement.searchCases(
       this.applicationContext,
       predicate,
       includeAssignments,
@@ -80,13 +80,13 @@ export class CasesController implements CamsController {
     const pagination: Pagination = {
       count: cases.length,
       limit: predicate.limit,
-      currentPage: getCurrentPage(cases.length, predicate),
+      currentPage: getCurrentPage(originalCasesLength, predicate),
     };
 
     //TODO: Move excludeChildCases into the predicate
     //TODO: we need to ahndle pagination in a better way than this if consolidations are filtered out
     //Replace Pagination with infinity scrolling with a Load More button?
-    if (cases.length > predicate.limit || excludeChildCases) {
+    if (originalCasesLength > predicate.limit) {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());

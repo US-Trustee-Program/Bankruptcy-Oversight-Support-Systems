@@ -101,7 +101,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: [], originalCasesLength: 0 });
 
       const request = mockCamsHttpRequest({
         method: 'POST',
@@ -128,7 +130,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 51 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -157,7 +161,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 50 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -186,7 +192,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 50 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -218,7 +226,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 25 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -251,7 +261,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 51 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -280,7 +292,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 2 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -307,7 +321,9 @@ describe('cases controller test', () => {
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ cases: data, originalCasesLength: 1 });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -351,7 +367,7 @@ describe('cases controller test', () => {
 
         const useCaseSpy = jest
           .spyOn(CaseManagement.prototype, 'searchCases')
-          .mockResolvedValue(data);
+          .mockResolvedValue({ cases: data, originalCasesLength: 1 });
 
         const camsHttpRequest = mockCamsHttpRequest({
           method: 'POST',
