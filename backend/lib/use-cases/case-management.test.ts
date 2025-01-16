@@ -269,10 +269,9 @@ describe('Case management tests', () => {
 
       jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
 
-      const expectedCases = MockData.buildArray(MockData.getCaseBasics, 5);
+      const expectedCases = MockData.buildArray(MockData.getCaseBasics, 4);
       const filteredCase = MockData.getCaseBasics({ override: { caseId: filteredCaseId } });
-      const inputCases = expectedCases;
-      inputCases.push(filteredCase);
+      const inputCases = [...expectedCases, filteredCase];
 
       jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(inputCases);
       const consolidationMap = new Map();
@@ -405,6 +404,17 @@ describe('Case management tests', () => {
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         expectedError,
       );
+    });
+
+    test('should return empty array when no caseIds provided for searchCases when assignments are present', async () => {
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue([]);
+      const caseIds = ['081-00-12345', '081-11-23456', '091-12-34567'];
+      const assignments = caseIds.map((caseId) => MockData.getAttorneyAssignment({ caseId }));
+      jest
+        .spyOn(useCase.assignmentGateway, 'findAssignmentsByAssignee')
+        .mockResolvedValue(assignments);
+      const result = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
+      expect(result).toEqual([]);
     });
 
     test('should throw CamsError', async () => {

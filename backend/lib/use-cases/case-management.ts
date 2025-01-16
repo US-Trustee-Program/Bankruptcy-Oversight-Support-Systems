@@ -69,12 +69,12 @@ export default class CaseManagement {
         }
       }
 
-      const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
+      let cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
         context,
         predicate,
       );
 
-      const caseIds = [];
+      let caseIds = [];
       for (const casesKey in cases) {
         caseIds.push(cases[casesKey].caseId);
         const bCase = cases[casesKey];
@@ -84,11 +84,19 @@ export default class CaseManagement {
 
       if (excludeChildCases) {
         const childConsolidationsMap = await casesRepo.getConsolidationChildCases(caseIds);
+        const idsToRemove: string[] = [];
+        const newCases: ResourceActions<CaseBasics>[] = [];
         for (const caseKey in cases) {
           if (childConsolidationsMap.has(cases[caseKey].caseId)) {
-            delete cases[caseKey];
+            idsToRemove.push(cases[caseKey].caseId);
+          } else {
+            newCases.push(cases[caseKey]);
           }
         }
+        cases = newCases;
+        caseIds = caseIds.filter((caseId) => {
+          return !idsToRemove.includes(caseId);
+        });
       }
 
       if (includeAssignments) {

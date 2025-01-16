@@ -125,9 +125,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async getConsolidationChildCases(caseIds: string[]): Promise<Map<string, ConsolidationTo>> {
     try {
+      // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
       const query = QueryBuilder.build(
         and(
-          // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
           equals<string>('documentType', 'CONSOLIDATION_TO'),
           contains<string[]>('caseId', caseIds),
         ),

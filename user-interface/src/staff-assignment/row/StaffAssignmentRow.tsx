@@ -24,8 +24,10 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const { bCase, idx, options, ...otherProps } = props;
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
 
+  //if (!bCase) return <></>;
+
   const initialState = {
-    assignments: bCase.assignments ?? [],
+    assignments: bCase?.assignments ?? [],
     isLoading: true,
     bCase,
     modalRef,

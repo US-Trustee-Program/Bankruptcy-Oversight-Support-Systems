@@ -110,7 +110,10 @@ export function SearchResults(props: SearchResultsProps) {
     setIsSearching(true);
     if (onStartSearching) onStartSearching();
     api
-      .searchCases(searchPredicate, { includeAssignments: true, excludeChildCases })
+      .searchCases(searchPredicate, {
+        includeAssignments: true,
+        excludeChildCases: excludeChildCases,
+      })
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
