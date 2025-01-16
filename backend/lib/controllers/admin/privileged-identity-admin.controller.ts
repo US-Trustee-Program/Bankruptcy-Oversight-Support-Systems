@@ -5,7 +5,7 @@ import { AdminUseCase } from '../../use-cases/admin/admin';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
 
 const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-CONTROLLER';
 
@@ -18,11 +18,11 @@ export class PrivilegedIdentityAdminController implements CamsController {
   ): Promise<CamsHttpResponseInit<object | undefined>> {
     try {
       if (!context.featureFlags['privileged-identity-management']) {
-        throw new UnauthorizedError(MODULE_NAME, { message: NOT_ENABLED });
+        throw new ForbiddenError(MODULE_NAME, { message: NOT_ENABLED });
       }
 
       if (!context.session.user.roles.includes(CamsRole.SuperUser)) {
-        throw new UnauthorizedError(MODULE_NAME);
+        throw new ForbiddenError(MODULE_NAME);
       }
 
       const useCase = new AdminUseCase();
