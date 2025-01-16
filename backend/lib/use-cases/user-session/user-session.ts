@@ -12,7 +12,6 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../common/src/cams/session';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { UsersRepository } from '../gateways.types';
@@ -73,14 +72,6 @@ export class UserSessionUseCase {
           await this.getElevatedRolesAndOffices(user, usersRepository, context);
         user.roles = elevatedRoles;
         user.offices = elevatedOffices;
-      }
-
-      // TODO: Maybe delete this 'restrict-case-assignment' feature flag.
-      // Simulate the legacy behavior by appending roles and Manhattan office to the user
-      // if the 'restrict-case-assignment' feature flag is not set.
-      if (!context.featureFlags['restrict-case-assignment']) {
-        user.offices = [REGION_02_GROUP_NY];
-        user.roles = [CamsRole.CaseAssignmentManager];
       }
 
       const session: CamsSession = {

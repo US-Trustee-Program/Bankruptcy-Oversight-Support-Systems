@@ -11,7 +11,6 @@ import { urlRegex } from '../../../../common/src/cams/test-utilities/regex';
 import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
@@ -368,23 +367,5 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(ServerConfigError);
-  });
-
-  // TODO: This should be removed once the feature flag logic is removed.
-  test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
-    jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
-      upsert: jest.fn(),
-      read: jest.fn().mockRejectedValue(new NotFoundError('')),
-      release: () => {},
-    });
-
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(MockOpenIdConnectGateway);
-
-    const localContext = { ...context, featureFlags: { ...context.featureFlags } };
-    localContext.featureFlags['restrict-case-assignment'] = false;
-
-    const session = await gateway.lookup(localContext, jwtString, provider);
-    expect(session.user.offices).toEqual([REGION_02_GROUP_NY]);
-    expect(session.user.roles).toEqual([CamsRole.CaseAssignmentManager]);
   });
 });
