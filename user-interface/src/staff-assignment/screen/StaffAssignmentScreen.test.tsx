@@ -61,6 +61,7 @@ describe('StaffAssignmentScreen', () => {
     expect(SearchResults).toHaveBeenCalledWith(
       {
         id: 'search-results',
+        excludeChildCases: true,
         noResultsMessage: 'No cases currently assigned.',
         searchPredicate: expectedPredicate,
         header: expect.anything(),
@@ -104,6 +105,7 @@ describe('StaffAssignmentScreen', () => {
     expect(SearchResults).toHaveBeenCalledWith(
       {
         id: 'search-results',
+        excludeChildCases: true,
         noResultsMessage: 'No cases currently assigned.',
         searchPredicate: expectedPredicate,
         header: expect.anything(),
@@ -138,6 +140,7 @@ describe('StaffAssignmentScreen', () => {
     expect(SearchResults).toHaveBeenCalledWith(
       {
         id: 'search-results',
+        excludeChildCases: true,
         noResultsMessage: expect.anything(),
         searchPredicate: expect.objectContaining({ divisionCodes: [] }),
         header: expect.anything(),

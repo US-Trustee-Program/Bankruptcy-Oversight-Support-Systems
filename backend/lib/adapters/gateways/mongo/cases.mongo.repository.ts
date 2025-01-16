@@ -7,7 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -123,31 +123,29 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async getConsolidations(
-    caseIds: string[],
-    excludeChildCases: boolean = false,
-  ): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+  async getConsolidationChildCases(caseIds: string[]): Promise<Map<string, ConsolidationTo>> {
     try {
-      let query: ConditionOrConjunction;
-      if (excludeChildCases) {
-        query = QueryBuilder.build(
-          and(
-            equals<string>('otherCase.status', 'approved'),
-            equals<string>('documentType', 'CONSOLIDATION_TO'),
-            contains<string[]>('caseId', caseIds),
-          ),
-        );
-      } else {
-        query = QueryBuilder.build(
-          and(regex('documentType', '^CONSOLIDATION'), contains<string[]>('caseId', caseIds)),
-        );
-      }
-      const adapter = this.getAdapter<ConsolidationTo | ConsolidationFrom>();
-      return await adapter.find(query);
+      const query = QueryBuilder.build(
+        and(
+          // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
+          equals<string>('documentType', 'CONSOLIDATION_TO'),
+          contains<string[]>('caseId', caseIds),
+        ),
+      );
+      const adapter = this.getAdapter<ConsolidationTo>();
+      const consolidations = await adapter.find(query);
+
+      const consolidationsMap = new Map();
+      consolidations.forEach((consolidation) => {
+        if (caseIds.includes(consolidation.caseId)) {
+          consolidationsMap.set(consolidation.caseId, consolidation);
+        }
+      });
+      return consolidationsMap;
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve consolidation for ${caseIds.join(', ')}.`,
+          message: `Failed to retrieve consolidations for ${caseIds.join(', ')}.`,
           module: MODULE_NAME,
         },
       });
@@ -184,7 +182,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
     try {
       const query = QueryBuilder.build(
-        and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
+        and(regex('documentType', '^AUDIT_'), equals<CaseHistory['caseId']>('caseId', caseId)),
       );
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);

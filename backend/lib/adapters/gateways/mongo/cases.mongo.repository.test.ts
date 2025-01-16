@@ -12,6 +12,7 @@ import {
 import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
+import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
@@ -235,22 +236,65 @@ describe('Cases repository', () => {
   });
 
   test('should createConsolidationTo', async () => {
-    const consolidaitonTo = MockData.getConsolidationTo();
+    const consolidationTo = MockData.getConsolidationTo();
     const insertOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(crypto.randomUUID().toString());
-    const result = await repo.createConsolidationTo(consolidaitonTo);
-    expect(insertOneSpy).toHaveBeenCalledWith(consolidaitonTo);
+    const result = await repo.createConsolidationTo(consolidationTo);
+    expect(insertOneSpy).toHaveBeenCalledWith(consolidationTo);
 
     expect(result).not.toBeNull();
   });
 
+  test('should getConsolidationChildCases and map them back to caseIds', async () => {
+    const caseIds = ['111-22-33333', '222-33-44444', '333-44-55555'];
+    const consolidations = [
+      MockData.getConsolidationTo({ override: { caseId: caseIds[0] } }),
+      MockData.getConsolidationTo({ override: { caseId: caseIds[1] } }),
+      MockData.getConsolidationTo({ override: { caseId: caseIds[2] } }),
+    ];
+    const expectedConsolidationMap = new Map();
+    expectedConsolidationMap.set(caseIds[0], consolidations[0]);
+    expectedConsolidationMap.set(caseIds[1], consolidations[1]);
+    expectedConsolidationMap.set(caseIds[2], consolidations[2]);
+
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue(consolidations);
+
+    const result = await repo.getConsolidationChildCases(caseIds);
+    expect(findSpy).toHaveBeenCalled();
+
+    expect(result).toEqual(expectedConsolidationMap);
+  });
+
+  test('getConsolidationChildCases should throw error when find throws', async () => {
+    const caseIds = ['111-22-33333', '222-33-44444', '333-44-55555'];
+    const MODULE_NAME: string = 'TEST_REPO';
+    const expectedError = getCamsErrorWithStack(
+      { name: 'error', message: 'error message' },
+      MODULE_NAME,
+      {
+        camsStackInfo: {
+          message: `Failed to retrieve Consolidations for ${caseIds.join(', ')}.`,
+          module: MODULE_NAME,
+        },
+      },
+    );
+
+    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('test error'));
+
+    await expect(async () => await repo.getConsolidationChildCases(caseIds)).rejects.toThrow(
+      expectedError,
+    );
+  });
+
   test('createConsolidationTo should catch errors thrown by adapter.insertOne', async () => {
-    const consolidaitonTo = MockData.getConsolidationTo();
+    const consolidationTo = MockData.getConsolidationTo();
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockRejectedValue(new Error('test error'));
-    await expect(async () => await repo.createConsolidationTo(consolidaitonTo)).rejects.toThrow(
+    await expect(async () => await repo.createConsolidationTo(consolidationTo)).rejects.toThrow(
       expect.objectContaining({
         message: 'Unknown Error',
         camsStack: expect.arrayContaining([
@@ -260,7 +304,7 @@ describe('Cases repository', () => {
           },
           {
             module: expect.anything(),
-            message: `Failed to create consolidationTo for: ${consolidaitonTo.caseId}.`,
+            message: `Failed to create consolidationTo for: ${consolidationTo.caseId}.`,
           },
         ]),
       }),

@@ -260,6 +260,32 @@ describe('Case management tests', () => {
       expect(actual).toEqual(expected);
     });
 
+    test('should filter cases that are children of a consolidation', async () => {
+      const officeName = 'Test Office';
+      const filteredCaseId = '111-22-33333';
+      const consolidationToFilter = MockData.getConsolidationTo({
+        override: { caseId: filteredCaseId },
+      });
+
+      jest.spyOn(useCase.officesGateway, 'getOfficeName').mockReturnValue(officeName);
+
+      const expectedCases = MockData.buildArray(MockData.getCaseBasics, 5);
+      const filteredCase = MockData.getCaseBasics({ override: { caseId: filteredCaseId } });
+      const inputCases = expectedCases;
+      inputCases.push(filteredCase);
+
+      jest.spyOn(useCase.casesGateway, 'searchCases').mockResolvedValue(inputCases);
+      const consolidationMap = new Map();
+      consolidationMap.set(filteredCaseId, consolidationToFilter);
+      jest
+        .spyOn(MockMongoRepository.prototype, 'getConsolidationChildCases')
+        .mockResolvedValue(consolidationMap);
+
+      const actual = await useCase.searchCases(applicationContext, {}, false, true);
+
+      expect(actual).toEqual(expectedCases);
+    });
+
     test('should throw an AssignmentError when CaseAssignmentUseCase.findAssignmentsByCaseId throws an error', async () => {
       const bCase = MockData.getCaseDetail({ override: { caseId: 'ThrowError' } });
 

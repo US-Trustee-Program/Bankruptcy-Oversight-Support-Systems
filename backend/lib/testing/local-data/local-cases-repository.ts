@@ -54,6 +54,19 @@ export class LocalCasesRepository implements CasesRepository {
     return Promise.resolve(consolidations);
   }
 
+  async getConsolidationChildCases(caseIds: string[]): Promise<Map<string, ConsolidationTo>> {
+    const consolidationsMap = new Map();
+    for (const key in this.consolidationsContainer) {
+      if (caseIds.includes(this.consolidationsContainer[key].caseId)) {
+        consolidationsMap.set(
+          this.consolidationsContainer[key].caseId,
+          this.consolidationsContainer[key],
+        );
+      }
+    }
+    return Promise.resolve(consolidationsMap);
+  }
+
   async getCaseHistory(_caseId: string): Promise<CaseHistory[]> {
     throw new Error('Not implemented.');
   }

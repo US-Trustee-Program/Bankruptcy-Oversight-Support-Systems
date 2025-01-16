@@ -126,10 +126,7 @@ export interface CasesRepository extends Releasable {
   createConsolidationTo(reference: ConsolidationTo): Promise<ConsolidationTo>;
   createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
-  getConsolidations(
-    caseIds: string[],
-    excludeChildCases: boolean,
-  ): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
+  getConsolidationChildCases(caseIds: string[]): Promise<Map<string, ConsolidationTo>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   deleteMigrations(): Promise<void>;
