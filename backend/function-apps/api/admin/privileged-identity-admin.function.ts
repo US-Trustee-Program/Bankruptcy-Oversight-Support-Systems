@@ -12,11 +12,11 @@ export default async function handler(
   const logger = ContextCreator.getLogger(invocationContext);
 
   try {
-    const applicationContext = await ContextCreator.getApplicationContext({
+    const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
       logger,
       request,
-    });
+    );
     const controller = new PrivilegedIdentityAdminController();
     const response = await controller.handleRequest(applicationContext);
     return toAzureSuccess(response);
@@ -25,9 +25,9 @@ export default async function handler(
   }
 }
 
-app.http('admin', {
+app.http('privileged-identity-admin', {
   methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/privileged-identity/{resourceId}',
+  route: 'dev-tools/privileged-identity/{resourceId?}',
 });

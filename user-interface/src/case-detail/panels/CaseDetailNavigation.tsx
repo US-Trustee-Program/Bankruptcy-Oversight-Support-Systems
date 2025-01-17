@@ -37,7 +37,7 @@ export function setCurrentNav(activeNav: NavState, stateToCheck: NavState): stri
   return activeNav === stateToCheck ? 'usa-current current' : '';
 }
 
-function CaseDetailNavigationComponent({
+export default function CaseDetailNavigation({
   caseId,
   showAssociatedCasesList,
   initiallySelectedNavLink,
@@ -120,8 +120,3 @@ function CaseDetailNavigationComponent({
     </>
   );
 }
-
-// const CaseDetailNavigation = forwardRef(CaseDetailNavigationComponent);
-
-// export default CaseDetailNavigation;
-export default CaseDetailNavigationComponent;

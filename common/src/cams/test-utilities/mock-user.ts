@@ -38,7 +38,7 @@ export const SUPERUSER = {
     roles: [CamsRole.SuperUser],
     offices: [],
   },
-  hide: true,
+  hide: false,
 };
 
 addSuperUserOffices(SUPERUSER.user);
@@ -50,7 +50,7 @@ export const MockUsers: MockUser[] = [
     user: {
       id: 'manAtty0001',
       name: 'Jessica Pearson',
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
   },
@@ -90,7 +90,7 @@ export const MockUsers: MockUser[] = [
     user: {
       id: 'bert@fake.com',
       name: 'Bert',
-      roles: [CamsRole.DataVerifier],
+      roles: [CamsRole.DataVerifier, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
   },
@@ -110,7 +110,7 @@ export const MockUsers: MockUser[] = [
     user: {
       id: 'manAUST0001',
       name: 'Charlie',
-      roles: [CamsRole.CaseAssignmentManager],
+      roles: [CamsRole.CaseAssignmentManager, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
   },

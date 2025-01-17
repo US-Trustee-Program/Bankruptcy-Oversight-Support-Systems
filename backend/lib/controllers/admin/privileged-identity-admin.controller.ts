@@ -35,7 +35,7 @@ export class PrivilegedIdentityAdminController implements CamsController {
       const doGetUsers = !userId && method === 'GET';
       const doGetUser = userId && method === 'GET';
       const doDeleteUser = userId && method === 'DELETE';
-      const doUpsertUser = userId && method === 'PUT';
+      const doElevateUser = userId && method === 'PUT';
 
       if (doGetGroups) {
         const data = await useCase.getRoleAndOfficeGroupNames(context);
@@ -49,7 +49,7 @@ export class PrivilegedIdentityAdminController implements CamsController {
       } else if (doDeleteUser) {
         await useCase.deletePrivilegedIdentityUser(context, userId);
         return httpSuccess({ statusCode: 204 });
-      } else if (doUpsertUser) {
+      } else if (doElevateUser) {
         const groups = context.request.body['groups'];
         const expires = context.request.body['expires'];
         await useCase.elevatePrivilegedUser(context, userId, { groups, expires });

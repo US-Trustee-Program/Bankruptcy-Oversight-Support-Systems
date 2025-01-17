@@ -9,7 +9,10 @@ import CaseDetailScreen from './case-detail/CaseDetailScreen';
 import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
-import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  PRIVILEGED_IDENTITY_MANAGEMENT,
+  TRANSFER_ORDERS_ENABLED,
+} from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import { MyCasesScreen } from './my-cases/MyCasesScreen';
@@ -17,6 +20,7 @@ import { StaffAssignmentScreen } from './staff-assignment/screen/StaffAssignment
 import './App.scss';
 import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/GlobalAlert';
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
+import { AdminScreen } from './admin/AdminScreen';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
@@ -47,6 +51,9 @@ function App() {
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
               {flags[TRANSFER_ORDERS_ENABLED] && (
                 <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
+              )}
+              {flags[PRIVILEGED_IDENTITY_MANAGEMENT] && (
+                <Route path="/admin/*" element={<AdminScreen />}></Route>
               )}
               <Route path="*" element={<NotFound />}></Route>
             </Routes>

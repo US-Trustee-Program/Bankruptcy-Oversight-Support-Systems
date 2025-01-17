@@ -2,6 +2,7 @@ $separatorColor: #c6cace;
 $listItemHoverBorderColor: #333;
 $listItemSelectedBorderColor: #949494;
 @use 'uswds-core';
+@use '../../../styles/abstracts/colors';
 
 .combo-box-form-group {
   max-width: 100%;
@@ -55,6 +56,12 @@ $listItemSelectedBorderColor: #949494;
           width: 100%;
           margin: 0 5px;
         }
+        .combo-box-input:disabled, .combo-box-input[aria-disabled=true] {
+          color: colors.$disabledInputText;
+          background-color: colors.$disabledInputBackground;
+          cursor: not-allowed;
+          opacity: 1;
+        }
         .combo-box-input:focus {
           outline-width: 0;
           outline-color: none;
@@ -63,6 +70,9 @@ $listItemSelectedBorderColor: #949494;
           display: none;
         }
       }
+    }
+    .input-container.disabled {
+      background-color: colors.$disabledInputBackground;
     }
     .input-container:has(.combo-box-input:focus) {
       outline-width: 4px;
