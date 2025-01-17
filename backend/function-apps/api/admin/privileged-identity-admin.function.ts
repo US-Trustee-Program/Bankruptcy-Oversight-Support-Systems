@@ -12,11 +12,11 @@ export default async function handler(
   const logger = ContextCreator.getLogger(invocationContext);
 
   try {
-    const applicationContext = await ContextCreator.getApplicationContext({
+    const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
       logger,
       request,
-    });
+    );
     const controller = new PrivilegedIdentityAdminController();
     const response = await controller.handleRequest(applicationContext);
     return toAzureSuccess(response);
