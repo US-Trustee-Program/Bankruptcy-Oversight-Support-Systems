@@ -87,6 +87,7 @@ describe('offices use case tests', () => {
         putOfficeStaff: jest.fn(),
         getOfficeAttorneys: repoSpy,
         findAndDeleteStaff: jest.fn(),
+        putOrExtendOfficeStaff: jest.fn(),
         close: jest.fn(),
       };
     });

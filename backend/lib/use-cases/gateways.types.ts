@@ -19,6 +19,7 @@ import {
   PrivilegedIdentityUser,
   CamsUserGroup,
   CamsUserReference,
+  Staff,
 } from '../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
@@ -136,13 +137,14 @@ export interface CasesRepository extends Releasable {
 }
 
 export interface OfficesRepository extends Releasable {
+  putOrExtendOfficeStaff(officeCode: string, staff: Staff, expires: string): Promise<void>;
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
 }
 
 export interface UsersRepository extends Releasable {
-  getPrivilegedIdentityUser(id: string): Promise<PrivilegedIdentityUser>;
+  getPrivilegedIdentityUser(id: string, includeExpired?: boolean): Promise<PrivilegedIdentityUser>;
   putPrivilegedIdentityUser(privilegedIdentityUser: PrivilegedIdentityUser): Promise<ReplaceResult>;
   deletePrivilegedIdentityUser(id: string): Promise<void>;
 }

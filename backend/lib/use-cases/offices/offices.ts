@@ -3,14 +3,18 @@ import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
-  getUserGroupGateway,
-  getStorageGateway,
   getOfficesRepository,
   getOfficeStaffSyncStateRepo,
+  getStorageGateway,
+  getUserGroupGateway,
+  getUsersRepository,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { isNotFoundError } from '../../common-errors/not-found-error';
+import { getRolesFromGroupNames } from '../user-session/user-session';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -87,11 +91,26 @@ export class OfficesUseCase {
       let successCount = 0;
       let failureCount = 0;
       for (const user of users) {
+        // TODO: check if user can be elevated and whether they have a PIM record
         if (!userMap.has(user.id)) {
           userMap.set(user.id, user);
         }
-        // TODO: the following line is partially covered and I cannot see how we would reach the negative case
-        const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
+        const userWithRoles = userMap.get(user.id);
+        if (userWithRoles.roles.includes(CamsRole.PrivilegedIdentityUser)) {
+          const userRepo = getUsersRepository(context);
+          try {
+            const pimRecord = await userRepo.getPrivilegedIdentityUser(user.id, false);
+            const roleSet = new Set<CamsRole>([
+              ...userWithRoles.roles,
+              ...getRolesFromGroupNames(pimRecord.claims.groups),
+            ]);
+            userWithRoles.roles = Array.from(roleSet);
+          } catch (originalError) {
+            if (!isNotFoundError(originalError)) {
+              throw getCamsError(originalError, MODULE_NAME);
+            }
+          }
+        }
         office.staff.push(userWithRoles);
         try {
           await repository.putOfficeStaff(office.officeCode, userWithRoles);

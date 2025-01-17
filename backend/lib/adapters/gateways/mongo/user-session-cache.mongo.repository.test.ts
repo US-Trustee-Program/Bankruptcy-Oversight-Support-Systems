@@ -88,4 +88,13 @@ describe('User session cache Cosmos repository tests', () => {
     const maxTtl = Math.floor(camsJwtClaims.exp - Date.now() / 1000);
     expect(argument.ttl).toBeLessThan(maxTtl + 1);
   });
+
+  test('upsert should throw when replaceOne fails', async () => {
+    const newSession = { ...expected };
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockRejectedValue(new Error('some error'));
+
+    await expect(repo.upsert(newSession)).rejects.toThrow();
+  });
 });

@@ -1,5 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory, { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
+import Factory, {
+  getOfficesGateway,
+  getOfficesRepository,
+  getUserGroupGateway,
+  getUsersRepository,
+} from '../../factory';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
   PrivilegedIdentityUser,
@@ -13,6 +18,7 @@ import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { getOfficesFromGroupNames, getRolesFromGroupNames } from '../user-session/user-session';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
 
@@ -135,14 +141,20 @@ export class AdminUseCase {
     }
   }
 
-  public async upsertPrivilegedIdentityUser(
+  public async elevatePrivilegedUser(
     context: ApplicationContext,
     userId: string,
-    options: { groups: string[]; expires?: string },
+    options: { groups: string[]; expires: string },
   ) {
     const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
       message: 'User does not have privileged identity permission.',
     });
+
+    if (!options.expires || new Date() > new Date(options.expires)) {
+      throw new BadRequestError(
+        'User privilege elevation must have an expiration date in the future.',
+      );
+    }
 
     try {
       const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
@@ -185,6 +197,14 @@ export class AdminUseCase {
 
       if (result.upsertedCount === 0 && result.modifiedCount === 0) {
         throw new UnknownError(MODULE_NAME, { message: 'Failed to add privileged identity user.' });
+      }
+
+      const officesRepo = getOfficesRepository(context);
+      const offices = await getOfficesFromGroupNames(context, privilegedIdentityUser.claims.groups);
+      for (const office of offices) {
+        const roles = getRolesFromGroupNames(privilegedIdentityUser.claims.groups);
+        const staff = { ...userReference, roles };
+        await officesRepo.putOrExtendOfficeStaff(office.officeCode, staff, options.expires);
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to add privileged identity user.');

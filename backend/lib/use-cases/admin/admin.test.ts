@@ -16,12 +16,16 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 describe('Admin Use Case', () => {
   let context: ApplicationContext;
   let useCase: AdminUseCase;
   const module = 'TEST-MODULE';
   const testOffice = 'TEST_OFFICE_GROUP';
+  const currentDay = new Date().toISOString().split('T')[0];
+  const futureDate = MockData.someDateAfterThisDate(currentDay, 2);
+  const pastDate = MockData.someDateBeforeThisDate(currentDay, 2);
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -105,43 +109,72 @@ describe('Admin Use Case', () => {
     );
   });
 
-  const privilegedIdentityUserSuccessCases = [
+  test('should add roles and offices to PrivilegedIdentityUser with an expiration in the future', async () => {
+    const users = MockData.buildArray(MockData.getCamsUser, 4);
+    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      id: randomUUID(),
+      name: 'Test User Group',
+      users,
+    });
+    const repoSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
+      .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
+    const officeSpy = jest
+      .spyOn(MockOfficesRepository, 'putOrExtendOfficeStaff')
+      .mockResolvedValue();
+
+    const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
+
+    const expected: PrivilegedIdentityUser = {
+      id: users[0].id,
+      name: users[0].name,
+      documentType: 'PRIVILEGED_IDENTITY_USER',
+      claims: { groups },
+      expires: futureDate,
+    };
+
+    await useCase.elevatePrivilegedUser(context, users[0].id, {
+      groups,
+      expires: futureDate,
+    });
+
+    expect(repoSpy).toHaveBeenCalledWith(expected);
+    expect(officeSpy).toHaveBeenCalled();
+  });
+
+  const privilegedIdentityUserFailureCases = [
     ['no expiration', undefined],
-    ['expiration', '2025-01-14T00:00:00.000Z'],
+    ['today expiration', currentDay],
+    ['past expiration', pastDate],
   ];
-  test.each(privilegedIdentityUserSuccessCases)(
-    'should add roles and offices to PrivilegedIdentityUser with %s',
+  test.each(privilegedIdentityUserFailureCases)(
+    'should throw bad request with %s',
     async (_caseName: string, expires: string) => {
       const users = MockData.buildArray(MockData.getCamsUser, 4);
+      const user = users[0];
+
       jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
         id: randomUUID(),
         name: 'Test User Group',
         users,
       });
-      const repoSpy = jest
-        .spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser')
-        .mockResolvedValue({ id: users[0].id, modifiedCount: 0, upsertedCount: 1 });
+      const repoSpy = jest.spyOn(MockMongoRepository.prototype, 'putPrivilegedIdentityUser');
+      const officeSpy = jest.spyOn(MockMongoRepository.prototype, 'putOrExtendOfficeStaff');
 
       const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
 
-      const expected: PrivilegedIdentityUser = {
-        id: users[0].id,
-        name: users[0].name,
-        documentType: 'PRIVILEGED_IDENTITY_USER',
-        claims: { groups },
-        expires,
-      };
-
-      await useCase.upsertPrivilegedIdentityUser(context, users[0].id, {
-        groups,
-        expires,
-      });
-
-      expect(repoSpy).toHaveBeenCalledWith(expected);
+      await expect(
+        useCase.elevatePrivilegedUser(context, user.id, {
+          groups,
+          expires,
+        }),
+      ).rejects.toThrow(new BadRequestError(expect.anything()));
+      expect(repoSpy).not.toHaveBeenCalled();
+      expect(officeSpy).not.toHaveBeenCalled();
     },
   );
 
-  test('should throw an error if upsertPrivilegedIdentityUser fails to upsert the user', async () => {
+  test('should throw an error if elevatePrivilegedUser fails to upsert the user', async () => {
     const user = MockData.getCamsUser();
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
@@ -154,7 +187,10 @@ describe('Admin Use Case', () => {
       .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
 
     await expect(
-      useCase.upsertPrivilegedIdentityUser(context, user.id, { groups: [] }),
+      useCase.elevatePrivilegedUser(context, user.id, {
+        groups: [],
+        expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+      }),
     ).rejects.toThrow('Failed to add privileged identity user.');
   });
 
@@ -167,7 +203,10 @@ describe('Admin Use Case', () => {
     });
 
     await expect(
-      useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
+      useCase.elevatePrivilegedUser(context, userId, {
+        groups: [],
+        expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+      }),
     ).rejects.toThrow('User does not have privileged identity permission.');
   });
 
@@ -180,7 +219,10 @@ describe('Admin Use Case', () => {
     });
 
     await expect(
-      useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
+      useCase.elevatePrivilegedUser(context, userId, {
+        groups: [],
+        expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+      }),
     ).rejects.toThrow('User does not have privileged identity permission.');
 
     jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
@@ -190,7 +232,10 @@ describe('Admin Use Case', () => {
     });
 
     await expect(
-      useCase.upsertPrivilegedIdentityUser(context, userId, { groups: [] }),
+      useCase.elevatePrivilegedUser(context, userId, {
+        groups: [],
+        expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+      }),
     ).rejects.toThrow('User does not have privileged identity permission.');
   });
 
@@ -221,6 +266,7 @@ describe('Admin Use Case', () => {
       documentType: 'PRIVILEGED_IDENTITY_USER',
       ...MockData.getCamsUserReference(),
       claims: { groups: [] },
+      expires: '2026-01-01',
     };
     jest.spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
 

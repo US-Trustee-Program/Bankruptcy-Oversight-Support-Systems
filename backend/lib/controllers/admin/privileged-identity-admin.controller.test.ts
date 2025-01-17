@@ -108,7 +108,7 @@ describe('Privileged identity admin controller tests', () => {
     };
     context.featureFlags['privileged-identity-management'] = true;
 
-    jest.spyOn(AdminUseCase.prototype, 'upsertPrivilegedIdentityUser').mockResolvedValue();
+    jest.spyOn(AdminUseCase.prototype, 'elevatePrivilegedUser').mockResolvedValue();
     const response = await controller.handleRequest(context);
     expect(response).toEqual({ headers: expect.anything(), statusCode: 201 });
   });
