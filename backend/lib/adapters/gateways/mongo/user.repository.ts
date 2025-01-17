@@ -82,7 +82,7 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
       if (!result || !result[0]) {
         throw new NotFoundError(MODULE_NAME);
       }
-      if (new Date() > new Date(result[0].expires) && !includeExpired) {
+      if (new Date().valueOf() > new Date(result[0].expires).valueOf() && !includeExpired) {
         throw new NotFoundError(MODULE_NAME, {
           message: 'Expired elevation found.',
         });

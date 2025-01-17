@@ -539,7 +539,7 @@ function getPrivilegedIdentityUser(
     ...getCamsUserReference(),
     ...override,
     documentType: 'PRIVILEGED_IDENTITY_USER',
-    expires: getDateAfterToday().toISOString(),
+    expires: override.expires ?? getDateAfterToday().toISOString(),
   };
 }
 

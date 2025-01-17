@@ -5,15 +5,13 @@ import Factory, {
   getUserGroupGateway,
   getUsersRepository,
 } from '../../factory';
-import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { getCamsError } from '../../common-errors/error-utilities';
 import {
   PrivilegedIdentityUser,
   CamsUserGroup,
   CamsUserReference,
   Staff,
 } from '../../../../common/src/cams/users';
-import { UpsertResult } from '../gateways.types';
-import { DEFAULT_STAFF_TTL } from '../offices/offices';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
@@ -33,52 +31,6 @@ type RoleAndOfficeGroupNames = {
 };
 export class AdminUseCase {
   private roleAndOfficeGroupNames: RoleAndOfficeGroupNames;
-
-  /**
-   * addOfficeStaff
-   * @template {T extends CamsError}
-   * @param {ApplicationContext} context Application context.
-   * @param {CreateStaffRequestBody} requestBody Request must include the office code, the user's
-   * id, the user's name, and the roles they have. Optionally provide a Mongo-compliant ttl. If not
-   * provided, ttl defaults to 24 hours. For no ttl, provide -1.
-   * @throws {T} Throws a CamsError or any type that extends CamsError.
-   */
-  public async addOfficeStaff(
-    context: ApplicationContext,
-    requestBody: CreateStaffRequestBody,
-  ): Promise<UpsertResult> {
-    const officesRepo = Factory.getOfficesRepository(context);
-    const ttl = requestBody.ttl ?? DEFAULT_STAFF_TTL;
-    const userWithRoles: Staff = {
-      id: requestBody.id,
-      name: requestBody.name,
-      roles: requestBody.roles,
-    };
-
-    try {
-      return await officesRepo.putOfficeStaff(requestBody.officeCode, userWithRoles, ttl);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: { module: MODULE_NAME, message: 'Failed to create staff document.' },
-      });
-    }
-  }
-
-  public async deleteStaff(
-    context: ApplicationContext,
-    officeCode: string,
-    id: string,
-  ): Promise<void> {
-    const officesRepo = Factory.getOfficesRepository(context);
-
-    try {
-      await officesRepo.findAndDeleteStaff(officeCode, id);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: { module: MODULE_NAME, message: 'Failed to delete staff document.' },
-      });
-    }
-  }
 
   public async getRoleAndOfficeGroupNames(
     context: ApplicationContext,
