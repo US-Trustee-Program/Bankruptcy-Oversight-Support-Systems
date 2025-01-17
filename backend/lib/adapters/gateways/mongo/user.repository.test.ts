@@ -10,6 +10,7 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 describe('User repository tests', () => {
   let context: ApplicationContext;
   let repo: UsersMongoRepository;
+  const todayDate = new Date().toISOString().split('T')[0];
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -125,5 +126,16 @@ describe('User repository tests', () => {
     });
     await expect(repo.deletePrivilegedIdentityUser('test-user')).rejects.toThrow(expected);
     expect(deleteSpy).toHaveBeenCalled();
+  });
+
+  test('should throw when expired privileged identity user is excluded', async () => {
+    const user = MockData.getPrivilegedIdentityUser({
+      expires: MockData.someDateBeforeThisDate(new Date(todayDate).toISOString(), 2),
+    });
+    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([user]);
+
+    await expect(repo.getPrivilegedIdentityUser('test-user', false)).rejects.toThrow(
+      'Expired elevation found.',
+    );
   });
 });
