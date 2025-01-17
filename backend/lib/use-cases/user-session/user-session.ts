@@ -18,12 +18,14 @@ import { UsersRepository } from '../gateways.types';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
 
-function getRoles(idpGroups: string[]): CamsRole[] {
+// TODO: move this somewhere else instead of exporting
+export function getRolesFromGroupNames(idpGroups: string[]): CamsRole[] {
   const rolesMap = LocalStorageGateway.getRoleMapping();
   return idpGroups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
 }
 
-async function getOffices(
+// TODO: move this somewhere else instead of exporting
+export async function getOfficesFromGroupNames(
   context: ApplicationContext,
   idpGroups: string[],
 ): Promise<UstpOfficeDetails[]> {
@@ -60,8 +62,8 @@ export class UserSessionUseCase {
 
       context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
       const { user, jwt } = await authGateway.getUser(token);
-      user.roles = getRoles(jwt.claims.groups);
-      user.offices = await getOffices(context, jwt.claims.groups);
+      user.roles = getRolesFromGroupNames(jwt.claims.groups);
+      user.offices = await getOfficesFromGroupNames(context, jwt.claims.groups);
 
       // Overlay additional roles and offices.
       if (
@@ -107,10 +109,10 @@ export class UserSessionUseCase {
     try {
       const pimUser = await usersRepository.getPrivilegedIdentityUser(user.id);
       if (new Date() < new Date(pimUser.expires)) {
-        const roles = getRoles(pimUser.claims.groups);
+        const roles = getRolesFromGroupNames(pimUser.claims.groups);
         const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
 
-        const offices = await getOffices(context, pimUser.claims.groups);
+        const offices = await getOfficesFromGroupNames(context, pimUser.claims.groups);
         const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
         result.roles = Array.from(rolesSet);
         result.offices = Array.from(officeSet);

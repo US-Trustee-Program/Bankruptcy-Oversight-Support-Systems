@@ -30,7 +30,7 @@ export type PrivilegedIdentityUser = CamsUserReference & {
   claims: {
     groups: string[];
   };
-  expires?: string;
+  expires: string;
 };
 
 export function getCourtDivisionCodes(user: CamsUser): string[] {

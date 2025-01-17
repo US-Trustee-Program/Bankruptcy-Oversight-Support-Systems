@@ -105,6 +105,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       });
 
       if (!result.acknowledged) throw upsert ? unknownError : unknownMatchError;
+      if (result.upsertedCount + result.modifiedCount > 1) throw unknownError;
       if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) throw unknownError;
       if (!upsert && result.matchedCount === 0) throw notFoundError;
       if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
@@ -169,7 +170,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const result = await this.collectionHumble.deleteOne(mongoQuery);
       if (result.deletedCount !== 1) {
-        throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
+        throw new NotFoundError(this.moduleName, {
+          message: `Matched and deleted ${result.deletedCount} items.`,
+        });
       }
 
       return result.deletedCount;

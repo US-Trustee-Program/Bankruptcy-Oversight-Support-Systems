@@ -66,7 +66,10 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     }
   }
 
-  async getPrivilegedIdentityUser(id: string): Promise<PrivilegedIdentityUser> {
+  async getPrivilegedIdentityUser(
+    id: string,
+    includeExpired: boolean = true,
+  ): Promise<PrivilegedIdentityUser> {
     const query = QueryBuilder.build(
       and(
         equals<PrivilegedIdentityUser['documentType']>('documentType', 'PRIVILEGED_IDENTITY_USER'),
@@ -78,6 +81,11 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
       const result = await this.getAdapter<PrivilegedIdentityUser>().find(query);
       if (!result || !result[0]) {
         throw new NotFoundError(MODULE_NAME);
+      }
+      if (new Date() > new Date(result[0].expires) && !includeExpired) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: 'Expired elevation found.',
+        });
       }
       return result[0];
     } catch (originalError) {
@@ -94,10 +102,7 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     );
 
     try {
-      const result = await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);
-      if (result !== 1) {
-        throw new UnknownError(MODULE_NAME);
-      }
+      await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);
     } catch (originalError) {
       throw getCamsError(
         originalError,

@@ -100,6 +100,7 @@ function randomUstpOffice() {
   return MOCKED_USTP_OFFICES_ARRAY[randomInt(MOCKED_USTP_OFFICES_ARRAY.length - 1)];
 }
 
+// TODO: consider whether this will eventually cause tests to fail
 function randomDate(year = '2024') {
   return someDateAfterThisDate(`${year}-01-01`);
 }
@@ -499,6 +500,10 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
+function getDateAfterToday() {
+  return faker.date.future();
+}
+
 function getCamsUserReference(override: Partial<CamsUserReference> = {}): CamsUserReference {
   return {
     id: randomId(),
@@ -534,6 +539,7 @@ function getPrivilegedIdentityUser(
     ...getCamsUserReference(),
     ...override,
     documentType: 'PRIVILEGED_IDENTITY_USER',
+    expires: getDateAfterToday().toISOString(),
   };
 }
 
@@ -633,6 +639,7 @@ export const MockData = {
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,
+  getDateAfterToday,
   getDateBeforeToday,
   getCamsUserReference,
   getCamsUser,
@@ -642,6 +649,8 @@ export const MockData = {
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,
   getJwt,
+  someDateAfterThisDate,
+  someDateBeforeThisDate,
 };
 
 export default MockData;

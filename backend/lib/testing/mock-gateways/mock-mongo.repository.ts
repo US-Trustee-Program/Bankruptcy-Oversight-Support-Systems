@@ -56,6 +56,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  putOrExtendOfficeStaff(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   putOfficeStaff(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
