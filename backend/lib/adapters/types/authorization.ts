@@ -28,6 +28,11 @@ export interface UserGroupGateway {
     config: UserGroupGatewayConfig,
     group: CamsUserGroup,
   ): Promise<CamsUserReference[]>;
+  getUserById(
+    context: ApplicationContext,
+    config: UserGroupGatewayConfig,
+    userId: string,
+  ): Promise<CamsUser>;
 }
 
 export type UserGroupGatewayConfig = {

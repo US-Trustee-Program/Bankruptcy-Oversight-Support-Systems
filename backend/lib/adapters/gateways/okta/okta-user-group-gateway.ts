@@ -3,13 +3,17 @@ import {
   GroupApiListGroupsRequest,
   GroupApiListGroupUsersRequest,
 } from '@okta/okta-sdk-nodejs';
-import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { V2Configuration } from '@okta/okta-sdk-nodejs/src/types/configuration';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { isCamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
+import {
+  getOfficesFromGroupNames,
+  getRolesFromGroupNames,
+} from '../../../use-cases/user-session/user-session';
 
 const MODULE_NAME = 'OKTA_USER_GROUP_GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -212,6 +216,28 @@ async function getUserGroupUsers(
   return camsUserReferences;
 }
 
+async function getUserById(
+  context: ApplicationContext,
+  config: UserGroupGatewayConfig,
+  id: string,
+): Promise<CamsUser> {
+  const client = await initialize(config);
+  const user = await client.userApi.getUser({ userId: id });
+  const groups = await client.userApi.listUserGroups({ userId: id });
+  const groupsArray = [];
+  await groups.each((group) => {
+    groupsArray.push(group.profile.name);
+  });
+  const camsUser: CamsUser = {
+    id: user.id,
+    name: user.profile.displayName,
+    offices: await getOfficesFromGroupNames(context, groupsArray),
+    roles: getRolesFromGroupNames(groupsArray),
+  };
+  context.logger.info(MODULE_NAME, `Retrieved ${user.id}`, camsUser);
+  return camsUser;
+}
+
 export const OktaUserGroupGateway: UserGroupGateway & {
   initialize(config: UserGroupGatewayConfig);
 } = {
@@ -219,6 +245,7 @@ export const OktaUserGroupGateway: UserGroupGateway & {
   getUserGroupWithUsers,
   getUserGroups,
   getUserGroupUsers,
+  getUserById,
 };
 
 export default OktaUserGroupGateway;
