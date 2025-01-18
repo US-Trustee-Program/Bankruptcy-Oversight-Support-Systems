@@ -69,7 +69,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== STATE ==========
 
-  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(disabled ?? false);
+  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(
+    disabled !== undefined ? !!disabled : false,
+  );
   const [selections, setSelections] = useState<ComboOption[]>(() => {
     if (props.value) {
       const selection = options.find((option) => option.value === props.value);
