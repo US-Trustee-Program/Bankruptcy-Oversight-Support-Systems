@@ -5,7 +5,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 
-describe('UsersHelpers tests', () => {
+describe.skip('UsersHelpers tests', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {

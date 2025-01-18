@@ -1,13 +1,19 @@
 import { Collection, Group, User } from '@okta/okta-sdk-nodejs';
-import { CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { OktaUserGroupGateway } from './okta-user-group-gateway';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { UserGroupGatewayConfig } from '../../types/authorization';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { randomUUID } from 'node:crypto';
+import { MockOfficesGateway } from '../../../testing/mock-gateways/mock.offices.gateway';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 
 const listGroups = jest.fn();
 const listGroupUsers = jest.fn();
+const getUser = jest.fn();
+const listUserGroups = jest.fn();
 jest.mock('@okta/okta-sdk-nodejs', () => {
   return {
     Client: function () {
@@ -15,6 +21,10 @@ jest.mock('@okta/okta-sdk-nodejs', () => {
         groupApi: {
           listGroups,
           listGroupUsers,
+        },
+        userApi: {
+          getUser,
+          listUserGroups,
         },
       };
     },
@@ -166,6 +176,65 @@ describe('OktaGroupGateway', () => {
         OktaUserGroupGateway.getUserGroupUsers(context, configuration, camsUserGroup),
       ).rejects.toThrow();
     });
+  });
+
+  describe('getUserGroupWithUsers tests', () => {
+    // TODO: test this function
+    test('should do something', async () => {});
+  });
+
+  describe('getUserById tests', () => {
+    let context: ApplicationContext;
+    const manhattanOffice: UstpOfficeDetails = {
+      officeCode: 'USTP CAMS Region 2 Office Manhattan',
+      officeName: 'Manhattan',
+      groups: [],
+      idpGroupId: randomUUID(),
+      regionId: '02',
+      regionName: 'Region 2',
+    };
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+    });
+
+    test('should return user with roles and offices', async () => {
+      const user: User = {
+        id: '00123abc',
+        profile: {
+          login: 'user@nodomain.com',
+          displayName: 'Abe Lincoln',
+        },
+      };
+      const groupOne: Group = {
+        id: randomUUID(),
+        profile: {
+          name: 'USTP CAMS Region 2 Office Manhattan',
+        },
+      };
+      const groupTwo: Group = {
+        id: manhattanOffice.idpGroupId,
+        profile: {
+          name: 'USTP CAMS Trial Attorney',
+        },
+      };
+      jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([manhattanOffice]);
+
+      getUser.mockResolvedValue(user);
+      listUserGroups.mockResolvedValue(buildMockCollection<Group>([groupOne, groupTwo]));
+
+      const expected: CamsUser = {
+        id: user.id,
+        name: user.profile.displayName,
+        roles: [CamsRole.TrialAttorney],
+        offices: [manhattanOffice],
+      };
+      const actual = await OktaUserGroupGateway.getUserById(context, configuration, user.id);
+      expect(actual).toEqual(expected);
+    });
+
+    // TODO: finish testing this function
+    test('should throw error with CamsStack', async () => {});
   });
 });
 

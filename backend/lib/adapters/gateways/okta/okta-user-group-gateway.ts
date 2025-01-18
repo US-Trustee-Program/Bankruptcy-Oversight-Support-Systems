@@ -14,6 +14,7 @@ import {
   getOfficesFromGroupNames,
   getRolesFromGroupNames,
 } from '../../../use-cases/user-session/user-session';
+import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 
 const MODULE_NAME = 'OKTA_USER_GROUP_GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -222,19 +223,28 @@ async function getUserById(
   id: string,
 ): Promise<CamsUser> {
   const client = await initialize(config);
-  const user = await client.userApi.getUser({ userId: id });
-  const groups = await client.userApi.listUserGroups({ userId: id });
-  const groupsArray = [];
-  await groups.each((group) => {
-    groupsArray.push(group.profile.name);
-  });
-  const camsUser: CamsUser = {
-    id: user.id,
-    name: user.profile.displayName,
-    offices: await getOfficesFromGroupNames(context, groupsArray),
-    roles: getRolesFromGroupNames(groupsArray),
-  };
-  context.logger.info(MODULE_NAME, `Retrieved ${user.id}`, camsUser);
+  let camsUser: CamsUser;
+  try {
+    const user = await client.userApi.getUser({ userId: id });
+    const groups = await client.userApi.listUserGroups({ userId: id });
+    const groupIds = [];
+    const groupNames = [];
+    for await (const oktaGroup of groups) {
+      groupIds.push(oktaGroup.id);
+      groupNames.push(oktaGroup.profile.name);
+    }
+    camsUser = {
+      id: user.id,
+      name: user.profile.displayName ?? user.profile.lastName + ', ' + user.profile.firstName,
+      offices: await getOfficesFromGroupNames(context, groupIds),
+      roles: getRolesFromGroupNames(groupNames),
+    };
+  } catch (originalError) {
+    throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+      camsStackInfo: { module: MODULE_NAME, message: 'Failed while getting user by id.' },
+    });
+  }
+  context.logger.info(MODULE_NAME, `Retrieved ${id}`, camsUser);
   return camsUser;
 }
 
