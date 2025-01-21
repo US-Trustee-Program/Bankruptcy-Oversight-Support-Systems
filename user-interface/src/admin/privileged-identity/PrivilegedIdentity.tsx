@@ -23,7 +23,7 @@ function toComboOption(groupName: string) {
   };
 }
 
-export default function PrivilegedIdentity() {
+export function PrivilegedIdentity() {
   const flags = useFeatureFlags();
   const api = useApi2();
 
