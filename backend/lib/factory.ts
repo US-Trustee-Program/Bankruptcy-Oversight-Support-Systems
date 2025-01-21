@@ -51,12 +51,13 @@ import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
-import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
+import { MockUserGroupGateway } from './testing/mock-gateways/mock.user-group.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
 let storageGateway: StorageGateway;
 let acmsGateway: AcmsGateway;
+let idpApiGateway: UserGroupGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
@@ -249,9 +250,18 @@ export const getStorageGateway = (_context: ApplicationContext): StorageGateway 
   return storageGateway;
 };
 
-export const getUserGroupGateway = (context: ApplicationContext): UserGroupGateway => {
-  if (context.config.authConfig.provider === 'okta') return OktaUserGroupGateway;
-  if (context.config.authConfig.provider === 'mock') return MockUserGroupGateway;
+export const getUserGroupGateway = async (
+  context: ApplicationContext,
+): Promise<UserGroupGateway> => {
+  if (context.config.authConfig.provider === 'mock') {
+    return new MockUserGroupGateway();
+  } else if (context.config.authConfig.provider === 'okta') {
+    if (!idpApiGateway) {
+      idpApiGateway = new OktaUserGroupGateway();
+      await idpApiGateway.init(context.config.userGroupGatewayConfig);
+    }
+    return idpApiGateway;
+  }
   return null;
 };
 

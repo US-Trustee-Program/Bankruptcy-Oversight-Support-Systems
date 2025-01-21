@@ -1,43 +1,17 @@
-import {
-  getAuthorizationGateway,
-  getOfficesGateway,
-  getUserSessionCacheRepository,
-  getUsersRepository,
-} from '../../factory';
+import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
-import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { UsersRepository } from '../gateways.types';
+import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
-
-// TODO: move this somewhere else instead of exporting
-export function getRolesFromGroupNames(idpGroups: string[]): CamsRole[] {
-  const rolesMap = LocalStorageGateway.getRoleMapping();
-  return idpGroups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
-}
-
-// TODO: move this somewhere else instead of exporting
-export async function getOfficesFromGroupNames(
-  context: ApplicationContext,
-  idpGroups: string[],
-): Promise<UstpOfficeDetails[]> {
-  const officesGateway = getOfficesGateway(context);
-  const ustpOffices = await officesGateway.getOffices(context);
-  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
-}
 
 export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
     const sessionCacheRepository = getUserSessionCacheRepository(context);
-    const usersRepository = getUsersRepository(context);
 
     try {
       const session = await sessionCacheRepository.read(token);
@@ -61,20 +35,8 @@ export class UserSessionUseCase {
       }
 
       context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
-      const { user, jwt } = await authGateway.getUser(token);
-      user.roles = getRolesFromGroupNames(jwt.claims.groups);
-      user.offices = await getOfficesFromGroupNames(context, jwt.claims.groups);
-
-      // Overlay additional roles and offices.
-      if (
-        context.featureFlags['privileged-identity-management'] &&
-        user.roles.includes(CamsRole.PrivilegedIdentityUser)
-      ) {
-        const { roles: elevatedRoles, offices: elevatedOffices } =
-          await this.getElevatedRolesAndOffices(user, usersRepository, context);
-        user.roles = elevatedRoles;
-        user.offices = elevatedOffices;
-      }
+      const { user: camsUserReference, jwt } = await authGateway.getUser(token);
+      const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
       const session: CamsSession = {
         user,
@@ -95,36 +57,5 @@ export class UserSessionUseCase {
             originalError: error,
           });
     }
-  }
-
-  private async getElevatedRolesAndOffices(
-    user: CamsUserReference & {
-      offices?: UstpOfficeDetails[];
-      roles?: CamsRole[];
-    },
-    usersRepository: UsersRepository,
-    context: ApplicationContext<unknown>,
-  ): Promise<{ roles: CamsRole[]; offices: UstpOfficeDetails[] }> {
-    const result = { roles: user.roles, offices: user.offices };
-    try {
-      const pimUser = await usersRepository.getPrivilegedIdentityUser(user.id);
-      if (new Date() < new Date(pimUser.expires)) {
-        const roles = getRolesFromGroupNames(pimUser.claims.groups);
-        const rolesSet = new Set<CamsRole>([...user.roles, ...roles]);
-
-        const offices = await getOfficesFromGroupNames(context, pimUser.claims.groups);
-        const officeSet = new Set<UstpOfficeDetails>([...user.offices, ...offices]);
-        result.roles = Array.from(rolesSet);
-        result.offices = Array.from(officeSet);
-      }
-    } catch (error) {
-      // Silently log the failure so the user can continue without permission elevation.
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to elevate permissions for user ${user.name} (${user.id}).`,
-        error.message,
-      );
-    }
-    return result;
   }
 }

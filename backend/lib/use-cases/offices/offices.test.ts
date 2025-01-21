@@ -2,8 +2,6 @@ import { OfficesUseCase } from './offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import * as factory from '../../factory';
-import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
-import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MOCKED_USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cams/offices';
@@ -11,9 +9,12 @@ import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
+import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
+import UsersHelpers from '../users/users.helpers';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
+  jest.spyOn(MockUserGroupGateway.prototype, 'init').mockResolvedValue();
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
@@ -111,7 +112,7 @@ describe('offices use case tests', () => {
     const dataVerifierUsers = [users[3]];
     users[3].roles.push(CamsRole.DataVerifier);
     jest
-      .spyOn(OktaUserGroupGateway, 'getUserGroups')
+      .spyOn(MockUserGroupGateway.prototype, 'getUserGroups')
       .mockResolvedValue([
         { id: 'one', name: 'group-a' },
         { id: 'two', name: 'group-b' },
@@ -120,25 +121,31 @@ describe('offices use case tests', () => {
         dataVerifierGroup,
       ]);
     jest
-      .spyOn(OktaUserGroupGateway, 'getUserGroupUsers')
-      .mockImplementation(
-        async (
-          _context: ApplicationContext,
-          _config: UserGroupGatewayConfig,
-          group: CamsUserGroup,
-        ) => {
-          if (group.name === 'USTP CAMS Region 18 Office Seattle') {
-            return Promise.resolve(seattleUsers);
-          } else if (group.name === 'USTP CAMS Trial Attorney') {
-            return Promise.resolve(attorneyUsers);
-          } else if (group.name === 'USTP CAMS Data Verifier') {
-            return Promise.resolve(dataVerifierUsers);
-          } else if (group.name === 'group-a' || group.name === 'group-b') {
-            throw new Error('Tried to retrieve users for invalid group.');
-          }
-        },
-      );
+      .spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers')
+      .mockImplementation(async (_context: ApplicationContext, group: CamsUserGroup) => {
+        if (group.name === 'USTP CAMS Region 18 Office Seattle') {
+          return Promise.resolve(seattleUsers);
+        } else if (group.name === 'USTP CAMS Trial Attorney') {
+          return Promise.resolve(attorneyUsers);
+        } else if (group.name === 'USTP CAMS Data Verifier') {
+          return Promise.resolve(dataVerifierUsers);
+        } else if (group.name === 'group-a' || group.name === 'group-b') {
+          throw new Error('Tried to retrieve users for invalid group.');
+        }
+      });
 
+    jest
+      .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
+      .mockImplementation(async (_context: ApplicationContext, userId: string) => {
+        const user = { id: userId, name: '', roles: [], offices: [] };
+        users.forEach((staff) => {
+          if (staff.id === userId) {
+            user.name = staff.name;
+            user.roles = staff.roles;
+          }
+        });
+        return user;
+      });
     const putSpy = jest
       .spyOn(MockOfficesRepository, 'putOfficeStaff')
       .mockResolvedValueOnce({ id: users[1].id, modifiedCount: 1, upsertedCount: 0 })

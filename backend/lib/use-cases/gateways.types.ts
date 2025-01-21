@@ -145,7 +145,10 @@ export interface OfficesRepository extends Releasable {
 
 export interface UsersRepository extends Releasable {
   getPrivilegedIdentityUser(id: string, includeExpired?: boolean): Promise<PrivilegedIdentityUser>;
-  putPrivilegedIdentityUser(privilegedIdentityUser: PrivilegedIdentityUser): Promise<ReplaceResult>;
+  putPrivilegedIdentityUser(
+    privilegedIdentityUser: PrivilegedIdentityUser,
+    updatedBy: CamsUserReference,
+  ): Promise<ReplaceResult>;
   deletePrivilegedIdentityUser(id: string): Promise<void>;
 }
 
