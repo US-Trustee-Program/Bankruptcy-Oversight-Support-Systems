@@ -25,9 +25,9 @@ export default async function handler(
   }
 }
 
-app.http('admin', {
+app.http('privileged-identity-admin', {
   methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/privileged-identity/{resourceId}',
+  route: 'dev-tools/privileged-identity/{resourceId?}',
 });

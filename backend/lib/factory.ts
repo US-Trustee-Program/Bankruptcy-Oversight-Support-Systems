@@ -253,14 +253,16 @@ export const getStorageGateway = (_context: ApplicationContext): StorageGateway 
 export const getUserGroupGateway = async (
   context: ApplicationContext,
 ): Promise<UserGroupGateway> => {
-  if (context.config.get('dbMock')) {
+  if (context.config.authConfig.provider === 'mock') {
     return new MockUserGroupGateway();
+  } else if (context.config.authConfig.provider === 'okta') {
+    if (!idpApiGateway) {
+      idpApiGateway = new OktaUserGroupGateway();
+      await idpApiGateway.init(context.config.userGroupGatewayConfig);
+    }
+    return idpApiGateway;
   }
-  if (!idpApiGateway) {
-    idpApiGateway = new OktaUserGroupGateway();
-    await idpApiGateway.init(context.config.userGroupGatewayConfig);
-  }
-  return idpApiGateway;
+  return null;
 };
 
 const getAcmsGateway = (context: ApplicationContext): AcmsGateway => {

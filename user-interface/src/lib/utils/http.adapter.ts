@@ -12,6 +12,20 @@ export async function httpGet(data: { url: string; headers?: object }): Promise<
   return await fetch(data.url, requestInit);
 }
 
+export async function httpDelete(data: { url: string; headers?: object }): Promise<Response> {
+  const requestInit: RequestInit = {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json;charset=UTF-8',
+      ...data.headers,
+    },
+    cache: 'default',
+  };
+
+  return await fetch(data.url, requestInit);
+}
+
 export async function httpPost(data: {
   url: string;
   body: object;

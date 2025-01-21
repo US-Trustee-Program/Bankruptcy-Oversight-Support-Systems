@@ -258,9 +258,10 @@ describe('test cams combobox', () => {
 
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
-      const input1 = document.querySelector('.input1');
-      expect(input1).toHaveFocus();
     });
+
+    const input1 = document.querySelector('.input1');
+    expect(input1).toHaveFocus();
   });
 
   test('If the dropdown is already closed, then pressing the tab key should focus on the next element on the screen and should not open the dropdown list.', async () => {
@@ -450,8 +451,9 @@ describe('test cams combobox', () => {
 
     await waitFor(() => {
       expect(inputField.value).toEqual('');
-      expect(input1!).toHaveFocus();
     });
+
+    expect(input1!).toHaveFocus();
   });
 
   test('Tabbing from another area of the screen to the combo box should first focus on the pills, then the clear button, then the actual combo box input.', async () => {
