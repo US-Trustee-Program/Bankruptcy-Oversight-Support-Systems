@@ -1,35 +1,15 @@
-import { Collection, Group, User } from '@okta/okta-sdk-nodejs';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
-import { OktaUserGroupGateway } from './okta-user-group-gateway';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { UserGroupGatewayConfig } from '../../types/authorization';
+import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { randomUUID } from 'node:crypto';
 import { MockOfficesGateway } from '../../../testing/mock-gateways/mock.offices.gateway';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
-
-const listGroups = jest.fn();
-const listGroupUsers = jest.fn();
-const getUser = jest.fn();
-const listUserGroups = jest.fn();
-jest.mock('@okta/okta-sdk-nodejs', () => {
-  return {
-    Client: function () {
-      return {
-        groupApi: {
-          listGroups,
-          listGroupUsers,
-        },
-        userApi: {
-          getUser,
-          listUserGroups,
-        },
-      };
-    },
-  };
-});
+import OktaHumble, { IdpGroup } from '../../../humble-objects/okta-humble';
+import OktaUserGroupGateway from './okta-user-group-gateway';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
 const configuration: UserGroupGatewayConfig = {
   provider: 'okta',
@@ -40,11 +20,27 @@ const configuration: UserGroupGatewayConfig = {
 };
 
 describe('OktaGroupGateway', () => {
+  let gateway: UserGroupGateway;
+
+  beforeEach(async () => {
+    gateway = new OktaUserGroupGateway();
+    jest.spyOn(OktaHumble.prototype, 'init').mockResolvedValue();
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  // TODO: should we remove these?
   describe('bad configurations', () => {
+    beforeEach(() => {
+      jest.restoreAllMocks();
+    });
+
     test('wrong provider', async () => {
       const configCopy = { ...configuration };
       configCopy.provider = 'notOkta';
-      await expect(OktaUserGroupGateway.initialize(configCopy)).rejects.toThrow(
+      await expect(gateway.init(configCopy)).rejects.toThrow(
         `Invalid provider. Expected 'okta'. Received '${configCopy.provider}'.`,
       );
     });
@@ -54,7 +50,7 @@ describe('OktaGroupGateway', () => {
       for (const key of required) {
         const configCopy = { ...configuration };
         configCopy[key] = null;
-        await expect(OktaUserGroupGateway.initialize(configCopy)).rejects.toThrow(
+        await expect(gateway.init(configCopy)).rejects.toThrow(
           `Missing configuration. Expected '${key}'.'`,
         );
       }
@@ -62,59 +58,56 @@ describe('OktaGroupGateway', () => {
   });
 
   describe('getUserGroups', () => {
-    const group1: Group = {
+    const group1: IdpGroup = {
       id: 'foo1',
-      profile: {
-        name: 'cams group name #1',
-      },
+      name: 'cams group name #1',
     };
 
-    const group2: Group = {
+    const group2: IdpGroup = {
       id: 'foo2',
-      profile: {
-        name: 'cams group name #2',
-      },
+      name: 'cams group name #2',
     };
 
-    const group3: Group = {
+    const group3: IdpGroup = {
       id: 'foo3',
-      profile: {
-        name: 'cams group name #3',
-      },
+      name: 'cams group name #3',
     };
 
     let context: ApplicationContext;
 
     beforeEach(async () => {
       context = await createMockApplicationContext();
+      await gateway.init(configuration);
     });
 
     test('should return a list of CamsUserGroups', async () => {
-      listGroups.mockResolvedValue(buildMockCollection<Group>([group1, group2, group3]));
+      jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue([group1, group2, group3]);
 
-      const actual = await OktaUserGroupGateway.getUserGroups(context, configuration);
+      const actual = await gateway.getUserGroups(context);
 
       const expected: CamsUserGroup[] = [
         {
           id: group1.id,
-          name: group1.profile.name,
+          name: group1.name,
         },
         {
           id: group2.id,
-          name: group2.profile.name,
+          name: group2.name,
         },
         {
           id: group3.id,
-          name: group3.profile.name,
+          name: group3.name,
         },
       ];
       expect(actual).toEqual(expected);
     });
 
     test('should throw an error if an error is returned by the api', async () => {
-      listGroups.mockRejectedValue(new UnknownError('TEST-MODULE'));
+      jest
+        .spyOn(OktaHumble.prototype, 'listGroups')
+        .mockRejectedValue(new UnknownError('TEST-MODULE'));
 
-      await expect(OktaUserGroupGateway.getUserGroups(context, configuration)).rejects.toThrow();
+      await expect(gateway.getUserGroups(context)).rejects.toThrow();
     });
   });
 
@@ -128,59 +121,104 @@ describe('OktaGroupGateway', () => {
 
     beforeEach(async () => {
       context = await createMockApplicationContext();
+      await gateway.init(configuration);
     });
 
     test('should return a list of CamsUsers', async () => {
-      const user1: User = {
+      const user1: CamsUserReference = {
         id: '00123abc',
-        profile: {
-          login: 'user@nodomain.com',
-          displayName: 'Abe Lincoln',
-        },
+        name: 'Abe Lincoln',
       };
 
-      const user2: User = {
+      const user2: CamsUserReference = {
         id: '99123abc',
-        profile: {
-          login: 'user2@nodomain.com',
-          firstName: 'Mary',
-          lastName: 'Lincoln',
-        },
+        name: 'Lincoln, Mary',
       };
 
-      listGroupUsers.mockResolvedValue(buildMockCollection<User>([user1, user2]));
+      jest.spyOn(OktaHumble.prototype, 'listGroupUsers').mockResolvedValue([user1, user2]);
 
-      const actual = await OktaUserGroupGateway.getUserGroupUsers(
-        context,
-        configuration,
-        camsUserGroup,
-      );
+      const actual = await gateway.getUserGroupUsers(context, camsUserGroup);
 
       const expected: CamsUserReference[] = [
         {
           id: user1.id,
-          name: user1.profile.displayName,
+          name: user1.name,
         },
         {
           id: user2.id,
-          name: user2.profile.lastName + ', ' + user2.profile.firstName,
+          name: user2.name,
         },
       ];
       expect(actual).toEqual(expected);
     });
 
     test('should throw an error if an error is returned by the api', async () => {
-      listGroupUsers.mockRejectedValue(new UnknownError('TEST-MODULE'));
+      jest
+        .spyOn(OktaHumble.prototype, 'listGroupUsers')
+        .mockRejectedValue(new UnknownError('TEST-MODULE'));
 
-      await expect(
-        OktaUserGroupGateway.getUserGroupUsers(context, configuration, camsUserGroup),
-      ).rejects.toThrow();
+      await expect(gateway.getUserGroupUsers(context, camsUserGroup)).rejects.toThrow();
     });
   });
 
   describe('getUserGroupWithUsers tests', () => {
-    // TODO: test this function
-    test('should do something', async () => {});
+    let context: ApplicationContext;
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      await gateway.init(configuration);
+    });
+
+    test('should return group with users', async () => {
+      const group = {
+        id: randomUUID(),
+        name: 'Cams group name #1',
+      };
+      const users = MockData.buildArray(MockData.getCamsUserReference, 4);
+
+      jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue([group]);
+      jest.spyOn(OktaHumble.prototype, 'listGroupUsers').mockResolvedValue(users);
+
+      const result = await gateway.getUserGroupWithUsers(context, group.id);
+      expect(result).toEqual({
+        id: group.id,
+        name: group.name,
+        users,
+      });
+    });
+
+    const errorCases = [
+      ['0 groups found', [], 0],
+      ['more than 1 groups found', MockData.buildArray(MockData.getCamsUserGroup, 4), 4],
+    ];
+    test.each(errorCases)(
+      'should throw error when %s',
+      async (_caseName: string, groups: CamsUserGroup[], count: number) => {
+        jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue(groups);
+        const groupName = 'test-group';
+        const expected = new UnknownError(expect.anything(), {
+          message: `Found ${count} groups matching ${groupName}, expected 1.`,
+          camsStackInfo: {
+            message: `Failed to retrieve ${groupName} group.`,
+            module: expect.anything(),
+          },
+        });
+        await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(expected);
+      },
+    );
+
+    test('should throw UnknownError', async () => {
+      jest.spyOn(OktaHumble.prototype, 'listGroups').mockRejectedValue('some unknown error');
+      const groupName = 'test-group';
+      const expected = new UnknownError(expect.anything(), {
+        message: 'Unknown Error',
+        camsStackInfo: {
+          message: `Failed to retrieve ${groupName} group.`,
+          module: expect.anything(),
+        },
+      });
+      await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(expected);
+    });
   });
 
   describe('getUserById tests', () => {
@@ -196,88 +234,44 @@ describe('OktaGroupGateway', () => {
 
     beforeEach(async () => {
       context = await createMockApplicationContext();
+      await gateway.init(configuration);
     });
 
     test('should return user with roles and offices', async () => {
-      const user: User = {
+      const user: CamsUserReference = {
         id: '00123abc',
-        profile: {
-          login: 'user@nodomain.com',
-          displayName: 'Abe Lincoln',
-        },
+        name: 'Abe Lincoln',
       };
-      const groupOne: Group = {
+      const groupOne: IdpGroup = {
         id: randomUUID(),
-        profile: {
-          name: 'USTP CAMS Region 2 Office Manhattan',
-        },
+        name: 'USTP CAMS Region 2 Office Manhattan',
       };
-      const groupTwo: Group = {
+      const groupTwo: IdpGroup = {
         id: manhattanOffice.idpGroupId,
-        profile: {
-          name: 'USTP CAMS Trial Attorney',
-        },
+        name: 'USTP CAMS Trial Attorney',
       };
       jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([manhattanOffice]);
 
-      getUser.mockResolvedValue(user);
-      listUserGroups.mockResolvedValue(buildMockCollection<Group>([groupOne, groupTwo]));
+      jest.spyOn(OktaHumble.prototype, 'getUser').mockResolvedValue(user);
+      jest.spyOn(OktaHumble.prototype, 'listUserGroups').mockResolvedValue([groupOne, groupTwo]);
 
       const expected: CamsUser = {
         id: user.id,
-        name: user.profile.displayName,
+        name: user.name,
         roles: [CamsRole.TrialAttorney],
         offices: [manhattanOffice],
       };
-      const actual = await OktaUserGroupGateway.getUserById(context, configuration, user.id);
+      const actual = await gateway.getUserById(context, user.id);
       expect(actual).toEqual(expected);
     });
 
-    // TODO: finish testing this function
-    test('should throw error with CamsStack', async () => {});
+    test('should throw error with CamsStack', async () => {
+      jest.spyOn(OktaHumble.prototype, 'getUser').mockRejectedValue('some unknown error');
+      const expected = new UnknownError(expect.anything(), {
+        message: 'Unknown Error',
+        camsStackInfo: { message: 'Failed while getting user by id.', module: expect.anything() },
+      });
+      await expect(gateway.getUserById(context, 'test-user')).rejects.toThrow(expected);
+    });
   });
 });
-
-function buildMockCollection<T>(dataToReturn: T[]): Collection<T> {
-  const currentItems = dataToReturn as unknown as Record<string, unknown>[];
-
-  let index = 0;
-  const collection: Collection<T> = {
-    nextUri: '',
-    httpApi: undefined,
-    factory: undefined,
-    currentItems,
-    request: undefined,
-    next: function (): Promise<{ done: boolean; value: T | null }> {
-      const nextResponse = { done: index === currentItems.length, value: null };
-      if (!nextResponse.done) {
-        nextResponse.value = currentItems[index];
-        index++;
-      }
-      return Promise.resolve(nextResponse);
-    },
-    getNextPage: function (): Promise<Record<string, unknown>[]> {
-      throw new Error('Function not implemented.');
-    },
-    each: function (
-      _iterator: (item: T) => Promise<unknown> | boolean | unknown,
-    ): Promise<unknown> {
-      throw new Error('Function not implemented.');
-    },
-    subscribe: function (_config: {
-      interval?: number;
-      next: (item: T) => unknown | Promise<unknown>;
-      error: (e: Error) => unknown | Promise<unknown>;
-      complete: () => void;
-    }): { unsubscribe(): void } {
-      throw new Error('Function not implemented.');
-    },
-    [Symbol.asyncIterator]: function (): {
-      next: () => Promise<{ done: boolean; value: T | null }>;
-    } {
-      return { next: this.next };
-    },
-  };
-
-  return collection;
-}

@@ -49,10 +49,9 @@ export class OfficesUseCase {
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
-    const config = context.config.userGroupGatewayConfig;
     const officesGateway = getOfficesGateway(context);
     const repository = getOfficesRepository(context);
-    const userGroupSource = getUserGroupGateway(context);
+    const userGroupSource = await getUserGroupGateway(context);
     const storage = getStorageGateway(context);
 
     // Get IdP to CAMS mappings.
@@ -64,14 +63,14 @@ export class OfficesUseCase {
     }, new Map<string, UstpOfficeDetails>());
 
     // Filter out any groups not relevant to CAMS.
-    const userGroups = await userGroupSource.getUserGroups(context, config);
+    const userGroups = await userGroupSource.getUserGroups(context);
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 
     // Map roles to users.
     const userMap = new Map<string, Staff>();
     for (const roleGroup of roleGroups) {
-      const users = await userGroupSource.getUserGroupUsers(context, config, roleGroup);
+      const users = await userGroupSource.getUserGroupUsers(context, roleGroup);
       const role = groupToRoleMap.get(roleGroup.name);
       for (const user of users) {
         if (userMap.has(user.id)) {
@@ -87,7 +86,7 @@ export class OfficesUseCase {
     for (const officeGroup of officeGroups) {
       const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
 
-      const users = await userGroupSource.getUserGroupUsers(context, config, officeGroup);
+      const users = await userGroupSource.getUserGroupUsers(context, officeGroup);
       let successCount = 0;
       let failureCount = 0;
       for (const user of users) {

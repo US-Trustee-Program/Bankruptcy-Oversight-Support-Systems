@@ -29,7 +29,13 @@ import {
 import { CaseAssignment } from '../assignments';
 import { ResponseBody } from '../../api/response';
 import { Action, ResourceActions } from '../actions';
-import { AttorneyUser, PrivilegedIdentityUser, CamsUser, CamsUserReference } from '../users';
+import {
+  AttorneyUser,
+  PrivilegedIdentityUser,
+  CamsUser,
+  CamsUserReference,
+  CamsUserGroup,
+} from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
@@ -522,6 +528,13 @@ function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
   };
 }
 
+function getCamsUserGroup(): CamsUserGroup {
+  return {
+    id: randomId(),
+    name: faker.lorem.words(4),
+  };
+}
+
 function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   return {
     ...getCamsUser({ roles: [CamsRole.TrialAttorney] }),
@@ -643,6 +656,7 @@ export const MockData = {
   getDateBeforeToday,
   getCamsUserReference,
   getCamsUser,
+  getCamsUserGroup,
   getAttorneyUser,
   getPrivilegedIdentityUser,
   getCamsSession,
