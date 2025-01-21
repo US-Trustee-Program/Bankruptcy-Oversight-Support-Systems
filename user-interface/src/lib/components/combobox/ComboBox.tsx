@@ -153,6 +153,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
+  function setValue(values: ComboOption[]) {
+    setSelections(values);
+  }
+
   function getValue() {
     return selections;
   }
@@ -378,7 +382,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }, [comboboxDisabled]);
 
-  useImperativeHandle(ref, () => ({ getValue, clearValue, disable }));
+  useImperativeHandle(ref, () => ({ setValue, getValue, clearValue, disable }));
 
   // ========== JSX ==========
 

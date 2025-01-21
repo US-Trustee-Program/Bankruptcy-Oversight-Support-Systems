@@ -81,9 +81,9 @@ export async function initialize(config: UserGroupGatewayConfig): Promise<Client
 }
 
 /**
- * getUserGroup
+ * getUserGroupWithUsers
  *
- * Retrieves a group by name.
+ * Retrieves a group by name. Decorates the group with users.
  *
  * @param {ApplicationContext} context
  * @param {UserGroupGatewayConfig} config

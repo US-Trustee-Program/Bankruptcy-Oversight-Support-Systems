@@ -2,9 +2,18 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import AdminScreenNavigation, { AdminNavState } from './AdminScreenNavigation';
 import PrivilegedIdentity from './privileged-identity/PrivilegedIdentity';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export function AdminScreen() {
-  // TODO: Put a guard in here to only allow Super User role.
+  if (!LocalStorage.getSession()?.user.roles?.includes(CamsRole.SuperUser)) {
+    return (
+      <Alert type={UswdsAlertStyle.Info} inline={true} show={true} title="Permission">
+        You do not have sufficent permission to use the CAMS administration tools.
+      </Alert>
+    );
+  }
   return (
     <MainContent className="admin-screen" data-testid="admin-screen">
       <DocumentTitle name="Administration" />
