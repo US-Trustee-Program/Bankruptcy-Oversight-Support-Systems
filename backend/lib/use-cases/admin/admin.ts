@@ -16,7 +16,7 @@ import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { getOfficesFromGroupNames, getRolesFromGroupNames } from '../user-session/user-session';
+import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
 
@@ -60,12 +60,8 @@ export class AdminUseCase {
   ): Promise<CamsUserReference[]> {
     try {
       const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
-      const groupsGateway = getUserGroupGateway(context);
-      const group = await groupsGateway.getUserGroupWithUsers(
-        context,
-        context.config.userGroupGatewayConfig,
-        groupName,
-      );
+      const groupsGateway = await getUserGroupGateway(context);
+      const group = await groupsGateway.getUserGroupWithUsers(context, groupName);
       return group.users!.map((user) => getCamsUserReference(user));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to get privileged identity users.');
@@ -84,7 +80,10 @@ export class AdminUseCase {
     }
   }
 
-  public async deletePrivilegedIdentityUser(context: ApplicationContext, userId: string) {
+  public async deletePrivilegedIdentityUser(
+    context: ApplicationContext,
+    userId: string,
+  ): Promise<void> {
     try {
       const gateway = Factory.getUsersRepository(context);
       await gateway.deletePrivilegedIdentityUser(userId);
@@ -96,6 +95,7 @@ export class AdminUseCase {
   public async elevatePrivilegedUser(
     context: ApplicationContext,
     userId: string,
+    updatedBy: CamsUserReference,
     options: { groups: string[]; expires: string },
   ) {
     const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
@@ -110,10 +110,9 @@ export class AdminUseCase {
 
     try {
       const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
-      const groupsGateway = getUserGroupGateway(context);
+      const groupsGateway = await getUserGroupGateway(context);
       const privilegedIdentityUserGroup: CamsUserGroup = await groupsGateway.getUserGroupWithUsers(
         context,
-        context.config.userGroupGatewayConfig,
         groupName,
       );
 
@@ -145,16 +144,19 @@ export class AdminUseCase {
         expires: options.expires,
       };
       const usersRepo = getUsersRepository(context);
-      const result = await usersRepo.putPrivilegedIdentityUser(privilegedIdentityUser);
+      const result = await usersRepo.putPrivilegedIdentityUser(privilegedIdentityUser, updatedBy);
 
       if (result.upsertedCount === 0 && result.modifiedCount === 0) {
         throw new UnknownError(MODULE_NAME, { message: 'Failed to add privileged identity user.' });
       }
 
       const officesRepo = getOfficesRepository(context);
-      const offices = await getOfficesFromGroupNames(context, privilegedIdentityUser.claims.groups);
+      const offices = await UsersHelpers.getOfficesFromGroupNames(
+        context,
+        privilegedIdentityUser.claims.groups,
+      );
       for (const office of offices) {
-        const roles = getRolesFromGroupNames(privilegedIdentityUser.claims.groups);
+        const roles = UsersHelpers.getRolesFromGroupNames(privilegedIdentityUser.claims.groups);
         const staff = { ...userReference, roles };
         await officesRepo.putOrExtendOfficeStaff(office.officeCode, staff, options.expires);
       }

@@ -12,6 +12,7 @@ describe('User repository tests', () => {
   let context: ApplicationContext;
   let repo: UsersMongoRepository;
   const todayDate = getTodaysIsoDate();
+  const adminUser = MockData.getCamsUserReference();
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -32,16 +33,21 @@ describe('User repository tests', () => {
     'should %s Privileged Identity user',
     async (_caseName: string, modifiedCount: number, upsertedCount: number) => {
       const user = MockData.getPrivilegedIdentityUser();
-      jest
+      const replaceOneSpy = jest
         .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
         .mockResolvedValue({ id: user.id, modifiedCount, upsertedCount });
 
-      const actual = await repo.putPrivilegedIdentityUser(user);
+      const actual = await repo.putPrivilegedIdentityUser(user, adminUser);
       expect(actual).toEqual({
         id: user.id,
         modifiedCount,
         upsertedCount,
       });
+      expect(replaceOneSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ...user, updatedBy: adminUser, updatedOn: expect.any(String) }),
+        true,
+      );
     },
   );
 
@@ -60,7 +66,7 @@ describe('User repository tests', () => {
       const expected = new UnknownError(expect.anything(), {
         message: `While upserting privileged identity user ${user.id}, we modified ${modifiedCount} and created ${upsertedCount} documents.`,
       });
-      await expect(repo.putPrivilegedIdentityUser(user)).rejects.toThrow(expected);
+      await expect(repo.putPrivilegedIdentityUser(user, adminUser)).rejects.toThrow(expected);
     },
   );
 
@@ -71,7 +77,7 @@ describe('User repository tests', () => {
     const expected = new UnknownError(expect.anything(), {
       message: `Failed to write privileged identity user ${user.id}.`,
     });
-    await expect(repo.putPrivilegedIdentityUser(user)).rejects.toThrow(expected);
+    await expect(repo.putPrivilegedIdentityUser(user, adminUser)).rejects.toThrow(expected);
   });
 
   test('should return privileged identity user', async () => {
