@@ -76,6 +76,10 @@ export default function PrivilegedIdentity() {
     return isFormDirty() && newGroupNameSet.size > 1 && !!newExpiration;
   }
 
+  function isDeletable() {
+    return !!existingExpiration && existingGroupNameSet.size > 0;
+  }
+
   function isFormDirty() {
     return (
       existingGroupNameSet.symmetricDifference(newGroupNameSet).size > 0 ||
@@ -299,7 +303,7 @@ export default function PrivilegedIdentity() {
                   <Button
                     uswdsStyle={UswdsButtonStyle.Secondary}
                     onClick={handleDelete}
-                    disabled={true}
+                    disabled={!isDeletable()}
                     ref={deleteButtonRef}
                   >
                     Delete User
