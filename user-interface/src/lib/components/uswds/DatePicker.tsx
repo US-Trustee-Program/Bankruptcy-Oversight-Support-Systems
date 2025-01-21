@@ -2,6 +2,7 @@ import './forms.scss';
 import './DatePicker.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useImperativeHandle, useState } from 'react';
+import { getIsoDate } from '@common/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
@@ -64,7 +65,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
       if (value >= minDate) {
         setErrorMessage('');
         if (props.onChange) props.onChange(ev);
-        setDateValue(value.toISOString().split('T')[0]);
+        setDateValue(getIsoDate(value));
       } else {
         setErrorMessage(defaultErrorMessage);
         return;
@@ -75,7 +76,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
       if (value <= maxDate) {
         setErrorMessage('');
         if (props.onChange) props.onChange(ev);
-        setDateValue(value.toISOString().split('T')[0]);
+        setDateValue(getIsoDate(value));
       } else {
         setErrorMessage(defaultErrorMessage);
       }

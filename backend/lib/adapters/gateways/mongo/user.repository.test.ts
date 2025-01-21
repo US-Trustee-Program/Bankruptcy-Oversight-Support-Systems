@@ -6,11 +6,12 @@ import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import { getTodaysIsoDate } from '../../../../../common/src/date-helper';
 
 describe('User repository tests', () => {
   let context: ApplicationContext;
   let repo: UsersMongoRepository;
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = getTodaysIsoDate();
 
   beforeEach(async () => {
     context = await createMockApplicationContext();

@@ -13,6 +13,7 @@ import {
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
 import { CamsUserReference } from '@common/cams/users';
+import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
 import { useEffect, useRef, useState } from 'react';
 
 function toComboOption(groupName: string) {
@@ -106,7 +107,7 @@ export default function PrivilegedIdentity() {
         ...(roleListRef.current?.getValue().map((option) => option.value) || []),
         ...(officeListRef.current?.getValue().map((option) => option.value) || []),
       ],
-      expires: datePickerRef.current?.getValue() ?? new Date().toISOString().split('T')[0],
+      expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
     };
     try {
       await api.putPrivilegedIdentityUser(userId, permissions).then(() => {
@@ -139,7 +140,9 @@ export default function PrivilegedIdentity() {
   }
 
   function getMaxDate() {
-    return new Date(Date.now() + 1000 * 3600 * 24 * 365).toISOString().split('T')[0];
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setUTCFullYear(oneYearFromNow.getUTCFullYear() + 1);
+    return getIsoDate(oneYearFromNow);
   }
 
   useEffect(() => {
