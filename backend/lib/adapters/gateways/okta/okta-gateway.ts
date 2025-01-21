@@ -3,7 +3,7 @@ import { OpenIdConnectGateway } from '../../types/authorization';
 import { ServerConfigError } from '../../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import { verifyAccessToken } from './HumbleVerifier';
-import { CamsUser } from '../../../../../common/src/cams/users';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsJwt, isCamsJwt } from '../../../../../common/src/cams/jwt';
 import { isCamsError } from '../../../common-errors/cams-error';
 
@@ -87,7 +87,7 @@ async function verifyToken(token: string): Promise<CamsJwt> {
   }
 }
 
-async function getUser(accessToken: string): Promise<{ user: CamsUser; jwt: CamsJwt }> {
+async function getUser(accessToken: string): Promise<{ user: CamsUserReference; jwt: CamsJwt }> {
   const { userInfoUri } = getAuthorizationConfig();
 
   try {
@@ -100,7 +100,7 @@ async function getUser(accessToken: string): Promise<{ user: CamsUser; jwt: Cams
 
     if (response.ok) {
       const oktaUser = (await response.json()) as OktaUserInfo;
-      const user: CamsUser = {
+      const user: CamsUserReference = {
         id: oktaUser.sub,
         name: oktaUser.name,
       };

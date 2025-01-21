@@ -35,8 +35,8 @@ export class UserSessionUseCase {
       }
 
       context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
-      const { user: idpUser, jwt } = await authGateway.getUser(token);
-      const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id, { idpUser });
+      const { user: camsUserReference, jwt } = await authGateway.getUser(token);
+      const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
       const session: CamsSession = {
         user,

@@ -12,6 +12,7 @@ import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-ga
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import UsersHelpers from '../users/users.helpers';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -62,6 +63,7 @@ describe('user-session.gateway test', () => {
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
       .mockResolvedValue({ user: mockUser, jwt: camsJwt });
+    jest.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
   });
 
   afterEach(() => {

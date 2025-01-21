@@ -43,9 +43,11 @@ export class OktaHumble {
   async listGroups(request: ListGroupsRequest): Promise<CamsUserGroup[]> {
     const camsUserGroups: CamsUserGroup[] = [];
     try {
-      const oktaGroups = await this.client.groupApi.listGroups(
-        request as GroupApiListGroupsRequest,
-      );
+      const oktaRequest: GroupApiListGroupsRequest = {
+        q: request.query,
+        limit: request.limit,
+      };
+      const oktaGroups = await this.client.groupApi.listGroups(oktaRequest);
 
       for await (const oktaGroup of oktaGroups) {
         camsUserGroups.push({
