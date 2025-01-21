@@ -9,8 +9,8 @@ import AttorneysList from '../attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
-import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
 import UsersHelpers from '../users/users.helpers';
+import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;

@@ -51,7 +51,7 @@ import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
-import { MockUserGroupGateway } from './testing/mock-gateways/mock.user-group.gateway';
+import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
