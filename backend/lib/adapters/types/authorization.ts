@@ -14,25 +14,14 @@ export interface OpenIdConnectGateway {
 }
 
 export interface UserGroupGateway {
-  getUserGroupWithUsers: (
-    context: ApplicationContext,
-    config: UserGroupGatewayConfig,
-    groupName: string,
-  ) => Promise<CamsUserGroup>;
-  getUserGroups: (
-    context: ApplicationContext,
-    config: UserGroupGatewayConfig,
-  ) => Promise<CamsUserGroup[]>;
+  init(config: UserGroupGatewayConfig): Promise<void>;
+  getUserGroupWithUsers: (context: ApplicationContext, groupName: string) => Promise<CamsUserGroup>;
+  getUserGroups: (context: ApplicationContext) => Promise<CamsUserGroup[]>;
   getUserGroupUsers(
     context: ApplicationContext,
-    config: UserGroupGatewayConfig,
     group: CamsUserGroup,
   ): Promise<CamsUserReference[]>;
-  getUserById(
-    context: ApplicationContext,
-    config: UserGroupGatewayConfig,
-    userId: string,
-  ): Promise<CamsUser>;
+  getUserById(context: ApplicationContext, userId: string): Promise<CamsUser>;
 }
 
 export type UserGroupGatewayConfig = {

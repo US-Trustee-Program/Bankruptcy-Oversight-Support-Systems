@@ -4,7 +4,6 @@ import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
-import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { randomUUID } from 'node:crypto';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -14,6 +13,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
 
 describe('Admin Use Case', () => {
   let context: ApplicationContext;
@@ -29,7 +29,7 @@ describe('Admin Use Case', () => {
 
   test('should add roles and offices to PrivilegedIdentityUser with an expiration in the future', async () => {
     const users = MockData.buildArray(MockData.getCamsUser, 4);
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: randomUUID(),
       name: 'Test User Group',
       users,
@@ -71,7 +71,7 @@ describe('Admin Use Case', () => {
       const users = MockData.buildArray(MockData.getCamsUser, 4);
       const user = users[0];
 
-      jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+      jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
         id: randomUUID(),
         name: 'Test User Group',
         users,
@@ -94,7 +94,7 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if elevatePrivilegedUser fails to upsert the user', async () => {
     const user = MockData.getCamsUser();
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: [user],
@@ -114,7 +114,7 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if the user is not an privileged identity user', async () => {
     const userId = 'non-privileged identity-user';
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: [MockData.getCamsUser()],
@@ -130,7 +130,7 @@ describe('Admin Use Case', () => {
 
   test('should throw an error if no users exist in the privileged identity user group', async () => {
     const userId = 'non-privileged identity-user';
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: [],
@@ -143,7 +143,7 @@ describe('Admin Use Case', () => {
       }),
     ).rejects.toThrow('User does not have privileged identity permission.');
 
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id: 'groupId',
       name: 'Test User Group',
       users: undefined,
@@ -161,7 +161,7 @@ describe('Admin Use Case', () => {
     const id = 'test-group';
     const name = 'Test User Group';
     const users = MockData.buildArray(MockData.getCamsUser, 4);
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockResolvedValue({
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers').mockResolvedValue({
       id,
       name,
       users,
@@ -173,7 +173,9 @@ describe('Admin Use Case', () => {
   });
 
   test('should throw errors encountered calling getUserGroupWithUsers', async () => {
-    jest.spyOn(OktaUserGroupGateway, 'getUserGroupWithUsers').mockRejectedValue(new Error('Boom'));
+    jest
+      .spyOn(MockUserGroupGateway.prototype, 'getUserGroupWithUsers')
+      .mockRejectedValue(new Error('Boom'));
     await expect(useCase.getPrivilegedIdentityUsers(context)).rejects.toThrow(
       'Unable to get privileged identity users.',
     );

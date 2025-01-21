@@ -60,12 +60,8 @@ export class AdminUseCase {
   ): Promise<CamsUserReference[]> {
     try {
       const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
-      const groupsGateway = getUserGroupGateway(context);
-      const group = await groupsGateway.getUserGroupWithUsers(
-        context,
-        context.config.userGroupGatewayConfig,
-        groupName,
-      );
+      const groupsGateway = await getUserGroupGateway(context);
+      const group = await groupsGateway.getUserGroupWithUsers(context, groupName);
       return group.users!.map((user) => getCamsUserReference(user));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to get privileged identity users.');
@@ -110,10 +106,9 @@ export class AdminUseCase {
 
     try {
       const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
-      const groupsGateway = getUserGroupGateway(context);
+      const groupsGateway = await getUserGroupGateway(context);
       const privilegedIdentityUserGroup: CamsUserGroup = await groupsGateway.getUserGroupWithUsers(
         context,
-        context.config.userGroupGatewayConfig,
         groupName,
       );
 
