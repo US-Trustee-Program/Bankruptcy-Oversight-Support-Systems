@@ -75,7 +75,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [selections, setSelections] = useState<ComboOption[]>(() => {
     if (props.value) {
       const selection = options.find((option) => option.value === props.value);
-      if (selection) return [selection];
+      if (selection) {
+        selection.selected = true;
+        return [selection];
+      }
     }
     return [];
   });
