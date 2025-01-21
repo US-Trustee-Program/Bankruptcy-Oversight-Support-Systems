@@ -28,20 +28,33 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
     return `usa-input ${props.className} ${errorMessage.length ? 'usa-input--error' : ''}`;
   }
 
-  function clearValue() {
-    setDateValue(null);
-    setErrorMessage('');
+  function clearDateValue() {
+    // This is one wierd trick to make the DatePicker work. The data value must be set to '' then a moment later set to null.
+    setDateValue('');
     setTimeout(() => {
       setDateValue(null);
     }, 100);
   }
 
+  function clearValue() {
+    setErrorMessage('');
+    clearDateValue();
+  }
+
   function resetValue() {
-    setDateValue(props.value ?? null);
+    if (props.value) {
+      setDateValue(props.value);
+    } else {
+      clearDateValue();
+    }
   }
 
   function setValue(value: string) {
-    setDateValue(value);
+    if (value) {
+      setDateValue(value);
+    } else {
+      clearDateValue();
+    }
   }
 
   function getValue(): string {

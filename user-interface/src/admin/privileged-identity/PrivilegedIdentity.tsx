@@ -73,34 +73,32 @@ export default function PrivilegedIdentity() {
     if (options?.length === 1) {
       const userId = options[0].value;
       setSelectedUser(userList.find((user) => user.id === options[0].value)!);
-      if (userId) {
-        api
-          .getPrivilegedIdentityUser(userId)
-          .then((response) => {
-            const groups = response.data.claims.groups;
-            const expires = response.data.expires;
+      api
+        .getPrivilegedIdentityUser(userId)
+        .then((response) => {
+          const groups = response.data.claims.groups;
+          const expires = response.data.expires;
 
-            officeListRef.current?.setValue(
-              groupNames.offices
-                .filter((groupName) => groups.includes(groupName))
-                .map((groupName) => toComboOption(groupName)),
-            );
-            roleListRef.current?.setValue(
-              groupNames.roles
-                .filter((groupName) => groups.includes(groupName))
-                .map((groupName) => toComboOption(groupName)),
-            );
-            datePickerRef.current?.setValue(expires);
-            enableForm();
-          })
-          .catch(() => {
-            officeListRef.current?.clearValue();
-            roleListRef.current?.clearValue();
-            datePickerRef.current?.clearValue();
-            enableForm();
-            deleteButtonRef.current?.disableButton(true);
-          });
-      }
+          officeListRef.current?.setValue(
+            groupNames.offices
+              .filter((groupName) => groups.includes(groupName))
+              .map((groupName) => toComboOption(groupName)),
+          );
+          roleListRef.current?.setValue(
+            groupNames.roles
+              .filter((groupName) => groups.includes(groupName))
+              .map((groupName) => toComboOption(groupName)),
+          );
+          datePickerRef.current?.setValue(expires);
+          enableForm();
+        })
+        .catch(() => {
+          officeListRef.current?.clearValue();
+          roleListRef.current?.clearValue();
+          datePickerRef.current?.clearValue();
+          enableForm();
+          deleteButtonRef.current?.disableButton(true);
+        });
     } else {
       disableForm();
     }
@@ -222,10 +220,7 @@ export default function PrivilegedIdentity() {
                 id="office-list"
                 label="Offices"
                 options={groupNames.offices.map((office) => {
-                  return {
-                    value: office,
-                    label: office.replace('USTP CAMS ', ''),
-                  };
+                  return toComboOption(office);
                 })}
                 disabled={true}
                 multiSelect={true}
@@ -239,10 +234,7 @@ export default function PrivilegedIdentity() {
                 id="role-list"
                 label="Roles"
                 options={groupNames.roles.map((role) => {
-                  return {
-                    value: role,
-                    label: role.replace('USTP CAMS ', ''),
-                  };
+                  return toComboOption(role);
                 })}
                 disabled={true}
                 ref={roleListRef}
