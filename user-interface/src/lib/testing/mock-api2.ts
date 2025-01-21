@@ -228,6 +228,13 @@ async function put<T = unknown>(
   return Promise.resolve(response as ResponseBody<T>);
 }
 
+async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
+  const response = {
+    data: null,
+  };
+  return Promise.resolve(response as ResponseBody<T>);
+}
+
 async function getAttorneys(): Promise<ResponseBody<AttorneyUser[]>> {
   return get<AttorneyUser[]>('/attorneys');
 }
@@ -335,7 +342,12 @@ async function putPrivilegedIdentityUser(userId: string, action: ElevatePrivileg
   await put(`/dev-tools/privileged-identity/${userId}`, action);
 }
 
+async function deletePrivilegedIdentityUser(userId: string) {
+  await _delete(`/dev-tools/privileged-identity/${userId}`);
+}
+
 export const MockApi2 = {
+  deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,
   getCaseDocket,

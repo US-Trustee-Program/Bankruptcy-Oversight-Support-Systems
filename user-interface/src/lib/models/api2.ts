@@ -44,6 +44,7 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
+  delete(path: string): Promise<ResponseBody>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
@@ -51,6 +52,7 @@ interface ApiClient {
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  delete<T = object>(path: string): Promise<ResponseBody<T>>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
@@ -138,6 +140,12 @@ export function useGenericApi(): GenericApiClient {
       const { uriOrPathSubstring, queryParams } = justThePath(path);
       options = { ...options, ...queryParams };
       const body = await api.get(uriOrPathSubstring, options);
+      return body as ResponseBody<T>;
+    },
+
+    async delete<T = object>(path: string): Promise<ResponseBody<T>> {
+      const { uriOrPathSubstring } = justThePath(path);
+      const body = await api.delete(uriOrPathSubstring);
       return body as ResponseBody<T>;
     },
 
@@ -340,7 +348,12 @@ async function putPrivilegedIdentityUser(userId: string, action: ElevatePrivileg
   await api().put(`/dev-tools/privileged-identity/${userId}`, action);
 }
 
+async function deletePrivilegedIdentityUser(userId: string) {
+  await api().delete(`/dev-tools/privileged-identity/${userId}`);
+}
+
 export const _Api2 = {
+  deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,
   getCaseDocket,
