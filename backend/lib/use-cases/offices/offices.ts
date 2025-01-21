@@ -7,14 +7,11 @@ import {
   getOfficeStaffSyncStateRepo,
   getStorageGateway,
   getUserGroupGateway,
-  getUsersRepository,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { isNotFoundError } from '../../common-errors/not-found-error';
-import { getRolesFromGroupNames } from '../user-session/user-session';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -95,21 +92,8 @@ export class OfficesUseCase {
           userMap.set(user.id, user);
         }
         const userWithRoles = userMap.get(user.id);
-        if (userWithRoles.roles.includes(CamsRole.PrivilegedIdentityUser)) {
-          const userRepo = getUsersRepository(context);
-          try {
-            const pimRecord = await userRepo.getPrivilegedIdentityUser(user.id, false);
-            const roleSet = new Set<CamsRole>([
-              ...userWithRoles.roles,
-              ...getRolesFromGroupNames(pimRecord.claims.groups),
-            ]);
-            userWithRoles.roles = Array.from(roleSet);
-          } catch (originalError) {
-            if (!isNotFoundError(originalError)) {
-              throw getCamsError(originalError, MODULE_NAME);
-            }
-          }
-        }
+        const maybeElevatedUser = await UsersHelpers.getPrivilegedIdentityUser(context, user.id);
+        userWithRoles.roles = maybeElevatedUser.roles;
         office.staff.push(userWithRoles);
         try {
           await repository.putOfficeStaff(office.officeCode, userWithRoles);
