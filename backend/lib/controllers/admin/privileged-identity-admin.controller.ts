@@ -6,6 +6,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-CONTROLLER';
 
@@ -52,7 +53,12 @@ export class PrivilegedIdentityAdminController implements CamsController {
       } else if (doUpsertUser) {
         const groups = context.request.body['groups'];
         const expires = context.request.body['expires'];
-        await useCase.elevatePrivilegedUser(context, userId, { groups, expires });
+        await useCase.elevatePrivilegedUser(
+          context,
+          userId,
+          getCamsUserReference(context.session.user),
+          { groups, expires },
+        );
         return httpSuccess({ statusCode: 201 });
       } else {
         throw new BadRequestError(MODULE_NAME, { message: UNSUPPORTED_HTTP_METHOD });

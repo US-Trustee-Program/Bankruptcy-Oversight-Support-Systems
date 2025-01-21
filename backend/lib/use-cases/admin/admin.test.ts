@@ -14,6 +14,7 @@ import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-g
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
+import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 
 describe('Admin Use Case', () => {
   let context: ApplicationContext;
@@ -51,12 +52,12 @@ describe('Admin Use Case', () => {
       expires: futureDate,
     };
 
-    await useCase.elevatePrivilegedUser(context, users[0].id, {
+    await useCase.elevatePrivilegedUser(context, users[0].id, SYSTEM_USER_REFERENCE, {
       groups,
       expires: futureDate,
     });
 
-    expect(repoSpy).toHaveBeenCalledWith(expected);
+    expect(repoSpy).toHaveBeenCalledWith(expected, SYSTEM_USER_REFERENCE);
     expect(officeSpy).toHaveBeenCalled();
   });
 
@@ -82,7 +83,7 @@ describe('Admin Use Case', () => {
       const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
 
       await expect(
-        useCase.elevatePrivilegedUser(context, user.id, {
+        useCase.elevatePrivilegedUser(context, user.id, SYSTEM_USER_REFERENCE, {
           groups,
           expires,
         }),
@@ -105,7 +106,7 @@ describe('Admin Use Case', () => {
       .mockResolvedValue({ id: null, modifiedCount: 0, upsertedCount: 0 });
 
     await expect(
-      useCase.elevatePrivilegedUser(context, user.id, {
+      useCase.elevatePrivilegedUser(context, user.id, SYSTEM_USER_REFERENCE, {
         groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
       }),
@@ -121,7 +122,7 @@ describe('Admin Use Case', () => {
     });
 
     await expect(
-      useCase.elevatePrivilegedUser(context, userId, {
+      useCase.elevatePrivilegedUser(context, userId, SYSTEM_USER_REFERENCE, {
         groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
       }),
@@ -137,7 +138,7 @@ describe('Admin Use Case', () => {
     });
 
     await expect(
-      useCase.elevatePrivilegedUser(context, userId, {
+      useCase.elevatePrivilegedUser(context, userId, SYSTEM_USER_REFERENCE, {
         groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
       }),
@@ -150,7 +151,7 @@ describe('Admin Use Case', () => {
     });
 
     await expect(
-      useCase.elevatePrivilegedUser(context, userId, {
+      useCase.elevatePrivilegedUser(context, userId, SYSTEM_USER_REFERENCE, {
         groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
       }),
