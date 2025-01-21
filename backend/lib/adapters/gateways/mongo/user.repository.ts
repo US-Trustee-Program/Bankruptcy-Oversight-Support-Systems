@@ -5,7 +5,7 @@ import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/erro
 import { ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { PrivilegedIdentityUser } from '../../../../../common/src/cams/users';
+import { CamsUserReference, PrivilegedIdentityUser } from '../../../../../common/src/cams/users';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME: string = 'USERS_MONGO_REPOSITORY';
@@ -42,9 +42,13 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
 
   async putPrivilegedIdentityUser(
     privilegedIdentityUser: PrivilegedIdentityUser,
+    updatedBy: CamsUserReference,
   ): Promise<ReplaceResult> {
     type AuditablePrivilegedIdentityUser = PrivilegedIdentityUser & Auditable;
-    const user = createAuditRecord<AuditablePrivilegedIdentityUser>(privilegedIdentityUser);
+    const user = createAuditRecord<AuditablePrivilegedIdentityUser>(
+      privilegedIdentityUser,
+      updatedBy,
+    );
     const query = QueryBuilder.build(
       and(
         equals<string>('id', user.id),
