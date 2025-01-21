@@ -34,6 +34,10 @@ export default function PrivilegedIdentity() {
   });
   const [userList, setUserList] = useState<CamsUserReference[]>([]);
   const [selectedUser, setSelectedUser] = useState<CamsUserReference | null>(null);
+  const [existingGroupNameSet, setExistingGroupNameSet] = useState<Set<string>>(new Set());
+  const [existingExpiration, setExistingExpiration] = useState<string | null>(null);
+  const [newGroupNameSet, setNewGroupNameSet] = useState<Set<string>>(new Set());
+  const [newExpiration, setNewExpiration] = useState<string | null>(null);
 
   const userListRef = useRef<ComboBoxRef>(null);
   const officeListRef = useRef<ComboBoxRef>(null);
@@ -61,12 +65,34 @@ export default function PrivilegedIdentity() {
     roleListRef.current?.disable(doDisable);
     datePickerRef.current?.disable(doDisable);
     deleteButtonRef.current?.disableButton(doDisable);
-    saveButtonRef.current?.disableButton(doDisable);
     cancelButtonRef.current?.disableButton(doDisable);
   }
 
   function enableForm() {
     disableForm(false);
+  }
+
+  function isSaveable() {
+    return isFormDirty() && newGroupNameSet.size > 1 && !!newExpiration;
+  }
+
+  function isFormDirty() {
+    return (
+      existingGroupNameSet.symmetricDifference(newGroupNameSet).size > 0 ||
+      existingExpiration !== newExpiration
+    );
+  }
+
+  function handleGroupNameUpdate() {
+    const formGroupNameSet = new Set<string>([
+      ...(officeListRef.current?.getValue() ?? []).map((option) => option.value),
+      ...(roleListRef.current?.getValue() ?? []).map((option) => option.value),
+    ]);
+    setNewGroupNameSet(formGroupNameSet);
+  }
+
+  function handleExpirationUpdate(ev: React.ChangeEvent<HTMLInputElement>) {
+    setNewExpiration(ev.target.value);
   }
 
   function handleSelectUser(options: ComboOption[]) {
@@ -78,6 +104,10 @@ export default function PrivilegedIdentity() {
         .then((response) => {
           const groups = response.data.claims.groups;
           const expires = response.data.expires;
+
+          setExistingGroupNameSet(new Set<string>(groups));
+          setExistingExpiration(expires);
+          setNewExpiration(expires);
 
           officeListRef.current?.setValue(
             groupNames.offices
@@ -93,6 +123,9 @@ export default function PrivilegedIdentity() {
           enableForm();
         })
         .catch(() => {
+          setExistingGroupNameSet(new Set<string>(new Set<string>()));
+          setExistingExpiration(null);
+
           officeListRef.current?.clearValue();
           roleListRef.current?.clearValue();
           datePickerRef.current?.clearValue();
@@ -115,6 +148,8 @@ export default function PrivilegedIdentity() {
     };
     try {
       await api.putPrivilegedIdentityUser(userId, permissions).then(() => {
+        setExistingExpiration(newExpiration);
+        setExistingGroupNameSet(newGroupNameSet);
         alert?.success('Privileged Identity saved successfully.');
       });
     } catch (e) {
@@ -224,6 +259,7 @@ export default function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                onUpdateSelection={handleGroupNameUpdate}
                 ref={officeListRef}
               ></ComboBox>
             </div>
@@ -237,8 +273,9 @@ export default function PrivilegedIdentity() {
                   return toComboOption(role);
                 })}
                 disabled={true}
-                ref={roleListRef}
                 multiSelect={true}
+                onUpdateSelection={handleGroupNameUpdate}
+                ref={roleListRef}
               ></ComboBox>
             </div>
           </div>
@@ -250,6 +287,7 @@ export default function PrivilegedIdentity() {
                 disabled={true}
                 minDate={getTodaysIsoDate()}
                 maxDate={getMaxDate()}
+                onChange={handleExpirationUpdate}
                 ref={datePickerRef}
               ></DatePicker>
             </div>
@@ -273,7 +311,7 @@ export default function PrivilegedIdentity() {
                   <Button
                     uswdsStyle={UswdsButtonStyle.Default}
                     onClick={handleSave}
-                    disabled={true}
+                    disabled={!isSaveable()}
                     ref={saveButtonRef}
                   >
                     Save
