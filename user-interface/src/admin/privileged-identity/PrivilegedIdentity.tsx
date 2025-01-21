@@ -16,7 +16,7 @@ import { CamsUserReference } from '@common/cams/users';
 import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
 import { useEffect, useRef, useState } from 'react';
 
-function toComboOption(groupName: string) {
+export function toComboOption(groupName: string) {
   return {
     value: groupName,
     label: groupName.replace('USTP CAMS ', ''),
@@ -53,7 +53,13 @@ export function PrivilegedIdentity() {
   if (!flags[PRIVILEGED_IDENTITY_MANAGEMENT]) {
     return (
       <div className="privileged-identity-admin-panel">
-        <Alert type={UswdsAlertStyle.Info} inline={true} show={true} title="Disabled">
+        <Alert
+          id="privileged-identity-disabled-alert"
+          type={UswdsAlertStyle.Info}
+          inline={true}
+          show={true}
+          title="Disabled"
+        >
           Privileged Identity Management is disabled in this environment.
         </Alert>
       </div>
