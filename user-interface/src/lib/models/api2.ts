@@ -21,7 +21,7 @@ import {
 } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
-import { AttorneyUser } from '@common/cams/users';
+import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import { CasesSearchPredicate } from '@common/api/search';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
@@ -29,9 +29,13 @@ import LocalStorage from '../utils/local-storage';
 import Api from './api';
 import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
-import { DAY } from '../utils/datetime';
+import { DAY, MINUTE } from '../utils/datetime';
 import { sanitizeText } from '../utils/sanitize-text';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
+import {
+  ElevatePrivilegedUserAction,
+  RoleAndOfficeGroupNames,
+} from '../../../../common/src/cams/privileged-identity';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -40,6 +44,7 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
+  delete(path: string): Promise<ResponseBody>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
@@ -47,6 +52,7 @@ interface ApiClient {
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  delete<T = object>(path: string): Promise<ResponseBody<T>>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
@@ -134,6 +140,12 @@ export function useGenericApi(): GenericApiClient {
       const { uriOrPathSubstring, queryParams } = justThePath(path);
       options = { ...options, ...queryParams };
       const body = await api.get(uriOrPathSubstring, options);
+      return body as ResponseBody<T>;
+    },
+
+    async delete<T = object>(path: string): Promise<ResponseBody<T>> {
+      const { uriOrPathSubstring } = justThePath(path);
+      const body = await api.delete(uriOrPathSubstring);
       return body as ResponseBody<T>;
     },
 
@@ -313,11 +325,35 @@ async function searchCases(
   return api().post<CaseBasics[], CasesSearchPredicate>('/cases', predicate, options);
 }
 
-async function postStaffAssignments(action: StaffAssignmentAction): Promise<void> {
+async function postStaffAssignments(action: StaffAssignmentAction) {
   await api().post('/case-assignments', action);
 }
 
+async function getRoleAndOfficeGroupNames() {
+  const path = '/dev-tools/privileged-identity/groups';
+  return withCache({ key: path, ttl: MINUTE * 15 }).get<RoleAndOfficeGroupNames>(path);
+}
+
+async function getPrivilegedIdentityUsers() {
+  const path = '/dev-tools/privileged-identity';
+  return withCache({ key: path, ttl: MINUTE * 15 }).get<CamsUserReference[]>(path);
+}
+
+async function getPrivilegedIdentityUser(userId: string) {
+  const path = `/dev-tools/privileged-identity/${userId}`;
+  return withCache({ key: path, ttl: MINUTE * 15 }).get<PrivilegedIdentityUser>(path);
+}
+
+async function putPrivilegedIdentityUser(userId: string, action: ElevatePrivilegedUserAction) {
+  await api().put(`/dev-tools/privileged-identity/${userId}`, action);
+}
+
+async function deletePrivilegedIdentityUser(userId: string) {
+  await api().delete(`/dev-tools/privileged-identity/${userId}`);
+}
+
 export const _Api2 = {
+  deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,
   getCaseDocket,
@@ -333,11 +369,15 @@ export const _Api2 = {
   getOffices,
   getOrders,
   getOrderSuggestions,
+  getPrivilegedIdentityUsers,
+  getPrivilegedIdentityUser,
+  getRoleAndOfficeGroupNames,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
+  putPrivilegedIdentityUser,
   searchCases,
 };
 

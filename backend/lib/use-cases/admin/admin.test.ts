@@ -13,13 +13,14 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { getTodaysIsoDate } from '../../../../common/src/date-helper';
 import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
 import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 
 describe('Admin Use Case', () => {
   let context: ApplicationContext;
   let useCase: AdminUseCase;
-  const currentDay = new Date().toISOString().split('T')[0];
+  const currentDay = getTodaysIsoDate();
   const futureDate = MockData.someDateAfterThisDate(currentDay, 2);
   const pastDate = MockData.someDateBeforeThisDate(currentDay, 2);
 

@@ -39,7 +39,7 @@ import {
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { sortDates } from '../../date-helper';
+import { getIsoDate, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
@@ -115,14 +115,14 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToAdd = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return someDate.toISOString().split('T')[0];
+  return getIsoDate(someDate);
 }
 
 function someDateBeforeThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToSubtract = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() - daysToSubtract));
-  return someDate.toISOString().split('T')[0];
+  return getIsoDate(someDate);
 }
 
 function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {

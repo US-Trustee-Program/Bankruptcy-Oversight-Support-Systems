@@ -1,0 +1,23 @@
+.privileged-identity-admin-panel {
+  .button-bar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 2rem 0;
+
+    .button-bar-right-side {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+
+      button {
+        padding: 0 1rem;
+      }
+    }
+
+    .button-container {
+      display: flex;
+      vertical-align: middle;
+    }
+  }
+}

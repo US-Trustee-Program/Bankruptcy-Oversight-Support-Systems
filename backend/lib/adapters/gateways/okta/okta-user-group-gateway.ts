@@ -57,9 +57,9 @@ class OktaUserGroupGateway implements UserGroupGateway {
   }
 
   /**
-   * getUserGroup
+   * getUserGroupWithUsers
    *
-   * Retrieves a group by name with group members.
+   * Retrieves a group by name. Decorates the group with users.
    *
    * @param {ApplicationContext} context
    * @param {string} groupName
