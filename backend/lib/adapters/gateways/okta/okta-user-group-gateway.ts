@@ -2,15 +2,12 @@ import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../commo
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { ApplicationContext } from '../../types/basic';
-import {
-  getOfficesFromGroupNames,
-  getRolesFromGroupNames,
-} from '../../../use-cases/user-session/user-session';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import OktaHumble, {
   ListGroupsRequest,
   ListGroupUsersRequest,
 } from '../../../humble-objects/okta-humble';
+import UsersHelpers from '../../../use-cases/users/users.helpers';
 
 const MODULE_NAME = 'OKTA_USER_GROUP_GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -154,8 +151,8 @@ class OktaUserGroupGateway implements UserGroupGateway {
       const camsUser = {
         id: user.id,
         name: user.name,
-        offices: await getOfficesFromGroupNames(context, groupIds),
-        roles: getRolesFromGroupNames(groupNames),
+        offices: await UsersHelpers.getOfficesFromGroupNames(context, groupIds),
+        roles: UsersHelpers.getRolesFromGroupNames(groupNames),
       };
       context.logger.info(MODULE_NAME, `Retrieved ${id}`, camsUser);
       return camsUser;

@@ -1,9 +1,9 @@
 import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
-import { getUserGroupGateway, getUsersRepository } from '../../factory';
+import { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { getOfficesFromGroupNames, getRolesFromGroupNames } from '../user-session/user-session';
+import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 
 export type PrivilegedIdentityHelperOptions = {
   idpUser?: CamsUser;
@@ -26,7 +26,7 @@ async function getPrivilegedIdentityUser(
     offices: idpUser.offices ?? [],
   };
 
-  if (!idpUser.id) {
+  if (!options?.idpUser) {
     const userGroupGateway = await getUserGroupGateway(context);
     const user = await userGroupGateway.getUserById(context, userId);
     if (!user.roles.includes(CamsRole.PrivilegedIdentityUser)) return user;
@@ -36,8 +36,10 @@ async function getPrivilegedIdentityUser(
     combined.offices = user.offices;
   }
 
+  if (!context.featureFlags['privileged-identity-management']) return combined;
+
   try {
-    if (!pimUser.id) {
+    if (!options?.pimUser) {
       const usersRepository = getUsersRepository(context);
       pimUser = await usersRepository.getPrivilegedIdentityUser(combined.id);
     }
@@ -62,6 +64,24 @@ async function getPrivilegedIdentityUser(
   return combined;
 }
 
-const UsersHelpers = { getPrivilegedIdentityUser };
+function getRolesFromGroupNames(idpGroups: string[]): CamsRole[] {
+  const rolesMap = LocalStorageGateway.getRoleMapping();
+  return idpGroups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
+}
+
+async function getOfficesFromGroupNames(
+  context: ApplicationContext,
+  idpGroups: string[],
+): Promise<UstpOfficeDetails[]> {
+  const officesGateway = getOfficesGateway(context);
+  const ustpOffices = await officesGateway.getOffices(context);
+  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
+}
+
+const UsersHelpers = {
+  getPrivilegedIdentityUser,
+  getRolesFromGroupNames,
+  getOfficesFromGroupNames,
+};
 
 export default UsersHelpers;

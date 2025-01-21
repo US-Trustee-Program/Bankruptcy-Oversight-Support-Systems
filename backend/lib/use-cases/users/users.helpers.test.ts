@@ -6,11 +6,15 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 describe('UsersHelpers tests', () => {
   let context: ApplicationContext;
+  const today = new Date().toISOString();
+  const expiredDate = MockData.someDateBeforeThisDate(today);
+  const unexpiredDate = MockData.someDateAfterThisDate(today);
   const manhattanOffice = MOCKED_USTP_OFFICES_ARRAY.find(
     (office) => office.idpGroupId === 'USTP CAMS Region 2 Office Manhattan',
   );
@@ -22,46 +26,94 @@ describe('UsersHelpers tests', () => {
     context = await createMockApplicationContext();
   });
 
-  const idpOnlyCases = [
-    ['user does not have PrivilegedIdentityUser role', [CamsRole.TrialAttorney], [manhattanOffice]],
-    [
-      'user does not have PrivilegedIdentityUser record',
-      [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
-      [manhattanOffice],
-    ],
-    [
-      'user has expired PrivilegedIdentityUser record',
-      [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
-      [manhattanOffice],
-    ],
-    [
-      'UsersRepository encounters an error',
-      [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
-      [manhattanOffice],
-    ],
-  ];
-  test.each(idpOnlyCases)(
-    'should return only roles and offices from identity provider if %s',
-    async (_caseName: string, roles: CamsRole[], offices: UstpOfficeDetails[]) => {
-      const idpUser: CamsUser = MockData.getCamsUser({ roles, offices });
-      jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
-      const expired: PrivilegedIdentityUser = {
-        documentType: 'PRIVILEGED_IDENTITY_USER',
-        id: idpUser.id,
-        name: idpUser.name,
-        claims: {
-          groups: ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 3 Office Wilmington'],
-        },
-        expires: MockData.someDateBeforeThisDate(new Date().toISOString()),
-      };
-      jest
-        .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
-        .mockResolvedValue(expired);
+  test('should return idpUser when elevation is disabled', async () => {
+    context.featureFlags['privileged-identity-management'] = false;
+    const idpUser: CamsUser = MockData.getCamsUser({
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
+      offices: [manhattanOffice],
+    });
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
+      .mockRejectedValue(new Error('this should not be called'));
 
-      const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
-      expect(user).toEqual(idpUser);
-    },
-  );
+    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    expect(user).toEqual(idpUser);
+    expect(pimSpy).not.toHaveBeenCalled();
+  });
+
+  test('should return idpUser when user does not have PrivilegedIdentityUser role', async () => {
+    context.featureFlags['privileged-identity-management'] = true;
+    const idpUser: CamsUser = MockData.getCamsUser({
+      roles: [CamsRole.TrialAttorney],
+      offices: [manhattanOffice],
+    });
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
+      .mockRejectedValue(new Error('this should not be called'));
+
+    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    expect(user).toEqual(idpUser);
+    expect(pimSpy).not.toHaveBeenCalled();
+  });
+
+  test('should return idpUser when user does not have PrivilegedIdentityUser record', async () => {
+    context.featureFlags['privileged-identity-management'] = true;
+    const idpUser: CamsUser = MockData.getCamsUser({
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
+      offices: [manhattanOffice],
+    });
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
+      .mockRejectedValue(new NotFoundError('test-module'));
+
+    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    expect(user).toEqual(idpUser);
+    expect(pimSpy).toHaveBeenCalled();
+  });
+
+  test('should return idpUser when UsersRepository encounters an error', async () => {
+    context.featureFlags['privileged-identity-management'] = true;
+    const idpUser: CamsUser = MockData.getCamsUser({
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
+      offices: [manhattanOffice],
+    });
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const pimSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
+      .mockRejectedValue(new UnknownError('test-module'));
+
+    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    expect(user).toEqual(idpUser);
+    expect(pimSpy).toHaveBeenCalled();
+  });
+
+  test('should return idpUser when user has expired PrivilegedIdentityUser record', async () => {
+    context.featureFlags['privileged-identity-management'] = true;
+    const idpUser: CamsUser = MockData.getCamsUser({
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
+      offices: [manhattanOffice],
+    });
+    jest.spyOn(MockUserGroupGateway.prototype, 'getUserById').mockResolvedValue(idpUser);
+    const elevation: PrivilegedIdentityUser = {
+      documentType: 'PRIVILEGED_IDENTITY_USER',
+      id: idpUser.id,
+      name: idpUser.name,
+      claims: {
+        groups: ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 3 Office Wilmington'],
+      },
+      expires: expiredDate,
+    };
+    const pimSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
+      .mockResolvedValue(elevation);
+
+    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    expect(user).toEqual(idpUser);
+    expect(pimSpy).toHaveBeenCalled();
+  });
 
   test('should return elevated privileges', async () => {
     const roles = [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser];
@@ -74,7 +126,7 @@ describe('UsersHelpers tests', () => {
       claims: {
         groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupId],
       },
-      expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+      expires: unexpiredDate,
     };
     jest
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
