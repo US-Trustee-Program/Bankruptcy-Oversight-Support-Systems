@@ -20,6 +20,10 @@ export function isValidDateString(dateString: string | null | undefined) {
   return !!evaluation && evaluation.length === 1;
 }
 
+export function isInvalidDate(dateValue: unknown) {
+  return dateValue instanceof Date && isNaN(dateValue.getTime());
+}
+
 export function getIsoDate(date: Date) {
   return date.toISOString().split('T')[0];
 }

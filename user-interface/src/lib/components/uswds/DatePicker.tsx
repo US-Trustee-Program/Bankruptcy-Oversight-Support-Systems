@@ -2,7 +2,7 @@ import './forms.scss';
 import './DatePicker.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useImperativeHandle, useState } from 'react';
-import { getIsoDate } from '@common/date-helper';
+import { getIsoDate, isInvalidDate } from '@common/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
@@ -44,16 +44,18 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   function resetValue() {
     if (props.value) {
       setDateValue(props.value);
+    } else if (props.minDate) {
+      setDateValue(props.minDate);
     } else {
       clearDateValue();
     }
   }
 
   function setValue(value: string) {
-    if (value) {
+    if (value.length > 0) {
       setDateValue(value);
     } else {
-      clearDateValue();
+      resetValue();
     }
   }
 
@@ -67,6 +69,27 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   function handleChange(ev: React.ChangeEvent<HTMLInputElement>) {
     const value = new Date(ev.target.value);
+    if (isInvalidDate(value)) {
+      if (props.onChange) {
+        ev.persist();
+        let newValue: string = '';
+        if (props.value) {
+          newValue = props.value;
+        }
+
+        // Modify the event value as needed
+        const modifiedEvent = {
+          ...ev,
+          target: {
+            ...ev.target,
+            value: newValue,
+          },
+        };
+
+        props.onChange(modifiedEvent);
+      }
+    }
+
     if (props.minDate && props.minDate.length > 0) {
       const minDate = new Date(props.minDate);
       if (value >= minDate) {
@@ -87,6 +110,9 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
       } else {
         setErrorMessage(defaultErrorMessage);
       }
+    }
+    if (props.onChange) {
+      props.onChange(ev);
     }
   }
 
