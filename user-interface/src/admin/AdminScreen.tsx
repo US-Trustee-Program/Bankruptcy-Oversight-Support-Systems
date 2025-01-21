@@ -9,9 +9,18 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 export function AdminScreen() {
   if (!LocalStorage.getSession()?.user.roles?.includes(CamsRole.SuperUser)) {
     return (
-      <Alert type={UswdsAlertStyle.Info} inline={true} show={true} title="Permission">
-        You do not have sufficent permission to use the CAMS administration tools.
-      </Alert>
+      <MainContent className="admin-screen" data-testid="admin-screen">
+        <DocumentTitle name="Administration" />
+        <div className="grid-row">
+          <div id="left-gutter" className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <Alert type={UswdsAlertStyle.Info} inline={true} show={true} title="Forbidden">
+              You do not have sufficent permission to use the CAMS administration tools.
+            </Alert>
+          </div>
+          <div id="right-gutter" className="grid-col-1"></div>
+        </div>
+      </MainContent>
     );
   }
   return (

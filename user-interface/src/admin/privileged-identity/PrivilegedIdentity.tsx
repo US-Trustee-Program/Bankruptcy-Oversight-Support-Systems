@@ -48,19 +48,25 @@ export default function PrivilegedIdentity() {
   // Stop if the feature is disabled.
   if (!flags[PRIVILEGED_IDENTITY_MANAGEMENT]) {
     return (
-      <Alert type={UswdsAlertStyle.Info} inline={true} show={true} title="Notice">
-        Privileged Identity Management is disabled in this environment.
-      </Alert>
+      <div className="privileged-identity-admin-panel">
+        <Alert type={UswdsAlertStyle.Info} inline={true} show={true} title="Disabled">
+          Privileged Identity Management is disabled in this environment.
+        </Alert>
+      </div>
     );
   }
 
-  function enableForm(enable: boolean = true) {
-    officeListRef.current?.disable(!enable);
-    roleListRef.current?.disable(!enable);
-    datePickerRef.current?.disable(!enable);
-    deleteButtonRef.current?.disableButton(!enable);
-    saveButtonRef.current?.disableButton(!enable);
-    cancelButtonRef.current?.disableButton(!enable);
+  function disableForm(doDisable: boolean = true) {
+    officeListRef.current?.disable(doDisable);
+    roleListRef.current?.disable(doDisable);
+    datePickerRef.current?.disable(doDisable);
+    deleteButtonRef.current?.disableButton(doDisable);
+    saveButtonRef.current?.disableButton(doDisable);
+    cancelButtonRef.current?.disableButton(doDisable);
+  }
+
+  function enableForm() {
+    disableForm(false);
   }
 
   function handleSelectUser(options: ComboOption[]) {
@@ -85,18 +91,18 @@ export default function PrivilegedIdentity() {
                 .map((groupName) => toComboOption(groupName)),
             );
             datePickerRef.current?.setValue(expires);
-            enableForm(true);
+            enableForm();
           })
           .catch(() => {
             officeListRef.current?.clearValue();
             roleListRef.current?.clearValue();
             datePickerRef.current?.clearValue();
-            enableForm(true);
+            enableForm();
             deleteButtonRef.current?.disableButton(true);
           });
       }
     } else {
-      enableForm(false);
+      disableForm();
     }
   }
 
@@ -136,7 +142,7 @@ export default function PrivilegedIdentity() {
     officeListRef.current?.clearValue();
     roleListRef.current?.clearValue();
     datePickerRef.current?.clearValue();
-    enableForm(false);
+    disableForm();
   }
 
   function getMaxDate() {
@@ -219,7 +225,6 @@ export default function PrivilegedIdentity() {
                   return {
                     value: office,
                     label: office.replace('USTP CAMS ', ''),
-                    //selected: !!pimRecord && pimRecord.claims.groups.includes(office),
                   };
                 })}
                 disabled={true}
@@ -237,7 +242,6 @@ export default function PrivilegedIdentity() {
                   return {
                     value: role,
                     label: role.replace('USTP CAMS ', ''),
-                    //selected: !!pimRecord && pimRecord.claims.groups.includes(role),
                   };
                 })}
                 disabled={true}
@@ -252,7 +256,7 @@ export default function PrivilegedIdentity() {
                 id="privileged-expiration-date"
                 label="Expires on"
                 disabled={true}
-                minDate="2025-01-01"
+                minDate={getTodaysIsoDate()}
                 maxDate={getMaxDate()}
                 ref={datePickerRef}
               ></DatePicker>

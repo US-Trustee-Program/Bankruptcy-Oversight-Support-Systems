@@ -21,9 +21,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const defaultErrorMessage = 'Date is not within allowed range. Enter a valid date.';
 
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [isDisabled, setIsDisabled] = useState<boolean>(
-    props.disabled !== undefined ? !!props.disabled : false,
-  );
+  const [isDisabled, setIsDisabled] = useState<boolean>(!!props.disabled);
   const [dateValue, setDateValue] = useState<string | null>(props.value ?? null);
 
   function setClassName() {
@@ -31,7 +29,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   }
 
   function clearValue() {
-    setDateValue('');
+    setDateValue(null);
     setErrorMessage('');
     setTimeout(() => {
       setDateValue(null);
@@ -39,9 +37,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   }
 
   function resetValue() {
-    if (props.value) {
-      setDateValue(props.value);
-    }
+    setDateValue(props.value ?? null);
   }
 
   function setValue(value: string) {
@@ -57,10 +53,8 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   }
 
   function handleChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    // const value = Date.parse(ev.target.value);
     const value = new Date(ev.target.value);
     if (props.minDate && props.minDate.length > 0) {
-      // const minDate = Date.parse(props.minDate);
       const minDate = new Date(props.minDate);
       if (value >= minDate) {
         setErrorMessage('');
