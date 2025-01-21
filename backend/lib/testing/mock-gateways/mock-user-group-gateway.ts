@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -40,39 +40,34 @@ MOCKED_USTP_OFFICES_ARRAY.forEach((office) => {
   camsUserGroups.set(office.idpGroupId, group);
 });
 
-async function getUserGroupWithUsers(
-  _context: ApplicationContext,
-  _config: UserGroupGatewayConfig,
-  groupName: string,
-): Promise<CamsUserGroup> {
-  if (!camsUserGroups.has(groupName)) {
-    throw new NotFoundError(MODULE_NAME);
+export class MockUserGroupGateway implements UserGroupGateway {
+  init(_config: UserGroupGatewayConfig): Promise<void> {
+    return;
   }
-  const camsUserGroup = camsUserGroups.get(groupName);
-  return camsUserGroup;
+  async getUserGroupWithUsers(
+    _context: ApplicationContext,
+    groupName: string,
+  ): Promise<CamsUserGroup> {
+    if (!camsUserGroups.has(groupName)) {
+      throw new NotFoundError(MODULE_NAME);
+    }
+    const camsUserGroup = camsUserGroups.get(groupName);
+    return camsUserGroup;
+  }
+  async getUserGroups(_context: ApplicationContext): Promise<CamsUserGroup[]> {
+    return Array.from(camsUserGroups.values()).map((group) => {
+      return { id: group.id, name: group.name };
+    });
+  }
+  async getUserGroupUsers(
+    _context: ApplicationContext,
+    group: CamsUserGroup,
+  ): Promise<CamsUserReference[]> {
+    return camsUserGroups.get(group.name).users;
+  }
+  getUserById(_context: ApplicationContext, _userId: string): Promise<CamsUser> {
+    throw new Error('Method not implemented.');
+  }
 }
-
-async function getUserGroups(
-  _context: ApplicationContext,
-  _config: UserGroupGatewayConfig,
-): Promise<CamsUserGroup[]> {
-  return Array.from(camsUserGroups.values()).map((group) => {
-    return { id: group.id, name: group.name };
-  });
-}
-
-async function getUserGroupUsers(
-  _context: ApplicationContext,
-  _config: UserGroupGatewayConfig,
-  group: CamsUserGroup,
-): Promise<CamsUserReference[]> {
-  return camsUserGroups.get(group.name).users;
-}
-
-export const MockUserGroupGateway: UserGroupGateway = {
-  getUserGroupWithUsers,
-  getUserGroups,
-  getUserGroupUsers,
-};
 
 export default MockUserGroupGateway;

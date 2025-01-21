@@ -4,11 +4,11 @@ import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { MockUserGroupGateway } from '../../testing/mock-gateways/mock.user-group.gateway';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { UnknownError } from '../../common-errors/unknown-error';
+import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 
 describe('UsersHelpers tests', () => {
   let context: ApplicationContext;
