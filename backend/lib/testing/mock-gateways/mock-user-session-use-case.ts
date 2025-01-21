@@ -12,6 +12,7 @@ export class MockUserSessionUseCase {
     accessToken: string,
     provider: string,
   ): Promise<CamsSession> {
+    // TODO: MAYBE we overlay the PIM record using the user helper function.
     const { user } = await getUser(accessToken);
 
     const parts = accessToken.split('.');

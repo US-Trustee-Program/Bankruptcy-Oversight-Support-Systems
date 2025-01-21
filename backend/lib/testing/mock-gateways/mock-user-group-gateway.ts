@@ -65,8 +65,12 @@ export class MockUserGroupGateway implements UserGroupGateway {
   ): Promise<CamsUserReference[]> {
     return camsUserGroups.get(group.name).users;
   }
-  getUserById(_context: ApplicationContext, _userId: string): Promise<CamsUser> {
-    throw new Error('Method not implemented.');
+  async getUserById(_context: ApplicationContext, userId: string): Promise<CamsUser> {
+    const userMeta = MockUsers.find((userMeta) => userMeta.user.id === userId);
+    if (!userMeta) {
+      throw new NotFoundError(MODULE_NAME);
+    }
+    return userMeta.user;
   }
 }
 
