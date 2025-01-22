@@ -8,7 +8,7 @@ import { CamsRole } from '@common/cams/roles';
 vi.mock('./privileged-identity/PrivilegedIdentity', () => {
   return {
     PrivilegedIdentity: () => {
-      return <div data-testid="PrivilegedIdentityComponent"></div>;
+      return <div data-testid="privileged-identity-component"></div>;
     },
   };
 });
@@ -49,6 +49,6 @@ describe('Admin screen tests', () => {
 
   test('should show privileged identity admin', async () => {
     renderWithoutProps();
-    expect(screen.getByTestId('PrivilegedIdentityComponent')).toBeInTheDocument();
+    expect(screen.getByTestId('privileged-identity-component')).toBeInTheDocument();
   });
 });

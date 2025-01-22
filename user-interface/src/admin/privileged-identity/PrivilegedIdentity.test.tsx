@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { PrivilegedIdentity, toComboOption } from './PrivilegedIdentity';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import MockApi2 from '@/lib/testing/mock-api2';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('Privileged Identity screen tests', () => {
   function renderWithoutProps() {
@@ -36,7 +38,20 @@ describe('Privileged Identity screen tests', () => {
     ).toBeInTheDocument();
   });
 
-  test('should show alert if user does not have proper permissions', async () => {});
+  test('should load screen with expected user list, office list, and role list', async () => {
+    vi.spyOn(MockApi2, 'getPrivilegedIdentityUsers').mockResolvedValue({
+      data: MockData.buildArray(MockData.getCamsUserReference, 5),
+    });
+    const mockGroups = MockData.getRoleAndOfficeGroupNames();
+    vi.spyOn(MockApi2, 'getRoleAndOfficeGroupNames').mockResolvedValue({
+      data: mockGroups,
+    });
+
+    renderWithoutProps();
+
+    console.log(screen.debug(document));
+  });
+
   test('should', async () => {});
   test('should', async () => {});
 });
