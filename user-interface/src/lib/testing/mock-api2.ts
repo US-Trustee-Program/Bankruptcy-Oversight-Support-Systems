@@ -166,6 +166,13 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: caseDetails,
     };
+  } else if (path.match(/\/dev-tools\/privileged-identity\/groups/)) {
+    response = {
+      data: {
+        roles: [],
+        offices: [],
+      },
+    };
   } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
     response = {
       data: [caseDetails],

@@ -43,6 +43,7 @@ import { getIsoDate, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
+import { RoleAndOfficeGroupNames } from '../privileged-identity';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -556,6 +557,18 @@ function getPrivilegedIdentityUser(
   };
 }
 
+function getRole(): string {
+  return 'USTP CAMS ' + faker.lorem.words(2);
+}
+
+function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
+  const offices = MockData.getOffices().map((office) => office.idpGroupId);
+  return {
+    roles: buildArray(getRole, 5),
+    offices,
+  };
+}
+
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
@@ -659,6 +672,8 @@ export const MockData = {
   getCamsUserGroup,
   getAttorneyUser,
   getPrivilegedIdentityUser,
+  getRole,
+  getRoleAndOfficeGroupNames,
   getCamsSession,
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,
