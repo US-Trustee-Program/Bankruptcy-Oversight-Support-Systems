@@ -12,6 +12,11 @@ describe('users helper function-apps tests', () => {
       const divisionCodes = getCourtDivisionCodes(user);
       expect(divisionCodes).toEqual(expectedDivisionCodes);
     });
+
+    test('should get empty division codes array', () => {
+      const user = MockData.getCamsUser({ offices: undefined });
+      expect(getCourtDivisionCodes(user)).toEqual([]);
+    });
   });
 
   describe('getGroupDesignators tests', () => {
@@ -19,9 +24,14 @@ describe('users helper function-apps tests', () => {
       const user = MockData.getCamsUser({
         offices: [REGION_02_GROUP_NY, REGION_02_GROUP_SE],
       });
-      const expectedDivisionCodes = ['NY', 'SE', 'AK'];
+      const expectedGroupDesignators = ['NY', 'SE', 'AK'];
       const divisionCodes = getGroupDesignators(user);
-      expect(divisionCodes).toEqual(expectedDivisionCodes);
+      expect(divisionCodes).toEqual(expectedGroupDesignators);
+    });
+
+    test('should get empty group designators array', () => {
+      const user = MockData.getCamsUser({ offices: undefined });
+      expect(getGroupDesignators(user)).toEqual([]);
     });
   });
 });

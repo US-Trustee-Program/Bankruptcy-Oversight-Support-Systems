@@ -4,7 +4,10 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import * as database from '../../utils/database';
 import { QueryResults } from '../../types/database';
 import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../../common/src/cams/offices';
+import {
+  MOCKED_USTP_OFFICES_ARRAY,
+  UstpOfficeDetails,
+} from '../../../../../common/src/cams/offices';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {
@@ -45,7 +48,7 @@ describe('offices gateway tests', () => {
         return Promise.resolve(mockResults);
       });
 
-      const expectedOffices: UstpOfficeDetails[] = USTP_OFFICES_ARRAY;
+      const expectedOffices: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
 
       const gateway = new OfficesDxtrGateway();
       const offices = await gateway.getOffices(applicationContext);

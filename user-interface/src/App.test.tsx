@@ -1,6 +1,8 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, waitFor, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+
+import * as HeaderModule from './lib/components/Header';
 
 describe('App', () => {
   function scrollTo(position: number) {
@@ -28,6 +30,21 @@ describe('App', () => {
 
   afterEach(() => {
     vi.resetAllMocks();
+  });
+
+  test('should show message when error boundary catches an error', async () => {
+    vi.spyOn(HeaderModule, 'Header').mockImplementation(() => {
+      throw Error('mock error');
+    });
+
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
+
+    const alert = await screen.findByTestId('error-boundary-message');
+    expect(alert).toBeInTheDocument();
   });
 
   test('should add className of header-scrolled-out to App when screen is scrolled down beyond 100px', async () => {

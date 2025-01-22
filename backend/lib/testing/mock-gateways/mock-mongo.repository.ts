@@ -16,6 +16,7 @@ import {
   RuntimeState,
   RuntimeStateRepository,
   UserSessionCacheRepository,
+  UsersRepository,
 } from '../../use-cases/gateways.types';
 
 export class MockMongoRepository
@@ -26,6 +27,7 @@ export class MockMongoRepository
     OrdersRepository,
     OfficesRepository,
     RuntimeStateRepository,
+    UsersRepository,
     UserSessionCacheRepository
 {
   private static singleton: MockMongoRepository;
@@ -51,6 +53,10 @@ export class MockMongoRepository
   }
 
   getOfficeAttorneys(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  putOrExtendOfficeStaff(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -98,10 +104,6 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  deleteMigrations(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
   update(..._ignore): Promise<any | void> {
     throw new Error('Method not implemented.');
   }
@@ -135,6 +137,18 @@ export class MockMongoRepository
   }
 
   async getTransfers(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  putPrivilegedIdentityUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getPrivilegedIdentityUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  deletePrivilegedIdentityUser(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 }

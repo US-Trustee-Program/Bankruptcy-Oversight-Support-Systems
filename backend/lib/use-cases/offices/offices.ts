@@ -3,15 +3,15 @@ import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
-  getUserGroupGateway,
-  getStorageGateway,
   getOfficesRepository,
   getOfficeStaffSyncStateRepo,
+  getStorageGateway,
+  getUserGroupGateway,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import AttorneysList from '../attorneys';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'OFFICES_USE_CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -41,22 +41,14 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    let attorneys: AttorneyUser[] = [];
-    if (context.featureFlags['restrict-case-assignment']) {
-      const repository = getOfficesRepository(context);
-      attorneys = await repository.getOfficeAttorneys(officeCode);
-    } else {
-      const attorneysUseCase = new AttorneysList();
-      attorneys = await attorneysUseCase.getAttorneyList(context);
-    }
-    return attorneys;
+    const repository = getOfficesRepository(context);
+    return await repository.getOfficeAttorneys(officeCode);
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
-    const config = context.config.userGroupGatewayConfig;
     const officesGateway = getOfficesGateway(context);
     const repository = getOfficesRepository(context);
-    const userGroupSource = getUserGroupGateway(context);
+    const userGroupSource = await getUserGroupGateway(context);
     const storage = getStorageGateway(context);
 
     // Get IdP to CAMS mappings.
@@ -68,14 +60,14 @@ export class OfficesUseCase {
     }, new Map<string, UstpOfficeDetails>());
 
     // Filter out any groups not relevant to CAMS.
-    const userGroups = await userGroupSource.getUserGroups(context, config);
+    const userGroups = await userGroupSource.getUserGroups(context);
     const officeGroups = userGroups.filter((group) => groupToOfficeMap.has(group.name));
     const roleGroups = userGroups.filter((group) => groupToRoleMap.has(group.name));
 
     // Map roles to users.
     const userMap = new Map<string, Staff>();
     for (const roleGroup of roleGroups) {
-      const users = await userGroupSource.getUserGroupUsers(context, config, roleGroup);
+      const users = await userGroupSource.getUserGroupUsers(context, roleGroup);
       const role = groupToRoleMap.get(roleGroup.name);
       for (const user of users) {
         if (userMap.has(user.id)) {
@@ -91,15 +83,17 @@ export class OfficesUseCase {
     for (const officeGroup of officeGroups) {
       const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
 
-      const users = await userGroupSource.getUserGroupUsers(context, config, officeGroup);
+      const users = await userGroupSource.getUserGroupUsers(context, officeGroup);
       let successCount = 0;
       let failureCount = 0;
       for (const user of users) {
+        // TODO: check if user can be elevated and whether they have a PIM record
         if (!userMap.has(user.id)) {
           userMap.set(user.id, user);
         }
-        // TODO: the following line is partially covered and I cannot see how we would reach the negative case
-        const userWithRoles = userMap.has(user.id) ? userMap.get(user.id) : user;
+        const userWithRoles = userMap.get(user.id);
+        const maybeElevatedUser = await UsersHelpers.getPrivilegedIdentityUser(context, user.id);
+        userWithRoles.roles = maybeElevatedUser.roles;
         office.staff.push(userWithRoles);
         try {
           await repository.putOfficeStaff(office.officeCode, userWithRoles);

@@ -12,7 +12,7 @@ import {
   CaseSummary,
 } from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
-import { AttorneyUser } from '@common/cams/users';
+import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { CamsSession } from '@common/cams/session';
@@ -25,7 +25,11 @@ import {
   Order,
 } from '@common/cams/orders';
 import { CasesSearchPredicate } from '@common/api/search';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
+import {
+  ElevatePrivilegedUserAction,
+  RoleAndOfficeGroupNames,
+} from '@common/cams/privileged-identity';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNotes = MockData.buildArray(() => MockData.getCaseNote({ caseId: '101-12-12345' }), 5);
@@ -162,6 +166,13 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: caseDetails,
     };
+  } else if (path.match(/\/dev-tools\/privileged-identity\/groups/)) {
+    response = {
+      data: {
+        roles: [],
+        offices: [],
+      },
+    };
   } else if (path.match(/\/orders-suggestions\/[A-Z\d-]+/)) {
     response = {
       data: [caseDetails],
@@ -176,7 +187,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     };
   } else if (path.match(/\/offices/)) {
     response = {
-      data: USTP_OFFICES_ARRAY,
+      data: MOCKED_USTP_OFFICES_ARRAY,
     };
   } else if (path.match(/\/courts/)) {
     response = {
@@ -220,6 +231,13 @@ async function put<T = unknown>(
 ): Promise<ResponseBody<T>> {
   const response = {
     data,
+  };
+  return Promise.resolve(response as ResponseBody<T>);
+}
+
+async function _delete<T = unknown>(_path: string): Promise<ResponseBody<T>> {
+  const response = {
+    data: null,
   };
   return Promise.resolve(response as ResponseBody<T>);
 }
@@ -315,7 +333,28 @@ async function postStaffAssignments(action: StaffAssignmentAction): Promise<Resp
   return post('/case-assignments', action, {});
 }
 
+async function getRoleAndOfficeGroupNames() {
+  return get<RoleAndOfficeGroupNames>('/dev-tools/privileged-identity/groups');
+}
+
+async function getPrivilegedIdentityUsers() {
+  return get<CamsUserReference[]>('/dev-tools/privileged-identity');
+}
+
+async function getPrivilegedIdentityUser(userId: string) {
+  return get<PrivilegedIdentityUser>(`/dev-tools/privileged-identity/${userId}`);
+}
+
+async function putPrivilegedIdentityUser(userId: string, action: ElevatePrivilegedUserAction) {
+  await put(`/dev-tools/privileged-identity/${userId}`, action);
+}
+
+async function deletePrivilegedIdentityUser(userId: string) {
+  await _delete(`/dev-tools/privileged-identity/${userId}`);
+}
+
 export const MockApi2 = {
+  deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,
   getCaseDocket,
@@ -323,19 +362,23 @@ export const MockApi2 = {
   getCaseAssignments,
   getCaseAssociations,
   getCaseHistory,
-  getCourts,
+  postCaseNote,
   getCaseNotes,
+  getCourts,
   getMe,
   getOfficeAttorneys,
   getOffices,
   getOrders,
   getOrderSuggestions,
+  getPrivilegedIdentityUsers,
+  getPrivilegedIdentityUser,
+  getRoleAndOfficeGroupNames,
   patchTransferOrderApproval,
   patchTransferOrderRejection,
   postStaffAssignments,
-  postCaseNote,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
+  putPrivilegedIdentityUser,
   searchCases,
 };
 

@@ -54,13 +54,15 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
     disableButton,
   }));
 
+  const buttonId = id ?? `button-id-${Math.floor(Math.random() * 10000)}`;
+  const testId = id ?? 'test';
   return (
     <button
       {...otherProps}
-      id={id}
+      id={buttonId}
       type="button"
       className={classes.join(' ')}
-      data-testid={`button-${id}`}
+      data-testid={`button-${testId}`}
       disabled={isDisabled}
       aria-disabled={isDisabled}
       title={title}

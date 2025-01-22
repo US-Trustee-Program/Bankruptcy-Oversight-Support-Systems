@@ -3,27 +3,11 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { ServerConfigError } from '../../common-errors/server-config-error';
-import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
-import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsSession } from '../../../../common/src/cams/session';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
-
-function getRoles(groups: string[]): CamsRole[] {
-  const rolesMap = LocalStorageGateway.getRoleMapping();
-  return groups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
-}
-
-async function getOffices(
-  _context: ApplicationContext,
-  idpGroups: string[],
-): Promise<UstpOfficeDetails[]> {
-  const ustpOffices = LocalStorageGateway.getUstpOffices();
-  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
-}
 
 export class UserSessionUseCase {
   async lookup(context: ApplicationContext, token: string, provider: string): Promise<CamsSession> {
@@ -51,16 +35,8 @@ export class UserSessionUseCase {
       }
 
       context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
-      const { user, jwt } = await authGateway.getUser(token);
-      user.roles = getRoles(jwt.claims.groups);
-      user.offices = await getOffices(context, jwt.claims.groups);
-
-      // Simulate the legacy behavior by appending roles and Manhattan office to the user
-      // if the 'restrict-case-assignment' feature flag is not set.
-      if (!context.featureFlags['restrict-case-assignment']) {
-        user.offices = [REGION_02_GROUP_NY];
-        user.roles = [CamsRole.CaseAssignmentManager];
-      }
+      const { user: camsUserReference, jwt } = await authGateway.getUser(token);
+      const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
       const session: CamsSession = {
         user,

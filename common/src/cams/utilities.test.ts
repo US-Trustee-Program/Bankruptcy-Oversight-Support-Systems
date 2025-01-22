@@ -1,4 +1,4 @@
-import { keyValuesToMap, keyValuesToRecord } from './utilities';
+import { keyValuesToMap, keyValuesToRecord, symmetricDifference } from './utilities';
 
 describe('Key Value utils', () => {
   describe('keyValuesToRecord', () => {
@@ -134,6 +134,15 @@ describe('Key Value utils', () => {
       const expected = new Map<string, string>([['ONE', 'Config=Foo']]);
       const actual = keyValuesToMap(encoded);
       expect(actual).toEqual(expected);
+    });
+  });
+
+  describe('symmetricDifference', () => {
+    test('should return items occurring in only one of two sets', () => {
+      const setOne = new Set(['a', 'b', 'c']);
+      const setTwo = new Set(['a', 'd', 'e']);
+      const expected = new Set(['b', 'c', 'd', 'e']);
+      expect(symmetricDifference(setOne, setTwo)).toEqual(expected);
     });
   });
 });

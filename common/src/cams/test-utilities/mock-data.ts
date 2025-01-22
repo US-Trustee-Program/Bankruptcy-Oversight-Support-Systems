@@ -29,14 +29,21 @@ import {
 import { CaseAssignment } from '../assignments';
 import { ResponseBody } from '../../api/response';
 import { Action, ResourceActions } from '../actions';
-import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
+import {
+  AttorneyUser,
+  PrivilegedIdentityUser,
+  CamsUser,
+  CamsUserReference,
+  CamsUserGroup,
+} from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { sortDates } from '../../date-helper';
+import { getIsoDate, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
-import { USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
+import { RoleAndOfficeGroupNames } from '../privileged-identity';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -84,7 +91,7 @@ function getCourts() {
 }
 
 function getOffices() {
-  return USTP_OFFICES_ARRAY;
+  return MOCKED_USTP_OFFICES_ARRAY;
 }
 
 function randomOffice() {
@@ -97,9 +104,10 @@ function getOffice(courtDivisionCode?: string) {
 }
 
 function randomUstpOffice() {
-  return USTP_OFFICES_ARRAY[randomInt(USTP_OFFICES_ARRAY.length - 1)];
+  return MOCKED_USTP_OFFICES_ARRAY[randomInt(MOCKED_USTP_OFFICES_ARRAY.length - 1)];
 }
 
+// TODO: consider whether this will eventually cause tests to fail
 function randomDate(year = '2024') {
   return someDateAfterThisDate(`${year}-01-01`);
 }
@@ -108,14 +116,14 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToAdd = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return someDate.toISOString().split('T')[0];
+  return getIsoDate(someDate);
 }
 
 function someDateBeforeThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToSubtract = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() - daysToSubtract));
-  return someDate.toISOString().split('T')[0];
+  return getIsoDate(someDate);
 }
 
 function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {
@@ -499,6 +507,10 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
+function getDateAfterToday() {
+  return faker.date.future();
+}
+
 function getCamsUserReference(override: Partial<CamsUserReference> = {}): CamsUserReference {
   return {
     id: randomId(),
@@ -517,6 +529,13 @@ function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
   };
 }
 
+function getCamsUserGroup(): CamsUserGroup {
+  return {
+    id: randomId(),
+    name: faker.lorem.words(4),
+  };
+}
+
 function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   return {
     ...getCamsUser({ roles: [CamsRole.TrialAttorney] }),
@@ -524,11 +543,37 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   };
 }
 
+function getPrivilegedIdentityUser(
+  override: Partial<PrivilegedIdentityUser> = {},
+): PrivilegedIdentityUser {
+  return {
+    claims: {
+      groups: [],
+    },
+    ...getCamsUserReference(),
+    ...override,
+    documentType: 'PRIVILEGED_IDENTITY_USER',
+    expires: override.expires ?? getDateAfterToday().toISOString(),
+  };
+}
+
+function getRole(): string {
+  return 'USTP CAMS ' + faker.lorem.words(2);
+}
+
+function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
+  const offices = MockData.getOffices().map((office) => office.idpGroupId);
+  return {
+    roles: buildArray(getRole, 5),
+    offices,
+  };
+}
+
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
   if (override?.user?.roles.includes(CamsRole.SuperUser)) {
-    offices = USTP_OFFICES_ARRAY;
+    offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
   return {
@@ -620,14 +665,21 @@ export const MockData = {
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,
+  getDateAfterToday,
   getDateBeforeToday,
   getCamsUserReference,
   getCamsUser,
+  getCamsUserGroup,
   getAttorneyUser,
+  getPrivilegedIdentityUser,
+  getRole,
+  getRoleAndOfficeGroupNames,
   getCamsSession,
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,
   getJwt,
+  someDateAfterThisDate,
+  someDateBeforeThisDate,
 };
 
 export default MockData;

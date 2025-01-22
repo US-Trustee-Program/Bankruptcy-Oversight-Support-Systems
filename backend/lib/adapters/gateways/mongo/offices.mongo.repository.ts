@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../types/basic';
-import { AttorneyUser, CamsUserReference, Staff } from '../../../../../common/src/cams/users';
+import { AttorneyUser, Staff } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
@@ -7,8 +7,8 @@ import QueryBuilder from '../../../query/query-builder';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { UnknownError } from '../../../common-errors/unknown-error';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
+import { isNotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -51,27 +51,22 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
 
   async putOfficeStaff(
     officeCode: string,
-    user: CamsUserReference,
+    user: Staff,
     ttl: number = DEFAULT_STAFF_TTL,
   ): Promise<ReplaceResult> {
-    const staff = createAuditRecord<OfficeStaff>({
+    const existing = await this.findOneOfficeStaff(officeCode, user);
+    const officeStaff = createAuditRecord<OfficeStaff>({
       id: user.id,
       documentType: 'OFFICE_STAFF',
       officeCode,
       ...user,
-      ttl,
+      ttl: existing ? Math.max(existing.ttl, ttl) : ttl,
     });
     const query = QueryBuilder.build(
-      and(equals<string>('id', staff.id), equals<string>('officeCode', officeCode)),
+      and(equals<string>('id', officeStaff.id), equals<string>('officeCode', officeCode)),
     );
     try {
-      const result = await this.getAdapter<OfficeStaff>().replaceOne(query, staff, true);
-      if (result.modifiedCount + result.upsertedCount !== 1) {
-        throw new UnknownError(MODULE_NAME, {
-          message: `While upserting user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
-        });
-      }
-      return result;
+      return await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to write user ${user.id} to ${officeCode}.`,
@@ -106,15 +101,66 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     );
 
     try {
-      const deletedCount = await this.getAdapter<OfficeStaff>().deleteOne(query);
-      if (deletedCount === 0) {
-        throw new UnknownError(MODULE_NAME, { message: 'Failed to delete office staff.' });
-      } else if (deletedCount > 1) {
-        throw new UnknownError(MODULE_NAME, { message: 'Deleted more than one office staff.' });
-      }
+      await this.getAdapter<OfficeStaff>().deleteOne(query);
     } catch (originalError) {
       const error = getCamsError(originalError, MODULE_NAME);
       throw error;
+    }
+  }
+
+  public async putOrExtendOfficeStaff(officeCode: string, staff: Staff, expires: string) {
+    try {
+      const existing = await this.findOneOfficeStaff(officeCode, staff);
+      const newTtl = (new Date(expires).valueOf() - Date.now()) / 1000;
+
+      let officeStaff: OfficeStaff;
+      if (existing) {
+        officeStaff = createAuditRecord<OfficeStaff>({
+          ...existing,
+          ttl: Math.max(existing.ttl, newTtl),
+        });
+        officeStaff.roles = Array.from(new Set([...existing.roles, ...staff.roles]));
+      } else {
+        officeStaff = createAuditRecord<OfficeStaff>({
+          id: staff.id,
+          documentType: 'OFFICE_STAFF',
+          officeCode,
+          ...staff,
+          ttl: newTtl,
+        });
+      }
+
+      const query = QueryBuilder.build(
+        and(
+          equals<OfficeStaff['officeCode']>('officeCode', officeCode),
+          equals<OfficeStaff['id']>('id', staff.id),
+          equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+        ),
+      );
+      await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: { message: 'Failed to create or update office staff.', module: MODULE_NAME },
+      });
+    }
+  }
+
+  private async findOneOfficeStaff(officeCode: string, staff: Staff): Promise<OfficeStaff | null> {
+    const query = QueryBuilder.build(
+      and(
+        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
+        equals<OfficeStaff['id']>('id', staff.id),
+        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
+      ),
+    );
+
+    try {
+      return await this.getAdapter<OfficeStaff>().findOne(query);
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        return null;
+      }
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 }

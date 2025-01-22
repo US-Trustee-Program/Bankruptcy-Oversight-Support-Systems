@@ -1,19 +1,23 @@
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { StorageGateway } from '../../types/storage';
-import {
-  USTP_OFFICES_ARRAY,
-  UstpDivisionMeta,
-  UstpOfficeDetails,
-} from '../../../../../common/src/cams/offices';
+import { UstpDivisionMeta } from '../../../../../common/src/cams/offices';
+import { NotFoundError } from '../../../common-errors/not-found-error';
+
+const MODULE_NAME = 'LOCAL_STORAGE_GATEWAY';
 
 let roleMapping: Map<string, CamsRole>;
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';
 const ROLE_MAPPING =
   'ad_group_name,idp_group_name,cams_role\n' +
-  'USTP_CAMS_Case_assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
+  'USTP_CAMS_Super_User,USTP CAMS Super User,SuperUser\n' +
+  'USTP_CAMS_Privileged_Identity_Management,USTP CAMS Privileged Identity Management,PrivilegedIdentityUser\n' +
+  'USTP_CAMS_Case_Assignment_Manager,USTP CAMS Case Assignment Manager,CaseAssignmentManager\n' +
   'USTP_CAMS_Trial_Attorney,USTP CAMS Trial Attorney,TrialAttorney\n' +
   'USTP_CAMS_Data_Verifier,USTP CAMS Data Verifier,DataVerifier\n';
 
+// TODO: We should delete this. How are we handling AD group from Seattle mapped to SE and AK groups??
+// This mapping doesn't include Wilmington, DE which is not soft live. However, we see the office assigned in STG and PRD.
+// Did we break the SE+AK mapping to Seattle? We no longer use this mapping table??
 export const OFFICE_MAPPING_PATH = '/officemapping.csv';
 const OFFICE_MAPPING =
   'ad_group_name,idp_group_name,group_designator\n' +
@@ -41,10 +45,6 @@ function get(path: string): string | null {
   return storage.get(path);
 }
 
-function getUstpOffices(): UstpOfficeDetails[] {
-  return USTP_OFFICES_ARRAY;
-}
-
 function getRoleMapping(): Map<string, CamsRole> {
   if (!roleMapping) {
     const roleArray = ROLE_MAPPING.split('\n');
@@ -59,6 +59,22 @@ function getRoleMapping(): Map<string, CamsRole> {
   }
 
   return roleMapping;
+}
+
+function getPrivilegedIdentityUserRoleGroupName(): string {
+  const mapping = getRoleMapping();
+  let groupNameToReturn;
+  mapping.forEach((camsRole, groupName) => {
+    if (camsRole === CamsRole.PrivilegedIdentityUser.toString()) {
+      groupNameToReturn = groupName;
+    }
+  });
+  if (!groupNameToReturn) {
+    throw new NotFoundError(MODULE_NAME, {
+      message: 'Cannot find privileged identity user role group name.',
+    });
+  }
+  return groupNameToReturn;
 }
 
 function addUstpDivisionMetaToMap(
@@ -85,9 +101,9 @@ function getUstpDivisionMeta(): Map<string, UstpDivisionMeta> {
 
 export const LocalStorageGateway: StorageGateway = {
   get,
-  getUstpOffices,
   getRoleMapping,
   getUstpDivisionMeta,
+  getPrivilegedIdentityUserRoleGroupName,
 };
 
 export default LocalStorageGateway;
