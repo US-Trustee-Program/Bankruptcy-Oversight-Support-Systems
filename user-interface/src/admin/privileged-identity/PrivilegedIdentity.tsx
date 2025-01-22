@@ -13,6 +13,7 @@ import {
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
 import { CamsUserReference } from '@common/cams/users';
+import { symmetricDifference } from '@common/cams/utilities';
 import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
 import { useEffect, useRef, useState } from 'react';
 
@@ -21,6 +22,12 @@ export function toComboOption(groupName: string) {
     value: groupName,
     label: groupName.replace('USTP CAMS ', ''),
   };
+}
+
+export function sortUserList(a: CamsUserReference, b: CamsUserReference) {
+  if (a.name > b.name) return 1;
+  if (a.name < b.name) return -1;
+  return 0;
 }
 
 export function PrivilegedIdentity() {
@@ -88,7 +95,7 @@ export function PrivilegedIdentity() {
 
   function isFormDirty() {
     return (
-      existingGroupNameSet.symmetricDifference(newGroupNameSet).size > 0 ||
+      symmetricDifference(existingGroupNameSet, newGroupNameSet).size > 0 ||
       existingExpiration !== newExpiration
     );
   }
@@ -223,13 +230,7 @@ export function PrivilegedIdentity() {
 
       // Get the eligible users.
       api.getPrivilegedIdentityUsers().then((res) => {
-        setUserList(
-          res.data.sort((a: CamsUserReference, b: CamsUserReference) => {
-            if (a.name > b.name) return 1;
-            if (a.name < b.name) return -1;
-            return 0;
-          }),
-        );
+        setUserList(res.data.sort(sortUserList));
         setIsLoaded(true);
       });
     });
@@ -307,6 +308,7 @@ export function PrivilegedIdentity() {
               <div className="button-bar-left-side">
                 <div className="delete-button button-container">
                   <Button
+                    id="delete-button"
                     uswdsStyle={UswdsButtonStyle.Secondary}
                     onClick={handleDelete}
                     disabled={!isDeletable()}
@@ -319,6 +321,7 @@ export function PrivilegedIdentity() {
               <div className="button-bar-right-side">
                 <div className="save-button button-container">
                   <Button
+                    id="save-button"
                     uswdsStyle={UswdsButtonStyle.Default}
                     onClick={handleSave}
                     disabled={!isSaveable()}
@@ -329,6 +332,7 @@ export function PrivilegedIdentity() {
                 </div>
                 <div className="cancel-button button-container">
                   <Button
+                    id="cancel-button"
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     disabled={true}
                     onClick={clearForm}
