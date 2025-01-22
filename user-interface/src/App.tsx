@@ -34,7 +34,7 @@ function App() {
   return (
     <AppInsightsErrorBoundary
       onError={(_error) => {
-        return <h1>Something Went Wrong</h1>;
+        return <h1 data-testid="error-boundary-message">Something Went Wrong</h1>;
       }}
       appInsights={reactPlugin}
     >
