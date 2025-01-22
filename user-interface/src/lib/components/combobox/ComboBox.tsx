@@ -29,6 +29,7 @@ type InputProps = JSX.IntrinsicElements['input'] &
   PropsWithChildren;
 
 export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> {
+  id: string;
   label?: string;
   ariaLabelPrefix?: string;
   ariaDescription?: string;
@@ -48,6 +49,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> 
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const {
+    id: comboBoxId,
     label,
     disabled,
     onUpdateSelection,
@@ -67,11 +69,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== STATE ==========
 
-  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(disabled ?? false);
+  const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(
+    disabled !== undefined ? !!disabled : false,
+  );
   const [selections, setSelections] = useState<ComboOption[]>(() => {
     if (props.value) {
       const selection = options.find((option) => option.value === props.value);
-      if (selection) return [selection];
+      if (selection) {
+        selection.selected = true;
+        return [selection];
+      }
     }
     return [];
   });
@@ -135,7 +142,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function focusAndHandleScroll(ev: React.KeyboardEvent, el: Element) {
-    const listContainer = document.querySelector(`#${props.id} .item-list-container`);
+    const listContainer = document.querySelector(`#${comboBoxId} .item-list-container`);
 
     if (listContainer) {
       const list = listContainer.querySelector('ul');
@@ -147,6 +154,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         ev.stopPropagation();
       }
     }
+  }
+
+  function setValue(values: ComboOption[]) {
+    setSelections(values);
   }
 
   function getValue() {
@@ -257,7 +268,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
-    const list = document.querySelector(`#${props.id} .item-list-container ul`);
+    const list = document.querySelector(`#${comboBoxId} .item-list-container ul`);
     const input = filterRef.current;
 
     switch (ev.key) {
@@ -331,7 +342,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
-    const inputContainer = document.querySelector(`#${props.id} .input-container`);
+    const inputContainer = document.querySelector(`#${comboBoxId} .input-container`);
     const topYPos = inputContainer?.getBoundingClientRect().top;
     const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
     const windowMiddle = window.innerHeight / 2;
@@ -374,28 +385,28 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }, [comboboxDisabled]);
 
-  useImperativeHandle(ref, () => ({ getValue, clearValue, disable }));
+  useImperativeHandle(ref, () => ({ setValue, getValue, clearValue, disable }));
 
   // ========== JSX ==========
 
   return (
-    <div id={props.id} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
+    <div id={comboBoxId} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
         <label
           className="usa-label"
-          id={props.id + '-label'}
-          htmlFor={`${props.id}-combo-box-input`}
+          id={comboBoxId + '-label'}
+          htmlFor={`${comboBoxId}-combo-box-input`}
         >
           {label} {props.required && <span className="required-form-field">*</span>}
         </label>
-        <span id={`${props.id}-aria-description`} hidden>
+        <span id={`${comboBoxId}-aria-description`} hidden>
           {ariaDescription ?? ''}
         </span>
       </div>
       {multiSelect === true && (
         <div className="pills-and-clear-all">
           <PillBox
-            id={`${props.id}-pill-box`}
+            id={`${comboBoxId}-pill-box`}
             className="pill-box"
             wrapPills={wrapPills}
             ariaLabelPrefix={ariaLabelPrefix ?? undefined}
@@ -406,7 +417,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           ></PillBox>
           {selections && selections.length > 0 && (
             <Button
-              id={`${props.id}-clear-all-pills-button`}
+              id={`${comboBoxId}-clear-all-pills-button`}
               className="pill-clear-button"
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={handleClearAllClick}
@@ -420,11 +431,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </div>
       )}
       <div className="usa-combo-box">
-        <div className="input-container usa-input">
+        <div className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}>
           <div className="combo-box-input-container">
             {multiSelect !== true && selections.length > 0 && (
               <Pill
-                id={`pill-${props.id}`}
+                id={`pill-${comboBoxId}`}
                 label={selections[0].label}
                 ariaLabelPrefix={ariaLabelPrefix ?? undefined}
                 value={selections[0].value}
@@ -435,7 +446,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             )}
             <input
               {...otherProps}
-              id={`${props.id}-combo-box-input`}
+              id={`${comboBoxId}-combo-box-input`}
               data-testid="combo-box-input"
               className={getInputClassName()}
               onChange={handleInputFilter}
@@ -444,17 +455,17 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               onFocus={handleOnInputFocus}
               disabled={comboboxDisabled}
               aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
-              aria-describedby={`${props.id}-aria-description`}
+              aria-describedby={`${comboBoxId}-aria-description`}
               aria-live={props['aria-live'] ?? undefined}
               aria-haspopup="listbox"
               aria-expanded={expanded}
-              aria-controls={`${props.id}-item-list`}
+              aria-controls={`${comboBoxId}-item-list`}
               role="combobox"
               ref={filterRef}
             />
           </div>
           <Button
-            id={`${props.id}-expand`}
+            id={`${comboBoxId}-expand`}
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={handleToggleDropdown}
@@ -469,23 +480,23 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         {!comboboxDisabled && (
           <div
             className={`item-list-container ${expandedClass}`}
-            id={`${props.id}-item-list-container`}
+            id={`${comboBoxId}-item-list-container`}
             aria-hidden={expanded}
             tabIndex={-1}
             style={dropdownLocation ?? undefined}
           >
-            <ul id={`${props.id}-item-list`} role="listbox">
+            <ul id={`${comboBoxId}-item-list`} role="listbox">
               {filteredOptions.map((option, idx) => (
                 <li
                   className={setListItemClass(idx, option)}
                   aria-hidden={option.hidden ? 'true' : 'false'}
-                  data-testid={`${props.id}-item-${idx}`}
-                  key={`${props.id}-${idx}`}
+                  data-testid={`${comboBoxId}-item-${idx}`}
+                  key={`${comboBoxId}-${idx}`}
                 >
                   <button
                     className="usa-button--unstyled"
                     data-value={option.value}
-                    data-testid={`${props.id}-option-item-${idx}`}
+                    data-testid={`${comboBoxId}-option-item-${idx}`}
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}

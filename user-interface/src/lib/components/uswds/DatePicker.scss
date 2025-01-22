@@ -1,0 +1,9 @@
+
+.date-picker {
+  .date-error {
+    padding: 0.5rem 0;
+    font-size: 1rem;
+    // TODO: fix color imports from USWDS
+    color: #8b0a03; // secondary-dark from uswds
+  }
+}

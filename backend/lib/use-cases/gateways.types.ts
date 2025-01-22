@@ -14,7 +14,13 @@ import {
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
 import { CaseDocket, CaseNote } from '../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../common/src/api/search';
-import { AttorneyUser, CamsUserGroup, CamsUserReference } from '../../../common/src/cams/users';
+import {
+  AttorneyUser,
+  PrivilegedIdentityUser,
+  CamsUserGroup,
+  CamsUserReference,
+  Staff,
+} from '../../../common/src/cams/users';
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
@@ -128,16 +134,24 @@ export interface CasesRepository extends Releasable {
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
-  deleteMigrations(): Promise<void>;
 }
 
 export interface OfficesRepository extends Releasable {
+  putOrExtendOfficeStaff(officeCode: string, staff: Staff, expires: string): Promise<void>;
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
 }
 
-// TODO: Move these models to a top level models file?
+export interface UsersRepository extends Releasable {
+  getPrivilegedIdentityUser(id: string, includeExpired?: boolean): Promise<PrivilegedIdentityUser>;
+  putPrivilegedIdentityUser(
+    privilegedIdentityUser: PrivilegedIdentityUser,
+    updatedBy: CamsUserReference,
+  ): Promise<ReplaceResult>;
+  deletePrivilegedIdentityUser(id: string): Promise<void>;
+}
+
 export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';
 
 export type RuntimeState = {

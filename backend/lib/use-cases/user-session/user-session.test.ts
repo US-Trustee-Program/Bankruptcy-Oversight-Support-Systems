@@ -6,14 +6,13 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../common/src/cams/session';
-import { CamsRole } from '../../../../common/src/cams/roles';
 import { urlRegex } from '../../../../common/src/cams/test-utilities/regex';
 import { CamsJwtHeader } from '../../../../common/src/cams/jwt';
 import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import UsersHelpers from '../users/users.helpers';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -43,29 +42,32 @@ describe('user-session.gateway test', () => {
   let context: ApplicationContext;
   let gateway: UserSessionUseCase;
 
+  const jwtHeader = {
+    alg: 'RS256',
+    typ: undefined,
+    kid: '',
+  };
+  const camsJwt = {
+    claims,
+    header: jwtHeader as CamsJwtHeader,
+  };
+
   beforeEach(async () => {
     gateway = new UserSessionUseCase();
     context = await createMockApplicationContext({
       env: { CAMS_LOGIN_PROVIDER: 'okta', CAMS_LOGIN_PROVIDER_CONFIG: 'something' },
     });
+    context.featureFlags['privileged-identity-management'] = true;
 
-    const jwtHeader = {
-      alg: 'RS256',
-      typ: undefined,
-      kid: '',
-    };
-    const camsJwt = {
-      claims,
-      header: jwtHeader as CamsJwtHeader,
-    };
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
       .mockResolvedValue({ user: mockUser, jwt: camsJwt });
+    jest.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    jest.restoreAllMocks();
   });
 
   test('should return valid session and add to cache when cache miss is encountered', async () => {
@@ -137,22 +139,5 @@ describe('user-session.gateway test', () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(ServerConfigError);
-  });
-
-  test('should use legacy behavior if restrict-case-assignment feature flag is not set', async () => {
-    jest.spyOn(factoryModule, 'getUserSessionCacheRepository').mockReturnValue({
-      upsert: jest.fn(),
-      read: jest.fn().mockRejectedValue(new NotFoundError('')),
-      release: () => {},
-    });
-
-    jest.spyOn(factoryModule, 'getAuthorizationGateway').mockReturnValue(MockOpenIdConnectGateway);
-
-    const localContext = { ...context, featureFlags: { ...context.featureFlags } };
-    localContext.featureFlags['restrict-case-assignment'] = false;
-
-    const session = await gateway.lookup(localContext, jwtString, provider);
-    expect(session.user.offices).toEqual([REGION_02_GROUP_NY]);
-    expect(session.user.roles).toEqual([CamsRole.CaseAssignmentManager]);
   });
 });

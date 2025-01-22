@@ -9,7 +9,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
 
 describe('offices Function tests', () => {
   let request;
@@ -29,7 +29,7 @@ describe('offices Function tests', () => {
     .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
 
   test('should set successful response', async () => {
-    const bodySuccess: UstpOfficeDetails[] = USTP_OFFICES_ARRAY;
+    const bodySuccess: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
 
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<UstpOfficeDetails[]>({
       data: bodySuccess,

@@ -28,3 +28,21 @@ export function keyValuesToMap(kvString: string): Map<string, string> {
   });
   return map;
 }
+
+export function symmetricDifference(set1: Set<string>, set2: Set<string>) {
+  const result = new Set();
+
+  for (const element of set1) {
+    if (!set2.has(element)) {
+      result.add(element);
+    }
+  }
+
+  for (const element of set2) {
+    if (!set1.has(element)) {
+      result.add(element);
+    }
+  }
+
+  return result;
+}

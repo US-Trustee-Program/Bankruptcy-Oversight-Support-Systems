@@ -210,18 +210,25 @@ describe('Mongo adapter', () => {
   });
 
   const upsertFailureCases = [
-    ['acknowledged', true],
-    ['not acknowledged', false],
+    ['acknowledged but no matches', true, 0, 0, 0],
+    ['acknowledged with a match and too many changes', true, 1, 1, 1],
+    ['not acknowledged with not matches', false, 0, 0, 0],
   ];
   test.each(upsertFailureCases)(
     'should throw an error if upsert fails when %s',
-    async (_caseName: string, acknowledged: boolean) => {
+    async (
+      _caseName: string,
+      acknowledged: boolean,
+      matchedCount,
+      modifiedCount,
+      upsertedCount,
+    ) => {
       const testObject: TestType = { id: '12345', foo: 'bar' };
       replaceOne.mockResolvedValue({
         acknowledged,
-        matchedCount: 0,
-        modifiedCount: 0,
-        upsertedCount: 0,
+        matchedCount,
+        modifiedCount,
+        upsertedCount,
         upsertedId: null,
       });
       await expect(adapter.replaceOne(testQuery, testObject, true)).rejects.toThrow(
@@ -259,12 +266,16 @@ describe('Mongo adapter', () => {
     expect(result).toEqual(1);
   });
 
-  test('should throw NotFoundError if deleteOne returns a deletedCount of 0', async () => {
-    deleteOne.mockResolvedValue({ acknowledged: true, deletedCount: 0 });
-    await expect(adapter.deleteOne(testQuery)).rejects.toThrow(
-      new NotFoundError(MODULE_NAME, { message: 'No items deleted' }),
-    );
-  });
+  const badDeleteCount = [0, 3];
+  test.each(badDeleteCount)(
+    'should throw NotFoundError if deleteOne returns a deletedCount of %s',
+    async (deletedCount: number) => {
+      deleteOne.mockResolvedValue({ acknowledged: true, deletedCount });
+      await expect(adapter.deleteOne(testQuery)).rejects.toThrow(
+        new NotFoundError(MODULE_NAME, { message: `Matched and deleted ${deletedCount} items.` }),
+      );
+    },
+  );
 
   test('should return a count of 5 for 5 items deleted', async () => {
     deleteMany.mockResolvedValue({ acknowledged: true, deletedCount: 5 });

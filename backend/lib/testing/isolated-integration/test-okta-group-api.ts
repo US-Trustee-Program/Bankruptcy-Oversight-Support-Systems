@@ -50,6 +50,10 @@ async function testOktaGroupApi() {
     );
     log('attorneys', attorneys, '\n');
     log('syncOfficeStaff', results, '\n');
+
+    log('Get user and groups by user id.\n');
+    const user = await OktaUserGroupGateway.getUserById(context, config, '00uhotvtuaMmtpD3m5d7');
+    log('user', user, '\n');
   } catch (error) {
     context.logger.error(MODULE_NAME, error);
   } finally {
@@ -57,8 +61,6 @@ async function testOktaGroupApi() {
   }
 }
 
-if (require.main === module) {
-  (async () => {
-    await testOktaGroupApi();
-  })();
-}
+(async () => {
+  await testOktaGroupApi();
+})();

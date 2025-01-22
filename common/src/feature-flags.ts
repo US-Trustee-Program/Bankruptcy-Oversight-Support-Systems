@@ -14,5 +14,5 @@ export const defaultFeatureFlags: FeatureFlagSet = {
   'consolidations-enabled': true,
   'case-search-enabled': true,
   'case-notes-enabled': true,
-  'restrict-case-assignment': true,
+  'privileged-identity-management': true,
 };

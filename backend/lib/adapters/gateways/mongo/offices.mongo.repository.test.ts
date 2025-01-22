@@ -9,10 +9,13 @@ import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import QueryBuilder from '../../../query/query-builder';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { createAuditRecord } from '../../../../../common/src/cams/auditable';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsSession } from '../../../../../common/src/cams/session';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
+import { Staff } from '../../../../../common/src/cams/users';
+import { NotFoundError } from '../../../common-errors/not-found-error';
+import { CamsError } from '../../../common-errors/cams-error';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
@@ -62,6 +65,9 @@ describe('offices repo', () => {
       ...session.user,
       ttl: DEFAULT_STAFF_TTL,
     });
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockRejectedValue(new NotFoundError('test-module'));
     const replaceOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
@@ -83,6 +89,82 @@ describe('offices repo', () => {
     expect(deleteOneSpy).toHaveBeenCalled();
   });
 
+  const staff: Staff = {
+    ...MockData.getCamsUserReference(),
+    roles: [CamsRole.TrialAttorney],
+  };
+  const staffRecords = [
+    ['nonexisting', null],
+    [
+      'existing',
+      {
+        documentType: 'OFFICE_STAFF',
+        officeCode: 'test-office',
+        ...staff,
+        roles: [CamsRole.CaseAssignmentManager],
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: '2025-01-01',
+        ttl: DEFAULT_STAFF_TTL,
+      } as OfficeStaff,
+    ],
+  ];
+  test.each(staffRecords)(
+    'should extend %s staff when calling putOrExtendOfficeStaff',
+    async (_name: string, existing: OfficeStaff | null) => {
+      const findOneSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(existing);
+      const replaceOneSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: 'inserted-id', modifiedCount: 1, upsertedCount: 0 });
+
+      const expires = MockData.someDateAfterThisDate(new Date().toISOString(), 2);
+
+      const expectedRoles = existing
+        ? [CamsRole.TrialAttorney, CamsRole.CaseAssignmentManager]
+        : [CamsRole.TrialAttorney];
+      const expectedStaff: OfficeStaff = {
+        documentType: 'OFFICE_STAFF',
+        officeCode: 'test-office',
+        ...staff,
+        roles: expect.arrayContaining(expectedRoles),
+        updatedBy: expect.anything(),
+        updatedOn: expect.anything(),
+        ttl: expect.anything(),
+      };
+
+      await repo.putOrExtendOfficeStaff('test-office', staff, expires);
+
+      expect(findOneSpy).toHaveBeenCalled();
+      expect(replaceOneSpy).toHaveBeenCalledWith(expect.anything(), expectedStaff, true);
+    },
+  );
+
+  test('should insert when no existing staff', async () => {
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockRejectedValue(new NotFoundError('test-module'));
+    const replaceOneSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue({ id: 'inserted-id', modifiedCount: 0, upsertedCount: 1 });
+    const expectedStaff: OfficeStaff = {
+      documentType: 'OFFICE_STAFF',
+      officeCode: 'test-office',
+      ...staff,
+      roles: [CamsRole.TrialAttorney],
+      updatedBy: expect.anything(),
+      updatedOn: expect.anything(),
+      ttl: expect.anything(),
+    };
+
+    await repo.putOrExtendOfficeStaff(
+      'test-office',
+      staff,
+      MockData.someDateAfterThisDate(new Date().toISOString()),
+    );
+    expect(replaceOneSpy).toHaveBeenCalledWith(expect.anything(), expectedStaff, true);
+  });
+
   describe('error handling', () => {
     const module = 'OFFICES_MONGO_REPOSITORY';
     const error = new Error('some error');
@@ -95,6 +177,9 @@ describe('offices repo', () => {
     });
 
     test('putOfficeStaff error handling', async () => {
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockRejectedValue(new NotFoundError('test-module'));
       jest.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(error);
 
       const expectedError = {
@@ -106,27 +191,49 @@ describe('offices repo', () => {
       );
     });
 
-    test('should throw error for failure to delete', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(0);
-
-      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
-        expect.objectContaining({ module, message: 'Failed to delete office staff.' }),
-      );
-    });
-
-    test('should throw error for deleting too many items', async () => {
-      jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockResolvedValue(2);
-
-      await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
-        expect.objectContaining({ module, message: 'Deleted more than one office staff.' }),
-      );
-    });
-
     test('should throw CamsError', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
 
       await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
         expect.objectContaining({ module, message: 'Unknown Error' }),
+      );
+    });
+
+    test('should throw CamsError when putOrExtendOfficeStaff encounters an error', async () => {
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockRejectedValue(new NotFoundError('test-module'));
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockRejectedValue(new Error('some error'));
+      const expires = MockData.someDateAfterThisDate(new Date().toISOString(), 2);
+      const expectedError = new CamsError(expect.anything(), {
+        message: 'Unknown Error',
+        camsStackInfo: {
+          message: 'Failed to create or update office staff.',
+          module: expect.anything(),
+        },
+      });
+      await expect(repo.putOrExtendOfficeStaff('test-office', staff, expires)).rejects.toThrow(
+        expectedError,
+      );
+    });
+
+    test('should throw CamsError when findOne throws an error other than NotFound when putOrExtendOfficeStaff is called', async () => {
+      jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockRejectedValue(new Error('some error'));
+      const expires = MockData.someDateAfterThisDate(new Date().toISOString(), 2);
+
+      const expectedError = new CamsError(expect.anything(), {
+        message: 'Unknown Error',
+        camsStackInfo: {
+          message: 'Failed to create or update office staff.',
+          module: expect.anything(),
+        },
+      });
+      await expect(repo.putOrExtendOfficeStaff('test-office', staff, expires)).rejects.toThrow(
+        expectedError,
       );
     });
   });

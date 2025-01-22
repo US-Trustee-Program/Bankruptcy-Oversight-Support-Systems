@@ -1,11 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { AdminController } from '../../../lib/controllers/admin/admin.controller';
-import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
-import { AdminRequestBody } from '../../../lib/adapters/types/http';
+import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
 
-const MODULE_NAME = 'ADMIN-FUNCTION';
+const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
@@ -14,17 +12,12 @@ export default async function handler(
   const logger = ContextCreator.getLogger(invocationContext);
 
   try {
-    const applicationContext = await ContextCreator.getApplicationContext<AdminRequestBody>({
+    const applicationContext = await ContextCreator.applicationContextCreator(
       invocationContext,
       logger,
       request,
-    });
-    if (applicationContext.request.body.apiKey !== process.env.ADMIN_KEY) {
-      throw new UnauthorizedError(MODULE_NAME, {
-        message: 'API key was missing or did not match.',
-      });
-    }
-    const controller = new AdminController();
+    );
+    const controller = new PrivilegedIdentityAdminController();
     const response = await controller.handleRequest(applicationContext);
     return toAzureSuccess(response);
   } catch (error) {
@@ -32,9 +25,9 @@ export default async function handler(
   }
 }
 
-app.http('admin', {
-  methods: ['DELETE', 'POST'],
+app.http('privileged-identity-admin', {
+  methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'dev-tools/{procedure}',
+  route: 'dev-tools/privileged-identity/{resourceId?}',
 });

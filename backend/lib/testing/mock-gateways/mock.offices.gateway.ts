@@ -1,4 +1,4 @@
-import { USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
@@ -16,6 +16,6 @@ export class MockOfficesGateway implements OfficesGateway {
   }
 
   getOffices(_applicationContext: ApplicationContext): Promise<UstpOfficeDetails[]> {
-    return Promise.resolve(USTP_OFFICES_ARRAY);
+    return Promise.resolve(MOCKED_USTP_OFFICES_ARRAY);
   }
 }

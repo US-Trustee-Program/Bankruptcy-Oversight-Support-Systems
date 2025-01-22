@@ -17,6 +17,7 @@ export async function createMockApplicationContext(
   process.env = {
     ...process.env,
     DATABASE_MOCK: 'true',
+    FEATURE_FLAG_SDK_KEY: undefined,
     ...args.env,
   };
 

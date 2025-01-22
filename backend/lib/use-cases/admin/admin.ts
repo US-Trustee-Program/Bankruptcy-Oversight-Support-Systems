@@ -1,9 +1,22 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
-import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { Staff } from '../../../../common/src/cams/users';
-import { UpsertResult } from '../gateways.types';
-import { DEFAULT_STAFF_TTL } from '../offices/offices';
+import Factory, {
+  getOfficesGateway,
+  getOfficesRepository,
+  getUserGroupGateway,
+  getUsersRepository,
+} from '../../factory';
+import { getCamsError } from '../../common-errors/error-utilities';
+import {
+  PrivilegedIdentityUser,
+  CamsUserGroup,
+  CamsUserReference,
+  Staff,
+} from '../../../../common/src/cams/users';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { BadRequestError } from '../../common-errors/bad-request';
+import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
+import { UnknownError } from '../../common-errors/unknown-error';
+import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
 
@@ -12,61 +25,143 @@ export type CreateStaffRequestBody = Staff & {
   ttl?: number;
 };
 
+type RoleAndOfficeGroupNames = {
+  roles: string[];
+  offices: string[];
+};
 export class AdminUseCase {
-  public async deleteMigrations(context: ApplicationContext): Promise<void> {
+  private roleAndOfficeGroupNames: RoleAndOfficeGroupNames;
+
+  public async getRoleAndOfficeGroupNames(
+    context: ApplicationContext,
+  ): Promise<RoleAndOfficeGroupNames> {
     try {
-      const casesRepo = Factory.getCasesRepository(context);
-      return await casesRepo.deleteMigrations();
+      if (!this.roleAndOfficeGroupNames) {
+        const officeGateway = getOfficesGateway(context);
+
+        const offices = await officeGateway.getOffices(context);
+        const officeGroups = offices.map((office) => office.idpGroupId);
+        const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
+
+        this.roleAndOfficeGroupNames = {
+          roles: roleGroups,
+          offices: officeGroups,
+        };
+      }
+
+      return this.roleAndOfficeGroupNames;
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: { module: MODULE_NAME, message: 'Failed during migration deletion.' },
-      });
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
-  /**
-   * addOfficeStaff
-   * @template {T extends CamsError}
-   * @param {ApplicationContext} context Application context.
-   * @param {CreateStaffRequestBody} requestBody Request must include the office code, the user's
-   * id, the user's name, and the roles they have. Optionally provide a Mongo-compliant ttl. If not
-   * provided, ttl defaults to 24 hours. For no ttl, provide -1.
-   * @throws {T} Throws a CamsError or any type that extends CamsError.
-   */
-  public async addOfficeStaff(
+  public async getPrivilegedIdentityUsers(
     context: ApplicationContext,
-    requestBody: CreateStaffRequestBody,
-  ): Promise<UpsertResult> {
-    const officesRepo = Factory.getOfficesRepository(context);
-    const ttl = requestBody.ttl ?? DEFAULT_STAFF_TTL;
-    const userWithRoles: Staff = {
-      id: requestBody.id,
-      name: requestBody.name,
-      roles: requestBody.roles,
-    };
-
+  ): Promise<CamsUserReference[]> {
     try {
-      return await officesRepo.putOfficeStaff(requestBody.officeCode, userWithRoles, ttl);
+      const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
+      const groupsGateway = await getUserGroupGateway(context);
+      const group = await groupsGateway.getUserGroupWithUsers(context, groupName);
+      return group.users!.map((user) => getCamsUserReference(user));
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: { module: MODULE_NAME, message: 'Failed to create staff document.' },
-      });
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to get privileged identity users.');
     }
   }
 
-  public async deleteStaff(
+  public async getPrivilegedIdentityUser(
     context: ApplicationContext,
-    officeCode: string,
-    id: string,
+    userId: string,
+  ): Promise<PrivilegedIdentityUser> {
+    try {
+      const gateway = Factory.getUsersRepository(context);
+      return await gateway.getPrivilegedIdentityUser(userId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async deletePrivilegedIdentityUser(
+    context: ApplicationContext,
+    userId: string,
   ): Promise<void> {
-    const officesRepo = Factory.getOfficesRepository(context);
+    try {
+      const gateway = Factory.getUsersRepository(context);
+      await gateway.deletePrivilegedIdentityUser(userId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async elevatePrivilegedUser(
+    context: ApplicationContext,
+    userId: string,
+    updatedBy: CamsUserReference,
+    options: { groups: string[]; expires: string },
+  ) {
+    const notPrivilegedIdentityUserError = new BadRequestError(MODULE_NAME, {
+      message: 'User does not have privileged identity permission.',
+    });
+
+    if (!options.expires || new Date() > new Date(options.expires)) {
+      throw new BadRequestError(
+        'User privilege elevation must have an expiration date in the future.',
+      );
+    }
 
     try {
-      await officesRepo.findAndDeleteStaff(officeCode, id);
+      const groupName = LocalStorageGateway.getPrivilegedIdentityUserRoleGroupName();
+      const groupsGateway = await getUserGroupGateway(context);
+      const privilegedIdentityUserGroup: CamsUserGroup = await groupsGateway.getUserGroupWithUsers(
+        context,
+        groupName,
+      );
+
+      if (!privilegedIdentityUserGroup.users || !privilegedIdentityUserGroup.users.length) {
+        notPrivilegedIdentityUserError.camsStack.push({
+          module: MODULE_NAME,
+          message: 'Privileged Identity group does not contain any users.',
+        });
+        throw notPrivilegedIdentityUserError;
+      }
+
+      const user = privilegedIdentityUserGroup.users.find((user) => user.id === userId);
+
+      if (!user) {
+        notPrivilegedIdentityUserError.camsStack.push({
+          module: MODULE_NAME,
+          message: `User ID ${userId} is not contained in the privileged identity user group.`,
+        });
+        throw notPrivilegedIdentityUserError;
+      }
+
+      const userReference = getCamsUserReference(user);
+      const privilegedIdentityUser: PrivilegedIdentityUser = {
+        documentType: 'PRIVILEGED_IDENTITY_USER',
+        ...userReference,
+        claims: {
+          groups: options.groups,
+        },
+        expires: options.expires,
+      };
+      const usersRepo = getUsersRepository(context);
+      const result = await usersRepo.putPrivilegedIdentityUser(privilegedIdentityUser, updatedBy);
+
+      if (result.upsertedCount === 0 && result.modifiedCount === 0) {
+        throw new UnknownError(MODULE_NAME, { message: 'Failed to add privileged identity user.' });
+      }
+
+      const officesRepo = getOfficesRepository(context);
+      const offices = await UsersHelpers.getOfficesFromGroupNames(
+        context,
+        privilegedIdentityUser.claims.groups,
+      );
+      for (const office of offices) {
+        const roles = UsersHelpers.getRolesFromGroupNames(privilegedIdentityUser.claims.groups);
+        const staff = { ...userReference, roles };
+        await officesRepo.putOrExtendOfficeStaff(office.officeCode, staff, options.expires);
+      }
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: { module: MODULE_NAME, message: 'Failed to delete staff document.' },
-      });
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to add privileged identity user.');
     }
   }
 }

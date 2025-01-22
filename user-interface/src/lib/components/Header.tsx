@@ -3,6 +3,7 @@ import { LOGOUT_PATH } from '@/login/login-library';
 import './Header.scss';
 import useFeatureFlags, {
   CASE_SEARCH_ENABLED,
+  PRIVILEGED_IDENTITY_MANAGEMENT,
   TRANSFER_ORDERS_ENABLED,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
@@ -11,6 +12,7 @@ import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
 import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
+import { ADMIN_PATH } from '@/admin/admin-config';
 
 export enum NavState {
   DEFAULT,
@@ -64,6 +66,15 @@ export const Header = () => {
   const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
+
+  if (flags[PRIVILEGED_IDENTITY_MANAGEMENT] && session?.user.roles?.includes(CamsRole.SuperUser)) {
+    if (!userMenuItems.find((menuItem) => menuItem.label === 'Admin')) {
+      userMenuItems.unshift({
+        label: 'Admin',
+        address: ADMIN_PATH,
+      });
+    }
+  }
 
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));

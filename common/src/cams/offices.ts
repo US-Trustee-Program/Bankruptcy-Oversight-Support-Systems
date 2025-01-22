@@ -37,7 +37,7 @@ export type CourtOffice = {
   courtOfficeName: string; // DXTR AO_OFFICE.OFFICE_DISPLAY_NAME
 };
 
-export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
+export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   {
     officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
     idpGroupId: 'USTP CAMS Region 18 Office Seattle',
@@ -189,6 +189,6 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   },
 ];
 
-export const USTP_OFFICE_DATA_MAP = new Map<string, UstpOfficeDetails>(
-  USTP_OFFICES_ARRAY.map((office) => [office.officeCode, office]),
+export const MOCKED_USTP_OFFICE_DATA_MAP = new Map<string, UstpOfficeDetails>(
+  MOCKED_USTP_OFFICES_ARRAY.map((office) => [office.officeCode, office]),
 );
