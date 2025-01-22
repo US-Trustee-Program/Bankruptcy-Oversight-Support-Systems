@@ -1,4 +1,8 @@
-import { httpGet, httpPost } from '@/lib/utils/http.adapter';
+import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '@/lib/utils/http.adapter';
+
+const url = 'fake-url';
+const body = { a: 'a-value', b: false };
+const headers = { 'X-my-custom-header': 'hello-world' };
 
 describe('http adapter tests', () => {
   const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response());
@@ -7,10 +11,10 @@ describe('http adapter tests', () => {
     vi.clearAllMocks();
   });
 
-  test('should call fetch with expected request for httpGet with no additional headers', async () => {
-    httpGet({ url: 'fake-url' });
+  test('should GET', async () => {
+    httpGet({ url });
     expect(fetchSpy).toHaveBeenCalledWith(
-      'fake-url',
+      url,
       expect.objectContaining({
         method: 'GET',
         headers: {
@@ -22,26 +26,26 @@ describe('http adapter tests', () => {
     );
   });
 
-  test('should call fetch with expected request for httpGet with additional headers', async () => {
-    httpGet({ url: 'fake-url', headers: { 'X-my-custom-header': 'hello-world' } });
+  test('should GET with additional headers', async () => {
+    httpGet({ url, headers });
     expect(fetchSpy).toHaveBeenCalledWith(
-      'fake-url',
+      url,
       expect.objectContaining({
         method: 'GET',
         headers: {
           Accept: 'application/json',
           'content-type': 'application/json;charset=UTF-8',
-          'X-my-custom-header': 'hello-world',
+          ...headers,
         },
         cache: 'default',
       }),
     );
   });
 
-  test('should call fetch with expected request for httpPost with no additional headers', async () => {
-    httpPost({ url: 'fake-url', body: { a: 'a-value', b: false } });
+  test('should POST', async () => {
+    httpPost({ url, body });
     expect(fetchSpy).toHaveBeenCalledWith(
-      'fake-url',
+      url,
       expect.objectContaining({
         method: 'POST',
         headers: {
@@ -52,19 +56,62 @@ describe('http adapter tests', () => {
     );
   });
 
-  test('should call fetch with expected request for httpPost with additional headers', async () => {
+  test('should POST with additional headers', async () => {
     httpPost({
-      url: 'fake-url',
-      body: { a: 'a-value', b: false },
-      headers: { 'X-my-custom-header': 'hello-world' },
+      url,
+      body,
+      headers,
     });
     expect(fetchSpy).toHaveBeenCalledWith(
-      'fake-url',
+      url,
       expect.objectContaining({
         method: 'POST',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
-          'X-my-custom-header': 'hello-world',
+          ...headers,
+        },
+        cache: 'default',
+      }),
+    );
+  });
+
+  test('should DELETE', async () => {
+    httpDelete({ url });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          'content-type': 'application/json;charset=UTF-8',
+        },
+        cache: 'default',
+      }),
+    );
+  });
+
+  test('should PATCH', async () => {
+    httpPatch({ url, body });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
+        },
+        cache: 'default',
+      }),
+    );
+  });
+
+  test('should PUT', async () => {
+    httpPut({ url, body });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      url,
+      expect.objectContaining({
+        method: 'PUT',
+        headers: {
+          'content-type': 'application/json;charset=UTF-8',
         },
         cache: 'default',
       }),
