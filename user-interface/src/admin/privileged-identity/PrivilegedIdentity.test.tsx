@@ -8,19 +8,21 @@ import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import testingUtilities from '@/lib/testing/testing-utilities';
 
 async function expectItemToBeDisabled(selector: string) {
-  const item = document.querySelector(selector);
+  let item;
   await waitFor(() => {
+    item = document.querySelector(selector);
     expect(item).toBeInTheDocument();
   });
-  expect(item).toBeDisabled();
+  expect(item!).toBeDisabled();
 }
 
 async function expectItemToBeEnabled(selector: string) {
-  const item = document.querySelector(selector);
+  let item;
   await waitFor(() => {
+    item = document.querySelector(selector);
     expect(item).toBeInTheDocument();
   });
-  expect(item).not.toBeDisabled();
+  expect(item!).not.toBeDisabled();
 }
 
 describe('Privileged Identity screen tests', () => {
@@ -238,18 +240,14 @@ describe('Privileged Identity screen tests', () => {
     const roleListItem = screen.getByTestId(roleListItemId);
     await userEvent.click(roleListItem);
 
-    await waitFor(async () => {
-      await expectItemToBeEnabled(`#save-button`);
-    });
+    await expectItemToBeEnabled(`#save-button`);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeEnabled(`#delete-button`);
 
     await userEvent.click(roleListItem);
 
-    await waitFor(async () => {
-      await expectItemToBeDisabled(`#save-button`);
-    });
+    await expectItemToBeDisabled(`#save-button`);
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeEnabled(`#delete-button`);
@@ -299,9 +297,7 @@ describe('Privileged Identity screen tests', () => {
     const roleListItem = screen.getByTestId(roleListItemId);
     await userEvent.click(roleListItem);
 
-    await waitFor(async () => {
-      await expectItemToBeEnabled(`#save-button`);
-    });
+    await expectItemToBeEnabled(`#save-button`);
 
     const saveButton = document.querySelector('#save-button');
     await userEvent.click(saveButton!);
@@ -329,9 +325,7 @@ describe('Privileged Identity screen tests', () => {
     const roleListItem = screen.getByTestId(roleListItemId);
     await userEvent.click(roleListItem);
 
-    await waitFor(async () => {
-      await expectItemToBeEnabled(`#save-button`);
-    });
+    await expectItemToBeEnabled(`#save-button`);
 
     const saveButton = document.querySelector('#save-button');
     await userEvent.click(saveButton!);
