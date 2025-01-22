@@ -6,6 +6,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import userEvent from '@testing-library/user-event';
 import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { RoleAndOfficeGroupNames } from '../../../../common/src/cams/privileged-identity';
 
 async function expectItemToBeDisabled(selector: string) {
   let item;
@@ -27,24 +28,16 @@ async function expectItemToBeEnabled(selector: string) {
 
 describe('Privileged Identity screen tests', () => {
   const env = process.env;
-  const mockUserList = MockData.buildArray(MockData.getCamsUserReference, 5);
-  const mockGroups = MockData.getRoleAndOfficeGroupNames();
+  let mockUserList: CamsUserReference[];
+  let mockGroups: RoleAndOfficeGroupNames;
+  let officeListItemId: string;
+  let roleListItemId: string;
+  let mockUserRecord: PrivilegedIdentityUser;
+
   const officeListComboBoxInput = `office-list-combo-box-input`;
   const roleListComboBoxInput = `role-list-combo-box-input`;
-  const officeListItemId = `office-list-option-item-${mockGroups.offices.length - 1}`;
-  const roleListItemId = `role-list-option-item-${mockGroups.roles.length - 1}`;
   const dateInputId = 'privileged-expiration-date';
   const mockDate1 = `${new Date().getFullYear() + 1}-01-01`;
-
-  const mockUserRecord: PrivilegedIdentityUser = {
-    id: mockUserList[0].id,
-    documentType: 'PRIVILEGED_IDENTITY_USER',
-    name: mockUserList[0].name,
-    claims: {
-      groups: [mockGroups.offices[0], mockGroups.roles[0]],
-    },
-    expires: mockDate1,
-  };
 
   async function expectFormToBeDisabled() {
     await expectItemToBeDisabled(`#${officeListComboBoxInput}`);
@@ -63,11 +56,29 @@ describe('Privileged Identity screen tests', () => {
   }
 
   beforeEach(async () => {
-    vi.restoreAllMocks();
     process.env = {
       ...env,
       CAMS_PA11Y: 'true',
     };
+
+    mockUserList = MockData.buildArray(MockData.getCamsUserReference, 5);
+    mockGroups = {
+      offices: ['USTP CAMS Office A', 'USTP CAMS Office B', 'USTP CAMS Office C'],
+      roles: ['USTP CAMS Role A', 'USTP CAMS Role B', 'USTP CAMS Role C'],
+    };
+    officeListItemId = `office-list-option-item-${mockGroups.offices.length - 1}`;
+    roleListItemId = `role-list-option-item-${mockGroups.roles.length - 1}`;
+
+    mockUserRecord = {
+      id: mockUserList[0].id,
+      documentType: 'PRIVILEGED_IDENTITY_USER',
+      name: mockUserList[0].name,
+      claims: {
+        groups: [mockGroups.offices[0], mockGroups.roles[0]],
+      },
+      expires: mockDate1,
+    };
+
     const mockFeatureFlags = {
       'privileged-identity-management': true,
     };
@@ -79,6 +90,10 @@ describe('Privileged Identity screen tests', () => {
     vi.spyOn(Api2, 'getPrivilegedIdentityUsers').mockResolvedValue({
       data: MockData.buildArray(MockData.getCamsUserReference, 5),
     });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   function renderWithoutProps() {
@@ -241,7 +256,6 @@ describe('Privileged Identity screen tests', () => {
     await userEvent.click(roleListItem);
 
     await expectItemToBeEnabled(`#save-button`);
-
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeEnabled(`#delete-button`);
 
