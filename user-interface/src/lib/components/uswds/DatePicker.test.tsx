@@ -4,6 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import DatePicker, { DatePickerProps } from './DatePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 
+// NOTE For some reason (known issue) a date input element can not be changed by typing a date
+// in the formation that the UI expects. The date may only be changed using a change event and
+// the format must be in YYYY-DD-MM format.
+
 describe('Test DatePicker component', async () => {
   const DEFAULT_ID = 'test-datepicker';
   const onChangeSpy = vi.fn();
