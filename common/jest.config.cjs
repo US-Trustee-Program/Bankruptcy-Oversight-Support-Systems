@@ -14,6 +14,7 @@ module.exports = {
     '.*test.[jt]s',
     '.*.d.ts',
     '.*mock.*',
+    'http-status-codes.ts',
   ],
   collectCoverageFrom: ['**/*.{js,ts}'],
   coverageThreshold: {

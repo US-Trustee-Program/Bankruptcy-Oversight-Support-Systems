@@ -20,7 +20,7 @@ export function isValidDateString(dateString: string | null | undefined) {
   return !!evaluation && evaluation.length === 1;
 }
 
-export function isInvalidDate(dateValue: unknown) {
+export function isInvalidDate(dateValue: Date) {
   return dateValue instanceof Date && isNaN(dateValue.getTime());
 }
 
