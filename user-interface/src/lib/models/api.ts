@@ -110,7 +110,7 @@ export default class Api {
     }
   }
 
-  public static async delete(path: string): Promise<ResponseBody | undefined> {
+  public static async delete(path: string): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
       const pathStr = Api.createPath(path, {});
@@ -167,7 +167,7 @@ export default class Api {
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseBody | undefined> {
+  ): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);

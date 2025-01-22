@@ -44,9 +44,9 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
-  delete(path: string): Promise<ResponseBody>;
+  delete(path: string): Promise<ResponseBody | void>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
-  put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
+  put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
 }
 
