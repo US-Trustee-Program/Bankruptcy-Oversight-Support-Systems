@@ -6,7 +6,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import userEvent from '@testing-library/user-event';
 import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import { RoleAndOfficeGroupNames } from '../../../../common/src/cams/privileged-identity';
+import { RoleAndOfficeGroupNames } from '@common/cams/privileged-identity';
 
 async function expectItemToBeDisabled(selector: string) {
   let item;
