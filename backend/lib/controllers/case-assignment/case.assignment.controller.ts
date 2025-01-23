@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
-import { AssignmentError } from '../../use-cases/assignment.exception';
+import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
+import { AssignmentError } from '../../use-cases/case-assignment/assignment.exception';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';

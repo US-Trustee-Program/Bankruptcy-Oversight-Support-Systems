@@ -5,7 +5,7 @@ import * as factory from '../../factory';
 import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MOCKED_USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cams/offices';
-import AttorneysList from '../attorneys';
+import AttorneysList from '../attorneys/attorneys';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';

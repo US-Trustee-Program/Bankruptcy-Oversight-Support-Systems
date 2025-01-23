@@ -1,15 +1,15 @@
-import { ApplicationContext } from '../adapters/types/basic';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from './case-assignment';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
-} from '../testing/testing-utilities';
-import MockData from '../../../common/src/cams/test-utilities/mock-data';
-import { CamsRole } from '../../../common/src/cams/roles';
-import CaseManagement from './case-management';
-import { getCourtDivisionCodes } from '../../../common/src/cams/users';
-import { MockMongoRepository } from '../testing/mock-gateways/mock-mongo.repository';
-import { ConsolidationOrder } from '../../../common/src/cams/orders';
+} from '../../testing/testing-utilities';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import CaseManagement from '../cases/case-management';
+import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { ConsolidationOrder } from '../../../../common/src/cams/orders';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -32,7 +32,7 @@ const updateAssignment = jest
   .mockResolvedValue(randomId);
 const close = jest.fn();
 
-jest.mock('../adapters/gateways/mongo/case-assignment.mongo.repository', () => {
+jest.mock('../../adapters/gateways/mongo/case-assignment.mongo.repository', () => {
   return {
     CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {
@@ -46,7 +46,7 @@ jest.mock('../adapters/gateways/mongo/case-assignment.mongo.repository', () => {
   };
 });
 
-jest.mock('../adapters/gateways/mongo/cases.mongo.repository', () => {
+jest.mock('../../adapters/gateways/mongo/cases.mongo.repository', () => {
   return {
     CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {

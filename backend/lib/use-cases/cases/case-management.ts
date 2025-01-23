@@ -1,20 +1,24 @@
-import { ApplicationContext } from '../adapters/types/basic';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../common/src/cams/cases';
-import Factory, { getAssignmentRepository, getCasesGateway, getOfficesGateway } from '../factory';
+import { ApplicationContext } from '../../adapters/types/basic';
+import Factory, {
+  getAssignmentRepository,
+  getCasesGateway,
+  getOfficesGateway,
+} from '../../factory';
 import { CasesInterface } from './cases.interface';
-import { CaseAssignmentUseCase } from './case-assignment';
-import { UnknownError } from '../common-errors/unknown-error';
-import { isCamsError } from '../common-errors/cams-error';
-import { AssignmentError } from './assignment.exception';
-import { OfficesGateway } from './offices/offices.types';
-import { CaseAssignmentRepository } from './gateways.types';
-import { CasesSearchPredicate } from '../../../common/src/api/search';
-import Actions, { Action, ResourceActions } from '../../../common/src/cams/actions';
-import { CamsRole } from '../../../common/src/cams/roles';
-import { getCourtDivisionCodes } from '../../../common/src/cams/users';
-import { buildOfficeCode } from './offices/offices';
-import { CaseAssignment } from '../../../common/src/cams/assignments';
-import { getCamsError } from '../common-errors/error-utilities';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { isCamsError } from '../../common-errors/cams-error';
+import { AssignmentError } from '../case-assignment/assignment.exception';
+import { OfficesGateway } from '../offices/offices.types';
+import { CaseAssignmentRepository } from '../gateways.types';
+import { buildOfficeCode } from '../offices/offices';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
+import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
+import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
