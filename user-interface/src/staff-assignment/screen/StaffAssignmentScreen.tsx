@@ -60,9 +60,9 @@ export const StaffAssignmentScreen = () => {
   }
 
   const session = LocalStorage.getSession();
-  const hasInvalidPermission = !session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
-  const hasNoAssignedOffices = !session?.user?.offices || session?.user?.offices.length === 0;
-  const showAssignments = !hasInvalidPermission && !hasNoAssignedOffices;
+  const hasValidPermission = session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
+  const hasAssignedOffices = session?.user?.offices && session?.user?.offices.length > 0;
+  const showAssignments = hasValidPermission && hasAssignedOffices;
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
@@ -83,7 +83,7 @@ export const StaffAssignmentScreen = () => {
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </div>
-          {hasInvalidPermission && (
+          {!hasValidPermission && (
             <Stop
               id="forbidden-alert"
               title="Forbidden"
@@ -91,7 +91,7 @@ export const StaffAssignmentScreen = () => {
               asError
             ></Stop>
           )}
-          {!hasInvalidPermission && hasNoAssignedOffices && (
+          {hasValidPermission && !hasAssignedOffices && (
             <Stop
               id="no-office"
               title="No Office Assigned"
