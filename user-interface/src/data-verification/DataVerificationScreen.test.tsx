@@ -30,7 +30,7 @@ describe('Review Orders screen', () => {
   });
 
   // TODO: Unskip this test.
-  test.skip('should toggle filter button', async () => {
+  test('should toggle filter button', async () => {
     render(
       <BrowserRouter>
         <DataVerificationScreen />
