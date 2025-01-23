@@ -88,9 +88,10 @@ export const StaffAssignmentScreen = () => {
               id="forbidden-alert"
               title="Forbidden"
               message="You do not have permission to assign staff to cases in CAMS."
+              asError
             ></Stop>
           )}
-          {hasNoAssignedOffices && (
+          {!hasInvalidPermission && hasNoAssignedOffices && (
             <Stop
               id="no-office"
               title="No Office Assigned"

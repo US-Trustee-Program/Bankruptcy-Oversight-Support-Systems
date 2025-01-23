@@ -5,14 +5,15 @@ type StopProps = {
   title: string;
   message: string;
   showHelpDeskContact?: true;
+  asError?: true;
 };
 
 export function Stop(props: StopProps) {
-  const { id, title, message, showHelpDeskContact: includeHelpDeskContact } = props;
+  const { id, title, message, showHelpDeskContact, asError } = props;
   return (
     <Alert
       className="measure-6"
-      type={UswdsAlertStyle.Warning}
+      type={asError ? UswdsAlertStyle.Error : UswdsAlertStyle.Warning}
       inline={true}
       show={true}
       title={title}
@@ -20,7 +21,7 @@ export function Stop(props: StopProps) {
     >
       <span>
         {message}{' '}
-        {includeHelpDeskContact && (
+        {showHelpDeskContact && (
           <>
             Please contact <a href="mailto:UST.Help@ust.doj.gov">UST.Help@ust.doj.gov</a> for
             assistance.

@@ -28,6 +28,7 @@ export function AdminScreen() {
               id="forbidden-alert"
               title="Forbidden"
               message="You do not have permission to use the administrative tools in CAMS."
+              asError
             ></Stop>
           </div>
         ) : (

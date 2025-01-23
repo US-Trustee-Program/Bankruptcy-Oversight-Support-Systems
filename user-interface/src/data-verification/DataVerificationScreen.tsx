@@ -309,9 +309,10 @@ export default function DataVerificationScreen() {
               id="forbidden-alert"
               title="Forbidden"
               message="You do not have permission to verify orders in CAMS."
+              asError
             ></Stop>
           )}
-          {hasNoAssignedOffices && (
+          {!hasInvalidPermission && hasNoAssignedOffices && (
             <Stop
               id="no-office"
               title="No Office Assigned"
