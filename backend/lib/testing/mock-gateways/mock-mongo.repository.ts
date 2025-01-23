@@ -30,8 +30,6 @@ export class MockMongoRepository
     UsersRepository,
     UserSessionCacheRepository
 {
-  private static singleton: MockMongoRepository;
-
   release() {
     return;
   }

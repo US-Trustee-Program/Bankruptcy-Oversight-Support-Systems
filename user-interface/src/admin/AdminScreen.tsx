@@ -21,7 +21,7 @@ export function AdminScreen() {
               title="Forbidden"
               id="forbidden-alert"
             >
-              You do not have sufficent permission to use the CAMS administration tools.
+              You do not have sufficient permission to use the CAMS administration tools.
             </Alert>
           </div>
           <div id="right-gutter" className="grid-col-1"></div>

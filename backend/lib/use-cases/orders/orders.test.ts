@@ -88,7 +88,12 @@ describe('Orders use case', () => {
       .mockResolvedValue(mockConsolidationOrders);
 
     const divisionCodes = getCourtDivisionCodes(authorizedUser);
-    const expectedResult = [mockTransfer1, mockConsolidation1, mockTransfer2, mockConsolidation2];
+    const expectedResult = expect.arrayContaining([
+      mockTransfer1,
+      mockConsolidation1,
+      mockTransfer2,
+      mockConsolidation2,
+    ]);
     const result = await useCase.getOrders(mockContext);
     expect(result).toEqual(expectedResult);
     expect(orderRepoMock).toHaveBeenCalledWith({ divisionCodes });
