@@ -44,11 +44,11 @@ export default function DataVerificationScreen() {
   });
 
   const session = LocalStorage.getSession();
-  const hasInvalidPermission = !session?.user?.roles?.includes(CamsRole.DataVerifier);
-  const hasNoAssignedOffices = !session?.user?.offices || session?.user?.offices.length === 0;
-  const showDataVerification = !hasInvalidPermission && !hasNoAssignedOffices;
+  const hasValidPermissions = session?.user?.roles?.includes(CamsRole.DataVerifier);
+  const hasOffices = session?.user?.offices && session?.user?.offices.length > 0;
+  const showDataVerification = hasValidPermissions && hasOffices;
 
-  // TODO: This needs to be dynamic.
+  // TODO: This needs to be dynamic!
   const regionHeader = 'Region 02';
 
   const api = useApi2();
@@ -191,100 +191,6 @@ export default function DataVerificationScreen() {
       );
     });
 
-  function ShowDataVerification() {
-    return (
-      <>
-        <h2>{regionHeader}</h2>
-        <h3>Filters</h3>
-        <section className="order-list-container">
-          <div className="filters order-status">
-            {featureFlags[CONSOLIDATIONS_ENABLED] && (
-              <div className="event-type-container">
-                <h4 className="event-header">Event Status</h4>
-                <div>
-                  <Filter<OrderType>
-                    label="Transfer"
-                    filterType="transfer"
-                    filters={typeFilter}
-                    callback={handleTypeFilter}
-                  />
-                  <Filter<OrderType>
-                    label="Consolidation"
-                    filterType="consolidation"
-                    filters={typeFilter}
-                    callback={handleTypeFilter}
-                  />
-                </div>
-              </div>
-            )}
-            <div className="event-status-container">
-              <h4 className="event-header">Event Status</h4>
-              <div>
-                <Filter<OrderStatus>
-                  label="Pending Review"
-                  filterType="pending"
-                  filters={statusFilter}
-                  callback={handleStatusFilter}
-                />
-                <Filter<OrderStatus>
-                  label="Verified"
-                  filterType="approved"
-                  filters={statusFilter}
-                  callback={handleStatusFilter}
-                />
-                <Filter<OrderStatus>
-                  label="Rejected"
-                  filterType="rejected"
-                  filters={statusFilter}
-                  callback={handleStatusFilter}
-                />
-              </div>
-            </div>
-          </div>
-          {pendingItemCount === 0 && (
-            <Alert
-              id="no-pending-orders"
-              type={UswdsAlertStyle.Info}
-              title="All case events reviewed"
-              message="There are no case events pending review"
-              show={true}
-              inline={true}
-              slim={true}
-              className="measure-6"
-            ></Alert>
-          )}
-          {visibleItemCount === 0 && orderList.length > 0 && (
-            <Alert
-              id="too-many-filters"
-              type={UswdsAlertStyle.Info}
-              title="All Cases Hidden"
-              message="Please enable one or more filters to show hidden cases"
-              show={true}
-              inline={true}
-              slim={true}
-              className="measure-6"
-            ></Alert>
-          )}
-          {visibleItemCount > 0 && (
-            <>
-              <div className="data-verification-accordion-header" data-testid="orders-header">
-                <div className="grid-row grid-gap-lg">
-                  <div className="grid-col-6 text-no-wrap">
-                    <h3>{accordionFieldHeaders[0]}</h3>
-                  </div>
-                  <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[1]}</h3>
-                  <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[2]}</h3>
-                  <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[3]}</h3>
-                </div>
-              </div>
-              <AccordionGroup>{...accordionItems}</AccordionGroup>
-            </>
-          )}
-        </section>
-      </>
-    );
-  }
-
   return (
     <MainContent data-testid="data-verification-screen" className="data-verification-screen">
       <DocumentTitle name="Data Verification" />
@@ -300,11 +206,7 @@ export default function DataVerificationScreen() {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1>Data Verification</h1>
-          {showDataVerification && isOrderListLoading && (
-            <LoadingSpinner caption="Loading court orders..." />
-          )}
-          {showDataVerification && !isOrderListLoading && <ShowDataVerification />}
-          {hasInvalidPermission && (
+          {!hasValidPermissions && (
             <Stop
               id="forbidden-alert"
               title="Forbidden"
@@ -312,13 +214,109 @@ export default function DataVerificationScreen() {
               asError
             ></Stop>
           )}
-          {!hasInvalidPermission && hasNoAssignedOffices && (
+          {hasValidPermissions && !hasOffices && (
             <Stop
               id="no-office"
               title="No Office Assigned"
               message="You cannot verify orders because you are not currently assigned to a USTP office in Active Directory."
               showHelpDeskContact
             ></Stop>
+          )}
+          {isOrderListLoading && showDataVerification && (
+            <LoadingSpinner caption="Loading court orders..." />
+          )}
+          {!isOrderListLoading && showDataVerification && (
+            <>
+              <h2>{regionHeader}</h2>
+              <h3>Filters</h3>
+              <section className="order-list-container">
+                <div className="filters order-status">
+                  {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                    <>
+                      <div className="event-type-container">
+                        <h4 className="event-header">Event Status</h4>
+                        <div>
+                          <Filter<OrderType>
+                            label="Transfer"
+                            filterType="transfer"
+                            filters={typeFilter}
+                            callback={handleTypeFilter}
+                          />
+                          <Filter<OrderType>
+                            label="Consolidation"
+                            filterType="consolidation"
+                            filters={typeFilter}
+                            callback={handleTypeFilter}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  <div className="event-status-container">
+                    <h4 className="event-header">Event Status</h4>
+                    <div>
+                      <Filter<OrderStatus>
+                        label="Pending Review"
+                        filterType="pending"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                      <Filter<OrderStatus>
+                        label="Verified"
+                        filterType="approved"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                      <Filter<OrderStatus>
+                        label="Rejected"
+                        filterType="rejected"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                    </div>
+                  </div>
+                </div>
+                {pendingItemCount === 0 && (
+                  <Alert
+                    id="no-pending-orders"
+                    type={UswdsAlertStyle.Info}
+                    title="All case events reviewed"
+                    message="There are no case events pending review"
+                    show={true}
+                    inline={true}
+                    slim={true}
+                    className="measure-6"
+                  ></Alert>
+                )}
+                {visibleItemCount === 0 && orderList.length > 0 && (
+                  <Alert
+                    id="too-many-filters"
+                    type={UswdsAlertStyle.Info}
+                    title="All Cases Hidden"
+                    message="Please enable one or more filters to show hidden cases"
+                    show={true}
+                    inline={true}
+                    slim={true}
+                    className="measure-6"
+                  ></Alert>
+                )}
+                {visibleItemCount > 0 && (
+                  <>
+                    <div className="data-verification-accordion-header" data-testid="orders-header">
+                      <div className="grid-row grid-gap-lg">
+                        <div className="grid-col-6 text-no-wrap">
+                          <h3>{accordionFieldHeaders[0]}</h3>
+                        </div>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[1]}</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[2]}</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[3]}</h3>
+                      </div>
+                    </div>
+                    <AccordionGroup>{...accordionItems}</AccordionGroup>
+                  </>
+                )}
+              </section>
+            </>
           )}
         </div>
         <div className="grid-col-1"></div>

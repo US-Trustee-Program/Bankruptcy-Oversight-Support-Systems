@@ -14,6 +14,9 @@ import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 
 const testOffices: CourtDivisionDetails[] = [
   {
@@ -153,6 +156,10 @@ describe('SuggestedTransferCases component', () => {
   }
 
   beforeEach(async () => {
+    testingUtilities.setUser({
+      roles: [CamsRole.DataVerifier],
+      offices: MOCKED_USTP_OFFICES_ARRAY,
+    });
     vi.stubEnv('CAMS_PA11Y', 'true');
     order = MockData.getTransferOrder();
   });
