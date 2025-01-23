@@ -1,6 +1,6 @@
-import { ApplicationContext } from '../adapters/types/basic';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../common/src/cams/cases';
-import { CasesSearchPredicate } from '../../../common/src/api/search';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
 
 export interface CasesInterface {
   getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail>;

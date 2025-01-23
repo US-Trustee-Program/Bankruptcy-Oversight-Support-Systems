@@ -31,7 +31,7 @@ import {
   ConsolidationOrderSummary,
   isConsolidationHistory,
 } from '../../../../common/src/cams/history';
-import { CaseAssignmentUseCase } from '../case-assignment';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';

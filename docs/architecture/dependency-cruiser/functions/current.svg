@@ -1649,7 +1649,7 @@
 <!-- lib/use&#45;cases/case&#45;management.ts -->
 <g id="node77" class="node">
 <title>lib/use&#45;cases/case&#45;management.ts</title>
-<g id="a_node77"><a xlink:href="lib/use-cases/case-management.ts" xlink:title="case&#45;management.ts">
+<g id="a_node77"><a xlink:href="lib/use-cases/cases/case-management.ts" xlink:title="case&#45;management.ts">
 <path fill="#ddfeff" stroke="black" d="M714.5,-3224C714.5,-3224 614.5,-3224 614.5,-3224 611.5,-3224 608.5,-3221 608.5,-3218 608.5,-3218 608.5,-3212 608.5,-3212 608.5,-3209 611.5,-3206 614.5,-3206 614.5,-3206 714.5,-3206 714.5,-3206 717.5,-3206 720.5,-3209 720.5,-3212 720.5,-3212 720.5,-3218 720.5,-3218 720.5,-3221 717.5,-3224 714.5,-3224"/>
 <text text-anchor="start" x="616.5" y="-3212.8" font-family="Helvetica,sans-Serif" font-size="9.00">case&#45;management.ts</text>
 </a>
@@ -6323,7 +6323,7 @@
 <!-- lib/use&#45;cases/case&#45;management.test.ts -->
 <g id="node182" class="node">
 <title>lib/use&#45;cases/case&#45;management.test.ts</title>
-<g id="a_node182"><a xlink:href="lib/use-cases/case-management.test.ts" xlink:title="case&#45;management.test.ts">
+<g id="a_node182"><a xlink:href="lib/use-cases/cases/case-management.test.ts" xlink:title="case&#45;management.test.ts">
 <path fill="#ddfeff" stroke="black" d="M491,-3508C491,-3508 371,-3508 371,-3508 368,-3508 365,-3505 365,-3502 365,-3502 365,-3496 365,-3496 365,-3493 368,-3490 371,-3490 371,-3490 491,-3490 491,-3490 494,-3490 497,-3493 497,-3496 497,-3496 497,-3502 497,-3502 497,-3505 494,-3508 491,-3508"/>
 <text text-anchor="start" x="373" y="-3496.8" font-family="Helvetica,sans-Serif" font-size="9.00">case&#45;management.test.ts</text>
 </a>

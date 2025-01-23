@@ -1,5 +1,5 @@
 import * as mssql from 'mssql';
-import { CasesInterface } from '../../../use-cases/cases.interface';
+import { CasesInterface } from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';

@@ -1,13 +1,13 @@
-import Factory, { getAssignmentRepository } from '../factory';
-import { ApplicationContext } from '../adapters/types/basic';
-import { CaseAssignmentRepository } from './gateways.types';
-import { CaseAssignment } from '../../../common/src/cams/assignments';
-import { CaseAssignmentHistory } from '../../../common/src/cams/history';
-import CaseManagement from './case-management';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../common/src/cams/users';
-import { CamsRole } from '../../../common/src/cams/roles';
+import Factory, { getAssignmentRepository } from '../../factory';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CaseAssignmentRepository } from '../gateways.types';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
+import CaseManagement from '../cases/case-management';
+import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
-import { createAuditRecord } from '../../../common/src/cams/auditable';
+import { createAuditRecord } from '../../../../common/src/cams/auditable';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 

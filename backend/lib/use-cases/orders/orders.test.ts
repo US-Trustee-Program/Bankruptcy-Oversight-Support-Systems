@@ -35,7 +35,7 @@ import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/c
 import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { CaseAssignmentUseCase } from '../case-assignment';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';

@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import CaseManagement from '../../use-cases/case-management';
+import CaseManagement from '../../use-cases/cases/case-management';
 import { ResponseBody } from '../../../../common/src/api/response';
 import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';

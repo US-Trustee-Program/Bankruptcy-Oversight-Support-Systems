@@ -1,7 +1,7 @@
 import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
 import { AttorneyUser } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { AttorneyGatewayInterface } from '../../use-cases/attorney.gateway.interface';
+import { AttorneyGatewayInterface } from '../../use-cases/attorneys/attorney.gateway.interface';
 
 async function getAttorneysByUstpOffice(
   applicationContext: ApplicationContext,

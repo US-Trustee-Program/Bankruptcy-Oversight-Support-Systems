@@ -1,8 +1,8 @@
-import { TRIAL_ATTORNEYS } from '../../../common/src/cams/test-utilities/attorneys.mock';
-import { createMockApplicationContext } from '../testing/testing-utilities';
+import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import AttorneysList from './attorneys';
-import { CaseAssignmentUseCase } from './case-assignment';
-import * as factory from '../factory';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import * as factory from '../../factory';
 
 describe('Test attorneys use-case', () => {
   const gateway = {
