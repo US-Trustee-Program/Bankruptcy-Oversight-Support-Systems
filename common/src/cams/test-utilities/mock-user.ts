@@ -134,6 +134,26 @@ export const MockUsers: MockUser[] = [
       offices: [REGION_03_GROUP_WL],
     },
   },
+  {
+    sub: 'unhoused@fake.com',
+    label: 'Unhoused - No Office',
+    user: {
+      id: 'unhoused',
+      name: 'Unhoused',
+      roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
+      offices: [],
+    },
+  },
+  {
+    sub: 'nobody@fake.com',
+    label: 'Nobody - No Role. No Office',
+    user: {
+      id: 'nobody',
+      name: 'Nobody',
+      roles: [],
+      offices: [],
+    },
+  },
   SUPERUSER,
 ];
 
