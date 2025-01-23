@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { StaffAssignmentScreen } from './StaffAssignmentScreen';
 import {
   CasesSearchPredicate,
@@ -15,11 +15,18 @@ import { BrowserRouter } from 'react-router-dom';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
+  const user = MockData.getCamsUser({
+    roles: [CamsRole.CaseAssignmentManager],
+    offices: MOCKED_USTP_OFFICES_ARRAY,
+  });
 
   beforeEach(() => {
+    testingUtilities.setUser(user);
+
     vi.stubEnv('CAMS_PA11Y', 'true');
     mockFeatureFlags = {
       'chapter-eleven-enabled': false,
@@ -33,8 +40,6 @@ describe('StaffAssignmentScreen', () => {
   });
 
   test('should render a list of chapter 15 cases for a case assignment manager to review', async () => {
-    const user = testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       data: MockData.buildArray(MockData.getCaseBasics, 3),
     });
@@ -76,7 +81,6 @@ describe('StaffAssignmentScreen', () => {
       'chapter-twelve-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-    const user = testingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       data: MockData.buildArray(MockData.getCaseBasics, 3),
@@ -115,17 +119,16 @@ describe('StaffAssignmentScreen', () => {
 
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
-    const alertSpy = testingUtilities.spyOnGlobalAlert();
     render(
       <BrowserRouter>
         <StaffAssignmentScreen></StaffAssignmentScreen>
       </BrowserRouter>,
     );
 
-    expect(alertSpy.error).toHaveBeenCalledWith('Invalid Permissions');
+    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
   });
 
-  test('should default the divisionCodes in the predicate to an empty array if user has no offices', async () => {
+  test('should show an alert if user has no offices', async () => {
     testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
     const SearchResults = vi.spyOn(searchResultsModule, 'default');
 
@@ -135,15 +138,7 @@ describe('StaffAssignmentScreen', () => {
       </BrowserRouter>,
     );
 
-    expect(SearchResults).toHaveBeenCalledWith(
-      {
-        id: 'search-results',
-        noResultsMessage: expect.anything(),
-        searchPredicate: expect.objectContaining({ divisionCodes: [] }),
-        header: expect.anything(),
-        row: expect.anything(),
-      },
-      {},
-    );
+    expect(SearchResults).not.toHaveBeenCalled();
+    expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
   });
 });
