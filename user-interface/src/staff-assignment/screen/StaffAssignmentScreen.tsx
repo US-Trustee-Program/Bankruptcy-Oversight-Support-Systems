@@ -15,7 +15,6 @@ import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
 import './StaffAssignmentScreen.scss';
 import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { CamsRole } from '@common/cams/roles';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
@@ -23,6 +22,7 @@ import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
+import { Stop } from '@/lib/components/uswds/Stop';
 
 function getChapters(): string[] {
   const chapters = ['15'];
@@ -48,12 +48,9 @@ export const StaffAssignmentScreen = () => {
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
-  const session = LocalStorage.getSession();
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
-
-  const globalAlert = useGlobalAlert();
 
   function StaffAssignmentRowClosure(props: SearchResultsRowProps) {
     return StaffAssignmentRow({
@@ -62,11 +59,10 @@ export const StaffAssignmentScreen = () => {
     });
   }
 
-  if (!session?.user?.roles?.includes(CamsRole.CaseAssignmentManager)) {
-    globalAlert?.error('Invalid Permissions');
-    return <></>;
-  }
-  const searchPredicate = getPredicateByUserContext(session.user);
+  const session = LocalStorage.getSession();
+  const hasInvalidPermission = !session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
+  const hasNoAssignedOffices = !session?.user?.offices || session?.user?.offices.length === 0;
+  const showAssignments = !hasInvalidPermission && !hasNoAssignedOffices;
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
@@ -87,13 +83,30 @@ export const StaffAssignmentScreen = () => {
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </div>
-          <SearchResults
-            id="search-results"
-            searchPredicate={searchPredicate}
-            noResultsMessage="No cases currently assigned."
-            header={StaffAssignmentHeader}
-            row={StaffAssignmentRowClosure}
-          ></SearchResults>
+          {hasInvalidPermission && (
+            <Stop
+              id="forbidden-alert"
+              title="Forbidden"
+              message="You do not have permission to assign staff to cases in CAMS."
+            ></Stop>
+          )}
+          {hasNoAssignedOffices && (
+            <Stop
+              id="no-office"
+              title="No Office Assigned"
+              message="You cannot assign staff to cases because you are not currently assigned to a USTP office in Active Directory."
+              showHelpDeskContact
+            ></Stop>
+          )}
+          {showAssignments && (
+            <SearchResults
+              id="search-results"
+              searchPredicate={getPredicateByUserContext(session!.user)}
+              noResultsMessage="No cases currently assigned."
+              header={StaffAssignmentHeader}
+              row={StaffAssignmentRowClosure}
+            ></SearchResults>
+          )}
         </div>
         <div className="grid-col-1"></div>
       </div>
