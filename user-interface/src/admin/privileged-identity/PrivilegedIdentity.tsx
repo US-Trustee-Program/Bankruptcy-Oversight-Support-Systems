@@ -43,7 +43,7 @@ export function PrivilegedIdentity() {
   const [selectedUser, setSelectedUser] = useState<CamsUserReference | null>(null);
   const [existingGroupNameSet, setExistingGroupNameSet] = useState<Set<string>>(new Set());
   const [existingExpiration, setExistingExpiration] = useState<string | null>(null);
-  const [newGroupNameSet, setNewGroupNameSet] = useState<Set<string>>(new Set());
+  const [updatedGroupNameSet, setUpdatedGroupNameSet] = useState<Set<string>>(new Set());
   const [newExpiration, setNewExpiration] = useState<string | null>(null);
 
   const userListRef = useRef<ComboBoxRef>(null);
@@ -85,8 +85,8 @@ export function PrivilegedIdentity() {
     disableForm(false);
   }
 
-  function isSaveable() {
-    return isFormDirty() && newGroupNameSet.size > 1 && !!newExpiration;
+  function isSavable() {
+    return isFormDirty() && updatedGroupNameSet.size > 0 && !!newExpiration;
   }
 
   function isDeletable() {
@@ -95,7 +95,7 @@ export function PrivilegedIdentity() {
 
   function isFormDirty() {
     return (
-      symmetricDifference(existingGroupNameSet, newGroupNameSet).size > 0 ||
+      symmetricDifference(existingGroupNameSet, updatedGroupNameSet).size > 0 ||
       existingExpiration !== newExpiration
     );
   }
@@ -105,7 +105,7 @@ export function PrivilegedIdentity() {
       ...(officeListRef.current?.getValue() ?? []).map((option) => option.value),
       ...(roleListRef.current?.getValue() ?? []).map((option) => option.value),
     ]);
-    setNewGroupNameSet(formGroupNameSet);
+    setUpdatedGroupNameSet(formGroupNameSet);
   }
 
   function handleExpirationUpdate(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -166,11 +166,14 @@ export function PrivilegedIdentity() {
     try {
       await api.putPrivilegedIdentityUser(userId, permissions).then(() => {
         setExistingExpiration(newExpiration);
-        setExistingGroupNameSet(newGroupNameSet);
-        alert?.success('Privileged Identity saved successfully.');
+        setExistingGroupNameSet(updatedGroupNameSet);
+        alert?.success(
+          'Privileged Identity saved successfully. User must log out and log back in to see the proper permissions' +
+            ' reflected.',
+        );
       });
     } catch (e) {
-      alert?.warning(`Failed to save Privileged Indentity. ${(e as Error).message}`);
+      alert?.warning(`Failed to save Privileged Identity. ${(e as Error).message}`);
     }
   }
 
@@ -179,11 +182,14 @@ export function PrivilegedIdentity() {
     api
       .deletePrivilegedIdentityUser(userId)
       .then(() => {
-        alert?.success('Privileged Identity deleted successfully.');
+        alert?.success(
+          'Privileged Identity deleted successfully. User must log out and log back in to see the proper permissions ' +
+            'reflected.',
+        );
         clearForm();
       })
       .catch((e) => {
-        alert?.warning(`Failed to delete Privileged Indentity. ${(e as Error).message}`);
+        alert?.warning(`Failed to delete Privileged Identity. ${(e as Error).message}`);
       });
   }
 
@@ -314,7 +320,7 @@ export function PrivilegedIdentity() {
                     disabled={!isDeletable()}
                     ref={deleteButtonRef}
                   >
-                    Delete User
+                    Delete Privilege
                   </Button>
                 </div>
               </div>
@@ -324,7 +330,7 @@ export function PrivilegedIdentity() {
                     id="save-button"
                     uswdsStyle={UswdsButtonStyle.Default}
                     onClick={handleSave}
-                    disabled={!isSaveable()}
+                    disabled={!isSavable()}
                     ref={saveButtonRef}
                   >
                     Save
