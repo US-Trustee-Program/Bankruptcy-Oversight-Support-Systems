@@ -20,7 +20,7 @@ on:
         type: string
     outputs:
       e2eCosmosDbExists:
-        description: "Does E2E Cosmos DB Already Exists before deployment"
+        description: 'Does E2E Cosmos DB Already Exists before deployment'
         value: ${{ jobs.deploy-db.outputs.e2eCosmosDbExists }}
 
 jobs:
@@ -43,19 +43,26 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ inputs.azResourceGrpNetworkEncrypted }}
-
-      - name: Check if E2E CosmosDb exists ##Check if E2E DB exists determining if the DB needs data seeded downstream
-        id: e2eDbExists
+      - name: Generate E2E name
+        id: generateE2eName
         run: |
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
             echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.environmentHash }}"
           fi
-          cmd="az cosmosdb mongodb database exists --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} -n $e2eDatabaseName -g ${{ secrets.AZURE_RG }} -o tsv"
-          echo $cmd
-          e2eCosmosDbExists=$($cmd)
-          echo "e2eCosmosDbExists=${e2eCosmosDbExists}" >> $GITHUB_OUTPUT
+          echo "e2eDatabaseName=${e2eDatabaseName}" >> $GITHUB_OUTPUT
+
+      - name: Check if E2E CosmosDb exists
+        uses: azure/cli@v2
+        id: e2eDbExists
+        with:
+          azcliversion: 2.62.0
+          inlineScript: |
+            cmd="az cosmosdb mongodb database exists --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} -n ${{ steps.generateE2eName.outputs.e2eDatabaseName }} -g ${{ secrets.AZURE_RG }} -o tsv"
+            echo $cmd
+            e2eCosmosDbExists=$($cmd)
+            echo "e2eCosmosDbExists=${e2eCosmosDbExists}" >> $GITHUB_OUTPUT
 
       - name: Deploy Cosmos MongoDB
         id: azure-mongodb-deploy
