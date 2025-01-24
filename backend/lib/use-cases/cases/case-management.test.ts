@@ -1,25 +1,25 @@
 import CaseManagement, { getAction } from './case-management';
-import { UnknownError } from '../common-errors/unknown-error';
-import { CamsError } from '../common-errors/cams-error';
-import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
-import { CaseAssignment } from '../../../common/src/cams/assignments';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { CamsError } from '../../common-errors/cams-error';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
-} from '../testing/testing-utilities';
-import { CamsRole } from '../../../common/src/cams/roles';
-import { getCasesGateway } from '../factory';
-import { ApplicationContext } from '../adapters/types/basic';
-import { CamsUser } from '../../../common/src/cams/users';
+} from '../../testing/testing-utilities';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { getCasesGateway } from '../../factory';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsUser } from '../../../../common/src/cams/users';
 import {
   REGION_02_GROUP_BU,
   REGION_02_GROUP_NY,
-} from '../../../common/src/cams/test-utilities/mock-user';
-import { ustpOfficeToCourtDivision } from '../../../common/src/cams/courts';
-import { buildOfficeCode } from './offices/offices';
-import { MockMongoRepository } from '../testing/mock-gateways/mock-mongo.repository';
-import { TransferOrder } from '../../../common/src/cams/orders';
-import { ConsolidationTo } from '../../../common/src/cams/events';
+} from '../../../../common/src/cams/test-utilities/mock-user';
+import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
+import { buildOfficeCode } from '../offices/offices';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { TransferOrder } from '../../../../common/src/cams/orders';
+import { ConsolidationTo } from '../../../../common/src/cams/events';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -52,7 +52,7 @@ const assignments: CaseAssignment[] = [
 const caseIdWithAssignments = '081-23-01176';
 const assignmentMap = new Map([[caseIdWithAssignments, assignments]]);
 
-jest.mock('./case-assignment', () => {
+jest.mock('../case-assignment/case-assignment', () => {
   return {
     CaseAssignmentUseCase: jest.fn().mockImplementation(() => {
       return {

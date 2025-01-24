@@ -4,7 +4,7 @@ import {
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseAssignmentUseCase } from '../../use-cases/case-assignment';
+import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
 import { CamsError } from '../../common-errors/cams-error';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import {

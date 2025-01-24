@@ -1,5 +1,5 @@
-import { AttorneyGatewayInterface } from './use-cases/attorney.gateway.interface';
-import { CasesInterface } from './use-cases/cases.interface';
+import { AttorneyGatewayInterface } from './use-cases/attorneys/attorney.gateway.interface';
+import { CasesInterface } from './use-cases/cases/cases.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';

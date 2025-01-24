@@ -25,8 +25,8 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { courtSorter } from './dataVerificationHelper';
+import { Stop } from '@/lib/components/Stop';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
@@ -43,19 +43,17 @@ export default function DataVerificationScreen() {
     timeOut: 8,
   });
 
-  const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
+  const hasValidPermissions = session?.user?.roles?.includes(CamsRole.DataVerifier);
+  const hasOffices = session?.user?.offices && session?.user?.offices.length > 0;
+  const showDataVerification = hasValidPermissions && hasOffices;
 
+  // TODO: This needs to be dynamic!
   const regionHeader = 'Region 02';
 
   const api = useApi2();
 
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
-
-  if (!session?.user?.roles?.includes(CamsRole.DataVerifier)) {
-    globalAlert?.error('Invalid Permissions');
-    return <></>;
-  }
 
   async function getOrders() {
     setIsOrderListLoading(true);
@@ -143,8 +141,10 @@ export default function DataVerificationScreen() {
   }
 
   useEffect(() => {
-    getOrders();
-    getCourts();
+    if (showDataVerification) {
+      getOrders();
+      getCourts();
+    }
   }, []);
 
   let visibleItemCount = 0;
@@ -206,10 +206,28 @@ export default function DataVerificationScreen() {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1>Data Verification</h1>
-          <h2>{regionHeader}</h2>
-          {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
-          {!isOrderListLoading && (
+          {!hasValidPermissions && (
+            <Stop
+              id="forbidden-alert"
+              title="Forbidden"
+              message="You do not have permission to verify orders in CAMS."
+              asError
+            ></Stop>
+          )}
+          {hasValidPermissions && !hasOffices && (
+            <Stop
+              id="no-office"
+              title="No Office Assigned"
+              message="You cannot verify orders because you are not currently assigned to a USTP office in Active Directory."
+              showHelpDeskContact
+            ></Stop>
+          )}
+          {isOrderListLoading && showDataVerification && (
+            <LoadingSpinner caption="Loading court orders..." />
+          )}
+          {!isOrderListLoading && showDataVerification && (
             <>
+              <h2>{regionHeader}</h2>
               <h3>Filters</h3>
               <section className="order-list-container">
                 <div className="filters order-status">
