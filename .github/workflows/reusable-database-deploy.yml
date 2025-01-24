@@ -57,7 +57,7 @@ jobs:
         uses: azure/cli@v2
         id: e2eDbExists
         with:
-          azcliversion: 2.62
+          azcliversion: 2.62.0
           inlineScript: |
             cmd="az cosmosdb mongodb database exists --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} -n ${{ steps.generateE2eName.outputs.e2eDatabaseName }} -g ${{ secrets.AZURE_RG }} -o tsv"
             echo $cmd
