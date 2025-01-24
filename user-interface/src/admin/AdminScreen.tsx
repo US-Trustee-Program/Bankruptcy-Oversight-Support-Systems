@@ -4,7 +4,7 @@ import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
-import { Stop } from '@/lib/components/uswds/Stop';
+import { Stop } from '@/lib/components/Stop';
 
 export function AdminScreen() {
   const session = LocalStorage.getSession();

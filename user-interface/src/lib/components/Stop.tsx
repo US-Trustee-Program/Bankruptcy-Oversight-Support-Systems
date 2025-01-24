@@ -1,4 +1,4 @@
-import Alert, { UswdsAlertStyle } from './Alert';
+import Alert, { UswdsAlertStyle } from './uswds/Alert';
 
 type StopProps = {
   id: string;
