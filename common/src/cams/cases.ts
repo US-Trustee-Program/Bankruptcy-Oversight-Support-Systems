@@ -38,7 +38,6 @@ export type CaseDetail = CaseSummary & {
   dismissedDate?: string;
   reopenedDate?: string;
   transferDate?: string;
-  courtId: string;
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
@@ -74,3 +73,15 @@ export type CaseNoteInput = {
   caseId: string;
   content: string;
 };
+
+export type DxtrCase = CaseSummary & {
+  closedDate?: string;
+  dismissedDate?: string;
+  reopenedDate?: string;
+};
+
+export type SyncedCase = DxtrCase &
+  Auditable & {
+    documentType: 'SYNCED_CASE';
+    id?: string;
+  };
