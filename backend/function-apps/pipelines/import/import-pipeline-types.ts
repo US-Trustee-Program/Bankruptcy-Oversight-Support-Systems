@@ -1,5 +1,8 @@
-export type Case = {
-  caseId: string;
-};
+import { DxtrCase } from '../../../../common/src/cams/cases';
 
-export type DxtrCaseChangeEvent = { type: string; caseId: string };
+export type DxtrCaseChangeEvent = {
+  type: string;
+  caseId: string;
+  bCase?: DxtrCase;
+  error?: unknown;
+};
