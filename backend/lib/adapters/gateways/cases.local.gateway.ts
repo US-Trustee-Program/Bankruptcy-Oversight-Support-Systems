@@ -1,4 +1,4 @@
-import { CasesInterface } from '../../use-cases/cases.interface';
+import { CasesInterface } from '../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';

@@ -1,8 +1,8 @@
 import { AttorneyGatewayInterface } from './attorney.gateway.interface';
-import { ApplicationContext } from '../adapters/types/basic';
-import { getAttorneyGateway } from '../factory';
-import { CaseAssignmentUseCase } from './case-assignment';
-import { AttorneyUser } from '../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { getAttorneyGateway } from '../../factory';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { AttorneyUser } from '../../../../common/src/cams/users';
 
 const MODULE_NAME = 'ATTORNEYS-USE-CASE';
 

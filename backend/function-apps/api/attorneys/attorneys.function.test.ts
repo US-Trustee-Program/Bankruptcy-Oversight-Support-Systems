@@ -6,7 +6,7 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import AttorneyList from '../../../lib/use-cases/attorneys';
+import AttorneyList from '../../../lib/use-cases/attorneys/attorneys';
 import handler from './attorneys.function';
 import { InvocationContext } from '@azure/functions';
 import { ResponseBody } from '../../../../common/src/api/response';
