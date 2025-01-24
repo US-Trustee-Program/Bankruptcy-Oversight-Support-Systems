@@ -1,5 +1,5 @@
-import { AcmsBounds, AcmsPredicate } from '../../../lib/use-cases/acms-orders/acms-orders';
-import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_ETL } from '../loadConsolidations';
+import { AcmsBounds, AcmsPredicate } from '../../../../lib/use-cases/acms-orders/acms-orders';
+import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_ETL } from '../migration';
 import { OrchestrationContext } from 'durable-functions';
 
 export function* main(context: OrchestrationContext) {
