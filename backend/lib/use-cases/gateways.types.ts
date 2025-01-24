@@ -12,7 +12,7 @@ import {
   TransferTo,
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
-import { CaseDocket, CaseNote } from '../../../common/src/cams/cases';
+import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
 import { OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
@@ -134,6 +134,7 @@ export interface CasesRepository extends Releasable {
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
+  syncDxtrCase(bCase: SyncedCase): Promise<void>;
 }
 
 export interface OfficesRepository extends Releasable {
