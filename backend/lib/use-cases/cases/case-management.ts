@@ -153,9 +153,9 @@ export default class CaseManagement {
     caseId: string,
   ): Promise<DxtrCase> {
     try {
-      // TODO: return DxtrCase
-      const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-      return caseSummary;
+      const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
+      delete caseDetails.debtorAttorney;
+      return { ...caseDetails };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
