@@ -3,8 +3,9 @@ import {
   CAMS_LOAD_CASE,
   DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY,
   DXTR_EXPORT_CASE,
+  DXTR_EXPORT_CASE_ACTIVITY,
 } from './import-pipeline';
-import { Case, DxtrCaseChangeEvent } from './import-pipeline-types';
+import { DxtrCaseChangeEvent } from './import-pipeline-types';
 
 function* exportCaseChangeEvents(context: OrchestrationContext) {
   const events: DxtrCaseChangeEvent[] = yield context.df.callActivity(
@@ -22,10 +23,12 @@ function* exportCaseChangeEvents(context: OrchestrationContext) {
 }
 
 function* exportCase(context: OrchestrationContext) {
-  const bCase: Case = yield context.df.callActivity(DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY);
+  const event: DxtrCaseChangeEvent = context.df.getInput();
+  event.bCase = yield context.df.callActivity(DXTR_EXPORT_CASE_ACTIVITY, event);
 
-  const child_id = context.df.instanceId + `:${bCase.caseId}:`;
-  const nextTask = context.df.callSubOrchestrator(CAMS_LOAD_CASE, bCase, child_id);
+  // TODO: come up with a naming scheme for child_id.
+  const child_id = context.df.instanceId + `:${event.caseId}:`;
+  const nextTask = context.df.callSubOrchestrator(CAMS_LOAD_CASE, event, child_id);
 
   yield context.df.Task.all([nextTask]);
 }

@@ -1,5 +1,7 @@
-import { dxtrPipelineSetup } from './import/import-pipeline';
-import { migrationSetup } from './migration/migration';
+import { importPipelineSetup } from './import/import-pipeline';
+// import { migrationSetup } from './migration/migration';
 
-dxtrPipelineSetup();
-migrationSetup();
+importPipelineSetup();
+
+// TODO: Renable setup so migrations can be executed.
+// migrationSetup();

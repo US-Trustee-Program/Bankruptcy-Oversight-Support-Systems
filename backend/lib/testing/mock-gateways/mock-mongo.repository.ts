@@ -102,6 +102,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  syncDxtrCase(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   update(..._ignore): Promise<any | void> {
     throw new Error('Method not implemented.');
   }

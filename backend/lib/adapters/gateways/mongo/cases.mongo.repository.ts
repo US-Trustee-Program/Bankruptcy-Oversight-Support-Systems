@@ -9,8 +9,9 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import QueryBuilder from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
-import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { SyncedCase } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -177,6 +178,20 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           module: MODULE_NAME,
         },
       });
+    }
+  }
+
+  async syncDxtrCase(bCase: SyncedCase): Promise<void> {
+    const query = QueryBuilder.build(
+      and(
+        equals<SyncedCase['caseId']>('caseId', bCase.caseId),
+        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+      ),
+    );
+    try {
+      await this.getAdapter<SyncedCase>().replaceOne(query, bCase, true);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 }
