@@ -22,7 +22,7 @@ import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
-import { Stop } from '@/lib/components/uswds/Stop';
+import { Stop } from '@/lib/components/Stop';
 
 function getChapters(): string[] {
   const chapters = ['15'];

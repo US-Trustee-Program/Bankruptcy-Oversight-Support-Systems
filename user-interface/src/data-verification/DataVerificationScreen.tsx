@@ -26,7 +26,7 @@ import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { courtSorter } from './dataVerificationHelper';
-import { Stop } from '@/lib/components/uswds/Stop';
+import { Stop } from '@/lib/components/Stop';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
