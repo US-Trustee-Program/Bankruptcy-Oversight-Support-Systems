@@ -1,12 +1,12 @@
 import * as dotenv from 'dotenv';
 import * as df from 'durable-functions';
 import { HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
-import { MAIN_ORCHESTRATOR } from '../loadConsolidations';
-import { TriggerRequest } from '../../../lib/use-cases/acms-orders/acms-orders';
-import { BadRequestError } from '../../../lib/common-errors/bad-request';
-import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
-import { toAzureError } from '../../azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
+import { MAIN_ORCHESTRATOR } from '../migration';
+import { TriggerRequest } from '../../../../lib/use-cases/acms-orders/acms-orders';
+import { BadRequestError } from '../../../../lib/common-errors/bad-request';
+import { UnauthorizedError } from '../../../../lib/common-errors/unauthorized-error';
+import { toAzureError } from '../../../azure/functions';
+import ContextCreator from '../../../azure/application-context-creator';
 
 dotenv.config();
 
