@@ -1,6 +1,6 @@
 import * as df from 'durable-functions';
 import { HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
-import { DXTR_EXPORT_CASE_CHANGE_EVENTS } from './import-pipeline';
+import { EXPORT_CASE_CHANGE_EVENTS } from './import-pipeline';
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
@@ -15,7 +15,7 @@ export default async function importPipelineHttpTrigger(
 
     // TODO: Make sure we have a JWT with SuperAdmin role. Not API key.
 
-    const instanceId: string = await client.startNew(DXTR_EXPORT_CASE_CHANGE_EVENTS);
+    const instanceId: string = await client.startNew(EXPORT_CASE_CHANGE_EVENTS);
 
     return client.createCheckStatusResponse(request, instanceId);
   } catch (error) {
