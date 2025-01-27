@@ -9,6 +9,7 @@ import {
 } from '../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../common/src/cams/history';
 import { CasesRepository } from '../../use-cases/gateways.types';
+import { SyncedCase } from '../../../../common/src/cams/cases';
 
 export class LocalCasesRepository implements CasesRepository {
   caseHistoryContainer: CaseHistory[] = [];
@@ -64,5 +65,9 @@ export class LocalCasesRepository implements CasesRepository {
 
   async close() {
     return;
+  }
+
+  async syncDxtrCase(_bCase: SyncedCase) {
+    throw new Error('Not implemented.');
   }
 }
