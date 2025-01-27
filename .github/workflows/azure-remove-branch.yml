@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Delete Branch Resources
         uses: azure/cli@v2
-        id: deleteBranchREsourcues
+        id: deleteBranchResourcues
         with:
           azcliversion: 2.62.0
           inlineScript: |
