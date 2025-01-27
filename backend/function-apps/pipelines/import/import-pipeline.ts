@@ -1,20 +1,28 @@
 import * as df from 'durable-functions';
 import { OrchestrationContext } from 'durable-functions';
-import { app } from '@azure/functions';
+import { app, HttpRequest, HttpResponse, InvocationContext, Timer } from '@azure/functions';
 
 import CamsActivities from './cams-activities';
 import DxtrActivities from './dxtr-activities';
-import importPipelineHttpTrigger from './import-pipeline-http-trigger';
-import importPipelineTimerTrigger from './import-pipeline-timer-trigger';
 import { DxtrCaseChangeEvent } from './import-pipeline-types';
+import { toAzureError } from '../../azure/functions';
+import ContextCreator from '../../azure/application-context-creator';
 
-export const EXPORT_CASE_CHANGE_EVENTS = 'exportCaseChangeEvents';
-export const EXPORT_AND_LOAD_CASE = 'exportCaseAndLoadCase';
+const MODULE_NAME = 'IMPORT_PIPELINE';
 
-export const DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY = 'dxtrExportCaseChangeEventsActivity';
-export const DXTR_EXPORT_CASE_ACTIVITY = 'dxtrExportCaseActivity';
-export const CAMS_LOAD_CASE_ACTIVITY = 'camsLoadCaseActivity';
+const EXPORT_CASE_CHANGE_EVENTS = 'exportCaseChangeEvents';
+const EXPORT_AND_LOAD_CASE = 'exportCaseAndLoadCase';
+const DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY = 'dxtrExportCaseChangeEventsActivity';
+const DXTR_EXPORT_CASE_ACTIVITY = 'dxtrExportCaseActivity';
+const CAMS_LOAD_CASE_ACTIVITY = 'camsLoadCaseActivity';
 
+/**
+ * exportCaseChangeEvents
+ *
+ * Export case Ids related to changes in DXTR.
+ *
+ * @param  context
+ */
 function* exportCaseChangeEvents(context: OrchestrationContext) {
   const events: DxtrCaseChangeEvent[] = yield context.df.callActivity(
     DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY,
@@ -30,12 +38,57 @@ function* exportCaseChangeEvents(context: OrchestrationContext) {
   yield context.df.Task.all(nextTasks);
 }
 
+/**
+ * exportAndLoadCase
+ *
+ * Export the case identified by the event from DXTR and load the case into CAMS.
+ *
+ * @param context
+ */
 function* exportAndLoadCase(context: OrchestrationContext) {
   let event: DxtrCaseChangeEvent = context.df.getInput();
   event = yield context.df.callActivity(DXTR_EXPORT_CASE_ACTIVITY, event);
   yield context.df.callActivity(CAMS_LOAD_CASE_ACTIVITY, event);
 }
 
+/**
+ * importPipelineHttpTrigger
+ *
+ * @param request
+ * @param context
+ * @returns
+ */
+async function importPipelineHttpTrigger(
+  request: HttpRequest,
+  context: InvocationContext,
+): Promise<HttpResponse> {
+  try {
+    const client = df.getClient(context);
+
+    // TODO: Make sure we have a JWT with SuperAdmin role. Not API key.
+
+    const instanceId: string = await client.startNew(EXPORT_CASE_CHANGE_EVENTS);
+
+    return client.createCheckStatusResponse(request, instanceId);
+  } catch (error) {
+    return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
+  }
+}
+
+/**
+ * importPipelineTimerTrigger
+ *
+ * @param _myTimer
+ * @param context
+ */
+async function importPipelineTimerTrigger(_myTimer: Timer, context: InvocationContext) {
+  const client = df.getClient(context);
+  const _instanceId: string = await client.startNew(EXPORT_CASE_CHANGE_EVENTS);
+}
+
+/**
+ * importPipelineSetup
+ */
 export function importPipelineSetup() {
   // Register orchestrations
   df.app.orchestration(EXPORT_CASE_CHANGE_EVENTS, exportCaseChangeEvents);
