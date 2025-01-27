@@ -11,14 +11,20 @@ const MODULE_NAME = 'IMPORT-PIPELINE-CAMS-ACTIVITIES';
  *
  * Load case details into Cosmos
  */
-async function loadCase(event: DxtrCaseChangeEvent, invocationContext: InvocationContext) {
+async function loadCase(
+  event: DxtrCaseChangeEvent,
+  invocationContext: InvocationContext,
+): Promise<DxtrCaseChangeEvent> {
   const logger = ContextCreator.getLogger(invocationContext);
   const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
 
+  if (event.error) return event;
+  if (!event.bCase) {
+    event.error = new Error('No case to load.');
+    return event;
+  }
+
   try {
-    if (event.error || !event.bCase) {
-      throw new Error('got nothing to save to cosmos, man!');
-    }
     const useCase = new CaseManagement(context);
     await useCase.syncCase(context, event.bCase);
   } catch (originalError) {
@@ -28,7 +34,10 @@ async function loadCase(event: DxtrCaseChangeEvent, invocationContext: Invocatio
       `Failed while syncing case ${event.caseId}.`,
     );
     logger.camsError(error);
+    event.error = error;
   }
+
+  return event;
 }
 
 const CamsActivities = {
