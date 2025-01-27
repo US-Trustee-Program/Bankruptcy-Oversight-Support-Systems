@@ -55,7 +55,7 @@ export class OfficesUseCase {
     const offices = await officesGateway.getOffices(context);
     const groupToRoleMap = storage.getRoleMapping();
     const groupToOfficeMap = offices.reduce((acc, office) => {
-      acc.set(office.idpGroupId, office);
+      acc.set(office.idpGroupName, office);
       return acc;
     }, new Map<string, UstpOfficeDetails>());
 

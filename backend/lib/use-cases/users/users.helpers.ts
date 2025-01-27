@@ -75,7 +75,7 @@ async function getOfficesFromGroupNames(
 ): Promise<UstpOfficeDetails[]> {
   const officesGateway = getOfficesGateway(context);
   const ustpOffices = await officesGateway.getOffices(context);
-  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupId));
+  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
 }
 
 const UsersHelpers = {

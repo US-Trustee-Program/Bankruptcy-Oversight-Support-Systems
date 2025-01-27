@@ -116,7 +116,7 @@ describe('common court library tests', () => {
 
 const seattleOffice = {
   officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
-  idpGroupId: 'USTP CAMS Region 18 Office Seattle',
+  idpGroupName: 'USTP CAMS Region 18 Office Seattle',
   officeName: 'Seattle',
   groups: [
     {

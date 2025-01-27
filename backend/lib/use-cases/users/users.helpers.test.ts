@@ -16,10 +16,10 @@ describe('UsersHelpers tests', () => {
   const expiredDate = MockData.someDateBeforeThisDate(today);
   const unexpiredDate = MockData.someDateAfterThisDate(today);
   const manhattanOffice = MOCKED_USTP_OFFICES_ARRAY.find(
-    (office) => office.idpGroupId === 'USTP CAMS Region 2 Office Manhattan',
+    (office) => office.idpGroupName === 'USTP CAMS Region 2 Office Manhattan',
   );
   const wilmingtonOffice = MOCKED_USTP_OFFICES_ARRAY.find(
-    (office) => office.idpGroupId === 'USTP CAMS Region 3 Office Wilmington',
+    (office) => office.idpGroupName === 'USTP CAMS Region 3 Office Wilmington',
   );
 
   beforeEach(async () => {
@@ -124,7 +124,7 @@ describe('UsersHelpers tests', () => {
       id: idpUser.id,
       name: idpUser.name,
       claims: {
-        groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupId],
+        groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupName],
       },
       expires: unexpiredDate,
     };
@@ -165,7 +165,7 @@ describe('UsersHelpers tests', () => {
       id: idpUser.id,
       name: idpUser.name,
       claims: {
-        groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupId],
+        groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupName],
       },
       expires: MockData.someDateAfterThisDate(new Date().toISOString()),
     };
@@ -196,7 +196,7 @@ describe('UsersHelpers tests', () => {
       id: idpUser.id,
       name: idpUser.name,
       claims: {
-        groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupId],
+        groups: ['USTP CAMS Case Assignment Manager', wilmingtonOffice.idpGroupName],
       },
       expires: MockData.someDateAfterThisDate(new Date().toISOString()),
     };

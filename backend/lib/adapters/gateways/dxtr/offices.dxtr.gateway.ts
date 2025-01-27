@@ -52,7 +52,7 @@ function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOf
       current = {
         officeCode: ustpOfficeCode,
         officeName: getOfficeName(flatOffice.courtDivisionCode),
-        idpGroupId: ustpOfficeCode.replace(/_/g, ' '),
+        idpGroupName: ustpOfficeCode.replace(/_/g, ' '),
         groups: [],
         regionId: parseInt(flatOffice.regionId).toString(),
         regionName: flatOffice.regionName,
