@@ -217,7 +217,7 @@ describe('Admin Use Case', () => {
 
   test('should return a list of valid IdP groups names', async () => {
     const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
-    const officeGroups = MOCKED_USTP_OFFICES_ARRAY.map((office) => office.idpGroupId);
+    const officeGroups = MOCKED_USTP_OFFICES_ARRAY.map((office) => office.idpGroupName);
 
     const actual = await useCase.getRoleAndOfficeGroupNames(context);
 

@@ -20,7 +20,7 @@ function officesToCsv(offices: UstpOfficeDetails[]) {
   const records: string[] = offices
     .map((office) => [
       office.officeCode,
-      office.idpGroupId,
+      office.idpGroupName,
       office.officeName,
       office.regionId,
       office.regionName,

@@ -40,7 +40,7 @@ export class AdminUseCase {
         const officeGateway = getOfficesGateway(context);
 
         const offices = await officeGateway.getOffices(context);
-        const officeGroups = offices.map((office) => office.idpGroupId);
+        const officeGroups = offices.map((office) => office.idpGroupName);
         const roleGroups = Array.from(LocalStorageGateway.getRoleMapping().keys());
 
         this.roleAndOfficeGroupNames = {
