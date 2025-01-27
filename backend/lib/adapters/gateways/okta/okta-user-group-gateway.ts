@@ -142,16 +142,14 @@ class OktaUserGroupGateway implements UserGroupGateway {
     try {
       const user = await this.oktaHumble.getUser({ userId: id });
       const groups = await this.oktaHumble.listUserGroups({ userId: id });
-      const groupIds = [];
       const groupNames = [];
       for await (const oktaGroup of groups) {
-        groupIds.push(oktaGroup.id);
         groupNames.push(oktaGroup.name);
       }
       const camsUser = {
         id: user.id,
         name: user.name,
-        offices: await UsersHelpers.getOfficesFromGroupNames(context, groupIds),
+        offices: await UsersHelpers.getOfficesFromGroupNames(context, groupNames),
         roles: UsersHelpers.getRolesFromGroupNames(groupNames),
       };
       context.logger.info(MODULE_NAME, `Retrieved ${id}`, camsUser);

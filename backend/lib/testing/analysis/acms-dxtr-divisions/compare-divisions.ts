@@ -319,7 +319,7 @@ export function ustpOfficeToDivision(ustp: UstpOfficeDetails): DxtrRegionDivisio
         dxtrJudicialDistrictName: division.court.courtName,
         dxtrDivisionCode: division.divisionCode,
         dxtrDivisionName: division.courtOffice.courtOfficeName,
-        oktaGroupName: ustp.idpGroupId,
+        oktaGroupName: ustp.idpGroupName,
         camsOfficeCode: ustp.officeCode,
         ustpOfficeName: ustp.officeName,
       });

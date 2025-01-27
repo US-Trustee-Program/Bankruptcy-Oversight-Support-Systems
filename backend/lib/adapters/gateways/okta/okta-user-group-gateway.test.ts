@@ -224,10 +224,10 @@ describe('OktaGroupGateway', () => {
   describe('getUserById tests', () => {
     let context: ApplicationContext;
     const manhattanOffice: UstpOfficeDetails = {
-      officeCode: 'USTP CAMS Region 2 Office Manhattan',
+      officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
       officeName: 'Manhattan',
       groups: [],
-      idpGroupId: randomUUID(),
+      idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
       regionId: '02',
       regionName: 'Region 2',
     };
@@ -247,7 +247,7 @@ describe('OktaGroupGateway', () => {
         name: 'USTP CAMS Region 2 Office Manhattan',
       };
       const groupTwo: IdpGroup = {
-        id: manhattanOffice.idpGroupId,
+        id: manhattanOffice.idpGroupName,
         name: 'USTP CAMS Trial Attorney',
       };
       jest.spyOn(MockOfficesGateway.prototype, 'getOffices').mockResolvedValue([manhattanOffice]);

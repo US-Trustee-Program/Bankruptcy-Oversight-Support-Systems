@@ -30,14 +30,14 @@ LocalStorageGateway.getRoleMapping().forEach((camsRole, groupName) => {
 MOCKED_USTP_OFFICES_ARRAY.forEach((office) => {
   const group: CamsUserGroup = {
     id: randomUUID(),
-    name: office.idpGroupId,
+    name: office.idpGroupName,
   };
 
   group.users = MockUsers.filter(
-    (user) => !!user.user.offices.find((office) => office.idpGroupId === office.idpGroupId),
+    (user) => !!user.user.offices.find((office) => office.idpGroupName === office.idpGroupName),
   ).map((user) => getCamsUserReference(user.user));
 
-  camsUserGroups.set(office.idpGroupId, group);
+  camsUserGroups.set(office.idpGroupName, group);
 });
 
 export class MockUserGroupGateway implements UserGroupGateway {
