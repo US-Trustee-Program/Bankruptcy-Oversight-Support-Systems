@@ -3,7 +3,6 @@ import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import ContextCreator from '../../azure/application-context-creator';
 import { DxtrCaseChangeEvent } from './import-pipeline-types';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { DxtrCase } from '../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'IMPORT-PIPELINE-DXTR-ACTIVITIES';
 
@@ -30,15 +29,13 @@ async function exportCaseChangeEvents(): Promise<DxtrCaseChangeEvent[]> {
 async function exportCase(
   event: DxtrCaseChangeEvent,
   invocationContext: InvocationContext,
-): Promise<DxtrCase | undefined> {
+): Promise<DxtrCaseChangeEvent> {
   const logger = ContextCreator.getLogger(invocationContext);
   const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
 
   try {
     const useCase = new CaseManagement(context);
-    const bCase = await useCase.getDxtrCase(context, event.caseId);
-
-    return bCase;
+    event.bCase = await useCase.getDxtrCase(context, event.caseId);
   } catch (originalError) {
     const error = getCamsError(
       originalError,
@@ -46,7 +43,10 @@ async function exportCase(
       `Failed while exporting case ${event.caseId}.`,
     );
     logger.camsError(error);
+    event.error = error;
   }
+
+  return event;
 }
 
 const DxtrActivities = {
