@@ -10,6 +10,10 @@ const MODULE_NAME = 'IMPORT-PIPELINE-CAMS-ACTIVITIES';
  * loadCase
  *
  * Load case details into Cosmos
+ *
+ * @param {DxtrCaseChangeEvent} event
+ * @param {InvocationContext} invocationContext
+ * @returns {DxtrCaseChangeEvent}
  */
 async function loadCase(
   event: DxtrCaseChangeEvent,

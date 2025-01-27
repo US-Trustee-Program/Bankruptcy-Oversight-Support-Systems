@@ -10,13 +10,18 @@ const MODULE_NAME = 'IMPORT-PIPELINE-DXTR-ACTIVITIES';
  * exportCaseChangeEvents
  *
  * Export caseIds when changes appear in AO_CS, AO_TX, etc.
+ *
+ * @returns {DxtrCaseChangeEvent[]}
  */
 async function exportCaseChangeEvents(): Promise<DxtrCaseChangeEvent[]> {
   const events: DxtrCaseChangeEvent[] = [];
 
-  // Query DXTR
   events.push({ type: '', caseId: '081-73-34831' });
   events.push({ type: '', caseId: '081-14-41751' });
+
+  // TODO: Load runtime state from Cosmos to get last, greatest AO_TX.TX_ID.
+  // TODO: Query DXTR.
+  // TODO: Record greatest AO_TX.TX_ID into runtime state.
 
   return events;
 }
@@ -25,6 +30,10 @@ async function exportCaseChangeEvents(): Promise<DxtrCaseChangeEvent[]> {
  * exportCaseSummary
  *
  * Export case detail we intend on storing in Cosmos
+ *
+ * @param {DxtrCaseChangeEvent} event
+ * @param {InvocationContext} invocationContext
+ * @returns {DxtrCaseChangeEvent}
  */
 async function exportCase(
   event: DxtrCaseChangeEvent,
