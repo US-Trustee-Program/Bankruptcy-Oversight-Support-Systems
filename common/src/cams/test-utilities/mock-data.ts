@@ -562,7 +562,7 @@ function getRole(): string {
 }
 
 function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
-  const offices = MockData.getOffices().map((office) => office.idpGroupId);
+  const offices = MockData.getOffices().map((office) => office.idpGroupName);
   return {
     roles: buildArray(getRole, 5),
     offices,
