@@ -7,16 +7,18 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import { ResourceActions } from '../../../../../common/src/cams/actions';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, equals, regex } = QueryBuilder;
+const { and, equals, regex, contains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -193,5 +195,16 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  //Do we want CaseBasics[] or SyncedCase[]
+  async searchCases(predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
+    const conditions: ConditionOrConjunction[] = [];
+    conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
+    if (predicate.caseIds) {
+      conditions.push(contains<string[]>('caseId', predicate.caseIds));
+    }
+    const query = QueryBuilder.build(and(...conditions));
+    return await this.getAdapter<SyncedCase>().find(query);
   }
 }
