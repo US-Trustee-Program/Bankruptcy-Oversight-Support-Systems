@@ -783,5 +783,26 @@ describe('Test DXTR Gateway', () => {
       const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
       expect(result).toEqual(expectedReturn);
     });
+
+    test('should return an empty array and the existing max tx id', async () => {
+      const mockResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+      const expectedReturn = {
+        caseIds: [],
+        lastTxId: '0',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(mockResults);
+      });
+
+      const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
+      expect(result).toEqual(expectedReturn);
+    });
   });
 });

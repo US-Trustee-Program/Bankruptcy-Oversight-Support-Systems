@@ -526,14 +526,7 @@ describe('Case management tests', () => {
 
   describe('syncCase tests', () => {
     test('should persist a SyncedCase', async () => {
-      const bCase = MockData.getCaseDetail({
-        override: {
-          judgeName: undefined,
-          debtorAttorney: undefined,
-          transfers: undefined,
-          consolidation: undefined,
-        },
-      });
+      const bCase = MockData.getDxtrCase();
       const expected: SyncedCase = {
         ...bCase,
         documentType: 'SYNCED_CASE',

@@ -10,6 +10,7 @@ import { ApplicationContext } from '../../types/basic';
 import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -225,12 +226,12 @@ describe('Cases repository', () => {
   });
 
   test('should createConsolidationTo', async () => {
-    const consolidaitonTo = MockData.getConsolidationTo();
+    const consolidationTo = MockData.getConsolidationTo();
     const insertOneSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
       .mockResolvedValue(crypto.randomUUID().toString());
-    const result = await repo.createConsolidationTo(consolidaitonTo);
-    expect(insertOneSpy).toHaveBeenCalledWith(consolidaitonTo);
+    const result = await repo.createConsolidationTo(consolidationTo);
+    expect(insertOneSpy).toHaveBeenCalledWith(consolidationTo);
 
     expect(result).not.toBeNull();
   });
@@ -323,5 +324,40 @@ describe('Cases repository', () => {
     await expect(async () => await repo.createCaseHistory(caseHistory)).rejects.toThrow(
       'Unknown CAMS Error',
     );
+  });
+
+  test('should persist the case to sync', async () => {
+    const bCase = MockData.getSyncedCase();
+    const replaceSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockResolvedValue(null);
+
+    const expected = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          attributeName: 'caseId',
+          value: bCase.caseId,
+        },
+        {
+          condition: 'EQUALS',
+          attributeName: 'documentType',
+          value: 'SYNCED_CASE',
+        },
+      ],
+    };
+
+    await repo.syncDxtrCase(bCase);
+    expect(replaceSpy).toHaveBeenCalledWith(expected, bCase, true);
+  });
+
+  test('should throw when replaceOne throws error', async () => {
+    const bCase = MockData.getSyncedCase();
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+      .mockRejectedValue(new Error('some error'));
+
+    await expect(repo.syncDxtrCase(bCase)).rejects.toThrow(UnknownError);
   });
 });
