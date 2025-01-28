@@ -73,6 +73,10 @@ export class LocalCasesRepository implements CasesRepository {
     throw new Error('Not implemented.');
   }
 
+  async getConsolidationChildCaseIds(_predicate: CasesSearchPredicate): Promise<string[]> {
+    throw new Error('Not implemented.');
+  }
+
   async searchCases(_predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
     throw new Error('Not implemented.');
   }

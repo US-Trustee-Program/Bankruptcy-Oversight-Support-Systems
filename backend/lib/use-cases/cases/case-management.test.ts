@@ -376,6 +376,7 @@ describe('Case management tests', () => {
         },
       });
       const expected = [{ ...syncedCase, officeCode, _actions }];
+      jest.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
       jest.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue([syncedCase]);
       const actual = await useCase.searchCases(applicationContext, predicate, false);
       expect(actual).toEqual(expected);
@@ -390,7 +391,7 @@ describe('Case management tests', () => {
         return MockData.getSyncedCase({ override: { caseId } });
       });
       const findAssignmentsByAssignee = jest
-        .spyOn(useCase.assignmentGateway, 'findAssignmentsByAssignee')
+        .spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee')
         .mockResolvedValue(assignments);
       const searchCases = jest
         .spyOn(useCase.casesRepository, 'searchCases')
@@ -409,7 +410,7 @@ describe('Case management tests', () => {
     test('should return empty array when no caseIds are found', async () => {
       const user = MockData.getCamsUser({ offices: [REGION_02_GROUP_NY, REGION_02_GROUP_BU] });
       const findAssignmentsByAssignee = jest
-        .spyOn(useCase.assignmentGateway, 'findAssignmentsByAssignee')
+        .spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee')
         .mockResolvedValue([]);
       const searchCases = jest
         .spyOn(useCase.casesRepository, 'searchCases')
