@@ -18,7 +18,7 @@ import { ResourceActions } from '../../../../../common/src/cams/actions';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, equals, regex, contains } = QueryBuilder;
+const { and, equals, regex, contains, notContains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -197,13 +197,58 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  //Do we want CaseBasics[] or SyncedCase[]
+  async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
+    try {
+      // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
+
+      const conditions: ConditionOrConjunction[] = [];
+      conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
+
+      if (predicate.chapters?.length > 0) {
+        conditions.push(contains<string[]>('chapter', predicate.chapters));
+      }
+
+      if (predicate.caseIds?.length > 0) {
+        conditions.push(contains<string[]>('caseId', predicate.caseIds));
+      }
+
+      if (predicate.divisionCodes?.length > 0) {
+        conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+      }
+      const query = QueryBuilder.build(and(...conditions));
+
+      const adapter = this.getAdapter<ConsolidationTo>();
+      const childConsolidations = await adapter.find(query);
+
+      const childConsolidationCaseIds: string[] = [];
+      if (childConsolidations.length > 0) {
+        for (const consolidationTo of childConsolidations) {
+          childConsolidationCaseIds.push(consolidationTo.caseId);
+        }
+      }
+      return childConsolidationCaseIds;
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve child consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
+    }
+  }
+
   async searchCases(predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
     const conditions: ConditionOrConjunction[] = [];
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
     if (predicate.caseIds) {
       conditions.push(contains<string[]>('caseId', predicate.caseIds));
     }
+
+    if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
+      conditions.push(notContains<string[]>('caseId', predicate.excludedCaseIds));
+    }
+
     const query = QueryBuilder.build(and(...conditions));
     return await this.getAdapter<SyncedCase>().find(query);
   }

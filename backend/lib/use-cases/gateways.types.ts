@@ -137,6 +137,7 @@ export interface CasesRepository extends Releasable {
   createCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
   searchCases(predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]>;
+  getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
 }
 
 export interface OfficesRepository extends Releasable {
