@@ -5,6 +5,7 @@ import { CamsSession } from '../../../common/src/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';
+import { CamsError, convertError } from '../common-errors/cams-error';
 
 const invocationContext = new InvocationContext();
 
@@ -45,4 +46,13 @@ export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpR
     ...other,
   };
   return new HttpRequest(requestInit);
+}
+
+export async function getExpectedError<T extends CamsError>(fn: () => unknown): Promise<T> {
+  try {
+    await fn();
+    throw new Error('Expected error was not thrown.');
+  } catch (e: unknown) {
+    return convertError<T>(e);
+  }
 }
