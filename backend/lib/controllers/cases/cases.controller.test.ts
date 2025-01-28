@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CasesController } from './cases.controller';
-import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';
 import {
   mockCamsHttpRequest,
   mockRequestUrl,
@@ -89,7 +89,7 @@ describe('cases controller test', () => {
     const offset = 0;
 
     test('should return an empty array for no matches', async () => {
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -114,11 +114,11 @@ describe('cases controller test', () => {
 
     test('should return a next link when result set is larger than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseBasics, limit + 1);
+      const data = MockData.buildArray(MockData.getSyncedCase, limit + 1);
       const dataMinusHint = [...data];
       dataMinusHint.pop();
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: expect.objectContaining({
@@ -143,9 +143,9 @@ describe('cases controller test', () => {
 
     test('should not return a next link when result set matches limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseBasics, limit);
+      const data = MockData.buildArray(MockData.getSyncedCase, limit);
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -172,9 +172,9 @@ describe('cases controller test', () => {
 
     test('should not return a next link when result set is smaller than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
+      const data = MockData.buildArray(MockData.getSyncedCase, limit - 1);
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -203,9 +203,9 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const limit = 25;
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseBasics, limit - 1);
+      const data = MockData.buildArray(MockData.getSyncedCase, limit - 1);
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -233,11 +233,11 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const nextOffset = '100';
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getCaseBasics, limit + 1);
+      const data = MockData.buildArray(MockData.getSyncedCase, limit + 1);
       const dataMinusHint = [...data];
       dataMinusHint.pop();
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -266,9 +266,9 @@ describe('cases controller test', () => {
 
     test('should return search results for a caseNumber', async () => {
       const caseNumber = '00-00000';
-      const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
+      const data = [MockData.getSyncedCase({ override: { caseId: '999-' + caseNumber } })];
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -293,9 +293,9 @@ describe('cases controller test', () => {
 
     test('should return search results for a divisionCode', async () => {
       const caseNumber = '00-00000';
-      const data = [MockData.getCaseBasics({ override: { caseId: '999-' + caseNumber } })];
+      const data = [MockData.getSyncedCase({ override: { caseId: '999-' + caseNumber } })];
 
-      const expected: CamsHttpResponseInit<ResourceActions<CaseBasics>[]> = expect.objectContaining(
+      const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
@@ -338,7 +338,7 @@ describe('cases controller test', () => {
     test.each(optionsCases)(
       'should properly search for a list of division codes and $caseName',
       async (args) => {
-        const data = [MockData.getCaseBasics()];
+        const data = [MockData.getSyncedCase()];
 
         const divisionCodeOne = 'hello';
         const divisionCodeTwo = 'world';

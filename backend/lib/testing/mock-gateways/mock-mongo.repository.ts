@@ -118,6 +118,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  searchCases(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   create(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
