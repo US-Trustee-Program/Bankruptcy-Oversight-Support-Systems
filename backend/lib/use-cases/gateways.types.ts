@@ -13,7 +13,7 @@ import {
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
 import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
-import { OrdersSearchPredicate } from '../../../common/src/api/search';
+import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
   PrivilegedIdentityUser,
@@ -26,6 +26,7 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
+import { ResourceActions } from '../../../common/src/cams/actions';
 
 export type ReplaceResult = {
   id: string;
@@ -135,6 +136,7 @@ export interface CasesRepository extends Releasable {
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
+  searchCases(predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]>;
 }
 
 export interface OfficesRepository extends Releasable {

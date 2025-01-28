@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import Factory, {
   getAssignmentRepository,
   getCasesGateway,
+  getCasesRepository,
   getOfficesGateway,
 } from '../../factory';
 import { CasesInterface } from './cases.interface';
@@ -10,7 +11,7 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { AssignmentError } from '../case-assignment/assignment.exception';
 import { OfficesGateway } from '../offices/offices.types';
-import { CaseAssignmentRepository } from '../gateways.types';
+import { CaseAssignmentRepository, CasesRepository } from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
@@ -48,20 +49,24 @@ export default class CaseManagement {
   assignmentGateway: CaseAssignmentRepository;
   casesGateway: CasesInterface;
   officesGateway: OfficesGateway;
+  casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
     this.assignmentGateway = getAssignmentRepository(applicationContext);
     this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
     this.officesGateway = getOfficesGateway(applicationContext);
+    this.casesRepository = getCasesRepository(applicationContext);
   }
 
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
-  ): Promise<ResourceActions<CaseBasics>[]> {
+  ): Promise<ResourceActions<SyncedCase>[]> {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
+        //TODO: We need to adjust this. We do not want to search assignments for cases that are being excluded
+        //if(predicate.excludeChildConsolidations)??
         const caseIdSet = new Set<string>();
         for (const user of predicate.assignments) {
           const caseAssignments = await this.assignmentGateway.findAssignmentsByAssignee(user.id);
@@ -77,11 +82,14 @@ export default class CaseManagement {
         }
       }
 
-      const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
-        context,
-        predicate,
-      );
+      // Held for reference purposes
+      // const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
+      //   context,
+      //   predicate,
+      // );
 
+      const cases: ResourceActions<SyncedCase>[] =
+        await this.casesRepository.searchCases(predicate);
       const caseIds = [];
       for (const casesKey in cases) {
         caseIds.push(cases[casesKey].caseId);

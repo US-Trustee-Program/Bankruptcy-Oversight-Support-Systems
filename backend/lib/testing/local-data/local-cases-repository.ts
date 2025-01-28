@@ -10,6 +10,8 @@ import {
 import { CaseHistory } from '../../../../common/src/cams/history';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { SyncedCase } from '../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '../../../../common/dist/api/search';
+import { ResourceActions } from '../../../../common/src/cams/actions';
 
 export class LocalCasesRepository implements CasesRepository {
   caseHistoryContainer: CaseHistory[] = [];
@@ -68,6 +70,10 @@ export class LocalCasesRepository implements CasesRepository {
   }
 
   async syncDxtrCase(_bCase: SyncedCase) {
+    throw new Error('Not implemented.');
+  }
+
+  async searchCases(_predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
     throw new Error('Not implemented.');
   }
 }

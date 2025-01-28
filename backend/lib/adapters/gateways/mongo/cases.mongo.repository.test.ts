@@ -1,9 +1,11 @@
-import { SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import { ResourceActions } from '../../../../../common/src/cams/actions';
+import { SyncedCase } from '../../../../../common/src/cams/cases';
 import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
-import { CaseAssignmentHistory } from '../../../../../common/src/cams/history';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -31,6 +33,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
+  const { and, equals, contains } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -291,37 +294,63 @@ describe('Cases repository', () => {
     );
   });
 
-  test('should createCaseHistory', async () => {
-    const caseHistory: CaseAssignmentHistory = {
-      caseId: caseId1,
-      documentType: 'AUDIT_ASSIGNMENT',
-      updatedOn: new Date().toISOString(),
-      updatedBy: SYSTEM_USER_REFERENCE,
-      before: [],
-      after: [],
+  test('should searchCases should be called without caseIds array in query', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      excludeChildConsolidations: true,
     };
-    const insertOneSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockResolvedValue(crypto.randomUUID().toString());
-    const result = await repo.createCaseHistory(caseHistory);
-    expect(insertOneSpy).toHaveBeenCalledWith(caseHistory);
 
-    expect(result).not.toBeNull();
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+    ];
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue(expectedSyncedCaseArray);
+    const result = await repo.searchCases(predicate);
+    const expectedQuery = QueryBuilder.build(
+      and(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE')),
+    );
+    expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+
+    expect(result).toEqual(expectedSyncedCaseArray);
   });
 
-  test('createCaseHistory should throw error when insertOne throws error', async () => {
-    const caseHistory: CaseAssignmentHistory = {
-      caseId: caseId1,
-      documentType: 'AUDIT_ASSIGNMENT',
-      updatedOn: new Date().toISOString(),
-      updatedBy: SYSTEM_USER_REFERENCE,
-      before: [],
-      after: [],
+  test('should searchCases should be called with caseIds array in query', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      excludeChildConsolidations: true,
+      caseIds: [caseId1, caseId2],
     };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      MockData.getSyncedCase({ override: { caseId: caseId2 } }),
+    ];
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue(expectedSyncedCaseArray);
+    const result = await repo.searchCases(predicate);
+    const expectedQuery = QueryBuilder.build(
+      and(
+        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+        contains<string[]>('caseId', predicate.caseIds),
+      ),
+    );
+    expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+
+    expect(result).toEqual(expectedSyncedCaseArray);
+  });
+
+  test('searchCases should throw error when find throws error', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      excludeChildConsolidations: false,
+    };
+
     jest
-      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-      .mockRejectedValue(new CamsError('COSMOS_DB_REPOSITORY_CASES'));
-    await expect(async () => await repo.createCaseHistory(caseHistory)).rejects.toThrow(
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
+    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
   });
