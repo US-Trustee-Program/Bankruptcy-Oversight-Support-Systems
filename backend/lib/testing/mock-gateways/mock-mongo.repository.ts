@@ -157,4 +157,8 @@ export class MockMongoRepository
   deletePrivilegedIdentityUser(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
+
+  getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
+    throw new Error('Method not implemented.');
+  }
 }

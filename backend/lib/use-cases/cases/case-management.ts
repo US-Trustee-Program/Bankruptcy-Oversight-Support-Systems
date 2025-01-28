@@ -46,13 +46,13 @@ export function getAction<T extends CaseBasics>(
 }
 
 export default class CaseManagement {
-  assignmentGateway: CaseAssignmentRepository;
+  assignmentRepository: CaseAssignmentRepository; //Fix naming
   casesGateway: CasesInterface;
   officesGateway: OfficesGateway;
   casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
-    this.assignmentGateway = getAssignmentRepository(applicationContext);
+    this.assignmentRepository = getAssignmentRepository(applicationContext);
     this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
     this.officesGateway = getOfficesGateway(applicationContext);
     this.casesRepository = getCasesRepository(applicationContext);
@@ -65,11 +65,11 @@ export default class CaseManagement {
   ): Promise<ResourceActions<SyncedCase>[]> {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
-        //TODO: We need to adjust this. We do not want to search assignments for cases that are being excluded
-        //if(predicate.excludeChildConsolidations)??
         const caseIdSet = new Set<string>();
         for (const user of predicate.assignments) {
-          const caseAssignments = await this.assignmentGateway.findAssignmentsByAssignee(user.id);
+          const caseAssignments = await this.assignmentRepository.findAssignmentsByAssignee(
+            user.id,
+          );
           caseAssignments.forEach((caseAssignment) => {
             caseIdSet.add(caseAssignment.caseId);
           });
@@ -87,6 +87,14 @@ export default class CaseManagement {
       //   context,
       //   predicate,
       // );
+      //WIP: getConsolidationChildCases then filterr down predicate.caseIds based on what comes back
+      //then modify the search cases when excludeChildCases = true, to NOCONTAINS any of those case Ids
+      let consolidationChildCaseIds: string[] = [];
+      if (predicate.excludeChildConsolidations === true) {
+        consolidationChildCaseIds =
+          await this.casesRepository.getConsolidationChildCaseIds(predicate);
+        predicate.excludedCaseIds = consolidationChildCaseIds;
+      }
 
       const cases: ResourceActions<SyncedCase>[] =
         await this.casesRepository.searchCases(predicate);
@@ -97,9 +105,9 @@ export default class CaseManagement {
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
       }
-
+      //keep these separate for now
       if (includeAssignments) {
-        const assignmentsMap = await this.assignmentGateway.findAssignmentsByCaseId(caseIds);
+        const assignmentsMap = await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
         for (const casesKey in cases) {
           const assignments = assignmentsMap.get(cases[casesKey].caseId) ?? [];
           cases[casesKey] = {

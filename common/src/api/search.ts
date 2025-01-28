@@ -22,6 +22,7 @@ export type CasesSearchPredicate = SearchPredicate & {
   chapters?: string[];
   assignments?: CamsUserReference[];
   caseIds?: string[];
+  excludedCaseIds?: string[]; //TODO: refactor this
   excludeChildConsolidations?: boolean;
 };
 

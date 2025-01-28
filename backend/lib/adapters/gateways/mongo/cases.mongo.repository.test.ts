@@ -33,7 +33,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
-  const { and, equals, contains } = QueryBuilder;
+  const { and, equals, contains, notContains } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -305,7 +305,7 @@ describe('Cases repository', () => {
     ];
     const findSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(expectedSyncedCaseArray);
+      .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
     const expectedQuery = QueryBuilder.build(
       and(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE')),
@@ -341,6 +341,35 @@ describe('Cases repository', () => {
     expect(result).toEqual(expectedSyncedCaseArray);
   });
 
+  test('should searchCases should be called with caseIds array and excludedCaseIds in query', async () => {
+    const excludedCaseIds = ['111-11-11111', '111-11-11112'];
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      excludeChildConsolidations: true,
+      caseIds: [caseId1, caseId2],
+      excludedCaseIds,
+    };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      MockData.getSyncedCase({ override: { caseId: caseId2 } }),
+    ];
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue(expectedSyncedCaseArray);
+    const result = await repo.searchCases(predicate);
+    const expectedQuery = QueryBuilder.build(
+      and(
+        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+        contains<string[]>('caseId', predicate.caseIds),
+        notContains<string[]>('caseId', predicate.excludedCaseIds),
+      ),
+    );
+    expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+
+    expect(result).toEqual(expectedSyncedCaseArray);
+  });
+
   test('searchCases should throw error when find throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
@@ -353,6 +382,93 @@ describe('Cases repository', () => {
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
+  });
+
+  test('getConsolidationChildCaseIds should throw error when find throws error', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      excludeChildConsolidations: true,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
+    await expect(async () => await repo.getConsolidationChildCaseIds(predicate)).rejects.toThrow(
+      'Unknown CAMS Error',
+    );
+  });
+
+  test('getConsolidationChildCaseIds should return a list of caseIds when given full predicate', async () => {
+    const caseIds = ['111-11-11111', '111-11-11112'];
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      caseIds,
+      divisionCodes: ['111'],
+      excludeChildConsolidations: true,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue([
+        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+      ]);
+    const result = await repo.getConsolidationChildCaseIds(predicate);
+    expect(result).toEqual(caseIds);
+  });
+
+  test('getConsolidationChildCaseIds should return a list of caseIds when predicate missing chapters', async () => {
+    const caseIds = ['111-11-11111', '111-11-11112'];
+    const predicate: CasesSearchPredicate = {
+      caseIds,
+      divisionCodes: ['111'],
+      excludeChildConsolidations: true,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue([
+        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+      ]);
+    const result = await repo.getConsolidationChildCaseIds(predicate);
+    expect(result).toEqual(caseIds);
+  });
+
+  test('getConsolidationChildCaseIds should return a list of caseIds when predicate missing divisionCodes', async () => {
+    const caseIds = ['111-11-11111', '111-11-11112'];
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      caseIds,
+      excludeChildConsolidations: true,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue([
+        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+      ]);
+    const result = await repo.getConsolidationChildCaseIds(predicate);
+    expect(result).toEqual(caseIds);
+  });
+
+  test('getConsolidationChildCaseIds should return a list of caseIds when missing caseIds', async () => {
+    const caseIds = ['111-11-11111', '111-11-11112'];
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      divisionCodes: ['111'],
+      excludeChildConsolidations: true,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .mockResolvedValue([
+        MockData.getSyncedCase({ override: { caseId: caseIds[0] } }),
+        MockData.getSyncedCase({ override: { caseId: caseIds[1] } }),
+      ]);
+    const result = await repo.getConsolidationChildCaseIds(predicate);
+    expect(result).toEqual(caseIds);
   });
 
   test('should persist the case to sync', async () => {
