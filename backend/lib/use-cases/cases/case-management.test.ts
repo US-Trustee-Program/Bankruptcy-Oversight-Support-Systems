@@ -20,6 +20,8 @@ import { buildOfficeCode } from '../offices/offices';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TransferOrder } from '../../../../common/src/cams/orders';
 import { ConsolidationTo } from '../../../../common/src/cams/events';
+import { CasesSyncMeta } from './cases.interface';
+import { CasesSyncState } from '../gateways.types';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -82,6 +84,7 @@ describe('Case management tests', () => {
   };
   let mockTransfers: TransferOrder[];
   let mockConsolidations: ConsolidationTo[];
+
   beforeEach(() => {
     mockTransfers = MockData.buildArray(MockData.getTransferOrder, 2);
     mockConsolidations = [MockData.getConsolidationTo()];
@@ -90,6 +93,7 @@ describe('Case management tests', () => {
       .spyOn(MockMongoRepository.prototype, 'getConsolidation')
       .mockResolvedValue(mockConsolidations);
   });
+
   beforeAll(async () => {
     applicationContext = await createMockApplicationContext({
       env: {
@@ -279,6 +283,15 @@ describe('Case management tests', () => {
       const actual = await useCase.getCaseSummary(context, '000-00-00000');
       expect(actual).toEqual(caseSummary);
     });
+
+    test('should throw CamsError', async () => {
+      const error = new Error('some error');
+      jest.spyOn(useCase.casesGateway, 'getCaseSummary').mockRejectedValue(error);
+      const context = await createMockApplicationContext();
+      await expect(useCase.getCaseSummary(context, '000-00-00000')).rejects.toThrow(
+        new UnknownError('test-module'),
+      );
+    });
   });
 
   describe('searchCases tests', () => {
@@ -387,6 +400,73 @@ describe('Case management tests', () => {
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         error,
       );
+    });
+  });
+
+  describe('getDxtrCase tests', () => {
+    test('should return CaseDetail without debtor attorney', async () => {
+      const mockCaseDetails = MockData.getCaseDetail();
+      jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      const context = await createMockApplicationContext();
+      const actual = await useCase.getDxtrCase(context, '000-00-00000');
+      const expected = {
+        ...mockCaseDetails,
+        debtorAttorney: undefined,
+      };
+      expect(actual).toEqual(expected);
+    });
+
+    test('should throw CamsError', async () => {
+      const error = new Error('some error');
+      jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockRejectedValue(error);
+      const context = await createMockApplicationContext();
+      await expect(useCase.getDxtrCase(context, '000-00-00000')).rejects.toThrow(
+        new UnknownError('test-module'),
+      );
+    });
+  });
+
+  describe('getCaseIdsToSync tests', () => {
+    test('should return and empty list of caseIds if no caseIds are found.', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
+      const context = await createMockApplicationContext();
+      const result = await useCase.getCaseIdsToSync(context);
+      expect(result).toEqual([]);
+    });
+
+    test('should return caseIds to sync with CAMS', async () => {
+      const gatewayResponse: CasesSyncMeta = {
+        caseIds: MockData.buildArray(MockData.randomCaseId, 3),
+        lastTxId: '1000',
+      };
+
+      const getIdSpy = jest
+        .spyOn(useCase.casesGateway, 'getCaseIdsAndMaxTxIdToSync')
+        .mockResolvedValue(gatewayResponse);
+
+      const syncState: CasesSyncState = {
+        documentType: 'CASES_SYNC_STATE',
+        txId: '0',
+      };
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
+      const upsertSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockImplementation(jest.fn());
+
+      const context = await createMockApplicationContext();
+      const actual = await useCase.getCaseIdsToSync(context);
+
+      expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), syncState.txId);
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ txId: gatewayResponse.lastTxId }),
+      );
+      expect(actual).toEqual(gatewayResponse.caseIds);
+    });
+
+    test('should throw CamsError', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('some error'));
+      const context = await createMockApplicationContext();
+      await expect(useCase.getCaseIdsToSync(context)).rejects.toThrow(UnknownError);
     });
   });
 });
