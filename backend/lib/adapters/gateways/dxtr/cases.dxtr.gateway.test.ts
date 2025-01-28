@@ -755,4 +755,33 @@ describe('Test DXTR Gateway', () => {
       ).rejects.toThrow(errorMessage);
     });
   });
+
+  describe('getCaseIdsAndMaxTxIdToSync tests', () => {
+    test('should return array of case ids and a max tx id', async () => {
+      const mockRecords = [
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 10 },
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 9 },
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 8 },
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 7 },
+      ];
+      const mockResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: mockRecords,
+        },
+        message: '',
+      };
+      const expectedReturn = {
+        caseIds: mockRecords.map((rec) => rec.caseId),
+        lastTxId: '10',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(mockResults);
+      });
+
+      const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
+      expect(result).toEqual(expectedReturn);
+    });
+  });
 });

@@ -153,7 +153,10 @@ export interface UsersRepository extends Releasable {
   deletePrivilegedIdentityUser(id: string): Promise<void>;
 }
 
-export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';
+export type RuntimeStateDocumentType =
+  | 'ORDERS_SYNC_STATE'
+  | 'OFFICE_STAFF_SYNC_STATE'
+  | 'CASES_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -162,6 +165,11 @@ export type RuntimeState = {
 
 export type OrderSyncState = RuntimeState & {
   documentType: 'ORDERS_SYNC_STATE';
+  txId: string;
+};
+
+export type CasesSyncState = RuntimeState & {
+  documentType: 'CASES_SYNC_STATE';
   txId: string;
 };
 
