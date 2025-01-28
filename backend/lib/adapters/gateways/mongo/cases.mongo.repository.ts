@@ -250,6 +250,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     const query = QueryBuilder.build(and(...conditions));
+    // TODO: Add skip and limit to mongo query builder.
+    // ie adapter.find(query).skip(25).limit(25);
     return await this.getAdapter<SyncedCase>().find(query);
   }
 }
