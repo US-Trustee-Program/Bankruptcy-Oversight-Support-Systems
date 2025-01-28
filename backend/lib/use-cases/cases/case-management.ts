@@ -161,6 +161,28 @@ export default class CaseManagement {
     }
   }
 
+  public async getCaseIdsToSync(context: ApplicationContext): Promise<string[]> {
+    const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
+
+    try {
+      const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
+      if (!syncState) {
+        // This should only happen until we run the migration.
+        return [];
+      }
+
+      const results = await this.casesGateway.getCaseIdsAndMaxTxIdToSync(context, syncState.txId);
+
+      if (results.lastTxId > syncState.txId) {
+        await runtimeStateRepo.upsert({ ...syncState, txId: results.lastTxId });
+      }
+
+      return results.caseIds;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   public async syncCase(context: ApplicationContext, bCase: DxtrCase) {
     try {
       const casesRepo = Factory.getCasesRepository(context);

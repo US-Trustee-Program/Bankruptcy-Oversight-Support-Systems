@@ -1,5 +1,5 @@
 import * as mssql from 'mssql';
-import { CasesInterface } from '../../../use-cases/cases/cases.interface';
+import { CasesInterface, CasesSyncMeta } from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
@@ -23,12 +23,15 @@ const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
 const orderToTransferCode = 'CTO';
 
+type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
+
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
   const divisionCode = parts[0];
   const caseNumber = `${parts[1]}-${parts[2]}`;
   return { divisionCode, caseNumber };
 }
+
 export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
@@ -374,6 +377,59 @@ export default class CasesDxtrGateway implements CasesInterface {
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
     bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
+  }
+
+  async getCaseIdsAndMaxTxIdToSync(
+    context: ApplicationContext,
+    lastTxId: string,
+  ): Promise<CasesSyncMeta> {
+    const input: DbTableFieldSpec[] = [];
+
+    input.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: parseInt(lastTxId),
+    });
+
+    const query = `
+      SELECT
+        CONCAT(C.CS_DIV, '-', C.CASE_ID) AS caseId,
+        MAX(T.TX_ID) as maxTxId
+      FROM AO_TX T
+      JOIN AO_CS C ON C.CS_CASEID = T.CS_CASEID AND C.COURT_ID = T.COURT_ID
+      WHERE T.TX_ID > @txId
+      GROUP BY C.CS_DIV, C.CASE_ID
+      ORDER BY MAX(T.TX_ID) DESC
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    const results = handleQueryResult<RawCaseIdAndMaxId[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.caseIdsAndMaxTxIdCallback,
+    );
+
+    let meta: CasesSyncMeta;
+    if (results.length) {
+      meta = {
+        caseIds: results.map((bCase) => bCase.caseId),
+        lastTxId: results[0].maxTxId.toString(),
+      };
+    } else {
+      meta = {
+        caseIds: [],
+        lastTxId,
+      };
+    }
+
+    return meta;
   }
 
   private async queryCase(
@@ -747,5 +803,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
+  }
+
+  caseIdsAndMaxTxIdCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
+
+    return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
   }
 }

@@ -1,8 +1,8 @@
 import { InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { DxtrCaseChangeEvent } from './import-pipeline-types';
+import PipelinesCommmon from '../pipelines-common';
 
 const MODULE_NAME = 'IMPORT-PIPELINE-CAMS-ACTIVITIES';
 
@@ -19,8 +19,7 @@ async function loadCase(
   event: DxtrCaseChangeEvent,
   invocationContext: InvocationContext,
 ): Promise<DxtrCaseChangeEvent> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
+  const context = await PipelinesCommmon.getApplicationContext(invocationContext);
 
   if (event.error) return event;
   if (!event.bCase) {
@@ -37,7 +36,7 @@ async function loadCase(
       MODULE_NAME,
       `Failed while syncing case ${event.caseId}.`,
     );
-    logger.camsError(error);
+    context.logger.camsError(error);
     event.error = error;
   }
 

@@ -13,6 +13,7 @@ import {
   CaseAssignmentRepository,
   CaseNotesRepository,
   CasesRepository,
+  CasesSyncState,
   ConsolidationOrdersRepository,
   OfficesRepository,
   OfficeStaffSyncState,
@@ -60,6 +61,7 @@ let acmsGateway: AcmsGateway;
 let idpApiGateway: UserGroupGateway;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
+let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let usersRepository: UsersRepository;
 
@@ -204,6 +206,15 @@ export const getOfficeStaffSyncStateRepo = (
   return officeStaffSyncStateRepo;
 };
 
+export const getCasesSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<CasesSyncState> => {
+  if (!casesSyncStateRepo) {
+    casesSyncStateRepo = getRuntimeStateRepository<CasesSyncState>(context);
+  }
+  return casesSyncStateRepo;
+};
+
 export const getUsersRepository = (context: ApplicationContext): UsersRepository => {
   if (context.config.get('dbMock')) {
     return MockMongoRepository.getInstance(context);
@@ -291,6 +302,7 @@ export const Factory = {
   getRuntimeStateRepository,
   getOrderSyncStateRepo,
   getOfficeStaffSyncStateRepo,
+  getCasesSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,
   getUserSessionCacheRepository,
