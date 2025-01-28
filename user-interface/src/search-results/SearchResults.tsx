@@ -54,9 +54,13 @@ export function SearchResults(props: SearchResultsProps) {
     row: Row,
     ...otherProps
   } = props;
+  const basePredicate: CasesSearchPredicate = {
+    excludeChildConsolidations: true,
+  };
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
+    ...basePredicate,
     ...searchPredicateProp,
   });
   const [isSearching, setIsSearching] = useState<boolean>(false);

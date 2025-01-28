@@ -245,6 +245,7 @@ describe('search screen', () => {
       caseNumber,
       limit: 25,
       offset: 0,
+      excludeChildConsolidations: false,
     };
 
     renderWithoutProps();
