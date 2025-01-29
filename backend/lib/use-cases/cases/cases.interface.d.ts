@@ -7,6 +7,13 @@ export type CasesSyncMeta = {
   lastTxId: string;
 };
 
+type TransactionIdRangeForDate = {
+  findDate: string;
+  found: boolean;
+  end?: number;
+  start?: number;
+};
+
 export interface CasesInterface {
   getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail>;
 
@@ -23,4 +30,9 @@ export interface CasesInterface {
     applicationContext: ApplicationContext,
     lastTxId: string,
   ): Promise<CasesSyncMeta>;
+
+  findTransactionIdRangeForDate(
+    context: ApplicationContext,
+    findDate: string,
+  ): Promise<TransactionIdRangeForDate>;
 }
