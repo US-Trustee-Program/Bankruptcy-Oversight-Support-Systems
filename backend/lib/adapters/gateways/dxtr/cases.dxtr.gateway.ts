@@ -1,5 +1,9 @@
 import * as mssql from 'mssql';
-import { CasesInterface, CasesSyncMeta } from '../../../use-cases/cases/cases.interface';
+import {
+  CasesInterface,
+  CasesSyncMeta,
+  TransactionIdRangeForDate,
+} from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
@@ -22,6 +26,13 @@ const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
 const orderToTransferCode = 'CTO';
+
+const NOT_FOUND = -1;
+
+enum BOUND {
+  LOWER = 'LOWER',
+  UPPER = 'UPPER',
+}
 
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 
@@ -215,6 +226,107 @@ export default class CasesDxtrGateway implements CasesInterface {
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
+  }
+
+  public async findTransactionIdRangeForDate(
+    context: ApplicationContext,
+    findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
+    const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX__DELETEME ORDER BY TX_ID DESC';
+    const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
+    const maxTxId: number = parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
+
+    const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX__DELETEME ORDER BY TX_ID ASC';
+    const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
+    const minTxId: number = parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
+
+    const upperBound = await this.bisectBound(context, minTxId, maxTxId, findDate, BOUND.UPPER);
+    const lowerBound = upperBound
+      ? await this.bisectBound(context, minTxId, upperBound, findDate, BOUND.LOWER)
+      : undefined;
+
+    return {
+      findDate,
+      found: !!lowerBound && !!upperBound,
+      upperBound,
+      lowerBound,
+    };
+  }
+
+  private async bisectBound(
+    context: ApplicationContext,
+    minTxId: number,
+    maxTxId: number,
+    findDate: string,
+    bound: BOUND,
+  ) {
+    console.log('bisectBound', minTxId, maxTxId, findDate, bound);
+    let lastTxId;
+    let dMax = maxTxId;
+    let dMin = minTxId;
+
+    while (dMax - dMin > 0) {
+      const txId = await this.bisect(context, dMin, dMax, findDate, bound === BOUND.UPPER);
+
+      if (txId === NOT_FOUND) {
+        dMax = bound === BOUND.UPPER ? lastTxId : dMax;
+        dMin = bound === BOUND.LOWER ? lastTxId : dMin;
+      } else {
+        dMin = bound === BOUND.UPPER ? txId : dMin;
+        dMax = bound === BOUND.LOWER ? txId : dMax;
+        lastTxId = txId;
+      }
+    }
+    // TODO: Why can't we use lastTxId when searching for the lower bound when a single TX_ID exists for a given date?
+    return dMax;
+  }
+
+  private async bisect(
+    context: ApplicationContext,
+    minTxId: number,
+    maxTxId: number,
+    findDate: string,
+    returnLowerBound = true,
+  ) {
+    const midTxId = Math.floor((maxTxId - minTxId) / 2) + minTxId;
+    console.log('bisect', minTxId, maxTxId, findDate, midTxId);
+    const params: DbTableFieldSpec[] = [
+      {
+        name: `midTxId`,
+        type: mssql.Int,
+        value: midTxId,
+      },
+    ];
+
+    const txDateQuery =
+      "SELECT FORMAT(TX_DATE, 'yyyy-MM-dd') AS TX_DATE FROM AO_TX__DELETEME WHERE TX_ID=@midTxId";
+    const { results } = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      txDateQuery,
+      params,
+    );
+
+    const answer = results['recordset'][0];
+
+    // Handle any gap in the transaction ids.
+    if (!answer) {
+      if (returnLowerBound) {
+        return await this.bisect(context, minTxId, midTxId, findDate);
+      } else {
+        return await this.bisect(context, midTxId, maxTxId, findDate);
+      }
+    }
+
+    const txDate = answer['TX_DATE'];
+
+    if (findDate === txDate) {
+      return midTxId;
+    } else if (midTxId - minTxId <= 1) {
+      return NOT_FOUND;
+    }
+    if (findDate > txDate) return await this.bisect(context, midTxId, maxTxId, findDate);
+    if (findDate < txDate) return await this.bisect(context, minTxId, midTxId, findDate);
   }
 
   public async searchCases(
