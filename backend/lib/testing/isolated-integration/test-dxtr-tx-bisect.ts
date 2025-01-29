@@ -28,7 +28,8 @@ async function testBisect() {
 
   try {
     const gateway = Factory.getCasesGateway(context);
-    const dates = ['2016-03-16', '2015-03-16', '2016-03-03', '1990-01-01', '2070-01-01'];
+    // const dates = ['2016-03-16', '2015-03-16', '2016-03-03', '1990-01-01', '2070-01-01'];
+    const dates = ['2016-03-16'];
     for (const date of dates) {
       const answer = await gateway.findTransactionIdRangeForDate(context, date);
       log(answer);

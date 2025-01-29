@@ -272,13 +272,12 @@ export default class CasesDxtrGateway implements CasesInterface {
         dMax = bound === BOUND.UPPER ? lastTxId : dMax;
         dMin = bound === BOUND.LOWER ? lastTxId : dMin;
       } else {
-        dMin = bound === BOUND.UPPER ? txId : dMin;
-        dMax = bound === BOUND.LOWER ? txId : dMax;
         lastTxId = txId;
+        dMin = bound === BOUND.UPPER ? txId + 1 : dMin;
+        dMax = bound === BOUND.LOWER ? txId - 1 : dMax;
       }
     }
-    // TODO: Why can't we use lastTxId when searching for the lower bound when a single TX_ID exists for a given date?
-    return dMax;
+    return lastTxId;
   }
 
   private async bisect(
