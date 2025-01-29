@@ -1,4 +1,8 @@
-import { CasesInterface, CasesSyncMeta } from '../../use-cases/cases/cases.interface';
+import {
+  CasesInterface,
+  CasesSyncMeta,
+  TransactionIdRangeForDate,
+} from '../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
@@ -124,6 +128,13 @@ export class CasesLocalGateway implements CasesInterface {
     _applicationContext: ApplicationContext,
     _lastTxId: string,
   ): Promise<CasesSyncMeta> {
+    throw new Error('Not implemented');
+  }
+
+  public async findTransactionIdRangeForDate(
+    _context: ApplicationContext,
+    _findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
     throw new Error('Not implemented');
   }
 }
