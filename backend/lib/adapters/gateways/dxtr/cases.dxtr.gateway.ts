@@ -1,5 +1,9 @@
 import * as mssql from 'mssql';
-import { CasesInterface, CasesSyncMeta } from '../../../use-cases/cases/cases.interface';
+import {
+  CasesInterface,
+  CasesSyncMeta,
+  TransactionIdRangeForDate,
+} from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
@@ -22,6 +26,8 @@ const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
 const orderToTransferCode = 'CTO';
+
+const NOT_FOUND = -1;
 
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 
@@ -215,6 +221,85 @@ export default class CasesDxtrGateway implements CasesInterface {
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
+  }
+
+  public async findTransactionIdRangeForDate(
+    context: ApplicationContext,
+    findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
+    const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+    const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
+    const maxTxId: number = parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
+
+    const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX ORDER BY TX_ID ASC';
+    const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
+    const minTxId: number = parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
+
+    const startTxId = await this.bisectBound(context, minTxId, maxTxId, findDate, 'START');
+    const endTxId =
+      startTxId !== NOT_FOUND
+        ? await this.bisectBound(context, startTxId, maxTxId, findDate, 'END')
+        : undefined;
+
+    return {
+      findDate,
+      found: startTxId !== NOT_FOUND && endTxId !== NOT_FOUND,
+      end: endTxId === NOT_FOUND ? undefined : endTxId,
+      start: startTxId === NOT_FOUND ? undefined : startTxId,
+    };
+  }
+
+  private async bisectBound(
+    context: ApplicationContext,
+    minTxId: number,
+    maxTxId: number,
+    findDate: string,
+    direction: 'START' | 'END',
+  ) {
+    let dMinTxId = minTxId;
+    let dMaxTxId = maxTxId;
+    let txId = NOT_FOUND;
+
+    while (dMinTxId <= dMaxTxId) {
+      const midTxId = Math.floor((dMaxTxId - dMinTxId + 1) / 2) + dMinTxId;
+
+      const params: DbTableFieldSpec[] = [
+        {
+          name: `midTxId`,
+          type: mssql.Int,
+          value: midTxId,
+        },
+      ];
+
+      const txDateQuery =
+        "SELECT FORMAT(TX_DATE, 'yyyy-MM-dd') AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId";
+      const { results } = await executeQuery(
+        context,
+        context.config.dxtrDbConfig,
+        txDateQuery,
+        params,
+      );
+
+      const answer = results['recordset'][0];
+
+      if (!answer) throw new Error('Found gap in the transaction IDs');
+
+      const txDate = answer['TX_DATE'];
+
+      if (txDate < findDate) {
+        dMinTxId = midTxId + 1;
+      } else if (txDate > findDate) {
+        dMaxTxId = midTxId - 1;
+      } else {
+        txId = midTxId;
+        if (direction === 'START') {
+          dMaxTxId = midTxId - 1;
+        } else {
+          dMinTxId = midTxId + 1;
+        }
+      }
+    }
+    return txId;
   }
 
   public async searchCases(
