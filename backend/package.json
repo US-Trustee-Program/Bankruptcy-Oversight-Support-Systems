@@ -71,6 +71,7 @@
     "dependency-cruiser:ci": "npx depcruise --output-type err-long function-apps/api/attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib ",
     "itest:okta-group-api": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/test-okta-group-api.ts",
     "itest:acms-migration": "CAMS_LOGIN_PROVIDER=mock npx ts-node lib/testing/isolated-integration/test-acms-migration.ts",
-    "itest:export-office-csv": "CAMS_LOGIN_PROVIDER=okta npx ts-node ../lib/testing/isolated-integration/export-office-csv.ts"
+    "itest:export-office-csv": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/export-office-csv.ts",
+    "itest:dxtr-tx-bisect": "npx ts-node lib/testing/isolated-integration/test-dxtr-tx-bisect.ts"
   }
 }
