@@ -18,7 +18,7 @@ on:
       apiFunctionName:
         required: true
         type: string
-      migrationFunctionName:
+      dataflowsFunctionName:
         required: true
         type: string
       azResourceGrpAppEncrypted:
@@ -45,7 +45,7 @@ jobs:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
-      migrationFunctionName: ${{ inputs.migrationFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
     secrets: inherit # pragma: allowlist secret
 
@@ -113,7 +113,7 @@ jobs:
           --src ./${{ inputs.apiFunctionName }}.zip \
           --slotName ${{ inputs.slotName }}
 
-  deploy-migration-slot:
+  deploy-dataflows-slot:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
@@ -122,7 +122,7 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4.1.7
         with:
-          name: ${{ inputs.migrationFunctionName }}-build
+          name: ${{ inputs.dataflowsFunctionName }}-build
 
       - uses: azure/login@v2
         with:
@@ -137,18 +137,18 @@ jobs:
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Function Migration slot
-        id: deploy-migration-slot-step
+        id: deploy-dataflows-slot-step
         run: |
-          az functionapp start -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --slot ${{ inputs.slotName }}
+          az functionapp start -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }}
 
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.migrationFunctionName }} \
-          --src ./${{ inputs.migrationFunctionName }}.zip \
+          -n ${{ inputs.dataflowsFunctionName }} \
+          --src ./${{ inputs.dataflowsFunctionName }}.zip \
           --slotName ${{ inputs.slotName }}
 
   endpoint-test-application-slot:
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
@@ -162,7 +162,12 @@ jobs:
 
   execute-e2e-test:
     needs:
-      [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, endpoint-test-application-slot]
+      [
+        deploy-webapp-slot,
+        deploy-api-slot,
+        deploy-dataflows-slot,
+        endpoint-test-application-slot,
+      ]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiFunctionName: ${{ inputs.apiFunctionName }}
@@ -178,7 +183,13 @@ jobs:
   swap-webapp-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, execute-e2e-test]
+    needs:
+      [
+        deploy-webapp-slot,
+        deploy-api-slot,
+        deploy-dataflows-slot,
+        execute-e2e-test,
+      ]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
@@ -202,7 +213,13 @@ jobs:
   swap-nodeapi-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, execute-e2e-test]
+    needs:
+      [
+        deploy-webapp-slot,
+        deploy-api-slot,
+        deploy-dataflows-slot,
+        execute-e2e-test,
+      ]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       apiFunctionName: ${{ inputs.apiFunctionName }}
@@ -223,10 +240,16 @@ jobs:
           az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiFunctionName }} -g ${{ steps.rgApp.outputs.out }}
           az webapp traffic-routing clear --name ${{ env.apiFunctionName }} -g ${{ steps.rgApp.outputs.out }}
 
-  swap-migration-app-deployment-slot:
+  swap-dataflows-app-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, execute-e2e-test]
+    needs:
+      [
+        deploy-webapp-slot,
+        deploy-api-slot,
+        deploy-dataflows-slot,
+        execute-e2e-test,
+      ]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       slotName: ${{ inputs.slotName }}
@@ -243,16 +266,16 @@ jobs:
           in: ${{ inputs.azResourceGrpAppEncrypted }}
       - name: Swap Deployment Slot
         run: |
-          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ inputs.migrationFunctionName }} -g ${{ steps.rgApp.outputs.out }}
-          az webapp traffic-routing clear --name ${{ inputs.migrationFunctionName }} -g ${{ steps.rgApp.outputs.out }}
-          az functionapp stop -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --slot ${{ inputs.slotName }}
+          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ inputs.dataflowsFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing clear --name ${{ inputs.dataflowsFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp stop -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }}
 
   endpoint-test-application-post-swap:
     needs:
       [
         swap-nodeapi-deployment-slot,
         swap-webapp-deployment-slot,
-        swap-migration-app-deployment-slot,
+        swap-dataflows-app-deployment-slot,
       ]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
@@ -289,4 +312,4 @@ jobs:
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
           az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ inputs.migrationFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

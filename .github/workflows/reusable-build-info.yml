@@ -28,9 +28,9 @@ on:
       environmentHash:
         description: ''
         value: ${{ jobs.build-info.outputs.environmentHash }}
-      migrationFunctionName:
+      dataflowsFunctionName:
         description: ''
-        value: ${{ jobs.build-info.outputs.migrationFunctionName }}
+        value: ${{ jobs.build-info.outputs.dataflowsFunctionName }}
       slotName:
         description: ''
         value: ${{ jobs.build-info.outputs.slotName }}
@@ -57,7 +57,7 @@ jobs:
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiFunctionName: ${{ steps.build-info.outputs.apiFunctionName }}
-      migrationFunctionName: ${{ steps.build-info.outputs.migrationFunctionName }}
+      dataflowsFunctionName: ${{ steps.build-info.outputs.dataflowsFunctionName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
@@ -105,8 +105,8 @@ jobs:
           echo "Webapp Name: $webappName"
           apiFunctionName="${stackName}-node-api"
           echo "Api Function Name: $apiFunctionName"
-          migrationFunctionName="${stackName}-migration"
-          echo "Migration Function Name: $migrationFunctionName"
+          dataflowsFunctionName="${stackName}-dataflows"
+          echo "Migration Function Name: $dataflowsFunctionName"
 
           # Deployment flags
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
@@ -117,7 +117,7 @@ jobs:
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
           echo "apiFunctionName=${apiFunctionName}" >> $GITHUB_OUTPUT
-          echo "migrationFunctionName=${migrationFunctionName}" >> $GITHUB_OUTPUT
+          echo "dataflowsFunctionName=${dataflowsFunctionName}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main

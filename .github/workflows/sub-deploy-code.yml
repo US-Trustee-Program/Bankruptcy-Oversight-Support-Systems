@@ -18,7 +18,7 @@ on:
       apiFunctionName:
         required: true
         type: string
-      migrationFunctionName:
+      dataflowsFunctionName:
         required: true
         type: string
       azResourceGrpAppEncrypted:
@@ -89,7 +89,7 @@ jobs:
           -n ${{ inputs.apiFunctionName }} \
           --src ./${{ inputs.apiFunctionName }}.zip
 
-  deploy-migration-app:
+  deploy-dataflows-app:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
@@ -98,7 +98,7 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4.1.7
         with:
-          name: ${{ inputs.migrationFunctionName }}-build
+          name: ${{ inputs.dataflowsFunctionName }}-build
 
       - uses: azure/login@v2
         with:
@@ -113,16 +113,16 @@ jobs:
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
       - name: Deploy Azure Function Migration App
-        id: deploy-migration-app-step
+        id: deploy-dataflows-app-step
         run: |
           sleep 30 &&
           ./ops/scripts/pipeline/az-func-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.migrationFunctionName }} \
-          --src ./${{ inputs.migrationFunctionName }}.zip
+          -n ${{ inputs.dataflowsFunctionName }} \
+          --src ./${{ inputs.dataflowsFunctionName }}.zip
 
-  endpoint-test-application: # TODO: healthcheck/endpoint test on new migration function app?
-    needs: [deploy-webapp, deploy-api, deploy-migration-app]
+  endpoint-test-application: # TODO: healthcheck/endpoint test on new dataflows function app?
+    needs: [deploy-webapp, deploy-api, deploy-dataflows-app]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}

@@ -1,7 +1,7 @@
-import { importPipelineSetup } from './import/import-pipeline';
+import { importDataflowSetup } from './import/import-dataflow';
 // import { migrationSetup } from './migration/migration';
 
-importPipelineSetup();
+importDataflowSetup();
 
 // TODO: Renable setup so migrations can be executed.
 // migrationSetup();

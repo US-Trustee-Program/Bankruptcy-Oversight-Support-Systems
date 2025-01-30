@@ -9,7 +9,7 @@ on:
       apiFunctionName:
         required: true
         type: string
-      migrationFunctionName:
+      dataflowsFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -44,7 +44,7 @@ jobs:
     with:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
-      migrationFunctionName: ${{ inputs.migrationFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
