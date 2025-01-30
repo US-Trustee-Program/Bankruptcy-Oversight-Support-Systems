@@ -4,7 +4,7 @@
 # Prerequisite:
 #   - curl
 #   - Azure CLI
-# Usage: az-slot-start-stop-operations.sh -g <resource_group_name:str> --apiFunctionName <apiFunctionName:str> --migrationFunctionName <migrationFunctionName:str> --webappName <webapp_name:str> --slotName <slot_name:str> --operation <start|stop>
+# Usage: az-slot-start-stop-operations.sh -g <resource_group_name:str> --apiFunctionName <apiFunctionName:str> --dataflowsFunctionName <dataflowsFunctionName:str> --webappName <webapp_name:str> --slotName <slot_name:str> --operation <start|stop>
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
@@ -23,8 +23,8 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --migrationFunctionName)
-        migration_function_name="${2}"
+    --dataflowsFunctionName)
+        dataflows_function_name="${2}"
         shift 2
         ;;
 
@@ -53,7 +53,7 @@ if [[ ${operation} == 'stop' ]]; then
     echo "Stopping Node API ${slot_name} slot..."
     az functionapp stop -g "${app_rg}" --name "${api_function_name}" --slot "${slot_name}"
     echo "Stopping Migration Function ${slot_name} slot..."
-    az functionapp stop -g "${app_rg}" --name "${migration_function_name}" --slot "${slot_name}"
+    az functionapp stop -g "${app_rg}" --name "${dataflows_function_name}" --slot "${slot_name}"
     echo "Stopping Webapp ${slot_name} slot..."
     az webapp stop -g "${app_rg}" --name "${webapp_name}" --slot "${slot_name}"
 
@@ -61,7 +61,7 @@ elif [[ ${operation} == 'start' ]]; then
     echo "Starting Node API ${slot_name} slot..."
     az functionapp start -g "${app_rg}" --name "${api_function_name}" --slot "${slot_name}"
     echo "Stopping Migration Function ${slot_name} slot..."
-    az functionapp start -g "${app_rg}" --name "${migration_function_name}" --slot "${slot_name}"
+    az functionapp start -g "${app_rg}" --name "${dataflows_function_name}" --slot "${slot_name}"
     echo "Starting Webapp ${slot_name} slot..."
     az webapp start -g "${app_rg}" --name "${webapp_name}" --slot "${slot_name}"
 

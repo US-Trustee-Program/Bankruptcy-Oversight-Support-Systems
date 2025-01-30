@@ -4,11 +4,11 @@ import { app, HttpRequest, HttpResponse, InvocationContext, Timer } from '@azure
 
 import CamsActivities from './cams-activities';
 import DxtrActivities from './dxtr-activities';
-import { DxtrCaseChangeEvent } from './import-pipeline-types';
+import { DxtrCaseChangeEvent } from './import-dataflow-types';
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
-const MODULE_NAME = 'IMPORT_PIPELINE';
+const MODULE_NAME = 'IMPORT_DATA_FLOW';
 
 const EXPORT_CASE_CHANGE_EVENTS = 'exportCaseChangeEvents';
 const EXPORT_AND_LOAD_CASE = 'exportCaseAndLoadCase';
@@ -52,13 +52,13 @@ function* exportAndLoadCase(context: OrchestrationContext) {
 }
 
 /**
- * importPipelineHttpTrigger
+ * importDataflowHttpTrigger
  *
  * @param request
  * @param context
  * @returns
  */
-async function importPipelineHttpTrigger(
+async function importDataflowHttpTrigger(
   request: HttpRequest,
   context: InvocationContext,
 ): Promise<HttpResponse> {
@@ -76,20 +76,20 @@ async function importPipelineHttpTrigger(
 }
 
 /**
- * importPipelineTimerTrigger
+ * importDataflowTimerTrigger
  *
  * @param _myTimer
  * @param context
  */
-async function importPipelineTimerTrigger(_myTimer: Timer, context: InvocationContext) {
+async function importDataflowTimerTrigger(_myTimer: Timer, context: InvocationContext) {
   const client = df.getClient(context);
   const _instanceId: string = await client.startNew(EXPORT_CASE_CHANGE_EVENTS);
 }
 
 /**
- * importPipelineSetup
+ * importDataflowSetup
  */
-export function importPipelineSetup() {
+export function importDataflowSetup() {
   // Register orchestrations
   df.app.orchestration(EXPORT_CASE_CHANGE_EVENTS, exportCaseChangeEvents);
   df.app.orchestration(EXPORT_AND_LOAD_CASE, exportAndLoadCase);
@@ -108,7 +108,7 @@ export function importPipelineSetup() {
   });
 
   app.timer('exportChangeEventsTimerTrigger', {
-    handler: importPipelineTimerTrigger,
+    handler: importDataflowTimerTrigger,
     schedule: '0 30 9 * * *',
   });
 
@@ -116,6 +116,6 @@ export function importPipelineSetup() {
   app.http('exportChangeEventsHttpTrigger', {
     route: 'changeevent',
     extraInputs: [df.input.durableClient()],
-    handler: importPipelineHttpTrigger,
+    handler: importDataflowHttpTrigger,
   });
 }
