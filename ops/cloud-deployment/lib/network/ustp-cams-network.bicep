@@ -22,11 +22,11 @@ param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
 
 param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
-param migrationFunctionName string = '${stackName}-migration'
+param dataflowsFunctionName string = '${stackName}-dataflows'
 
-param migrationSubnetAddressPrefix string = '10.10.15.0/28'
+param dataflowsSubnetAddressPrefix string = '10.10.15.0/28'
 
-param migrationSubnetName string = 'snet-${migrationFunctionName}'
+param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
 
 param webappName string = '${stackName}-webapp'
 
@@ -144,13 +144,13 @@ module apiFunctionSubnet './subnet.bicep' = {
   ]
 }
 
-module migrationFunctionSubnet './subnet.bicep' = {
-  name: '${migrationFunctionName}-subnet-module'
+module dataflowsFunctionSubnet './subnet.bicep' = {
+  name: '${dataflowsFunctionName}-subnet-module'
   scope: resourceGroup(networkResourceGroupName)
   params: {
     virtualNetworkName: virtualNetworkName
-    subnetName: migrationSubnetName
-    subnetAddressPrefix: migrationSubnetAddressPrefix
+    subnetName: dataflowsSubnetName
+    subnetAddressPrefix: dataflowsSubnetAddressPrefix
     subnetServiceEndpoints: [
       {
         service: 'Microsoft.Sql'
@@ -203,7 +203,7 @@ module webappSubnet './subnet.bicep' = {
     ustpVirtualNetwork
     ustpDnsZones
     apiFunctionSubnet
-    migrationFunctionSubnet
+    dataflowsFunctionSubnet
   ]
 }
 
@@ -211,10 +211,10 @@ output privateEndpointSubnetName string = privateEndpointSubnet.outputs.subnetNa
 output privateEndpointSubnetId string = privateEndpointSubnet.outputs.subnetId
 output apiFunctionSubnetId string = apiFunctionSubnet.outputs.subnetId
 output webappSubnetId string = webappSubnet.outputs.subnetId
-output migrationFunctionSubnetId string = migrationFunctionSubnet.outputs.subnetId
+output dataflowsFunctionSubnetId string = dataflowsFunctionSubnet.outputs.subnetId
 output privateDnsZoneId string = ustpDnsZones.outputs.privateDnsZoneId
 output cosmosDbAllowedSubnets array = [
   privateEndpointSubnet.outputs.subnetId
   apiFunctionSubnet.outputs.subnetId
-  migrationFunctionSubnet.outputs.subnetId
+  dataflowsFunctionSubnet.outputs.subnetId
 ]

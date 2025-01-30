@@ -1,10 +1,10 @@
 import { InvocationContext } from '@azure/functions';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { DxtrCaseChangeEvent } from './import-pipeline-types';
-import PipelinesCommmon from '../pipelines-common';
+import { DxtrCaseChangeEvent } from './import-dataflow-types';
+import DataflowsCommmon from '../dataflows-common';
 
-const MODULE_NAME = 'IMPORT-PIPELINE-CAMS-ACTIVITIES';
+const MODULE_NAME = 'IMPORT-DATAFLOW-CAMS-ACTIVITIES';
 
 /**
  * loadCase
@@ -19,7 +19,7 @@ async function loadCase(
   event: DxtrCaseChangeEvent,
   invocationContext: InvocationContext,
 ): Promise<DxtrCaseChangeEvent> {
-  const context = await PipelinesCommmon.getApplicationContext(invocationContext);
+  const context = await DataflowsCommmon.getApplicationContext(invocationContext);
 
   if (event.error) return event;
   if (!event.bCase) {

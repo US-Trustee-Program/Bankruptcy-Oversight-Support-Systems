@@ -18,7 +18,7 @@ on:
       apiFunctionName:
         required: true
         type: string
-      migrationFunctionName:
+      dataflowsFunctionName:
         required: true
         type: string
       webappName:
@@ -89,7 +89,7 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       environmentHash: ${{ inputs.environmentHash }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
-      migrationFunctionName: ${{ inputs.migrationFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-slot-resources:
@@ -100,7 +100,7 @@ jobs:
     with:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
-      migrationFunctionName: ${{ inputs.migrationFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
