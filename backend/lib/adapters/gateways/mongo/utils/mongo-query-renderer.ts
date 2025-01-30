@@ -1,11 +1,13 @@
 import { Sort as MongoSort } from 'mongodb';
 import {
   Condition,
-  ConditionOrConjunction,
   Conjunction,
   isCondition,
   isConjunction,
   Sort,
+  Pagination,
+  isPagination,
+  Query,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
@@ -38,9 +40,35 @@ function translateConjunction(query: Conjunction) {
   return { [matchConjunction[query.conjunction]]: renderQuery(query.values) };
 }
 
-function renderQuery(query: ConditionOrConjunction | ConditionOrConjunction[]) {
+function translatePagination(query: Pagination) {
+  const match = renderQuery(query.values)[0];
+  return [
+    {
+      $match: match,
+    },
+    {
+      $facet: {
+        metadata: [
+          {
+            $count: 'total',
+          },
+        ],
+        data: [
+          { $skip: query.skip },
+          {
+            $limit: query.limit,
+          },
+        ],
+      },
+    },
+  ];
+}
+
+function renderQuery(query: Query) {
   if (isArray(query)) {
     return query.map((q) => renderQuery(q));
+  } else if (isPagination(query)) {
+    return translatePagination(query);
   } else if (isConjunction(query)) {
     return translateConjunction(query);
   } else if (isCondition(query)) {
@@ -48,7 +76,7 @@ function renderQuery(query: ConditionOrConjunction | ConditionOrConjunction[]) {
   }
 }
 
-export function toMongoQuery(query: ConditionOrConjunction): DocumentQuery {
+export function toMongoQuery(query: Query): DocumentQuery {
   return renderQuery(query);
 }
 
