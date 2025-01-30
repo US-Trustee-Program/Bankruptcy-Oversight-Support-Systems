@@ -36,8 +36,8 @@ while [[ $# -gt 0 ]]; do
         shift 2
         ;;
 
-    --migrationFunctionName)
-        migration_function_name="${2}"
+    --dataflowsFunctionName)
+        dataflows_function_name="${2}"
         shift 2
         ;;
 
@@ -63,8 +63,8 @@ while [[ $# -gt 0 ]]; do
         api_storage_acc_name="${2}"
         shift 2
         ;;
-    --migrationStorageAccName)
-        migration_storage_acc_name="${2}"
+    --dataflowsStorageAccName)
+        dataflows_storage_acc_name="${2}"
         shift 2
         ;;
     --databaseName)
@@ -89,17 +89,17 @@ done
 echo "Creating Storage account for Node API Slot..."
 az storage account create --name "$api_storage_acc_name" --resource-group "$app_rg" -o json
 
-az storage account create --name "$migration_storage_acc_name" --resource-group "$app_rg" -o json
+az storage account create --name "$dataflows_storage_acc_name" --resource-group "$app_rg" -o json
 
 api_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$api_storage_acc_name" --query '[0].value' -o tsv)
-migration_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$migration_storage_acc_name" --query '[0].value' -o tsv)
+dataflows_storage_acc_key=$(az storage account keys list -g "$app_rg" --account-name "$dataflows_storage_acc_name" --query '[0].value' -o tsv)
 
 
 echo "Creating API Function Staging Slot..."
 az functionapp deployment slot create --name "$api_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$api_function_name"
 
 echo "Creating Node API Function Staging Slot..."
-az functionapp deployment slot create --name "$migration_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$migration_function_name"
+az functionapp deployment slot create --name "$dataflows_function_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$dataflows_function_name"
 
 echo "Setting deployment slot settings for storage account and cosmos database for e2e testing..."
 databaseName=$database_name
@@ -120,7 +120,7 @@ commitSha=$(git rev-parse HEAD)
 
 az functionapp config appsettings set -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${api_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${api_storage_acc_key}"
 
-az functionapp config appsettings set -g "$app_rg" -n "$migration_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${migration_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${migration_storage_acc_key}"
+az functionapp config appsettings set -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --settings "INFO_SHA=$commitSha" --slot-settings COSMOS_DATABASE_NAME="$databaseName" MyTaskHub="${slot_name}" AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=${dataflows_storage_acc_name};EndpointSuffix=core.usgovcloudapi.net;AccountKey=${dataflows_storage_acc_key}"
 
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
@@ -144,7 +144,7 @@ az functionapp identity assign -g "$app_rg" -n "$api_function_name" --slot "$slo
 
 echo "Assigning managed Identities to Migration Function App..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
-az functionapp identity assign -g "$app_rg" -n "$migration_function_name" --slot "$slot_name" --identities $identities
+az functionapp identity assign -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --identities $identities
 
 echo "Setting KeyVaultReferenceIdentity API Function App..."
 az functionapp update --resource-group "$app_rg"  --name "$api_function_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"

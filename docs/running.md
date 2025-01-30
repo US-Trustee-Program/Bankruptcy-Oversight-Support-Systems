@@ -88,11 +88,11 @@ npm run start:api
 
 This will serve the functions app on port 7071.
 
-To run the Migration function app directly, ensure you have met the
+To run the `dataflows` function app directly, ensure you have met the
 [prerequisites](#backend-prerequisites) and execute:
 
 ```shell
-npm run start:migration
+npm run start:dataflows
 ```
 
 #### <a id="backend-prerequisites"></a>Prerequisites
@@ -151,7 +151,7 @@ ACMS_MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access to the 
 !> If you do not have access to the admin password, ask an `owner` of the SQL Server resource in
 Azure for the value
 
-?> Note that when you run `npm run start:api` or `npm run start:migration`, the script will copy `backend/.env` into the appropriate directory, quietly overwriting any changes made to previous copies. All changes should be handled in `backend/.env` to avoid frustration and misconfiguration.
+?> Note that when you run `npm run start:api` or `npm run start:dataflows`, the script will copy `backend/.env` into the appropriate directory, quietly overwriting any changes made to previous copies. All changes should be handled in `backend/.env` to avoid frustration and misconfiguration.
 
 ##### Cosmos Database
 
@@ -189,7 +189,7 @@ installed.
 ##### Local Settings File
 
 You must have a file named `local.settings.json` placed in each of the `backend/function-apps/api`
-and `backend/function-apps/migration` directories.
+and `backend/function-apps/dataflows` directories.
 
 The contents of these files must be:
 
@@ -209,7 +209,7 @@ The contents of these files must be:
 }
 ```
 
-`backend/function-apps/migration`
+`backend/function-apps/dataflows`
 
 ```
 {
@@ -230,7 +230,7 @@ The contents of these files must be:
 ###### AzureWebJobsStorage
 
 A sufficiently privileged user can retrieve the `AzureWebJobsStorage` connection string for the
-`api` and `migration` function apps with the following Azure CLI command:
+`api` and `dataflows` function apps with the following Azure CLI command:
 
 ```sh
 az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='AzureWebJobsStorage']"
@@ -254,10 +254,10 @@ curl -d "{}" -H "Content-Type: application/json" -X POST http://localhost:7071/a
 curl -d "{\"apiKey\": \"{the admin key}\"}" -X DELETE http://localhost:7071/api/dev-tools/deleteMigrations
 
 # Data Migration
-curl -d "(see below)" -H "Content-Type: application/json" -X POST http://localhost:7071/migration/consolidation
+curl -d "(see below)" -H "Content-Type: application/json" -X POST http://localhost:7071/dataflows/consolidation
 ```
 
-Possible data for migration (example):
+Possible data for dataflows (example):
 
 ```json
 {

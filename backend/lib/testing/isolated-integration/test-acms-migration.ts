@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
-import migrateConsolidation from '../../../function-apps/migration/queueTrigger/migrateConsolidation';
 import { createMockAzureFunctionContext } from '../../../function-apps/azure/testing-helpers';
+import migrateConsolidation from '../../../function-apps/dataflows/migration/queueTrigger/migrateConsolidation';
 
 dotenv.config({ path: '../../../.env' });
 
