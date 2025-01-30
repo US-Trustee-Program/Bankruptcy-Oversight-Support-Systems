@@ -7,7 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -18,7 +18,7 @@ import { ResourceActions } from '../../../../../common/src/cams/actions';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, equals, regex, contains, notContains } = QueryBuilder;
+const { paginate, and, equals, regex, contains, notContains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -245,13 +245,27 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(contains<string[]>('caseId', predicate.caseIds));
     }
 
+    if (predicate.chapters?.length > 0) {
+      conditions.push(contains<string[]>('chapter', predicate.chapters));
+    }
+
+    if (predicate.divisionCodes?.length > 0) {
+      conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+    }
+
     if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
       conditions.push(notContains<string[]>('caseId', predicate.excludedCaseIds));
     }
 
-    const query = QueryBuilder.build(and(...conditions));
-    // TODO: Add skip and limit to mongo query builder.
-    // ie adapter.find(query).skip(25).limit(25);
+    let subQuery: Query;
+    if (predicate.limit && predicate.offset >= 0) {
+      subQuery = paginate(predicate.limit, predicate.offset, [and(...conditions)]);
+    } else {
+      subQuery = and(...conditions);
+    }
+
+    const query = QueryBuilder.build(subQuery);
+
     return await this.getAdapter<SyncedCase>().find(query);
   }
 }

@@ -27,9 +27,21 @@ export function isConjunction(obj: unknown): obj is Conjunction {
   return typeof obj === 'object' && 'conjunction' in obj;
 }
 
+export type Pagination = {
+  limit: number;
+  skip: number;
+  values: ConditionOrConjunction[];
+};
+
+export function isPagination(obj: unknown): obj is Pagination {
+  return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
+}
+
+export type Query = Pagination | ConditionOrConjunction | ConditionOrConjunction[];
+
 export type ConditionOrConjunction = Condition | Conjunction;
 
-function build(query: ConditionOrConjunction) {
+function build(query: Query) {
   return query;
 }
 
@@ -134,6 +146,14 @@ function regex(attributeName: string, value: string): Condition {
   };
 }
 
+function paginate(skip: number, limit: number, values: ConditionOrConjunction[]): Pagination {
+  return {
+    skip,
+    limit,
+    values,
+  };
+}
+
 export type SortedAttribute = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
 
 export type Sort = {
@@ -164,6 +184,7 @@ const QueryBuilder = {
   and,
   or,
   orderBy,
+  paginate,
 };
 
 export default QueryBuilder;

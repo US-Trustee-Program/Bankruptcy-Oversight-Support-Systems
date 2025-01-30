@@ -348,6 +348,8 @@ describe('Cases repository', () => {
       excludeChildConsolidations: true,
       caseIds: [caseId1, caseId2],
       excludedCaseIds,
+      limit: 5,
+      offset: 0,
     };
 
     const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
