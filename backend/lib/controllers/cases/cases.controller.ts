@@ -13,7 +13,7 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
-function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
+function calculateCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
   return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
 }
 
@@ -76,7 +76,7 @@ export class CasesController implements CamsController {
     const pagination: Pagination = {
       count: cases.length,
       limit: predicate.limit,
-      currentPage: getCurrentPage(cases.length, predicate),
+      currentPage: calculateCurrentPage(cases.length, predicate),
     };
 
     if (cases.length > predicate.limit) {
