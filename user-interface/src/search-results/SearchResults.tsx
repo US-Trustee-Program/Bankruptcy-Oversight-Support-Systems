@@ -103,7 +103,7 @@ export function SearchResults(props: SearchResultsProps) {
     setAlertInfo(null);
   }
 
-  async function search() {
+  function search() {
     if (!isValidSearchPredicate(searchPredicate)) return;
     resetAlert();
 
