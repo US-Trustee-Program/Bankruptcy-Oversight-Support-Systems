@@ -87,7 +87,7 @@ export default class CaseManagement {
       //   context,
       //   predicate,
       // );
-      //WIP: getConsolidationChildCases then filterr down predicate.caseIds based on what comes back
+      //WIP: getConsolidationChildCases then filter down predicate.caseIds based on what comes back
       //then modify the search cases when excludeChildCases = true, to NOCONTAINS any of those case Ids
       let consolidationChildCaseIds: string[] = [];
       if (predicate.excludeChildConsolidations === true) {
