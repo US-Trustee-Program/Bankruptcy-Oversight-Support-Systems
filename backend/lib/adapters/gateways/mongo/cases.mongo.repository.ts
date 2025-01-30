@@ -259,7 +259,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     let subQuery: Query;
     if (predicate.limit && predicate.offset >= 0) {
-      subQuery = paginate(predicate.limit, predicate.offset, [and(...conditions)]);
+      subQuery = paginate(predicate.offset, predicate.limit + 1, [and(...conditions)]);
     } else {
       subQuery = and(...conditions);
     }

@@ -7,9 +7,7 @@ import { isPagination, Query, Sort } from '../../../../query/query-builder';
 import { DocumentCollectionAdapter, ReplaceResult } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
-import { AggregationCursor, FindCursor, MongoServerError } from 'mongodb';
-
-type FindOrAggregate = Promise<FindCursor> | Promise<AggregationCursor<Document>>;
+import { MongoServerError } from 'mongodb';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -24,19 +22,25 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
-      let findPromise: FindOrAggregate;
+      let results;
+      const items: T[] = [];
       if (isPagination(query)) {
         // TODO: Figure out how to handle the results from aggregate.
-        findPromise = this.collectionHumble.aggregate(mongoQuery) as FindOrAggregate;
+        const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+        results = aggregationResult;
+        for await (const page of results) {
+          for (const doc of page.data) {
+            items.push(doc as CamsItem<T>);
+          }
+        }
       } else {
-        findPromise = this.collectionHumble.find(mongoQuery);
+        const findPromise = this.collectionHumble.find(mongoQuery);
+        results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+        for await (const doc of results) {
+          items.push(doc as CamsItem<T>);
+        }
       }
-      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
 
-      const items: T[] = [];
-      for await (const doc of results) {
-        items.push(doc as CamsItem<T>);
-      }
       return items;
     } catch (originalError) {
       throw this.handleError(
