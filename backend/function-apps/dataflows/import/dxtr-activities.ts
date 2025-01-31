@@ -3,6 +3,7 @@ import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { DxtrCaseChangeEvent } from './import-dataflow-types';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import DataflowsCommmon from '../dataflows-common';
+import { DLQ } from './import-dataflow-queues';
 
 const MODULE_NAME = 'IMPORT-DATAFLOW-DXTR-ACTIVITIES';
 
@@ -22,7 +23,7 @@ async function exportCaseChangeEvents(
   try {
     const results = await useCase.getCaseIdsToSync(context);
     const events: DxtrCaseChangeEvent[] = results.map((caseId) => {
-      return { type: '', caseId };
+      return { type: 'CASE_CHANGED', caseId };
     });
     return events;
   } catch (error) {
@@ -57,6 +58,7 @@ async function exportCase(
     );
     context.logger.camsError(error);
     event.error = error;
+    invocationContext.extraOutputs.set(DLQ, event);
   }
 
   return event;
