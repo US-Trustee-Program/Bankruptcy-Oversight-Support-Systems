@@ -1,6 +1,7 @@
 param storageAccountName string
 
 param migrationTaskName string = 'migration-task'
+param inputDataflowTaskName string = 'input-dataflow'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
   name: storageAccountName
@@ -41,6 +42,17 @@ resource migrationFailureQueue 'Microsoft.Storage/storageAccounts/queueServices/
 resource migrationSuccessQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
   parent: storageAccountQueueServices
   name: '${migrationTaskName}-success'
+  properties: {
+    metadata: {}
+  }
+  dependsOn: [
+    storageAccount
+  ]
+}
+
+resource inputDataflowDLQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: storageAccountQueueServices
+  name: '${inputDataflowTaskName}-dlq'
   properties: {
     metadata: {}
   }
