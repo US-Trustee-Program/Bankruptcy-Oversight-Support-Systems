@@ -31,6 +31,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '@common/cams/privileged-identity';
+import { CamsPaginationResponse } from '@common/api/pagination';
 
 const caseDocketEntries = MockData.buildArray(MockData.getDocketEntry, 5);
 const caseNotes = MockData.buildArray(() => MockData.getCaseNote({ caseId: '101-12-12345' }), 5);
@@ -326,8 +327,8 @@ async function putConsolidationOrderRejection(
 async function searchCases(
   predicate: CasesSearchPredicate,
   options: { includeAssignments?: boolean } = {},
-): Promise<ResponseBody<SyncedCase[]>> {
-  return post<SyncedCase[]>('/cases', predicate, options);
+): Promise<ResponseBody<CamsPaginationResponse<SyncedCase>>> {
+  return post<CamsPaginationResponse<SyncedCase>>('/cases', predicate, options);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction): Promise<ResponseBody> {
