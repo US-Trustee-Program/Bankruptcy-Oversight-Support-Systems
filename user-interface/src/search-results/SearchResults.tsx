@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseBasics } from '@common/cams/cases';
+import { CaseBasics, SyncedCase } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -66,7 +66,7 @@ export function SearchResults(props: SearchResultsProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
-  const [searchResults, setSearchResults] = useState<ResponseBody<CaseBasics[]> | null>(null);
+  const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
   const pagination: PaginationModel | undefined = searchResults?.pagination
     ? searchResults?.pagination
@@ -77,7 +77,7 @@ export function SearchResults(props: SearchResultsProps) {
 
   const api = useApi2();
 
-  function handleSearchResults(response: ResponseBody<CaseBasics[]> | void) {
+  function handleSearchResults(response: ResponseBody<SyncedCase[]> | void) {
     if (response) {
       setSearchResults(response);
       setEmptyResponse(response.data.length === 0);
@@ -177,7 +177,7 @@ export function SearchResults(props: SearchResultsProps) {
             scrollable="true"
             uswdsStyle={['striped']}
             title="search results."
-            caption={`Search yielded ${searchResults?.data.length} results.`}
+            caption={`Search yielded ${searchResults?.pagination?.totalCount} results.`}
           >
             <Header id={id} labels={searchResultsHeaderLabels} />
             <TableBody id={id}>

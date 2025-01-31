@@ -117,8 +117,7 @@ export default class CaseManagement {
         }
       }
 
-      // TODO: just return searchResult, but this will break the controller and frontend
-      return searchResult.data;
+      return searchResult;
     } catch (originalError) {
       if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {

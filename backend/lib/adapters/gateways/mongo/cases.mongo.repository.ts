@@ -262,8 +262,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     let subQuery: Query;
     if (predicate.limit && predicate.offset >= 0) {
-      // TODO: remove the `+ 1` hack below
-      subQuery = paginate(predicate.offset, predicate.limit + 1, [and(...conditions)]);
+      subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
       const query = QueryBuilder.build<Pagination>(subQuery);
       return await this.getAdapter<SyncedCase>().paginatedFind(query);
     } else {
