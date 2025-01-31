@@ -112,7 +112,7 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy Azure Function Migration App
+      - name: Deploy Data Flows Azure Function App
         id: deploy-dataflows-app-step
         run: |
           sleep 30 &&
