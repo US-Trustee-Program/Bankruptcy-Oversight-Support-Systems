@@ -2,19 +2,20 @@ import { Pagination as PaginationModel } from '@common/api/pagination';
 import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET, SearchPredicate } from '@common/api/search';
 import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 
-export type PaginationProps<P extends SearchPredicate> = {
+// NOTE: We are keeping this a refence to functioning existing pagination code
+//
+export type UnboundedPaginationProps<P extends SearchPredicate> = {
   paginationValues: PaginationModel;
   searchPredicate: P;
   retrievePage: (searchPredicate: P) => void;
 };
 
-export function Pagination<P extends SearchPredicate>({
+export function UnboundedPagination<P extends SearchPredicate>({
   paginationValues,
   searchPredicate,
   retrievePage,
-}: PaginationProps<P>) {
-  const { previous, next, currentPage, totalPages } = paginationValues;
-  const lastPage = totalPages ?? 0;
+}: UnboundedPaginationProps<P>) {
+  const { previous, next, currentPage } = paginationValues;
 
   return (
     <nav aria-label="Pagination" className="usa-pagination">
@@ -90,7 +91,7 @@ export function Pagination<P extends SearchPredicate>({
             {currentPage}
           </PaginationButton>
         </li>
-        {next && currentPage < lastPage - 1 && (
+        {next && (
           <li className="usa-pagination__item usa-pagination__page-no">
             <PaginationButton
               id={`page-${currentPage + 1}-results`}
@@ -105,7 +106,7 @@ export function Pagination<P extends SearchPredicate>({
             </PaginationButton>
           </li>
         )}
-        {next && currentPage < lastPage - 2 && (
+        {next && (
           <li
             className="usa-pagination__item usa-pagination__overflow"
             aria-label="ellipsis indicating non-visible pages"
@@ -113,22 +114,6 @@ export function Pagination<P extends SearchPredicate>({
             <span>…</span>
           </li>
         )}
-        {next && currentPage < lastPage - 3 && (
-          <li className="usa-pagination__item usa-pagination__page-no">
-            <PaginationButton
-              id={`last-page-${lastPage}-results`}
-              onClick={() => {
-                retrievePage({
-                  ...searchPredicate,
-                  offset: (lastPage - 1) * searchPredicate.limit!,
-                });
-              }}
-            >
-              {lastPage}
-            </PaginationButton>
-          </li>
-        )}
-
         {next && (
           <li className="usa-pagination__item usa-pagination__arrow">
             <PaginationButton
