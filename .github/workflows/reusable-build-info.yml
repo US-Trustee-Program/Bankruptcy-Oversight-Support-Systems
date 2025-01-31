@@ -106,7 +106,7 @@ jobs:
           apiFunctionName="${stackName}-node-api"
           echo "Api Function Name: $apiFunctionName"
           dataflowsFunctionName="${stackName}-dataflows"
-          echo "Migration Function Name: $dataflowsFunctionName"
+          echo "Data Flows Function Name: $dataflowsFunctionName"
 
           # Deployment flags
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"

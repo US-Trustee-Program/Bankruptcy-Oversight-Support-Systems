@@ -408,7 +408,7 @@ var baseApplicationSettings = concat(
       ]
 )
 
-//Migration Function Application Settings
+//Data Flows Function Application Settings
 var dataflowsApplicationSettings = concat(
   [
     {
@@ -589,7 +589,7 @@ module dataflowsFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.b
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
-module setMigrationFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
   name: '${dataflowsFunctionName}-sql-vnet-rule-module'
   params: {
