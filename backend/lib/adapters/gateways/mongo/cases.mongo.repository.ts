@@ -265,10 +265,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
       const query = QueryBuilder.build<Pagination>(subQuery);
       return await this.getAdapter<SyncedCase>().paginatedFind(query);
-    } else {
-      subQuery = and(...conditions);
-      const query = QueryBuilder.build<ConditionOrConjunction>(subQuery);
-      return { data: await this.getAdapter<SyncedCase>().find(query) };
     }
+    //Can we remove this?
+    // else {
+    //   subQuery = and(...conditions);
+    //   const query = QueryBuilder.build<ConditionOrConjunction>(subQuery);
+    //   return { data: await this.getAdapter<SyncedCase>().find(query) };
+    // }
   }
 }

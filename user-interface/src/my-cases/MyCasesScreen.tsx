@@ -17,6 +17,7 @@ import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 
+//TODO: This needs to be updated to handle this new type
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
 

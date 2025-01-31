@@ -36,7 +36,6 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '../../../../common/src/cams/privileged-identity';
-import { CamsPaginationResponse } from '@common/api/pagination';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -323,11 +322,7 @@ async function searchCases(
   predicate: CasesSearchPredicate,
   options: { includeAssignments?: boolean } = {},
 ) {
-  return api().post<CamsPaginationResponse<SyncedCase>, CasesSearchPredicate>(
-    '/cases',
-    predicate,
-    options,
-  );
+  return api().post<SyncedCase[], CasesSearchPredicate>('/cases', predicate, options);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction) {
