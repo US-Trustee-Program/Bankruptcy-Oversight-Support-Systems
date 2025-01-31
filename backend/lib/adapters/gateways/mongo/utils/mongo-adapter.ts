@@ -1,11 +1,14 @@
-import { CosmosPaginationResponse } from '../../../../../../common/src/api/pagination';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
-import { DocumentCollectionAdapter, ReplaceResult } from '../../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  DocumentCollectionAdapter,
+  ReplaceResult,
+} from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { MongoServerError } from 'mongodb';
@@ -22,7 +25,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   public async paginatedFind(
     query: Pagination,
     // sort?: Sort,
-  ): Promise<CosmosPaginationResponse<T>> {
+  ): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
     // const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
@@ -31,8 +34,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
 
-      const aggregationItem: CosmosPaginationResponse<T> = {
-        metadata: { total: 0, limit: query.limit, offset: query.skip },
+      const aggregationItem: CamsPaginationResponse<T> = {
+        metadata: { total: 0 },
         data: [],
       };
 
