@@ -78,7 +78,7 @@ export default class CaseManagement {
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length === 0) {
-          return [];
+          return { metadata: { total: 0 }, data: [] };
         }
       }
 
@@ -98,6 +98,7 @@ export default class CaseManagement {
 
       // The response type from repo.searchCases depends on pagination
       const searchResult = await this.casesRepository.searchCases(predicate);
+
       const caseIds = [];
       for (const casesKey in searchResult.data) {
         caseIds.push(searchResult.data[casesKey].caseId);

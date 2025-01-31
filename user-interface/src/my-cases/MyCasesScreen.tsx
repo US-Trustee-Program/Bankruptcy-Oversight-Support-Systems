@@ -19,6 +19,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useNavigate } from 'react-router-dom';
 import { LOGOUT_SESSION_END_PATH } from '@/login/login-library';
 
+//TODO: This needs to be updated to handle this new type
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
 
