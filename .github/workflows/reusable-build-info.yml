@@ -11,40 +11,40 @@ on:
         type: string
     outputs:
       stackName:
-        description: "Application name"
+        description: 'Application name'
         value: ${{ jobs.build-info.outputs.stackName }}
       webappName:
-        description: "Expected Web Application name [used for Azure Resource]"
+        description: 'Expected Web Application name [used for Azure Resource]'
         value: ${{ jobs.build-info.outputs.webappName }}
       apiFunctionName:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.apiFunctionName }}
       azResourceGrpAppEncrypted:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.azResourceGrpNetworkEncrypted }}
       environmentHash:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.environmentHash }}
-      migrationFunctionName:
-        description: ""
-        value: ${{ jobs.build-info.outputs.migrationFunctionName }}
+      dataflowsFunctionName:
+        description: ''
+        value: ${{ jobs.build-info.outputs.dataflowsFunctionName }}
       slotName:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.slotName }}
       deployVnet:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.deployVnet }}
       deployBicep:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.deployBicep }}
       initialDeployment:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.initialDeployment }}
       ghaEnvironment:
-        description: ""
+        description: ''
         value: ${{ inputs.environment }}
 
 jobs:
@@ -57,7 +57,7 @@ jobs:
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
       apiFunctionName: ${{ steps.build-info.outputs.apiFunctionName }}
-      migrationFunctionName: ${{ steps.build-info.outputs.migrationFunctionName }}
+      dataflowsFunctionName: ${{ steps.build-info.outputs.dataflowsFunctionName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
@@ -105,8 +105,8 @@ jobs:
           echo "Webapp Name: $webappName"
           apiFunctionName="${stackName}-node-api"
           echo "Api Function Name: $apiFunctionName"
-          migrationFunctionName="${stackName}-migration"
-          echo "Migration Function Name: $migrationFunctionName"
+          dataflowsFunctionName="${stackName}-dataflows"
+          echo "Data Flows Function Name: $dataflowsFunctionName"
 
           # Deployment flags
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
@@ -117,7 +117,7 @@ jobs:
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
           echo "apiFunctionName=${apiFunctionName}" >> $GITHUB_OUTPUT
-          echo "migrationFunctionName=${migrationFunctionName}" >> $GITHUB_OUTPUT
+          echo "dataflowsFunctionName=${dataflowsFunctionName}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main

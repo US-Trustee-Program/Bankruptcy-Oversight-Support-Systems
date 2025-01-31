@@ -1,10 +1,10 @@
 import { InvocationContext } from '@azure/functions';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
-import { DxtrCaseChangeEvent } from './import-pipeline-types';
+import { DxtrCaseChangeEvent } from './import-dataflow-types';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import PipelinesCommmon from '../pipelines-common';
+import DataflowsCommmon from '../dataflows-common';
 
-const MODULE_NAME = 'IMPORT-PIPELINE-DXTR-ACTIVITIES';
+const MODULE_NAME = 'IMPORT-DATAFLOW-DXTR-ACTIVITIES';
 
 /**
  * exportCaseChangeEvents
@@ -17,7 +17,7 @@ async function exportCaseChangeEvents(
   _: unknown,
   invocationContext: InvocationContext,
 ): Promise<DxtrCaseChangeEvent[]> {
-  const context = await PipelinesCommmon.getApplicationContext(invocationContext);
+  const context = await DataflowsCommmon.getApplicationContext(invocationContext);
   const useCase = new CaseManagement(context);
   try {
     const results = await useCase.getCaseIdsToSync(context);
@@ -29,10 +29,6 @@ async function exportCaseChangeEvents(
     context.logger.camsError(error);
     return [];
   }
-
-  // TODO: Delete these when we are done.
-  // events.push({ type: '', caseId: '081-73-34831' });
-  // events.push({ type: '', caseId: '081-14-41751' });
 }
 
 /**
@@ -48,7 +44,7 @@ async function exportCase(
   event: DxtrCaseChangeEvent,
   invocationContext: InvocationContext,
 ): Promise<DxtrCaseChangeEvent> {
-  const context = await PipelinesCommmon.getApplicationContext(invocationContext);
+  const context = await DataflowsCommmon.getApplicationContext(invocationContext);
 
   try {
     const useCase = new CaseManagement(context);
