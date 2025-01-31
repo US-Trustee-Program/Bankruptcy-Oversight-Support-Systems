@@ -26,7 +26,6 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
-import { CosmosPaginationResponse } from '../../../common/src/api/pagination';
 
 export type ReplaceResult = {
   id: string;
@@ -185,7 +184,7 @@ export type OfficeStaffSyncState = RuntimeState & {
 
 export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
-  paginatedFind: (query: Pagination, sort?: Sort) => Promise<CosmosPaginationResponse<T>>;
+  paginatedFind: (query: Pagination, sort?: Sort) => Promise<CamsPaginationResponse<T>>;
   findOne: (query: ConditionOrConjunction) => Promise<T>;
   getAll: (sort?: Sort) => Promise<T[]>;
   replaceOne: (
@@ -200,3 +199,8 @@ export interface DocumentCollectionAdapter<T> {
   countDocuments: (query: ConditionOrConjunction) => Promise<number>;
   countAllDocuments: () => Promise<number>;
 }
+
+export type CamsPaginationResponse<T> = {
+  metadata?: { total: number };
+  data: T[];
+};
