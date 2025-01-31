@@ -9,10 +9,22 @@ jobs:
       path: user-interface
     secrets: inherit # pragma: allowlist secret
 
-  sca-scan-backend:
+  sca-scan-backend-lib:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend
+    secrets: inherit # pragma: allowlist secret
+
+  sca-scan-backend-api:
+    uses: ./.github/workflows/reusable-sca-scan.yml
+    with:
+      path: backend/function-apps/api
+    secrets: inherit # pragma: allowlist secret
+
+  sca-scan-backend-migration:
+    uses: ./.github/workflows/reusable-sca-scan.yml
+    with:
+      path: backend/function-apps/migration
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-common:
