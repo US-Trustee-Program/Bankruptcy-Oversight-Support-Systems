@@ -4,14 +4,15 @@ import { app, HttpRequest, HttpResponse, InvocationContext, Timer } from '@azure
 
 import CamsActivities from './cams-activities';
 import DxtrActivities from './dxtr-activities';
-import { DxtrCaseChangeEvent } from './import-dataflow-types';
+import { DxtrCaseChangeEvent, ExportCaseChangeEventsSummary } from './import-dataflow-types';
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
+import { DLQ } from './import-dataflow-queues';
 
 const MODULE_NAME = 'IMPORT_DATA_FLOW';
 
 const EXPORT_CASE_CHANGE_EVENTS = 'exportCaseChangeEvents';
-const EXPORT_AND_LOAD_CASE = 'exportCaseAndLoadCase';
+const EXPORT_AND_LOAD_CASE = 'exportAndLoadCase';
 const DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY = 'dxtrExportCaseChangeEventsActivity';
 const DXTR_EXPORT_CASE_ACTIVITY = 'dxtrExportCaseActivity';
 const CAMS_LOAD_CASE_ACTIVITY = 'camsLoadCaseActivity';
@@ -28,14 +29,50 @@ function* exportCaseChangeEvents(context: OrchestrationContext) {
     DXTR_EXPORT_CASE_CHANGE_EVENTS_ACTIVITY,
   );
 
-  const nextTasks = [];
+  const defaultSummary: ExportCaseChangeEventsSummary = {
+    changedCases: events.length,
+    exportedAndLoaded: 0,
+    errors: 0,
+    noResult: 0,
+    completed: 0,
+    faulted: 0,
+  };
+
+  if (!events.length) {
+    return defaultSummary;
+  }
+
+  const nextTasks: df.Task[] = [];
 
   for (const event of events) {
-    const child_id = context.df.instanceId + `:${event.type}:${event.caseId}:`;
+    const child_id = context.df.instanceId + `:${EXPORT_AND_LOAD_CASE}:${event.caseId}:`;
     nextTasks.push(context.df.callSubOrchestrator(EXPORT_AND_LOAD_CASE, event, child_id));
   }
 
   yield context.df.Task.all(nextTasks);
+
+  const results = nextTasks.reduce((summary, task) => {
+    if (task.isCompleted) {
+      summary.completed += 1;
+    }
+    if (task.isFaulted) {
+      summary.faulted += 1;
+    }
+    if (task.result) {
+      const event = task.result as unknown as DxtrCaseChangeEvent;
+      if (event.error) {
+        summary.errors += 1;
+      } else {
+        summary.exportedAndLoaded += 1;
+      }
+    } else {
+      summary.noResult += 1;
+    }
+
+    return summary;
+  }, defaultSummary);
+
+  return results;
 }
 
 /**
@@ -48,7 +85,9 @@ function* exportCaseChangeEvents(context: OrchestrationContext) {
 function* exportAndLoadCase(context: OrchestrationContext) {
   let event: DxtrCaseChangeEvent = context.df.getInput();
   event = yield context.df.callActivity(DXTR_EXPORT_CASE_ACTIVITY, event);
-  yield context.df.callActivity(CAMS_LOAD_CASE_ACTIVITY, event);
+  event = yield context.df.callActivity(CAMS_LOAD_CASE_ACTIVITY, event);
+
+  return event;
 }
 
 /**
@@ -101,10 +140,12 @@ export function importDataflowSetup() {
 
   df.app.activity(DXTR_EXPORT_CASE_ACTIVITY, {
     handler: DxtrActivities.exportCase,
+    extraOutputs: [DLQ],
   });
 
   df.app.activity(CAMS_LOAD_CASE_ACTIVITY, {
     handler: CamsActivities.loadCase,
+    extraOutputs: [DLQ],
   });
 
   app.timer('exportChangeEventsTimerTrigger', {
