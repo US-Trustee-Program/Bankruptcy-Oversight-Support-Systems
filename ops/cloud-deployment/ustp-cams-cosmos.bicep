@@ -80,6 +80,22 @@ module collections './lib/cosmos/mongo/cosmos-collections.bicep' = {
   ]
 }
 
+module e2eDatabase './ustp-cams-cosmos-e2e.bicep' = if(deployE2eDatabase){
+  name: '${accountName}-e2e-database-module'
+  scope: resourceGroup(resourceGroupName)
+  params: {
+    accountName: accountName
+    databaseName: e2eDatabaseName
+    resourceGroupName: resourceGroupName
+    databaseCollections: databaseCollections
+  }
+  dependsOn: [
+    account
+    collections
+    database
+  ]
+}
+
 module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep' = if (createAlerts) {
   name: '${accountName}-availability-alert-module'
   params: {
@@ -96,6 +112,9 @@ module cosmosAvailabilityAlert './lib/monitoring-alerts/metrics-alert-rule.bicep
     actionGroupName: actionGroupName
     actionGroupResourceGroupName: actionGroupResourceGroupName
   }
+  dependsOn:[
+    e2eDatabase
+  ]
 }
 
 module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.bicep' = if (!empty(analyticsWorkspaceId)) {
@@ -107,18 +126,6 @@ module cosmosDiagnosticSetting './lib/app-insights/diagnostics-settings-cosmos.b
     accountName: accountName
   }
   dependsOn: [
-    database
-    collections
+    e2eDatabase
   ]
-}
-
-module e2eDatabaseModule './ustp-cams-cosmos-e2e.bicep' = if(deployE2eDatabase){
-  name: '${accountName}-e2e-database-module'
-  scope: resourceGroup(resourceGroupName)
-  params: {
-    accountName: accountName
-    databaseName: e2eDatabaseName
-    resourceGroupName: resourceGroupName
-    databaseCollections: databaseCollections
-  }
 }
