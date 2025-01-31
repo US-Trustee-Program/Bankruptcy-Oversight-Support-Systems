@@ -24,7 +24,7 @@ jobs:
       artifactname: backend-api
     secrets: inherit # pragma: allowlist secret
 
-  sca-scan-backend-migration:
+  sca-scan-backend-dataflows:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend/function-apps/migration

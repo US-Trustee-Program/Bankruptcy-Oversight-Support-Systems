@@ -29,10 +29,6 @@ async function exportCaseChangeEvents(
     context.logger.camsError(error);
     return [];
   }
-
-  // TODO: Delete these when we are done.
-  // events.push({ type: '', caseId: '081-73-34831' });
-  // events.push({ type: '', caseId: '081-14-41751' });
 }
 
 /**
