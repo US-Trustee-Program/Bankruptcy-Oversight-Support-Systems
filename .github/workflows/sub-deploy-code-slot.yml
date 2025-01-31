@@ -60,7 +60,7 @@ jobs:
         with:
           name: ${{ inputs.webappName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -92,7 +92,7 @@ jobs:
         with:
           name: ${{ inputs.apiFunctionName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -124,7 +124,7 @@ jobs:
         with:
           name: ${{ inputs.migrationFunctionName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -162,12 +162,7 @@ jobs:
 
   execute-e2e-test:
     needs:
-      [
-        deploy-webapp-slot,
-        deploy-api-slot,
-        deploy-migration-slot,
-        endpoint-test-application-slot,
-      ]
+      [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
       apiFunctionName: ${{ inputs.apiFunctionName }}
@@ -183,19 +178,13 @@ jobs:
   swap-webapp-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs:
-      [
-        deploy-webapp-slot,
-        deploy-api-slot,
-        deploy-migration-slot,
-        execute-e2e-test,
-      ]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
       slotName: ${{ inputs.slotName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -213,19 +202,13 @@ jobs:
   swap-nodeapi-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs:
-      [
-        deploy-webapp-slot,
-        deploy-api-slot,
-        deploy-migration-slot,
-        execute-e2e-test,
-      ]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       apiFunctionName: ${{ inputs.apiFunctionName }}
       slotName: ${{ inputs.slotName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -243,18 +226,12 @@ jobs:
   swap-migration-app-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs:
-      [
-        deploy-webapp-slot,
-        deploy-api-slot,
-        deploy-migration-slot,
-        execute-e2e-test,
-      ]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-migration-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       slotName: ${{ inputs.slotName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -285,7 +262,7 @@ jobs:
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      slotName: "self"
+      slotName: 'self'
     secrets: inherit # pragma: allowlist secret
 
   enable-access:
@@ -296,7 +273,7 @@ jobs:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}

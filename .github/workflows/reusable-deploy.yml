@@ -22,7 +22,7 @@ on:
         required: true
         type: string
       deployBranch:
-        default: "false"
+        default: 'false'
         type: string
       deployBicep:
         required: true
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@main
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
