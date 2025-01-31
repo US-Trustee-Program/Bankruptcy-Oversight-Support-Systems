@@ -52,7 +52,7 @@ done
 if [[ ${operation} == 'stop' ]]; then
     echo "Stopping Node API ${slot_name} slot..."
     az functionapp stop -g "${app_rg}" --name "${api_function_name}" --slot "${slot_name}"
-    echo "Stopping Migration Function ${slot_name} slot..."
+    echo "Stopping Data Flows Function App ${slot_name} slot..."
     az functionapp stop -g "${app_rg}" --name "${dataflows_function_name}" --slot "${slot_name}"
     echo "Stopping Webapp ${slot_name} slot..."
     az webapp stop -g "${app_rg}" --name "${webapp_name}" --slot "${slot_name}"
@@ -60,7 +60,7 @@ if [[ ${operation} == 'stop' ]]; then
 elif [[ ${operation} == 'start' ]]; then
     echo "Starting Node API ${slot_name} slot..."
     az functionapp start -g "${app_rg}" --name "${api_function_name}" --slot "${slot_name}"
-    echo "Stopping Migration Function ${slot_name} slot..."
+    echo "Stopping Data Flows Function App ${slot_name} slot..."
     az functionapp start -g "${app_rg}" --name "${dataflows_function_name}" --slot "${slot_name}"
     echo "Starting Webapp ${slot_name} slot..."
     az webapp start -g "${app_rg}" --name "${webapp_name}" --slot "${slot_name}"
