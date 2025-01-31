@@ -99,7 +99,7 @@ e2e_db="cams-e2e-${hash_id}"
 rgAppExists=$(az group exists -n "${app_rg}")
 rgNetExists=$(az group exists -n "${network_rg}")
 dbExists=$(az cosmosdb mongodb database exists -g "${db_rg}" -a "${db_account}" -n "${e2e_db}")
-if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" || ${dbExists} != "true" ]]; then
+if [[ ${rgAppExists} != "true" || ${rgNetExists} != "true" ]]; then
     if [[ "${ignore}" != "true" ]]; then
         error "Expected resource group and/or database missing." 11
     fi
@@ -134,6 +134,8 @@ fi
 if [[ "${dbExists}" == "true" ]]; then
   echo "Start deleting e2e test database ${e2e_db}"
   az cosmosdb mongodb database delete -g bankruptcy-oversight-support-systems -a cosmos-mongo-ustp-cams-dev -n "${e2e_db}" --yes
+elif [[ "${dbExists}" != "true" ]]; then
+  echo "E2E database does not exist for branch has ${hash_id}"
 fi
 
 echo "Completed resource clean up operations."
