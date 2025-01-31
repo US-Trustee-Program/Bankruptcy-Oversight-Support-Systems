@@ -73,6 +73,7 @@ export class CasesController implements CamsController {
       includeAssignments,
     );
 
+    // TODO: this is where the type coming from the use case will have changed
     const pagination: Pagination = {
       count: cases.length,
       limit: predicate.limit,

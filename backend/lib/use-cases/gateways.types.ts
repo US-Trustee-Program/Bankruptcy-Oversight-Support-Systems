@@ -24,9 +24,9 @@ import {
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
-import { ConditionOrConjunction, Sort } from '../query/query-builder';
+import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
-import { ResourceActions } from '../../../common/src/cams/actions';
+import { CosmosPaginationResponse } from '../../../common/src/api/pagination';
 
 export type ReplaceResult = {
   id: string;
@@ -136,7 +136,7 @@ export interface CasesRepository extends Releasable {
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
-  searchCases(predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]>;
+  searchCases(predicate: CasesSearchPredicate);
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
 }
 
@@ -185,6 +185,7 @@ export type OfficeStaffSyncState = RuntimeState & {
 
 export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
+  paginatedFind: (query: Pagination, sort?: Sort) => Promise<CosmosPaginationResponse<T>>;
   findOne: (query: ConditionOrConjunction) => Promise<T>;
   getAll: (sort?: Sort) => Promise<T[]>;
   replaceOne: (

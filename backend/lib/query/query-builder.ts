@@ -41,8 +41,8 @@ export type Query = Pagination | ConditionOrConjunction | ConditionOrConjunction
 
 export type ConditionOrConjunction = Condition | Conjunction;
 
-function build(query: Query) {
-  return query;
+function build<T extends Query = Query>(query: Query) {
+  return query as T;
 }
 
 function and(...values: ConditionOrConjunction[]): Conjunction {

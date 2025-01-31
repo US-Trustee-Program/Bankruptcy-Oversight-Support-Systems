@@ -7,13 +7,16 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder, { ConditionOrConjunction, Query } from '../../../query/query-builder';
+import QueryBuilder, {
+  ConditionOrConjunction,
+  Pagination,
+  Query,
+} from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
-import { ResourceActions } from '../../../../../common/src/cams/actions';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -238,7 +241,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async searchCases(predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
+  async searchCases(predicate: CasesSearchPredicate) {
     const conditions: ConditionOrConjunction[] = [];
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
     if (predicate.caseIds) {
@@ -259,13 +262,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     let subQuery: Query;
     if (predicate.limit && predicate.offset >= 0) {
+      // TODO: remove the `+ 1` hack below
       subQuery = paginate(predicate.offset, predicate.limit + 1, [and(...conditions)]);
+      const query = QueryBuilder.build<Pagination>(subQuery);
+      return await this.getAdapter<SyncedCase>().paginatedFind(query);
     } else {
       subQuery = and(...conditions);
+      const query = QueryBuilder.build<ConditionOrConjunction>(subQuery);
+      return { data: await this.getAdapter<SyncedCase>().find(query) };
     }
-
-    const query = QueryBuilder.build(subQuery);
-
-    return await this.getAdapter<SyncedCase>().find(query);
   }
 }

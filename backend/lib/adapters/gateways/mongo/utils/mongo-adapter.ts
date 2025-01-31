@@ -1,9 +1,10 @@
+import { CosmosPaginationResponse } from '../../../../../../common/src/api/pagination';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { isPagination, Query, Sort } from '../../../../query/query-builder';
+import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
 import { DocumentCollectionAdapter, ReplaceResult } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
@@ -18,27 +19,49 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
+  public async paginatedFind(
+    query: Pagination,
+    // sort?: Sort,
+  ): Promise<CosmosPaginationResponse<T>> {
+    const mongoQuery = toMongoQuery(query);
+    // const mongoSort = sort ? toMongoSort(sort) : undefined;
+    try {
+      if (!isPagination(query)) {
+        throw new Error('something placeholder');
+      }
+      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+
+      const aggregationItem: CosmosPaginationResponse<T> = {
+        metadata: { total: 0, limit: query.limit, offset: query.skip },
+        data: [],
+      };
+
+      for await (const result of aggregationResult) {
+        aggregationItem.metadata.total = result.metadata[0].total;
+        for (const doc of result.data) {
+          aggregationItem.data.push(doc as CamsItem<T>);
+        }
+      }
+      return aggregationItem;
+    } catch (originalError) {
+      throw this.handleError(
+        originalError,
+        `Failed while querying with: ${JSON.stringify(query)}`,
+        { query },
+      );
+    }
+  }
+
   public async find(query: Query, sort?: Sort): Promise<T[]> {
     const mongoQuery = toMongoQuery(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
-      let results;
       const items: T[] = [];
-      if (isPagination(query)) {
-        // TODO: Figure out how to handle the results from aggregate.
-        const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
-        results = aggregationResult;
-        for await (const page of results) {
-          for (const doc of page.data) {
-            items.push(doc as CamsItem<T>);
-          }
-        }
-      } else {
-        const findPromise = this.collectionHumble.find(mongoQuery);
-        results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
-        for await (const doc of results) {
-          items.push(doc as CamsItem<T>);
-        }
+
+      const findPromise = this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+      for await (const doc of results) {
+        items.push(doc as CamsItem<T>);
       }
 
       return items;
@@ -117,7 +140,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) throw unknownError;
       if (!upsert && result.matchedCount === 0) throw notFoundError;
       if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
-
       return {
         id: mongoItem.id,
         modifiedCount: result.modifiedCount,
