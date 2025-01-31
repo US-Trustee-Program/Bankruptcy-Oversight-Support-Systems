@@ -125,7 +125,7 @@ az functionapp config appsettings set -g "$app_rg" -n "$dataflows_function_name"
 echo "Setting CORS Allowed origins for the API..."
 az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://${webapp_name}-${slot_name}.azurewebsites.us"
 
-echo "Setting CORS Allowed origins for Migration function"
+echo "Setting CORS Allowed origins for Data Flows Function App..."
 az functionapp cors add -g "$app_rg" --name "$api_function_name" --slot "$slot_name" --allowed-origins "https://portal.azure.us"
 
 # Identities occasionally come through with improper id for usage here, this constructs that
@@ -142,16 +142,16 @@ echo "Assigning managed Identities API Function App..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
 az functionapp identity assign -g "$app_rg" -n "$api_function_name" --slot "$slot_name" --identities $identities
 
-echo "Assigning managed Identities to Migration Function App..."
+echo "Assigning managed Identities to Data Flows Function App..."
 # shellcheck disable=SC2086 # REASON: Adds unwanted quotes after --identities
 az functionapp identity assign -g "$app_rg" -n "$dataflows_function_name" --slot "$slot_name" --identities $identities
 
 echo "Setting KeyVaultReferenceIdentity API Function App..."
 az functionapp update --resource-group "$app_rg"  --name "$api_function_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
 
-echo "Setting KeyVaultReferenceIdentity for Migration Function App..."
-az functionapp update --resource-group "$app_rg"  --name "$api_function_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
-
+echo "Setting KeyVaultReferenceIdentity for Data Flows Function App..."
 #TODO: deal with traffic routing if we want to test
+az functionapp update --resource-group "$app_rg"  --name "$dataflows_function_name" --slot "$slot_name" --set keyVaultReferenceIdentity="$kv_ref_id"
+
 # shellcheck disable=SC2086
 az webapp traffic-routing set --distribution ${slot_name}=0 --name "${api_function_name}" --resource-group "${app_rg}"
