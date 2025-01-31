@@ -62,7 +62,7 @@ export default class CaseManagement {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
-  ): Promise<ResourceActions<SyncedCase>[]> {
+  ) {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
@@ -96,28 +96,29 @@ export default class CaseManagement {
         predicate.excludedCaseIds = consolidationChildCaseIds;
       }
 
-      const cases: ResourceActions<SyncedCase>[] =
-        await this.casesRepository.searchCases(predicate);
+      // The response type from repo.searchCases depends on pagination
+      const searchResult = await this.casesRepository.searchCases(predicate);
       const caseIds = [];
-      for (const casesKey in cases) {
-        caseIds.push(cases[casesKey].caseId);
-        const bCase = cases[casesKey];
+      for (const casesKey in searchResult.data) {
+        caseIds.push(searchResult.data[casesKey].caseId);
+        const bCase = searchResult.data[casesKey];
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
       }
       //keep these separate for now
       if (includeAssignments) {
         const assignmentsMap = await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
-        for (const casesKey in cases) {
-          const assignments = assignmentsMap.get(cases[casesKey].caseId) ?? [];
-          cases[casesKey] = {
-            ...cases[casesKey],
+        for (const casesKey in searchResult.data) {
+          const assignments = assignmentsMap.get(searchResult.data[casesKey].caseId) ?? [];
+          searchResult.data[casesKey] = {
+            ...searchResult.data[casesKey],
             assignments,
           };
         }
       }
 
-      return cases;
+      // TODO: just return searchResult, but this will break the controller and frontend
+      return searchResult.data;
     } catch (originalError) {
       if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {
