@@ -3,24 +3,10 @@ name: Veracode Security
 on: workflow_call
 
 jobs:
-  sca-scan-frontend:
+  sca-scan:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
-      path: user-interface
-    secrets: inherit # pragma: allowlist secret
-
-  sca-scan-backend:
-    needs: sca-scan-frontend
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: backend
-    secrets: inherit # pragma: allowlist secret
-
-  sca-scan-common:
-    needs: sca-scan-backend
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: common
+      path: .
     secrets: inherit # pragma: allowlist secret
 
   sast-pipeline-scan:
