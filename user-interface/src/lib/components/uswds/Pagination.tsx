@@ -93,8 +93,47 @@ export function Pagination<P extends SearchPredicate>({
           </li>,
         );
       }
+      return previousButtons;
     } else if (currentPage >= 5) {
-      return <></>;
+      return (
+        <>
+          {renderFirstPageButton()}
+          {elipsesComponent()}
+          {
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`page-${currentPage - 1}-results`}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: searchPredicate.offset! + searchPredicate.limit!,
+                  });
+                }}
+              >
+                {currentPage - 1}
+              </PaginationButton>
+            </li>
+          }
+          {currentPageButton()}
+          {
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`page-${currentPage + 1}-results`}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: searchPredicate.offset! + searchPredicate.limit!,
+                  });
+                }}
+              >
+                {currentPage + 1}
+              </PaginationButton>
+            </li>
+          }
+          {elipsesComponent()}
+          {renderLastPageButton()}
+        </>
+      );
     } else {
       return <></>;
     }
