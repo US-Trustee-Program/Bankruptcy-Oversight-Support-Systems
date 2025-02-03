@@ -244,33 +244,41 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async searchCases(predicate: CasesSearchPredicate) {
     const conditions: ConditionOrConjunction[] = [];
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
-    if (predicate.caseIds) {
-      conditions.push(contains<string[]>('caseId', predicate.caseIds));
-    }
-
-    if (predicate.chapters?.length > 0) {
-      conditions.push(contains<string[]>('chapter', predicate.chapters));
-    }
-
-    if (predicate.divisionCodes?.length > 0) {
-      conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
-    }
-
-    if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
-      conditions.push(notContains<string[]>('caseId', predicate.excludedCaseIds));
-    }
-
     let subQuery: Query;
-    if (predicate.limit && predicate.offset >= 0) {
-      subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
-      const query = QueryBuilder.build<Pagination>(subQuery);
-      return await this.getAdapter<SyncedCase>().paginatedFind(query);
+    try {
+      ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
+      if (predicate.caseIds) {
+        conditions.push(contains<string[]>('caseId', predicate.caseIds));
+      }
+
+      if (predicate.chapters?.length > 0) {
+        conditions.push(contains<string[]>('chapter', predicate.chapters));
+      }
+
+      if (predicate.divisionCodes?.length > 0) {
+        conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+      }
+
+      if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
+        conditions.push(notContains<string[]>('caseId', predicate.excludedCaseIds));
+      }
+
+      if (predicate.limit && predicate.offset >= 0) {
+        //If we don't have this we have a problem
+        subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
+        const query = QueryBuilder.build<Pagination>(subQuery);
+        return await this.getAdapter<SyncedCase>().paginatedFind(query);
+      } else {
+        throw new Error('We have a problem with predicate'); //TODO: Appropriately construct this error and logic
+      }
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve child consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
     }
-    //Can we remove this?
-    // else {
-    //   subQuery = and(...conditions);
-    //   const query = QueryBuilder.build<ConditionOrConjunction>(subQuery);
-    //   return { data: await this.getAdapter<SyncedCase>().find(query) };
-    // }
   }
 }
