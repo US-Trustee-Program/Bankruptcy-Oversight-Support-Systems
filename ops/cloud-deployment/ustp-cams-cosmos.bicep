@@ -7,7 +7,7 @@ param accountName string
 param databaseName string
 
 @description('Cosmos E2E database name')
-param e2eDatabaseName string
+param e2eDatabaseName string = ''
 
 param deployE2eDatabase bool = false
 
@@ -80,7 +80,7 @@ module collections './lib/cosmos/mongo/cosmos-collections.bicep' = {
   ]
 }
 
-module e2eDatabase './ustp-cams-cosmos-e2e.bicep' = if(deployE2eDatabase){
+module e2eDatabase './ustp-cams-cosmos-e2e.bicep' = if(deployE2eDatabase && !empty(e2eDatabaseName)){
   name: '${accountName}-e2e-database-module'
   scope: resourceGroup(resourceGroupName)
   params: {
