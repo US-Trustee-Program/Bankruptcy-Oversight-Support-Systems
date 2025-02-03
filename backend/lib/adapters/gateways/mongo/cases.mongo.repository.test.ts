@@ -13,6 +13,7 @@ import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -33,7 +34,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
-  const { and, equals, contains, notContains } = QueryBuilder;
+  const { and, equals, contains, notContains, paginate } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -294,21 +295,28 @@ describe('Cases repository', () => {
     );
   });
 
-  test('should searchCases should be called without caseIds array in query', async () => {
+  test('should call paginatedFind without caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: true,
+      limit: 1,
+      offset: 0,
     };
 
-    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
-      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
-    ];
+    const expectedSyncedCaseArray: CamsPaginationResponse<SyncedCase> = {
+      data: [MockData.getSyncedCase({ override: { caseId: caseId1 } })],
+    };
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
     const expectedQuery = QueryBuilder.build(
-      and(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE')),
+      paginate(predicate.offset, predicate.limit, [
+        and(
+          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+        ),
+      ]),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -333,7 +341,7 @@ describe('Cases repository', () => {
     const expectedQuery = QueryBuilder.build(
       and(
         equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-        contains<string[]>('caseId', predicate.caseIds),
+        contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
       ),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
@@ -363,8 +371,8 @@ describe('Cases repository', () => {
     const expectedQuery = QueryBuilder.build(
       and(
         equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-        contains<string[]>('caseId', predicate.caseIds),
-        notContains<string[]>('caseId', predicate.excludedCaseIds),
+        contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
+        notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds),
       ),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);

@@ -48,7 +48,7 @@ describe('offices repo', () => {
     const query = QueryBuilder.build(
       and(
         equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-        contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
+        contains<OfficeStaff['roles']>('roles', CamsRole.TrialAttorney),
         equals<OfficeStaff['officeCode']>('officeCode', officeCode),
       ),
     );

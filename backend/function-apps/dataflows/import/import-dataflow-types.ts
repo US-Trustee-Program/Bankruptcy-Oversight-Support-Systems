@@ -1,7 +1,7 @@
 import { DxtrCase } from '../../../../common/src/cams/cases';
 
-export type DxtrCaseChangeEvent = {
-  type: 'CASE_CHANGED';
+export type CaseSyncEvent = {
+  type: 'CASE_CHANGED' | 'MIGRATION';
   caseId: string;
   bCase?: DxtrCase;
   error?: unknown;

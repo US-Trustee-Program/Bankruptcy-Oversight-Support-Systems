@@ -20,6 +20,31 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     super(config, MODULE_NAME);
   }
 
+  async getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]> {
+    const query = `
+      SELECT CONCAT(
+          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+              '-',
+          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+              '-',
+          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId
+      FROM [dbo].[CMMDB]
+      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
+
+    type ResultType = {
+      caseId: string;
+    };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query);
+      const leadCaseIdsResults = results as ResultType[];
+      return leadCaseIdsResults.map((record) => record.caseId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
   async getLeadCaseIds(context: ApplicationContext, predicate: AcmsPredicate): Promise<string[]> {
     const input: DbTableFieldSpec[] = [];
 
