@@ -113,7 +113,7 @@ export function Pagination<P extends SearchPredicate>({
             <span>…</span>
           </li>
         )}
-        {next && currentPage < lastPage - 3 && (
+        {next && (
           <li className="usa-pagination__item usa-pagination__page-no">
             <PaginationButton
               id={`last-page-${lastPage}-results`}
