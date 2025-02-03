@@ -88,7 +88,7 @@ export function Pagination<P extends SearchPredicate>({
     return (
       <li className="usa-pagination__item usa-pagination__page-no">
         <PaginationButton
-          id={`last-page-${lastPage - countFromEnd}-results`}
+          id={`page-${lastPage - countFromEnd}-results`}
           isCurrent={currentPage === lastPage - countFromEnd}
           onClick={() => {
             retrievePage({
@@ -124,7 +124,7 @@ export function Pagination<P extends SearchPredicate>({
             {currentPage < 6 && renderRightSidePageButton(6)}
           </>
         )}
-        {totalPages! > 5 && currentPage > 4 && currentPage < lastPage - 3 && (
+        {totalPages! >= 5 && currentPage > 4 && currentPage < lastPage - 3 && (
           <>
             {renderLeftSidePageButton(currentPage - 1, false)}
             {renderLeftSidePageButton(currentPage, currentPage)}
