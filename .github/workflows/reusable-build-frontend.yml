@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -59,7 +59,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ inputs.nodeVersion }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: user-interface/package-lock.json
 
       - name: Execute Build

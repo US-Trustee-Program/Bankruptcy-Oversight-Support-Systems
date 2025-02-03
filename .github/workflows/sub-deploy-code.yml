@@ -37,7 +37,7 @@ jobs:
         with:
           name: ${{ inputs.webappName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -68,7 +68,7 @@ jobs:
         with:
           name: ${{ inputs.apiFunctionName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -100,7 +100,7 @@ jobs:
         with:
           name: ${{ inputs.migrationFunctionName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -131,7 +131,7 @@ jobs:
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      slotName: "initial"
+      slotName: 'initial'
     secrets: inherit # pragma: allowlist secret
 
   enable-access:
@@ -142,7 +142,7 @@ jobs:
       webappName: ${{ inputs.webappName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
