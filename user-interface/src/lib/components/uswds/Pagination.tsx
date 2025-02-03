@@ -23,6 +23,7 @@ export function Pagination<P extends SearchPredicate>({
           <li className="usa-pagination__item usa-pagination__arrow">
             <PaginationButton
               id={'previous-results'}
+              isPrevious={true}
               onClick={() => {
                 retrievePage({
                   ...searchPredicate,
@@ -31,14 +32,14 @@ export function Pagination<P extends SearchPredicate>({
                     (searchPredicate.limit ?? DEFAULT_SEARCH_LIMIT),
                 });
               }}
-              isPrevious={true}
             />
           </li>
         )}
-        {currentPage > 1 && (
-          <li className="usa-pagination__item usa-pagination__page-no">
+        {currentPage >= 1 && (
+          <li className="usa-pagination__item usa-pagination__page-no selected-page">
             <PaginationButton
               id={`page-1-results`}
+              isCurrent={currentPage === 1}
               onClick={() => {
                 retrievePage({ ...searchPredicate, offset: DEFAULT_SEARCH_OFFSET });
               }}
@@ -47,22 +48,75 @@ export function Pagination<P extends SearchPredicate>({
             </PaginationButton>
           </li>
         )}
-        {currentPage === 4 && (
-          <li className="usa-pagination__item usa-pagination__page-no">
-            <PaginationButton
-              id={`page-2-results`}
-              onClick={() => {
-                retrievePage({
-                  ...searchPredicate,
-                  offset: searchPredicate.limit!,
-                });
-              }}
-            >
-              2
-            </PaginationButton>
-          </li>
+        {currentPage < 5 && (
+          <>
+            {totalPages! > 1 && (
+              <li className="usa-pagination__item usa-pagination__page-no unselected-page">
+                <PaginationButton
+                  id={`page-2-results`}
+                  isCurrent={currentPage === 2}
+                  onClick={() => {
+                    retrievePage({
+                      ...searchPredicate,
+                      offset: searchPredicate.limit!,
+                    });
+                  }}
+                >
+                  2
+                </PaginationButton>
+              </li>
+            )}
+            {totalPages! > 2 && (
+              <li className="usa-pagination__item usa-pagination__page-no unselected-page">
+                <PaginationButton
+                  id={`page-3-results`}
+                  isCurrent={currentPage === 3}
+                  onClick={() => {
+                    retrievePage({
+                      ...searchPredicate,
+                      offset: searchPredicate.limit! * 2,
+                    });
+                  }}
+                >
+                  3
+                </PaginationButton>
+              </li>
+            )}
+            {totalPages! > 3 && (
+              <li className="usa-pagination__item usa-pagination__page-no unselected-page">
+                <PaginationButton
+                  id={`page-4-results`}
+                  isCurrent={currentPage === 4}
+                  onClick={() => {
+                    retrievePage({
+                      ...searchPredicate,
+                      offset: searchPredicate.limit! * 3,
+                    });
+                  }}
+                >
+                  4
+                </PaginationButton>
+              </li>
+            )}
+            {totalPages! > 4 && (
+              <li className="usa-pagination__item usa-pagination__page-no unselected-page">
+                <PaginationButton
+                  id={`page-5-results`}
+                  isCurrent={currentPage === 5}
+                  onClick={() => {
+                    retrievePage({
+                      ...searchPredicate,
+                      offset: searchPredicate.limit! * 4,
+                    });
+                  }}
+                >
+                  5
+                </PaginationButton>
+              </li>
+            )}
+          </>
         )}
-        {currentPage > 4 && (
+        {totalPages! > 6 && (
           <li
             className="usa-pagination__item usa-pagination__overflow"
             aria-label="ellipsis indicating non-visible pages"
@@ -70,26 +124,149 @@ export function Pagination<P extends SearchPredicate>({
             <span>…</span>
           </li>
         )}
-        {currentPage > 2 && (
-          <li className="usa-pagination__item usa-pagination__page-no">
+        {totalPages! === 6 && (
+          <li className="usa-pagination__item usa-pagination__page-no unselected-page">
             <PaginationButton
-              id={`page-${currentPage - 1}-results`}
+              id={`page-6-results`}
+              isCurrent={currentPage === 6}
               onClick={() => {
                 retrievePage({
                   ...searchPredicate,
-                  offset: searchPredicate.offset! - searchPredicate.limit!,
+                  offset: searchPredicate.limit! * 5,
                 });
               }}
             >
-              {currentPage - 1}
+              6
             </PaginationButton>
           </li>
         )}
+        {totalPages! > 5 && currentPage > 4 && currentPage < lastPage - 3 && (
+          <>
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`page-${currentPage - 1}-results`}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: searchPredicate.limit! * (currentPage - 2),
+                  });
+                }}
+              >
+                {currentPage - 1}
+              </PaginationButton>
+            </li>
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`page-${currentPage}-results`}
+                isCurrent={true}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: searchPredicate.limit! * (currentPage - 1),
+                  });
+                }}
+              >
+                {currentPage}
+              </PaginationButton>
+            </li>
+            {totalPages! > currentPage && (
+              <li className="usa-pagination__item usa-pagination__page-no">
+                <PaginationButton
+                  id={`page-${currentPage + 1}-results`}
+                  onClick={() => {
+                    retrievePage({
+                      ...searchPredicate,
+                      offset: searchPredicate.limit! * currentPage,
+                    });
+                  }}
+                >
+                  {currentPage + 1}
+                </PaginationButton>
+              </li>
+            )}
+            <li
+              className="usa-pagination__item usa-pagination__overflow"
+              aria-label="ellipsis indicating non-visible pages"
+            >
+              <span>…</span>
+            </li>
+          </>
+        )}
+        {currentPage >= lastPage - 3 && (
+          <>
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`last-page-${lastPage - 4}-results`}
+                isCurrent={false}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: (lastPage - 5) * searchPredicate.limit!,
+                  });
+                }}
+              >
+                {lastPage - 4}
+              </PaginationButton>
+            </li>
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`last-page-${currentPage - 3}-results`}
+                isCurrent={currentPage === lastPage - 3}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: (lastPage - 4) * searchPredicate.limit!,
+                  });
+                }}
+              >
+                {lastPage - 3}
+              </PaginationButton>
+            </li>
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`last-page-${currentPage - 2}-results`}
+                isCurrent={currentPage === lastPage - 2}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: (lastPage - 3) * searchPredicate.limit!,
+                  });
+                }}
+              >
+                {lastPage - 2}
+              </PaginationButton>
+            </li>
+            <li className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`last-page-${currentPage - 1}-results`}
+                isCurrent={currentPage === lastPage - 1}
+                onClick={() => {
+                  retrievePage({
+                    ...searchPredicate,
+                    offset: (lastPage - 2) * searchPredicate.limit!,
+                  });
+                }}
+              >
+                {lastPage - 1}
+              </PaginationButton>
+            </li>
+          </>
+        )}
         <li className="usa-pagination__item usa-pagination__page-no">
-          <PaginationButton id={`page-${currentPage}-results`} isCurrent={true}>
-            {currentPage}
+          <PaginationButton
+            id={`last-page-${lastPage}-results`}
+            isCurrent={currentPage === lastPage}
+            onClick={() => {
+              retrievePage({
+                ...searchPredicate,
+                offset: (lastPage - 1) * searchPredicate.limit!,
+              });
+            }}
+          >
+            {lastPage}
           </PaginationButton>
         </li>
+        {/*
         {next && currentPage < lastPage - 1 && (
           <li className="usa-pagination__item usa-pagination__page-no">
             <PaginationButton
@@ -105,29 +282,7 @@ export function Pagination<P extends SearchPredicate>({
             </PaginationButton>
           </li>
         )}
-        {next && currentPage < lastPage - 2 && (
-          <li
-            className="usa-pagination__item usa-pagination__overflow"
-            aria-label="ellipsis indicating non-visible pages"
-          >
-            <span>…</span>
-          </li>
-        )}
-        {next && (
-          <li className="usa-pagination__item usa-pagination__page-no">
-            <PaginationButton
-              id={`last-page-${lastPage}-results`}
-              onClick={() => {
-                retrievePage({
-                  ...searchPredicate,
-                  offset: (lastPage - 1) * searchPredicate.limit!,
-                });
-              }}
-            >
-              {lastPage}
-            </PaginationButton>
-          </li>
-        )}
+        */}
 
         {next && (
           <li className="usa-pagination__item usa-pagination__arrow">
