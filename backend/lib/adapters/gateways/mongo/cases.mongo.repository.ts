@@ -208,15 +208,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
 
       if (predicate.chapters?.length > 0) {
-        conditions.push(contains<string[]>('chapter', predicate.chapters));
+        conditions.push(contains<SyncedCase['caseId']>('chapter', predicate.chapters));
       }
 
       if (predicate.caseIds?.length > 0) {
-        conditions.push(contains<string[]>('caseId', predicate.caseIds));
+        conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
       }
 
       if (predicate.divisionCodes?.length > 0) {
-        conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+        conditions.push(
+          contains<SyncedCase['caseId']>('courtDivisionCode', predicate.divisionCodes),
+        );
       }
       const query = QueryBuilder.build(and(...conditions));
 
@@ -248,19 +250,21 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
       if (predicate.caseIds) {
-        conditions.push(contains<string[]>('caseId', predicate.caseIds));
+        conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
       }
 
       if (predicate.chapters?.length > 0) {
-        conditions.push(contains<string[]>('chapter', predicate.chapters));
+        conditions.push(contains<SyncedCase['caseId']>('chapter', predicate.chapters));
       }
 
       if (predicate.divisionCodes?.length > 0) {
-        conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+        conditions.push(
+          contains<SyncedCase['caseId']>('courtDivisionCode', predicate.divisionCodes),
+        );
       }
 
       if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
-        conditions.push(notContains<string[]>('caseId', predicate.excludedCaseIds));
+        conditions.push(notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds));
       }
 
       if (predicate.limit && predicate.offset >= 0) {

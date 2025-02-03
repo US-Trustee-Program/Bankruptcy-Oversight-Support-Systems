@@ -1,8 +1,9 @@
 import { InvocationContext } from '@azure/functions';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { DxtrCaseChangeEvent } from './import-dataflow-types';
-import DataflowsCommmon from '../dataflows-common';
+import { CaseSyncEvent } from './import-dataflow-types';
+import DataflowsCommon from '../dataflows-common';
+import { DLQ } from './import-dataflow-queues';
 
 const MODULE_NAME = 'IMPORT-DATAFLOW-CAMS-ACTIVITIES';
 
@@ -11,15 +12,15 @@ const MODULE_NAME = 'IMPORT-DATAFLOW-CAMS-ACTIVITIES';
  *
  * Load case details into Cosmos
  *
- * @param {DxtrCaseChangeEvent} event
+ * @param {CaseSyncEvent} event
  * @param {InvocationContext} invocationContext
- * @returns {DxtrCaseChangeEvent}
+ * @returns {CaseSyncEvent}
  */
 async function loadCase(
-  event: DxtrCaseChangeEvent,
+  event: CaseSyncEvent,
   invocationContext: InvocationContext,
-): Promise<DxtrCaseChangeEvent> {
-  const context = await DataflowsCommmon.getApplicationContext(invocationContext);
+): Promise<CaseSyncEvent> {
+  const context = await DataflowsCommon.getApplicationContext(invocationContext);
 
   if (event.error) return event;
   if (!event.bCase) {
@@ -38,6 +39,7 @@ async function loadCase(
     );
     context.logger.camsError(error);
     event.error = error;
+    invocationContext.extraOutputs.set(DLQ, event);
   }
 
   return event;
