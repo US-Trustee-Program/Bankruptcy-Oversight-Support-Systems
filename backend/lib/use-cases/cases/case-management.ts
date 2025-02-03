@@ -82,13 +82,9 @@ export default class CaseManagement {
         }
       }
 
-      // Held for reference purposes
-      // const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
-      //   context,
-      //   predicate,
-      // );
       //WIP: getConsolidationChildCases then filter down predicate.caseIds based on what comes back
       //then modify the search cases when excludeChildCases = true, to NOCONTAINS any of those case Ids
+      //TODO: use merge and do all of this operation in one query
       let consolidationChildCaseIds: string[] = [];
       if (predicate.excludeChildConsolidations === true) {
         consolidationChildCaseIds =
