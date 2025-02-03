@@ -118,6 +118,7 @@ export interface OrdersGateway {
 }
 
 export interface AcmsGateway {
+  getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]>;
   getLeadCaseIds(context: ApplicationContext, predicateAndPage: AcmsPredicate): Promise<string[]>;
   getConsolidationDetails(
     context: ApplicationContext,

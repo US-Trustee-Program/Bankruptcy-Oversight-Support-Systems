@@ -65,7 +65,7 @@ export class CaseAssignmentMongoRepository
     const query = QueryBuilder.build(
       and(
         equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-        contains<string[]>('caseId', caseIds),
+        contains<CaseAssignment['caseId']>('caseId', caseIds),
         exists<CaseAssignment>('unassignedOn', false),
       ),
     );

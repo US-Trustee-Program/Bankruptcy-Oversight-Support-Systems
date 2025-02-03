@@ -10,8 +10,8 @@ async function getApplicationContext(
   return context;
 }
 
-const DataflowsCommmon = {
+const DataflowsCommon = {
   getApplicationContext,
 };
 
-export default DataflowsCommmon;
+export default DataflowsCommon;
