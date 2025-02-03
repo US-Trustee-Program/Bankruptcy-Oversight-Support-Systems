@@ -7,9 +7,12 @@ import DxtrActivities from './dxtr-activities';
 import { DxtrCaseChangeEvent, ExportCaseChangeEventsSummary } from './import-dataflow-types';
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
+import DataflowsCommmon from '../dataflows-common';
 import { DLQ } from './import-dataflow-queues';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
 
-const MODULE_NAME = 'IMPORT_DATA_FLOW';
+const MODULE_NAME = 'IMPORT_DATAFLOW';
 
 const EXPORT_CASE_CHANGE_EVENTS = 'exportCaseChangeEvents';
 const EXPORT_AND_LOAD_CASE = 'exportAndLoadCase';
@@ -103,11 +106,12 @@ async function importDataflowHttpTrigger(
 ): Promise<HttpResponse> {
   try {
     const client = df.getClient(context);
-
-    // TODO: Make sure we have a JWT with SuperAdmin role. Not API key.
+    const appContext = await DataflowsCommmon.getApplicationContext(context);
+    if (!appContext.session?.user?.roles?.includes(CamsRole.SuperUser)) {
+      throw new ForbiddenError(MODULE_NAME);
+    }
 
     const instanceId: string = await client.startNew(EXPORT_CASE_CHANGE_EVENTS);
-
     return client.createCheckStatusResponse(request, instanceId);
   } catch (error) {
     return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
