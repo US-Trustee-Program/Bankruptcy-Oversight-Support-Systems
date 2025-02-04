@@ -62,13 +62,6 @@ export default class CaseManagement {
     this.casesRepository = getCasesRepository(applicationContext);
   }
 
-  /**
-   * searchCases
-   * @param context
-   * @param predicate
-   * @param includeAssignments
-   * @returns {Promise<CamsPaginationResponse<SyncedCase>>}
-   */
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,

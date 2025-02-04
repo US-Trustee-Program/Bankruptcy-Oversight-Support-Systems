@@ -2,8 +2,8 @@ import { InvocationContext } from '@azure/functions';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { CaseSyncEvent } from './import-dataflow-types';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import DataflowsCommon from '../dataflows-common';
 import { DLQ } from './import-dataflow-queues';
+import ContextCreator from '../../azure/application-context-creator';
 
 const MODULE_NAME = 'IMPORT-DATAFLOW-DXTR-ACTIVITIES';
 
@@ -15,10 +15,11 @@ const MODULE_NAME = 'IMPORT-DATAFLOW-DXTR-ACTIVITIES';
  * @returns {CaseSyncEvent[]}
  */
 async function getCaseIdsToSync(
-  _: unknown,
+  _ignore: unknown,
   invocationContext: InvocationContext,
 ): Promise<CaseSyncEvent[]> {
-  const context = await DataflowsCommon.getApplicationContext(invocationContext);
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
   const useCase = new CaseManagement(context);
   try {
     const results = await useCase.getCaseIdsToSync(context);
@@ -45,7 +46,8 @@ async function exportCase(
   event: CaseSyncEvent,
   invocationContext: InvocationContext,
 ): Promise<CaseSyncEvent> {
-  const context = await DataflowsCommon.getApplicationContext(invocationContext);
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
 
   try {
     const useCase = new CaseManagement(context);

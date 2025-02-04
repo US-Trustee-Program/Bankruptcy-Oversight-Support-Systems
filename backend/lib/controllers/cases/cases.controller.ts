@@ -46,7 +46,7 @@ export class CasesController implements CamsController {
     }
   }
 
-  public async getCaseDetails(requestQueryFilters: { caseId: string }) {
+  private async getCaseDetails(requestQueryFilters: { caseId: string }) {
     const data = await this.caseManagement.getCaseDetail(
       this.applicationContext,
       requestQueryFilters.caseId,
@@ -54,7 +54,7 @@ export class CasesController implements CamsController {
     return { data };
   }
 
-  public async searchCases(request: CamsHttpRequest) {
+  private async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
     const options = request.query as SearchOptions;
     const includeAssignments = options?.includeAssignments === 'true';
