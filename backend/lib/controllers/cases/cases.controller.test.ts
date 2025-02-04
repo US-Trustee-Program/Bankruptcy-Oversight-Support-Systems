@@ -48,7 +48,7 @@ describe('cases controller test', () => {
       expect(spy).toHaveBeenCalledWith({ caseId: caseId1 });
     });
 
-    // This is mocking the controller which is what we're testing.
+    // TODO: Remove or fix. This is mocking the controller which is what we're testing.
     test.skip('should search for cases', async () => {
       const searchSpy = jest.spyOn(CasesController.prototype, 'searchCases');
       // .mockResolvedValue({ data: MockData.buildArray(MockData.getCaseBasics, 4) });

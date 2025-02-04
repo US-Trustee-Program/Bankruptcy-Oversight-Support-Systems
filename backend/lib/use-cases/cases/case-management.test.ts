@@ -306,9 +306,11 @@ describe('Case management tests', () => {
     const caseNumber = '00-00000';
 
     test('should return an empty array for no matches', async () => {
-      jest.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue([]);
+      jest
+        .spyOn(useCase.casesRepository, 'searchCases')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
       const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
-      expect(actual).toEqual([]);
+      expect(actual).toEqual({ metadata: { total: 0 }, data: [] });
     });
 
     const optionsCases = [
@@ -329,7 +331,9 @@ describe('Case management tests', () => {
       const cases = allCaseIds.map((caseId) => {
         return MockData.getSyncedCase({ override: { caseId } });
       });
-      jest.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue(cases);
+      jest
+        .spyOn(useCase.casesRepository, 'searchCases')
+        .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
       const assignmentsSpy = jest
         .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
         .mockImplementation(() => {
@@ -344,7 +348,11 @@ describe('Case management tests', () => {
         { caseNumber },
         args.includeCaseAssignments,
       );
-      expect(actual).toEqual(cases);
+      const casesWithAssignments = cases.map((bCase) => {
+        return { ...bCase, assignments: assignmentsMap.get(bCase.caseId) ?? [] };
+      });
+      const expectedCases = args.includeCaseAssignments ? casesWithAssignments : cases;
+      expect(actual).toEqual({ metadata: { total: cases.length }, data: expectedCases });
       expect(!!assignmentsSpy.mock.calls.length).toEqual(args.includeCaseAssignments);
     });
 
@@ -377,9 +385,11 @@ describe('Case management tests', () => {
       });
       const expected = [{ ...syncedCase, officeCode, _actions }];
       jest.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
-      jest.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue([syncedCase]);
+      jest
+        .spyOn(useCase.casesRepository, 'searchCases')
+        .mockResolvedValue({ metadata: { total: 1 }, data: [syncedCase] });
       const actual = await useCase.searchCases(applicationContext, predicate, false);
-      expect(actual).toEqual(expected);
+      expect(actual).toEqual({ metadata: { total: 1 }, data: expected });
     });
 
     test('should return search cases by assignment', async () => {
@@ -395,11 +405,11 @@ describe('Case management tests', () => {
         .mockResolvedValue(assignments);
       const searchCases = jest
         .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue(cases);
+        .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
 
       const actual = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
 
-      expect(actual).toEqual(cases);
+      expect(actual).toEqual({ metadata: { total: cases.length }, data: cases });
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
       expect(searchCases).toHaveBeenCalledWith({
         assignments: [user],
@@ -418,7 +428,7 @@ describe('Case management tests', () => {
 
       const actual = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
 
-      expect(actual).toEqual([]);
+      expect(actual).toEqual({ metadata: { total: 0 }, data: [] });
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
       expect(searchCases).not.toHaveBeenCalled();
     });
