@@ -6,7 +6,6 @@ import { createContext, useRef } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
-import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import useFeatureFlags, {
@@ -21,6 +20,7 @@ import './App.scss';
 import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/GlobalAlert';
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
+import { GoHome } from './lib/components/GoHome';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
@@ -44,10 +44,11 @@ function App() {
         <GlobalAlertContext.Provider value={globalAlertRef}>
           <div className="cams-content">
             <Routes>
+              <Route index element={<GoHome />}></Route>
+              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
               <Route path="/search" element={<SearchScreen />}></Route>
               <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
               <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
               {flags[TRANSFER_ORDERS_ENABLED] && (
                 <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
@@ -55,7 +56,7 @@ function App() {
               {flags[PRIVILEGED_IDENTITY_MANAGEMENT] && (
                 <Route path="/admin/*" element={<AdminScreen />}></Route>
               )}
-              <Route path="*" element={<NotFound />}></Route>
+              <Route path="*" element={<GoHome />}></Route>
             </Routes>
             <ScrollToTopButton data-testid="scroll-to-top-button" />
           </div>
