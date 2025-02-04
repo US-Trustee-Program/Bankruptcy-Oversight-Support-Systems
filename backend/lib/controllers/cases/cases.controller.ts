@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { ResponseBody } from '../../../../common/src/api/response';
-import { CaseBasics, CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';
+import { CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
 import { Pagination } from '../../../../common/src/api/pagination';
@@ -31,7 +31,7 @@ export class CasesController implements CamsController {
   }
 
   public async handleRequest(context: ApplicationContext) {
-    let data: ResponseBody<ResourceActions<CaseDetail> | ResourceActions<CaseBasics>[]>;
+    let data: ResponseBody<ResourceActions<CaseDetail> | ResourceActions<SyncedCase>[]>;
     try {
       if (context.request.method === 'GET' && context.request.params.caseId) {
         data = await this.getCaseDetails({ caseId: context.request.params.caseId });
