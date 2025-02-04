@@ -407,4 +407,62 @@ describe('Pagination tests', () => {
     const nextPageButton = screen.queryByTestId('pagination-button-next-results');
     expect(nextPageButton).toBeInTheDocument();
   });
+
+  test('should render nextlink withdefault offset and limit', async () => {
+    const props = {
+      paginationValues: {
+        ...defaultPagination,
+        previous,
+        currentPage: 2,
+        next,
+      },
+      searchPredicate: {},
+    };
+    renderWithProps(props);
+
+    const previousPageButton = screen.queryByTestId('pagination-button-previous-results');
+    expect(previousPageButton).toBeInTheDocument();
+    const pageOneButton = screen.queryByTestId('pagination-button-page-1-results');
+    expect(pageOneButton).toBeInTheDocument();
+    const pageTwoButton = screen.queryByTestId('pagination-button-page-2-results');
+    expect(pageTwoButton).toBeInTheDocument();
+    const pageThreeButton = screen.queryByTestId('pagination-button-page-3-results');
+    expect(pageThreeButton).toBeInTheDocument();
+    const pageFourButton = screen.queryByTestId('pagination-button-page-4-results');
+    expect(pageFourButton).toBeInTheDocument();
+    const ellipses = document.querySelectorAll('.usa-pagination__overflow');
+    expect(ellipses).toHaveLength(1);
+    const nextPageButton = screen.queryByTestId('pagination-button-next-results');
+    expect(nextPageButton).toBeInTheDocument();
+    fireEvent.click(nextPageButton!);
+    expect(retrievePageSpy).toHaveBeenCalledWith({ offset: 25 });
+  });
+
+  test('should render nextlink withdefault offset and limit', async () => {
+    const props = {
+      paginationValues: {
+        ...defaultPagination,
+        previous,
+        currentPage: 2,
+        next,
+      },
+      searchPredicate: {},
+    };
+    renderWithProps(props);
+
+    const previousPageButton = screen.queryByTestId('pagination-button-previous-results');
+    expect(previousPageButton).toBeInTheDocument();
+    const pageOneButton = screen.queryByTestId('pagination-button-page-1-results');
+    expect(pageOneButton).toBeInTheDocument();
+    const pageTwoButton = screen.queryByTestId('pagination-button-page-2-results');
+    expect(pageTwoButton).toBeInTheDocument();
+    const pageThreeButton = screen.queryByTestId('pagination-button-page-3-results');
+    expect(pageThreeButton).toBeInTheDocument();
+    const pageFourButton = screen.queryByTestId('pagination-button-page-4-results');
+    expect(pageFourButton).toBeInTheDocument();
+    const ellipses = document.querySelectorAll('.usa-pagination__overflow');
+    expect(ellipses).toHaveLength(1);
+    fireEvent.click(previousPageButton!);
+    expect(retrievePageSpy).toHaveBeenCalledWith({ limit: 25, offset: 0 });
+  });
 });

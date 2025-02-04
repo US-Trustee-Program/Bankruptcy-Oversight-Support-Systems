@@ -381,9 +381,7 @@ describe('Cases repository', () => {
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
-    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
-      'Unknown CAMS Error',
-    );
+    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow('Unknown Error');
   });
 
   test('getConsolidationChildCaseIds should throw error when find throws error', async () => {
