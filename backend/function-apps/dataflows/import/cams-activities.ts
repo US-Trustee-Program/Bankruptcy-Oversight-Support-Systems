@@ -2,8 +2,9 @@ import { InvocationContext } from '@azure/functions';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { CaseSyncEvent } from './import-dataflow-types';
-import DataflowsCommon from '../dataflows-common';
 import { DLQ } from './import-dataflow-queues';
+import ContextCreator from '../../azure/application-context-creator';
+import { BadRequestError } from '../../../lib/common-errors/bad-request';
 
 const MODULE_NAME = 'IMPORT-DATAFLOW-CAMS-ACTIVITIES';
 
@@ -20,11 +21,12 @@ async function loadCase(
   event: CaseSyncEvent,
   invocationContext: InvocationContext,
 ): Promise<CaseSyncEvent> {
-  const context = await DataflowsCommon.getApplicationContext(invocationContext);
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
 
   if (event.error) return event;
   if (!event.bCase) {
-    event.error = new Error('No case to load.');
+    event.error = new BadRequestError(MODULE_NAME, { message: 'No case to load.' });
     return event;
   }
 

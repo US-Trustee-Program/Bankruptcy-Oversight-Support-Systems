@@ -1,7 +1,7 @@
 import { InvocationContext } from '@azure/functions';
 import { CaseSyncEvent } from './import-dataflow-types';
-import DataflowsCommon from '../dataflows-common';
 import AcmsOrders from '../../../lib/use-cases/acms-orders/acms-orders';
+import ContextCreator from '../../azure/application-context-creator';
 
 // const MODULE_NAME = 'IMPORT-DATAFLOW-ACMS-ACTIVITIES';
 
@@ -13,10 +13,11 @@ import AcmsOrders from '../../../lib/use-cases/acms-orders/acms-orders';
  * @returns {CaseSyncEvent[]}
  */
 async function getCaseIdsToMigrate(
-  _: unknown,
+  _ignore: unknown,
   invocationContext: InvocationContext,
 ): Promise<CaseSyncEvent[]> {
-  const context = await DataflowsCommon.getApplicationContext(invocationContext);
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
   const useCase = new AcmsOrders();
   try {
     const results = await useCase.getCaseIdsToMigrate(context);
