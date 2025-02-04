@@ -249,6 +249,12 @@ export default class CasesDxtrGateway implements CasesInterface {
     };
   }
 
+  public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
+    const query = 'SELECT TOP 1 TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+    const result = await executeQuery(context, context.config.dxtrDbConfig, query);
+    return result.results[0] ?? undefined;
+  }
+
   private async bisectBound(
     context: ApplicationContext,
     minTxId: number,

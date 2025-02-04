@@ -89,4 +89,34 @@ describe('cams-activities tests', () => {
     await CamsActivities.loadCase(event, context);
     expect(setDlqSpy).not.toHaveBeenCalled();
   });
+
+  test('should call use case with provided transaction id and not throw', async () => {
+    const spy = jest.spyOn(CaseManagement.prototype, 'storeRuntimeState').mockResolvedValue();
+
+    const params = {
+      lastTxId: '1001',
+    };
+
+    await CamsActivities.storeRuntimeState(params, context);
+    expect(spy).toHaveBeenCalledWith(expect.anything(), params.lastTxId);
+  });
+
+  test('should call use case with no transaction id and not throw', async () => {
+    const spy = jest.spyOn(CaseManagement.prototype, 'storeRuntimeState').mockResolvedValue();
+
+    const params = {};
+
+    await CamsActivities.storeRuntimeState(params, context);
+    expect(spy).toHaveBeenCalledWith(expect.anything(), undefined);
+  });
+
+  test('should not throw caught error', async () => {
+    jest
+      .spyOn(CaseManagement.prototype, 'storeRuntimeState')
+      .mockRejectedValue(new Error('some error'));
+
+    const params = {};
+
+    await expect(CamsActivities.storeRuntimeState(params, context)).resolves.toBeUndefined();
+  });
 });

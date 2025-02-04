@@ -15,3 +15,8 @@ export type ExportCaseChangeEventsSummary = {
   completed: number;
   faulted: number;
 };
+
+export type CaseSyncResults = {
+  events: CaseSyncEvent[];
+  lastTxId?: string;
+};
