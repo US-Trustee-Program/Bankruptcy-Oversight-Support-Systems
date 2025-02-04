@@ -10,6 +10,8 @@ export type GoHomeProps = {
  *
  * FUTURE: This component can be crafted to redirect to legacy routes that no longer exist in the app.
  *
+ * FUTURE: This component dynamically route based on the user's role in CAMS.
+ *
  * @param props
  * @returns
  */
