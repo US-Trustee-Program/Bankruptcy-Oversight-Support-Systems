@@ -35,4 +35,6 @@ export interface CasesInterface {
     context: ApplicationContext,
     findDate: string,
   ): Promise<TransactionIdRangeForDate>;
+
+  findMaxTransactionId(context: ApplicationContext): Promise<string>;
 }

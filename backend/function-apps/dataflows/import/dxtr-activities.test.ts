@@ -18,12 +18,15 @@ describe('acms-activities tests', () => {
       .mockRejectedValue(new Error('some error'));
 
     const actual = await DxtrActivities.getCaseIdsToSync(null, context);
-    expect(actual).toEqual([]);
+    expect(actual).toEqual({ events: [] });
   });
 
   test('should return properly decorated events', async () => {
     const caseIds = MockData.buildArray(MockData.randomCaseId, 5);
-    jest.spyOn(CaseManagement.prototype, 'getCaseIdsToSync').mockResolvedValue(caseIds);
+    const lastTxId = '1001';
+    jest
+      .spyOn(CaseManagement.prototype, 'getCaseIdsToSync')
+      .mockResolvedValue({ caseIds, lastTxId });
     const expected: CaseSyncEvent[] = [
       { type: 'CASE_CHANGED', caseId: caseIds[0] },
       { type: 'CASE_CHANGED', caseId: caseIds[1] },
@@ -33,7 +36,7 @@ describe('acms-activities tests', () => {
     ];
 
     const actual = await DxtrActivities.getCaseIdsToSync(null, context);
-    expect(actual).toEqual(expected);
+    expect(actual).toEqual({ events: expected, lastTxId });
   });
 
   test('should return event with case', async () => {

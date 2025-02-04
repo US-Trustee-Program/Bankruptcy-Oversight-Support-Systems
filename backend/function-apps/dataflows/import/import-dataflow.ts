@@ -4,7 +4,11 @@ import { app, HttpRequest, HttpResponse, InvocationContext, Timer } from '@azure
 
 import CamsActivities from './cams-activities';
 import DxtrActivities from './dxtr-activities';
-import { CaseSyncEvent, ExportCaseChangeEventsSummary } from './import-dataflow-types';
+import {
+  CaseSyncEvent,
+  CaseSyncResults,
+  ExportCaseChangeEventsSummary,
+} from './import-dataflow-types';
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsActivities from './acms-activities';
@@ -26,6 +30,7 @@ const ACMS_GET_CASEIDS_TO_MIGRATE_ACTIVITY = 'acmsGetCaseIdsToMigrateActivity';
 const DXTR_GET_CASEIDS_TO_SYNC_ACTIVITY = 'dxtrGetCaseIdsToSyncActivity';
 const DXTR_EXPORT_CASE_ACTIVITY = 'dxtrExportCaseActivity';
 const CAMS_LOAD_CASE_ACTIVITY = 'camsLoadCaseActivity';
+const CAMS_STORE_RUNTIME_STATE = 'camsStoreRuntime';
 
 /**
  * getDefaultSummary
@@ -58,6 +63,7 @@ function* acmsMigration(context: OrchestrationContext) {
 
   const child_id = context.df.instanceId + `:${ACMS_MIGRATION}:${PARTITION_CASEIDS}`;
   const summary = yield context.df.callSubOrchestrator(PARTITION_CASEIDS, events, child_id);
+  yield context.df.callActivity(CAMS_STORE_RUNTIME_STATE);
 
   return summary;
 }
@@ -70,10 +76,11 @@ function* acmsMigration(context: OrchestrationContext) {
  * @param  context
  */
 function* dxtrSync(context: OrchestrationContext) {
-  const events: CaseSyncEvent[] = yield context.df.callActivity(DXTR_GET_CASEIDS_TO_SYNC_ACTIVITY);
+  const results: CaseSyncResults = yield context.df.callActivity(DXTR_GET_CASEIDS_TO_SYNC_ACTIVITY);
 
   const child_id = context.df.instanceId + `:${DXTR_SYNC}:${PARTITION_CASEIDS}`;
-  const summary = yield context.df.callSubOrchestrator(PARTITION_CASEIDS, events, child_id);
+  const summary = yield context.df.callSubOrchestrator(PARTITION_CASEIDS, results.events, child_id);
+  yield context.df.callActivity(CAMS_STORE_RUNTIME_STATE, results.lastTxId);
 
   return summary;
 }
@@ -81,7 +88,7 @@ function* dxtrSync(context: OrchestrationContext) {
 /**
  * partitionCaseIds
  *
- * Split the work out into smaller partitions so we're not working with unwieldy array sizes.
+ * Split the work into smaller partitions so we're not working with unwieldy array sizes.
  *
  * @param context
  */
@@ -93,7 +100,7 @@ function* partitionCaseIds(context: OrchestrationContext) {
   const count = events.length;
   const partitionCount = Math.ceil(count / 100);
   for (let i = 0; i < partitionCount; i++) {
-    const partition = events.slice(i * 100, (i + 1) * 100); // Maybe out of bounds risk...
+    const partition = events.slice(i * 100, (i + 1) * 100); // May be out of bounds risk...
     const child_id = context.df.instanceId + `:${SYNC_PARTITION}:${i}`;
     nextTasks.push(context.df.callSubOrchestrator(SYNC_PARTITION, partition, child_id));
   }
@@ -256,6 +263,11 @@ export function importDataflowSetup() {
 
   df.app.activity(CAMS_LOAD_CASE_ACTIVITY, {
     handler: CamsActivities.loadCase,
+    extraOutputs: [DLQ],
+  });
+
+  df.app.activity(CAMS_STORE_RUNTIME_STATE, {
+    handler: CamsActivities.storeRuntimeState,
     extraOutputs: [DLQ],
   });
 

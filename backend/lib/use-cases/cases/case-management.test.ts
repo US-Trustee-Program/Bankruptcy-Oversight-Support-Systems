@@ -26,6 +26,7 @@ import { CasesSyncState } from '../gateways.types';
 import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { SyncedCase } from '../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
@@ -479,11 +480,11 @@ describe('Case management tests', () => {
   });
 
   describe('getCaseIdsToSync tests', () => {
-    test('should return and empty list of caseIds if no sync state exists', async () => {
+    test('should return empty array when no sync state is found', async () => {
       jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
-      const context = await createMockApplicationContext();
-      const result = await useCase.getCaseIdsToSync(context);
-      expect(result).toEqual([]);
+
+      const actual = await useCase.getCaseIdsToSync(applicationContext);
+      expect(actual).toEqual({ caseIds: [] });
     });
 
     test('should return caseIds to sync with CAMS', async () => {
@@ -503,46 +504,15 @@ describe('Case management tests', () => {
         txId: initialTxId,
       };
       jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
-      const upsertSpy = jest
-        .spyOn(MockMongoRepository.prototype, 'upsert')
-        .mockImplementation(jest.fn());
-
-      const context = await createMockApplicationContext();
-      const actual = await useCase.getCaseIdsToSync(context);
-
-      expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), syncState.txId);
-      expect(upsertSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ txId: gatewayResponse.lastTxId }),
-      );
-      expect(actual).toEqual(gatewayResponse.caseIds);
-    });
-
-    test('should not upsert lower transaction id than initial', async () => {
-      const initialTxId = '1001';
-      const lastTxId = '1000';
-      const gatewayResponse: CasesSyncMeta = {
-        caseIds: MockData.buildArray(MockData.randomCaseId, 3),
-        lastTxId,
-      };
-
       jest
-        .spyOn(useCase.casesGateway, 'getCaseIdsAndMaxTxIdToSync')
-        .mockResolvedValue(gatewayResponse);
-
-      const syncState: CasesSyncState = {
-        documentType: 'CASES_SYNC_STATE',
-        txId: initialTxId,
-      };
-      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
-      const upsertSpy = jest
         .spyOn(MockMongoRepository.prototype, 'upsert')
         .mockRejectedValue(new Error('this should not be called'));
 
       const context = await createMockApplicationContext();
       const actual = await useCase.getCaseIdsToSync(context);
 
-      expect(upsertSpy).not.toHaveBeenCalled();
-      expect(actual).toEqual(gatewayResponse.caseIds);
+      expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), syncState.txId);
+      expect(actual).toEqual({ caseIds: gatewayResponse.caseIds, lastTxId });
     });
 
     test('should throw CamsError', async () => {
@@ -586,6 +556,114 @@ describe('Case management tests', () => {
       expect(actualError).toEqual(
         expect.objectContaining({
           ...expected,
+        }),
+      );
+    });
+  });
+
+  describe('storeRuntimeState tests', () => {
+    let context: ApplicationContext;
+
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test('should persist a new sync state when transaction id is not provided', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
+      const upsertSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      const txId = '1001';
+      jest.spyOn(CasesLocalGateway.prototype, 'findMaxTransactionId').mockResolvedValue(txId);
+
+      await useCase.storeRuntimeState(context);
+      expect(upsertSpy).toHaveBeenCalledWith({ documentType: 'CASES_SYNC_STATE', txId });
+    });
+
+    test('should persist a new sync state', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
+      const upsertSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+
+      const txId = '1001';
+      await useCase.storeRuntimeState(context, txId);
+      expect(upsertSpy).toHaveBeenCalledWith({
+        documentType: 'CASES_SYNC_STATE',
+        txId,
+      });
+    });
+
+    test('should persist a higher transaction id', async () => {
+      const original: CasesSyncState = {
+        documentType: 'CASES_SYNC_STATE',
+        txId: '1000',
+      };
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+      const upsertSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+
+      const txId = '1001';
+      await useCase.storeRuntimeState(context, txId);
+      expect(upsertSpy).toHaveBeenCalledWith({ ...original, txId });
+    });
+
+    test('should not persist a lower transaction id', async () => {
+      const original: CasesSyncState = {
+        documentType: 'CASES_SYNC_STATE',
+        txId: '1000',
+      };
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+      const upsertSpy = jest
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValue(new Error('this should not be called'));
+
+      const txId = '1';
+      await useCase.storeRuntimeState(context, txId);
+      expect(upsertSpy).not.toHaveBeenCalled();
+    });
+
+    test('should throw CamsError', async () => {
+      const original: CasesSyncState = {
+        documentType: 'CASES_SYNC_STATE',
+        txId: '1000',
+      };
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
+      jest
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockRejectedValue(new Error('some error'));
+      await expect(useCase.storeRuntimeState(context, '1001')).rejects.toThrow(UnknownError);
+    });
+
+    test('should throw error if gateway throws', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
+      jest
+        .spyOn(CasesLocalGateway.prototype, 'findMaxTransactionId')
+        .mockRejectedValue(new Error('some error'));
+
+      await expect(useCase.storeRuntimeState(context)).rejects.toThrow(UnknownError);
+    });
+
+    test('should throw error if max transaction id cannot be determined', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
+      jest.spyOn(CasesLocalGateway.prototype, 'findMaxTransactionId').mockResolvedValue(undefined);
+
+      const expected = new UnknownError('test-module', {
+        message: 'Failed to determine the maximum transaction id.',
+      });
+
+      const actualError = await getExpectedError<UnknownError>(() =>
+        useCase.storeRuntimeState(context),
+      );
+      expect(actualError).toEqual(
+        expect.objectContaining({
+          ...expected,
+          module: expect.any(String),
         }),
       );
     });

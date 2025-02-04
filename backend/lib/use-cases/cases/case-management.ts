@@ -5,7 +5,7 @@ import Factory, {
   getCasesRepository,
   getOfficesGateway,
 } from '../../factory';
-import { CasesInterface } from './cases.interface';
+import { CasesInterface, CasesSyncMeta } from './cases.interface';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { isCamsError } from '../../common-errors/cams-error';
@@ -15,6 +15,7 @@ import {
   CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
+  CasesSyncState,
 } from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
@@ -177,23 +178,19 @@ export default class CaseManagement {
     }
   }
 
-  public async getCaseIdsToSync(context: ApplicationContext): Promise<string[]> {
+  public async getCaseIdsToSync(context: ApplicationContext): Promise<CasesSyncMeta> {
     const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
 
     try {
       const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
       if (!syncState) {
         // This should only happen until we run the migration.
-        return [];
+        return { caseIds: [], lastTxId: undefined };
       }
 
       const results = await this.casesGateway.getCaseIdsAndMaxTxIdToSync(context, syncState.txId);
 
-      if (results.lastTxId > syncState.txId) {
-        await runtimeStateRepo.upsert({ ...syncState, txId: results.lastTxId });
-      }
-
-      return results.caseIds;
+      return { caseIds: results.caseIds, lastTxId: results.lastTxId };
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -211,6 +208,32 @@ export default class CaseManagement {
           module: MODULE_NAME,
         },
       });
+    }
+  }
+
+  public async storeRuntimeState(context: ApplicationContext, lastTxId?: string): Promise<void> {
+    const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
+    try {
+      const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
+      if (!lastTxId) {
+        const gateway = getCasesGateway(context);
+        lastTxId = await gateway.findMaxTransactionId(context);
+        if (!lastTxId) {
+          throw new UnknownError(MODULE_NAME, {
+            message: 'Failed to determine the maximum transaction id.',
+          });
+        }
+      }
+      if (!syncState || lastTxId > syncState.txId) {
+        const newSyncState: CasesSyncState = {
+          ...syncState,
+          documentType: 'CASES_SYNC_STATE',
+          txId: lastTxId,
+        };
+        await runtimeStateRepo.upsert(newSyncState);
+      }
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 
