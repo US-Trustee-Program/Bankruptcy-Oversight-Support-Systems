@@ -47,8 +47,29 @@ async function loadCase(
   return event;
 }
 
+async function storeRuntimeState(
+  params: { lastTxId?: string },
+  invocationContext: InvocationContext,
+): Promise<void> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
+
+  try {
+    const useCase = new CaseManagement(context);
+    await useCase.storeRuntimeState(context, params.lastTxId);
+  } catch (originalError) {
+    const error = getCamsError(
+      originalError,
+      MODULE_NAME,
+      `Failed while storing the case sync runtime state.`,
+    );
+    context.logger.camsError(error);
+  }
+}
+
 const CamsActivities = {
   loadCase,
+  storeRuntimeState,
 };
 
 export default CamsActivities;

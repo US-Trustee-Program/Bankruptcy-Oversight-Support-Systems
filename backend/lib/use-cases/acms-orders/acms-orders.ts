@@ -50,6 +50,7 @@ export type AcmsTransformationResult = {
 
 export class AcmsOrders {
   public async getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]> {
+    // TODO: this should probably get partitions in case there are millions of cases to migrate
     try {
       const gateway = Factory.getAcmsGateway(context);
       const caseIds = await gateway.getCaseIdsToMigrate(context);

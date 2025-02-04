@@ -137,4 +137,8 @@ export class CasesLocalGateway implements CasesInterface {
   ): Promise<TransactionIdRangeForDate> {
     throw new Error('Not implemented');
   }
+
+  public async findMaxTransactionId(_context: ApplicationContext): Promise<string> {
+    throw new Error('Not implemented');
+  }
 }
