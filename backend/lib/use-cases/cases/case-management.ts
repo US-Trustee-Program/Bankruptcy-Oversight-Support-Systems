@@ -11,7 +11,11 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { AssignmentError } from '../case-assignment/assignment.exception';
 import { OfficesGateway } from '../offices/offices.types';
-import { CaseAssignmentRepository, CasesRepository } from '../gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseAssignmentRepository,
+  CasesRepository,
+} from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
@@ -62,7 +66,7 @@ export default class CaseManagement {
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
-  ) {
+  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
@@ -82,9 +86,6 @@ export default class CaseManagement {
         }
       }
 
-      //WIP: getConsolidationChildCases then filter down predicate.caseIds based on what comes back
-      //then modify the search cases when excludeChildCases = true, to NOCONTAINS any of those case Ids
-      //TODO: use merge and do all of this operation in one query
       let consolidationChildCaseIds: string[] = [];
       if (predicate.excludeChildConsolidations === true) {
         consolidationChildCaseIds =
@@ -92,29 +93,31 @@ export default class CaseManagement {
         predicate.excludedCaseIds = consolidationChildCaseIds;
       }
 
-      // The response type from repo.searchCases depends on pagination
       const searchResult = await this.casesRepository.searchCases(predicate);
 
+      const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];
       for (const casesKey in searchResult.data) {
         caseIds.push(searchResult.data[casesKey].caseId);
         const bCase = searchResult.data[casesKey];
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
+        casesMap.set(bCase.caseId, bCase);
       }
-      //keep these separate for now
+      // TODO: in a subsequent PR, use a merge in the repo to get assignments at the same time as the rest
       if (includeAssignments) {
         const assignmentsMap = await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
-        for (const casesKey in searchResult.data) {
-          const assignments = assignmentsMap.get(searchResult.data[casesKey].caseId) ?? [];
-          searchResult.data[casesKey] = {
-            ...searchResult.data[casesKey],
+        for (const caseId of caseIds) {
+          const assignments = assignmentsMap.get(caseId) ?? [];
+          const caseWithAssignments = {
+            ...casesMap.get(caseId),
             assignments,
           };
+          casesMap.set(caseId, caseWithAssignments);
         }
       }
 
-      return searchResult;
+      return { metadata: searchResult.metadata, data: Array.from(casesMap.values()) };
     } catch (originalError) {
       if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {

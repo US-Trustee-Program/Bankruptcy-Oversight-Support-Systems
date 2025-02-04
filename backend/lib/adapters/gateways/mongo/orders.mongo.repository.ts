@@ -46,7 +46,9 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     if (!predicate) {
       query = null;
     } else {
-      query = QueryBuilder.build(contains('courtDivisionCode', predicate.divisionCodes));
+      query = QueryBuilder.build(
+        contains<Order['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
+      );
     }
 
     try {

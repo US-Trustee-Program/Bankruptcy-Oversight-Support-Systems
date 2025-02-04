@@ -1,8 +1,10 @@
 import { InvocationContext } from '@azure/functions';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { DxtrCaseChangeEvent } from './import-dataflow-types';
-import DataflowsCommmon from '../dataflows-common';
+import { CaseSyncEvent } from './import-dataflow-types';
+import { DLQ } from './import-dataflow-queues';
+import ContextCreator from '../../azure/application-context-creator';
+import { BadRequestError } from '../../../lib/common-errors/bad-request';
 
 const MODULE_NAME = 'IMPORT-DATAFLOW-CAMS-ACTIVITIES';
 
@@ -11,19 +13,20 @@ const MODULE_NAME = 'IMPORT-DATAFLOW-CAMS-ACTIVITIES';
  *
  * Load case details into Cosmos
  *
- * @param {DxtrCaseChangeEvent} event
+ * @param {CaseSyncEvent} event
  * @param {InvocationContext} invocationContext
- * @returns {DxtrCaseChangeEvent}
+ * @returns {CaseSyncEvent}
  */
 async function loadCase(
-  event: DxtrCaseChangeEvent,
+  event: CaseSyncEvent,
   invocationContext: InvocationContext,
-): Promise<DxtrCaseChangeEvent> {
-  const context = await DataflowsCommmon.getApplicationContext(invocationContext);
+): Promise<CaseSyncEvent> {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
 
   if (event.error) return event;
   if (!event.bCase) {
-    event.error = new Error('No case to load.');
+    event.error = new BadRequestError(MODULE_NAME, { message: 'No case to load.' });
     return event;
   }
 
@@ -38,6 +41,7 @@ async function loadCase(
     );
     context.logger.camsError(error);
     event.error = error;
+    invocationContext.extraOutputs.set(DLQ, event);
   }
 
   return event;

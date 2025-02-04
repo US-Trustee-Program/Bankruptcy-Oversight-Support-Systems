@@ -1,17 +1,7 @@
-import { InvocationContext } from '@azure/functions';
-import ContextCreator from '../azure/application-context-creator';
-import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { HttpRequest } from '@azure/functions';
 
-async function getApplicationContext(
-  invocationContext: InvocationContext,
-): Promise<ApplicationContext> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
-  return context;
+export function isAuthorized(request: HttpRequest) {
+  const header = request.headers.get('Authorization');
+  const parts = header ? header.split(' ') : ['', ''];
+  return process.env.ADMIN_KEY && parts[0] === 'ApiKey' && parts[1] === process.env.ADMIN_KEY;
 }
-
-const DataflowsCommmon = {
-  getApplicationContext,
-};
-
-export default DataflowsCommmon;

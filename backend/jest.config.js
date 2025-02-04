@@ -33,6 +33,7 @@ module.exports = {
     'function-apps/dataflows/migration/orchestration/',
     'function-apps/dataflows/migration/migration.ts',
     'function-apps/dataflows/import/import-dataflow.ts',
+    'function-apps/dataflows/import/import-dataflow-queues.ts',
     'function-apps/dataflows/dataflows.ts',
   ],
   testMatch: ['**/?(*.)+(spec|test).[jt]s?(x)', '!**/?(*.)+(integration).(spec|test).[jt]s?(x)'],

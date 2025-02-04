@@ -87,8 +87,8 @@ describe('Query Builder', () => {
     },
     {
       condition: 'CONTAINS',
-      query: () => contains('two', 45),
-      result: { condition: 'CONTAINS', attributeName: 'two', value: 45 },
+      query: () => contains<number>('two', [45]),
+      result: { condition: 'CONTAINS', attributeName: 'two', value: [45] },
     },
     {
       condition: 'LESS_THAN',
@@ -107,8 +107,8 @@ describe('Query Builder', () => {
     },
     {
       condition: 'NOT_CONTAINS',
-      query: () => notContains('two', 45),
-      result: { condition: 'NOT_CONTAINS', attributeName: 'two', value: 45 },
+      query: () => notContains<number>('two', [45]),
+      result: { condition: 'NOT_CONTAINS', attributeName: 'two', value: [45] },
     },
     {
       condition: 'REGEX',

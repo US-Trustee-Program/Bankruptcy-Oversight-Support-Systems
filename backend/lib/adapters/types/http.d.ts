@@ -28,7 +28,3 @@ export type CamsHttpRequest<B = unknown> = {
   params: CamsDict;
   body?: B;
 };
-
-export type AdminRequestBody = {
-  apiKey: string;
-};

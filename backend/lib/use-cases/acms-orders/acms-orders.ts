@@ -7,7 +7,6 @@ import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { AdminRequestBody } from '../../adapters/types/http';
 
 const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
@@ -16,7 +15,7 @@ export type AcmsBounds = {
   chapters: string[];
 };
 
-export type TriggerRequest = AcmsBounds & AdminRequestBody;
+export type TriggerRequest = AcmsBounds;
 
 export type AcmsPredicate = {
   divisionCode: string;
@@ -50,6 +49,25 @@ export type AcmsTransformationResult = {
 };
 
 export class AcmsOrders {
+  public async getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]> {
+    try {
+      const gateway = Factory.getAcmsGateway(context);
+      const caseIds = await gateway.getCaseIdsToMigrate(context);
+      context.logger.debug(
+        MODULE_NAME,
+        `Found ${caseIds.length} cases to sync with CAMS.`,
+        caseIds,
+      );
+      return caseIds;
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to get case IDs to migrate from the ACMS gateway.',
+      );
+    }
+  }
+
   public async getLeadCaseIds(
     context: ApplicationContext,
     predicate: AcmsPredicate,

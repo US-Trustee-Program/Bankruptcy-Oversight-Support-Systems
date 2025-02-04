@@ -6,6 +6,7 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
@@ -33,8 +34,13 @@ describe('Consolidations Repository tests', () => {
       .mockResolvedValue([consolidationOrder]);
     const query = QueryBuilder.build(
       and(
-        contains<string[]>('courtDivisionCode', [consolidationOrder.courtDivisionCode]),
-        equals<string>('consolidationId', consolidationOrder.consolidationId),
+        contains<ConsolidationOrder['courtDivisionCode']>('courtDivisionCode', [
+          consolidationOrder.courtDivisionCode,
+        ]),
+        equals<ConsolidationOrder['consolidationId']>(
+          'consolidationId',
+          consolidationOrder.consolidationId,
+        ),
       ),
     );
     const results = await repo.search({

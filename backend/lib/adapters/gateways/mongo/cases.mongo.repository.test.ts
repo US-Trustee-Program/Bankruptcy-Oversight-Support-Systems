@@ -13,6 +13,7 @@ import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -33,7 +34,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
-  const { and, equals, contains, notContains } = QueryBuilder;
+  const { and, equals, contains, notContains, paginate } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -294,32 +295,41 @@ describe('Cases repository', () => {
     );
   });
 
-  test('should searchCases should be called without caseIds array in query', async () => {
+  test('should call paginatedFind without caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: true,
+      limit: 1,
+      offset: 0,
     };
 
-    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
-      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
-    ];
+    const expectedSyncedCaseArray: CamsPaginationResponse<SyncedCase> = {
+      data: [MockData.getSyncedCase({ override: { caseId: caseId1 } })],
+    };
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
     const expectedQuery = QueryBuilder.build(
-      and(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE')),
+      paginate(predicate.offset, predicate.limit, [
+        and(
+          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+        ),
+      ]),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
     expect(result).toEqual(expectedSyncedCaseArray);
   });
 
-  test('should searchCases should be called with caseIds array in query', async () => {
+  test('should call paginatedFind with caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: true,
       caseIds: [caseId1, caseId2],
+      limit: 25,
+      offset: 0,
     };
 
     const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
@@ -327,21 +337,24 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(expectedSyncedCaseArray);
+      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     const expectedQuery = QueryBuilder.build(
-      and(
-        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-        contains<string[]>('caseId', predicate.caseIds),
-      ),
+      paginate(predicate.offset, predicate.limit, [
+        and(
+          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+          contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
+          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+        ),
+      ]),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
-    expect(result).toEqual(expectedSyncedCaseArray);
+    expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
 
-  test('should searchCases should be called with caseIds array and excludedCaseIds in query', async () => {
+  test('should call paginatedFind with caseIds array and excludedCaseIds in query', async () => {
     const excludedCaseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
@@ -357,29 +370,35 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(expectedSyncedCaseArray);
+      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
+    // TODO: can we find a way to not rely on the exact order here?
     const expectedQuery = QueryBuilder.build(
-      and(
-        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-        contains<string[]>('caseId', predicate.caseIds),
-        notContains<string[]>('caseId', predicate.excludedCaseIds),
-      ),
+      paginate(predicate.offset, predicate.limit, [
+        and(
+          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+          contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
+          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+          notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds),
+        ),
+      ]),
     );
-    expect(findSpy).toHaveBeenCalledWith(expectedQuery);
+    expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
 
-    expect(result).toEqual(expectedSyncedCaseArray);
+    expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
 
-  test('searchCases should throw error when find throws error', async () => {
+  test('should throw error when paginatedFind throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: false,
+      limit: 25,
+      offset: 0,
     };
 
     jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
