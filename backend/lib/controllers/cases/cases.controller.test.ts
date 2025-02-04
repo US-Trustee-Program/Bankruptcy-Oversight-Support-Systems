@@ -48,10 +48,10 @@ describe('cases controller test', () => {
       expect(spy).toHaveBeenCalledWith({ caseId: caseId1 });
     });
 
-    test('should search for cases', async () => {
-      const searchSpy = jest
-        .spyOn(CasesController.prototype, 'searchCases')
-        .mockResolvedValue({ data: MockData.buildArray(MockData.getCaseBasics, 4) });
+    // This is mocking the controller which is what we're testing.
+    test.skip('should search for cases', async () => {
+      const searchSpy = jest.spyOn(CasesController.prototype, 'searchCases');
+      // .mockResolvedValue({ data: MockData.buildArray(MockData.getCaseBasics, 4) });
       context.request = {
         method: 'GET',
         url: 'http://localhost:3000',
@@ -96,12 +96,16 @@ describe('cases controller test', () => {
             limit,
             count: 0,
             currentPage: 0,
+            totalCount: 0,
+            totalPages: 0,
           },
           data: [],
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue([]);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
 
       const request = mockCamsHttpRequest({
         method: 'POST',
@@ -112,9 +116,9 @@ describe('cases controller test', () => {
       expect(actual).toEqual(expected);
     });
 
-    test('should return a next link when result set is larger than limit', async () => {
+    test('should return a next link when total is larger than limit', async () => {
       const caseNumber = '00-00000';
-      const data = MockData.buildArray(MockData.getSyncedCase, limit + 1);
+      const data = MockData.buildArray(MockData.getSyncedCase, limit);
       const dataMinusHint = [...data];
       dataMinusHint.pop();
 
@@ -123,12 +127,16 @@ describe('cases controller test', () => {
           meta: { self: mockRequestUrl },
           pagination: expect.objectContaining({
             next: `${mockRequestUrl}?limit=${limit}&offset=${offset + limit}`,
+            totalCount: data.length + 1,
+            totalPages: data.length / limit + 1,
           }),
           data: expect.anything(),
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: data.length + 1 }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -152,12 +160,16 @@ describe('cases controller test', () => {
             limit,
             count: data.length,
             currentPage: 1,
+            totalCount: data.length,
+            totalPages: 1,
           },
           data,
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: data.length }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -173,6 +185,9 @@ describe('cases controller test', () => {
     test('should not return a next link when result set is smaller than limit', async () => {
       const caseNumber = '00-00000';
       const data = MockData.buildArray(MockData.getSyncedCase, limit - 1);
+      const currentPage = 1;
+      const totalCount = limit * currentPage - 1;
+      const totalPages = currentPage;
 
       const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
@@ -180,13 +195,17 @@ describe('cases controller test', () => {
           pagination: {
             limit,
             count: data.length,
-            currentPage: 1,
+            currentPage,
+            totalCount,
+            totalPages,
           },
           data,
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: totalCount }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -204,6 +223,9 @@ describe('cases controller test', () => {
       const limit = 25;
       const previousOffset = '0';
       const data = MockData.buildArray(MockData.getSyncedCase, limit - 1);
+      const currentPage = 2;
+      const totalCount = limit * currentPage - 1;
+      const totalPages = currentPage;
 
       const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
@@ -213,12 +235,16 @@ describe('cases controller test', () => {
             count: data.length,
             previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
             currentPage: 2,
+            totalCount,
+            totalPages,
           },
           data,
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: totalCount }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -233,25 +259,30 @@ describe('cases controller test', () => {
       const caseNumber = '00-00000';
       const nextOffset = '100';
       const previousOffset = '0';
-      const data = MockData.buildArray(MockData.getSyncedCase, limit + 1);
-      const dataMinusHint = [...data];
-      dataMinusHint.pop();
+      const data = MockData.buildArray(MockData.getSyncedCase, limit);
+      const currentPage = 2;
+      const totalCount = limit * currentPage + 1;
+      const totalPages = currentPage + 1;
 
       const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
           pagination: {
             limit,
-            count: dataMinusHint.length,
+            count: limit,
             next: `${mockRequestUrl}?limit=${limit}&offset=${nextOffset}`,
             previous: `${mockRequestUrl}?limit=${limit}&offset=${previousOffset}`,
-            currentPage: 2,
+            currentPage,
+            totalCount,
+            totalPages,
           },
-          data: dataMinusHint,
+          data,
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: totalCount }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -260,14 +291,14 @@ describe('cases controller test', () => {
 
       const actual = await controller.searchCases(camsHttpRequest);
       expect(actual).toEqual(expected);
-      expect(actual.data).toHaveLength(limit);
-      expect(actual.data).toEqual(data.slice(0, limit));
     });
 
     test('should return search results for a caseNumber', async () => {
       const caseNumber = '00-00000';
       const data = [MockData.getSyncedCase({ override: { caseId: '999-' + caseNumber } })];
-
+      const currentPage = 1;
+      const totalCount = 1;
+      const totalPages = currentPage;
       const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
           meta: { self: mockRequestUrl },
@@ -275,12 +306,16 @@ describe('cases controller test', () => {
             limit,
             count: data.length,
             currentPage: 1,
+            totalCount,
+            totalPages,
           },
           data,
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: totalCount }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -294,6 +329,9 @@ describe('cases controller test', () => {
     test('should return search results for a divisionCode', async () => {
       const caseNumber = '00-00000';
       const data = [MockData.getSyncedCase({ override: { caseId: '999-' + caseNumber } })];
+      const currentPage = 1;
+      const totalCount = 1;
+      const totalPages = currentPage;
 
       const expected: CamsHttpResponseInit<ResourceActions<SyncedCase>[]> = expect.objectContaining(
         {
@@ -302,12 +340,16 @@ describe('cases controller test', () => {
             limit,
             count: data.length,
             currentPage: 1,
+            totalCount,
+            totalPages,
           },
           data,
         },
       );
 
-      jest.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue(data);
+      jest
+        .spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValue({ metadata: { total: totalCount }, data });
 
       const camsHttpRequest = mockCamsHttpRequest({
         method: 'POST',
@@ -351,7 +393,7 @@ describe('cases controller test', () => {
 
         const useCaseSpy = jest
           .spyOn(CaseManagement.prototype, 'searchCases')
-          .mockResolvedValue(data);
+          .mockResolvedValue({ metadata: { total: 0 }, data });
 
         const camsHttpRequest = mockCamsHttpRequest({
           method: 'POST',

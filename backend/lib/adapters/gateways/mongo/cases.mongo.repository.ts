@@ -254,12 +254,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       }
 
       if (predicate.chapters?.length > 0) {
-        conditions.push(contains<SyncedCase['caseId']>('chapter', predicate.chapters));
+        conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
       }
 
       if (predicate.divisionCodes?.length > 0) {
         conditions.push(
-          contains<SyncedCase['caseId']>('courtDivisionCode', predicate.divisionCodes),
+          contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
         );
       }
 

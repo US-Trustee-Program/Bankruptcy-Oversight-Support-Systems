@@ -98,7 +98,7 @@ function greaterThanOrEqual<T>(attributeName: string, value: T): Condition {
   };
 }
 
-function contains<T>(attributeName: string, value: T[]): Condition {
+function contains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'CONTAINS',
     attributeName,
@@ -122,7 +122,7 @@ function lessThanOrEqual<T>(attributeName: string, value: T): Condition {
   };
 }
 
-function notContains<T>(attributeName: string, value: T[]): Condition {
+function notContains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'NOT_CONTAINS',
     attributeName,
