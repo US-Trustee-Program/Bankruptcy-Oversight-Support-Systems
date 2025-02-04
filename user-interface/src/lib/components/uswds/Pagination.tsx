@@ -15,9 +15,6 @@ export function Pagination<P extends SearchPredicate>({
 }: PaginationProps<P>) {
   const { currentPage, totalPages } = paginationValues;
   const lastPage = totalPages ?? 0;
-  if (lastPage <= 1) {
-    return <></>;
-  }
 
   function renderEllipsis() {
     return (
