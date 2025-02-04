@@ -11,7 +11,11 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { AssignmentError } from '../case-assignment/assignment.exception';
 import { OfficesGateway } from '../offices/offices.types';
-import { CaseAssignmentRepository, CasesRepository } from '../gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseAssignmentRepository,
+  CasesRepository,
+} from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
@@ -58,11 +62,18 @@ export default class CaseManagement {
     this.casesRepository = getCasesRepository(applicationContext);
   }
 
+  /**
+   * searchCases
+   * @param context
+   * @param predicate
+   * @param includeAssignments
+   * @returns {Promise<CamsPaginationResponse<SyncedCase>>}
+   */
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
-  ) {
+  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();

@@ -19,6 +19,9 @@ const mockAcmsGateway: AcmsGateway = {
   getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
     throw new Error('Function not implemented.');
   },
+  getCaseIdsToMigrate: function (..._ignore): Promise<string[]> {
+    throw new Error('Function not implemented.');
+  },
 };
 
 describe('ACMS Orders', () => {

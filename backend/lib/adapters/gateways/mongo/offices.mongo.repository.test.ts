@@ -45,10 +45,11 @@ describe('offices repo', () => {
     const findSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue(attorneyUsers);
+
     const query = QueryBuilder.build(
       and(
         equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-        contains<OfficeStaff['roles']>('roles', CamsRole.TrialAttorney),
+        contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
         equals<OfficeStaff['officeCode']>('officeCode', officeCode),
       ),
     );

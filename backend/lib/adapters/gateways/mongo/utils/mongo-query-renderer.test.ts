@@ -76,7 +76,7 @@ describe('Mongo Query Renderer', () => {
     },
     {
       caseName: 'CONTAINS',
-      func: () => contains('two', 45),
+      func: () => contains<number>('two', [45]),
       expected: { two: { $in: 45 } },
     },
     {
@@ -96,7 +96,7 @@ describe('Mongo Query Renderer', () => {
     },
     {
       caseName: 'NOT_CONTAINS',
-      func: () => notContains('two', 45),
+      func: () => notContains<number>('two', [45]),
       expected: { two: { $nin: 45 } },
     },
     {
