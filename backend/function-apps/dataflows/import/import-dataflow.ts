@@ -9,6 +9,8 @@ import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import AcmsActivities from './acms-activities';
 import { DLQ } from './import-dataflow-queues';
+import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
+import { isAuthorized } from '../dataflows-common';
 
 const MODULE_NAME = 'IMPORT_DATAFLOW';
 
@@ -179,13 +181,12 @@ async function acmsMigrationHttpTrigger(
   context: InvocationContext,
 ): Promise<HttpResponse> {
   try {
+    if (!isAuthorized(request)) {
+      throw new ForbiddenError(MODULE_NAME);
+    }
     const client = df.getClient(context);
-    // const appContext = await DataflowsCommon.getApplicationContext(context);
-    // if (!appContext.session?.user?.roles?.includes(CamsRole.SuperUser)) {
-    //   throw new ForbiddenError(MODULE_NAME);
-    // }
-
     const instanceId: string = await client.startNew(ACMS_MIGRATION);
+
     return client.createCheckStatusResponse(request, instanceId);
   } catch (error) {
     return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
@@ -204,13 +205,13 @@ async function dxtrSyncHttpTrigger(
   context: InvocationContext,
 ): Promise<HttpResponse> {
   try {
-    const client = df.getClient(context);
-    // const appContext = await DataflowsCommon.getApplicationContext(context);
-    // if (!appContext.session?.user?.roles?.includes(CamsRole.SuperUser)) {
-    //   throw new ForbiddenError(MODULE_NAME);
-    // }
+    if (!isAuthorized(request)) {
+      throw new ForbiddenError(MODULE_NAME);
+    }
 
+    const client = df.getClient(context);
     const instanceId: string = await client.startNew(DXTR_SYNC);
+
     return client.createCheckStatusResponse(request, instanceId);
   } catch (error) {
     return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
@@ -263,7 +264,6 @@ export function importDataflowSetup() {
     schedule: '0 30 9 * * *',
   });
 
-  // TODO: Add a http endpoint to request the refresh of a specific case??
   app.http('dxtrSyncHttpTrigger', {
     route: 'dxtrsync',
     extraInputs: [df.input.durableClient()],
