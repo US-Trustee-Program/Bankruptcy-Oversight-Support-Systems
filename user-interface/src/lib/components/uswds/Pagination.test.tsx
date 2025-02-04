@@ -28,16 +28,17 @@ describe('Pagination tests', () => {
       paginationValues: defaultPagination,
       searchPredicate: defaultSearchPredicate,
       retrievePage: retrievePageSpy,
+      ...props,
     };
 
     render(
       <BrowserRouter>
-        <Pagination {...defaultProps} {...props} />
+        <Pagination {...defaultProps} />
       </BrowserRouter>,
     );
   }
 
-  test('should call retrievePage correctly for next page number button', () => {
+  test('should call retrievePage correctly for page one button', () => {
     renderWithProps();
 
     const expectedArgument = {
@@ -48,6 +49,35 @@ describe('Pagination tests', () => {
     const pageTwoButton = screen.getByTestId('pagination-button-page-2-results');
     expect(pageTwoButton).toBeInTheDocument();
     fireEvent.click(pageTwoButton);
+    expect(retrievePageSpy).toHaveBeenCalledWith(expectedArgument);
+  });
+
+  test('should call retrievePage correctly for page 10 button', () => {
+    const props = {
+      paginationValues: {
+        ...defaultPagination,
+        currentPage: 1,
+        limit: 10,
+        count: 100,
+        totalCount: 100,
+        totalPages: 10,
+      },
+      searchPredicate: {
+        ...defaultSearchPredicate,
+        limit: 10,
+      },
+    };
+    renderWithProps(props);
+
+    const expectedArgument = {
+      ...defaultSearchPredicate,
+      limit: 10,
+      offset: 90,
+    };
+
+    const pageTenButton = screen.getByTestId('pagination-button-page-10-results');
+    expect(pageTenButton).toBeInTheDocument();
+    fireEvent.click(pageTenButton);
     expect(retrievePageSpy).toHaveBeenCalledWith(expectedArgument);
   });
 
@@ -202,6 +232,66 @@ describe('Pagination tests', () => {
     expect(nextPageButton).toBeInTheDocument();
   });
 
+  test('should render 6 pages with no ellipses if there are 6 total pages and the current page is page 6. Previous should be in the document and Next should not.', () => {
+    const testPagination = {
+      ...defaultPagination,
+      count: 225,
+      limit: 25,
+      currentPage: 6,
+      totalPages: 6,
+      totalCount: 225,
+    };
+
+    renderWithProps({ paginationValues: testPagination });
+
+    const previousPageButton = screen.queryByTestId('pagination-button-previous-results');
+    expect(previousPageButton).toBeInTheDocument();
+
+    for (let page = 1; page < 6; page++) {
+      const pageButton = screen.queryByTestId(`pagination-button-page-${page}-results`);
+      expect(pageButton).toBeInTheDocument();
+    }
+
+    const pageSixButton = screen.queryByTestId('pagination-button-page-6-results');
+    expect(pageSixButton).toBeInTheDocument();
+
+    const ellipses = document.querySelectorAll('.usa-pagination__overflow');
+    expect(ellipses).toHaveLength(0);
+
+    const nextPageButton = screen.queryByTestId('pagination-button-next-results');
+    expect(nextPageButton).not.toBeInTheDocument();
+  });
+
+  test('should render 6 pages with no ellipses if there are 6 total pages and the current page is page 1. Previous should not be in the document and Next should be.', () => {
+    const testPagination = {
+      ...defaultPagination,
+      count: 225,
+      limit: 25,
+      currentPage: 1,
+      totalPages: 6,
+      totalCount: 225,
+    };
+
+    renderWithProps({ paginationValues: testPagination });
+
+    const previousPageButton = screen.queryByTestId('pagination-button-previous-results');
+    expect(previousPageButton).not.toBeInTheDocument();
+
+    for (let page = 1; page < 6; page++) {
+      const pageButton = screen.queryByTestId(`pagination-button-page-${page}-results`);
+      expect(pageButton).toBeInTheDocument();
+    }
+
+    const pageSixButton = screen.queryByTestId('pagination-button-page-6-results');
+    expect(pageSixButton).toBeInTheDocument();
+
+    const ellipses = document.querySelectorAll('.usa-pagination__overflow');
+    expect(ellipses).toHaveLength(0);
+
+    const nextPageButton = screen.queryByTestId('pagination-button-next-results');
+    expect(nextPageButton).toBeInTheDocument();
+  });
+
   test('should render previous, page 1, page 2, page 3, ellipses, and next', () => {
     const props = {
       paginationValues: {
@@ -316,41 +406,5 @@ describe('Pagination tests', () => {
     expect(ellipses).toHaveLength(2);
     const nextPageButton = screen.queryByTestId('pagination-button-next-results');
     expect(nextPageButton).toBeInTheDocument();
-  });
-
-  test('should not render final ellipses or next buttons if we have no next', () => {
-    const props = {
-      paginationValues: {
-        ...defaultPagination,
-        previous,
-        next: undefined,
-        currentPage: 5,
-        totalPages: 5,
-        totalCount: 249,
-        limit: 25,
-        offset: 225,
-      },
-      searchPredicate: { ...defaultSearchPredicate, offset: 225 },
-    };
-    renderWithProps(props);
-
-    const previousPageButton = screen.queryByTestId('pagination-button-previous-results');
-    expect(previousPageButton).toBeInTheDocument();
-    const pageOneButton = screen.queryByTestId('pagination-button-page-1-results');
-    expect(pageOneButton).toBeInTheDocument();
-    const pageTwoButton = screen.queryByTestId('pagination-button-page-2-results');
-    expect(pageTwoButton).not.toBeInTheDocument();
-    const pageThreeButton = screen.queryByTestId('pagination-button-page-3-results');
-    expect(pageThreeButton).not.toBeInTheDocument();
-    const pageFourButton = screen.queryByTestId('pagination-button-page-4-results');
-    expect(pageFourButton).toBeInTheDocument();
-    const pageFiveButton = screen.queryByTestId('pagination-button-page-5-results');
-    expect(pageFiveButton).toBeInTheDocument();
-    const pageSixButton = screen.queryByTestId('pagination-button-page-6-results');
-    expect(pageSixButton).not.toBeInTheDocument();
-    const ellipses = document.querySelectorAll('.usa-pagination__overflow');
-    expect(ellipses).toHaveLength(1);
-    const nextPageButton = screen.queryByTestId('pagination-button-next-results');
-    expect(nextPageButton).not.toBeInTheDocument();
   });
 });

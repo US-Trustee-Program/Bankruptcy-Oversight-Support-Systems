@@ -13,8 +13,11 @@ export function Pagination<P extends SearchPredicate>({
   searchPredicate,
   retrievePage,
 }: PaginationProps<P>) {
-  const { previous, next, currentPage, totalPages } = paginationValues;
+  const { currentPage, totalPages } = paginationValues;
   const lastPage = totalPages ?? 0;
+  if (lastPage <= 1) {
+    return <></>;
+  }
 
   function renderEllipsis() {
     return (
@@ -107,24 +110,18 @@ export function Pagination<P extends SearchPredicate>({
   return (
     <nav aria-label="Pagination" className="usa-pagination">
       <ul className="usa-pagination__list">
-        {previous && renderPreviousLink()}
+        {currentPage !== 1 && renderPreviousLink()}
         {currentPage >= 1 && renderLeftSidePageButton(1, currentPage)}
         {currentPage < 5 && (
           <>
-            {totalPages! > 1 && renderLeftSidePageButton(2, currentPage)}
-            {totalPages! > 2 && renderLeftSidePageButton(3, currentPage)}
-            {totalPages! > 3 && renderLeftSidePageButton(4, currentPage)}
-            {totalPages! > 4 && renderLeftSidePageButton(5, currentPage)}
+            {lastPage! > 1 && renderLeftSidePageButton(2, currentPage)}
+            {lastPage! > 2 && renderLeftSidePageButton(3, currentPage)}
+            {lastPage! > 3 && renderLeftSidePageButton(4, currentPage)}
+            {lastPage! > 4 && renderLeftSidePageButton(5, currentPage)}
           </>
         )}
-        {totalPages! > 6 && renderEllipsis()}
-        {totalPages! === 6 && (
-          <>
-            {currentPage === 6 && renderLeftSidePageButton(6, currentPage)}
-            {currentPage < 6 && renderRightSidePageButton(6)}
-          </>
-        )}
-        {totalPages! >= 5 && currentPage > 4 && currentPage < lastPage - 3 && (
+        {lastPage! > 6 && renderEllipsis()}
+        {lastPage! >= 5 && currentPage > 4 && currentPage < lastPage - 3 && (
           <>
             {renderLeftSidePageButton(currentPage - 1, false)}
             {renderLeftSidePageButton(currentPage, currentPage)}
@@ -133,7 +130,7 @@ export function Pagination<P extends SearchPredicate>({
             {renderEllipsis()}
           </>
         )}
-        {currentPage >= lastPage - 3 && (
+        {currentPage > 4 && currentPage >= lastPage - 3 && (
           <>
             {renderRightSidePageButton(4)}
             {renderRightSidePageButton(3)}
@@ -141,8 +138,8 @@ export function Pagination<P extends SearchPredicate>({
             {renderRightSidePageButton(1)}
           </>
         )}
-        {renderRightSidePageButton(0)}
-        {next && renderNextLink()}
+        {lastPage > 4 && renderRightSidePageButton(0)}
+        {currentPage !== lastPage && renderNextLink()}
       </ul>
     </nav>
   );
