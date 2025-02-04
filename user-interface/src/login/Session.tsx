@@ -73,6 +73,8 @@ export function Session(props: SessionProps) {
     if (LOGIN_PATHS.includes(location.pathname)) navigate(LOGIN_SUCCESS_PATH);
   }, [state.isLoaded === true]);
 
+  useEffect(() => {}, [state.isError]);
+
   if (!state.isLoaded) {
     return (
       <Interstitial id="interstital-loading-session" caption="Loading session..."></Interstitial>
