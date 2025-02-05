@@ -84,12 +84,6 @@ async function getApplicationContextSession(context: ApplicationContext) {
     accessToken,
     context.config.authConfig.provider,
   );
-  // TODO: I don't think we are handling errors from sessionUseCase.lookup properly.
-  // There is also no indication to the end user that anything has gone wrong, and
-  // there doesn't seem to be anyway to trigger a new login prompt in the UI. So user
-  // gets a never ending spinner and even if you go to /logout, there is still no way
-  // to get a login prompt.
-  // The error I am getting seems to be a timeout error.
   return session;
 }
 
