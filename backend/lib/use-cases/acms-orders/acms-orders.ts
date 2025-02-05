@@ -49,26 +49,6 @@ export type AcmsTransformationResult = {
 };
 
 export class AcmsOrders {
-  public async getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]> {
-    // TODO: this should probably get partitions in case there are millions of cases to migrate
-    try {
-      const gateway = Factory.getAcmsGateway(context);
-      const caseIds = await gateway.getCaseIdsToMigrate(context);
-      context.logger.debug(
-        MODULE_NAME,
-        `Found ${caseIds.length} cases to sync with CAMS.`,
-        caseIds,
-      );
-      return caseIds;
-    } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to get case IDs to migrate from the ACMS gateway.',
-      );
-    }
-  }
-
   public async getLeadCaseIds(
     context: ApplicationContext,
     predicate: AcmsPredicate,

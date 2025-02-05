@@ -32,7 +32,7 @@ async function applicationContextCreator<B = unknown>(
 
 async function getApplicationContext<B = unknown>(args: {
   invocationContext: InvocationContext;
-  logger: LoggerImpl;
+  logger?: LoggerImpl;
   request?: HttpRequest;
 }): Promise<ApplicationContext<B>> {
   const { invocationContext, logger, request } = args;
@@ -42,7 +42,7 @@ async function getApplicationContext<B = unknown>(args: {
   return {
     config,
     featureFlags,
-    logger,
+    logger: logger ?? ContextCreator.getLogger(invocationContext),
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
     session: undefined,

@@ -10,6 +10,6 @@ setupSyncCases();
 // This can be disabled/removed once migration is complete.
 setupMigrateCases();
 
-// TODO: Renable setup so migrations can be executed.
+// TODO: Re-enable setup so migrations can be executed.
 // import { migrationSetup } from './migration/migration';
 // migrationSetup();

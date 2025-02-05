@@ -20,31 +20,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     super(config, MODULE_NAME);
   }
 
-  async getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]> {
-    const query = `
-      SELECT CONCAT(
-          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
-              '-',
-          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
-              '-',
-          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
-        ) AS caseId
-      FROM [dbo].[CMMDB]
-      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
-
-    type ResultType = {
-      caseId: string;
-    };
-
-    try {
-      const { results } = await this.executeQuery<ResultType>(context, query);
-      const leadCaseIdsResults = results as ResultType[];
-      return leadCaseIdsResults.map((record) => record.caseId);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, originalError.message);
-    }
-  }
-
   async getLeadCaseIds(context: ApplicationContext, predicate: AcmsPredicate): Promise<string[]> {
     const input: DbTableFieldSpec[] = [];
 
@@ -142,6 +117,57 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         `Failed to get case info for lead case id: ${leadCaseId}.`,
         originalError,
       );
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async createMigrationTable(context: ApplicationContext) {
+    const createTableQuery = `
+      CREATE TABLE dbo.##MIGRATION_TEMP
+      (ID bigint not null identity primary key, caseId char(12) not null)
+    `;
+
+    const selectIntoQuery = `
+      INSERT INTO dbo.##MIGRATION_TEMP (caseId)
+      SELECT CONCAT(
+         RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+           '-',
+         RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+           '-',
+         RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId
+      FROM [dbo].[CMMDB]
+      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
+
+    try {
+      await this.executeQuery(context, createTableQuery);
+      await this.executeQuery(context, selectIntoQuery);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async getMigrationCaseIds(context: ApplicationContext, start: number, end: number) {
+    type ResultType = {
+      caseId: string;
+    };
+
+    const query = `SELECT caseId FROM dbo.##MIGRATION_TEMP WHERE id BETWEEN ${start} AND ${end}`;
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query);
+      const caseIdResults = results as ResultType[];
+      return caseIdResults.map((record) => record.caseId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async dropMigrationTable(context: ApplicationContext) {
+    const dropTableQuery = 'DROP TABLE dbo.##MIGRATION_TEMP';
+
+    try {
+      await this.executeQuery(context, dropTableQuery);
+    } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
   }
