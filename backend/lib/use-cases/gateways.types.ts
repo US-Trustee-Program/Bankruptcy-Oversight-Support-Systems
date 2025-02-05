@@ -118,12 +118,14 @@ export interface OrdersGateway {
 }
 
 export interface AcmsGateway {
-  getCaseIdsToMigrate(context: ApplicationContext): Promise<string[]>;
   getLeadCaseIds(context: ApplicationContext, predicateAndPage: AcmsPredicate): Promise<string[]>;
   getConsolidationDetails(
     context: ApplicationContext,
     leadCaseId: string,
   ): Promise<AcmsConsolidation>;
+  createMigrationTable(context: ApplicationContext);
+  getMigrationCaseIds(context: ApplicationContext, start: number, end: number);
+  dropMigrationTable(context: ApplicationContext);
 }
 
 export interface CasesRepository extends Releasable {

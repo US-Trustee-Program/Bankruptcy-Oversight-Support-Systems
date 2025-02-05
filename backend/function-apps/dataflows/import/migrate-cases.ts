@@ -4,12 +4,12 @@ import { app, HttpRequest, HttpResponse, InvocationContext } from '@azure/functi
 
 import { CaseSyncEvent, getDefaultSummary } from '../../../lib/use-cases/dataflows/dataflow-types';
 import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
-import AcmsOrders from '../../../lib/use-cases/acms-orders/acms-orders';
 
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError } from '../../azure/functions';
 import { isAuthorized } from '../dataflows-common';
 import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
+import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 
 const MODULE_NAME = 'MIGRATE_CASES_DATAFLOW';
 
@@ -18,31 +18,27 @@ export const MIGRATE_CASES = 'migrateCases';
 
 // Activity Aliases
 const ACMS_GET_CASEIDS_TO_MIGRATE_ACTIVITY = 'acmsGetCaseIdsToMigrateActivity';
+const CREATE_TEMP_TABLE_ACTIVITY = 'createTempTableActivity';
+const DROP_TEMP_TABLE_ACTIVITY = 'dropTempTableActivity';
 
-/**
- * getCaseIdsToMigrate
- *
- * Export caseIds from ACMS to migrate from DXTR to CAMS.
- *
- * @returns {CaseSyncEvent[]}
- */
-async function getCaseIdsToMigrate(
-  _ignore: unknown,
-  invocationContext: InvocationContext,
-): Promise<CaseSyncEvent[]> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
-  const useCase = new AcmsOrders();
-  try {
-    const results = await useCase.getCaseIdsToMigrate(context);
-    const events: CaseSyncEvent[] = results.map((caseId) => {
-      return { type: 'MIGRATION', caseId };
-    });
-    return events;
-  } catch (error) {
-    context.logger.camsError(error);
-    return [];
-  }
+async function createMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  await MigrateCases.createMigrationTable(context);
+}
+
+async function dropMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  await MigrateCases.dropMigrationTable(context);
+}
+
+async function getPageOfCaseIds(_ignore: unknown, invocationContext: InvocationContext) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+
+  // TODO: we need to pass in the start and end.
+  const caseIds = await MigrateCases.getPageOfCaseIds(context, 0, 0);
+
+  // TODO: These need to be mapped into events;
+  return caseIds;
 }
 
 /**
@@ -54,6 +50,12 @@ async function getCaseIdsToMigrate(
  */
 function* acmsMigration(context: OrchestrationContext) {
   // TODO: This needs to be implemented to handle large data set from SQL server
+  yield context.df.callActivity(CREATE_TEMP_TABLE_ACTIVITY);
+  const count = 4666928;
+  for (let i = 0; i < Math.ceil(count / 1000); i++) {
+    // get next 1000 case ids
+  }
+
   const events: CaseSyncEvent[] = yield context.df.callActivity(
     ACMS_GET_CASEIDS_TO_MIGRATE_ACTIVITY,
   );
@@ -66,6 +68,7 @@ function* acmsMigration(context: OrchestrationContext) {
     {},
     context.df.instanceId + `:${MIGRATE_CASES}:${STORE_CASES_RUNTIME_STATE}`,
   );
+  yield context.df.callActivity(DROP_TEMP_TABLE_ACTIVITY);
   return summary;
 }
 
@@ -97,8 +100,12 @@ export function setupMigrateCases() {
   df.app.orchestration(MIGRATE_CASES, acmsMigration);
 
   df.app.activity(ACMS_GET_CASEIDS_TO_MIGRATE_ACTIVITY, {
-    handler: getCaseIdsToMigrate,
+    handler: getPageOfCaseIds,
   });
+
+  df.app.activity(CREATE_TEMP_TABLE_ACTIVITY, { handler: createMigrationTable });
+
+  df.app.activity(DROP_TEMP_TABLE_ACTIVITY, { handler: dropMigrationTable });
 
   app.http('acmsMigrationHttpTrigger', {
     route: 'acmsmigration',

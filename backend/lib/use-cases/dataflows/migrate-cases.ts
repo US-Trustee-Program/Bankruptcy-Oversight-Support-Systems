@@ -1,30 +1,41 @@
-function createTempTable() {
-  // ACMS
-  // create ##caseIdsToMigrate
-  // return row count from ##caseIdsToMigrate
+import { ApplicationContext } from '../../adapters/types/basic';
+import Factory from '../../factory';
+
+/**
+ * createMigrationTable
+ *
+ * @param context
+ */
+async function createMigrationTable(context: ApplicationContext) {
+  const gateway = Factory.getAcmsGateway(context);
+  await gateway.createMigrationTable(context);
 }
 
 /**
- *
- * We use strings because we have to deal with BigInt on the SQL server.
+ * getPageOfCaseIds
  *
  * @param offset
  * @param limit
  */
-function getCaseIds(_offset: string, _limit: string) {
-  // ACMS
-  // page through the ##caseIdsToMigrate table
+async function getPageOfCaseIds(context: ApplicationContext, start: number, end: number) {
+  const gateway = Factory.getAcmsGateway(context);
+  await gateway.getMigrationCaseIds(context, start, end);
 }
 
-function dropTempTable() {
-  // ACMS
-  // drop ##caseIdsToMigrate
+/**
+ * dropMigrationTable
+ *
+ * @param context
+ */
+async function dropMigrationTable(context: ApplicationContext) {
+  const gateway = Factory.getAcmsGateway(context);
+  await gateway.createMigrationTable(context);
 }
 
 const MigrateCases = {
-  createTempTable,
-  getCaseIds,
-  dropTempTable,
+  createMigrationTable,
+  getPageOfCaseIds,
+  dropMigrationTable,
 };
 
 export default MigrateCases;

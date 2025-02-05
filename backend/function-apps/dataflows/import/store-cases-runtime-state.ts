@@ -3,12 +3,9 @@ import { OrchestrationContext } from 'durable-functions';
 import { InvocationContext } from '@azure/functions';
 
 import ContextCreator from '../../azure/application-context-creator';
-import CaseManagement from '../../../lib/use-cases/cases/case-management';
-import { getCamsError } from '../../../lib/common-errors/error-utilities';
 
 import { DLQ } from '../dataflows-queues';
-
-const MODULE_NAME = 'STORE_CASES_RUNTIME_STATE_DATAFLOW';
+import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 
 // Orchestration Aliases
 export const STORE_CASES_RUNTIME_STATE = 'storeCasesRuntimeState';
@@ -26,20 +23,8 @@ async function storeCasesRuntimeStateActivity(
   params: { lastTxId?: string },
   invocationContext: InvocationContext,
 ): Promise<void> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
-
-  try {
-    const useCase = new CaseManagement(context);
-    await useCase.storeRuntimeState(context, params.lastTxId);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      `Failed while storing the case sync runtime state.`,
-    );
-    context.logger.camsError(error);
-  }
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  await CasesRuntimeState.storeRuntimeState(context, params.lastTxId);
 }
 
 /**
