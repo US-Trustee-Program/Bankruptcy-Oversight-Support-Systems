@@ -35,13 +35,13 @@ export function useStateAndActions() {
         const session = response.data;
         LocalStorage.setSession(session);
         postLoginTasks(session);
-        newState.isLoaded = true;
       })
       .catch((error) => {
         newState.isError = true;
         newState.errorMessage = error.message;
       })
       .finally(() => {
+        newState.isLoaded = true;
         setState(newState);
       });
   }
@@ -72,8 +72,6 @@ export function Session(props: SessionProps) {
   useEffect(() => {
     if (LOGIN_PATHS.includes(location.pathname)) navigate(LOGIN_SUCCESS_PATH);
   }, [state.isLoaded === true]);
-
-  useEffect(() => {}, [state.isError]);
 
   if (!state.isLoaded) {
     return (
