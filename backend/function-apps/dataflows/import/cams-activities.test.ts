@@ -1,5 +1,5 @@
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
-import { CaseSyncEvent } from './import-dataflow-types';
+import { CaseSyncEvent } from '../../../lib/use-cases/dataflows/dataflow-types';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import CamsActivities from './cams-activities';
 import { InvocationContext } from '@azure/functions';

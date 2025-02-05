@@ -1,6 +1,6 @@
 import { InvocationContext } from '@azure/functions';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseSyncEvent } from './import-dataflow-types';
+import { CaseSyncEvent } from '../../../lib/use-cases/dataflows/dataflow-types';
 import DxtrActivities from './dxtr-activities';
 import CaseManagement from '../../../lib/use-cases/cases/case-management';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
