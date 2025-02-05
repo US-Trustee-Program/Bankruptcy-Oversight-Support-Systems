@@ -2,7 +2,7 @@ import AcmsOrders from '../../../lib/use-cases/acms-orders/acms-orders';
 import { InvocationContext } from '@azure/functions';
 import AcmsActivities from './acms-activities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseSyncEvent } from './import-dataflow-types';
+import { CaseSyncEvent } from '../../../lib/use-cases/dataflows/dataflow-types';
 
 describe('acms-activities tests', () => {
   let context: InvocationContext;
