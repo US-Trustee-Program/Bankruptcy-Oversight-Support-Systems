@@ -22,7 +22,7 @@ describe('SessionEnd', () => {
         <SessionEnd></SessionEnd>
       </BrowserRouter>,
     );
-    expect(screen.queryByTestId('alert-container')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
 
   test('should clear session from local storage', () => {
