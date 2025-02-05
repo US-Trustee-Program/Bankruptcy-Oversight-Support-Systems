@@ -5,7 +5,7 @@ import Factory, {
   getCasesRepository,
   getOfficesGateway,
 } from '../../factory';
-import { CasesInterface, CasesSyncMeta } from './cases.interface';
+import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { isCamsError } from '../../common-errors/cams-error';
@@ -15,23 +15,15 @@ import {
   CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
-  CasesSyncState,
 } from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
-import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import {
-  CaseBasics,
-  CaseDetail,
-  CaseSummary,
-  DxtrCase,
-  SyncedCase,
-} from '../../../../common/src/cams/cases';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { CaseBasics, CaseDetail, CaseSummary, SyncedCase } from '../../../../common/src/cams/cases';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -160,78 +152,6 @@ export default class CaseManagement {
     try {
       const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
       return caseSummary;
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async getDxtrCase(
-    applicationContext: ApplicationContext,
-    caseId: string,
-  ): Promise<DxtrCase> {
-    try {
-      const caseDetails = await this.casesGateway.getCaseDetail(applicationContext, caseId);
-      delete caseDetails.debtorAttorney;
-      return { ...caseDetails };
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async getCaseIdsToSync(context: ApplicationContext): Promise<CasesSyncMeta> {
-    const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
-
-    try {
-      const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
-      if (!syncState) {
-        // This should only happen until we run the migration.
-        return { caseIds: [], lastTxId: undefined };
-      }
-
-      const results = await this.casesGateway.getCaseIdsAndMaxTxIdToSync(context, syncState.txId);
-
-      return { caseIds: results.caseIds, lastTxId: results.lastTxId };
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async syncCase(context: ApplicationContext, bCase: DxtrCase) {
-    try {
-      const casesRepo = Factory.getCasesRepository(context);
-      const synced = createAuditRecord<SyncedCase>({ ...bCase, documentType: 'SYNCED_CASE' });
-      await casesRepo.syncDxtrCase(synced);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: `Failed to sync DXTR case ${bCase.caseId}.`,
-          module: MODULE_NAME,
-        },
-      });
-    }
-  }
-
-  public async storeRuntimeState(context: ApplicationContext, lastTxId?: string): Promise<void> {
-    const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
-    try {
-      const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
-      if (!lastTxId) {
-        const gateway = getCasesGateway(context);
-        lastTxId = await gateway.findMaxTransactionId(context);
-        if (!lastTxId) {
-          throw new UnknownError(MODULE_NAME, {
-            message: 'Failed to determine the maximum transaction id.',
-          });
-        }
-      }
-      if (!syncState || lastTxId > syncState.txId) {
-        const newSyncState: CasesSyncState = {
-          ...syncState,
-          documentType: 'CASES_SYNC_STATE',
-          txId: lastTxId,
-        };
-        await runtimeStateRepo.upsert(newSyncState);
-      }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

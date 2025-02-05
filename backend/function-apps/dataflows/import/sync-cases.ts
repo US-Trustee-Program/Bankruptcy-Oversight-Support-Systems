@@ -9,7 +9,6 @@ import {
   getDefaultSummary,
 } from '../../../lib/use-cases/dataflows/dataflow-types';
 import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
-import CaseManagement from '../../../lib/use-cases/cases/case-management';
 
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
@@ -17,6 +16,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
 import { EXPORT_AND_LOAD_CASE } from './export-and-load-case';
 import { isAuthorized } from '../dataflows-common';
+import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 
 const MODULE_NAME = 'SYNC_CASES_DATAFLOW';
 
@@ -39,19 +39,8 @@ async function getCaseIdsToSync(
   _ignore: unknown,
   invocationContext: InvocationContext,
 ): Promise<CaseSyncResults> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
-  const useCase = new CaseManagement(context);
-  try {
-    const results = await useCase.getCaseIdsToSync(context);
-    const events: CaseSyncEvent[] = results.caseIds.map((caseId) => {
-      return { type: 'CASE_CHANGED', caseId };
-    });
-    return { events, lastTxId: results.lastTxId };
-  } catch (error) {
-    context.logger.camsError(error);
-    return { events: [] };
-  }
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  return SyncCases.getCaseIds(context);
 }
 
 /**

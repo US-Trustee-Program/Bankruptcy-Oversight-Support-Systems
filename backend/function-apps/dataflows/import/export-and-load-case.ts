@@ -5,8 +5,7 @@ import { DLQ } from '../dataflows-queues';
 import ContextCreator from '../../azure/application-context-creator';
 import { InvocationContext } from '@azure/functions';
 import { BadRequestError } from '../../../lib/common-errors/bad-request';
-import CaseManagement from '../../../lib/use-cases/cases/case-management';
-import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 
 const MODULE_NAME = 'EXPORT_AND_LOAD_CASE_DATAFLOW';
 
@@ -28,24 +27,12 @@ async function exportCase(
   event: CaseSyncEvent,
   invocationContext: InvocationContext,
 ): Promise<CaseSyncEvent> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({ invocationContext, logger });
-
-  try {
-    const useCase = new CaseManagement(context);
-    event.bCase = await useCase.getDxtrCase(context, event.caseId);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      `Failed while exporting case ${event.caseId}.`,
-    );
-    context.logger.camsError(error);
-    event.error = error;
-    invocationContext.extraOutputs.set(DLQ, event);
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const processedEvent = await ExportAndLoadCase.exportCase(context, event);
+  if (processedEvent.error) {
+    invocationContext.extraOutputs.set(DLQ, processedEvent);
   }
-
-  return event;
+  return processedEvent;
 }
 
 /**
@@ -70,21 +57,11 @@ async function loadCase(
     return event;
   }
 
-  try {
-    const useCase = new CaseManagement(context);
-    await useCase.syncCase(context, event.bCase);
-  } catch (originalError) {
-    const error = getCamsError(
-      originalError,
-      MODULE_NAME,
-      `Failed while syncing case ${event.caseId}.`,
-    );
-    context.logger.camsError(error);
-    event.error = error;
-    invocationContext.extraOutputs.set(DLQ, event);
+  const processedEvent = await ExportAndLoadCase.loadCase(context, event);
+  if (processedEvent.error) {
+    invocationContext.extraOutputs.set(DLQ, processedEvent);
   }
-
-  return event;
+  return processedEvent;
 }
 
 /**
