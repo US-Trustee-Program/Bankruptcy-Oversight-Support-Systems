@@ -26,3 +26,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           create-issues: false
           path: ${{ inputs.path }}
+      - name: test job step
+        run: |
+          echo "Job name is $GITHUB_JOB"
+          echo "Jobs job name ${{ github.jobs[github.job].name }}"
