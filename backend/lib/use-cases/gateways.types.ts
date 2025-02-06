@@ -126,6 +126,11 @@ export interface AcmsGateway {
   createMigrationTable(context: ApplicationContext);
   getMigrationCaseIds(context: ApplicationContext, start: number, end: number);
   dropMigrationTable(context: ApplicationContext);
+  getMigrationCaseCount(context: ApplicationContext);
+}
+
+export interface AcmsTempGateway {
+  foo();
 }
 
 export interface CasesRepository extends Releasable {

@@ -15,9 +15,9 @@ export function* main(context: OrchestrationContext) {
     bounds,
   );
   for (const partition of partitions) {
-    const child_id = context.df.instanceId + `:${partition.divisionCode}:${partition.chapter}:`;
+    const childId = context.df.instanceId + `:${partition.divisionCode}:${partition.chapter}:`;
     provisioningTasks.push(
-      context.df.callSubOrchestrator(SUB_ORCHESTRATOR_ETL, partition, child_id),
+      context.df.callSubOrchestrator(SUB_ORCHESTRATOR_ETL, partition, childId),
     );
   }
   yield context.df.Task.all(provisioningTasks);
