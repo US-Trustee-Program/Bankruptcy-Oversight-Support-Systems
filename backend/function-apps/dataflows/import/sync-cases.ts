@@ -15,18 +15,18 @@ import ContextCreator from '../../azure/application-context-creator';
 
 import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
 import { EXPORT_AND_LOAD_CASE } from './export-and-load-case';
-import { isAuthorized } from '../dataflows-common';
+import { buildUniqueName, isAuthorized } from '../dataflows-common';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 
 const MODULE_NAME = 'SYNC_CASES_DATAFLOW';
 
 // Orchestration Aliases
-export const SYNC_CASES = 'syncCases';
-export const PARTITION_CASEIDS = 'partitionCaseIds';
-export const SYNC_PARTITION = 'syncPartition';
+const SYNC_CASES = buildUniqueName(MODULE_NAME, 'syncCases');
+const PARTITION_CASEIDS = buildUniqueName(MODULE_NAME, 'partitionCaseIds');
+const SYNC_PARTITION = buildUniqueName(MODULE_NAME, 'syncPartition');
 
 // Activity Aliases
-const GET_CASEIDS_TO_SYNC_ACTIVITY = 'getCaseIdsToSyncActivity';
+const GET_CASEIDS_TO_SYNC_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToSyncActivity');
 
 /**
  * getCaseIdsToSync
@@ -44,13 +44,13 @@ async function getCaseIdsToSync(
 }
 
 /**
- * dxtrSync
+ * syncCases
  *
  * Export and load changed cases from DXTR into CAMS.
  *
  * @param  context
  */
-function* dxtrSync(context: OrchestrationContext) {
+function* syncCases(context: OrchestrationContext) {
   const results: CaseSyncResults = yield context.df.callActivity(GET_CASEIDS_TO_SYNC_ACTIVITY);
 
   const summary = yield context.df.callSubOrchestrator(
@@ -84,8 +84,8 @@ function* partitionCaseIds(context: OrchestrationContext) {
   const partitionCount = Math.ceil(count / 100);
   for (let i = 0; i < partitionCount; i++) {
     const partition = events.slice(i * 100, (i + 1) * 100); // May be out of bounds risk...
-    const child_id = context.df.instanceId + `:${SYNC_PARTITION}:${i}`;
-    nextTasks.push(context.df.callSubOrchestrator(SYNC_PARTITION, partition, child_id));
+    const childId = context.df.instanceId + `:${SYNC_PARTITION}:${i}`;
+    nextTasks.push(context.df.callSubOrchestrator(SYNC_PARTITION, partition, childId));
   }
 
   yield context.df.Task.all(nextTasks);
@@ -111,8 +111,8 @@ function* syncPartition(context: OrchestrationContext) {
   const nextTasks: df.Task[] = [];
 
   for (const event of events) {
-    const child_id = context.df.instanceId + `:${EXPORT_AND_LOAD_CASE}:${event.caseId}:`;
-    nextTasks.push(context.df.callSubOrchestrator(EXPORT_AND_LOAD_CASE, event, child_id));
+    const childId = context.df.instanceId + `:${EXPORT_AND_LOAD_CASE}:${event.caseId}:`;
+    nextTasks.push(context.df.callSubOrchestrator(EXPORT_AND_LOAD_CASE, event, childId));
   }
 
   yield context.df.Task.all(nextTasks);
@@ -145,13 +145,13 @@ function* syncPartition(context: OrchestrationContext) {
 }
 
 /**
- * dxtrSyncHttpTrigger
+ * syncCasesHttpTrigger
  *
  * @param request
  * @param context
  * @returns
  */
-async function dxtrSyncHttpTrigger(
+async function syncCasesHttpTrigger(
   request: HttpRequest,
   context: InvocationContext,
 ): Promise<HttpResponse> {
@@ -170,18 +170,18 @@ async function dxtrSyncHttpTrigger(
 }
 
 /**
- * dxtrSyncTimerTrigger
+ * syncCasesTimerTrigger
  *
  * @param _myTimer
  * @param context
  */
-async function dxtrSyncTimerTrigger(_myTimer: Timer, context: InvocationContext) {
+async function syncCasesTimerTrigger(_myTimer: Timer, context: InvocationContext) {
   const client = df.getClient(context);
   const _instanceId: string = await client.startNew(SYNC_CASES);
 }
 
 export function setupSyncCases() {
-  df.app.orchestration(SYNC_CASES, dxtrSync);
+  df.app.orchestration(SYNC_CASES, syncCases);
   df.app.orchestration(PARTITION_CASEIDS, partitionCaseIds);
   df.app.orchestration(SYNC_PARTITION, syncPartition);
 
@@ -189,14 +189,14 @@ export function setupSyncCases() {
     handler: getCaseIdsToSync,
   });
 
-  app.timer('dxtrDyncTimerTrigger', {
-    handler: dxtrSyncTimerTrigger,
+  app.timer('syncCasesTimerTrigger', {
+    handler: syncCasesTimerTrigger,
     schedule: '0 30 9 * * *',
   });
 
-  app.http('dxtrSyncHttpTrigger', {
+  app.http('syncCasesHttpTrigger', {
     route: 'dxtrsync',
     extraInputs: [df.input.durableClient()],
-    handler: dxtrSyncHttpTrigger,
+    handler: syncCasesHttpTrigger,
   });
 }
