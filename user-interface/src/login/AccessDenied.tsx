@@ -1,6 +1,5 @@
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
-import { useNavigate } from 'react-router-dom';
 import { LOGIN_PATH } from './login-library';
 import Button from '@/lib/components/uswds/Button';
 
@@ -11,10 +10,10 @@ export type AccessDeniedProps = {
 };
 
 export function AccessDenied(props: AccessDeniedProps) {
-  const navigate = useNavigate();
-
   function handleLoginRedirect() {
-    navigate(LOGIN_PATH);
+    const { host, protocol } = window.location;
+    const loginUri = protocol + '//' + host + LOGIN_PATH;
+    window.location.assign(loginUri);
   }
 
   return (

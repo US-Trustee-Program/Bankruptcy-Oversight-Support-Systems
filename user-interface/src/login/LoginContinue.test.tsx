@@ -59,7 +59,7 @@ describe('LoginContinue', () => {
       </BrowserRouter>,
     );
     await waitFor(() => {
-      expect(screen.queryByTestId('alert-message')).toBeInTheDocument();
+      expect(screen.getByTestId('alert-message')).toBeInTheDocument();
     });
 
     expect(getLoginProviderFromEnv).toHaveBeenCalled();

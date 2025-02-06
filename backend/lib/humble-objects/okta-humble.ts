@@ -1,4 +1,4 @@
-import { Client, GroupApiListGroupsRequest } from '@okta/okta-sdk-nodejs';
+import { Client, GroupApiListGroupsRequest, OktaApiError } from '@okta/okta-sdk-nodejs';
 import { UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { V2Configuration } from '@okta/okta-sdk-nodejs/src/types/configuration';
 import { isCamsError } from '../common-errors/cams-error';
@@ -6,7 +6,7 @@ import { UnknownError } from '../common-errors/unknown-error';
 import { ServerConfigError } from '../common-errors/server-config-error';
 import { UserApiListUserGroupsRequest } from '@okta/okta-sdk-nodejs/src/types/generated/types/ObjectParamAPI';
 import { CamsUserGroup, CamsUserReference } from '../../../common/src/cams/users';
-import { getCamsErrorWithStack } from '../common-errors/error-utilities';
+import { UnauthorizedError } from '../common-errors/unauthorized-error';
 
 const MODULE_NAME = 'OKTA-HUMBLE';
 
@@ -56,11 +56,9 @@ export class OktaHumble {
         });
       }
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: 'Failed to retrieve groups.',
-          module: MODULE_NAME,
-        },
+      throw new UnknownError(MODULE_NAME, {
+        originalError,
+        message: 'Failed to retrieve groups.',
       });
     }
     return camsUserGroups;
@@ -80,11 +78,9 @@ export class OktaHumble {
         });
       }
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: 'Failed to retrieve users.',
-          module: MODULE_NAME,
-        },
+      throw new UnknownError(MODULE_NAME, {
+        originalError,
+        message: 'Failed to retrieve users.',
       });
     }
     return camsUserReferences;
@@ -98,12 +94,11 @@ export class OktaHumble {
         name: user.profile.displayName ?? user.profile.lastName + ', ' + user.profile.firstName,
       };
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: 'Failed to retrieve user.',
-          module: MODULE_NAME,
-        },
-      });
+      if (isOktaApiError(originalError) && originalError.status === 401) {
+        throw new UnauthorizedError(MODULE_NAME, { originalError });
+      } else {
+        throw new UnknownError(MODULE_NAME, { originalError, message: 'Failed to retrieve user.' });
+      }
     }
   }
 
@@ -118,11 +113,9 @@ export class OktaHumble {
         groups.push({ id: oktaGroup.id, name: oktaGroup.profile.name });
       }
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: "Failed to retrieve user's groups.",
-          module: MODULE_NAME,
-        },
+      throw new UnknownError(MODULE_NAME, {
+        originalError,
+        message: "Failed to retrieve user's groups.",
       });
     }
 
@@ -179,6 +172,10 @@ export class OktaHumble {
       }
     });
   }
+}
+
+function isOktaApiError(error: unknown): error is OktaApiError {
+  return typeof error === 'object' && 'name' in error && error.name === 'OktaApiError';
 }
 
 export default OktaHumble;
