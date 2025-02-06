@@ -1,7 +1,7 @@
 import Factory from '../../factory';
-import { createMockApplicationContext, getExpectedError } from '../../testing/testing-utilities';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
-import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './acms-orders';
+import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './migrate-consolidations';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
@@ -11,7 +11,6 @@ import { ConsolidationType } from '../../../../common/src/cams/orders';
 import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { ConsolidationFrom } from '../../../../common/src/cams/events';
-import { UnknownError } from '../../common-errors/unknown-error';
 
 const mockAcmsGateway: AcmsGateway = {
   getLeadCaseIds: function (..._ignore): Promise<string[]> {
@@ -20,7 +19,13 @@ const mockAcmsGateway: AcmsGateway = {
   getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
     throw new Error('Function not implemented.');
   },
-  getCaseIdsToMigrate: function (..._ignore): Promise<string[]> {
+  createMigrationTable: function (..._ignore) {
+    throw new Error('Function not implemented.');
+  },
+  getMigrationCaseIds: function (..._ignore) {
+    throw new Error('Function not implemented.');
+  },
+  dropMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
 };
@@ -579,34 +584,6 @@ describe('ACMS Orders', () => {
 
     await expect(useCase.migrateConsolidation(context, '000-11-22222')).resolves.toEqual(
       expect.objectContaining({ success: false }),
-    );
-  });
-
-  test('should return case ids for migration', async () => {
-    const caseIds = MockData.buildArray(MockData.randomCaseId, 1000);
-    jest.spyOn(AcmsGatewayImpl.prototype, 'getCaseIdsToMigrate').mockResolvedValue(caseIds);
-    const useCase = new AcmsOrders();
-
-    const actual = await useCase.getCaseIdsToMigrate(context);
-    expect(actual).toEqual(caseIds);
-  });
-
-  test('should throw error if we cannot get case ids to migrate', async () => {
-    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
-    const useCase = new AcmsOrders();
-    const expected = new UnknownError('test-module', {
-      message: 'Failed to get case IDs to migrate from the ACMS gateway.',
-    });
-
-    const actualError = await getExpectedError<UnknownError>(() =>
-      useCase.getCaseIdsToMigrate(context),
-    );
-    expect(actualError).toEqual(
-      expect.objectContaining({
-        ...expected,
-        module: expect.any(String),
-        originalError: expect.anything(),
-      }),
     );
   });
 });

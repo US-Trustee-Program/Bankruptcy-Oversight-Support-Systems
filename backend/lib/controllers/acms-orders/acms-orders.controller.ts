@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import AcmsOrders, {
   AcmsTransformationResult,
   AcmsPredicate,
-} from '../../use-cases/acms-orders/acms-orders';
+} from '../../use-cases/acms-orders/migrate-consolidations';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'ACMS-ORDERS-CONTROLLER';
