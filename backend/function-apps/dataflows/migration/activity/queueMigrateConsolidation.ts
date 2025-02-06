@@ -1,5 +1,8 @@
 import { InvocationContext, output } from '@azure/functions';
-import { AcmsEtlQueueItem, AcmsPredicate } from '../../../../lib/use-cases/acms-orders/acms-orders';
+import {
+  AcmsEtlQueueItem,
+  AcmsPredicate,
+} from '../../../../lib/use-cases/acms-orders/migrate-consolidations';
 import ContextCreator from '../../../azure/application-context-creator';
 import AcmsOrdersController from '../../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../../lib/common-errors/error-utilities';
