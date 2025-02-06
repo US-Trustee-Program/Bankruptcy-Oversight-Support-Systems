@@ -5,7 +5,7 @@ import { CamsError } from '../../../../lib/common-errors/cams-error';
 import {
   AcmsEtlQueueItem,
   AcmsTransformationResult,
-} from '../../../../lib/use-cases/acms-orders/migrate-consolidations';
+} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
 
 describe('getConsolidations test', () => {
   afterEach(() => {

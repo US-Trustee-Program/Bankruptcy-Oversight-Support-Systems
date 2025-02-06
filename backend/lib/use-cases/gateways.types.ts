@@ -25,7 +25,7 @@ import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
-import { AcmsConsolidation, AcmsPredicate } from './acms-orders/migrate-consolidations';
+import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
 
 export type ReplaceResult = {
   id: string;

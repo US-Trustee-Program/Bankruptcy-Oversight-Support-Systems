@@ -1,4 +1,4 @@
-import AcmsOrders from '../../../lib/use-cases/acms-orders/migrate-consolidations';
+import AcmsOrders from '../../../lib/use-cases/dataflows/migrate-consolidations';
 import { InvocationContext } from '@azure/functions';
 import AcmsActivities from './acms-activities';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';

@@ -1,7 +1,7 @@
 import AcmsOrders, {
   AcmsTransformationResult,
   AcmsPredicate,
-} from '../../use-cases/acms-orders/migrate-consolidations';
+} from '../../use-cases/dataflows/migrate-consolidations';
 import AcmsOrdersController from './acms-orders.controller';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';

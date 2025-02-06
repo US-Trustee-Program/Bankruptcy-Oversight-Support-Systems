@@ -1,4 +1,4 @@
-import { AcmsPredicate } from '../../../../lib/use-cases/acms-orders/migrate-consolidations';
+import { AcmsPredicate } from '../../../../lib/use-cases/dataflows/migrate-consolidations';
 import { QUEUE_MIGRATION } from '../migration';
 import { OrchestrationContext } from 'durable-functions';
 
