@@ -5,7 +5,7 @@ import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
   AcmsPredicate,
-} from '../../../use-cases/acms-orders/acms-orders';
+} from '../../../use-cases/acms-orders/migrate-consolidations';
 import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('ACMS gateway tests', () => {
