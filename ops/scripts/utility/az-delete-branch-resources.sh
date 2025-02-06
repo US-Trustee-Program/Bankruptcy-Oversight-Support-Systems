@@ -115,8 +115,8 @@ if [[ "${rgAppExists}" == "true" ]]; then
     apiFunctionApp="ustp-cams-dev-${hash_id}-node-api"
     az functionapp vnet-integration remove -g "${app_rg}" -n "${apiFunctionApp}"
     echo "Completed disconnecting VNET integration"
-    migrationFunctionApp="ustp-cams-dev-${hash_id}-migration"
-    az functionapp vnet-integration remove -g "${app_rg}" -n "${migrationFunctionApp}"
+    dataflowsFunctionApp="ustp-cams-dev-${hash_id}-dataflows"
+    az functionapp vnet-integration remove -g "${app_rg}" -n "${dataflowsFunctionApp}"
     echo "Completed disconnecting VNET integration"
 fi
 
