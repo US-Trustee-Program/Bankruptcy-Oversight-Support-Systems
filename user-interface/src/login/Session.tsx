@@ -35,13 +35,13 @@ export function useStateAndActions() {
         const session = response.data;
         LocalStorage.setSession(session);
         postLoginTasks(session);
-        newState.isLoaded = true;
       })
       .catch((error) => {
         newState.isError = true;
         newState.errorMessage = error.message;
       })
       .finally(() => {
+        newState.isLoaded = true;
         setState(newState);
       });
   }
