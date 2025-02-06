@@ -1,7 +1,7 @@
 import {
   AcmsBounds,
   AcmsPredicate,
-} from '../../../../lib/use-cases/acms-orders/migrate-consolidations';
+} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
 import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_ETL } from '../migration';
 import { OrchestrationContext } from 'durable-functions';
 
