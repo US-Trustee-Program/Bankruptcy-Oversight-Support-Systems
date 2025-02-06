@@ -2,7 +2,7 @@ import * as dotenv from 'dotenv';
 import * as df from 'durable-functions';
 import { HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
 import { MAIN_ORCHESTRATOR } from '../migration';
-import { TriggerRequest } from '../../../../lib/use-cases/acms-orders/migrate-consolidations';
+import { TriggerRequest } from '../../../../lib/use-cases/dataflows/migrate-consolidations';
 import { BadRequestError } from '../../../../lib/common-errors/bad-request';
 import { toAzureError } from '../../../azure/functions';
 import ContextCreator from '../../../azure/application-context-creator';

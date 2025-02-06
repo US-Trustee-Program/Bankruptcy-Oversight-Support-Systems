@@ -3,7 +3,7 @@ import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
   AcmsPredicate,
-} from '../../../use-cases/acms-orders/migrate-consolidations';
+} from '../../../use-cases/dataflows/migrate-consolidations';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
