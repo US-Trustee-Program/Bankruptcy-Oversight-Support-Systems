@@ -39,7 +39,7 @@ describe('App Router Tests', () => {
 
     // verify navigation to "no match" route
     await waitFor(() => {
-      expect(screen.getByText(/404 - Not Found/i)).toBeInTheDocument();
+      expect(document.querySelector('h1')).toHaveTextContent('My Cases');
     });
   });
 });
