@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
-import { MaybeCaseIds, MaybeVoid } from './dataflow-types';
+import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './dataflow-types';
 
 const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
 
@@ -10,11 +10,12 @@ const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
  *
  * @param context
  */
-async function createMigrationTable(context: ApplicationContext): Promise<MaybeVoid> {
+async function createMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
     const gateway = Factory.getAcmsGateway(context);
     await gateway.createMigrationTable(context);
-    return { success: true };
+    const count = await gateway.getMigrationCaseCount(context);
+    return { data: count };
   } catch (originalError) {
     return {
       error: getCamsError(
@@ -36,11 +37,18 @@ async function getPageOfCaseIds(
   context: ApplicationContext,
   start: number,
   end: number,
-): Promise<MaybeCaseIds> {
+): Promise<MaybeCaseSyncEvents> {
   try {
     const gateway = Factory.getAcmsGateway(context);
     const caseIds = await gateway.getMigrationCaseIds(context, start, end);
-    return { caseIds };
+    return {
+      events: caseIds.map((caseId) => {
+        return {
+          type: 'MIGRATION',
+          caseId,
+        };
+      }),
+    };
   } catch (originalError) {
     return {
       error: getCamsError(

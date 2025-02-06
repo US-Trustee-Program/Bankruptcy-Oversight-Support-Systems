@@ -6,15 +6,16 @@ import ContextCreator from '../../azure/application-context-creator';
 import { InvocationContext } from '@azure/functions';
 import { BadRequestError } from '../../../lib/common-errors/bad-request';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import { buildUniqueName } from '../dataflows-common';
 
 const MODULE_NAME = 'EXPORT_AND_LOAD_CASE_DATAFLOW';
 
 // Orchestration Aliases
-export const EXPORT_AND_LOAD_CASE = 'exportAndLoadCase';
+export const EXPORT_AND_LOAD_CASE = buildUniqueName(MODULE_NAME, 'exportAndLoadCase');
 
 // Activity Aliases
-const EXPORT_CASE_ACTIVITY = 'exportCaseActivity';
-const LOAD_CASE_ACTIVITY = 'loadCaseActivity';
+const EXPORT_CASE_ACTIVITY = buildUniqueName(MODULE_NAME, 'exportCaseActivity');
+const LOAD_CASE_ACTIVITY = buildUniqueName(MODULE_NAME, 'loadCaseActivity');
 
 /**
  * exportCase

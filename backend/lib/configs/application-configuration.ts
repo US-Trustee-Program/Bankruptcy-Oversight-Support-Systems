@@ -11,6 +11,7 @@ export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly acmsDbConfig: IDbConfig;
+  public readonly acmsTempDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly documentDbConfig: DocumentDbConfig;
   public readonly featureFlagKey: string;
@@ -22,6 +23,7 @@ export class ApplicationConfiguration {
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDxtrDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.acmsDbConfig = this.getAcmsDbConfig(process.env.ACMS_MSSQL_DATABASE);
+    this.acmsTempDbConfig = this.getAcmsDbConfig('tempdb');
     this.documentDbConfig = this.getDocumentDbConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();

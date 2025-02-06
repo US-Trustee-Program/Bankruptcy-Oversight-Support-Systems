@@ -6,12 +6,18 @@ import ContextCreator from '../../azure/application-context-creator';
 
 import { DLQ } from '../dataflows-queues';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
+import { buildUniqueName } from '../dataflows-common';
+
+const MODULE_NAME = 'STORE_CASES_RUNTIME_STATE';
 
 // Orchestration Aliases
-export const STORE_CASES_RUNTIME_STATE = 'storeCasesRuntimeState';
+export const STORE_CASES_RUNTIME_STATE = buildUniqueName(MODULE_NAME, 'storeCasesRuntimeState');
 
 // Activity Aliases
-const STORE_CASES_RUNTIME_STATE_ACTIVITY = 'storeCasesRuntimeStateActivity';
+const STORE_CASES_RUNTIME_STATE_ACTIVITY = buildUniqueName(
+  MODULE_NAME,
+  'storeCasesRuntimeStateActivity',
+);
 
 /**
  * storeCasesRuntimeStateActivity

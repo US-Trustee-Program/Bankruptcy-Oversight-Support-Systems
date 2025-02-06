@@ -172,6 +172,22 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
+  public async getMigrationCaseCount(context: ApplicationContext) {
+    const countQuery = 'SELECT COUNT(*) AS total FROM dbo.##MIGRATION_TEMP';
+
+    type ResultType = {
+      total: number;
+    };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, countQuery);
+      const caseIdResults = results as ResultType[];
+      return caseIdResults[0].total;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
