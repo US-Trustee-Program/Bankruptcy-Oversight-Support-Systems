@@ -37,3 +37,19 @@ export function getDefaultSummary(
     ...override,
   };
 }
+
+export type MaybeError<E extends Error = Error> = {
+  error?: E;
+};
+
+export type MaybeResult<T = unknown> = MaybeError & {
+  result?: T;
+};
+
+export type MaybeVoid = MaybeError & {
+  success?: true;
+};
+
+export type MaybeCaseIds = MaybeError & {
+  caseIds?: string[];
+};
