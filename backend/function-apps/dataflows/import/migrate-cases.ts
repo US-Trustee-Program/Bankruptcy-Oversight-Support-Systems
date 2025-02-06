@@ -23,22 +23,45 @@ const DROP_TEMP_TABLE_ACTIVITY = 'dropTempTableActivity';
 
 async function createMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  await MigrateCases.createMigrationTable(context);
+  const result = await MigrateCases.createMigrationTable(context);
+  if (result.error) {
+    // write to DLQ
+  }
+  // TODO: return the recordset size
 }
 
 async function dropMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  await MigrateCases.dropMigrationTable(context);
+  const result = await MigrateCases.dropMigrationTable(context);
+  if (result.error) {
+    // write to DLQ
+  }
 }
 
-async function getPageOfCaseIds(_ignore: unknown, invocationContext: InvocationContext) {
+async function getPageOfCaseIds(
+  _ignore: unknown,
+  invocationContext: InvocationContext,
+): Promise<CaseSyncEvent[]> {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
 
   // TODO: we need to pass in the start and end.
-  const caseIds = await MigrateCases.getPageOfCaseIds(context, 0, 0);
+  const results = await MigrateCases.getPageOfCaseIds(context, 0, 0);
 
-  // TODO: These need to be mapped into events;
-  return caseIds;
+  if (results.error) {
+    // write to dlq
+    return [];
+  }
+
+  if (results.caseIds) {
+    return results.caseIds.map((caseId) => {
+      return {
+        type: 'MIGRATION',
+        caseId,
+      };
+    });
+  } else {
+    return [];
+  }
 }
 
 /**
@@ -69,6 +92,7 @@ function* acmsMigration(context: OrchestrationContext) {
     context.df.instanceId + `:${MIGRATE_CASES}:${STORE_CASES_RUNTIME_STATE}`,
   );
   yield context.df.callActivity(DROP_TEMP_TABLE_ACTIVITY);
+
   return summary;
 }
 
@@ -107,8 +131,8 @@ export function setupMigrateCases() {
 
   df.app.activity(DROP_TEMP_TABLE_ACTIVITY, { handler: dropMigrationTable });
 
-  app.http('acmsMigrationHttpTrigger', {
-    route: 'acmsmigration',
+  app.http('migrateCasesHttpTrigger', {
+    route: 'migratecases',
     extraInputs: [df.input.durableClient()],
     handler: acmsMigrationHttpTrigger,
   });
