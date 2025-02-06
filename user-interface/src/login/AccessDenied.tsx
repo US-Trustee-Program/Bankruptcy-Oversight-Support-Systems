@@ -12,8 +12,8 @@ export type AccessDeniedProps = {
 export function AccessDenied(props: AccessDeniedProps) {
   function handleLoginRedirect() {
     const { host, protocol } = window.location;
-    const logoutUri = protocol + '//' + host + LOGIN_PATH;
-    window.location.assign(logoutUri);
+    const loginUri = protocol + '//' + host + LOGIN_PATH;
+    window.location.assign(loginUri);
   }
 
   return (
