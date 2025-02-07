@@ -1,6 +1,4 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
 import { AccessDenied } from './AccessDenied';
@@ -59,8 +57,6 @@ export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { use
 export function Session(props: SessionProps) {
   const { accessToken, provider, expires, issuer } = props;
   const user = props.user ?? { id: '', name: '' };
-  const navigate = useNavigate();
-  const location = useLocation();
   const { state, actions } = useStateAndActions();
 
   useEffect(() => {
@@ -68,10 +64,6 @@ export function Session(props: SessionProps) {
     LocalStorage.setSession(preflight);
     actions.getMe();
   }, []);
-
-  useEffect(() => {
-    if (LOGIN_PATHS.includes(location.pathname)) navigate(LOGIN_SUCCESS_PATH);
-  }, [state.isLoaded === true]);
 
   if (!state.isLoaded) {
     return (

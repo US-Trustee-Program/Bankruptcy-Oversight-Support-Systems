@@ -4,14 +4,12 @@ import { Session } from '@/login/Session';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { registerRefreshOktaToken } from './okta-library';
-import { UnknownAuthError } from '@/login/UnknownAuthError';
 
 export type OktaSessionProps = PropsWithChildren;
 
 export function OktaSession(props: OktaSessionProps) {
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
-  const [unknownAuthError, setUnknownAuthError] = useState<Error | null>(null);
 
   const { oktaAuth, authState } = useOktaAuth();
 
@@ -26,16 +24,12 @@ export function OktaSession(props: OktaSessionProps) {
         // Only report if the error is not the parse error during the continuation redirects.
         if (error.message !== 'Unable to parse a token from the url') {
           setCallbackError(error);
-        } else {
-          setUnknownAuthError(error);
         }
       });
   }, [oktaAuth, !authState?.error]);
 
   if (authState?.error || callbackError) {
     return <AccessDenied message={authState?.error?.message ?? callbackError?.message} />;
-  } else if (unknownAuthError) {
-    return <UnknownAuthError message={authState?.error?.message ?? ''} />;
   }
 
   if (!redirectComplete) {
