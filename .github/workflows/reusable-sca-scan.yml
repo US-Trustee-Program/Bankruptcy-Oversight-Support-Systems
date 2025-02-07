@@ -6,6 +6,9 @@ on:
       path:
         required: true
         type: string
+      artifactname:
+        required: true
+        type: string
 
 jobs:
   sca-scan:
