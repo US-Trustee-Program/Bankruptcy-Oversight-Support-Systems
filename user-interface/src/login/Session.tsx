@@ -5,6 +5,7 @@ import { AccessDenied } from './AccessDenied';
 import { Interstitial } from './Interstitial';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
+import { useNavigate } from 'react-router-dom';
 
 type SessionState = {
   isLoaded: boolean;
@@ -59,11 +60,17 @@ export function Session(props: SessionProps) {
   const user = props.user ?? { id: '', name: '' };
   const { state, actions } = useStateAndActions();
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const preflight: CamsSession = { accessToken, provider, user, expires, issuer };
     LocalStorage.setSession(preflight);
     actions.getMe();
   }, []);
+
+  useEffect(() => {
+    navigate('/');
+  }, [state.isLoaded && !state.isError]);
 
   if (!state.isLoaded) {
     return (
@@ -75,7 +82,5 @@ export function Session(props: SessionProps) {
     return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
   }
 
-  if (state.isLoaded && !state.isError) {
-    return <>{props.children}</>;
-  }
+  return <>{props.children}</>;
 }
