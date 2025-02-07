@@ -15,13 +15,13 @@ const mockAcmsGateway: AcmsGateway = {
   getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
     throw new Error('Function not implemented.');
   },
-  createMigrationTable: function (..._ignore) {
+  loadMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
   getMigrationCaseIds: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
-  dropMigrationTable: function (..._ignore) {
+  emptyMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
 };
@@ -62,9 +62,9 @@ describe('Migate cases use case', () => {
 
   describe('createMigrationTable', () => {
     test('should create the migration table', async () => {
-      jest.spyOn(AcmsGatewayImpl.prototype, 'createMigrationTable').mockResolvedValue(undefined);
+      jest.spyOn(AcmsGatewayImpl.prototype, 'loadMigrationTable').mockResolvedValue(undefined);
 
-      const actual = await MigrateCases.createMigrationTable(context);
+      const actual = await MigrateCases.loadMigrationTable(context);
       expect(actual.success).toBeTruthy();
     });
 
@@ -74,7 +74,7 @@ describe('Migate cases use case', () => {
         message: 'Failed to create and populate temporary migration table.',
       });
 
-      const actual = await MigrateCases.createMigrationTable(context);
+      const actual = await MigrateCases.loadMigrationTable(context);
 
       expect(actual.error).toEqual(
         expect.objectContaining({
@@ -88,9 +88,9 @@ describe('Migate cases use case', () => {
 
   describe('dropMigrationTable', () => {
     test('should drop the migration table', async () => {
-      jest.spyOn(AcmsGatewayImpl.prototype, 'dropMigrationTable').mockResolvedValue(undefined);
+      jest.spyOn(AcmsGatewayImpl.prototype, 'emptyMigrationTable').mockResolvedValue(undefined);
 
-      const actual = await MigrateCases.dropMigrationTable(context);
+      const actual = await MigrateCases.emptyMigrationTable(context);
       expect(actual.success).toBeTruthy();
     });
 
@@ -100,7 +100,7 @@ describe('Migate cases use case', () => {
         message: 'Failed to drop temporary migration table.',
       });
 
-      const actual = await MigrateCases.dropMigrationTable(context);
+      const actual = await MigrateCases.emptyMigrationTable(context);
 
       expect(actual.error).toEqual(
         expect.objectContaining({
