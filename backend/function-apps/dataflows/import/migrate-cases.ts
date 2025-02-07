@@ -27,23 +27,23 @@ const MIGRATE_PARTITION = buildUniqueName(MODULE_NAME, 'migratePartition');
 
 // Activity Aliases
 const GET_CASEIDS_TO_MIGRATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToMigrateActivity');
-const CREATE_MIGRATION_TABLE = buildUniqueName(MODULE_NAME, 'createMigrationTable');
-const DROP_MIGRATION_TABLE = buildUniqueName(MODULE_NAME, 'dropMigrationTable');
+const LOAD_MIGRATION_TABLE = buildUniqueName(MODULE_NAME, 'loadMigrationTable');
+const EMPTY_MIGRATION_TABLE = buildUniqueName(MODULE_NAME, 'emptyMigrationTable');
 
 /**
- * createMigrationTable
+ * loadMigrationTable
  *
  * @param _ignore
  * @param invocationContext
  * @returns
  */
-async function createMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
+async function loadMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const result = await MigrateCases.createMigrationTable(context);
+  const result = await MigrateCases.loadMigrationTable(context);
   if (result.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, CREATE_MIGRATION_TABLE),
+      buildQueueError(result.error, MODULE_NAME, LOAD_MIGRATION_TABLE),
     );
   }
   return result.data;
@@ -62,8 +62,8 @@ function* partitionCaseIds(context: OrchestrationContext) {
   const partitionCount = Math.ceil(count / partitionSize);
   for (let i = 0; i < partitionCount; i++) {
     const childId = context.df.instanceId + `:${MIGRATE_CASES}:partition:${i}`;
-    const start = i * partitionCount;
-    const end = i * partitionCount + partitionSize;
+    const start = i * partitionSize;
+    const end = i * partitionSize + partitionSize;
     nextTasks.push(context.df.callSubOrchestrator(MIGRATE_PARTITION, { start, end }, childId));
   }
 
@@ -130,18 +130,18 @@ function* migratePartition(context: OrchestrationContext) {
 }
 
 /**
- * dropMigrationTable
+ * emptyMigrationTable
  *
  * @param _ignore
  * @param invocationContext
  */
-async function dropMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
+async function emptyMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const result = await MigrateCases.dropMigrationTable(context);
+  const result = await MigrateCases.emptyMigrationTable(context);
   if (result.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, DROP_MIGRATION_TABLE),
+      buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE),
     );
   }
 }
@@ -184,21 +184,22 @@ async function getCaseIdsToMigrate(
  * @param  context
  */
 function* migrateCases(context: OrchestrationContext) {
-  const count = yield context.df.callActivity(CREATE_MIGRATION_TABLE);
+  yield context.df.callActivity(EMPTY_MIGRATION_TABLE);
+  const count = yield context.df.callActivity(LOAD_MIGRATION_TABLE);
 
   if (count === 0) {
     return getDefaultSummary({ changedCases: count });
   }
 
   const childId = context.df.instanceId + `:${PARTITION_CASEIDS}`;
-  const summary = context.df.callSubOrchestrator(PARTITION_CASEIDS, count, childId);
+  const summary = yield context.df.callSubOrchestrator(PARTITION_CASEIDS, count, childId);
 
   yield context.df.callSubOrchestrator(
     STORE_CASES_RUNTIME_STATE,
     {},
     context.df.instanceId + `:${MIGRATE_CASES}:${STORE_CASES_RUNTIME_STATE}`,
   );
-  yield context.df.callActivity(DROP_MIGRATION_TABLE);
+  yield context.df.callActivity(EMPTY_MIGRATION_TABLE);
 
   return summary;
 }
@@ -236,12 +237,12 @@ export function setupMigrateCases() {
     handler: getCaseIdsToMigrate,
   });
 
-  df.app.activity(CREATE_MIGRATION_TABLE, {
-    handler: createMigrationTable,
+  df.app.activity(LOAD_MIGRATION_TABLE, {
+    handler: loadMigrationTable,
     extraOutputs: [DLQ],
   });
 
-  df.app.activity(DROP_MIGRATION_TABLE, { handler: dropMigrationTable, extraOutputs: [DLQ] });
+  df.app.activity(EMPTY_MIGRATION_TABLE, { handler: emptyMigrationTable, extraOutputs: [DLQ] });
 
   app.http('migrateCasesHttpTrigger', {
     route: 'migratecases',

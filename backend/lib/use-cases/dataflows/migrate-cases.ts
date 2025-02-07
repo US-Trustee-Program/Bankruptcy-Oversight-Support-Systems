@@ -10,19 +10,15 @@ const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
  *
  * @param context
  */
-async function createMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
+async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
     const gateway = Factory.getAcmsGateway(context);
-    await gateway.createMigrationTable(context);
+    await gateway.loadMigrationTable(context);
     const count = await gateway.getMigrationCaseCount(context);
     return { data: count };
   } catch (originalError) {
     return {
-      error: getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to create and populate temporary migration table.',
-      ),
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to populate migration table.'),
     };
   }
 }
@@ -65,22 +61,22 @@ async function getPageOfCaseIds(
  *
  * @param context
  */
-async function dropMigrationTable(context: ApplicationContext): Promise<MaybeVoid> {
+async function emptyMigrationTable(context: ApplicationContext): Promise<MaybeVoid> {
   try {
     const gateway = Factory.getAcmsGateway(context);
-    await gateway.createMigrationTable(context);
+    await gateway.emptyMigrationTable(context);
     return { success: true };
   } catch (originalError) {
     return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to drop temporary migration table.'),
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to empty migration table.'),
     };
   }
 }
 
 const MigrateCases = {
-  createMigrationTable,
+  loadMigrationTable,
   getPageOfCaseIds,
-  dropMigrationTable,
+  emptyMigrationTable,
 };
 
 export default MigrateCases;

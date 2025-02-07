@@ -121,14 +121,9 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
-  public async createMigrationTable(context: ApplicationContext) {
-    const createTableQuery = `
-      CREATE TABLE dbo.##MIGRATION_TEMP
-      (ID bigint not null identity primary key, caseId char(12) not null)
-    `;
-
+  public async loadMigrationTable(context: ApplicationContext) {
     const selectIntoQuery = `
-      INSERT INTO dbo.##MIGRATION_TEMP (caseId)
+      INSERT INTO dbo.CAMS_MIGRATION_TEMP (caseId)
       SELECT CONCAT(
          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
            '-',
@@ -140,7 +135,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
 
     try {
-      await this.executeQuery(context, createTableQuery);
       await this.executeQuery(context, selectIntoQuery);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, originalError.message);
@@ -152,7 +146,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       caseId: string;
     };
 
-    const query = `SELECT caseId FROM dbo.##MIGRATION_TEMP WHERE id BETWEEN ${start} AND ${end}`;
+    const query = `SELECT caseId FROM dbo.CAMS_MIGRATION_TEMP WHERE id BETWEEN ${start} AND ${end}`;
     try {
       const { results } = await this.executeQuery<ResultType>(context, query);
       const caseIdResults = results as ResultType[];
@@ -162,18 +156,18 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
-  public async dropMigrationTable(context: ApplicationContext) {
-    const dropTableQuery = 'DROP TABLE dbo.##MIGRATION_TEMP';
+  public async emptyMigrationTable(context: ApplicationContext) {
+    const emptyTableQuery = 'TRUNCATE TABLE dbo.CAMS_MIGRATION_TEMP';
 
     try {
-      await this.executeQuery(context, dropTableQuery);
+      await this.executeQuery(context, emptyTableQuery);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
   }
 
   public async getMigrationCaseCount(context: ApplicationContext) {
-    const countQuery = 'SELECT COUNT(*) AS total FROM dbo.##MIGRATION_TEMP';
+    const countQuery = 'SELECT COUNT(*) AS total FROM dbo.CAMS_MIGRATION_TEMP';
 
     type ResultType = {
       total: number;
