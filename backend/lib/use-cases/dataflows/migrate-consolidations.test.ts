@@ -19,13 +19,13 @@ const mockAcmsGateway: AcmsGateway = {
   getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
     throw new Error('Function not implemented.');
   },
-  createMigrationTable: function (..._ignore) {
+  loadMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
   getMigrationCaseIds: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
-  dropMigrationTable: function (..._ignore) {
+  emptyMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
 };

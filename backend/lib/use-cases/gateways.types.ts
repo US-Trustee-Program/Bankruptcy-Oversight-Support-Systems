@@ -123,14 +123,10 @@ export interface AcmsGateway {
     context: ApplicationContext,
     leadCaseId: string,
   ): Promise<AcmsConsolidation>;
-  createMigrationTable(context: ApplicationContext);
+  loadMigrationTable(context: ApplicationContext);
   getMigrationCaseIds(context: ApplicationContext, start: number, end: number);
-  dropMigrationTable(context: ApplicationContext);
+  emptyMigrationTable(context: ApplicationContext);
   getMigrationCaseCount(context: ApplicationContext);
-}
-
-export interface AcmsTempGateway {
-  foo();
 }
 
 export interface CasesRepository extends Releasable {
