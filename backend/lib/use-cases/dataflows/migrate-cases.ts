@@ -1,7 +1,11 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
-import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './dataflow-types';
+import {
+  MaybeCaseSyncEvents,
+  MaybeData,
+  MaybeVoid,
+} from '../../../../common/src/queue/dataflow-types';
 
 const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
 
@@ -29,7 +33,7 @@ async function loadMigrationTable(context: ApplicationContext): Promise<MaybeDat
  * @param offset
  * @param limit
  */
-async function getPageOfCaseIds(
+async function getPageOfCaseEvents(
   context: ApplicationContext,
   start: number,
   end: number,
@@ -75,7 +79,7 @@ async function emptyMigrationTable(context: ApplicationContext): Promise<MaybeVo
 
 const MigrateCases = {
   loadMigrationTable,
-  getPageOfCaseIds,
+  getPageOfCaseEvents,
   emptyMigrationTable,
 };
 

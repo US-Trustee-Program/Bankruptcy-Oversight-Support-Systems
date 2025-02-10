@@ -7,7 +7,7 @@ import {
   CaseSyncResults,
   ExportCaseChangeEventsSummary,
   getDefaultSummary,
-} from '../../../lib/use-cases/dataflows/dataflow-types';
+} from '../../../../common/src/queue/dataflow-types';
 import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
 
 import { toAzureError } from '../../azure/functions';

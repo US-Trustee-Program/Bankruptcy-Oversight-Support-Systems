@@ -10,8 +10,8 @@ import {
 import { CaseHistory } from '../../../../common/src/cams/history';
 import { CasesRepository } from '../../use-cases/gateways.types';
 import { SyncedCase } from '../../../../common/src/cams/cases';
-import { CasesSearchPredicate } from '../../../../common/dist/api/search';
 import { ResourceActions } from '../../../../common/src/cams/actions';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
 
 export class LocalCasesRepository implements CasesRepository {
   caseHistoryContainer: CaseHistory[] = [];

@@ -7,7 +7,7 @@ import {
   CaseSyncEvent,
   ExportCaseChangeEventsSummary,
   getDefaultSummary,
-} from '../../../lib/use-cases/dataflows/dataflow-types';
+} from '../../../../common/src/queue/dataflow-types';
 import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
 
 import ContextCreator from '../../azure/application-context-creator';
@@ -168,7 +168,7 @@ async function getCaseIdsToMigrate(
   const context = await ContextCreator.getApplicationContext({ invocationContext });
 
   const { start, end } = params;
-  const result = await MigrateCases.getPageOfCaseIds(context, start, end);
+  const result = await MigrateCases.getPageOfCaseEvents(context, start, end);
 
   if (result.error) {
     invocationContext.extraOutputs.set(

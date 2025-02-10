@@ -39,7 +39,7 @@ async function storeCasesRuntimeStateActivity(
  * @param  context
  */
 function* storeCasesRuntimeState(context: OrchestrationContext) {
-  yield context.df.callActivity(STORE_CASES_RUNTIME_STATE, context.df.getInput());
+  yield context.df.callActivity(STORE_CASES_RUNTIME_STATE_ACTIVITY, context.df.getInput());
 }
 
 export function setupStoreCasesRuntimeState() {

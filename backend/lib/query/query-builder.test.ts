@@ -3,7 +3,9 @@ import QueryBuilder, {
   Conjunction,
   isCondition,
   isConjunction,
+  isPagination,
   isSort,
+  Pagination,
   Sort,
   SortedAttribute,
 } from './query-builder';
@@ -190,5 +192,18 @@ describe('Query Builder', () => {
     };
     expect(isSort(sort)).toBeTruthy();
     expect(isSort({})).toBeFalsy();
+  });
+
+  test('isPagination', () => {
+    const pagination: Pagination = {
+      limit: 100,
+      skip: 0,
+      values: [],
+    };
+    expect(isPagination(pagination)).toBeTruthy();
+    const notPagination = {
+      foo: 'bar',
+    };
+    expect(isPagination(notPagination)).toBeFalsy();
   });
 });

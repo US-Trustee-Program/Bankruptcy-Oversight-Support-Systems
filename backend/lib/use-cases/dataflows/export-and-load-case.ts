@@ -3,7 +3,7 @@ import { SyncedCase } from '../../../../common/src/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getCasesGateway, getCasesRepository } from '../../factory';
-import { CaseSyncEvent } from './dataflow-types';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
 const MODULE_NAME = 'EXPORT_AND_LOAD';
 

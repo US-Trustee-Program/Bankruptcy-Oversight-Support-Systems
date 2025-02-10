@@ -37,16 +37,3 @@ export class CamsError extends Error {
 export function isCamsError(error: unknown): error is CamsError {
   return error instanceof Object && 'isCamsError' in error;
 }
-
-export function convertError<T extends CamsError>(error: unknown): T {
-  const camsError = {
-    message: error['message'],
-    status: error['status'],
-    module: error['module'],
-    originalError: error['originalError'],
-    data: error['data'],
-    isCamsError: error['isCamsError'],
-    camsStack: error['camsStack'],
-  };
-  return camsError as T;
-}
