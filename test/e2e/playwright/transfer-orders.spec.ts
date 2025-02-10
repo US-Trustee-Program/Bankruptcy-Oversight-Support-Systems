@@ -22,7 +22,7 @@ test.describe('Transfer Orders', () => {
       async (response) => response.url().includes('api/order') && response.ok(),
     );
     await page.goto('/');
-
+    console.log('URL:       ' + page.url());
     ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
     });
