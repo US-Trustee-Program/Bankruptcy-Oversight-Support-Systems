@@ -1,6 +1,6 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
+import { LOGIN_PATHS, LOGIN_BASE_PATH } from './login-library';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
 import { AccessDenied } from './AccessDenied';
@@ -70,8 +70,8 @@ export function Session(props: SessionProps) {
   }, []);
 
   useEffect(() => {
-    if (LOGIN_PATHS.includes(location.pathname)) navigate(LOGIN_SUCCESS_PATH);
-  }, [state.isLoaded === true]);
+    if (LOGIN_PATHS.includes(location.pathname)) navigate(LOGIN_BASE_PATH);
+  }, [state.isLoaded === true && !state.isError]);
 
   if (!state.isLoaded) {
     return (
@@ -83,7 +83,5 @@ export function Session(props: SessionProps) {
     return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
   }
 
-  if (state.isLoaded && !state.isError) {
-    return <>{props.children}</>;
-  }
+  return <>{props.children}</>;
 }

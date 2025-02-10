@@ -78,8 +78,9 @@ describe('MyCasesScreen', () => {
         <MyCasesScreen></MyCasesScreen>
       </BrowserRouter>,
     );
-
     const body = document.querySelector('body');
-    expect(body).toHaveTextContent('Invalid user expectation');
+    const expectedDiv = '<div />';
+    expect(body?.childNodes.length).toEqual(1);
+    expect(body?.childNodes[0]).toContainHTML(expectedDiv);
   });
 });

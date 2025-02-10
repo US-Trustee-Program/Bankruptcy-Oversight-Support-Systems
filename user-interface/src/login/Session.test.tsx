@@ -3,7 +3,7 @@ import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import * as reactRouter from 'react-router';
 import { CamsSession } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
-import { LOGIN_PATHS, LOGIN_SUCCESS_PATH } from './login-library';
+import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
 import { Session, SessionProps } from './Session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
@@ -69,7 +69,7 @@ describe('Session', () => {
       </MemoryRouter>,
     );
     expect(useNavigateSpy).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(LOGIN_SUCCESS_PATH);
+    expect(navigate).toHaveBeenCalledWith(LOGIN_BASE_PATH);
   });
 
   test('should display Access Denied if getMe returns an error', async () => {
