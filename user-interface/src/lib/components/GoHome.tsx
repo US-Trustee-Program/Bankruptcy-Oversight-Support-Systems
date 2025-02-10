@@ -1,3 +1,4 @@
+import { LOGIN_SUCCESS_PATH } from '@/login/login-library';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,7 +19,7 @@ export type GoHomeProps = {
 export function GoHome(props: GoHomeProps) {
   const navigate = useNavigate();
   useEffect(() => {
-    navigate(props.path ?? '/my-cases');
+    navigate(props.path ?? LOGIN_SUCCESS_PATH);
   }, []);
   return <></>;
 }
