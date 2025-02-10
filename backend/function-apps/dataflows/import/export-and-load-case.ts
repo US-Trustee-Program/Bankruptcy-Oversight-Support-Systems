@@ -1,6 +1,6 @@
 import * as df from 'durable-functions';
 import { OrchestrationContext } from 'durable-functions';
-import { CaseSyncEvent } from '../../../lib/use-cases/dataflows/dataflow-types';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import { DLQ } from '../dataflows-queues';
 import ContextCreator from '../../azure/application-context-creator';
 import { InvocationContext } from '@azure/functions';

@@ -24,22 +24,31 @@ const mockAcmsGateway: AcmsGateway = {
   emptyMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
+  getMigrationCaseCount(..._ignore) {
+    throw new Error('Function not implemented.');
+  },
 };
 
-describe('Migate cases use case', () => {
+describe('Migrate cases use case', () => {
   let context: ApplicationContext;
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('getMigrationCaseIds', () => {
-    test('should return case ids for migration', async () => {
+    test('should return case events for migration', async () => {
       const caseIds = MockData.buildArray(MockData.randomCaseId, 1000);
       jest.spyOn(AcmsGatewayImpl.prototype, 'getMigrationCaseIds').mockResolvedValue(caseIds);
 
-      const actual = await MigrateCases.getPageOfCaseIds(context, 1, 1000);
-      expect(actual.caseIds).toEqual(caseIds);
+      const actual = await MigrateCases.getPageOfCaseEvents(context, 1, 1000);
+      expect(actual.events).toEqual(
+        caseIds.map((caseId) => MockData.getCaseSyncEvent({ type: 'MIGRATION', caseId })),
+      );
     });
 
     test('should throw error if we cannot get case ids to migrate', async () => {
@@ -48,7 +57,7 @@ describe('Migate cases use case', () => {
         message: 'Failed to get case IDs to migrate from the ACMS gateway.',
       });
 
-      const actual = await MigrateCases.getPageOfCaseIds(context, 1, 1000);
+      const actual = await MigrateCases.getPageOfCaseEvents(context, 1, 1000);
 
       expect(actual.error).toEqual(
         expect.objectContaining({
@@ -60,18 +69,19 @@ describe('Migate cases use case', () => {
     });
   });
 
-  describe('createMigrationTable', () => {
-    test('should create the migration table', async () => {
+  describe('loadMigrationTable', () => {
+    test('should load the migration table', async () => {
       jest.spyOn(AcmsGatewayImpl.prototype, 'loadMigrationTable').mockResolvedValue(undefined);
+      jest.spyOn(AcmsGatewayImpl.prototype, 'getMigrationCaseCount').mockResolvedValue(100);
 
       const actual = await MigrateCases.loadMigrationTable(context);
-      expect(actual.success).toBeTruthy();
+      expect(actual).toEqual({ data: 100 });
     });
 
-    test('should return an error if the migration table is not created', async () => {
+    test('should return an error if the migration table is not loaded', async () => {
       jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
       const expected = new UnknownError('test-module', {
-        message: 'Failed to create and populate temporary migration table.',
+        message: 'Failed to populate migration table.',
       });
 
       const actual = await MigrateCases.loadMigrationTable(context);
@@ -86,8 +96,8 @@ describe('Migate cases use case', () => {
     });
   });
 
-  describe('dropMigrationTable', () => {
-    test('should drop the migration table', async () => {
+  describe('emptyMigrationTable', () => {
+    test('should empty the migration table', async () => {
       jest.spyOn(AcmsGatewayImpl.prototype, 'emptyMigrationTable').mockResolvedValue(undefined);
 
       const actual = await MigrateCases.emptyMigrationTable(context);
@@ -97,7 +107,7 @@ describe('Migate cases use case', () => {
     test('should return an error if the migration table is not dropped', async () => {
       jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
       const expected = new UnknownError('test-module', {
-        message: 'Failed to drop temporary migration table.',
+        message: 'Failed to empty migration table.',
       });
 
       const actual = await MigrateCases.emptyMigrationTable(context);

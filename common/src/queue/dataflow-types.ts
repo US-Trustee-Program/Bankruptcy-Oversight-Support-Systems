@@ -1,5 +1,5 @@
-import { DxtrCase } from '../../../../common/src/cams/cases';
-import { CamsError } from '../../common-errors/cams-error';
+import { DxtrCase } from '../cams/cases';
+import { CamsError } from '../../../backend/lib/common-errors/cams-error';
 
 export type CaseSyncEvent = {
   type: 'CASE_CHANGED' | 'MIGRATION';
@@ -58,7 +58,7 @@ export type MaybeCaseSyncEvents = MaybeError & {
 export type QueueError<E extends CamsError = CamsError> = {
   type: 'QUEUE_ERROR';
   module: string;
-  // NOTE: James says this is gonna bite us when we change the activtyName. He is probably right. -- BTP
+  // NOTE: James says this is gonna bite us when we change the activityName. He is probably right. -- BTP
   activityName: string;
   error: E;
 };

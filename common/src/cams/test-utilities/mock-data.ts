@@ -47,6 +47,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
+import { CaseSyncEvent } from '../../queue/dataflow-types';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -662,6 +663,17 @@ function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
 }
 
+function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
+  const defaultEvent: CaseSyncEvent = {
+    type: 'CASE_CHANGED',
+    caseId: randomCaseId(),
+  };
+  return {
+    ...defaultEvent,
+    ...override,
+  };
+}
+
 export const MockData = {
   randomCaseId,
   randomOffice,
@@ -707,6 +719,7 @@ export const MockData = {
   getJwt,
   someDateAfterThisDate,
   someDateBeforeThisDate,
+  getCaseSyncEvent,
 };
 
 export default MockData;

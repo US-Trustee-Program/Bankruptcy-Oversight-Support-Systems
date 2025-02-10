@@ -28,6 +28,9 @@ const mockAcmsGateway: AcmsGateway = {
   emptyMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
+  getMigrationCaseCount(..._ignore) {
+    throw new Error('Function not implemented.');
+  },
 };
 
 describe('ACMS Orders', () => {
