@@ -7,30 +7,35 @@ jobs:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: user-interface
+      artifactname: user-interface
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-backend-lib:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend
+      artifactname: backend-lib
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-backend-api:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend/function-apps/api
+      artifactname: backend-api
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-backend-migration:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend/function-apps/migration
+      artifactname: backend-migration
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-common:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: common
+      artifactname: common
     secrets: inherit # pragma: allowlist secret
 
   sast-pipeline-scan:
