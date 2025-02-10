@@ -37,7 +37,7 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render a list of cases assigned to a user', async () => {
-    const expectedData = MockData.buildArray(MockData.getCaseBasics, 3);
+    const expectedData = MockData.buildArray(MockData.getSyncedCase, 3);
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       data: expectedData,
     });
