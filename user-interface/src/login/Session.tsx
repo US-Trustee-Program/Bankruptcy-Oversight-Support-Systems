@@ -6,6 +6,7 @@ import { Interstitial } from './Interstitial';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import { useNavigate } from 'react-router-dom';
+import { LOGIN_BASE_PATH } from './login-library';
 
 type SessionState = {
   isLoaded: boolean;
@@ -69,7 +70,7 @@ export function Session(props: SessionProps) {
   }, []);
 
   useEffect(() => {
-    navigate('/');
+    navigate(LOGIN_BASE_PATH);
   }, [state.isLoaded && !state.isError]);
 
   if (!state.isLoaded) {
