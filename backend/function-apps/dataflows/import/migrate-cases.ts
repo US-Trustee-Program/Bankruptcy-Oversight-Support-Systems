@@ -3,7 +3,6 @@ import { OrchestrationContext } from 'durable-functions';
 import { app, HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
 
 import {
-  buildQueueError,
   CaseSyncEvent,
   ExportCaseChangeEventsSummary,
   getDefaultSummary,
@@ -17,6 +16,7 @@ import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 import { DLQ } from '../dataflows-queues';
 import { EXPORT_AND_LOAD_CASE } from './export-and-load-case';
+import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 
 const MODULE_NAME = 'MIGRATE_CASES_DATAFLOW';
 

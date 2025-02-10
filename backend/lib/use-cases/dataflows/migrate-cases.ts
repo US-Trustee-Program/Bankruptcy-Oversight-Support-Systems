@@ -1,11 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
-import {
-  MaybeCaseSyncEvents,
-  MaybeData,
-  MaybeVoid,
-} from '../../../../common/src/queue/dataflow-types';
+import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './queue-types';
 
 const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
 
