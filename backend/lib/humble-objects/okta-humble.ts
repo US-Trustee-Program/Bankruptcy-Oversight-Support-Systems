@@ -95,7 +95,10 @@ export class OktaHumble {
       };
     } catch (originalError) {
       if (isOktaApiError(originalError) && originalError.status === 401) {
-        throw new UnauthorizedError(MODULE_NAME, { originalError });
+        throw new UnauthorizedError(MODULE_NAME, {
+          originalError,
+          message: 'Unauthorized error occurred while accessing Okta User API.',
+        });
       } else {
         throw new UnknownError(MODULE_NAME, { originalError, message: 'Failed to retrieve user.' });
       }

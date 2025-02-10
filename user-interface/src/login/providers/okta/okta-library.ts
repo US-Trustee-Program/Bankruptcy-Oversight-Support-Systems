@@ -19,6 +19,7 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
   if (!session) return;
 
   const expiration = session.expires;
+  // THIS IS SUS....
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
@@ -26,6 +27,7 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
     if (isTokenBeingRefreshed === undefined || isTokenBeingRefreshed) {
       return;
     } else if (!isTokenBeingRefreshed) {
+      // THIS IS SUS....
       const theTime = Math.floor(Math.random() * 15);
       setTimeout(() => refreshTheToken(oktaAuth), theTime);
     }
