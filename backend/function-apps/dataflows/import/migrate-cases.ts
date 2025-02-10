@@ -59,11 +59,16 @@ function* partitionCaseIds(context: OrchestrationContext) {
 
   const nextTasks: df.Task[] = [];
   const partitionSize = 10000;
-  const partitionCount = Math.ceil(count / partitionSize);
-  for (let i = 0; i < partitionCount; i++) {
-    const childId = context.df.instanceId + `:${MIGRATE_CASES}:partition:${i}`;
-    const start = i * partitionSize;
-    const end = i * partitionSize + partitionSize;
+
+  let start = 0;
+  let end = 0;
+  let partitionCount = 0;
+
+  while (end < count) {
+    partitionCount += 1;
+    start = end + 1;
+    end += partitionSize;
+    const childId = context.df.instanceId + `:${MIGRATE_CASES}:partition:${partitionCount}`;
     nextTasks.push(context.df.callSubOrchestrator(MIGRATE_PARTITION, { start, end }, childId));
   }
 
