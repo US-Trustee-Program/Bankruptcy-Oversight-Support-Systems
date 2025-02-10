@@ -1,12 +1,12 @@
 import { PropsWithChildren, useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { LOGIN_PATHS, LOGIN_BASE_PATH } from './login-library';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
 import { AccessDenied } from './AccessDenied';
 import { Interstitial } from './Interstitial';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
-import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
 
 type SessionState = {
   isLoaded: boolean;
@@ -57,12 +57,11 @@ export function useStateAndActions() {
 export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { user?: CamsUser };
 
 export function Session(props: SessionProps) {
-  const location = useLocation();
   const { accessToken, provider, expires, issuer } = props;
   const user = props.user ?? { id: '', name: '' };
-  const { state, actions } = useStateAndActions();
-
   const navigate = useNavigate();
+  const location = useLocation();
+  const { state, actions } = useStateAndActions();
 
   useEffect(() => {
     const preflight: CamsSession = { accessToken, provider, user, expires, issuer };
@@ -71,9 +70,7 @@ export function Session(props: SessionProps) {
   }, []);
 
   useEffect(() => {
-    if (LOGIN_PATHS.includes(location.pathname)) {
-      navigate(LOGIN_BASE_PATH);
-    }
+    if (LOGIN_PATHS.includes(location.pathname)) navigate(LOGIN_BASE_PATH);
   }, [state.isLoaded === true && !state.isError]);
 
   if (!state.isLoaded) {
