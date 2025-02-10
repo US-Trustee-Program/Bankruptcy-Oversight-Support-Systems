@@ -7,14 +7,14 @@ jobs:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: user-interface
-      artifactname: ui
+      artifactname: user-interface
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-backend-lib:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: backend
-      artifactname: backend
+      artifactname: backend-lib
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-backend-api:
