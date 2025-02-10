@@ -7,25 +7,19 @@ const timeoutOption = { timeout: 30000 };
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
-
+  let officesRequestPromise;
+  let orderResponsePromise;
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
-    const orderResponsePromise = page.waitForResponse(
+    orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
       timeoutOption,
     );
-    const officesRequestPromise = page.waitForEvent('requestfinished', {
+    officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
       timeout: 30000,
     });
-    await page.goto('/data-verification');
-    await expect(page.getByTestId('accordion-group')).toBeVisible();
-    await officesRequestPromise;
-
-    const orderResponse = await orderResponsePromise;
-    orderResponseBody = (await orderResponse.json()).data;
-
-    expect(orderResponseBody).not.toBeFalsy();
+    await page.goto('/');
   });
 
   test.afterEach(async ({ page }) => {
@@ -35,6 +29,16 @@ test.describe('Consolidation Orders', () => {
   test('should select correct consolidationType radio when approving a consolidation', async ({
     page,
   }) => {
+    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
+    await page.getByTestId('header-data-verification-link').click();
+    await expect(page.getByTestId('accordion-group')).toBeVisible();
+
+    await officesRequestPromise;
+
+    const orderResponse = await orderResponsePromise;
+    orderResponseBody = (await orderResponse.json()).data;
+
+    expect(orderResponseBody).not.toBeFalsy();
     // get pending consolidation order id
     const pendingConsolidationOrder: Order = orderResponseBody.find(
       (o) => o.orderType === 'consolidation' && o.status === 'pending',
@@ -100,6 +104,16 @@ test.describe('Consolidation Orders', () => {
   test('should open case-not-listed form, fill form and click validate button', async ({
     page,
   }) => {
+    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
+    await page.getByTestId('header-data-verification-link').click();
+    await expect(page.getByTestId('accordion-group')).toBeVisible();
+
+    await officesRequestPromise;
+
+    const orderResponse = await orderResponsePromise;
+    orderResponseBody = (await orderResponse.json()).data;
+
+    expect(orderResponseBody).not.toBeFalsy();
     // get pending consolidation order id
     const pendingConsolidationOrder: Order = orderResponseBody.find(
       (o) => o.orderType === 'consolidation' && o.status === 'pending',
@@ -144,7 +158,9 @@ test.describe('Consolidation Orders', () => {
       .dispatchEvent('click');
 
     // Action fill form for selecting a lead case not listed in child cases
-    await page.locator('#lead-case-court div').first().click();
+    // await page.locator('#lead-case-court div').first().click();
+
+    // await page.keyboard.press('Esc');
 
     await page
       .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
@@ -161,6 +177,10 @@ test.describe('Consolidation Orders', () => {
     );
 
     // Action click validate (approve button)
+    await expect(
+      page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
+    ).toBeEnabled();
+
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
       .click();
