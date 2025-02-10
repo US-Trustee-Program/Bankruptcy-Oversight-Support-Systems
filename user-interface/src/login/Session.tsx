@@ -6,7 +6,8 @@ import { Interstitial } from './Interstitial';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import { useNavigate } from 'react-router-dom';
-import { LOGIN_BASE_PATH } from './login-library';
+import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
+import { useLocation } from 'react-router-dom';
 
 type SessionState = {
   isLoaded: boolean;
@@ -57,6 +58,7 @@ export function useStateAndActions() {
 export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { user?: CamsUser };
 
 export function Session(props: SessionProps) {
+  const location = useLocation();
   const { accessToken, provider, expires, issuer } = props;
   const user = props.user ?? { id: '', name: '' };
   const { state, actions } = useStateAndActions();
@@ -70,8 +72,10 @@ export function Session(props: SessionProps) {
   }, []);
 
   useEffect(() => {
-    navigate(LOGIN_BASE_PATH);
-  }, [state.isLoaded && !state.isError]);
+    if (LOGIN_PATHS.includes(location.pathname)) {
+      navigate(LOGIN_BASE_PATH);
+    }
+  }, [state.isLoaded === true && !state.isError]);
 
   if (!state.isLoaded) {
     return (

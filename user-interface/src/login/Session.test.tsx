@@ -62,8 +62,7 @@ describe('Session', () => {
     expect(setSession).toHaveBeenCalledWith(testSession);
   });
 
-  const loginPaths = [...LOGIN_PATHS];
-  test.each(loginPaths)('should redirect to "/" if path is "%s"', (path: string) => {
+  test.each(LOGIN_PATHS)('should redirect to "/" if path is "%s"', (path: string) => {
     render(
       <MemoryRouter initialEntries={[path]}>
         <Session {...testSession}></Session>
