@@ -641,7 +641,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       data: [expectedOrderApproved],
     });
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
-      data: MockData.buildArray(MockData.getCaseBasics, 5),
+      data: MockData.buildArray(MockData.getSyncedCase, 5),
     });
 
     renderWithProps();
