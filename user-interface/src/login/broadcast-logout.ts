@@ -1,3 +1,4 @@
+import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
 import { BroadcastChannelHumble } from '@/lib/humble/broadcast-channel-humble';
 import { LOGOUT_PATH } from '@/login/login-library';
 
@@ -6,7 +7,7 @@ let channel: BroadcastChannelHumble;
 export function handleLogoutBroadcast() {
   const { host, protocol } = window.location;
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
-  window.location.assign(logoutUri);
+  redirectTo(logoutUri);
   channel?.close();
 }
 

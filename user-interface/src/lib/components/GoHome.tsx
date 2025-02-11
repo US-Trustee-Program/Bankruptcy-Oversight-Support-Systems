@@ -1,6 +1,6 @@
 import { LOGIN_SUCCESS_PATH } from '@/login/login-library';
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import useCamsNavigator from '../hooks/UseCamsNavigator';
 
 export type GoHomeProps = {
   path?: string;
@@ -17,9 +17,9 @@ export type GoHomeProps = {
  * @returns
  */
 export function GoHome(props: GoHomeProps) {
-  const navigate = useNavigate();
+  const navigator = useCamsNavigator();
   useEffect(() => {
-    navigate(props.path ?? LOGIN_SUCCESS_PATH);
+    navigator.navigateTo(props.path ?? LOGIN_SUCCESS_PATH);
   }, []);
   return <></>;
 }
