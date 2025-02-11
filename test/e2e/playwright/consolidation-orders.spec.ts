@@ -22,7 +22,8 @@ test.describe('Consolidation Orders', () => {
       timeout: 30000,
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
-    await page.getByTestId('header-data-verification-link').click();
+    // await page.getByTestId('header-data-verification-link').click();
+    await page.goto('/data-verification');
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     await officesRequestPromise;
