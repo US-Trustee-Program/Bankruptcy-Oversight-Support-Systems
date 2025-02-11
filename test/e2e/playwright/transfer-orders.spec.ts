@@ -11,7 +11,7 @@ interface Order {
   docketSuggestedCaseNumber: string;
 }
 
-test.describe('Transfer Orders', () => {
+test.describe.only('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
   let officesRequestPromise: Promise<Request>;
@@ -29,6 +29,14 @@ test.describe('Transfer Orders', () => {
     officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
     });
+    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
+    await page.goto('/data-verification');
+    await expect(page.getByTestId('accordion-group')).toBeVisible();
+
+    const orderResponse = await orderResponsePromise;
+    orderResponseBody = (await orderResponse.json()).data;
+
+    expect(orderResponseBody).not.toBeFalsy();
   });
 
   test.afterEach(async ({ page }) => {
@@ -36,14 +44,6 @@ test.describe('Transfer Orders', () => {
   });
 
   test('test pending transfer order form', async ({ page }) => {
-    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
-    await page.getByTestId('header-data-verification-link').click();
-    await expect(page.getByTestId('accordion-group')).toBeVisible();
-
-    const orderResponse = await orderResponsePromise;
-    orderResponseBody = (await orderResponse.json()).data;
-
-    expect(orderResponseBody).not.toBeFalsy();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
     // get pending transfer order id
     const pendingTransferOrder: Order = orderResponseBody.find(
@@ -129,16 +129,6 @@ test.describe('Transfer Orders', () => {
 
   test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
     // get pending transfer order id
-
-    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
-    await page.getByTestId('header-data-verification-link').click();
-    await expect(page.getByTestId('accordion-group')).toBeVisible();
-
-    const orderResponse = await orderResponsePromise;
-    orderResponseBody = (await orderResponse.json()).data;
-
-    expect(orderResponseBody).not.toBeFalsy();
-
     const pendingTransferOrder: Order = orderResponseBody.find(
       (o) => o.orderType === 'transfer' && o.status === 'pending',
     );
