@@ -5,7 +5,7 @@ import { logout } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
 
-test.describe.skip('Consolidation Orders', () => {
+test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
   let officesRequestPromise;
   let orderResponsePromise;
