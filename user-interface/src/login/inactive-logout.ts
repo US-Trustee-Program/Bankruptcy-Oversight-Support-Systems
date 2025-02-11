@@ -1,5 +1,6 @@
 import LocalStorage from '@/lib/utils/local-storage';
 import { LOGOUT_PATH } from './login-library';
+import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
 
 const POLLING_INTERVAL = 60000; // milliseconds
 const TIMEOUT_MINUTES = import.meta.env['CAMS_INACTIVE_TIMEOUT'] ?? 30;
@@ -18,7 +19,7 @@ export function checkForInactivity() {
 
     const { host, protocol } = window.location;
     const logoutUri = protocol + '//' + host + LOGOUT_PATH;
-    window.location.assign(logoutUri);
+    redirectTo(logoutUri);
   }
 }
 

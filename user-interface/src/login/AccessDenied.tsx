@@ -2,6 +2,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BlankPage } from './BlankPage';
 import { LOGIN_PATH } from './login-library';
 import Button from '@/lib/components/uswds/Button';
+import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 
 const DEFAULT_MESSAGE = 'Access to this application is denied without successful authentication.';
 
@@ -10,10 +11,12 @@ export type AccessDeniedProps = {
 };
 
 export function AccessDenied(props: AccessDeniedProps) {
+  const navigator = useCamsNavigator();
+
   function handleLoginRedirect() {
     const { host, protocol } = window.location;
     const loginUri = protocol + '//' + host + LOGIN_PATH;
-    window.location.assign(loginUri);
+    navigator.redirectTo(loginUri);
   }
 
   return (
