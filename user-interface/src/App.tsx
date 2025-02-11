@@ -21,6 +21,7 @@ import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/G
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
+import NotFound from './lib/components/NotFound';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
@@ -30,7 +31,9 @@ function App() {
   const flags = useFeatureFlags();
 
   const globalAlertRef = useRef<GlobalAlertRef>(null);
-
+  const transfersEnabled = flags[TRANSFER_ORDERS_ENABLED];
+  const privilegedIdentityEnabled = flags[PRIVILEGED_IDENTITY_MANAGEMENT];
+  console.log('PATHNAME:        ', window.location.pathname);
   return (
     <AppInsightsErrorBoundary
       onError={(_error) => {
@@ -50,13 +53,14 @@ function App() {
               <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
               <Route path="/search/:caseId" element={<SearchScreen />}></Route>
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
-              {flags[TRANSFER_ORDERS_ENABLED] && (
+              {transfersEnabled && (
                 <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               )}
-              {flags[PRIVILEGED_IDENTITY_MANAGEMENT] && (
+              {privilegedIdentityEnabled && (
                 <Route path="/admin/*" element={<AdminScreen />}></Route>
               )}
-              <Route path="*" element={<GoHome />}></Route>
+              {/* Note: we are experiencing what seems like a race condition here */}
+              <Route path="*" element={<NotFound />}></Route>
             </Routes>
             <ScrollToTopButton data-testid="scroll-to-top-button" />
           </div>
