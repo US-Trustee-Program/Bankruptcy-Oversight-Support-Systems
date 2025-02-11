@@ -30,7 +30,7 @@ test.describe('Transfer Orders', () => {
       predicate: (e) => e.url().includes('api/courts'),
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
-    await page.goto('/data-verification');
+    await page.getByTestId('header-data-verification-link').click();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
