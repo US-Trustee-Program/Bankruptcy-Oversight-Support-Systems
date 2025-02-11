@@ -33,7 +33,6 @@ function App() {
   const globalAlertRef = useRef<GlobalAlertRef>(null);
   const transfersEnabled = flags[TRANSFER_ORDERS_ENABLED];
   const privilegedIdentityEnabled = flags[PRIVILEGED_IDENTITY_MANAGEMENT];
-  console.log('PATHNAME:        ', window.location.pathname);
   return (
     <AppInsightsErrorBoundary
       onError={(_error) => {
