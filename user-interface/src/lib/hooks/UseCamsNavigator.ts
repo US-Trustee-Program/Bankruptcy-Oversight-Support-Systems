@@ -6,7 +6,7 @@ function getFinalDestination(
 ) {
   let qParams: string = '';
   const msRoutingName = 'x-ms-routing-name';
-  if (location.search.includes(msRoutingName)) {
+  if (location.search?.includes(msRoutingName)) {
     const query: Record<string, string> = location.search
       .substring(1)
       .split('&')
