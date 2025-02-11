@@ -11,7 +11,7 @@ interface Order {
   docketSuggestedCaseNumber: string;
 }
 
-test.describe.only('Transfer Orders', () => {
+test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
   let officesRequestPromise: Promise<Request>;
