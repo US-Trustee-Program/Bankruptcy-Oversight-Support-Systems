@@ -16,11 +16,10 @@ export function SessionEnd() {
     navigator.navigateTo(LOGIN_PATH);
   }
 
-  LocalStorage.removeSession();
-  LocalStorage.removeAck();
-  broadcastLogout();
-
   useEffect(() => {
+    LocalStorage.removeSession();
+    LocalStorage.removeAck();
+    broadcastLogout();
     if (location.pathname !== LOGOUT_SESSION_END_PATH) {
       navigator.navigateTo(LOGOUT_SESSION_END_PATH);
     }
