@@ -9,7 +9,6 @@ test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
   let officesRequestPromise;
   let orderResponsePromise;
-  const authFile = 'playwright/.auth/user.json';
 
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
@@ -23,8 +22,7 @@ test.describe('Consolidation Orders', () => {
       timeout: 30000,
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
-    await page.context().storageState({ path: authFile });
-    await page.goto('/data-verification');
+    await page.getByTestId('header-data-verification-link').click();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     await officesRequestPromise;
