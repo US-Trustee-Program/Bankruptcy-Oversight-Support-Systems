@@ -5,10 +5,12 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
 import { Stop } from '@/lib/components/Stop';
+import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '../lib/hooks/UseFeatureFlags';
 
 export function AdminScreen() {
   const session = LocalStorage.getSession();
   const hasInvalidPermission = !session?.user?.roles?.includes(CamsRole.SuperUser);
+  const flags = useFeatureFlags();
 
   return (
     <MainContent className="admin-screen" data-testid="admin-screen">
@@ -22,7 +24,7 @@ export function AdminScreen() {
       </div>
       <div className="grid-row grid-gap-lg">
         <div id="left-gutter" className="grid-col-1"></div>
-        {hasInvalidPermission ? (
+        {hasInvalidPermission || flags[PRIVILEGED_IDENTITY_MANAGEMENT] === false ? (
           <div className="grid-col-10">
             <Stop
               id="forbidden-alert"
