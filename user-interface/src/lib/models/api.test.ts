@@ -43,7 +43,7 @@ describe('Specific tests for the API model', () => {
 
   // GET
 
-  test('should return 500 error message when GET response is 500', () => {
+  test('should return 500 error message when GET response is 500', async () => {
     const mockHttpGet = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ status: 500, message: 'mock get 500' }),
       status: 500,
@@ -51,10 +51,10 @@ describe('Specific tests for the API model', () => {
     }));
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
-    expect(Api.get('/some/path', {})).rejects.toThrow('mock get 500');
+    await expect(Api.get('/some/path', {})).rejects.toThrow('mock get 500');
   });
 
-  test('should return 400 error message when GET response is not 500', () => {
+  test('should return 400 error message when GET response is not 500', async () => {
     const mockHttpGet = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ message: 'mock get 400' }),
       status: 400,
@@ -62,10 +62,12 @@ describe('Specific tests for the API model', () => {
     }));
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
-    expect(Api.get('/some/path', {})).rejects.toThrow('400 Error - /some/path - mock get 400');
+    await expect(Api.get('/some/path', {})).rejects.toThrow(
+      '400 Error - /some/path - mock get 400',
+    );
   });
 
-  test('should throw error when GET response is not ok', () => {
+  test('should throw error when GET response is not ok', async () => {
     const mockHttpGet = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock get ok' }),
       status: 200,
@@ -73,16 +75,16 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
-    expect(Api.get('/some/path', {})).rejects.toThrow('mock get ok');
+    await expect(Api.get('/some/path', {})).rejects.toThrow('mock get ok');
   });
 
-  test('should throw all other GET errors as "500" errors', () => {
+  test('should throw all other GET errors as "500" errors', async () => {
     const error = new Error('something bad happened');
     const rethrownError = new Error(`500 Error - Server Error ${(error as Error).message}`);
     const mockHttpGet = vi.fn().mockRejectedValue(error);
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
-    expect(Api.get('/some/path', {})).rejects.toThrow(rethrownError);
+    await expect(Api.get('/some/path', {})).rejects.toThrow(rethrownError);
   });
 
   test('should return expected result when GET response is ok', () => {
@@ -111,14 +113,14 @@ describe('Specific tests for the API model', () => {
     expect(mockHttpPost).toHaveBeenCalled();
   });
 
-  test('should return error message when POST response is not ok', () => {
+  test('should return error message when POST response is not ok', async () => {
     const mockHttpPost = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ message: 'mock post' }),
       ok: false,
     }));
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
-    expect(Api.post('/some/path', {})).rejects.toThrow('mock post');
+    await expect(Api.post('/some/path', {})).rejects.toThrow('mock post');
   });
 
   test('should return data when POST response is Ok with a payload', () => {
@@ -157,14 +159,14 @@ describe('Specific tests for the API model', () => {
     expect(mockHttpPut).toHaveBeenCalled();
   });
 
-  test('should return error message when PUT response is not ok', () => {
+  test('should return error message when PUT response is not ok', async () => {
     const mockHttpPut = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ message: 'mock put' }),
       ok: false,
     }));
     vi.spyOn(httpAdapter, 'httpPut').mockImplementation(mockHttpPut);
 
-    expect(Api.put('/some/path', {})).rejects.toThrow('mock put');
+    await expect(Api.put('/some/path', {})).rejects.toThrow('mock put');
   });
 
   test('should return data when PUT response is Ok with a payload', () => {
@@ -191,7 +193,7 @@ describe('Specific tests for the API model', () => {
 
   // PATCH
 
-  test('should throw error when PATCH response is not ok', () => {
+  test('should throw error when PATCH response is not ok', async () => {
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock patch ok' }),
       status: 200,
@@ -199,16 +201,16 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
 
-    expect(Api.patch('/some/path', {})).rejects.toThrow('mock patch ok');
+    await expect(Api.patch('/some/path', {})).rejects.toThrow('mock patch ok');
   });
 
-  test('should throw all other PATCH errors as "500" errors', () => {
+  test('should throw all other PATCH errors as "500" errors', async () => {
     const error = new Error('something bad happened');
     const rethrownError = new Error(`500 Error - Server Error ${(error as Error).message}`);
     const mockHttpPatch = vi.fn().mockRejectedValue(error);
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
 
-    expect(Api.patch('/some/path', {})).rejects.toThrow(rethrownError);
+    await expect(Api.patch('/some/path', {})).rejects.toThrow(rethrownError);
   });
 
   test('should return expected result when PATCH response is ok', () => {
@@ -236,7 +238,7 @@ describe('Specific tests for the API model', () => {
 
   // DELETE
 
-  test('should throw error when DELETE response is not ok', () => {
+  test('should throw error when DELETE response is not ok', async () => {
     const mockHttpDelete = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock delete ok' }),
       status: 200,
@@ -244,16 +246,16 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
 
-    expect(Api.delete('/some/path')).rejects.toThrow('mock delete ok');
+    await expect(Api.delete('/some/path')).rejects.toThrow('mock delete ok');
   });
 
-  test('should throw all other DELETE errors as "500" errors', () => {
+  test('should throw all other DELETE errors as "500" errors', async () => {
     const error = new Error('something bad happened');
     const rethrownError = new Error(`500 Error - Server Error ${(error as Error).message}`);
     const mockHttpDelete = vi.fn().mockRejectedValue(error);
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
 
-    expect(Api.delete('/some/path')).rejects.toThrow(rethrownError);
+    await expect(Api.delete('/some/path')).rejects.toThrow(rethrownError);
   });
 
   test('should return expected result when DELETE response is ok', () => {
