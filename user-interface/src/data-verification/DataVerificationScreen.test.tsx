@@ -26,7 +26,7 @@ describe('Review Orders screen', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   // TODO: Unskip this test.
@@ -140,10 +140,6 @@ describe('Review Orders screen', () => {
         }),
       ],
     };
-    const mockFeatureFlags = {
-      'consolidations-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
 
     render(
@@ -184,8 +180,10 @@ describe('Review Orders screen', () => {
 
     const mockFeatureFlags = {
       'consolidations-enabled': false,
+      'transfer-orders-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+
     render(
       <BrowserRouter>
         <DataVerificationScreen />
@@ -216,7 +214,7 @@ describe('Review Orders screen', () => {
     });
 
     const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
-    expect(transfersFilter).not.toBeInTheDocument();
+    expect(transfersFilter).toBeInTheDocument();
 
     const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
     expect(consolidationsFilter).not.toBeInTheDocument();
@@ -252,10 +250,10 @@ describe('Review Orders screen', () => {
   });
 
   test('Should filter on type when clicking type filter', async () => {
-    const mockFeatureFlags = {
-      'consolidations-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    // const mockFeatureFlags = {
+    //   'consolidations-enabled': true,
+    // };
+    // vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
     };
