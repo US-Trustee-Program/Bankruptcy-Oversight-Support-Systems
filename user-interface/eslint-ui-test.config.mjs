@@ -18,7 +18,7 @@ const eslintUiTestConfig = tsEslint.config(eslintUiConfig, {
   rules: {
     'testing-library/await-async-events': 'error',
     'testing-library/await-async-queries': 'error',
-    'testing-library/await-async-utils': 'warn', // default: error
+    'testing-library/await-async-utils': 'error',
     'testing-library/no-await-sync-events': 'error',
     'testing-library/no-await-sync-queries': 'error',
     'testing-library/no-container': 'warn', // default: error

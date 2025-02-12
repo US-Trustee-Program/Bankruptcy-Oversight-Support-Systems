@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { Header } from './Header';
@@ -6,8 +6,10 @@ import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import LocalStorage from '../utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
+import userEvent from '@testing-library/user-event';
 
 describe('Header', () => {
+  const uiUser = userEvent.setup();
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
   });
@@ -88,7 +90,7 @@ describe('Header', () => {
     renderWithoutProps();
 
     let linkToClick = await screen.findByTestId(linkTestId);
-    fireEvent.click(linkToClick);
+    await uiUser.click(linkToClick);
 
     linkToClick = await screen.findByTestId(linkTestId);
     expect(linkToClick).toHaveClass('usa-current current');
@@ -103,10 +105,9 @@ describe('Header', () => {
       renderWithoutProps();
 
       let link = await screen.findByTestId(linkTestId);
-      fireEvent.focus(link);
-      fireEvent.keyDown(link, { key: ' ', code: 'Space' });
+      await uiUser.type(link, ' ');
 
-      waitFor(async () => {
+      await waitFor(async () => {
         link = await screen.findByTestId(linkTestId);
         expect(link).toHaveClass('usa-current current');
       });
