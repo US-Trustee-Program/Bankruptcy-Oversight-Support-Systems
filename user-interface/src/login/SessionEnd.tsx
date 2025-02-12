@@ -1,27 +1,27 @@
 import { useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button from '@/lib/components/uswds/Button';
 import { LocalStorage } from '@/lib/utils/local-storage';
 import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 import { BlankPage } from './BlankPage';
 import { broadcastLogout } from '@/login/broadcast-logout';
+import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 
 export function SessionEnd() {
   const location = useLocation();
-  const navigate = useNavigate();
 
+  const navigator = useCamsNavigator();
   function handleLoginRedirect() {
-    navigate(LOGIN_PATH);
+    navigator.navigateTo(LOGIN_PATH);
   }
 
-  LocalStorage.removeSession();
-  LocalStorage.removeAck();
-  broadcastLogout();
-
   useEffect(() => {
+    LocalStorage.removeSession();
+    LocalStorage.removeAck();
+    broadcastLogout();
     if (location.pathname !== LOGOUT_SESSION_END_PATH) {
-      navigate(LOGOUT_SESSION_END_PATH);
+      navigator.navigateTo(LOGOUT_SESSION_END_PATH);
     }
   }, []);
 

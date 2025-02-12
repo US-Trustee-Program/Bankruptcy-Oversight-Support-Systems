@@ -15,20 +15,20 @@ test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
   let officesRequestPromise: Promise<Request>;
-
+  let orderResponsePromise;
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
-    const orderResponsePromise = page.waitForResponse(
+    orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
     );
+    await page.goto('/data-verification');
     ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
     });
     officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
     });
-
-    await page.goto('/data-verification');
+    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;

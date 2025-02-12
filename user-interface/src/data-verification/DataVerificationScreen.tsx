@@ -17,7 +17,10 @@ import {
   isTransferOrder,
 } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  CONSOLIDATIONS_ENABLED,
+  TRANSFER_ORDERS_ENABLED,
+} from '../lib/hooks/UseFeatureFlags';
 import { sortByDate } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -157,6 +160,13 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
+    .filter((o) => {
+      if (isTransferOrder(o)) {
+        return featureFlags[TRANSFER_ORDERS_ENABLED];
+      } else {
+        return true;
+      }
+    })
     .sort((a, b) => sortByDate(a.orderDate, b.orderDate))
     .map((order) => {
       const isHidden =
@@ -231,27 +241,27 @@ export default function DataVerificationScreen() {
               <h3>Filters</h3>
               <section className="order-list-container">
                 <div className="filters order-status">
-                  {featureFlags[CONSOLIDATIONS_ENABLED] && (
-                    <>
-                      <div className="event-type-container">
-                        <h4 className="event-header">Event Status</h4>
-                        <div>
-                          <Filter<OrderType>
-                            label="Transfer"
-                            filterType="transfer"
-                            filters={typeFilter}
-                            callback={handleTypeFilter}
-                          />
-                          <Filter<OrderType>
-                            label="Consolidation"
-                            filterType="consolidation"
-                            filters={typeFilter}
-                            callback={handleTypeFilter}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  <div className="event-type-container">
+                    <h4 className="event-header">Event Status</h4>
+                    <div>
+                      {featureFlags[TRANSFER_ORDERS_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Transfer"
+                          filterType="transfer"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                      {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Consolidation"
+                          filterType="consolidation"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                    </div>
+                  </div>
                   <div className="event-status-container">
                     <h4 className="event-header">Event Status</h4>
                     <div>
