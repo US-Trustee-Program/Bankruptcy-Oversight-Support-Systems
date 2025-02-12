@@ -216,7 +216,7 @@ describe('Review Orders screen', () => {
     const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
     expect(transfersFilter).toBeInTheDocument();
 
-    const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
+    const consolidationsFilter = screen.queryByTestId('order-status-filter-consolidation');
     expect(consolidationsFilter).not.toBeInTheDocument();
   });
 
