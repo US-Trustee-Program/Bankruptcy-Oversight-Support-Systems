@@ -21,8 +21,7 @@ test.describe('Transfer Orders', () => {
     orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
     );
-    await page.goto('/');
-    console.log('URL:       ' + page.url());
+    await page.goto('/data-verification');
     ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
     });
@@ -30,8 +29,6 @@ test.describe('Transfer Orders', () => {
       predicate: (e) => e.url().includes('api/courts'),
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
-    await page.goto('/data-verification');
-    // await page.getByTestId('header-data-verification-link').click();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
