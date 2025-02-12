@@ -148,9 +148,6 @@ test.describe('Consolidation Orders', () => {
       .dispatchEvent('click');
 
     // Action fill form for selecting a lead case not listed in child cases
-    // await page.locator('#lead-case-court div').first().click();
-
-    // await page.keyboard.press('Esc');
 
     await page
       .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
