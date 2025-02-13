@@ -15,6 +15,15 @@ import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
 import Input from '@/lib/components/uswds/Input';
 import { AlertOptions } from './CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
+import { useFormStorage } from '@/lib/formStorageContext';
+
+const initialFormData: CaseNoteInput = {
+  caseId: '',
+  title: '',
+  content: '',
+};
+
+const formKey = 'CamsCaseNote';
 
 export interface CaseNotesProps {
   caseId: string;
@@ -28,8 +37,10 @@ export interface CaseNotesProps {
 
 export default function CaseNotes(props: CaseNotesProps) {
   const { caseNotes, areCaseNotesLoading, searchString } = props;
-  const [caseNoteContentInput, setCaseNoteContentInput] = useState<string>('');
-  const [caseNoteTitleInput, setCaseNoteTitleInput] = useState<string>('');
+  const { getForm, saveForm, clearForm } = useFormStorage();
+  const [formData, setFormData] = useState<CaseNoteInput>(
+    () => (getForm(formKey) as CaseNoteInput) || initialFormData,
+  );
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
   const buttonRef = useRef<ButtonRef>(null);
@@ -39,15 +50,35 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
+  function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
+    saveFormData({
+      caseId: props.caseId,
+      title: event.target.value,
+      content: contentInputRef.current?.getValue() ?? '',
+    });
+  }
+
+  function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
+    saveFormData({
+      caseId: props.caseId,
+      title: titleInputRef.current?.getValue() ?? '',
+      content: event.target.value,
+    });
+  }
+
+  function saveFormData(data: CaseNoteInput) {
+    setFormData((previousValue) => ({ ...previousValue, ...data }));
+  }
+
   async function putCaseNote() {
-    if (caseNoteContentInput.length > 0 && caseNoteTitleInput.length > 0) {
+    if (formData.title.length > 0 && formData.content.length > 0) {
       titleInputRef.current?.disable(true);
       contentInputRef.current?.disable(true);
       buttonRef.current?.disableButton(true);
       const caseNoteInput: CaseNoteInput = {
         caseId: props.caseId,
-        title: caseNoteTitleInput,
-        content: caseNoteContentInput,
+        title: formData.title,
+        content: formData.content,
       };
       api
         .postCaseNote(caseNoteInput)
@@ -55,6 +86,8 @@ export default function CaseNotes(props: CaseNotesProps) {
           titleInputRef.current?.clearValue();
           contentInputRef.current?.clearValue();
           if (props.onNoteCreation) props.onNoteCreation();
+          // only clear the form on success
+          clearForm(formKey);
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
@@ -125,6 +158,21 @@ export default function CaseNotes(props: CaseNotesProps) {
     );
   }, [searchString, caseNotes]);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      saveForm(formKey, formData);
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [formData]);
+
+  useEffect(() => {
+    if (formData.caseId === props.caseId) {
+      titleInputRef.current?.setValue(formData.title);
+      contentInputRef.current?.setValue(formData.content);
+    }
+  }, []);
+
   return (
     <div className="case-notes-panel">
       <div className="case-notes-title">
@@ -134,17 +182,15 @@ export default function CaseNotes(props: CaseNotesProps) {
             id="case-note-title-input"
             label="Note title"
             includeClearButton={true}
-            onChange={(event) => {
-              setCaseNoteTitleInput(event.target.value);
-            }}
+            onChange={handleTitleChange}
+            value={formData.title}
             ref={titleInputRef}
           />
           <TextArea
             id="note-content"
             label="Note Text"
-            onChange={(event) => {
-              setCaseNoteContentInput(event.target.value);
-            }}
+            onChange={handleContentChange}
+            value={formData.content}
             ref={contentInputRef}
           />
           <Button
