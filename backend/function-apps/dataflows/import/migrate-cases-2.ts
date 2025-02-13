@@ -176,11 +176,13 @@ async function migrateCases(_ignore: unknown, context: InvocationContext) {
   let start = 0;
   let end = 0;
 
+  const pages = [];
   while (end < count) {
     start = end + 1;
     end += partitionSize;
-    context.extraOutputs.set(PAGE, { start, end });
+    pages.push({ start, end });
   }
+  context.extraOutputs.set(PAGE, pages);
 
   await storeCasesRuntimeState(undefined, context);
 }
