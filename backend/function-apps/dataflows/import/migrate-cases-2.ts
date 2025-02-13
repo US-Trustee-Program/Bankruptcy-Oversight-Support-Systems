@@ -29,7 +29,6 @@ export const ETL = output.storageQueue({
 // Orchestration Aliases
 const MIGRATE_CASES = buildUniqueName(MODULE_NAME, 'migrateCases');
 const PARTITION_CASEIDS = buildUniqueName(MODULE_NAME, 'partitionCaseIds');
-const QUEUE_PARTITION = buildUniqueName(MODULE_NAME, 'queuePartition');
 
 // Activity Aliases
 const GET_CASEIDS_TO_MIGRATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToMigrate');
@@ -40,13 +39,15 @@ const ADD_TO_ETL_ACTIVITY = buildUniqueName(MODULE_NAME, 'addToETL');
 /**
  * addToETL
  *
- * @param event
+ * @param events
  * @param invocationContext
  * @returns
  */
-async function addToETL(event: CaseSyncEvent, invocationContext: InvocationContext) {
+async function addToETL(events: CaseSyncEvent[], invocationContext: InvocationContext) {
   try {
-    invocationContext.extraOutputs.set(ETL, event);
+    for (const event of events) {
+      invocationContext.extraOutputs.set(ETL, event);
+    }
   } catch (originalError) {
     invocationContext.extraOutputs.set(
       DLQ,
@@ -112,39 +113,18 @@ function* partitionCaseIds(context: OrchestrationContext) {
 
   let start = 0;
   let end = 0;
-  let partitionCount = 0;
 
   while (end < count) {
-    partitionCount += 1;
     start = end + 1;
     end += partitionSize;
-    yield context.df.callSubOrchestrator(
-      QUEUE_PARTITION,
-      { start, end },
-      context.df.instanceId + `:${MIGRATE_CASES}:partition:${partitionCount}`,
-    );
+
+    const events: CaseSyncEvent[] = yield context.df.callActivity(GET_CASEIDS_TO_MIGRATE_ACTIVITY, {
+      start,
+      end,
+    });
+
+    yield context.df.callActivity(ADD_TO_ETL_ACTIVITY, events);
   }
-}
-
-/**
- * queuePartition
- *
- * @param context
- * @returns
- */
-function* queuePartition(context: OrchestrationContext) {
-  const range = context.df.getInput();
-
-  const events: CaseSyncEvent[] = yield context.df.callActivity(
-    GET_CASEIDS_TO_MIGRATE_ACTIVITY,
-    range,
-  );
-
-  for (const event of events) {
-    yield context.df.callActivity(ADD_TO_ETL_ACTIVITY, event);
-  }
-
-  return;
 }
 
 /**
@@ -249,7 +229,6 @@ async function migrateCasesHttpTrigger(
 export function setupMigrateCases2() {
   df.app.orchestration(MIGRATE_CASES, migrateCases);
   df.app.orchestration(PARTITION_CASEIDS, partitionCaseIds);
-  df.app.orchestration(QUEUE_PARTITION, queuePartition);
 
   df.app.activity(GET_CASEIDS_TO_MIGRATE_ACTIVITY, {
     handler: getCaseIdsToMigrate,
