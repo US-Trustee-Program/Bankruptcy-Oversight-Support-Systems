@@ -80,4 +80,8 @@ export class LocalCasesRepository implements CasesRepository {
   async searchCases(_predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
     throw new Error('Not implemented.');
   }
+
+  async deleteSyncedCases(): Promise<void> {
+    throw new Error('Not implemented.');
+  }
 }
