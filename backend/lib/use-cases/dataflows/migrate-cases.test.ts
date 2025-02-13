@@ -7,6 +7,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
 import MigrateCases from './migrate-cases';
 import { AcmsConsolidation } from './migrate-consolidations';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 const mockAcmsGateway: AcmsGateway = {
   getLeadCaseIds: function (..._ignore): Promise<string[]> {
@@ -71,6 +72,7 @@ describe('Migrate cases use case', () => {
 
   describe('loadMigrationTable', () => {
     test('should load the migration table', async () => {
+      jest.spyOn(MockMongoRepository.prototype, 'deleteSyncedCases').mockResolvedValue();
       jest.spyOn(AcmsGatewayImpl.prototype, 'loadMigrationTable').mockResolvedValue(undefined);
       jest.spyOn(AcmsGatewayImpl.prototype, 'getMigrationCaseCount').mockResolvedValue(100);
 
