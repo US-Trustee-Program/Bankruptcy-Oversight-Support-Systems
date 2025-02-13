@@ -12,6 +12,10 @@ const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
  */
 async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
+    // TEMPORARILY DELETE EVERYTING FROM COSMOS WHILE WE ARE "EXPERIMENTING".
+    const repo = Factory.getCasesRepository(context);
+    await repo.deleteSyncedCases();
+
     const gateway = Factory.getAcmsGateway(context);
     await gateway.loadMigrationTable(context);
     const count = await gateway.getMigrationCaseCount(context);
@@ -57,7 +61,7 @@ async function getPageOfCaseEvents(
 }
 
 /**
- * dropMigrationTable
+ * emptyMigrationTable
  *
  * @param context
  */

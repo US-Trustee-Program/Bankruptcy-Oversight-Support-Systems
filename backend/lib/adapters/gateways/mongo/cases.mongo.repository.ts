@@ -200,6 +200,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  async deleteSyncedCases(): Promise<void> {
+    const query = QueryBuilder.build(
+      equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+    );
+    try {
+      await this.getAdapter<SyncedCase>().deleteMany(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
     try {
       // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
