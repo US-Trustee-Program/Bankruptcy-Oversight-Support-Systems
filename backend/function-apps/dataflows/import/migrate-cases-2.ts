@@ -14,42 +14,17 @@ import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-st
 const MODULE_NAME = 'MIGRATE_CASES_2';
 
 // Queues
-const DLQ = output.storageQueue({
-  queueName: buildUniqueName(MODULE_NAME, 'dlq').toLowerCase(),
-  connection: 'AzureWebJobsStorage',
-});
-
-const ETL = output.storageQueue({
-  queueName: buildUniqueName(MODULE_NAME, 'etl').toLowerCase(),
-  connection: 'AzureWebJobsStorage',
-});
+let START;
+let PAGE;
+let DLQ;
+let ETL;
 
 // Activity Aliases
 const GET_CASEIDS_TO_MIGRATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToMigrate');
 const LOAD_MIGRATION_TABLE_ACTIVITY = buildUniqueName(MODULE_NAME, 'loadMigrationTable');
 const EMPTY_MIGRATION_TABLE_ACTIVITY = buildUniqueName(MODULE_NAME, 'emptyMigrationTable');
 const STORE_CASES_RUNTIME_STATE = buildUniqueName(MODULE_NAME, 'storeCasesRuntimeState');
-const ADD_TO_ETL = buildUniqueName(MODULE_NAME, 'addToETL');
 const PROCESS_ETL = buildUniqueName(MODULE_NAME, 'processETL');
-
-/**
- * addToETL
- *
- * @param events
- * @param context
- * @returns
- */
-async function addToETL(events: CaseSyncEvent[], context: InvocationContext) {
-  try {
-    for (const event of events) {
-      context.extraOutputs.set(ETL, event);
-    }
-    return true;
-  } catch (originalError) {
-    context.extraOutputs.set(DLQ, buildQueueError(originalError, MODULE_NAME, ADD_TO_ETL));
-    return false;
-  }
-}
 
 /**
  * processETL
@@ -169,6 +144,19 @@ async function getCaseIdsToMigrate(
 }
 
 /**
+ * processPage
+ *
+ * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ *
+ * @param  context
+ */
+async function processPage(range: { start: number; end: number }, context: InvocationContext) {
+  const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, context);
+
+  context.extraOutputs.set(ETL, events);
+}
+
+/**
  * migrateCases
  *
  * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
@@ -191,18 +179,7 @@ async function migrateCases(_ignore: unknown, context: InvocationContext) {
   while (end < count) {
     start = end + 1;
     end += partitionSize;
-
-    const events: CaseSyncEvent[] = await getCaseIdsToMigrate(
-      {
-        start,
-        end,
-      },
-      context,
-    );
-
-    const isAdded = await addToETL(events, context);
-
-    if (!isAdded) return;
+    context.extraOutputs.set(PAGE, { start, end });
   }
 
   await storeCasesRuntimeState(undefined, context);
@@ -223,7 +200,7 @@ async function httpTrigger(
     if (!isAuthorized(request)) {
       throw new ForbiddenError(MODULE_NAME);
     }
-    migrateCases(undefined, context);
+    context.extraOutputs.set(START, {});
 
     return new HttpResponse(toAzureSuccess({ statusCode: 201 }));
   } catch (error) {
@@ -232,6 +209,40 @@ async function httpTrigger(
 }
 
 export function setupMigrateCases2() {
+  START = output.storageQueue({
+    queueName: buildUniqueName(MODULE_NAME, 'start').toLowerCase(),
+    connection: 'AzureWebJobsStorage',
+  });
+
+  PAGE = output.storageQueue({
+    queueName: buildUniqueName(MODULE_NAME, 'page').toLowerCase(),
+    connection: 'AzureWebJobsStorage',
+  });
+
+  DLQ = output.storageQueue({
+    queueName: buildUniqueName(MODULE_NAME, 'dlq').toLowerCase(),
+    connection: 'AzureWebJobsStorage',
+  });
+
+  ETL = output.storageQueue({
+    queueName: buildUniqueName(MODULE_NAME, 'etl').toLowerCase(),
+    connection: 'AzureWebJobsStorage',
+  });
+
+  app.storageQueue(START.queueName, {
+    queueName: START.queueName,
+    connection: 'AzureWebJobsStorage',
+    handler: migrateCases,
+    extraOutputs: [PAGE],
+  });
+
+  app.storageQueue(PAGE.queueName, {
+    queueName: PAGE.queueName,
+    connection: 'AzureWebJobsStorage',
+    handler: processPage,
+    extraOutputs: [ETL, DLQ],
+  });
+
   app.storageQueue(ETL.queueName, {
     queueName: ETL.queueName,
     connection: 'AzureWebJobsStorage',
@@ -240,8 +251,9 @@ export function setupMigrateCases2() {
   });
 
   app.http(buildUniqueName(MODULE_NAME, 'httpTrigger'), {
+    methods: ['GET'],
     route: 'migratecases2',
-    extraOutputs: [ETL, DLQ],
+    extraOutputs: [START],
     handler: httpTrigger,
   });
 }
