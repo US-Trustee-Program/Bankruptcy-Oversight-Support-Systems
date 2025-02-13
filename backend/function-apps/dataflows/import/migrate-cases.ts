@@ -57,8 +57,8 @@ async function loadMigrationTable(_ignore: unknown, invocationContext: Invocatio
 function* partitionCaseIds(context: OrchestrationContext) {
   const count: number = context.df.getInput();
 
-  const nextTasks: df.Task[] = [];
-  const partitionSize = 10000;
+  const finalSummary = getDefaultSummary();
+  const partitionSize = 1000;
 
   let start = 0;
   let end = 0;
@@ -68,24 +68,22 @@ function* partitionCaseIds(context: OrchestrationContext) {
     partitionCount += 1;
     start = end + 1;
     end += partitionSize;
-    const childId = context.df.instanceId + `:${MIGRATE_CASES}:partition:${partitionCount}`;
-    nextTasks.push(context.df.callSubOrchestrator(MIGRATE_PARTITION, { start, end }, childId));
-  }
+    const task = yield context.df.callSubOrchestrator(
+      MIGRATE_PARTITION,
+      { start, end },
+      context.df.instanceId + `:${MIGRATE_CASES}:partition:${partitionCount}`,
+    );
 
-  yield context.df.Task.all(nextTasks);
-
-  const finalSummary = nextTasks.reduce((acc, task) => {
     if (task.result) {
       const result = task.result as ExportCaseChangeEventsSummary;
-      acc.changedCases += result.changedCases;
-      acc.exportedAndLoaded += result.exportedAndLoaded;
-      acc.completed += result.completed;
-      acc.errors += result.errors;
-      acc.faulted += result.faulted;
-      acc.noResult += result.noResult;
+      finalSummary.changedCases += result.changedCases;
+      finalSummary.exportedAndLoaded += result.exportedAndLoaded;
+      finalSummary.completed += result.completed;
+      finalSummary.errors += result.errors;
+      finalSummary.faulted += result.faulted;
+      finalSummary.noResult += result.noResult;
     }
-    return acc;
-  }, getDefaultSummary());
+  }
 
   return finalSummary;
 }
