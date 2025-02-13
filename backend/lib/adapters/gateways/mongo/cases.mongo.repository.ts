@@ -201,11 +201,29 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async deleteSyncedCases(): Promise<void> {
-    const query = QueryBuilder.build(
-      equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-    );
     try {
-      await this.getAdapter<SyncedCase>().deleteMany(query);
+      const adapter = this.getAdapter<SyncedCase>();
+      const existingQuery = QueryBuilder.build(
+        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+      );
+      const existingCount = await adapter.countDocuments(existingQuery);
+      let deletedCount = 0;
+      const limit = 10;
+      let offset = 0;
+      while (existingCount > deletedCount) {
+        const predicate: CasesSearchPredicate = { limit, offset };
+        const page = await this.searchCases(predicate);
+        const caseIds = page.data.map((bCase) => bCase.caseId);
+        const deleteQuery = QueryBuilder.build(
+          and(
+            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+            contains<SyncedCase['caseId']>('caseId', caseIds),
+          ),
+        );
+        const deleted = await adapter.deleteMany(deleteQuery);
+        offset += limit;
+        deletedCount += deleted;
+      }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
