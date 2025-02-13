@@ -19,6 +19,9 @@ export function SessionEnd() {
   useEffect(() => {
     LocalStorage.removeSession();
     LocalStorage.removeAck();
+    //TODO: check if is in 'Court Mode' or not in 'Court Mode' Dependenct on user discussion
+    LocalStorage.clearAllForms();
+
     broadcastLogout();
     if (location.pathname !== LOGOUT_SESSION_END_PATH) {
       navigator.navigateTo(LOGOUT_SESSION_END_PATH);

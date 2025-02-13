@@ -5,6 +5,7 @@ export const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
 export const LAST_INTERACTION_KEY = 'cams:last-interaction';
+export const FORM_LIST_KEY = 'cams:saved-form-keys';
 
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
@@ -116,6 +117,47 @@ function setNumber(key: string, value: number) {
   localStorage.setItem(key, value.toString());
 }
 
+////////////// Form Related Functions //////////////
+
+function getFormKeys() {
+  return JSON.parse(localStorage.getItem(FORM_LIST_KEY) || '[]');
+}
+
+function getForm(formKey: string): object {
+  return JSON.parse(localStorage.getItem(formKey) || 'null');
+}
+
+function saveForm(formKey: string, data: object) {
+  const formKeys = getFormKeys();
+
+  localStorage.setItem(formKey, JSON.stringify(data));
+
+  if (!formKeys.includes(formKey)) {
+    formKeys.push(formKey);
+    localStorage.setItem(FORM_LIST_KEY, JSON.stringify(formKeys));
+  }
+}
+
+function clearForm(formKey: string) {
+  const prevFormKeys = getFormKeys();
+
+  localStorage.removeItem(formKey);
+
+  const newFormKeys = prevFormKeys.filter((key: string) => key !== formKey);
+  if (newFormKeys.length > 0) localStorage.setItem(FORM_LIST_KEY, JSON.stringify(newFormKeys));
+  else localStorage.removeItem(FORM_LIST_KEY);
+}
+
+function clearAllForms() {
+  const formKeys = getFormKeys();
+  for (const key of formKeys) {
+    localStorage.removeItem(key);
+  }
+  localStorage.removeItem(FORM_LIST_KEY);
+}
+
+////////////// End Form Related Functions //////////////
+
 export const LocalStorage = {
   getSession,
   setSession,
@@ -128,6 +170,11 @@ export const LocalStorage = {
   removeRefreshingToken,
   getLastInteraction,
   setLastInteraction,
+  getFormKeys,
+  getForm,
+  saveForm,
+  clearForm,
+  clearAllForms,
 };
 
 export default LocalStorage;
