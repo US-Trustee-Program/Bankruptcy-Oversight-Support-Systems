@@ -30,6 +30,10 @@ export class MockMongoRepository
     UsersRepository,
     UserSessionCacheRepository
 {
+  deleteSyncedCases(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   release() {
     return;
   }

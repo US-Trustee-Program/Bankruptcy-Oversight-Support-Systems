@@ -141,6 +141,7 @@ export interface CasesRepository extends Releasable {
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
   searchCases(predicate: CasesSearchPredicate);
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
+  deleteSyncedCases(): Promise<void>;
 }
 
 export interface OfficesRepository extends Releasable {
