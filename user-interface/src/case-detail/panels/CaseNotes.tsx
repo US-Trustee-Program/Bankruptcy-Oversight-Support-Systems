@@ -1,6 +1,6 @@
 import './CaseNotes.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import TextArea from '@/lib/components/uswds/TextArea';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -15,7 +15,7 @@ import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
 import Input from '@/lib/components/uswds/Input';
 import { AlertOptions } from './CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import { useFormStorage } from '@/lib/formStorageContext';
+import LocalStorage from '@/lib/utils/local-storage';
 
 const initialFormData: CaseNoteInput = {
   caseId: '',
@@ -34,13 +34,18 @@ export interface CaseNotesProps {
   onNoteCreation: () => void;
   searchString: string;
 }
-
+//TODO: Do we want a button for clear form?
 export default function CaseNotes(props: CaseNotesProps) {
   const { caseNotes, areCaseNotesLoading, searchString } = props;
-  const { getForm, saveForm, clearForm } = useFormStorage();
-  const [formData, setFormData] = useState<CaseNoteInput>(
-    () => (getForm(formKey) as CaseNoteInput) || initialFormData,
-  );
+  const [formData, setFormData] = useState<CaseNoteInput>(() => {
+    const note = LocalStorage.getForm(formKey) as CaseNoteInput;
+    if (note?.caseId === props.caseId) {
+      return note;
+    } else {
+      return initialFormData;
+    }
+  });
+  const caseNoteDraftAlertRef = useRef<AlertRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
   const buttonRef = useRef<ButtonRef>(null);
@@ -70,6 +75,12 @@ export default function CaseNotes(props: CaseNotesProps) {
     setFormData((previousValue) => ({ ...previousValue, ...data }));
   }
 
+  function clearCaseNoteForm() {
+    titleInputRef.current?.clearValue();
+    contentInputRef.current?.clearValue();
+    LocalStorage.clearForm(formKey);
+  }
+
   async function putCaseNote() {
     if (formData.title.length > 0 && formData.content.length > 0) {
       titleInputRef.current?.disable(true);
@@ -83,11 +94,9 @@ export default function CaseNotes(props: CaseNotesProps) {
       api
         .postCaseNote(caseNoteInput)
         .then(() => {
-          titleInputRef.current?.clearValue();
-          contentInputRef.current?.clearValue();
+          clearCaseNoteForm();
           if (props.onNoteCreation) props.onNoteCreation();
           // only clear the form on success
-          clearForm(formKey);
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
@@ -160,7 +169,12 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      saveForm(formKey, formData);
+      if (formData.title.length > 0 || formData.content.length > 0) {
+        LocalStorage.saveForm(formKey, formData);
+        caseNoteDraftAlertRef.current?.show();
+      } else {
+        caseNoteDraftAlertRef.current?.hide();
+      }
     }, 1000);
 
     return () => clearTimeout(timeout);
@@ -175,6 +189,18 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   return (
     <div className="case-notes-panel">
+      <div className="measure-6">
+        <Alert
+          type={UswdsAlertStyle.Info}
+          title="Unsaved Draft Note"
+          id="case-note-draft"
+          inline={true}
+          slim={true}
+          ref={caseNoteDraftAlertRef}
+        >
+          Note stored as a draft. Click “Add Note” to save the draft. Unsaved drafts may be lost.
+        </Alert>
+      </div>
       <div className="case-notes-title">
         <h3>Case Notes</h3>
         <div className="case-notes-form-container">
@@ -201,6 +227,15 @@ export default function CaseNotes(props: CaseNotesProps) {
             ref={buttonRef}
           >
             Add Note
+          </Button>
+          <Button
+            id="clear-case-note"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={clearCaseNoteForm}
+            aria-label="Clear case note form data."
+            ref={buttonRef}
+          >
+            Clear
           </Button>
         </div>
         {areCaseNotesLoading && (

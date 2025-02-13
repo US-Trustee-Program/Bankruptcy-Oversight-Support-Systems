@@ -260,4 +260,59 @@ describe('case note tests', () => {
       );
     });
   });
+
+  test('should show Note Draft Alert when content has not been pushed to cosmos', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.reject());
+
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    renderWithProps();
+
+    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
+    expect(noteTitleInput).toBeInTheDocument();
+
+    const textArea = screen.getByTestId(textAreaTestId);
+    expect(textArea).toBeInTheDocument();
+    await userEvent.type(textArea, 'test note');
+
+    const button = screen.getByTestId('button-submit-case-note');
+    expect(button).toBeInTheDocument();
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(
+        'All case note input fields are required to submit a note.',
+      );
+    });
+  });
+
+  test('should show Note Draft Alert when content or title have not been pushed to cosmos', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
+
+    renderWithProps();
+
+    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
+    expect(noteTitleInput).toBeInTheDocument();
+    await userEvent.type(noteTitleInput, 'test note title');
+
+    const textArea = screen.getByTestId(textAreaTestId);
+    expect(textArea).toBeInTheDocument();
+    await userEvent.type(textArea, 'test note');
+
+    await waitFor(() => {
+      const draftAlert = screen.getByTestId('alert-container-case-note-draft');
+      expect(draftAlert).toBeInTheDocument();
+    });
+
+    // const button = screen.getByTestId('button-submit-case-note');
+    // expect(button).toBeInTheDocument();
+    // await userEvent.click(button);
+
+    // await waitFor(() => {
+    // const draftAlert = screen.getByTestId('alert-container-case-note-draft');
+    // expect(draftAlert).not.toBeInTheDocument();
+    // });
+  });
 });
