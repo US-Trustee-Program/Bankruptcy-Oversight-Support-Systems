@@ -17,7 +17,6 @@ import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/G
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
-import { FormStorageProvider } from './lib/formStorageContext';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
@@ -33,29 +32,27 @@ function App() {
       }}
       appInsights={reactPlugin}
     >
-      <FormStorageProvider>
-        <div id="app-root" className="App" data-testid="app-component-test-id">
-          <GlobalAlert inline={false} type={UswdsAlertStyle.Info} ref={globalAlertRef} />
-          <Header />
-          <GlobalAlertContext.Provider value={globalAlertRef}>
-            <div className="cams-content">
-              <Routes>
-                <Route path="/my-cases" element={<MyCasesScreen />}></Route>
-                <Route path="/search" element={<SearchScreen />}></Route>
-                <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
-                <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-                <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
-                <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
-                <Route path="/admin/*" element={<AdminScreen />}></Route>
-                <Route index element={<GoHome />}></Route>
-                <Route path="*" element={<GoHome />}></Route>
-              </Routes>
-              <ScrollToTopButton data-testid="scroll-to-top-button" />
-            </div>
-          </GlobalAlertContext.Provider>
-          <PrivacyActFooter></PrivacyActFooter>
-        </div>
-      </FormStorageProvider>
+      <div id="app-root" className="App" data-testid="app-component-test-id">
+        <GlobalAlert inline={false} type={UswdsAlertStyle.Info} ref={globalAlertRef} />
+        <Header />
+        <GlobalAlertContext.Provider value={globalAlertRef}>
+          <div className="cams-content">
+            <Routes>
+              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
+              <Route path="/search" element={<SearchScreen />}></Route>
+              <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
+              <Route path="/search/:caseId" element={<SearchScreen />}></Route>
+              <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
+              <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
+              <Route path="/admin/*" element={<AdminScreen />}></Route>
+              <Route index element={<GoHome />}></Route>
+              <Route path="*" element={<GoHome />}></Route>
+            </Routes>
+            <ScrollToTopButton data-testid="scroll-to-top-button" />
+          </div>
+        </GlobalAlertContext.Provider>
+        <PrivacyActFooter></PrivacyActFooter>
+      </div>
     </AppInsightsErrorBoundary>
   );
 }
