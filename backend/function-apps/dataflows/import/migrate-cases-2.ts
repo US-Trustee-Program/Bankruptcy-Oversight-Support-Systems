@@ -184,7 +184,7 @@ async function migrateCases(_ignore: unknown, context: InvocationContext) {
   }
   context.extraOutputs.set(PAGE, pages);
 
-  await storeCasesRuntimeState(undefined, context);
+  await storeCasesRuntimeState({}, context);
 }
 
 /**
