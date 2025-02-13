@@ -7,5 +7,5 @@ export function isAuthorized(request: HttpRequest) {
 }
 
 export function buildUniqueName(...parts): string {
-  return parts.join('-');
+  return parts.join('-').replace(/_/g, '-').replace(' ', '-');
 }
