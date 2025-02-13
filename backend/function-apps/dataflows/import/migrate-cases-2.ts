@@ -1,58 +1,53 @@
-import * as df from 'durable-functions';
-import { OrchestrationContext } from 'durable-functions';
 import { app, HttpRequest, HttpResponse, InvocationContext, output } from '@azure/functions';
 
-import { CaseSyncEvent, getDefaultSummary } from '../../../../common/src/queue/dataflow-types';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
 
 import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError } from '../../azure/functions';
+import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { buildUniqueName, isAuthorized } from '../dataflows-common';
-import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 
 const MODULE_NAME = 'MIGRATE_CASES_2';
 
 // Queues
-export const DLQ = output.storageQueue({
-  queueName: buildUniqueName(MODULE_NAME, 'dlq'),
+const DLQ = output.storageQueue({
+  queueName: buildUniqueName(MODULE_NAME, 'dlq').toLowerCase(),
   connection: 'AzureWebJobsStorage',
 });
 
-export const ETL = output.storageQueue({
-  queueName: buildUniqueName(MODULE_NAME, 'etl'),
+const ETL = output.storageQueue({
+  queueName: buildUniqueName(MODULE_NAME, 'etl').toLowerCase(),
   connection: 'AzureWebJobsStorage',
 });
-
-// Orchestration Aliases
-const MIGRATE_CASES = buildUniqueName(MODULE_NAME, 'migrateCases');
-const PARTITION_CASEIDS = buildUniqueName(MODULE_NAME, 'partitionCaseIds');
 
 // Activity Aliases
 const GET_CASEIDS_TO_MIGRATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToMigrate');
 const LOAD_MIGRATION_TABLE_ACTIVITY = buildUniqueName(MODULE_NAME, 'loadMigrationTable');
 const EMPTY_MIGRATION_TABLE_ACTIVITY = buildUniqueName(MODULE_NAME, 'emptyMigrationTable');
-const ADD_TO_ETL_ACTIVITY = buildUniqueName(MODULE_NAME, 'addToETL');
+const STORE_CASES_RUNTIME_STATE = buildUniqueName(MODULE_NAME, 'storeCasesRuntimeState');
+const ADD_TO_ETL = buildUniqueName(MODULE_NAME, 'addToETL');
+const PROCESS_ETL = buildUniqueName(MODULE_NAME, 'processETL');
 
 /**
  * addToETL
  *
  * @param events
- * @param invocationContext
+ * @param context
  * @returns
  */
-async function addToETL(events: CaseSyncEvent[], invocationContext: InvocationContext) {
+async function addToETL(events: CaseSyncEvent[], context: InvocationContext) {
   try {
     for (const event of events) {
-      invocationContext.extraOutputs.set(ETL, event);
+      context.extraOutputs.set(ETL, event);
     }
+    return true;
   } catch (originalError) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(originalError, MODULE_NAME, LOAD_MIGRATION_TABLE_ACTIVITY),
-    );
+    context.extraOutputs.set(DLQ, buildQueueError(originalError, MODULE_NAME, ADD_TO_ETL));
+    return false;
   }
 }
 
@@ -77,9 +72,32 @@ async function processETL(event: CaseSyncEvent, invocationContext: InvocationCon
   } catch (originalError) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(originalError, MODULE_NAME, LOAD_MIGRATION_TABLE_ACTIVITY),
+      buildQueueError(originalError, MODULE_NAME, PROCESS_ETL),
     );
   }
+}
+
+/**
+ * storeCasesRuntimeState
+ *
+ * @param params
+ * @param invocationContext
+ */
+async function storeCasesRuntimeState(
+  params: { lastTxId?: string },
+  invocationContext: InvocationContext,
+) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  try {
+    await CasesRuntimeState.storeRuntimeState(context, params.lastTxId);
+  } catch (originalError) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(originalError, MODULE_NAME, STORE_CASES_RUNTIME_STATE),
+    );
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -102,32 +120,6 @@ async function loadMigrationTable(_ignore: unknown, invocationContext: Invocatio
 }
 
 /**
- * partitionCaseIds
- *
- * @param context
- */
-function* partitionCaseIds(context: OrchestrationContext) {
-  const count: number = context.df.getInput();
-
-  const partitionSize = 1000;
-
-  let start = 0;
-  let end = 0;
-
-  while (end < count) {
-    start = end + 1;
-    end += partitionSize;
-
-    const events: CaseSyncEvent[] = yield context.df.callActivity(GET_CASEIDS_TO_MIGRATE_ACTIVITY, {
-      start,
-      end,
-    });
-
-    yield context.df.callActivity(ADD_TO_ETL_ACTIVITY, events);
-  }
-}
-
-/**
  * emptyMigrationTable
  *
  * @param _ignore
@@ -141,7 +133,9 @@ async function emptyMigrationTable(_ignore: unknown, invocationContext: Invocati
       DLQ,
       buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE_ACTIVITY),
     );
+    return false;
   }
+  return true;
 }
 
 /**
@@ -181,35 +175,47 @@ async function getCaseIdsToMigrate(
  *
  * @param  context
  */
-function* migrateCases(context: OrchestrationContext) {
-  yield context.df.callActivity(EMPTY_MIGRATION_TABLE_ACTIVITY);
-  const count = yield context.df.callActivity(LOAD_MIGRATION_TABLE_ACTIVITY);
+async function migrateCases(_ignore: unknown, context: InvocationContext) {
+  const isEmpty = await emptyMigrationTable(undefined, context);
+  if (!isEmpty) return;
 
-  if (count === 0) {
-    return getDefaultSummary({ changedCases: count });
+  const count = await loadMigrationTable(undefined, context);
+
+  if (count === 0) return;
+
+  const partitionSize = 1000;
+
+  let start = 0;
+  let end = 0;
+
+  while (end < count) {
+    start = end + 1;
+    end += partitionSize;
+
+    const events: CaseSyncEvent[] = await getCaseIdsToMigrate(
+      {
+        start,
+        end,
+      },
+      context,
+    );
+
+    const isAdded = await addToETL(events, context);
+
+    if (!isAdded) return;
   }
 
-  const childId = context.df.instanceId + `:${PARTITION_CASEIDS}`;
-  const summary = yield context.df.callSubOrchestrator(PARTITION_CASEIDS, count, childId);
-
-  yield context.df.callSubOrchestrator(
-    STORE_CASES_RUNTIME_STATE,
-    {},
-    context.df.instanceId + `:${MIGRATE_CASES}:${STORE_CASES_RUNTIME_STATE}`,
-  );
-  yield context.df.callActivity(EMPTY_MIGRATION_TABLE_ACTIVITY);
-
-  return summary;
+  await storeCasesRuntimeState(undefined, context);
 }
 
 /**
- * migrateCasesHttpTrigger
+ * httpTrigger
  *
  * @param request
  * @param context
  * @returns
  */
-async function migrateCasesHttpTrigger(
+async function httpTrigger(
   request: HttpRequest,
   context: InvocationContext,
 ): Promise<HttpResponse> {
@@ -217,38 +223,15 @@ async function migrateCasesHttpTrigger(
     if (!isAuthorized(request)) {
       throw new ForbiddenError(MODULE_NAME);
     }
-    const client = df.getClient(context);
-    const instanceId: string = await client.startNew(MIGRATE_CASES);
+    migrateCases(undefined, context);
 
-    return client.createCheckStatusResponse(request, instanceId);
+    return new HttpResponse(toAzureSuccess({ statusCode: 201 }));
   } catch (error) {
     return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
   }
 }
 
 export function setupMigrateCases2() {
-  df.app.orchestration(MIGRATE_CASES, migrateCases);
-  df.app.orchestration(PARTITION_CASEIDS, partitionCaseIds);
-
-  df.app.activity(GET_CASEIDS_TO_MIGRATE_ACTIVITY, {
-    handler: getCaseIdsToMigrate,
-  });
-
-  df.app.activity(LOAD_MIGRATION_TABLE_ACTIVITY, {
-    handler: loadMigrationTable,
-    extraOutputs: [DLQ],
-  });
-
-  df.app.activity(EMPTY_MIGRATION_TABLE_ACTIVITY, {
-    handler: emptyMigrationTable,
-    extraOutputs: [DLQ],
-  });
-
-  df.app.activity(ADD_TO_ETL_ACTIVITY, {
-    handler: addToETL,
-    extraOutputs: [ETL, DLQ],
-  });
-
   app.storageQueue(ETL.queueName, {
     queueName: ETL.queueName,
     connection: 'AzureWebJobsStorage',
@@ -258,7 +241,7 @@ export function setupMigrateCases2() {
 
   app.http(buildUniqueName(MODULE_NAME, 'httpTrigger'), {
     route: 'migratecases2',
-    extraInputs: [df.input.durableClient()],
-    handler: migrateCasesHttpTrigger,
+    extraOutputs: [ETL, DLQ],
+    handler: httpTrigger,
   });
 }
