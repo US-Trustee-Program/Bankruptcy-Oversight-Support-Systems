@@ -10,6 +10,7 @@ async function storeRuntimeState(context: ApplicationContext, lastTxId?: string)
   const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
   try {
     const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
+    context.logger.info(MODULE_NAME, `Retrieved runtime state: ${syncState}.`);
     if (!lastTxId) {
       const gateway = getCasesGateway(context);
       lastTxId = await gateway.findMaxTransactionId(context);
@@ -26,6 +27,7 @@ async function storeRuntimeState(context: ApplicationContext, lastTxId?: string)
         txId: lastTxId,
       };
       await runtimeStateRepo.upsert(newSyncState);
+      context.logger.info(MODULE_NAME, `Wrote runtime state: ${newSyncState}.`);
     }
   } catch (originalError) {
     const error = getCamsError(

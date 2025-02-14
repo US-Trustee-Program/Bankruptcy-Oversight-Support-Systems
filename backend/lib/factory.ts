@@ -210,8 +210,10 @@ export const getCasesSyncStateRepo = (
   context: ApplicationContext,
 ): RuntimeStateRepository<CasesSyncState> => {
   if (!casesSyncStateRepo) {
+    context.logger.info('FACTORY', 'Creating new cases sync state repo.');
     casesSyncStateRepo = getRuntimeStateRepository<CasesSyncState>(context);
   }
+  context.logger.info('FACTORY', 'Returning cases sync state repo.');
   return casesSyncStateRepo;
 };
 

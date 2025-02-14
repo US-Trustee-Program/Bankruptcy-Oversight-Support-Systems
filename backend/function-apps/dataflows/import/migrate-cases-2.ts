@@ -152,6 +152,8 @@ async function getCaseIdsToMigrate(
  */
 async function processPage(range: { start: number; end: number }, context: InvocationContext) {
   const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, context);
+  const logger = ContextCreator.getLogger(context);
+  logger.info(MODULE_NAME, `Retrieve events for a page.`);
 
   context.extraOutputs.set(ETL, events);
 }
@@ -164,10 +166,14 @@ async function processPage(range: { start: number; end: number }, context: Invoc
  * @param  context
  */
 async function migrateCases(_ignore: unknown, context: InvocationContext) {
+  const logger = ContextCreator.getLogger(context);
+  logger.info(MODULE_NAME, 'Starting migration');
   const isEmpty = await emptyMigrationTable(undefined, context);
+  logger.info(MODULE_NAME, `Emptying the migration table ${isEmpty ? 'worked.' : 'did not work.'}`);
   if (!isEmpty) return;
 
   const count = await loadMigrationTable(undefined, context);
+  logger.info(MODULE_NAME, `Loaded the migration table with ${count} items.`);
 
   if (count === 0) return;
 
@@ -182,6 +188,7 @@ async function migrateCases(_ignore: unknown, context: InvocationContext) {
     end += partitionSize;
     pages.push({ start, end });
   }
+  logger.info(MODULE_NAME, `Adding ${pages.length} messages to the PAGE queue.`);
   context.extraOutputs.set(PAGE, pages);
 
   await storeCasesRuntimeState({}, context);

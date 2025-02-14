@@ -13,8 +13,8 @@ const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
 async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
     // TEMPORARILY DELETE EVERYTHING FROM COSMOS WHILE WE ARE "EXPERIMENTING".
-    const repo = Factory.getCasesRepository(context);
-    await repo.deleteSyncedCases();
+    // const repo = Factory.getCasesRepository(context);
+    // await repo.deleteSyncedCases();
 
     const gateway = Factory.getAcmsGateway(context);
     await gateway.loadMigrationTable(context);
