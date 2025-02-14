@@ -13,10 +13,10 @@ import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
 import { toAzureError } from '../../azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 
-import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
 import { EXPORT_AND_LOAD_CASE } from './export-and-load-case';
 import { buildUniqueName, isAuthorized } from '../dataflows-common';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
+import { storeCasesRuntimeState } from './store-cases-runtime-state';
 
 const MODULE_NAME = 'SYNC_CASES_DATAFLOW';
 
@@ -27,6 +27,23 @@ const SYNC_PARTITION = buildUniqueName(MODULE_NAME, 'syncPartition');
 
 // Activity Aliases
 const GET_CASEIDS_TO_SYNC_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToSyncActivity');
+const STORE_CASES_RUNTIME_STATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'storeCasesRuntimeState');
+
+/**
+ * storeCasesRuntimeStateActivity
+ *
+ * @param params The lastTxId
+ * @param invocationContext
+ */
+async function storeCasesRuntimeStateActivity(
+  params: { lastTxId: string },
+  invocationContext: InvocationContext,
+): Promise<void> {
+  await storeCasesRuntimeState(
+    { lastTxId: params.lastTxId, activityName: STORE_CASES_RUNTIME_STATE_ACTIVITY },
+    invocationContext,
+  );
+}
 
 /**
  * getCaseIdsToSync
@@ -59,11 +76,7 @@ function* syncCases(context: OrchestrationContext) {
     context.df.instanceId + `:${SYNC_CASES}:${PARTITION_CASEIDS}`,
   );
 
-  yield context.df.callSubOrchestrator(
-    STORE_CASES_RUNTIME_STATE,
-    { lastTxId: results.lastTxId },
-    context.df.instanceId + `:${SYNC_CASES}:${STORE_CASES_RUNTIME_STATE}`,
-  );
+  yield context.df.callActivity(STORE_CASES_RUNTIME_STATE_ACTIVITY);
 
   return summary;
 }
@@ -187,6 +200,10 @@ export function setupSyncCases() {
 
   df.app.activity(GET_CASEIDS_TO_SYNC_ACTIVITY, {
     handler: getCaseIdsToSync,
+  });
+
+  df.app.activity(STORE_CASES_RUNTIME_STATE_ACTIVITY, {
+    handler: storeCasesRuntimeStateActivity,
   });
 
   app.timer('syncCasesTimerTrigger', {

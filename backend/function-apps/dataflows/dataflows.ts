@@ -1,9 +1,8 @@
-import { setupMigrateCases3 } from './import/migrate-cases-3';
+import { setupMigrateCases } from './import/migrate-cases';
 
-// This can be disabled/removed once migration is complete.
-// setupMigrateCases();
-setupMigrateCases3();
+// This can be disabled/removed once case migration is complete.
+setupMigrateCases();
 
-// TODO: Re-enable setup so migrations can be executed.
+// TODO: Re-enable setup so consolidation migrations can be executed.
 // import { migrationSetup } from './migration/migration';
 // migrationSetup();
