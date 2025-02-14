@@ -1,5 +1,5 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseSummary } from '@common/cams/cases';
+import { SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import { SearchResults, SearchResultsProps } from './SearchResults';
@@ -9,22 +9,23 @@ import { SearchResultsRow } from '@/search/SearchResultsRow';
 import Api2 from '@/lib/models/api2';
 
 describe('SearchResults component tests', () => {
-  let caseList: CaseSummary[];
+  let caseList: SyncedCase[];
   const onStartSearchingSpy = vi.fn();
   const onEndSearchingSpy = vi.fn();
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
-    caseList = MockData.buildArray(MockData.getCaseSummary, 30);
+    caseList = MockData.buildArray(MockData.getSyncedCase, 60);
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       meta: {
         self: 'self-link',
       },
       pagination: {
-        currentPage: 0,
+        currentPage: 1,
         limit: DEFAULT_SEARCH_LIMIT,
         count: caseList.length,
         next: 'next-link',
+        totalPages: Math.ceil(caseList.length / DEFAULT_SEARCH_LIMIT),
       },
       data: caseList,
     });

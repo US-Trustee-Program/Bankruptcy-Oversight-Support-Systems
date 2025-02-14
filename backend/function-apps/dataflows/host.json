@@ -27,11 +27,11 @@
       "hubName": "%MyTaskHub%"
     },
     "queues": {
-      "batchSize": 1,
+      "batchSize": 10,
       "maxPollingInterval": "00:00:02"
     },
     "http": {
-      "routePrefix": "migration"
+      "routePrefix": "import"
     }
   },
   "functionTimeout": "01:00:00"

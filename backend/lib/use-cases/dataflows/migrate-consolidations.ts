@@ -7,7 +7,6 @@ import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { AdminRequestBody } from '../../adapters/types/http';
 
 const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
 
@@ -16,7 +15,7 @@ export type AcmsBounds = {
   chapters: string[];
 };
 
-export type TriggerRequest = AcmsBounds & AdminRequestBody;
+export type TriggerRequest = AcmsBounds;
 
 export type AcmsPredicate = {
   divisionCode: string;

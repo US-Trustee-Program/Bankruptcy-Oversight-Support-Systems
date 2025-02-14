@@ -7,15 +7,21 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, {
+  ConditionOrConjunction,
+  Pagination,
+  Query,
+} from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
-import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { SyncedCase } from '../../../../../common/src/cams/cases';
+import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, equals, regex } = QueryBuilder;
+const { paginate, and, equals, regex, contains, notContains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -177,6 +183,157 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           module: MODULE_NAME,
         },
       });
+    }
+  }
+
+  async syncDxtrCase(bCase: SyncedCase): Promise<void> {
+    const query = QueryBuilder.build(
+      and(
+        equals<SyncedCase['caseId']>('caseId', bCase.caseId),
+        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+      ),
+    );
+    try {
+      await this.getAdapter<SyncedCase>().replaceOne(query, bCase, true);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async deleteSyncedCases(): Promise<void> {
+    try {
+      const adapter = this.getAdapter<SyncedCase>();
+      const existingQuery = QueryBuilder.build(
+        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+      );
+      const existingCount = await adapter.countDocuments(existingQuery);
+      let deletedCount = 0;
+      const limit = 10;
+      let offset = 0;
+      while (existingCount > deletedCount) {
+        const predicate: CasesSearchPredicate = { limit, offset };
+        const page = await this.searchCases(predicate);
+        const caseIds = page.data.map((bCase) => bCase.caseId);
+        const deleteQuery = QueryBuilder.build(
+          and(
+            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+            contains<SyncedCase['caseId']>('caseId', caseIds),
+          ),
+        );
+        const deleted = await adapter.deleteMany(deleteQuery);
+        offset += limit;
+        deletedCount += deleted;
+      }
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
+    try {
+      // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
+
+      const conditions: ConditionOrConjunction[] = [];
+      conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
+
+      if (predicate.chapters?.length > 0) {
+        conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
+      }
+
+      if (predicate.caseIds?.length > 0) {
+        conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
+      }
+
+      if (predicate.divisionCodes?.length > 0) {
+        conditions.push(
+          contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
+        );
+      }
+      const query = QueryBuilder.build(and(...conditions));
+
+      const adapter = this.getAdapter<ConsolidationTo>();
+      const childConsolidations = await adapter.find(query);
+
+      const childConsolidationCaseIds: string[] = [];
+      if (childConsolidations.length > 0) {
+        for (const consolidationTo of childConsolidations) {
+          childConsolidationCaseIds.push(consolidationTo.caseId);
+        }
+      }
+      return childConsolidationCaseIds;
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve child consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
+    }
+  }
+
+  async searchCases(predicate: CasesSearchPredicate) {
+    const conditions: ConditionOrConjunction[] = [];
+    conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
+    let subQuery: Query;
+    try {
+      // Default to use the user's divisions when a case number is requested.
+      if (predicate.caseNumber && !predicate.divisionCodes) {
+        const caseIds = [];
+        this.context.session.user.offices.forEach((office) => {
+          office.groups.forEach((group) => {
+            group.divisions.forEach((division) => {
+              caseIds.push([division.divisionCode, predicate.caseNumber].join('-'));
+            });
+          });
+        });
+        conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
+      }
+
+      // Otherwise use the requested division codes and case number to generate caseIds.
+      if (predicate.caseNumber && predicate.divisionCodes) {
+        const caseIds = [];
+        predicate.divisionCodes.forEach((divisionCode) => {
+          caseIds.push([divisionCode, predicate.caseNumber].join('-'));
+        });
+        conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
+      }
+
+      ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
+      if (predicate.caseIds) {
+        conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
+      }
+
+      if (predicate.chapters?.length > 0) {
+        conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
+      }
+
+      if (predicate.divisionCodes?.length > 0) {
+        conditions.push(
+          contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
+        );
+      }
+
+      if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
+        conditions.push(notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds));
+      }
+
+      if (predicate.limit && predicate.offset >= 0) {
+        //If we don't have this we have a problem
+        subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
+        const query = QueryBuilder.build<Pagination>(subQuery);
+        return await this.getAdapter<SyncedCase>().paginatedFind(query);
+      } else {
+        throw new Error('We have a problem with predicate'); //TODO: Appropriately construct this error and logic
+      }
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve child consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
     }
   }
 }

@@ -2,7 +2,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LOGOUT_PATH } from '@/login/login-library';
 import './Header.scss';
 import useFeatureFlags, {
-  CASE_SEARCH_ENABLED,
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRANSFER_ORDERS_ENABLED,
 } from '../hooks/UseFeatureFlags';
@@ -63,7 +62,6 @@ export const Header = () => {
   const location = useLocation();
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
-  const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
 
@@ -156,21 +154,19 @@ export const Header = () => {
                     </li>
                   )}
 
-                {caseSearchFlag && (
-                  <li className="usa-nav__primary-item">
-                    <NavLink
-                      to="/search"
-                      data-testid="header-search-link"
-                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                      onClick={() => {
-                        return setActiveNav(NavState.SEARCH);
-                      }}
-                      title="search for cases"
-                    >
-                      Case Search
-                    </NavLink>
-                  </li>
-                )}
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/search"
+                    data-testid="header-search-link"
+                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                    onClick={() => {
+                      return setActiveNav(NavState.SEARCH);
+                    }}
+                    title="search for cases"
+                  >
+                    Case Search
+                  </NavLink>
+                </li>
 
                 {session && (
                   <li className="usa-nav__primary-item">

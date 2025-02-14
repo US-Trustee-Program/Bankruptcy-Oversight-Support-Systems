@@ -9,6 +9,9 @@ import {
 } from '../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../common/src/cams/history';
 import { CasesRepository } from '../../use-cases/gateways.types';
+import { SyncedCase } from '../../../../common/src/cams/cases';
+import { ResourceActions } from '../../../../common/src/cams/actions';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
 
 export class LocalCasesRepository implements CasesRepository {
   caseHistoryContainer: CaseHistory[] = [];
@@ -64,5 +67,21 @@ export class LocalCasesRepository implements CasesRepository {
 
   async close() {
     return;
+  }
+
+  async syncDxtrCase(_bCase: SyncedCase) {
+    throw new Error('Not implemented.');
+  }
+
+  async getConsolidationChildCaseIds(_predicate: CasesSearchPredicate): Promise<string[]> {
+    throw new Error('Not implemented.');
+  }
+
+  async searchCases(_predicate: CasesSearchPredicate): Promise<ResourceActions<SyncedCase>[]> {
+    throw new Error('Not implemented.');
+  }
+
+  async deleteSyncedCases(): Promise<void> {
+    throw new Error('Not implemented.');
   }
 }

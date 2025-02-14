@@ -41,7 +41,7 @@ describe('StaffAssignmentScreen', () => {
 
   test('should render a list of chapter 15 cases for a case assignment manager to review', async () => {
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
-      data: MockData.buildArray(MockData.getCaseBasics, 3),
+      data: MockData.buildArray(MockData.getSyncedCase, 3),
     });
 
     const expectedPredicate: CasesSearchPredicate = {
@@ -83,7 +83,7 @@ describe('StaffAssignmentScreen', () => {
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
 
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
-      data: MockData.buildArray(MockData.getCaseBasics, 3),
+      data: MockData.buildArray(MockData.getSyncedCase, 3),
     });
 
     const expectedPredicate: CasesSearchPredicate = {

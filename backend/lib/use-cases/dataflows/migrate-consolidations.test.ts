@@ -1,7 +1,7 @@
 import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
-import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './acms-orders';
+import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './migrate-consolidations';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
@@ -17,6 +17,18 @@ const mockAcmsGateway: AcmsGateway = {
     throw new Error('Function not implemented.');
   },
   getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
+    throw new Error('Function not implemented.');
+  },
+  loadMigrationTable: function (..._ignore) {
+    throw new Error('Function not implemented.');
+  },
+  getMigrationCaseIds: function (..._ignore) {
+    throw new Error('Function not implemented.');
+  },
+  emptyMigrationTable: function (..._ignore) {
+    throw new Error('Function not implemented.');
+  },
+  getMigrationCaseCount(..._ignore) {
     throw new Error('Function not implemented.');
   },
 };

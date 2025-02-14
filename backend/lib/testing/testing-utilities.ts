@@ -5,6 +5,7 @@ import { CamsSession } from '../../../common/src/cams/session';
 import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';
+import { CamsError } from '../common-errors/cams-error';
 
 const invocationContext = new InvocationContext();
 
@@ -45,4 +46,34 @@ export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpR
     ...other,
   };
   return new HttpRequest(requestInit);
+}
+
+function convertError<T extends CamsError>(error: unknown): T {
+  const camsError = {
+    message: error['message'],
+    status: error['status'],
+    module: error['module'],
+    originalError: error['originalError'],
+    data: error['data'],
+    isCamsError: error['isCamsError'],
+    camsStack: error['camsStack'],
+  };
+  return camsError as T;
+}
+
+/**
+ * getTheThrownError
+ *
+ * Use this function to return a thrown error so the error can be inspected with test `expect` specs.
+ *
+ * @param fn
+ * @returns
+ */
+export async function getTheThrownError<T extends CamsError>(fn: () => unknown): Promise<T> {
+  try {
+    await fn();
+    throw new Error('Expected error was not thrown.');
+  } catch (e: unknown) {
+    return convertError<T>(e);
+  }
 }

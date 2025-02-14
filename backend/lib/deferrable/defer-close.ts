@@ -43,7 +43,7 @@ const globalAccumulator: DeferCloseAccumulator = {
 };
 
 async function closeGlobal() {
-  closeDeferred(globalAccumulator);
+  closeDeferred();
 }
 
 process.on('SIGINT', closeGlobal);

@@ -60,12 +60,12 @@ export class CaseAssignmentMongoRepository
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update assignment.');
     }
   }
-
+  //Maybe rename this function properly?
   async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
     const query = QueryBuilder.build(
       and(
         equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-        contains<string[]>('caseId', caseIds),
+        contains<CaseAssignment['caseId']>('caseId', caseIds),
         exists<CaseAssignment>('unassignedOn', false),
       ),
     );

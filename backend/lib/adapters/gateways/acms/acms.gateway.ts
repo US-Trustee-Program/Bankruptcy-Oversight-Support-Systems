@@ -3,7 +3,7 @@ import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
   AcmsPredicate,
-} from '../../../use-cases/acms-orders/acms-orders';
+} from '../../../use-cases/dataflows/migrate-consolidations';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
@@ -117,6 +117,67 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         `Failed to get case info for lead case id: ${leadCaseId}.`,
         originalError,
       );
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async loadMigrationTable(context: ApplicationContext) {
+    const selectIntoQuery = `
+      INSERT INTO dbo.CAMS_MIGRATION_TEMP (caseId)
+      SELECT CONCAT(
+         RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+           '-',
+         RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+           '-',
+         RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId
+      FROM [dbo].[CMMDB]
+      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
+
+    try {
+      await this.executeQuery(context, selectIntoQuery);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async getMigrationCaseIds(context: ApplicationContext, start: number, end: number) {
+    type ResultType = {
+      caseId: string;
+    };
+
+    const query = `SELECT caseId FROM dbo.CAMS_MIGRATION_TEMP WHERE id BETWEEN ${start} AND ${end}`;
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, query);
+      const caseIdResults = results as ResultType[];
+      return caseIdResults.map((record) => record.caseId);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async emptyMigrationTable(context: ApplicationContext) {
+    const emptyTableQuery = 'TRUNCATE TABLE dbo.CAMS_MIGRATION_TEMP';
+
+    try {
+      await this.executeQuery(context, emptyTableQuery);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async getMigrationCaseCount(context: ApplicationContext) {
+    const countQuery = 'SELECT COUNT(*) AS total FROM dbo.CAMS_MIGRATION_TEMP';
+
+    type ResultType = {
+      total: number;
+    };
+
+    try {
+      const { results } = await this.executeQuery<ResultType>(context, countQuery);
+      const caseIdResults = results as ResultType[];
+      return caseIdResults[0].total;
+    } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
   }

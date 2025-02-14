@@ -1,11 +1,11 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import {
-  CaseBasics,
   CaseDetail,
   CaseDocket,
   CaseNote,
   CaseNoteInput,
   CaseSummary,
+  SyncedCase,
 } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { UstpOfficeDetails } from '@common/cams/offices';
@@ -322,7 +322,7 @@ async function searchCases(
   predicate: CasesSearchPredicate,
   options: { includeAssignments?: boolean } = {},
 ) {
-  return api().post<CaseBasics[], CasesSearchPredicate>('/cases', predicate, options);
+  return api().post<SyncedCase[], CasesSearchPredicate>('/cases', predicate, options);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction) {

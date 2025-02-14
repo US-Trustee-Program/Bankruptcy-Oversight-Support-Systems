@@ -89,10 +89,20 @@ export default class ConsolidationOrdersMongoRepository<T extends CamsDocument =
 
     try {
       if (predicate?.divisionCodes) {
-        conditions.push(contains<string[]>('courtDivisionCode', predicate.divisionCodes));
+        conditions.push(
+          contains<ConsolidationOrder['courtDivisionCode']>(
+            'courtDivisionCode',
+            predicate.divisionCodes,
+          ),
+        );
       }
       if (predicate?.consolidationId) {
-        conditions.push(equals<string>('consolidationId', predicate.consolidationId));
+        conditions.push(
+          equals<ConsolidationOrder['consolidationId']>(
+            'consolidationId',
+            predicate.consolidationId,
+          ),
+        );
       }
       const query = predicate ? QueryBuilder.build(and(...conditions)) : null;
       return await this.getAdapter<T>().find(query, orderBy(['orderDate', 'ASCENDING']));

@@ -1,4 +1,4 @@
-import { Collection, Db, MongoClient } from 'mongodb';
+import { Collection, Db, MongoClient, Document as MongoDocument } from 'mongodb';
 import { Closable } from '../deferrable/defer-close';
 
 export class CollectionHumble<T> {
@@ -38,6 +38,11 @@ export class CollectionHumble<T> {
 
   public async countDocuments(query: DocumentQuery) {
     return this.collection.countDocuments(query);
+  }
+
+  public async aggregate(query: DocumentQuery) {
+    const queryArray = Array.isArray(query) ? query : [query];
+    return this.collection.aggregate(queryArray);
   }
 }
 
@@ -86,3 +91,9 @@ export type BooleanOperation = {
 export type DocumentQuery = BooleanOperation & {
   [key: string]: Filter | Filter[] | BooleanOperation;
 };
+
+export function isMongoDocumentArray(arr: unknown): arr is MongoDocument[] {
+  return (
+    Array.isArray(arr) && arr.every((item) => item && typeof item === 'object' && '_id' in item)
+  );
+}
