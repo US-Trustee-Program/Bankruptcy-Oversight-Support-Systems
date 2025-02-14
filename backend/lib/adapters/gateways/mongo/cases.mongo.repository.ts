@@ -237,7 +237,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
 
       if (predicate.chapters?.length > 0) {
-        conditions.push(contains<SyncedCase['caseId']>('chapter', predicate.chapters));
+        conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
       }
 
       if (predicate.caseIds?.length > 0) {
@@ -246,7 +246,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       if (predicate.divisionCodes?.length > 0) {
         conditions.push(
-          contains<SyncedCase['caseId']>('courtDivisionCode', predicate.divisionCodes),
+          contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
         );
       }
       const query = QueryBuilder.build(and(...conditions));
@@ -277,6 +277,18 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
     let subQuery: Query;
     try {
+      if (predicate.caseNumber) {
+        const caseIds = [];
+        this.context.session.user.offices.forEach((office) => {
+          office.groups.forEach((group) => {
+            group.divisions.forEach((division) => {
+              caseIds.push([division.divisionCode, predicate.caseNumber].join('-'));
+            });
+          });
+        });
+        conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
+      }
+
       ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
       if (predicate.caseIds) {
         conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
