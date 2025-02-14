@@ -277,7 +277,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
     let subQuery: Query;
     try {
-      if (predicate.caseNumber) {
+      // Default to use the user's divisions when a case number is requested.
+      if (predicate.caseNumber && !predicate.divisionCodes) {
         const caseIds = [];
         this.context.session.user.offices.forEach((office) => {
           office.groups.forEach((group) => {
@@ -285,6 +286,15 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
               caseIds.push([division.divisionCode, predicate.caseNumber].join('-'));
             });
           });
+        });
+        conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
+      }
+
+      // Otherwise use the requested division codes and case number to generate caseIds.
+      if (predicate.caseNumber && predicate.divisionCodes) {
+        const caseIds = [];
+        predicate.divisionCodes.forEach((divisionCode) => {
+          caseIds.push([divisionCode, predicate.caseNumber].join('-'));
         });
         conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
       }
