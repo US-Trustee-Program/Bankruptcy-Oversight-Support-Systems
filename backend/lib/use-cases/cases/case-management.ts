@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import Factory, {
   getAssignmentRepository,
   getCasesGateway,
+  getCasesRepository,
   getOfficesGateway,
 } from '../../factory';
 import { CasesInterface } from './cases.interface';
@@ -10,10 +11,14 @@ import { UnknownError } from '../../common-errors/unknown-error';
 import { isCamsError } from '../../common-errors/cams-error';
 import { AssignmentError } from '../case-assignment/assignment.exception';
 import { OfficesGateway } from '../offices/offices.types';
-import { CaseAssignmentRepository } from '../gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseAssignmentRepository,
+  CasesRepository,
+} from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
+import { CaseBasics, CaseDetail, CaseSummary, SyncedCase } from '../../../../common/src/cams/cases';
 import Actions, { Action, ResourceActions } from '../../../../common/src/cams/actions';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { CamsRole } from '../../../../common/src/cams/roles';
@@ -38,26 +43,30 @@ export function getAction<T extends CaseBasics>(
 }
 
 export default class CaseManagement {
-  assignmentGateway: CaseAssignmentRepository;
+  assignmentRepository: CaseAssignmentRepository; //Fix naming
   casesGateway: CasesInterface;
   officesGateway: OfficesGateway;
+  casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
-    this.assignmentGateway = getAssignmentRepository(applicationContext);
+    this.assignmentRepository = getAssignmentRepository(applicationContext);
     this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
     this.officesGateway = getOfficesGateway(applicationContext);
+    this.casesRepository = getCasesRepository(applicationContext);
   }
 
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
-  ): Promise<ResourceActions<CaseBasics>[]> {
+  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     try {
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
         for (const user of predicate.assignments) {
-          const caseAssignments = await this.assignmentGateway.findAssignmentsByAssignee(user.id);
+          const caseAssignments = await this.assignmentRepository.findAssignmentsByAssignee(
+            user.id,
+          );
           caseAssignments.forEach((caseAssignment) => {
             caseIdSet.add(caseAssignment.caseId);
           });
@@ -65,36 +74,43 @@ export default class CaseManagement {
         predicate.caseIds = Array.from(caseIdSet);
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
-        if (predicate.caseIds.length == 0) {
-          return [];
+        if (predicate.caseIds.length === 0) {
+          return { metadata: { total: 0 }, data: [] };
         }
       }
 
-      const cases: ResourceActions<CaseBasics>[] = await this.casesGateway.searchCases(
-        context,
-        predicate,
-      );
+      let consolidationChildCaseIds: string[] = [];
+      if (predicate.excludeChildConsolidations === true) {
+        consolidationChildCaseIds =
+          await this.casesRepository.getConsolidationChildCaseIds(predicate);
+        predicate.excludedCaseIds = consolidationChildCaseIds;
+      }
 
+      const searchResult = await this.casesRepository.searchCases(predicate);
+
+      const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];
-      for (const casesKey in cases) {
-        caseIds.push(cases[casesKey].caseId);
-        const bCase = cases[casesKey];
+      for (const casesKey in searchResult.data) {
+        caseIds.push(searchResult.data[casesKey].caseId);
+        const bCase = searchResult.data[casesKey];
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
+        casesMap.set(bCase.caseId, bCase);
       }
-
+      // TODO: in a subsequent PR, use a merge in the repo to get assignments at the same time as the rest
       if (includeAssignments) {
-        const assignmentsMap = await this.assignmentGateway.findAssignmentsByCaseId(caseIds);
-        for (const casesKey in cases) {
-          const assignments = assignmentsMap.get(cases[casesKey].caseId) ?? [];
-          cases[casesKey] = {
-            ...cases[casesKey],
+        const assignmentsMap = await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
+        for (const caseId of caseIds) {
+          const assignments = assignmentsMap.get(caseId) ?? [];
+          const caseWithAssignments = {
+            ...casesMap.get(caseId),
             assignments,
           };
+          casesMap.set(caseId, caseWithAssignments);
         }
       }
 
-      return cases;
+      return { metadata: searchResult.metadata, data: Array.from(casesMap.values()) };
     } catch (originalError) {
       if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {

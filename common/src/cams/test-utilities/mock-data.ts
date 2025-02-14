@@ -7,6 +7,8 @@ import {
   CaseDocketEntryDocument,
   CaseNote,
   CaseSummary,
+  DxtrCase,
+  SyncedCase,
 } from '../cases';
 import {
   ConsolidationOrder,
@@ -44,6 +46,8 @@ import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
+import { SYSTEM_USER_REFERENCE } from '../auditable';
+import { CaseSyncEvent } from '../../queue/dataflow-types';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -218,6 +222,28 @@ function getCaseDetail(
   const _actions: Action[] = [];
 
   return { ...caseDetail, _actions, ...override };
+}
+
+function getDxtrCase(options: Options<DxtrCase> = { entityType: 'person', override: {} }) {
+  const { entityType, override } = options;
+  const dxtrCase: DxtrCase = {
+    ...getCaseSummary({ entityType }),
+    closedDate: undefined,
+    dismissedDate: undefined,
+    reopenedDate: undefined,
+  };
+  return { ...dxtrCase, ...override };
+}
+
+function getSyncedCase(options: Options<SyncedCase> = { entityType: 'person', override: {} }) {
+  const { entityType, override } = options;
+  const syncedCase: SyncedCase = {
+    ...getDxtrCase({ entityType }),
+    documentType: 'SYNCED_CASE',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    updatedOn: someDateBeforeThisDate(new Date().toISOString()),
+  };
+  return { ...syncedCase, ...override };
 }
 
 /**
@@ -637,6 +663,17 @@ function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
 }
 
+function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
+  const defaultEvent: CaseSyncEvent = {
+    type: 'CASE_CHANGED',
+    caseId: randomCaseId(),
+  };
+  return {
+    ...defaultEvent,
+    ...override,
+  };
+}
+
 export const MockData = {
   randomCaseId,
   randomOffice,
@@ -646,6 +683,8 @@ export const MockData = {
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,
+  getDxtrCase,
+  getSyncedCase,
   getCourts,
   getOffices,
   getParty,
@@ -680,6 +719,7 @@ export const MockData = {
   getJwt,
   someDateAfterThisDate,
   someDateBeforeThisDate,
+  getCaseSyncEvent,
 };
 
 export default MockData;

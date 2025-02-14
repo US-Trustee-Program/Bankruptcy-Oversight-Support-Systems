@@ -3,8 +3,12 @@ import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { ConditionOrConjunction, Sort } from '../../../../query/query-builder';
-import { DocumentCollectionAdapter, ReplaceResult } from '../../../../use-cases/gateways.types';
+import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
+import {
+  CamsPaginationResponse,
+  DocumentCollectionAdapter,
+  ReplaceResult,
+} from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { MongoServerError } from 'mongodb';
@@ -18,17 +22,47 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  public async find(query: ConditionOrConjunction, sort?: Sort): Promise<T[]> {
+  public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
+    const mongoQuery = toMongoQuery(query);
+    try {
+      if (!isPagination(query)) {
+        throw new Error('something placeholder');
+      }
+      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+
+      const aggregationItem: CamsPaginationResponse<T> = {
+        metadata: { total: 0 },
+        data: [],
+      };
+
+      for await (const result of aggregationResult) {
+        aggregationItem.metadata.total = result.metadata[0].total;
+        for (const doc of result.data) {
+          aggregationItem.data.push(doc as CamsItem<T>);
+        }
+      }
+      return aggregationItem;
+    } catch (originalError) {
+      throw this.handleError(
+        originalError,
+        `Failed while querying with: ${JSON.stringify(query)}`,
+        { query },
+      );
+    }
+  }
+
+  public async find(query: Query, sort?: Sort): Promise<T[]> {
     const mongoQuery = toMongoQuery(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
+      const items: T[] = [];
+
       const findPromise = this.collectionHumble.find(mongoQuery);
       const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
-
-      const items: T[] = [];
       for await (const doc of results) {
         items.push(doc as CamsItem<T>);
       }
+
       return items;
     } catch (originalError) {
       throw this.handleError(
@@ -60,7 +94,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async findOne(query: ConditionOrConjunction): Promise<T> {
+  public async findOne(query: Query): Promise<T> {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.findOne<T>(mongoQuery);
@@ -79,16 +113,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   /**
    * Replace an existing item. Optionally create if one does not exist.
-   * @param {ConditionOrConjunction} query Query used to find the item to replace.
+   * @param {Query} query Query used to find the item to replace.
    * @param item The item to be persisted.
    * @param {boolean} [upsert=false] Flag indicating whether the upsert operation should be performed if no matching item is found.
    * @returns {string} Returns the id of the item replaced or upserted.
    */
-  public async replaceOne(
-    query: ConditionOrConjunction,
-    item: T,
-    upsert: boolean = false,
-  ): Promise<ReplaceResult> {
+  public async replaceOne(query: Query, item: T, upsert: boolean = false): Promise<ReplaceResult> {
     const mongoQuery = toMongoQuery(query);
     const mongoItem = createOrGetId<T>(item);
     try {
@@ -109,7 +139,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) throw unknownError;
       if (!upsert && result.matchedCount === 0) throw notFoundError;
       if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
-
       return {
         id: mongoItem.id,
         modifiedCount: result.modifiedCount,
@@ -165,7 +194,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async deleteOne(query: ConditionOrConjunction) {
+  public async deleteOne(query: Query) {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.deleteOne(mongoQuery);
@@ -183,7 +212,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async deleteMany(query: ConditionOrConjunction) {
+  public async deleteMany(query: Query) {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.deleteMany(mongoQuery);
@@ -199,7 +228,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async countDocuments(query: ConditionOrConjunction) {
+  public async countDocuments(query: Query) {
     const mongoQuery = toMongoQuery(query);
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);

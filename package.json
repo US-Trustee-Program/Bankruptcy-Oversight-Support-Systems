@@ -10,7 +10,7 @@
     "start:backend": "pushd backend && npm run start && popd",
     "start:frontend": "pushd user-interface && npm run start && popd",
     "build": "npm run build:common && npm run build:backend && npm run build:frontend",
-    "build:backend": "pushd backend && npm run build && npm run build:api && npm run build:migration && popd",
+    "build:backend": "pushd backend && npm run build && npm run build:api && npm run build:dataflows && popd",
     "build:frontend": "pushd user-interface && npm run build && popd",
     "build:common": "pushd common && npm run build && popd",
     "clean-and-build": "npm run clean:all && npm run ci:all && npm run build",

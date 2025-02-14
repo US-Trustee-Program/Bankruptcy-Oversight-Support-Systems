@@ -27,10 +27,22 @@ export function isConjunction(obj: unknown): obj is Conjunction {
   return typeof obj === 'object' && 'conjunction' in obj;
 }
 
+export type Pagination = {
+  limit: number;
+  skip: number;
+  values: ConditionOrConjunction[];
+};
+
+export function isPagination(obj: unknown): obj is Pagination {
+  return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
+}
+
+export type Query = Pagination | ConditionOrConjunction | ConditionOrConjunction[];
+
 export type ConditionOrConjunction = Condition | Conjunction;
 
-function build(query: ConditionOrConjunction) {
-  return query;
+function build<T extends Query = Query>(query: Query) {
+  return query as T;
 }
 
 function and(...values: ConditionOrConjunction[]): Conjunction {
@@ -86,7 +98,7 @@ function greaterThanOrEqual<T>(attributeName: string, value: T): Condition {
   };
 }
 
-function contains<T>(attributeName: string, value: T): Condition {
+function contains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'CONTAINS',
     attributeName,
@@ -110,7 +122,7 @@ function lessThanOrEqual<T>(attributeName: string, value: T): Condition {
   };
 }
 
-function notContains<T>(attributeName: string, value: T): Condition {
+function notContains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'NOT_CONTAINS',
     attributeName,
@@ -131,6 +143,14 @@ function regex(attributeName: string, value: string): Condition {
     condition: 'REGEX',
     attributeName,
     value,
+  };
+}
+
+function paginate(skip: number, limit: number, values: ConditionOrConjunction[]): Pagination {
+  return {
+    skip,
+    limit,
+    values,
   };
 }
 
@@ -164,6 +184,7 @@ const QueryBuilder = {
   and,
   or,
   orderBy,
+  paginate,
 };
 
 export default QueryBuilder;

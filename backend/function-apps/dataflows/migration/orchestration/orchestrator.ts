@@ -1,5 +1,8 @@
-import { AcmsBounds, AcmsPredicate } from '../../../lib/use-cases/acms-orders/acms-orders';
-import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_ETL } from '../loadConsolidations';
+import {
+  AcmsBounds,
+  AcmsPredicate,
+} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
+import { FLATTEN_BOUNDING_ARRAYS, SUB_ORCHESTRATOR_ETL } from '../migration';
 import { OrchestrationContext } from 'durable-functions';
 
 export function* main(context: OrchestrationContext) {
@@ -12,9 +15,9 @@ export function* main(context: OrchestrationContext) {
     bounds,
   );
   for (const partition of partitions) {
-    const child_id = context.df.instanceId + `:${partition.divisionCode}:${partition.chapter}:`;
+    const childId = context.df.instanceId + `:${partition.divisionCode}:${partition.chapter}:`;
     provisioningTasks.push(
-      context.df.callSubOrchestrator(SUB_ORCHESTRATOR_ETL, partition, child_id),
+      context.df.callSubOrchestrator(SUB_ORCHESTRATOR_ETL, partition, childId),
     );
   }
   yield context.df.Task.all(provisioningTasks);

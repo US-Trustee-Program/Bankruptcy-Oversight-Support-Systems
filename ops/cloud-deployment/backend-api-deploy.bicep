@@ -48,15 +48,15 @@ param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id
 @description('Storage account name. Default creates unique name from resource group id and stack name')
 @minLength(3)
 @maxLength(24)
-param migrationFunctionStorageName string = 'ustpmigr${uniqueString(resourceGroup().id, apiFunctionName)}'
+param dataflowsFunctionStorageName string = 'ustpmigr${uniqueString(resourceGroup().id, apiFunctionName)}'
 
 param apiFunctionName string
 
 param apiFunctionSubnetId string
 
-param migrationFunctionName string
+param dataflowsFunctionName string
 
-param migrationFunctionSubnetId string
+param dataflowsFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
 
@@ -91,7 +91,7 @@ param isUstpDeployment bool
 param apiCorsAllowOrigins array = []
 
 @description('List of origins to allow. Need to include protocol')
-param migrationCorsAllowOrigins array = []
+param dataflowsCorsAllowOrigins array = []
 
 param sqlServerResourceGroupName string = ''
 
@@ -179,8 +179,8 @@ resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01
   }
 }
 
-resource migrationFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: migrationFunctionStorageName
+resource dataflowsFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+  name: dataflowsFunctionStorageName
   location: location
   tags: {
     'Stack Name': apiFunctionName
@@ -195,10 +195,10 @@ resource migrationFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-
   }
 }
 
-module migrationQueues './lib/storage/storage-queues.bicep' = {
-  name: 'migration-queues-module'
+module dataflowsQueues './lib/storage/storage-queues.bicep' = {
+  name: 'dataflows-queues-module'
   params: {
-    storageAccountName: migrationFunctionStorageName
+    storageAccountName: dataflowsFunctionStorageName
   }
 }
 
@@ -232,8 +232,8 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 }
 
 
-resource migrationFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
-  name: migrationFunctionName
+resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: dataflowsFunctionName
   location: location
   kind: 'functionapp,linux'
   identity: {
@@ -244,7 +244,7 @@ resource migrationFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     serverFarmId: servicePlan.id
     enabled: true
     httpsOnly: true
-    virtualNetworkSubnetId: migrationFunctionSubnetId
+    virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
   dependsOn: [
@@ -270,8 +270,8 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
   ]
 }
 
-module migrationFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
-  name:'appi-${migrationFunctionName}-module'
+module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
+  name:'appi-${dataflowsFunctionName}-module'
   scope: resourceGroup()
   params: {
     actionGroupName: actionGroupName
@@ -279,10 +279,10 @@ module migrationFunctionAppInsights 'lib/app-insights/function-app-insights.bice
     analyticsWorkspaceId: analyticsWorkspaceId
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
-    functionAppName: migrationFunctionName
+    functionAppName: dataflowsFunctionName
   }
   dependsOn: [
-    migrationFunctionApp
+    dataflowsFunctionApp
   ]
 }
 
@@ -408,17 +408,17 @@ var baseApplicationSettings = concat(
       ]
 )
 
-//Migration Function Application Settings
-var migrationApplicationSettings = concat(
+//Data Flows Function Application Settings
+var dataflowsApplicationSettings = concat(
   [
     {
       name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${migrationFunctonStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${migrationFunctonStorageAccount.listKeys().keys[0].value}'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctonStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctonStorageAccount.listKeys().keys[0].value}'
     }
   ],
   baseApplicationSettings,
   createApplicationInsights
-  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: migrationFunctionAppInsights.outputs.connectionString }]
+  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
   : []
 )
 
@@ -490,7 +490,7 @@ var middlewareIpSecurityRestrictionsRules = [
   }
 ]
 
-var migrationIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
+var dataflowsIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
 
 resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: apiFunctionApp
@@ -524,12 +524,12 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   }
 }
 
-resource migrationFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: migrationFunctionApp
+resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
+  parent: dataflowsFunctionApp
   name: 'web'
   properties: {
     cors: {
-      allowedOrigins: migrationCorsAllowOrigins
+      allowedOrigins: dataflowsCorsAllowOrigins
     }
     numberOfWorkers: 1
     alwaysOn: true
@@ -537,7 +537,7 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     functionAppScaleLimit: 0
     minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: migrationIpSecurityRestrictionsRules
+    ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictions: concat([
       {
@@ -551,7 +551,7 @@ resource migrationFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: migrationApplicationSettings
+    appSettings: dataflowsApplicationSettings
     ftpsState: 'Disabled'
   }
 }
@@ -572,14 +572,14 @@ module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   }
 }
 
-module migrationFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${migrationFunctionName}-pep-module'
+module dataflowsFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${dataflowsFunctionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
     privateLinkGroup: 'sites'
-    stackName: migrationFunctionName
+    stackName: dataflowsFunctionName
     location: location
-    privateLinkServiceId: migrationFunctionApp.id
+    privateLinkServiceId: dataflowsFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
@@ -589,13 +589,13 @@ module migrationFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.b
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
-module setMigrationFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${migrationFunctionName}-sql-vnet-rule-module'
+  name: '${dataflowsFunctionName}-sql-vnet-rule-module'
   params: {
-    stackName: migrationFunctionName
+    stackName: dataflowsFunctionName
     sqlServerName: sqlServerName
-    subnetId: migrationFunctionSubnetId
+    subnetId: dataflowsFunctionSubnetId
   }
 }
 

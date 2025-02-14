@@ -1,6 +1,6 @@
 import CasesDxtrGateway, { getCaseIdParts } from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
-import { QueryResults } from '../../types/database';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
 import * as featureFlags from '../../utils/feature-flag';
 import { CamsError } from '../../../common-errors/cams-error';
@@ -9,6 +9,7 @@ import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
 import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
 
 const dxtrDatabaseName = 'some-database-name';
 
@@ -754,5 +755,147 @@ describe('Test DXTR Gateway', () => {
         }),
       ).rejects.toThrow(errorMessage);
     });
+  });
+
+  describe('getCaseIdsAndMaxTxIdToSync tests', () => {
+    test('should return array of case ids and a max tx id', async () => {
+      const mockRecords = [
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 10 },
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 9 },
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 8 },
+        { caseId: MockData.getCaseBasics().caseId, maxTxId: 7 },
+      ];
+      const mockResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: mockRecords,
+        },
+        message: '',
+      };
+      const expectedReturn = {
+        caseIds: mockRecords.map((rec) => rec.caseId),
+        lastTxId: '10',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(mockResults);
+      });
+
+      const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
+      expect(result).toEqual(expectedReturn);
+    });
+
+    test('should return an empty array and the existing max tx id', async () => {
+      const mockResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+      const expectedReturn = {
+        caseIds: [],
+        lastTxId: '0',
+      };
+
+      querySpy.mockImplementationOnce(async () => {
+        return Promise.resolve(mockResults);
+      });
+
+      const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
+      expect(result).toEqual(expectedReturn);
+    });
+  });
+
+  describe('findTransactionIdRangeForDate', () => {
+    const dateRangeMock = (_context, _config, query: string, params: DbTableFieldSpec[]) => {
+      const mockTxMap = new Map<number, string>([
+        [100, '2024-01-01'],
+        [101, '2024-01-01'],
+        [102, '2024-01-01'],
+        [103, '2024-02-01'],
+        [104, '2024-02-01'],
+        [105, '2024-03-01'],
+        [106, '2024-03-01'],
+        [107, '2024-03-01'],
+        [108, '2024-03-01'],
+        [109, '2024-04-01'],
+        [110, '2024-05-01'],
+      ]);
+
+      let recordset = [];
+
+      if (query.includes('MAX_TX_ID')) {
+        recordset = [{ MAX_TX_ID: 110 }];
+      }
+
+      if (query.includes('MIN_TX_ID')) {
+        recordset = [{ MIN_TX_ID: 100 }];
+      }
+
+      if (query.includes('TX_DATE')) {
+        const txId = params[0].value as number;
+        if (mockTxMap.has(txId)) {
+          const TX_DATE = mockTxMap.get(txId);
+          recordset = [{ TX_DATE }];
+        }
+      }
+
+      const results: QueryResults = {
+        success: true,
+        results: {
+          recordset,
+        },
+        message: '',
+      };
+
+      return Promise.resolve(results);
+    };
+
+    const boundTestCase = [
+      [
+        '1990-01-01',
+        {
+          findDate: '1990-01-01',
+          found: false,
+        },
+      ],
+      [
+        '2070-01-01',
+        {
+          findDate: '2070-01-01',
+          found: false,
+        },
+      ],
+      [
+        '2024-03-01',
+        {
+          findDate: '2024-03-01',
+          found: true,
+          start: 105,
+          end: 108,
+        },
+      ],
+      [
+        '2024-04-01',
+        {
+          findDate: '2024-04-01',
+          found: true,
+          start: 109,
+          end: 109,
+        },
+      ],
+    ];
+    test.each(boundTestCase)(
+      'should find the transaction id bounds in the AO_TX table for %s',
+      async (findDate: string, expected: TransactionIdRangeForDate) => {
+        querySpy.mockImplementation(dateRangeMock);
+        const actual = await testCasesDxtrGateway.findTransactionIdRangeForDate(
+          applicationContext,
+          findDate,
+        );
+        expect(actual).toEqual(expected);
+      },
+    );
   });
 });

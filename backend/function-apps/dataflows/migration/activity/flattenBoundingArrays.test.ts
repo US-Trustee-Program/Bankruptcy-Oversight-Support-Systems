@@ -1,5 +1,8 @@
 import { InvocationContext } from '@azure/functions';
-import { AcmsBounds, AcmsPredicate } from '../../../lib/use-cases/acms-orders/acms-orders';
+import {
+  AcmsBounds,
+  AcmsPredicate,
+} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
 import module from './flattenBoundingArrays';
 
 describe('Flatten bounding arrays activity', () => {

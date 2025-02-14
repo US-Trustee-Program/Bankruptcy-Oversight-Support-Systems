@@ -43,22 +43,22 @@
   },
   "scripts": {
     "all": "npm run clean:all && npm ci && npm run build:all && npm run pack:all",
-    "clean:all": "npm run clean && npm run clean:api && npm run clean:migration",
+    "clean:all": "npm run clean && npm run clean:api && npm run clean:dataflows",
     "clean": "rm -rf ./dist && rm -rf ./node_modules && rm -rf ./coverage",
     "clean:api": "cd function-apps/api && npm run clean && cd ../..",
-    "clean:migration": "cd function-apps/migration && npm run clean && cd ../..",
-    "build:all": "npm run build-common && npm run build && npm run build:api && npm run build:migration",
+    "clean:dataflows": "cd function-apps/dataflows && npm run clean && cd ../..",
+    "build:all": "npm run build-common && npm run build && npm run build:api && npm run build:dataflows",
     "build": "tsc --build tsconfig.build.json",
     "build-common": "cd ../common && npm ci && npm run build && cd ../backend",
     "build:api": "cd function-apps/api && npm run build && cd ../..",
-    "build:migration": "cd function-apps/migration && npm run build && cd ../..",
-    "pack:all": "npm run pack:api && npm run pack:migration",
+    "build:dataflows": "cd function-apps/dataflows && npm run build && cd ../..",
+    "pack:all": "npm run pack:api && npm run pack:dataflows",
     "pack": "npm run pack:api",
     "pack:api": "cd function-apps/api && npm run pack && cd ../..",
-    "pack:migration": "cd function-apps/migration && npm run pack && cd ../..",
+    "pack:dataflows": "cd function-apps/dataflows && npm run pack && cd ../..",
     "start": "npm run start:api",
     "start:api": "cd function-apps/api && npm run start && cd ../..",
-    "start:migration": "cd function-apps/migration && npm run start && cd ../..",
+    "start:dataflows": "cd function-apps/dataflows && npm run start && cd ../..",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' jest -c jest.config.js",
     "test:open-handles": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' jest -c jest.config.js --detectOpenHandles",
     "lint": "eslint .",
@@ -71,6 +71,7 @@
     "dependency-cruiser:ci": "npx depcruise --output-type err-long function-apps/api/attorneys case-assignments case-docket case-history case-summary cases consolidations healthcheck offices orders orders-manual-sync orders-sync ../lib ",
     "itest:okta-group-api": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/test-okta-group-api.ts",
     "itest:acms-migration": "CAMS_LOGIN_PROVIDER=mock npx ts-node lib/testing/isolated-integration/test-acms-migration.ts",
-    "itest:export-office-csv": "CAMS_LOGIN_PROVIDER=okta npx ts-node ../lib/testing/isolated-integration/export-office-csv.ts"
+    "itest:export-office-csv": "CAMS_LOGIN_PROVIDER=okta npx ts-node lib/testing/isolated-integration/export-office-csv.ts",
+    "itest:dxtr-tx-bisect": "npx ts-node lib/testing/isolated-integration/test-dxtr-tx-bisect.ts"
   }
 }

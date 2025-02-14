@@ -1,5 +1,9 @@
 import * as mssql from 'mssql';
-import { CasesInterface } from '../../../use-cases/cases/cases.interface';
+import {
+  CasesInterface,
+  CasesSyncMeta,
+  TransactionIdRangeForDate,
+} from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
@@ -23,12 +27,17 @@ const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
 const orderToTransferCode = 'CTO';
 
+const NOT_FOUND = -1;
+
+type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
+
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
   const divisionCode = parts[0];
   const caseNumber = `${parts[1]}-${parts[2]}`;
   return { divisionCode, caseNumber };
 }
+
 export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
@@ -214,6 +223,91 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
+  public async findTransactionIdRangeForDate(
+    context: ApplicationContext,
+    findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
+    const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+    const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
+    const maxTxId: number = parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
+
+    const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX ORDER BY TX_ID ASC';
+    const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
+    const minTxId: number = parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
+
+    const startTxId = await this.bisectBound(context, minTxId, maxTxId, findDate, 'START');
+    const endTxId =
+      startTxId !== NOT_FOUND
+        ? await this.bisectBound(context, startTxId, maxTxId, findDate, 'END')
+        : undefined;
+
+    return {
+      findDate,
+      found: startTxId !== NOT_FOUND && endTxId !== NOT_FOUND,
+      end: endTxId === NOT_FOUND ? undefined : endTxId,
+      start: startTxId === NOT_FOUND ? undefined : startTxId,
+    };
+  }
+
+  public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
+    const query = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+    const { results } = await executeQuery(context, context.config.dxtrDbConfig, query);
+    return results['recordset'][0]['MAX_TX_ID'] ?? undefined;
+  }
+
+  private async bisectBound(
+    context: ApplicationContext,
+    minTxId: number,
+    maxTxId: number,
+    findDate: string,
+    direction: 'START' | 'END',
+  ) {
+    let dMinTxId = minTxId;
+    let dMaxTxId = maxTxId;
+    let txId = NOT_FOUND;
+
+    while (dMinTxId <= dMaxTxId) {
+      const midTxId = Math.floor((dMaxTxId - dMinTxId + 1) / 2) + dMinTxId;
+
+      const params: DbTableFieldSpec[] = [
+        {
+          name: `midTxId`,
+          type: mssql.Int,
+          value: midTxId,
+        },
+      ];
+
+      const txDateQuery =
+        "SELECT FORMAT(TX_DATE, 'yyyy-MM-dd') AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId";
+      const { results } = await executeQuery(
+        context,
+        context.config.dxtrDbConfig,
+        txDateQuery,
+        params,
+      );
+
+      const answer = results['recordset'][0];
+
+      if (!answer) throw new Error('Found gap in the transaction IDs');
+
+      const txDate = answer['TX_DATE'];
+
+      if (txDate < findDate) {
+        dMinTxId = midTxId + 1;
+      } else if (txDate > findDate) {
+        dMaxTxId = midTxId - 1;
+      } else {
+        txId = midTxId;
+        if (direction === 'START') {
+          dMaxTxId = midTxId - 1;
+        } else {
+          dMinTxId = midTxId + 1;
+        }
+      }
+    }
+    return txId;
+  }
+
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
@@ -374,6 +468,59 @@ export default class CasesDxtrGateway implements CasesInterface {
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
     bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
+  }
+
+  async getCaseIdsAndMaxTxIdToSync(
+    context: ApplicationContext,
+    lastTxId: string,
+  ): Promise<CasesSyncMeta> {
+    const input: DbTableFieldSpec[] = [];
+
+    input.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: parseInt(lastTxId),
+    });
+
+    const query = `
+      SELECT
+        CONCAT(C.CS_DIV, '-', C.CASE_ID) AS caseId,
+        MAX(T.TX_ID) as maxTxId
+      FROM AO_TX T
+      JOIN AO_CS C ON C.CS_CASEID = T.CS_CASEID AND C.COURT_ID = T.COURT_ID
+      WHERE T.TX_ID > @txId
+      GROUP BY C.CS_DIV, C.CASE_ID
+      ORDER BY MAX(T.TX_ID) DESC
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    const results = handleQueryResult<RawCaseIdAndMaxId[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.caseIdsAndMaxTxIdCallback,
+    );
+
+    let meta: CasesSyncMeta;
+    if (results.length) {
+      meta = {
+        caseIds: results.map((bCase) => bCase.caseId),
+        lastTxId: results[0].maxTxId.toString(),
+      };
+    } else {
+      meta = {
+        caseIds: [],
+        lastTxId,
+      };
+    }
+
+    return meta;
   }
 
   private async queryCase(
@@ -747,5 +894,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
 
     return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
+  }
+
+  caseIdsAndMaxTxIdCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
+
+    return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
   }
 }

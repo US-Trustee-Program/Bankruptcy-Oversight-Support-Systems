@@ -30,6 +30,10 @@ export class MockMongoRepository
     UsersRepository,
     UserSessionCacheRepository
 {
+  deleteSyncedCases(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   release() {
     return;
   }
@@ -102,6 +106,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  syncDxtrCase(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   update(..._ignore): Promise<any | void> {
     throw new Error('Method not implemented.');
   }
@@ -111,6 +119,10 @@ export class MockMongoRepository
   }
 
   search(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  searchCases(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 
@@ -147,6 +159,10 @@ export class MockMongoRepository
   }
 
   deletePrivilegedIdentityUser(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
     throw new Error('Method not implemented.');
   }
 }

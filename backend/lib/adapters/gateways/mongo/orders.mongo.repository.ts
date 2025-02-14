@@ -2,7 +2,7 @@ import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { Order, TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersRepository } from '../../../use-cases/gateways.types';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder, { Query } from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
@@ -42,11 +42,13 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   }
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
-    let query: ConditionOrConjunction;
+    let query: Query;
     if (!predicate) {
       query = null;
     } else {
-      query = QueryBuilder.build(contains('courtDivisionCode', predicate.divisionCodes));
+      query = QueryBuilder.build(
+        contains<Order['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
+      );
     }
 
     try {

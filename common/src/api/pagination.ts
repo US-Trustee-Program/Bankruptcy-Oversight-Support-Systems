@@ -11,4 +11,6 @@ export type Pagination = {
   next?: UriString;
   limit: number;
   currentPage: number;
+  totalPages?: number;
+  totalCount?: number;
 };

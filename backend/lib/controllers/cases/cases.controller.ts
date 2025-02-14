@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { ResponseBody } from '../../../../common/src/api/response';
-import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
+import { CaseDetail, SyncedCase } from '../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
 import { Pagination } from '../../../../common/src/api/pagination';
@@ -13,7 +13,7 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
-function getCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
+function calculateCurrentPage(caseLength: number, predicate: CasesSearchPredicate) {
   return caseLength === 0 ? 0 : predicate.offset / predicate.limit + 1;
 }
 
@@ -31,7 +31,7 @@ export class CasesController implements CamsController {
   }
 
   public async handleRequest(context: ApplicationContext) {
-    let data: ResponseBody<ResourceActions<CaseDetail> | ResourceActions<CaseBasics>[]>;
+    let data: ResponseBody<ResourceActions<CaseDetail> | ResourceActions<SyncedCase>[]>;
     try {
       if (context.request.method === 'GET' && context.request.params.caseId) {
         data = await this.getCaseDetails({ caseId: context.request.params.caseId });
@@ -46,7 +46,7 @@ export class CasesController implements CamsController {
     }
   }
 
-  public async getCaseDetails(requestQueryFilters: { caseId: string }) {
+  private async getCaseDetails(requestQueryFilters: { caseId: string }) {
     const data = await this.caseManagement.getCaseDetail(
       this.applicationContext,
       requestQueryFilters.caseId,
@@ -54,7 +54,7 @@ export class CasesController implements CamsController {
     return { data };
   }
 
-  public async searchCases(request: CamsHttpRequest) {
+  private async searchCases(request: CamsHttpRequest) {
     const predicate = request.body as CasesSearchPredicate;
     const options = request.query as SearchOptions;
     const includeAssignments = options?.includeAssignments === 'true';
@@ -66,7 +66,7 @@ export class CasesController implements CamsController {
     predicate: CasesSearchPredicate,
     url: string,
     includeAssignments: boolean,
-  ): Promise<ResponseBody<ResourceActions<CaseBasics>[]>> {
+  ): Promise<ResponseBody<ResourceActions<SyncedCase>[]>> {
     const cases = await this.caseManagement.searchCases(
       this.applicationContext,
       predicate,
@@ -74,21 +74,22 @@ export class CasesController implements CamsController {
     );
 
     const pagination: Pagination = {
-      count: cases.length,
+      count: cases.data.length,
       limit: predicate.limit,
-      currentPage: getCurrentPage(cases.length, predicate),
+      currentPage: calculateCurrentPage(cases.data.length, predicate),
+      totalPages: Math.ceil(cases.metadata.total / predicate.limit),
+      totalCount: cases.metadata.total,
     };
 
-    if (cases.length > predicate.limit) {
+    if (pagination.currentPage < pagination.totalPages) {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());
       next.searchParams.set('offset', (predicate.offset + predicate.limit).toString());
       pagination.next = next.href;
-      cases.pop();
-      pagination.count = cases.length;
+      pagination.count = cases.data.length;
     }
 
-    if (predicate.offset > 0) {
+    if (pagination.currentPage > 1) {
       const previous = new URL(url);
       previous.searchParams.set('limit', predicate.limit.toString());
       previous.searchParams.set('offset', (predicate.offset - predicate.limit).toString());
@@ -100,7 +101,7 @@ export class CasesController implements CamsController {
         self: url,
       },
       pagination,
-      data: cases,
+      data: cases.data,
     };
   }
 }

@@ -1,5 +1,5 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseBasics } from '@common/cams/cases';
+import { SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
@@ -10,8 +10,8 @@ import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 
 describe('search screen', () => {
-  const caseList = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-  const searchResponseBody: ResponseBody<CaseBasics[]> = {
+  const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
+  const searchResponseBody: ResponseBody<SyncedCase[]> = {
     meta: { self: 'self-url' },
     pagination: {
       count: caseList.length,
@@ -20,7 +20,7 @@ describe('search screen', () => {
     },
     data: caseList,
   };
-  const emptySearchResponseBody: ResponseBody<CaseBasics[]> = {
+  const emptySearchResponseBody: ResponseBody<SyncedCase[]> = {
     meta: { self: 'self-url' },
     pagination: {
       count: 0,
@@ -245,6 +245,7 @@ describe('search screen', () => {
       caseNumber,
       limit: 25,
       offset: 0,
+      excludeChildConsolidations: false,
     };
 
     renderWithoutProps();

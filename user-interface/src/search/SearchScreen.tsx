@@ -27,10 +27,12 @@ export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
+    excludeChildConsolidations: false,
   });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
+    excludeChildConsolidations: false,
   });
 
   const infoModalRef = useRef(null);

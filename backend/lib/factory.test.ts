@@ -1,4 +1,5 @@
 import { ApplicationContext } from './adapters/types/basic';
+import OktaHumble from './humble-objects/okta-humble';
 import { createMockApplicationContext } from './testing/testing-utilities';
 
 describe('Factory function-apps', () => {
@@ -22,6 +23,10 @@ describe('Factory function-apps', () => {
   let UserSessionCacheRepository;
   let UserSessionUseCase;
   let OktaGateway;
+  let CaseNotesMongoRepository;
+  let UsersMongoRepository;
+  let OktaUserGroupGateway;
+  let MockUserGroupGateway;
 
   beforeEach(async () => {
     await jest.isolateModulesAsync(async () => {
@@ -74,6 +79,19 @@ describe('Factory function-apps', () => {
         .UserSessionUseCase;
 
       OktaGateway = (await import('./adapters/gateways/okta/okta-gateway')).default;
+
+      CaseNotesMongoRepository = (
+        await import('./adapters/gateways/mongo/case-notes.mongo.repository')
+      ).CaseNotesMongoRepository;
+
+      UsersMongoRepository = (await import('./adapters/gateways/mongo/user.repository'))
+        .UsersMongoRepository;
+
+      OktaUserGroupGateway = (await import('./adapters/gateways/okta/okta-user-group-gateway'))
+        .default;
+
+      MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
+        .MockUserGroupGateway;
     });
   });
 
@@ -83,6 +101,8 @@ describe('Factory function-apps', () => {
         CAMS_LOGIN_PROVIDER: 'okta',
         DATABASE_MOCK: 'false',
         COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
+        CAMS_USER_GROUP_GATEWAY_CONFIG:
+          'url=https://fake.url|clientId=mock|keyId=mock|privateKey={"foo": "bar"}}',
       },
     });
     mockDbContext = await createMockApplicationContext();
@@ -171,6 +191,16 @@ describe('Factory function-apps', () => {
     expect(obj).toBeInstanceOf(RuntimeStateMongoRepository);
   });
 
+  test('getCaseNotesRepository', async () => {
+    const obj = factory.getCaseNotesRepository(dbContext);
+    expect(obj).toBeInstanceOf(CaseNotesMongoRepository);
+  });
+
+  test('getUsersRepository', async () => {
+    const obj = factory.getUsersRepository(dbContext);
+    expect(obj).toBeInstanceOf(UsersMongoRepository);
+  });
+
   test('getAuthorizationGateway should return null if no recognized provider', async () => {
     const contextWithInvalidProvider = { ...dbContext };
     contextWithInvalidProvider.config.authConfig.provider = 'test';
@@ -183,6 +213,36 @@ describe('Factory function-apps', () => {
     contextWithOkta.config.authConfig.provider = 'okta';
     const result = factory.getAuthorizationGateway(contextWithOkta);
     expect(result).toEqual(OktaGateway);
+  });
+
+  test('getUserGroupGateway should return Okta user group gateway', async () => {
+    const contextWithOkta = { ...dbContext };
+    contextWithOkta.config.authConfig.provider = 'okta';
+    contextWithOkta.config.userGroupGatewayConfig.provider = 'okta';
+    contextWithOkta.config.userGroupGatewayConfig.clientId = 'mock';
+    contextWithOkta.config.userGroupGatewayConfig.keyId = 'mock';
+    contextWithOkta.config.userGroupGatewayConfig.url = 'https://fake.url';
+    contextWithOkta.config.userGroupGatewayConfig.privateKey = '{}';
+    jest.spyOn(OktaHumble.prototype, 'init').mockImplementation(jest.fn());
+
+    const result = await factory.getUserGroupGateway(contextWithOkta);
+    expect(result).toBeInstanceOf(OktaUserGroupGateway);
+  });
+
+  test('getUserGroupGateway should return mock user group gateway', async () => {
+    const contextWithMock = { ...dbContext };
+    contextWithMock.config.authConfig.provider = 'mock';
+    contextWithMock.config.userGroupGatewayConfig.provider = 'mock';
+    const result = await factory.getUserGroupGateway(contextWithMock);
+    expect(result).toBeInstanceOf(MockUserGroupGateway);
+  });
+
+  test('getUserGroupGateway should return null', async () => {
+    const invalidContext = { ...dbContext };
+    invalidContext.config.authConfig.provider = undefined;
+    invalidContext.config.userGroupGatewayConfig.provider = undefined;
+    const result = await factory.getUserGroupGateway(invalidContext);
+    expect(result).toEqual(null);
   });
 
   test('getUserSessionUseCase', async () => {

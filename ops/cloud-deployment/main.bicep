@@ -50,11 +50,11 @@ param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
 
 param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
-param migrationFunctionName string = '${stackName}-migration'
+param dataflowsFunctionName string = '${stackName}-dataflows'
 
-param migrationSubnetAddressPrefix string = '10.10.13.0/28'
+param dataflowsSubnetAddressPrefix string = '10.10.13.0/28'
 
-param migrationSubnetName string = 'snet-${migrationFunctionName}'
+param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
 
 @description('Plan type to determine functionapp service plan Sku')
 @allowed([
@@ -145,9 +145,9 @@ module network './lib//network/ustp-cams-network.bicep' = {
     apiFunctionName: apiFunctionName
     apiFunctionSubnetName: apiFunctionSubnetName
     apiFunctionSubnetAddressPrefix: apiFunctionSubnetAddressPrefix
-    migrationFunctionName: migrationFunctionName
-    migrationSubnetAddressPrefix: migrationSubnetAddressPrefix
-    migrationSubnetName: migrationSubnetName
+    dataflowsFunctionName: dataflowsFunctionName
+    dataflowsSubnetAddressPrefix: dataflowsSubnetAddressPrefix
+    dataflowsSubnetName: dataflowsSubnetName
     webappName: webappName
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappSubnetName: webappSubnetName
@@ -205,15 +205,15 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       planName: functionPlanName
       apiFunctionName: apiFunctionName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
-      migrationFunctionName: migrationFunctionName
-      migrationFunctionSubnetId: network.outputs.migrationFunctionSubnetId
+      dataflowsFunctionName: dataflowsFunctionName
+      dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
       functionsRuntime: 'node'
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
-      migrationCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+      dataflowsCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName

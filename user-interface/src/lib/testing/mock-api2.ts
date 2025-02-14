@@ -10,6 +10,7 @@ import {
   CaseNote,
   CaseNoteInput,
   CaseSummary,
+  SyncedCase,
 } from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
@@ -325,8 +326,8 @@ async function putConsolidationOrderRejection(
 async function searchCases(
   predicate: CasesSearchPredicate,
   options: { includeAssignments?: boolean } = {},
-): Promise<ResponseBody<CaseBasics[]>> {
-  return post<CaseBasics[]>('/cases', predicate, options);
+): Promise<ResponseBody<SyncedCase[]>> {
+  return post<SyncedCase[]>('/cases', predicate, options);
 }
 
 async function postStaffAssignments(action: StaffAssignmentAction): Promise<ResponseBody> {

@@ -1,4 +1,8 @@
-import { CasesInterface } from '../../use-cases/cases/cases.interface';
+import {
+  CasesInterface,
+  CasesSyncMeta,
+  TransactionIdRangeForDate,
+} from '../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
@@ -118,5 +122,23 @@ export class CasesLocalGateway implements CasesInterface {
       const message = (err as Error).message;
       return Promise.reject(message);
     }
+  }
+
+  public async getCaseIdsAndMaxTxIdToSync(
+    _applicationContext: ApplicationContext,
+    _lastTxId: string,
+  ): Promise<CasesSyncMeta> {
+    throw new Error('Not implemented');
+  }
+
+  public async findTransactionIdRangeForDate(
+    _context: ApplicationContext,
+    _findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
+    throw new Error('Not implemented');
+  }
+
+  public async findMaxTransactionId(_context: ApplicationContext): Promise<string> {
+    throw new Error('Not implemented');
   }
 }

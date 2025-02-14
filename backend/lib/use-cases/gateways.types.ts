@@ -12,8 +12,8 @@ import {
   TransferTo,
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
-import { CaseDocket, CaseNote } from '../../../common/src/cams/cases';
-import { OrdersSearchPredicate } from '../../../common/src/api/search';
+import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
+import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
   PrivilegedIdentityUser,
@@ -24,8 +24,8 @@ import {
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
-import { ConditionOrConjunction, Sort } from '../query/query-builder';
-import { AcmsConsolidation, AcmsPredicate } from './acms-orders/acms-orders';
+import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
+import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
 
 export type ReplaceResult = {
   id: string;
@@ -123,6 +123,10 @@ export interface AcmsGateway {
     context: ApplicationContext,
     leadCaseId: string,
   ): Promise<AcmsConsolidation>;
+  loadMigrationTable(context: ApplicationContext);
+  getMigrationCaseIds(context: ApplicationContext, start: number, end: number);
+  emptyMigrationTable(context: ApplicationContext);
+  getMigrationCaseCount(context: ApplicationContext);
 }
 
 export interface CasesRepository extends Releasable {
@@ -134,6 +138,10 @@ export interface CasesRepository extends Releasable {
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
+  syncDxtrCase(bCase: SyncedCase): Promise<void>;
+  searchCases(predicate: CasesSearchPredicate);
+  getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
+  deleteSyncedCases(): Promise<void>;
 }
 
 export interface OfficesRepository extends Releasable {
@@ -152,7 +160,10 @@ export interface UsersRepository extends Releasable {
   deletePrivilegedIdentityUser(id: string): Promise<void>;
 }
 
-export type RuntimeStateDocumentType = 'ORDERS_SYNC_STATE' | 'OFFICE_STAFF_SYNC_STATE';
+export type RuntimeStateDocumentType =
+  | 'ORDERS_SYNC_STATE'
+  | 'OFFICE_STAFF_SYNC_STATE'
+  | 'CASES_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -161,6 +172,11 @@ export type RuntimeState = {
 
 export type OrderSyncState = RuntimeState & {
   documentType: 'ORDERS_SYNC_STATE';
+  txId: string;
+};
+
+export type CasesSyncState = RuntimeState & {
+  documentType: 'CASES_SYNC_STATE';
   txId: string;
 };
 
@@ -173,6 +189,7 @@ export type OfficeStaffSyncState = RuntimeState & {
 
 export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
+  paginatedFind: (query: Pagination, sort?: Sort) => Promise<CamsPaginationResponse<T>>;
   findOne: (query: ConditionOrConjunction) => Promise<T>;
   getAll: (sort?: Sort) => Promise<T[]>;
   replaceOne: (
@@ -187,3 +204,8 @@ export interface DocumentCollectionAdapter<T> {
   countDocuments: (query: ConditionOrConjunction) => Promise<number>;
   countAllDocuments: () => Promise<number>;
 }
+
+export type CamsPaginationResponse<T> = {
+  metadata?: { total: number };
+  data: T[];
+};

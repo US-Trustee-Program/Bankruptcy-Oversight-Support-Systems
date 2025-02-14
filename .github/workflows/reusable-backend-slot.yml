@@ -9,7 +9,7 @@ on:
       apiFunctionName:
         required: true
         type: string
-      migrationFunctionName:
+      dataflowsFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -54,19 +54,19 @@ jobs:
 
       - name: Create API Slot Resource
         run: |
-          migrationSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
-          apiSlotStorageAccountName=migrationslot${{ inputs.environmentHash }}
+          dataflowsSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          apiSlotStorageAccountName=dataflowsslot${{ inputs.environmentHash }}
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --idResourceGroup ${{ secrets.AZURE_RG }} \
               --apiFunctionName ${{ inputs.apiFunctionName }} \
-              --migrationFunctionName ${{ inputs.migrationFunctionName }} \
+              --dataflowsFunctionName ${{ inputs.dataflowsFunctionName }} \
               --webappName ${{ inputs.webappName }} \
               --slotName ${{ inputs.slotName }} \
               --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
               --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --apiStorageAccName ${migrationSlotStorageAccountName:0:24} \
-              --migrationStorageAccName ${apiSlotStorageAccountName:0:24} \
+              --apiStorageAccName ${apiSlotStorageAccountName:0:24} \
+              --dataflowsStorageAccName ${dataflowsSlotStorageAccountName:0:24} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
               --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
