@@ -231,21 +231,21 @@ export function setupMigrateCases2() {
     connection: 'AzureWebJobsStorage',
   });
 
-  app.storageQueue(START.queueName, {
+  app.storageQueue(buildUniqueName(MODULE_NAME, 'migrateCases'), {
     queueName: START.queueName,
     connection: 'AzureWebJobsStorage',
     handler: migrateCases,
     extraOutputs: [PAGE],
   });
 
-  app.storageQueue(PAGE.queueName, {
+  app.storageQueue(buildUniqueName(MODULE_NAME, 'processPage'), {
     queueName: PAGE.queueName,
     connection: 'AzureWebJobsStorage',
     handler: processPage,
     extraOutputs: [ETL, DLQ],
   });
 
-  app.storageQueue(ETL.queueName, {
+  app.storageQueue(buildUniqueName(MODULE_NAME, 'processETL'), {
     queueName: ETL.queueName,
     connection: 'AzureWebJobsStorage',
     handler: processETL,
