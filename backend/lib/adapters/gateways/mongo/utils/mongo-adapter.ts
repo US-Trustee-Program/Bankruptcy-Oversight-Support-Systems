@@ -22,13 +22,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
+  public async paginatedFind(query: Pagination, sort?: Sort): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       if (!isPagination(query)) {
         throw new Error('something placeholder');
       }
-      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+
+      const aggregationPromise = this.collectionHumble.aggregate(mongoQuery);
+
+      //TODO: This doesn't seem to be working.
+      const aggregationResult = mongoSort
+        ? (await aggregationPromise).sort(mongoSort)
+        : await aggregationPromise;
 
       const aggregationItem: CamsPaginationResponse<T> = {
         metadata: { total: 0 },

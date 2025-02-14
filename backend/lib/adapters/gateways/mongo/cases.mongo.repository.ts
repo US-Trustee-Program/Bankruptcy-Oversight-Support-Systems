@@ -21,7 +21,7 @@ import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, equals, regex, contains, notContains } = QueryBuilder;
+const { paginate, and, equals, regex, contains, notContains, orderBy } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -322,7 +322,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         //If we don't have this we have a problem
         subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
         const query = QueryBuilder.build<Pagination>(subQuery);
-        return await this.getAdapter<SyncedCase>().paginatedFind(query);
+        return await this.getAdapter<SyncedCase>().paginatedFind(
+          query,
+          orderBy(['caseId', 'ASCENDING']),
+        );
       } else {
         throw new Error('We have a problem with predicate'); //TODO: Appropriately construct this error and logic
       }
