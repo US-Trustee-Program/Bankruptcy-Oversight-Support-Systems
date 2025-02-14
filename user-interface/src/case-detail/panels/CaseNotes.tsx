@@ -175,7 +175,7 @@ export default function CaseNotes(props: CaseNotesProps) {
       } else {
         caseNoteDraftAlertRef.current?.hide();
       }
-    }, 1000);
+    }, 250);
 
     return () => clearTimeout(timeout);
   }, [formData]);
