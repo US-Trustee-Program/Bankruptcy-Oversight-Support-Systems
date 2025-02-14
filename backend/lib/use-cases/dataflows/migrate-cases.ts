@@ -1,9 +1,31 @@
+import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import { SyncedCase } from '../../../../common/src/cams/cases';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
 import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './queue-types';
 
 const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
+
+async function exportAndLoadPage(
+  context: ApplicationContext,
+  events: CaseSyncEvent[],
+): Promise<CaseSyncEvent[]> {
+  const factory = Factory.getCasesGateway(context);
+  const repo = Factory.getCasesRepository(context);
+  for (const event of events) {
+    try {
+      event.bCase = await factory.getCaseDetail(context, event.caseId);
+      await repo.syncDxtrCase(
+        createAuditRecord<SyncedCase>({ ...event.bCase, documentType: 'SYNCED_CASE' }),
+      );
+    } catch (error) {
+      event.error = error;
+    }
+  }
+  return events;
+}
 
 /**
  * createMigrationTable
@@ -78,6 +100,7 @@ async function emptyMigrationTable(context: ApplicationContext): Promise<MaybeVo
 }
 
 const MigrateCases = {
+  exportAndLoadPage,
   loadMigrationTable,
   getPageOfCaseEvents,
   emptyMigrationTable,
