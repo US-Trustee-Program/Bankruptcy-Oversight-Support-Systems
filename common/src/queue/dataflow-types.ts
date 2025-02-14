@@ -7,6 +7,12 @@ export type CaseSyncEvent = {
   error?: unknown;
 };
 
+export type CaseSyncResults = {
+  events: CaseSyncEvent[];
+  lastTxId?: string;
+};
+
+// TODO: Delete this with the dataflows refactor.
 export type ExportCaseChangeEventsSummary = {
   changedCases: number;
   exportedAndLoaded: number;
@@ -14,11 +20,6 @@ export type ExportCaseChangeEventsSummary = {
   noResult: number;
   completed: number;
   faulted: number;
-};
-
-export type CaseSyncResults = {
-  events: CaseSyncEvent[];
-  lastTxId?: string;
 };
 
 /**
