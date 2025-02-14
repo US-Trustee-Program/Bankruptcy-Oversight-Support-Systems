@@ -22,12 +22,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  public async paginatedFind(
-    query: Pagination,
-    // sort?: Sort,
-  ): Promise<CamsPaginationResponse<T>> {
+  public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
-    // const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       if (!isPagination(query)) {
         throw new Error('something placeholder');
