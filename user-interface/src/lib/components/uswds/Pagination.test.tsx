@@ -184,35 +184,6 @@ describe('Pagination tests', () => {
     expect(retrievePageSpy).toHaveBeenCalledWith(expectedArgument);
   });
 
-  test.skip('should not call retrievePage correctly for current page number button', () => {
-    //What? Is this because of the difference in functionality between Cosmos && SQL?
-    const currentPage = 6;
-    const searchPredicate = {
-      ...defaultSearchPredicate,
-      offset: defaultSearchPredicate.limit * (currentPage - 1),
-    };
-    const props = {
-      paginationValues: {
-        ...defaultPagination,
-        previous,
-        next,
-        currentPage,
-        limit: 150,
-      },
-      searchPredicate,
-    };
-    renderWithProps(props);
-
-    const expectedArgument = {
-      ...searchPredicate,
-    };
-
-    const currentPageButton = screen.getByTestId(`pagination-button-page-${currentPage}-results`);
-    expect(currentPageButton).toBeInTheDocument();
-    fireEvent.click(currentPageButton);
-    expect(retrievePageSpy).not.toHaveBeenCalledWith(expectedArgument);
-  });
-
   test('should render page 1, page 2, ellipses, and next', () => {
     const testPagination = {
       ...defaultPagination,

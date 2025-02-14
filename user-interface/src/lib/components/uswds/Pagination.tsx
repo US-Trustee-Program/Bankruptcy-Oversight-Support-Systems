@@ -103,7 +103,6 @@ export function Pagination<P extends SearchPredicate>({
     );
   }
 
-  //TODO: show the seven components within the USWDS model (if 7 components are available)
   return (
     <nav aria-label="Pagination" className="usa-pagination">
       <ul className="usa-pagination__list">
