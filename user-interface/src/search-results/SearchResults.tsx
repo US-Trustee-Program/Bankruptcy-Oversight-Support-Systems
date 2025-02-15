@@ -177,7 +177,7 @@ export function SearchResults(props: SearchResultsProps) {
             scrollable="true"
             uswdsStyle={['striped']}
             title="search results."
-            caption={`Search yielded ${searchResults?.pagination?.totalCount} results.`}
+            caption={`Search yielded ${new Intl.NumberFormat('en-US').format(searchResults?.pagination?.totalCount ?? 0)} results.`}
           >
             <Header id={id} labels={searchResultsHeaderLabels} />
             <TableBody id={id}>
