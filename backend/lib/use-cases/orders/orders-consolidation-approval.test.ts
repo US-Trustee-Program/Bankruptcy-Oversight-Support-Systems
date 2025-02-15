@@ -131,7 +131,7 @@ describe('Orders use case', () => {
     jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(undefined);
 
     jest
-      .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
       .mockImplementation((ids: string[]) => {
         const assignmentsMap = new Map();
         ids.forEach((id) => {
@@ -265,7 +265,7 @@ describe('Orders use case', () => {
     const mockGetConsolidation = jest.spyOn(casesRepo, 'getConsolidation').mockResolvedValue([]);
 
     jest
-      .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
       .mockResolvedValue(new Map());
     jest
       .spyOn(MockMongoRepository.prototype, 'createConsolidationTo')

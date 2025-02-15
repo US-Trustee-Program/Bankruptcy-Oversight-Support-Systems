@@ -99,7 +99,7 @@ export default class CaseManagement {
       }
       // TODO: in a subsequent PR, use a merge in the repo to get assignments at the same time as the rest
       if (includeAssignments) {
-        const assignmentsMap = await this.assignmentRepository.findAssignmentsByCaseId(caseIds);
+        const assignmentsMap = await this.assignmentRepository.getAssignmentsForCases(caseIds);
         for (const caseId of caseIds) {
           const assignments = assignmentsMap.get(caseId) ?? [];
           const caseWithAssignments = {
