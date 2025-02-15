@@ -8,6 +8,7 @@ dotenv.config({ path: '../../../.env' });
 
 const MODULE_NAME = 'ITEST';
 
+// TODO: do we still need this (comment or even the file itself)?
 // NOTE: Disable "type": "module" in the common package.json temporarily to get past the CommonJS/require() issue.
 
 async function testBisect() {
@@ -29,7 +30,6 @@ async function testBisect() {
   try {
     const gateway = Factory.getCasesGateway(context);
     const dates = ['2016-03-16', '2015-03-16', '2016-03-03', '1990-01-01', '2070-01-01'];
-    // const dates = ['2016-03-16']; /// 10609 - 10615
     for (const date of dates) {
       const answer = await gateway.findTransactionIdRangeForDate(context, date);
       log(answer);

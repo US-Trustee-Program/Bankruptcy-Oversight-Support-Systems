@@ -34,10 +34,6 @@ async function exportAndLoadPage(
  */
 async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
-    // TEMPORARILY DELETE EVERYTHING FROM COSMOS WHILE WE ARE "EXPERIMENTING".
-    // const repo = Factory.getCasesRepository(context);
-    // await repo.deleteSyncedCases();
-
     const gateway = Factory.getAcmsGateway(context);
     await gateway.loadMigrationTable(context);
     const count = await gateway.getMigrationCaseCount(context);

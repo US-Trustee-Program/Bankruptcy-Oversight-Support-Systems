@@ -21,7 +21,7 @@ const createAssignment = jest
     return Promise.resolve(MockData.getConsolidationOrder({ override: { ...consolidationOrder } }));
   });
 const findAssignmentsByCaseId = jest
-  .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+  .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
   .mockResolvedValue([]);
 const createAssignmentHistory = jest
   .spyOn(MockMongoRepository.prototype, 'createCaseHistory')

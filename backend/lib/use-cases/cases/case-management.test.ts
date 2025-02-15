@@ -330,7 +330,7 @@ describe('Case management tests', () => {
         .spyOn(useCase.casesRepository, 'searchCases')
         .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
       const assignmentsSpy = jest
-        .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+        .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
         .mockImplementation(() => {
           if (args.includeCaseAssignments) {
             return Promise.resolve(assignmentsMap);
