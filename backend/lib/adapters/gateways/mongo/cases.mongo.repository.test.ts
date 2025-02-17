@@ -311,12 +311,22 @@ describe('Cases repository', () => {
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
     const expectedQuery = QueryBuilder.build(
-      paginate(predicate.offset, predicate.limit, [
-        and(
-          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-        ),
-      ]),
+      paginate(
+        predicate.offset,
+        predicate.limit,
+        [
+          and(
+            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+          ),
+        ],
+        {
+          attributes: [
+            ['dateFiled', 'DESCENDING'],
+            ['caseId', 'DESCENDING'],
+          ],
+        },
+      ),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -341,13 +351,23 @@ describe('Cases repository', () => {
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     const expectedQuery = QueryBuilder.build(
-      paginate(predicate.offset, predicate.limit, [
-        and(
-          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-          contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
-          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-        ),
-      ]),
+      paginate(
+        predicate.offset,
+        predicate.limit,
+        [
+          and(
+            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+            contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
+            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+          ),
+        ],
+        {
+          attributes: [
+            ['dateFiled', 'DESCENDING'],
+            ['caseId', 'DESCENDING'],
+          ],
+        },
+      ),
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -375,14 +395,24 @@ describe('Cases repository', () => {
     const result = await repo.searchCases(predicate);
     // TODO: can we find a way to not rely on the exact order here?
     const expectedQuery = QueryBuilder.build(
-      paginate(predicate.offset, predicate.limit, [
-        and(
-          equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-          contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
-          contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-          notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds),
-        ),
-      ]),
+      paginate(
+        predicate.offset,
+        predicate.limit,
+        [
+          and(
+            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
+            contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
+            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
+            notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds),
+          ),
+        ],
+        {
+          attributes: [
+            ['dateFiled', 'DESCENDING'],
+            ['caseId', 'DESCENDING'],
+          ],
+        },
+      ),
     );
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
 
