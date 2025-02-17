@@ -8,7 +8,7 @@ import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditabl
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 
-const MODULE_NAME = 'ACMS_ORDERS_USE_CASE';
+const MODULE_NAME = 'ACMS-ORDERS-USE-CASE';
 
 export type AcmsBounds = {
   divisionCodes: string[];

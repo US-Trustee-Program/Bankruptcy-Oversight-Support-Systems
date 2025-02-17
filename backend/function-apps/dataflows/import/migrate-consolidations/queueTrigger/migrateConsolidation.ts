@@ -6,7 +6,7 @@ import { CamsError } from '../../../../../lib/common-errors/cams-error';
 import { getCamsError } from '../../../../../lib/common-errors/error-utilities';
 import { failQueue, successQueue } from '../migrate-consolidations-constants';
 
-const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
+const MODULE_NAME = 'IMPORT-ACTION-MIGRATE-CONSOLIDATION';
 
 async function migrateConsolidation(message: unknown, context: InvocationContext) {
   const logger = ContextCreator.getLogger(context);

@@ -11,7 +11,7 @@ import { MAIN_ORCHESTRATOR } from '../migrate-consolidations-constants';
 
 dotenv.config();
 
-const MODULE_NAME = 'ACMS_MIGRATION_TRIGGER';
+const MODULE_NAME = 'ACMS-MIGRATION-TRIGGER';
 
 export default async function httpStart(
   request: HttpRequest,

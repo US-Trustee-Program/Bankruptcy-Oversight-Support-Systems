@@ -10,7 +10,7 @@ import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
 
-const MODULE_NAME = 'ACMS_GATEWAY';
+const MODULE_NAME = 'ACMS-GATEWAY';
 
 export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway {
   constructor(context: ApplicationContext) {

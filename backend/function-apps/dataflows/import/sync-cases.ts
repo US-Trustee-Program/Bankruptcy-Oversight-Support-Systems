@@ -14,7 +14,7 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
-const MODULE_NAME = 'SYNC_CASES';
+const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
 
 // Queues

@@ -15,7 +15,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 
-const MODULE_NAME = 'MIGRATE_CASES';
+const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
 
 // Queues
