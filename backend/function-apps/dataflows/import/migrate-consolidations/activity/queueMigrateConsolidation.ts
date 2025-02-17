@@ -8,7 +8,7 @@ import AcmsOrdersController from '../../../../../lib/controllers/acms-orders/acm
 import { getCamsError } from '../../../../../lib/common-errors/error-utilities';
 import { migrationQueue } from '../migrate-consolidations-constants';
 
-const MODULE_NAME = 'IMPORT_ACTION_GET_CONSOLIDATIONS';
+const MODULE_NAME = 'IMPORT-ACTION-GET-CONSOLIDATIONS';
 
 async function queueMigrateConsolidation(
   predicate: AcmsPredicate,

@@ -41,7 +41,7 @@ import { OrdersSearchPredicate } from '../../../../common/src/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { Factory } from '../../factory';
 
-const MODULE_NAME = 'ORDERS_USE_CASE';
+const MODULE_NAME = 'ORDERS-USE-CASE';
 
 export interface SyncOrdersOptions {
   txIdOverride?: string;

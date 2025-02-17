@@ -1,7 +1,7 @@
 import { output } from '@azure/functions';
 import { buildFunctionName, buildQueueName } from '../../dataflows-common';
 
-const MODULE_NAME = 'MIGRATE_CONSOLIDATIONS';
+const MODULE_NAME = 'MIGRATE-CONSOLIDATIONS';
 
 export const migrationQueue = output.storageQueue({
   connection: 'AzureWebJobsStorage',

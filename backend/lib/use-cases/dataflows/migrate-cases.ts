@@ -3,7 +3,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
 import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './queue-types';
 
-const MODULE_NAME = 'MIGRATE_CASES_USE_CASE';
+const MODULE_NAME = 'MIGRATE-CASES-USE-CASE';
 
 /**
  * createMigrationTable
