@@ -1,8 +1,8 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext, Timer } from '@azure/functions';
+import { app, HttpRequest, InvocationContext, Timer } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { buildFunctionName } from '../dataflows-common';
+import { toAzureError } from '../../azure/functions';
+import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 
 const MODULE_NAME = 'SYNC_ORDERS';
 
@@ -29,28 +29,22 @@ export async function timerTrigger(
  *
  * curl -v -d '{"txIdOverride": "0"}' -H "Content-Type: application/json" http://localhost:7071/api/sync-orders
  *
- * @param {HttpRequest} request
- * @param {InvocationContext} invocationContext
  */
-export async function httpTrigger(
-  request: HttpRequest,
-  invocationContext: InvocationContext,
-): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const context = await ContextCreator.getApplicationContext({
-    invocationContext,
-    logger,
-    request,
-  });
 
-  const ordersController = new OrdersController(context);
-  try {
-    const results = await ordersController.handleRequest(context);
-    return toAzureSuccess(results);
-  } catch (error) {
-    return toAzureError(context, MODULE_NAME, error);
-  }
-}
+export const httpTrigger = buildHttpTrigger(
+  MODULE_NAME,
+  async (invocationContext: InvocationContext, request: HttpRequest) => {
+    const logger = ContextCreator.getLogger(invocationContext);
+    const context = await ContextCreator.getApplicationContext({
+      invocationContext,
+      logger,
+      request,
+    });
+
+    const ordersController = new OrdersController(context);
+    return ordersController.handleRequest(context);
+  },
+);
 
 export function setupSyncOrders() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
