@@ -20,21 +20,61 @@ export type RangeMessage = {
   end: number;
 };
 
+/**
+ * isAuthorized
+ *
+ * Checks for a correct API key to be passed in the Authorization header of requests to
+ * http triggers.
+ *
+ * @param request
+ * @returns
+ */
 export function isAuthorized(request: HttpRequest) {
   const header = request.headers.get('Authorization');
   const parts = header ? header.split(' ') : ['', ''];
   return process.env.ADMIN_KEY && parts[0] === 'ApiKey' && parts[1] === process.env.ADMIN_KEY;
 }
 
+/**
+ * buildFunctionName
+ *
+ * Builds an Azure function name as seen in the Azure Portal that avoids duplicate names
+ * by using the MODULE_NAME as a name space.
+ *
+ * @param parts
+ * @returns
+ */
 export function buildFunctionName(...parts): string {
   return parts.join('-').replace(/_/g, '-').replace(' ', '-');
 }
 
+/**
+ * buildQueueName
+ *
+ * Builds an Azure storage queue name as seen in the Azure Portal that avoids duplicate names
+ * by using the MODULE_NAME as a name space and abides by naming requirements.
+ *
+ * @param parts
+ * @returns
+ */
 export function buildQueueName(...parts): string {
   return buildFunctionName(...parts).toLowerCase();
 }
 
-export function buildHttpTrigger(moduleName: string, fn: (context: InvocationContext) => void) {
+/**
+ * buildHttpTrigger
+ *
+ * Wraps the provided function within a closure containing boiler-plate
+ * authorization and HttpResponse logic.
+ *
+ * @param moduleName
+ * @param fn
+ * @returns
+ */
+export function buildHttpTrigger(
+  moduleName: string,
+  fn: (context: InvocationContext, request?: HttpRequest) => void,
+) {
   async function httpTrigger(
     request: HttpRequest,
     context: InvocationContext,
@@ -44,7 +84,8 @@ export function buildHttpTrigger(moduleName: string, fn: (context: InvocationCon
         throw new ForbiddenError(moduleName);
       }
 
-      fn(context);
+      const result = await fn(context, request);
+      context.debug(result);
 
       return new HttpResponse(toAzureSuccess({ statusCode: 201 }));
     } catch (error) {
@@ -54,6 +95,16 @@ export function buildHttpTrigger(moduleName: string, fn: (context: InvocationCon
   return httpTrigger;
 }
 
+/**
+ * buildStartQueueHttpTrigger
+ *
+ * Wraps common logic to add a start message to the provided storage queue in a closure used
+ * as a http trigger.
+ *
+ * @param moduleName
+ * @param queue
+ * @returns
+ */
 export function buildStartQueueHttpTrigger(moduleName: string, queue: StorageQueueOutput) {
   return buildHttpTrigger(moduleName, (context: InvocationContext) => {
     const startMessage: StartMessage = {
@@ -63,6 +114,15 @@ export function buildStartQueueHttpTrigger(moduleName: string, queue: StorageQue
   });
 }
 
+/**
+ * buildStartQueueTimerTrigger
+ *
+ * Wraps common logic to add a start message to the provided storage queue in a closure used
+ * as a timer trigger.
+ * @param _moduleName
+ * @param queue
+ * @returns
+ */
 export function buildStartQueueTimerTrigger(_moduleName: string, queue: StorageQueueOutput) {
   async function timerTrigger(_ignore: Timer, context: InvocationContext) {
     const startMessage: StartMessage = {
