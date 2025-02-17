@@ -30,7 +30,7 @@ const syncResponse: SyncOrdersStatus = {
   maxTxId: '464',
 };
 
-describe('Orders Sync Function tests', () => {
+describe('Sync Orders Function tests', () => {
   const context = createMockAzureFunctionContext({ MONGO_CONNECTION_STRING: 'fake' });
   const timer: Timer = {
     isPastDue: false,
@@ -77,7 +77,7 @@ describe('Orders Sync Function tests', () => {
   });
 });
 
-describe('Orders Sync Function tests #2', () => {
+describe('Sync Orders Function tests #2', () => {
   /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const context = require('azure-function-context-mock');
 
