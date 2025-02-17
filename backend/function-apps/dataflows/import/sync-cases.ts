@@ -109,7 +109,7 @@ export function setupSyncCases() {
   });
 
   app.http(HTTP_TRIGGER, {
-    route: 'synccases',
+    route: 'sync-cases',
     methods: ['POST'],
     extraOutputs: [START],
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
