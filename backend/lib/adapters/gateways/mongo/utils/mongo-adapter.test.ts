@@ -1,7 +1,7 @@
 import { CamsError } from '../../../../common-errors/cams-error';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import QueryBuilder from '../../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../../query/query-builder';
 import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 
 const { and, orderBy } = QueryBuilder;
@@ -10,6 +10,7 @@ const MODULE_NAME = 'TEST_MODULE';
 
 const find = jest.fn();
 const findOne = jest.fn();
+const paginatedFind = jest.fn();
 const replaceOne = jest.fn();
 const insertOne = jest.fn();
 const insertMany = jest.fn();
@@ -20,6 +21,7 @@ const countDocuments = jest.fn();
 const spies = {
   find,
   findOne,
+  paginatedFind,
   replaceOne,
   insertOne,
   insertMany,
@@ -106,6 +108,25 @@ describe('Mongo adapter', () => {
     const item = await adapter.find(testQuery, orderBy(['name', 'ASCENDING']));
     expect(item).toEqual([{}, {}, {}]);
     expect(find).toHaveBeenCalled();
+    expect(sort).toHaveBeenCalled();
+  });
+
+  // TODO: work in progress...
+  test('should return a sorted list of items from a paginatedFind', async () => {
+    function* generator() {
+      yield Promise.resolve({});
+      yield Promise.resolve({});
+      yield Promise.resolve({});
+    }
+    const sort = jest.fn().mockImplementation(generator);
+    paginatedFind.mockResolvedValue({ sort });
+    const item = await adapter.paginatedFind({
+      limit: 25,
+      skip: 0,
+      values: [testQuery as ConditionOrConjunction],
+      sort: orderBy(['name', 'ASCENDING']),
+    });
+    expect(item).toEqual([{}, {}, {}]);
     expect(sort).toHaveBeenCalled();
   });
 
@@ -343,6 +364,9 @@ describe('Mongo adapter', () => {
     await expect(adapter.deleteOne(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.deleteMany(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.find(testQuery)).rejects.toThrow(expectedError);
+    await expect(
+      adapter.paginatedFind({ limit: 25, skip: 0, values: [testQuery as ConditionOrConjunction] }),
+    ).rejects.toThrow(expectedError);
     await expect(adapter.countDocuments(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.countAllDocuments()).rejects.toThrow(expectedError);
     await expect(adapter.findOne(testQuery)).rejects.toThrow(expectedError);
