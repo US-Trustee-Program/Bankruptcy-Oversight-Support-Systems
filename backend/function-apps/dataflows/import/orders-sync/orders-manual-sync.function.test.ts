@@ -6,7 +6,7 @@ import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../../azure/testing-helpers';
-import handler from './orders-manual-sync.function';
+import handler from '../orders-manual-sync/orders-manual-sync.function';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
