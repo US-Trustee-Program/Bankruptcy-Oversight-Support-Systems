@@ -190,7 +190,7 @@ export function setupMigrateCases() {
   });
 
   app.http(HTTP_TRIGGER, {
-    route: 'migratecases',
+    route: 'migrate-cases',
     methods: ['POST'],
     extraOutputs: [START],
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
