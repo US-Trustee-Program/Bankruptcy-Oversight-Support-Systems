@@ -19,6 +19,7 @@ export type FlatOfficeDetail = {
 export type CaseBasics = FlatOfficeDetail & {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
   caseId: string;
+  caseNumber?: string;
   chapter: string;
   caseTitle: string;
   dateFiled: string;
