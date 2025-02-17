@@ -16,6 +16,8 @@ describe('Input sanitization tests', () => {
   const testXSSNotes = [
     ['<script></script>'],
     ['<script>foo</script>'],
+    ["fetch('/api/data');"],
+    ["document.querySelector('#id');"],
     ["<script>alert('XSS');</script>"],
   ];
   test.each(testXSSNotes)('should detect invalid strings', (input: string) => {
