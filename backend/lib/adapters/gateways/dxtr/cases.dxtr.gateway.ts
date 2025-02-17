@@ -134,6 +134,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const CASE_SUGGESTION_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
+        cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
         FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
         cs.CS_CASEID as dxtrId,
@@ -316,6 +317,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       SELECT
       cs_div.CS_DIV_ACMS as courtDivisionCode,
       cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
+      cs.CASE_ID as caseNumber,
       cs.CS_SHORT_TITLE as caseTitle,
       FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
       cs.CS_CASEID as dxtrId,
@@ -545,6 +547,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     const CASE_DETAIL_QUERY = `SELECT
         cs_div.CS_DIV_ACMS as courtDivisionCode,
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
+        cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
         FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
         cs.CS_CASEID as dxtrId,

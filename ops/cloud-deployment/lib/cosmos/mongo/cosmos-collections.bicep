@@ -196,7 +196,7 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
     resource: {
       id: 'cases'
       shardKey: {
-        id: 'string'
+        caseId: 'Hash'
       }
       indexes: [
         {
@@ -215,7 +215,7 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
         }
         {
           key: {
-            keys: ['courtDivisionCode', 'chapter', 'documentType']
+            keys: ['documentType', 'chapter', 'courtDivisionCode', 'dateFiled', 'caseNumber']
           }
         }
       ]
