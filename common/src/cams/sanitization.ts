@@ -1,7 +1,9 @@
 const MONGO_CONSOLE_INJECTED_PATTERN = RegExp(
   /\b(?:db\.[a-zA-Z]+|mongo\.[a-zA-Z]+|(?:find|insert|update|delete|aggregate|create|drop|remove|replace|count|distinct|mapReduce|save)\b\s*(?:\(|{))/i,
 );
-const JAVASCRIPT_INJECTED_PATTERN = RegExp(/<script[\s\S]*?>[\s\S]*?<\/script>/i);
+const JAVASCRIPT_INJECTED_PATTERN = RegExp(
+  /(eval\s*\(.*?\)|window\.\w+|document.\.\w+|<script[\s\S]*?>[\s\S]*?<\/script>)/i,
+);
 const MONGO_QUERY_INJECTED_PATTERN = RegExp(
   /\$(eq|ne|gt|gte|lt|lte|in|nin|and|or|not|regex|exists|type|mod|text|where|all|elemMatch|size)/,
 );
