@@ -1,29 +1,99 @@
-import { app, HttpRequest, HttpResponse, InvocationContext, output } from '@azure/functions';
-
+import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
-import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
 
 import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { buildUniqueName, isAuthorized } from '../dataflows-common';
+import {
+  buildFunctionName,
+  buildQueueName,
+  buildStartQueueHttpTrigger,
+  RangeMessage,
+  StartMessage,
+  STORAGE_QUEUE_CONNECTION,
+} from '../dataflows-common';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { storeCasesRuntimeState } from './store-cases-runtime-state';
+import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
+import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 
 const MODULE_NAME = 'MIGRATE_CASES';
-
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 100;
 
 // Queues
-let START;
-let PAGE;
-let DLQ;
+const START = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'start'),
+  connection: 'AzureWebJobsStorage',
+});
 
-// Activity Aliases
-const GET_CASEIDS_TO_MIGRATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToMigrate');
-const LOAD_MIGRATION_TABLE_ACTIVITY = buildUniqueName(MODULE_NAME, 'loadMigrationTable');
-const EMPTY_MIGRATION_TABLE_ACTIVITY = buildUniqueName(MODULE_NAME, 'emptyMigrationTable');
-const STORE_CASES_RUNTIME_STATE = buildUniqueName(MODULE_NAME, 'storeCasesRuntimeState');
+const PAGE = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'page'),
+  connection: 'AzureWebJobsStorage',
+});
+
+const DLQ = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'dlq'),
+  connection: 'AzureWebJobsStorage',
+});
+
+// Registered function names
+const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
+const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
+const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigrate');
+const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
+const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
+
+/**
+ * handleStart
+ *
+ * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ *
+ * @param {object} message
+ * @param {InvocationContext} context
+ */
+async function handleStart(message: StartMessage, context: InvocationContext) {
+  if (!message.invocationId) return;
+
+  const logger = ContextCreator.getLogger(context);
+  logger.info(MODULE_NAME, `Migrating cases. Invocation id: ${message.invocationId}.`);
+
+  const isEmpty = await emptyMigrationTable(context);
+  if (!isEmpty) return;
+
+  const count = await loadMigrationTable(context);
+
+  if (count === 0) return;
+
+  let start = 0;
+  let end = 0;
+
+  const pages = [];
+  while (end < count) {
+    start = end + 1;
+    end += PAGE_SIZE;
+    pages.push({ start, end });
+  }
+  context.extraOutputs.set(PAGE, pages);
+
+  await storeRuntimeState(context);
+}
+
+/**
+ * handlePage
+ *
+ * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ *
+ * @param range
+ * @param invocationContext
+ */
+async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
+  const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, invocationContext);
+
+  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+
+  const failedEvents = processedEvents.filter((event) => !!event.error);
+  invocationContext.extraOutputs.set(DLQ, failedEvents);
+}
 
 /**
  * loadMigrationTable
@@ -37,7 +107,7 @@ async function loadMigrationTable(invocationContext: InvocationContext) {
   if (result.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, LOAD_MIGRATION_TABLE_ACTIVITY),
+      buildQueueError(result.error, MODULE_NAME, LOAD_MIGRATION_TABLE),
     );
   }
   return result.data;
@@ -54,7 +124,7 @@ async function emptyMigrationTable(invocationContext: InvocationContext) {
   if (result.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE_ACTIVITY),
+      buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE),
     );
     return false;
   }
@@ -83,7 +153,7 @@ async function getCaseIdsToMigrate(
   if (result.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, GET_CASEIDS_TO_MIGRATE_ACTIVITY),
+      buildQueueError(result.error, MODULE_NAME, GET_CASEIDS_TO_MIGRATE),
     );
     return [];
   }
@@ -92,118 +162,37 @@ async function getCaseIdsToMigrate(
 }
 
 /**
- * processPage
+ * storeRuntimeState
  *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ * Wrapper for CasesRuntimeState.storeRuntimeState
  *
- * @param range
  * @param invocationContext
- */
-async function processPage(
-  range: { start: number; end: number },
-  invocationContext: InvocationContext,
-) {
-  const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, invocationContext);
-
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  const processedEvents = await MigrateCases.exportAndLoadPage(appContext, events);
-
-  const failedEvents = processedEvents.filter((event) => !!event.error);
-  invocationContext.extraOutputs.set(DLQ, failedEvents);
-}
-
-/**
- * migrateCases
- *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
- *
- * @param {object} message
- * @param {InvocationContext} context
- */
-async function migrateCases(message: { invocationId: string }, context: InvocationContext) {
-  if (!message.invocationId) return;
-
-  const logger = ContextCreator.getLogger(context);
-  logger.info(MODULE_NAME, `Migrating cases. Invocation id: ${message.invocationId}.`);
-
-  const isEmpty = await emptyMigrationTable(context);
-  if (!isEmpty) return;
-
-  const count = await loadMigrationTable(context);
-
-  if (count === 0) return;
-
-  let start = 0;
-  let end = 0;
-
-  const pages = [];
-  while (end < count) {
-    start = end + 1;
-    end += PAGE_SIZE;
-    pages.push({ start, end });
-  }
-  context.extraOutputs.set(PAGE, pages);
-
-  await storeCasesRuntimeState({ activityName: STORE_CASES_RUNTIME_STATE }, context);
-}
-
-/**
- * httpTrigger
- *
- * @param request
- * @param context
  * @returns
  */
-async function httpTrigger(
-  request: HttpRequest,
-  context: InvocationContext,
-): Promise<HttpResponse> {
-  try {
-    if (!isAuthorized(request)) {
-      throw new ForbiddenError(MODULE_NAME);
-    }
-    context.extraOutputs.set(START, { invocationId: context.invocationId });
-
-    return new HttpResponse(toAzureSuccess({ statusCode: 201 }));
-  } catch (error) {
-    return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
-  }
+async function storeRuntimeState(invocationContext: InvocationContext) {
+  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  return CasesRuntimeState.storeRuntimeState(appContext);
 }
 
 export function setupMigrateCases() {
-  START = output.storageQueue({
-    queueName: buildUniqueName(MODULE_NAME, 'start').toLowerCase(),
-    connection: 'AzureWebJobsStorage',
-  });
-
-  PAGE = output.storageQueue({
-    queueName: buildUniqueName(MODULE_NAME, 'page').toLowerCase(),
-    connection: 'AzureWebJobsStorage',
-  });
-
-  DLQ = output.storageQueue({
-    queueName: buildUniqueName(MODULE_NAME, 'dlq').toLowerCase(),
-    connection: 'AzureWebJobsStorage',
-  });
-
-  app.storageQueue(buildUniqueName(MODULE_NAME, 'migrateCases'), {
+  app.storageQueue(HANDLE_START, {
+    connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
-    connection: 'AzureWebJobsStorage',
-    handler: migrateCases,
+    handler: handleStart,
     extraOutputs: [PAGE],
   });
 
-  app.storageQueue(buildUniqueName(MODULE_NAME, 'processPage'), {
+  app.storageQueue(HANDLE_PAGE, {
+    connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
-    connection: 'AzureWebJobsStorage',
-    handler: processPage,
+    handler: handlePage,
     extraOutputs: [DLQ],
   });
 
-  app.http(buildUniqueName(MODULE_NAME, 'httpTrigger'), {
-    methods: ['GET'],
+  app.http(HTTP_TRIGGER, {
     route: 'migratecases',
+    methods: ['POST'],
     extraOutputs: [START],
-    handler: httpTrigger,
+    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
