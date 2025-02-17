@@ -1,19 +1,13 @@
-import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext, Timer } from '@azure/functions';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import ContextCreator from '../../azure/application-context-creator';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { buildFunctionName } from '../dataflows-common';
 
-dotenv.config();
-
-initializeApplicationInsights();
-
 const MODULE_NAME = 'SYNC_ORDERS';
 
 export async function timerTrigger(
-  _myTimer: Timer,
+  _ignore: Timer,
   invocationContext: InvocationContext,
 ): Promise<void> {
   const logger = ContextCreator.getLogger(invocationContext);
