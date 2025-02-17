@@ -218,6 +218,11 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
             keys: ['documentType', 'chapter', 'courtDivisionCode', 'dateFiled', 'caseNumber']
           }
         }
+        {
+          key: {
+            keys: ['dateFiled', 'caseNumber']
+          }
+        }
       ]
     }
   }
