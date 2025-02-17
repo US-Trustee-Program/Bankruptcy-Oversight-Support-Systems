@@ -1,10 +1,10 @@
-import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import timerTrigger from './orders-sync.function';
 import { Timer } from '@azure/functions';
-import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
-import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import * as factory from '../../../lib/factory';
+import Factory from '../../../../lib/factory';
+import timerTrigger from './orders-sync.function';
+import { createMockAzureFunctionContext } from '../../../azure/testing-helpers';
+import { OrdersController } from '../../../../lib/controllers/orders/orders.controller';
+import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { LoggerImpl } from '../../../../lib/adapters/services/logger.service';
 
 describe('Orders Sync Function tests', () => {
   const context = createMockAzureFunctionContext({ MONGO_CONNECTION_STRING: 'fake' });
@@ -21,7 +21,7 @@ describe('Orders Sync Function tests', () => {
   };
 
   test('Should call orders controller method handleTimer', async () => {
-    jest.spyOn(factory, 'getOrdersRepository').mockReturnValue({
+    jest.spyOn(Factory, 'getOrdersRepository').mockReturnValue({
       search: jest.fn(),
       read: jest.fn(),
       update: jest.fn(),
@@ -36,7 +36,7 @@ describe('Orders Sync Function tests', () => {
   });
 
   test('Should log a camsError if handleTimer throws a CamsError', async () => {
-    jest.spyOn(factory, 'getOrdersRepository').mockReturnValue({
+    jest.spyOn(Factory, 'getOrdersRepository').mockReturnValue({
       search: jest.fn(),
       read: jest.fn(),
       update: jest.fn(),
