@@ -1,12 +1,12 @@
-import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { SyncOrdersStatus } from '../../../lib/use-cases/orders/orders';
-import handler from './orders-manual-sync.function';
+import { LoggerImpl } from '../../../../lib/adapters/services/logger.service';
+import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { OrdersController } from '../../../../lib/controllers/orders/orders.controller';
+import { SyncOrdersStatus } from '../../../../lib/use-cases/orders/orders';
 import {
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
-} from '../../azure/testing-helpers';
+} from '../../../azure/testing-helpers';
+import handler from './orders-manual-sync.function';
 
 const syncResponse: SyncOrdersStatus = {
   options: {
