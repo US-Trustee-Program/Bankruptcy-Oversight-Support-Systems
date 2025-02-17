@@ -1,11 +1,11 @@
-import AcmsOrdersController from '../../../../lib/controllers/acms-orders/acms-orders.controller';
-import migrationConsolidation from './migrateConsolidation';
-import { createMockAzureFunctionContext } from '../../../azure/testing-helpers';
-import { CamsError } from '../../../../lib/common-errors/cams-error';
+import { CamsError } from '../../../../../lib/common-errors/cams-error';
+import AcmsOrdersController from '../../../../../lib/controllers/acms-orders/acms-orders.controller';
 import {
   AcmsEtlQueueItem,
   AcmsTransformationResult,
-} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
+} from '../../../../../lib/use-cases/dataflows/migrate-consolidations';
+import { createMockAzureFunctionContext } from '../../../../azure/testing-helpers';
+import migrationConsolidation from './migrateConsolidation';
 
 describe('getConsolidations test', () => {
   afterEach(() => {

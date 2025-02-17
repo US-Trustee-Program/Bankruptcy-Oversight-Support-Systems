@@ -1,21 +1,12 @@
-import { InvocationContext, output } from '@azure/functions';
-import ContextCreator from '../../../azure/application-context-creator';
-import AcmsOrdersController from '../../../../lib/controllers/acms-orders/acms-orders.controller';
-import { getCamsError } from '../../../../lib/common-errors/error-utilities';
-import { CamsError } from '../../../../lib/common-errors/cams-error';
-import { isAcmsEtlQueueItem } from '../../../../lib/use-cases/dataflows/migrate-consolidations';
+import { InvocationContext } from '@azure/functions';
+import ContextCreator from '../../../../azure/application-context-creator';
+import AcmsOrdersController from '../../../../../lib/controllers/acms-orders/acms-orders.controller';
+import { isAcmsEtlQueueItem } from '../../../../../lib/use-cases/dataflows/migrate-consolidations';
+import { CamsError } from '../../../../../lib/common-errors/cams-error';
+import { getCamsError } from '../../../../../lib/common-errors/error-utilities';
+import { failQueue, successQueue } from '../migrate-consolidations-constants';
 
 const MODULE_NAME = 'IMPORT_ACTION_MIGRATE_CONSOLIDATION';
-
-const successQueue = output.storageQueue({
-  queueName: 'migration-task-success',
-  connection: 'AzureWebJobsStorage',
-});
-
-const failQueue = output.storageQueue({
-  queueName: 'migration-task-fail',
-  connection: 'AzureWebJobsStorage',
-});
 
 async function migrateConsolidation(message: unknown, context: InvocationContext) {
   const logger = ContextCreator.getLogger(context);

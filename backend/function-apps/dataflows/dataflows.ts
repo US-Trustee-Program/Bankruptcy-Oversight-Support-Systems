@@ -1,10 +1,13 @@
 import { setupMigrateCases } from './import/migrate-cases';
+import { setupMigrateConsolidations } from './import/migrate-consolidations';
 import { setupSyncCases } from './import/sync-cases';
 
-// This can be disabled/removed once case migration is complete.
-setupMigrateCases();
 setupSyncCases();
 
-// TODO: Re-enable setup so consolidation migrations can be executed.
-// import { migrationSetup } from './migration/migration';
-// migrationSetup();
+// Migrations can be removed once they are complete.
+
+const enableMigrateCases = true;
+if (enableMigrateCases) setupMigrateCases();
+
+const enableMigrateConsolidations = true;
+if (enableMigrateConsolidations) setupMigrateConsolidations();
