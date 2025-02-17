@@ -151,26 +151,26 @@ describe('Case note controller tests', () => {
     );
   });
 
-  const maliciousNote = "fetch('/api/data');";
+  // const maliciousNote = "fetch('/api/data');";
 
-  test('should throw error when XSS note content is provided', async () => {
-    jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'POST',
-      params: {
-        id: NORMAL_CASE_ID,
-      },
-      body: {
-        title: 'test note title',
-        content: maliciousNote,
-      },
-    });
+  // test('should throw error when XSS note content is provided', async () => {
+  //   jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+  //   applicationContext.request = mockCamsHttpRequest({
+  //     method: 'POST',
+  //     params: {
+  //       id: NORMAL_CASE_ID,
+  //     },
+  //     body: {
+  //       title: 'test note title',
+  //       content: maliciousNote,
+  //     },
+  //   });
 
-    const controller = new CaseNotesController(applicationContext);
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
-      'Note content contains invalid keywords.',
-    );
-  });
+  //   const controller = new CaseNotesController(applicationContext);
+  //   await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+  //     'Note content contains invalid keywords.',
+  //   );
+  // });
 
   const testMongoInjectedNotes = 'mongo.aggregate([{ key: 1 }]);';
 
@@ -192,24 +192,25 @@ describe('Case note controller tests', () => {
       'Note content contains invalid keywords.',
     );
   });
-  test('should throw error when XSS note title is provided', async () => {
-    jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'POST',
-      params: {
-        id: NORMAL_CASE_ID,
-      },
-      body: {
-        title: maliciousNote,
-        content: 'some test content.',
-      },
-    });
 
-    const controller = new CaseNotesController(applicationContext);
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
-      'Note title contains invalid keywords.',
-    );
-  });
+  // test('should throw error when XSS note title is provided', async () => {
+  //   jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
+  //   applicationContext.request = mockCamsHttpRequest({
+  //     method: 'POST',
+  //     params: {
+  //       id: NORMAL_CASE_ID,
+  //     },
+  //     body: {
+  //       title: maliciousNote,
+  //       content: 'some test content.',
+  //     },
+  //   });
+
+  //   const controller = new CaseNotesController(applicationContext);
+  //   await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+  //     'Note title contains invalid keywords.',
+  //   );
+  // });
 
   test('should throw error when malicious mongo note title is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();

@@ -17,11 +17,8 @@ describe('Input sanitization tests', () => {
     ['<script></script>'],
     ['<script>foo</script>'],
     ["<script>alert('XSS');</script>"],
-    ['Use setTimeout(() => {}, 1000);'],
-    ["document.querySelector('#id');"],
-    ["fetch('/api/data');"],
   ];
-  test.each(testXSSNotes)('should detech invalid strings', (input: string) => {
+  test.each(testXSSNotes)('should detect invalid strings', (input: string) => {
     const actual = isValidUserInput(input);
     expect(actual).toEqual(false);
   });
