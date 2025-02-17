@@ -9,5 +9,5 @@ setupSyncCases();
 const enableMigrateCases = true;
 if (enableMigrateCases) setupMigrateCases();
 
-const enableMigrateConsolidations = true;
+const enableMigrateConsolidations = false;
 if (enableMigrateConsolidations) setupMigrateConsolidations();
