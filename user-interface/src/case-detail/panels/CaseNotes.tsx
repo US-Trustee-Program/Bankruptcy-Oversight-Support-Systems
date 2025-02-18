@@ -81,11 +81,14 @@ export default function CaseNotes(props: CaseNotesProps) {
     LocalStorage.clearForm(formKey);
   }
 
+  function disableFormFields(disabled: boolean) {
+    titleInputRef.current?.disable(disabled);
+    contentInputRef.current?.disable(disabled);
+    buttonRef.current?.disableButton(disabled);
+  }
   async function putCaseNote() {
     if (formData.title.length > 0 && formData.content.length > 0) {
-      titleInputRef.current?.disable(true);
-      contentInputRef.current?.disable(true);
-      buttonRef.current?.disableButton(true);
+      disableFormFields(true);
       const caseNoteInput: CaseNoteInput = {
         caseId: props.caseId,
         title: formData.title,
@@ -94,19 +97,16 @@ export default function CaseNotes(props: CaseNotesProps) {
       api
         .postCaseNote(caseNoteInput)
         .then(() => {
-          clearCaseNoteForm();
           if (props.onNoteCreation) props.onNoteCreation();
+          disableFormFields(false);
+          clearCaseNoteForm();
           // only clear the form on success
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
             globalAlert?.error('Could not insert case note.');
           }
-        })
-        .finally(() => {
-          titleInputRef.current?.disable(false);
-          contentInputRef.current?.disable(false);
-          buttonRef.current?.disableButton(false);
+          disableFormFields(false);
         });
     } else {
       globalAlert?.error('All case note input fields are required to submit a note.');
