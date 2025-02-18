@@ -78,15 +78,19 @@ describe('Sync Orders Function tests', () => {
 });
 
 describe('Sync Orders Function tests #2', () => {
-  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-  const context = require('azure-function-context-mock');
+  // const context = require('azure-function-context-mock');
+  const context = createMockAzureFunctionContext({
+    MONGO_CONNECTION_STRING: 'fake',
+    ADMIN_KEY: 'ZZZ',
+  });
 
   test('Should call orders controller method syncOrders', async () => {
     const { camsHttpResponse } = buildTestResponseSuccess<SyncOrdersStatus>({ data: syncResponse });
     const request = createMockAzureFunctionRequest({
-      url: 'http://domain/api/sync-orders',
+      url: 'http://domain/import/sync-orders',
       params: {},
       method: 'POST',
+      headers: { Authorization: 'ApiKey ZZZ' },
     });
     const syncOrders = jest
       .spyOn(OrdersController.prototype, 'syncOrders')
@@ -97,9 +101,10 @@ describe('Sync Orders Function tests #2', () => {
 
   test('Should log a camsError if syncOrders throws a CamsError', async () => {
     const request = createMockAzureFunctionRequest({
-      url: 'http://domain/api/sync-orders',
+      url: 'http://domain/import/sync-orders',
       params: {},
       method: 'POST',
+      headers: { Authorization: 'ApiKey ZZZ' },
     });
 
     const syncOrders = jest
