@@ -56,11 +56,6 @@ function translatePagination(query: Pagination) {
 
   result.push({
     $facet: {
-      metadata: [
-        {
-          $count: 'total',
-        },
-      ],
       data: [
         { $skip: query.skip },
         {

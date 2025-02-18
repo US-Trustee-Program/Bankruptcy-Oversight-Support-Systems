@@ -184,7 +184,6 @@ describe('Mongo Query Renderer', () => {
               $limit: 25,
             },
           ],
-          metadata: [{ $count: 'total' }],
         },
       },
     ];
