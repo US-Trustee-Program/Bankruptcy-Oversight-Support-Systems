@@ -188,3 +188,53 @@ resource usersCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
     }
   }
 }
+
+resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'cases'
+  properties: {
+    resource: {
+      id: 'cases'
+      shardKey: {
+        caseId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['caseId']
+          }
+        }
+        {
+          key: {
+            keys: ['caseNumber']
+          }
+        }
+        {
+          key: {
+            keys: ['chapter']
+          }
+        }
+        {
+          key: {
+            keys: ['courtDivisionCode']
+          }
+        }
+        {
+          key: {
+            keys: ['documentType']
+          }
+        }
+        {
+          key: {
+            keys: ['dateFiled', 'caseNumber']
+          }
+        }
+      ]
+    }
+  }
+}
