@@ -29,7 +29,7 @@ export function createMockAzureFunctionRequest(
     method: method ?? 'GET',
     url: 'http://localhost:3000',
     body: { string: requestBody },
-    headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
+    headers: { Authorization: 'Bearer ' + MockData.getJwt(), ...headers },
     ...other,
   };
   return new HttpRequest(requestInit);

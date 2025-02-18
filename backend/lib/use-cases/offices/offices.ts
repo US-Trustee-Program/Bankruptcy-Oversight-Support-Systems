@@ -13,7 +13,7 @@ import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constant
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
 
-const MODULE_NAME = 'OFFICES_USE_CASE';
+const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
 
 export class OfficesUseCase {

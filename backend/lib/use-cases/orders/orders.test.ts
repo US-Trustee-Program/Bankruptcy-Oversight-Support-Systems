@@ -574,7 +574,7 @@ describe('Orders use case', () => {
     const expectedMap = new Map([[caseId, assignments]]);
 
     jest
-      .spyOn(MockMongoRepository.prototype, 'findAssignmentsByCaseId')
+      .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
       .mockResolvedValue(expectedMap);
 
     jest

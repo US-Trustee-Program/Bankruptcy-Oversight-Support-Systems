@@ -1,11 +1,11 @@
-import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import timerTrigger from './office-staff-sync.function';
 import { Timer } from '@azure/functions';
+import { timerTrigger } from './sync-office-staff';
 import { createMockAzureFunctionContext } from '../../azure/testing-helpers';
 import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
+import { CamsError } from '../../../lib/common-errors/cams-error';
+import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 
-describe('Office Staff Sync Function tests', () => {
+describe('Sync Office Staff Function tests', () => {
   const context = createMockAzureFunctionContext();
   const timer: Timer = {
     isPastDue: false,

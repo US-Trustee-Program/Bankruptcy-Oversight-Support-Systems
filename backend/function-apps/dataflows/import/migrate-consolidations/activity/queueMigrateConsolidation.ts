@@ -1,18 +1,14 @@
-import { InvocationContext, output } from '@azure/functions';
+import { InvocationContext } from '@azure/functions';
 import {
   AcmsEtlQueueItem,
   AcmsPredicate,
-} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
-import ContextCreator from '../../../azure/application-context-creator';
-import AcmsOrdersController from '../../../../lib/controllers/acms-orders/acms-orders.controller';
-import { getCamsError } from '../../../../lib/common-errors/error-utilities';
+} from '../../../../../lib/use-cases/dataflows/migrate-consolidations';
+import ContextCreator from '../../../../azure/application-context-creator';
+import AcmsOrdersController from '../../../../../lib/controllers/acms-orders/acms-orders.controller';
+import { getCamsError } from '../../../../../lib/common-errors/error-utilities';
+import { migrationQueue } from '../migrate-consolidations-constants';
 
-const MODULE_NAME = 'IMPORT_ACTION_GET_CONSOLIDATIONS';
-
-const etlQueueOutput = output.storageQueue({
-  queueName: 'migration-task',
-  connection: 'AzureWebJobsStorage',
-});
+const MODULE_NAME = 'IMPORT-ACTION-GET-CONSOLIDATIONS';
 
 async function queueMigrateConsolidation(
   predicate: AcmsPredicate,
@@ -36,7 +32,7 @@ async function queueMigrateConsolidation(
       queueItems.push(queueItem);
     }
     logger.debug(MODULE_NAME, `Putting ${leadCaseIds.length} items in the queue.`, leadCaseIds);
-    invocationContext.extraOutputs.set(etlQueueOutput, queueItems);
+    invocationContext.extraOutputs.set(migrationQueue, queueItems);
     return leadCaseIds;
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME, 'Failed to get lead case ids.');

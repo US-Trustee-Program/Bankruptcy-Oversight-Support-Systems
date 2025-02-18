@@ -8,7 +8,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import MockUsers from '../../../../common/src/cams/test-utilities/mock-user';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 
-const MODULE_NAME = 'MOCK_USER_GROUP_GATEWAY';
+const MODULE_NAME = 'MOCK-USER-GROUP-GATEWAY';
 
 const camsUserGroups = new Map<string, CamsUserGroup>();
 

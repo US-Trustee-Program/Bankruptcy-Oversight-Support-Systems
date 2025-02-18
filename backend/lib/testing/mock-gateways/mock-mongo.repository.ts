@@ -42,7 +42,7 @@ export class MockMongoRepository
     return new MockMongoRepository();
   }
 
-  findAssignmentsByCaseId(..._ignore): Promise<any> {
+  getAssignmentsForCases(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 

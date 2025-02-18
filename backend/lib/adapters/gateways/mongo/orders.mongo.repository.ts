@@ -6,7 +6,7 @@ import QueryBuilder, { Query } from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME = 'ORDERS_MONGO_REPOSITORY';
+const MODULE_NAME = 'ORDERS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
 const { contains, equals, orderBy } = QueryBuilder;

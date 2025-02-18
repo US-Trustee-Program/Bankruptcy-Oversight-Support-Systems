@@ -5,7 +5,26 @@ import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-u
 import { getCasesGateway, getCasesRepository } from '../../factory';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
-const MODULE_NAME = 'EXPORT_AND_LOAD';
+const MODULE_NAME = 'EXPORT-AND-LOAD';
+
+async function exportAndLoad(
+  context: ApplicationContext,
+  events: CaseSyncEvent[],
+): Promise<CaseSyncEvent[]> {
+  const factory = getCasesGateway(context);
+  const repo = getCasesRepository(context);
+  for (const event of events) {
+    try {
+      event.bCase = await factory.getCaseDetail(context, event.caseId);
+      await repo.syncDxtrCase(
+        createAuditRecord<SyncedCase>({ ...event.bCase, documentType: 'SYNCED_CASE' }),
+      );
+    } catch (error) {
+      event.error = error;
+    }
+  }
+  return events;
+}
 
 async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
@@ -41,6 +60,7 @@ async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
 }
 
 const ExportAndLoadCase = {
+  exportAndLoad,
   exportCase,
   loadCase,
 };

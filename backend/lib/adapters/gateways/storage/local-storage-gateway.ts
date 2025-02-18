@@ -3,7 +3,7 @@ import { StorageGateway } from '../../types/storage';
 import { UstpDivisionMeta } from '../../../../../common/src/cams/offices';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
-const MODULE_NAME = 'LOCAL_STORAGE_GATEWAY';
+const MODULE_NAME = 'LOCAL-STORAGE-GATEWAY';
 
 let roleMapping: Map<string, CamsRole>;
 export const ROLE_MAPPING_PATH = '/rolemapping.csv';

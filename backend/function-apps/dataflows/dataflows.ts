@@ -1,9 +1,24 @@
-import { setupMigrateCases3 } from './import/migrate-cases-3';
+import * as dotenv from 'dotenv';
+import { initializeApplicationInsights } from '../azure/app-insights';
 
-// This can be disabled/removed once migration is complete.
-// setupMigrateCases();
-setupMigrateCases3();
+import { setupMigrateCases } from './import/migrate-cases';
+import { setupMigrateConsolidations } from './import/migrate-consolidations';
+import { setupSyncCases } from './import/sync-cases';
+import { setupSyncOrders } from './import/sync-orders';
+import { setupSyncOfficeStaff } from './import/sync-office-staff';
 
-// TODO: Re-enable setup so migrations can be executed.
-// import { migrationSetup } from './migration/migration';
-// migrationSetup();
+// Setup environment and AppInsights.
+dotenv.config();
+initializeApplicationInsights();
+
+// Setup the recurring syncronization.
+setupSyncCases();
+setupSyncOfficeStaff();
+setupSyncOrders();
+
+// Setup migrations. Migrations can be removed once they are complete.
+const enableMigrateCases = true;
+if (enableMigrateCases) setupMigrateCases();
+
+const enableMigrateConsolidations = false;
+if (enableMigrateConsolidations) setupMigrateConsolidations();

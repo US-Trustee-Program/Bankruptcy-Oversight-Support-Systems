@@ -211,8 +211,8 @@ describe('UsersHelpers tests', () => {
     };
 
     const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id, { pimUser });
-    expect(user).toEqual(expected);
     expect(idpSpy).toHaveBeenCalled();
     expect(pimSpy).not.toHaveBeenCalled();
+    expect(user).toEqual(expected);
   });
 });

@@ -1,12 +1,12 @@
 import { HttpRequest } from '@azure/functions';
-import { buildUniqueName, isAuthorized } from './dataflows-common';
+import { buildFunctionName, isAuthorized } from './dataflows-common';
 
 describe('Dataflows Common', () => {
   describe('buildUniqueName', () => {
     test('should concatenate arguments with a hyphen delimter', () => {
-      expect(buildUniqueName()).toEqual('');
-      expect(buildUniqueName('one')).toEqual('one');
-      expect(buildUniqueName('two', 'three')).toEqual('two-three');
+      expect(buildFunctionName()).toEqual('');
+      expect(buildFunctionName('one')).toEqual('one');
+      expect(buildFunctionName('two', 'three')).toEqual('two-three');
     });
   });
 

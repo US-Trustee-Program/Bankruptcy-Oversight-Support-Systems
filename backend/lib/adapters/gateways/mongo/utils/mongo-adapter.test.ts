@@ -6,7 +6,7 @@ import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 
 const { and, orderBy } = QueryBuilder;
 
-const MODULE_NAME = 'TEST_MODULE';
+const MODULE_NAME = 'TEST-MODULE';
 
 const find = jest.fn();
 const findOne = jest.fn();

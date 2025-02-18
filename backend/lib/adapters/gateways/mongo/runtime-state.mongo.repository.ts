@@ -8,7 +8,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME = 'RUNTIME_STATE_MONGO_REPOSITORY';
+const MODULE_NAME = 'RUNTIME-STATE-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';
 
 const { equals } = QueryBuilder;

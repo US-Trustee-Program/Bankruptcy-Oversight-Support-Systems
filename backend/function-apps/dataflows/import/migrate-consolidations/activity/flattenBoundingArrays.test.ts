@@ -1,9 +1,9 @@
 import { InvocationContext } from '@azure/functions';
+import module from './flattenBoundingArrays';
 import {
   AcmsBounds,
   AcmsPredicate,
-} from '../../../../lib/use-cases/dataflows/migrate-consolidations';
-import module from './flattenBoundingArrays';
+} from '../../../../../lib/use-cases/dataflows/migrate-consolidations';
 
 describe('Flatten bounding arrays activity', () => {
   test('should transform bounding arrays into predicates', async () => {
