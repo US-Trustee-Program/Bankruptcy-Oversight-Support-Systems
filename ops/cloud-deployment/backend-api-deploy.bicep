@@ -245,16 +245,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
-    functionAppConfig: {
-      scaleAndConcurrency: {
-        alwaysReady: [
-          {
-            instanceCount: 1
-          }
-        ]
-        maximumInstanceCount: 4
-      }
-    }
     minimumElasticInstanceCount: 1
   }
   dependsOn: [
