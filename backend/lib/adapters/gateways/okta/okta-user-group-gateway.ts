@@ -9,7 +9,7 @@ import OktaHumble, {
 } from '../../../humble-objects/okta-humble';
 import UsersHelpers from '../../../use-cases/users/users.helpers';
 
-const MODULE_NAME = 'OKTA_USER_GROUP_GATEWAY';
+const MODULE_NAME = 'OKTA-USER-GROUP-GATEWAY';
 const MAX_PAGE_SIZE = 200;
 
 class OktaUserGroupGateway implements UserGroupGateway {

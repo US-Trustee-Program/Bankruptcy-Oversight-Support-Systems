@@ -33,7 +33,7 @@ async function storeRuntimeState(context: ApplicationContext, lastTxId?: string)
     const error = getCamsError(
       originalError,
       MODULE_NAME,
-      `Failed while storing the case sync runtime state.`,
+      'Failed while storing the case sync runtime state.',
     );
     context.logger.camsError(error);
   }

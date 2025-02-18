@@ -1,8 +1,8 @@
-import AcmsOrdersController from '../../../../lib/controllers/acms-orders/acms-orders.controller';
+import { CamsError } from '../../../../../lib/common-errors/cams-error';
+import AcmsOrdersController from '../../../../../lib/controllers/acms-orders/acms-orders.controller';
+import { AcmsPredicate } from '../../../../../lib/use-cases/dataflows/migrate-consolidations';
+import { createMockAzureFunctionContext } from '../../../../azure/testing-helpers';
 import queueMigrateConsolidation from './queueMigrateConsolidation';
-import { AcmsPredicate } from '../../../../lib/use-cases/dataflows/migrate-consolidations';
-import { createMockAzureFunctionContext } from '../../../azure/testing-helpers';
-import { CamsError } from '../../../../lib/common-errors/cams-error';
 
 describe('getConsolidations test', () => {
   afterEach(() => {

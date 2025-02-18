@@ -1,17 +1,17 @@
 import * as dotenv from 'dotenv';
 import * as df from 'durable-functions';
 import { HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
-import { MAIN_ORCHESTRATOR } from '../migration';
-import { TriggerRequest } from '../../../../lib/use-cases/dataflows/migrate-consolidations';
-import { BadRequestError } from '../../../../lib/common-errors/bad-request';
-import { toAzureError } from '../../../azure/functions';
-import ContextCreator from '../../../azure/application-context-creator';
-import { isAuthorized } from '../../dataflows-common';
-import { UnauthorizedError } from '../../../../lib/common-errors/unauthorized-error';
+import { isAuthorized } from '../../../dataflows-common';
+import { UnauthorizedError } from '../../../../../lib/common-errors/unauthorized-error';
+import { TriggerRequest } from '../../../../../lib/use-cases/dataflows/migrate-consolidations';
+import { BadRequestError } from '../../../../../lib/common-errors/bad-request';
+import { toAzureError } from '../../../../azure/functions';
+import ContextCreator from '../../../../azure/application-context-creator';
+import { MAIN_ORCHESTRATOR } from '../migrate-consolidations-constants';
 
 dotenv.config();
 
-const MODULE_NAME = 'ACMS_MIGRATION_TRIGGER';
+const MODULE_NAME = 'ACMS-MIGRATION-TRIGGER';
 
 export default async function httpStart(
   request: HttpRequest,
