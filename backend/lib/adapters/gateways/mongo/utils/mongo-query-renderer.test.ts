@@ -1,4 +1,4 @@
-import QueryBuilder from '../../../../query/query-builder';
+import QueryBuilder, { Sort } from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
@@ -23,6 +23,7 @@ describe('Mongo Query Renderer', () => {
     not,
     regex,
     orderBy,
+    paginate,
   } = QueryBuilder;
 
   test('should render a mongo query JSON', () => {
@@ -149,5 +150,62 @@ describe('Mongo Query Renderer', () => {
       foo: 1,
       bar: -1,
     });
+  });
+
+  test('should render a paginated aggregate mongo query JSON', () => {
+    const expected = [
+      {
+        $match: {
+          $or: [
+            { uno: { $eq: 'theValue' } },
+            {
+              $and: [
+                { two: { $eq: 45 } },
+                { three: { $eq: true } },
+                { $or: [{ uno: { $eq: 'hello' } }, { uno: { $eq: 'something' } }] },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        $sort: {
+          dateFiled: -1,
+          caseId: -1,
+        },
+      },
+      {
+        $facet: {
+          data: [
+            {
+              $skip: 0,
+            },
+            {
+              $limit: 25,
+            },
+          ],
+        },
+      },
+    ];
+
+    const baseQuery = or(
+      equals<string>('uno', 'theValue'),
+      and(
+        equals<Foo['two']>('two', 45),
+        equals('three', true),
+        or(equals('uno', 'hello'), equals('uno', 'something')),
+      ),
+    );
+
+    const sort: Sort = {
+      attributes: [
+        ['dateFiled', 'DESCENDING'],
+        ['caseId', 'DESCENDING'],
+      ],
+    };
+
+    const actual = toMongoQuery(paginate(0, 25, [baseQuery], sort));
+
+    expect(actual).toEqual(expected);
   });
 });
