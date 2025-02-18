@@ -192,6 +192,7 @@ describe('Case note controller tests', () => {
       'Note content contains invalid keywords.',
     );
   });
+
   test('should throw error when XSS note title is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
     applicationContext.request = mockCamsHttpRequest({
