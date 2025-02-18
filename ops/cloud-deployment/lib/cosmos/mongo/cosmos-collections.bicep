@@ -201,21 +201,32 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
       indexes: [
         {
           key: {
-            keys: [
-              '_id'
-            ]
+            keys: ['_id']
           }
         }
         {
           key: {
-            keys: [
-              '$**'
-            ]
+            keys: ['caseId']
           }
         }
         {
           key: {
-            keys: ['documentType', 'chapter', 'courtDivisionCode', 'dateFiled', 'caseNumber']
+            keys: ['caseNumber']
+          }
+        }
+        {
+          key: {
+            keys: ['chapter']
+          }
+        }
+        {
+          key: {
+            keys: ['courtDivisionCode']
+          }
+        }
+        {
+          key: {
+            keys: ['documentType']
           }
         }
         {
