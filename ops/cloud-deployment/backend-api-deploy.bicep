@@ -223,6 +223,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: apiFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
+    minimumElasticInstanceCount: 1
   }
   dependsOn: [
     appConfigIdentity
@@ -254,6 +255,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
         maximumInstanceCount: 4
       }
     }
+    minimumElasticInstanceCount: 1
   }
   dependsOn: [
     appConfigIdentity
