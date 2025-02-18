@@ -60,7 +60,6 @@ param dataflowsFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
 
-
 param privateEndpointSubnetId string
 
 param mssqlRequestTimeout string
@@ -149,9 +148,9 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   sku: planTypeToSkuMap[planType]
   kind: 'linux'
   properties: {
-    perSiteScaling: false
-    elasticScaleEnabled: false
-    maximumElasticWorkerCount: 1
+    perSiteScaling: true
+    elasticScaleEnabled: true
+    maximumElasticWorkerCount: 4
     isSpot: false
     reserved: true // set true for Linux
     isXenon: false
@@ -231,7 +230,6 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   ]
 }
 
-
 resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: dataflowsFunctionName
   location: location
@@ -246,6 +244,16 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
+    functionAppConfig: {
+      scaleAndConcurrency: {
+        alwaysReady: [
+          {
+            instanceCount: 1
+          }
+        ]
+        maximumInstanceCount: 4
+      }
+    }
   }
   dependsOn: [
     appConfigIdentity
@@ -255,7 +263,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 
 //Create App Insights
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
-  name:'appi-${apiFunctionName}-module'
+  name: 'appi-${apiFunctionName}-module'
   scope: resourceGroup()
   params: {
     actionGroupName: actionGroupName
@@ -271,7 +279,7 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
 }
 
 module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
-  name:'appi-${dataflowsFunctionName}-module'
+  name: 'appi-${dataflowsFunctionName}-module'
   scope: resourceGroup()
   params: {
     actionGroupName: actionGroupName
@@ -399,12 +407,21 @@ var baseApplicationSettings = concat(
     ? [
         { name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }
         { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }
-        { name: 'ACMS_MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)' }
-        { name: 'ACMS_MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)' }
+        {
+          name: 'ACMS_MSSQL_USER'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)'
+        }
+        {
+          name: 'ACMS_MSSQL_PASS'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
+        }
       ]
     : [
         { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
-        { name: 'ACMS_MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'}
+        {
+          name: 'ACMS_MSSQL_CLIENT_ID'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
+        }
       ]
 )
 
@@ -418,8 +435,8 @@ var dataflowsApplicationSettings = concat(
   ],
   baseApplicationSettings,
   createApplicationInsights
-  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
-  : []
+    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
+    : []
 )
 
 //API Function Application Settings
@@ -432,8 +449,8 @@ var apiApplicationSettings = concat(
   ],
   baseApplicationSettings,
   createApplicationInsights
-  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
-  : []
+    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
+    : []
 )
 
 var ipSecurityRestrictionsRules = concat(
@@ -539,15 +556,18 @@ resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: concat([
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ], middlewareIpSecurityRestrictionsRules)
+    scmIpSecurityRestrictions: concat(
+      [
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
+        }
+      ],
+      middlewareIpSecurityRestrictionsRules
+    )
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
