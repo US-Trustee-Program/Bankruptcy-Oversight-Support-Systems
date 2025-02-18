@@ -42,26 +42,30 @@ function translateConjunction(query: Conjunction) {
 
 function translatePagination(query: Pagination) {
   const match = renderQuery(query.values)[0];
-  return [
-    {
-      $match: match,
+  const result = [];
+
+  result.push({
+    $match: match,
+  });
+
+  if (Object.keys(query).includes('sort')) {
+    result.push({
+      $sort: toMongoSort(query.sort),
+    });
+  }
+
+  result.push({
+    $facet: {
+      data: [
+        { $skip: query.skip },
+        {
+          $limit: query.limit,
+        },
+      ],
     },
-    {
-      $facet: {
-        metadata: [
-          {
-            $count: 'total',
-          },
-        ],
-        data: [
-          { $skip: query.skip },
-          {
-            $limit: query.limit,
-          },
-        ],
-      },
-    },
-  ];
+  });
+
+  return result;
 }
 
 function renderQuery(query: Query) {
