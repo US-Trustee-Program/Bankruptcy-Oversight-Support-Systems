@@ -323,7 +323,7 @@ describe('Cases repository', () => {
         {
           attributes: [
             ['dateFiled', 'DESCENDING'],
-            ['caseId', 'DESCENDING'],
+            ['caseNumber', 'DESCENDING'],
           ],
         },
       ),
@@ -364,7 +364,7 @@ describe('Cases repository', () => {
         {
           attributes: [
             ['dateFiled', 'DESCENDING'],
-            ['caseId', 'DESCENDING'],
+            ['caseNumber', 'DESCENDING'],
           ],
         },
       ),
@@ -409,7 +409,7 @@ describe('Cases repository', () => {
         {
           attributes: [
             ['dateFiled', 'DESCENDING'],
-            ['caseId', 'DESCENDING'],
+            ['caseNumber', 'DESCENDING'],
           ],
         },
       ),
