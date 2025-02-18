@@ -295,9 +295,11 @@ async function patchTransferOrderApproval(data: Partial<FlexibleTransferOrderAct
 }
 
 async function patchTransferOrderRejection(data: Partial<TransferOrderActionRejection>) {
-  if (data.reason && isValidUserInput(data.reason)) {
+  if (data.reason) {
     data.reason = sanitizeText(data.reason);
-    await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+    if (isValidUserInput(data.reason)) {
+      await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+    }
   }
 }
 
@@ -309,12 +311,14 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 }
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
-  if (data.reason && isValidUserInput(data.reason)) {
+  if (data.reason) {
     data.reason = sanitizeText(data.reason);
-    return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
-      '/consolidations/reject',
-      data,
-    );
+    if (isValidUserInput(data.reason)) {
+      return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
+        '/consolidations/reject',
+        data,
+      );
+    }
   }
 }
 
