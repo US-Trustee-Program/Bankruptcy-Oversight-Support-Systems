@@ -324,7 +324,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         const sortSpec: Sort = {
           attributes: [
             ['dateFiled', 'DESCENDING'],
-            ['caseId', 'DESCENDING'],
+            ['caseNumber', 'DESCENDING'],
           ],
         };
 
