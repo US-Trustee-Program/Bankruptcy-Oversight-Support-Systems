@@ -7,6 +7,7 @@ describe('Input sanitization tests', () => {
     ['This is a safe string.'],
     ["Let's fetch some data."],
     ['This is just a plain sentence.'],
+    ['If you have nothing better to do, Count (or Prince), something--something.'],
   ];
   test.each(validInputs)('should pass notes through', (input: string) => {
     const actual = isValidUserInput(input);
@@ -17,6 +18,7 @@ describe('Input sanitization tests', () => {
     ['<script></script>'],
     ['<script>foo</script>'],
     ["fetch('/api/data');"],
+    ["eval('/api/data');"],
     ["document.querySelector('#id');"],
     ["<script>alert('XSS');</script>"],
   ];
