@@ -120,10 +120,10 @@ describe('Mongo adapter', () => {
     };
     aggregate.mockResolvedValue([
       {
-        metadata: [{ total: 3 }],
         data: [{}, {}, {}],
       },
     ]);
+    countDocuments.mockResolvedValue(3);
 
     const item = await adapter.paginatedFind({
       limit: 25,
