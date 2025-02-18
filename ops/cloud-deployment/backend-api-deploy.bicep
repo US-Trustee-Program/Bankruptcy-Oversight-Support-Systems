@@ -55,8 +55,8 @@ param apiFunctionName string
 param apiFunctionSubnetId string
 
 param dataflowsFunctionName string
+
 param dataflowsFunctionSubnetId string
-param dataflowsFunctionInstanceCount int = 4
 
 param virtualNetworkResourceGroupName string
 
@@ -246,7 +246,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
-    minimumElasticInstanceCount: dataflowsFunctionInstanceCount
   }
   dependsOn: [
     appConfigIdentity
