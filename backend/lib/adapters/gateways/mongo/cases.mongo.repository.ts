@@ -18,6 +18,7 @@ import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/erro
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -332,7 +333,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         const query = QueryBuilder.build<Pagination>(subQuery);
         return await this.getAdapter<SyncedCase>().paginatedFind(query);
       } else {
-        throw new Error('We have a problem with predicate'); //TODO: Appropriately construct this error and logic
+        throw new CamsError(MODULE_NAME, {
+          message: 'Case Search requires a pagination predicate with a valid limit and offset',
+        });
       }
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
