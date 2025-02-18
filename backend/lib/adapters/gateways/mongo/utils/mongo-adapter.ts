@@ -26,7 +26,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery(query);
     try {
       if (!isPagination(query)) {
-        throw new Error('something placeholder');
+        throw new Error('Trying to paginate for a query that is not a pagination query');
       }
 
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);

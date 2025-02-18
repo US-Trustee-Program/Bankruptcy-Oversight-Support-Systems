@@ -435,6 +435,26 @@ describe('Cases repository', () => {
     );
   });
 
+  test('should throw error when paginatedFind has invalid limit and offset', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      excludeChildConsolidations: false,
+      limit: 1,
+      offset: -1,
+    };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      MockData.getSyncedCase({ override: { caseId: caseId2 } }),
+    ];
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .mockResolvedValue({ data: expectedSyncedCaseArray });
+    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
+      'Case Search requires a pagination predicate with a valid limit and offset',
+    );
+  });
+
   test('getConsolidationChildCaseIds should throw error when find throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
