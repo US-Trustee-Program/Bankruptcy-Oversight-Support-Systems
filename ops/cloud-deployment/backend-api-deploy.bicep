@@ -150,7 +150,7 @@ resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   properties: {
     perSiteScaling: true
     elasticScaleEnabled: true
-    maximumElasticWorkerCount: 4
+    maximumElasticWorkerCount: 10
     isSpot: false
     reserved: true // set true for Linux
     isXenon: false
@@ -539,10 +539,10 @@ resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
       allowedOrigins: dataflowsCorsAllowOrigins
     }
     numberOfWorkers: 1
-    alwaysOn: true
+    alwaysOn: false
     http20Enabled: true
     functionAppScaleLimit: 4
-    minimumElasticInstanceCount: 1
+    minimumElasticInstanceCount: 0
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
