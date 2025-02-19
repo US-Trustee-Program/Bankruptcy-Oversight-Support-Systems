@@ -1,7 +1,10 @@
 param location string = resourceGroup().location
 
 @description('Application service plan name')
-param planName string
+param apiPlanName string
+
+@description('Application service plan name')
+param dataflowsPlanName string
 
 @description('Plan type to determine plan Sku')
 @allowed([
@@ -9,7 +12,9 @@ param planName string
   'B2'
   'S1'
 ])
-param planType string = 'P1v2'
+param apiPlanType string = 'P1v2'
+
+param dataflowsPlanType string = 'P1v2'
 
 var planTypeToSkuMap = {
   P1v2: {
@@ -144,8 +149,8 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
 
 resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: '${planName}-api'
-  sku: planTypeToSkuMap[planType]
+  name: apiPlanName
+  sku: planTypeToSkuMap[apiPlanType]
   kind: 'linux'
   properties: {
     perSiteScaling: true
@@ -163,8 +168,8 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 
 resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: '${planName}-dataflows'
-  sku: planTypeToSkuMap[planType]
+  name: dataflowsPlanName
+  sku: planTypeToSkuMap[dataflowsPlanType]
   kind: 'linux'
   properties: {
     perSiteScaling: true
