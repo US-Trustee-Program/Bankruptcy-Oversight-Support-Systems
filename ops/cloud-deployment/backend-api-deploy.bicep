@@ -542,7 +542,7 @@ resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     alwaysOn: false
     http20Enabled: true
     functionAppScaleLimit: 4
-    minimumElasticInstanceCount: 0
+    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
