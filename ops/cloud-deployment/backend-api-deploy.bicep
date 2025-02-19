@@ -142,9 +142,28 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
+  sku: planTypeToSkuMap[planType]
+  kind: 'linux'
+  properties: {
+    perSiteScaling: true
+    elasticScaleEnabled: true
+    maximumElasticWorkerCount: 10
+    isSpot: false
+    reserved: true // set true for Linux
+    isXenon: false
+    hyperV: false
+    targetWorkerCount: 0
+    targetWorkerSizeId: 0
+    zoneRedundant: false
+  }
+}
+
+resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+  location: location
+  name: '${planName}-dataflows'
   sku: planTypeToSkuMap[planType]
   kind: 'linux'
   properties: {
@@ -218,7 +237,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     userAssignedIdentities: userAssignedIdentities
   }
   properties: {
-    serverFarmId: servicePlan.id
+    serverFarmId: apiServicePlan.id
     enabled: true
     httpsOnly: true
     virtualNetworkSubnetId: apiFunctionSubnetId
@@ -239,7 +258,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     userAssignedIdentities: userAssignedIdentities
   }
   properties: {
-    serverFarmId: servicePlan.id
+    serverFarmId: dataflowsServicePlan.id
     enabled: true
     httpsOnly: true
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
