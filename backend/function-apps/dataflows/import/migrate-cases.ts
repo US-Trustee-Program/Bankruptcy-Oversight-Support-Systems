@@ -50,12 +50,7 @@ const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTabl
  * @param {object} message
  * @param {InvocationContext} context
  */
-async function handleStart(message: StartMessage, context: InvocationContext) {
-  if (!message.invocationId) return;
-
-  const logger = ContextCreator.getLogger(context);
-  logger.info(MODULE_NAME, `Migrating cases. Invocation id: ${message.invocationId}.`);
-
+async function handleStart(_ignore: StartMessage, context: InvocationContext) {
   const isEmpty = await emptyMigrationTable(context);
   if (!isEmpty) return;
 
