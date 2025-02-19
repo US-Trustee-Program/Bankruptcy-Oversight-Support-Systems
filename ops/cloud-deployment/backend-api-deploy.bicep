@@ -223,7 +223,6 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: apiFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
-    minimumElasticInstanceCount: 1
   }
   dependsOn: [
     appConfigIdentity
@@ -245,7 +244,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     httpsOnly: true
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
-    minimumElasticInstanceCount: 1
   }
   dependsOn: [
     appConfigIdentity
@@ -511,8 +509,8 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
-    functionAppScaleLimit: 0
-    minimumElasticInstanceCount: 0
+    functionAppScaleLimit: 1
+    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
@@ -543,8 +541,8 @@ resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
-    functionAppScaleLimit: 0
-    minimumElasticInstanceCount: 0
+    functionAppScaleLimit: 4
+    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
