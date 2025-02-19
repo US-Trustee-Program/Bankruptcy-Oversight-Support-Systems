@@ -11,9 +11,7 @@ import { ForbiddenError } from '../../lib/common-errors/forbidden-error';
 
 export const STORAGE_QUEUE_CONNECTION = 'AzureWebJobsStorage';
 
-export type StartMessage = {
-  invocationId: string;
-};
+export type StartMessage = object;
 
 export type RangeMessage = {
   start: number;
@@ -73,7 +71,7 @@ export function buildQueueName(...parts): string {
  */
 export function buildHttpTrigger(
   moduleName: string,
-  fn: (context: InvocationContext, request?: HttpRequest) => void,
+  fn: (context: InvocationContext, request?: HttpRequest) => Promise<unknown>,
 ) {
   async function httpTrigger(
     request: HttpRequest,
@@ -106,10 +104,8 @@ export function buildHttpTrigger(
  * @returns
  */
 export function buildStartQueueHttpTrigger(moduleName: string, queue: StorageQueueOutput) {
-  return buildHttpTrigger(moduleName, (context: InvocationContext) => {
-    const startMessage: StartMessage = {
-      invocationId: context.invocationId,
-    };
+  return buildHttpTrigger(moduleName, async (context: InvocationContext) => {
+    const startMessage: StartMessage = {};
     context.extraOutputs.set(queue, startMessage);
   });
 }
@@ -125,9 +121,7 @@ export function buildStartQueueHttpTrigger(moduleName: string, queue: StorageQue
  */
 export function buildStartQueueTimerTrigger(_moduleName: string, queue: StorageQueueOutput) {
   async function timerTrigger(_ignore: Timer, context: InvocationContext) {
-    const startMessage: StartMessage = {
-      invocationId: context.invocationId,
-    };
+    const startMessage: StartMessage = {};
     context.extraOutputs.set(queue, startMessage);
   }
   return timerTrigger;
