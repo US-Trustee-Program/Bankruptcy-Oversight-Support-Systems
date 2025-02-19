@@ -24,11 +24,14 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
+    const countQuery = toMongoQuery(query.values[0]);
     try {
       if (!isPagination(query)) {
-        throw new Error('something placeholder');
+        throw new Error('Trying to paginate for a query that is not a pagination query');
       }
+
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+      const totalCountPromise = this.collectionHumble.countDocuments(countQuery);
 
       const aggregationItem: CamsPaginationResponse<T> = {
         metadata: { total: 0 },
@@ -36,11 +39,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       };
 
       for await (const result of aggregationResult) {
-        aggregationItem.metadata.total = result.metadata[0].total;
         for (const doc of result.data) {
           aggregationItem.data.push(doc as CamsItem<T>);
         }
       }
+
+      aggregationItem.metadata.total = await totalCountPromise;
       return aggregationItem;
     } catch (originalError) {
       throw this.handleError(

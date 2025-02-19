@@ -11,12 +11,14 @@ import QueryBuilder, {
   ConditionOrConjunction,
   Pagination,
   Query,
+  Sort,
 } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
+import { CamsError } from '../../../common-errors/cams-error';
 
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -277,26 +279,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
     let subQuery: Query;
     try {
-      // Default to use the user's divisions when a case number is requested.
-      if (predicate.caseNumber && !predicate.divisionCodes) {
-        const caseIds = [];
-        this.context.session.user.offices.forEach((office) => {
-          office.groups.forEach((group) => {
-            group.divisions.forEach((division) => {
-              caseIds.push([division.divisionCode, predicate.caseNumber].join('-'));
-            });
-          });
-        });
-        conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
-      }
-
-      // Otherwise use the requested division codes and case number to generate caseIds.
-      if (predicate.caseNumber && predicate.divisionCodes) {
-        const caseIds = [];
-        predicate.divisionCodes.forEach((divisionCode) => {
-          caseIds.push([divisionCode, predicate.caseNumber].join('-'));
-        });
-        conditions.push(contains<SyncedCase['caseId']>('caseId', caseIds));
+      if (predicate.caseNumber) {
+        conditions.push(equals<SyncedCase['caseNumber']>('caseNumber', predicate.caseNumber));
       }
 
       ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
@@ -319,12 +303,21 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       }
 
       if (predicate.limit && predicate.offset >= 0) {
+        const sortSpec: Sort = {
+          attributes: [
+            ['dateFiled', 'DESCENDING'],
+            ['caseNumber', 'DESCENDING'],
+          ],
+        };
+
         //If we don't have this we have a problem
-        subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)]);
+        subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)], sortSpec);
         const query = QueryBuilder.build<Pagination>(subQuery);
         return await this.getAdapter<SyncedCase>().paginatedFind(query);
       } else {
-        throw new Error('We have a problem with predicate'); //TODO: Appropriately construct this error and logic
+        throw new CamsError(MODULE_NAME, {
+          message: 'Case Search requires a pagination predicate with a valid limit and offset',
+        });
       }
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {

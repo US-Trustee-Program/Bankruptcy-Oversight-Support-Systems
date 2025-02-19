@@ -1,43 +1,102 @@
-import * as df from 'durable-functions';
-import { OrchestrationContext } from 'durable-functions';
-import { app, HttpRequest, HttpResponse, InvocationContext } from '@azure/functions';
-
-import {
-  CaseSyncEvent,
-  ExportCaseChangeEventsSummary,
-  getDefaultSummary,
-} from '../../../../common/src/queue/dataflow-types';
-import { ForbiddenError } from '../../../lib/common-errors/forbidden-error';
+import { app, InvocationContext, output } from '@azure/functions';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
 import ContextCreator from '../../azure/application-context-creator';
-import { toAzureError } from '../../azure/functions';
-import { buildUniqueName, isAuthorized } from '../dataflows-common';
-import { STORE_CASES_RUNTIME_STATE } from './store-cases-runtime-state';
+import {
+  buildFunctionName,
+  buildQueueName,
+  buildStartQueueHttpTrigger,
+  RangeMessage,
+  StartMessage,
+  STORAGE_QUEUE_CONNECTION,
+} from '../dataflows-common';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
-import { DLQ } from '../dataflows-queues';
-import { EXPORT_AND_LOAD_CASE } from './export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
+import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 
-const MODULE_NAME = 'MIGRATE_CASES_DATAFLOW';
+const MODULE_NAME = 'MIGRATE-CASES';
+const PAGE_SIZE = 100;
 
-// Orchestration Aliases
-const MIGRATE_CASES = buildUniqueName(MODULE_NAME, 'migrateCases');
-const PARTITION_CASEIDS = buildUniqueName(MODULE_NAME, 'partitionCaseIds');
-const MIGRATE_PARTITION = buildUniqueName(MODULE_NAME, 'migratePartition');
+// Queues
+const START = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'start'),
+  connection: 'AzureWebJobsStorage',
+});
 
-// Activity Aliases
-const GET_CASEIDS_TO_MIGRATE_ACTIVITY = buildUniqueName(MODULE_NAME, 'getCaseIdsToMigrateActivity');
-const LOAD_MIGRATION_TABLE = buildUniqueName(MODULE_NAME, 'loadMigrationTable');
-const EMPTY_MIGRATION_TABLE = buildUniqueName(MODULE_NAME, 'emptyMigrationTable');
+const PAGE = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'page'),
+  connection: 'AzureWebJobsStorage',
+});
+
+const DLQ = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'dlq'),
+  connection: 'AzureWebJobsStorage',
+});
+
+// Registered function names
+const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
+const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
+const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigrate');
+const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
+const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
+
+/**
+ * handleStart
+ *
+ * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ *
+ * @param {object} message
+ * @param {InvocationContext} context
+ */
+async function handleStart(_ignore: StartMessage, context: InvocationContext) {
+  const isEmpty = await emptyMigrationTable(context);
+  if (!isEmpty) return;
+
+  const count = await loadMigrationTable(context);
+
+  if (count === 0) return;
+
+  let start = 0;
+  let end = 0;
+
+  const pages = [];
+  while (end < count) {
+    start = end + 1;
+    end += PAGE_SIZE;
+    pages.push({ start, end });
+  }
+  context.extraOutputs.set(PAGE, pages);
+
+  await storeRuntimeState(context);
+}
+
+/**
+ * handlePage
+ *
+ * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ *
+ * @param range
+ * @param invocationContext
+ */
+async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
+  const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, invocationContext);
+
+  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+
+  const failedEvents = processedEvents.filter((event) => !!event.error);
+  invocationContext.extraOutputs.set(DLQ, failedEvents);
+}
 
 /**
  * loadMigrationTable
  *
- * @param _ignore
  * @param invocationContext
  * @returns
  */
-async function loadMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
+async function loadMigrationTable(invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const result = await MigrateCases.loadMigrationTable(context);
   if (result.error) {
@@ -50,95 +109,11 @@ async function loadMigrationTable(_ignore: unknown, invocationContext: Invocatio
 }
 
 /**
- * partitionCaseIds
- *
- * @param context
- */
-function* partitionCaseIds(context: OrchestrationContext) {
-  const count: number = context.df.getInput();
-
-  const finalSummary = getDefaultSummary();
-  const partitionSize = 1000;
-
-  let start = 0;
-  let end = 0;
-  let partitionCount = 0;
-
-  while (end < count) {
-    partitionCount += 1;
-    start = end + 1;
-    end += partitionSize;
-    const task = yield context.df.callSubOrchestrator(
-      MIGRATE_PARTITION,
-      { start, end },
-      context.df.instanceId + `:${MIGRATE_CASES}:partition:${partitionCount}`,
-    );
-
-    if (task.result) {
-      const result = task.result as ExportCaseChangeEventsSummary;
-      finalSummary.changedCases += result.changedCases;
-      finalSummary.exportedAndLoaded += result.exportedAndLoaded;
-      finalSummary.completed += result.completed;
-      finalSummary.errors += result.errors;
-      finalSummary.faulted += result.faulted;
-      finalSummary.noResult += result.noResult;
-    }
-  }
-
-  return finalSummary;
-}
-
-function* migratePartition(context: OrchestrationContext) {
-  const range = context.df.getInput();
-
-  const events: CaseSyncEvent[] = yield context.df.callActivity(
-    GET_CASEIDS_TO_MIGRATE_ACTIVITY,
-    range,
-  );
-
-  const nextTasks: df.Task[] = [];
-
-  for (const event of events) {
-    const childId = context.df.instanceId + `:${EXPORT_AND_LOAD_CASE}:${event.caseId}:`;
-    nextTasks.push(context.df.callSubOrchestrator(EXPORT_AND_LOAD_CASE, event, childId));
-  }
-
-  yield context.df.Task.all(nextTasks);
-
-  const results = nextTasks.reduce(
-    (summary, task) => {
-      if (task.isCompleted) {
-        summary.completed += 1;
-      }
-      if (task.isFaulted) {
-        summary.faulted += 1;
-      }
-      if (task.result) {
-        const event = task.result as unknown as CaseSyncEvent;
-        if (event.error) {
-          summary.errors += 1;
-        } else {
-          summary.exportedAndLoaded += 1;
-        }
-      } else {
-        summary.noResult += 1;
-      }
-
-      return summary;
-    },
-    getDefaultSummary({ changedCases: events.length }),
-  );
-
-  return results;
-}
-
-/**
  * emptyMigrationTable
  *
- * @param _ignore
  * @param invocationContext
  */
-async function emptyMigrationTable(_ignore: unknown, invocationContext: InvocationContext) {
+async function emptyMigrationTable(invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const result = await MigrateCases.emptyMigrationTable(context);
   if (result.error) {
@@ -146,7 +121,9 @@ async function emptyMigrationTable(_ignore: unknown, invocationContext: Invocati
       DLQ,
       buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE),
     );
+    return false;
   }
+  return true;
 }
 
 /**
@@ -171,7 +148,7 @@ async function getCaseIdsToMigrate(
   if (result.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, GET_CASEIDS_TO_MIGRATE_ACTIVITY),
+      buildQueueError(result.error, MODULE_NAME, GET_CASEIDS_TO_MIGRATE),
     );
     return [];
   }
@@ -180,76 +157,37 @@ async function getCaseIdsToMigrate(
 }
 
 /**
- * migrateCases
+ * storeRuntimeState
  *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
+ * Wrapper for CasesRuntimeState.storeRuntimeState
  *
- * @param  context
- */
-function* migrateCases(context: OrchestrationContext) {
-  yield context.df.callActivity(EMPTY_MIGRATION_TABLE);
-  const count = yield context.df.callActivity(LOAD_MIGRATION_TABLE);
-
-  if (count === 0) {
-    return getDefaultSummary({ changedCases: count });
-  }
-
-  const childId = context.df.instanceId + `:${PARTITION_CASEIDS}`;
-  const summary = yield context.df.callSubOrchestrator(PARTITION_CASEIDS, count, childId);
-
-  yield context.df.callSubOrchestrator(
-    STORE_CASES_RUNTIME_STATE,
-    {},
-    context.df.instanceId + `:${MIGRATE_CASES}:${STORE_CASES_RUNTIME_STATE}`,
-  );
-  yield context.df.callActivity(EMPTY_MIGRATION_TABLE);
-
-  return summary;
-}
-
-/**
- * migrateCasesHttpTrigger
- *
- * @param request
- * @param context
+ * @param invocationContext
  * @returns
  */
-async function migrateCasesHttpTrigger(
-  request: HttpRequest,
-  context: InvocationContext,
-): Promise<HttpResponse> {
-  try {
-    if (!isAuthorized(request)) {
-      throw new ForbiddenError(MODULE_NAME);
-    }
-    const client = df.getClient(context);
-    const instanceId: string = await client.startNew(MIGRATE_CASES);
-
-    return client.createCheckStatusResponse(request, instanceId);
-  } catch (error) {
-    return new HttpResponse(toAzureError(ContextCreator.getLogger(context), MODULE_NAME, error));
-  }
+async function storeRuntimeState(invocationContext: InvocationContext) {
+  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  return CasesRuntimeState.storeRuntimeState(appContext);
 }
 
 export function setupMigrateCases() {
-  df.app.orchestration(MIGRATE_CASES, migrateCases);
-  df.app.orchestration(PARTITION_CASEIDS, partitionCaseIds);
-  df.app.orchestration(MIGRATE_PARTITION, migratePartition);
-
-  df.app.activity(GET_CASEIDS_TO_MIGRATE_ACTIVITY, {
-    handler: getCaseIdsToMigrate,
+  app.storageQueue(HANDLE_START, {
+    connection: STORAGE_QUEUE_CONNECTION,
+    queueName: START.queueName,
+    handler: handleStart,
+    extraOutputs: [PAGE],
   });
 
-  df.app.activity(LOAD_MIGRATION_TABLE, {
-    handler: loadMigrationTable,
+  app.storageQueue(HANDLE_PAGE, {
+    connection: STORAGE_QUEUE_CONNECTION,
+    queueName: PAGE.queueName,
+    handler: handlePage,
     extraOutputs: [DLQ],
   });
 
-  df.app.activity(EMPTY_MIGRATION_TABLE, { handler: emptyMigrationTable, extraOutputs: [DLQ] });
-
-  app.http('migrateCasesHttpTrigger', {
-    route: 'migratecases',
-    extraInputs: [df.input.durableClient()],
-    handler: migrateCasesHttpTrigger,
+  app.http(HTTP_TRIGGER, {
+    route: 'migrate-cases',
+    methods: ['POST'],
+    extraOutputs: [START],
+    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }

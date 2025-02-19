@@ -7,6 +7,7 @@ describe('Input sanitization tests', () => {
     ['This is a safe string.'],
     ["Let's fetch some data."],
     ['This is just a plain sentence.'],
+    ['If you have nothing better to do, Count (or Prince), something--something.'],
   ];
   test.each(validInputs)('should pass notes through', (input: string) => {
     const actual = isValidUserInput(input);
@@ -16,12 +17,12 @@ describe('Input sanitization tests', () => {
   const testXSSNotes = [
     ['<script></script>'],
     ['<script>foo</script>'],
-    ["<script>alert('XSS');</script>"],
-    ['Use setTimeout(() => {}, 1000);'],
-    ["document.querySelector('#id');"],
     ["fetch('/api/data');"],
+    ["eval('/api/data');"],
+    ["document.querySelector('#id');"],
+    ["<script>alert('XSS');</script>"],
   ];
-  test.each(testXSSNotes)('should detech invalid strings', (input: string) => {
+  test.each(testXSSNotes)('should detect invalid strings', (input: string) => {
     const actual = isValidUserInput(input);
     expect(actual).toEqual(false);
   });

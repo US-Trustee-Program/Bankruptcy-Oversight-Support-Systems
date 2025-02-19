@@ -8,7 +8,7 @@ import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/ca
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 
-const MODULE_NAME = 'MOCK_OAUTH2_GATEWAY';
+const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
 const key = 'mock-secret'; //pragma: allowlist secret
 

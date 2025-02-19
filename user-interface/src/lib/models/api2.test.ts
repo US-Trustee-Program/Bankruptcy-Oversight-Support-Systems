@@ -235,16 +235,20 @@ describe('_Api2 functions', async () => {
     expect(postSpy).toHaveBeenCalledWith(path, cleanConsolidationOrder, {});
   });
 
-  test('should not call patchTransferOrderRejection with malicious input', () => {
+  test('should call patchTransferOrderRejection with purified malicious input', () => {
     const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
     const dirtyTransferOrder: TransferOrderActionRejection = {
       ...MockData.getTransferOrder(),
       status: 'rejected',
       reason: inputBlockedFromApi,
     };
-
+    const purifiedTransferOrder = { ...dirtyTransferOrder, reason: '' };
     api2.Api2.patchTransferOrderRejection(dirtyTransferOrder);
-    expect(postSpy).not.toHaveBeenCalled();
+    expect(postSpy).toHaveBeenCalledWith(
+      `/orders/${dirtyTransferOrder.id}`,
+      purifiedTransferOrder,
+      {},
+    );
   });
 
   test('should call patchTransferOrderRejection with non-malicious input', () => {

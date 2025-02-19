@@ -31,6 +31,7 @@ export type Pagination = {
   limit: number;
   skip: number;
   values: ConditionOrConjunction[];
+  sort?: Sort;
 };
 
 export function isPagination(obj: unknown): obj is Pagination {
@@ -146,11 +147,17 @@ function regex(attributeName: string, value: string): Condition {
   };
 }
 
-function paginate(skip: number, limit: number, values: ConditionOrConjunction[]): Pagination {
+function paginate(
+  skip: number,
+  limit: number,
+  values: ConditionOrConjunction[],
+  sort?: Sort,
+): Pagination {
   return {
     skip,
     limit,
     values,
+    sort,
   };
 }
 

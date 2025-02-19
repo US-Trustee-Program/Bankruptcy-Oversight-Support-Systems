@@ -76,7 +76,7 @@ describe('Export and Load Case Tests', () => {
       const expected = new UnknownError(expect.anything(), {
         camsStackInfo: {
           message: expect.any(String),
-          module: 'EXPORT_AND_LOAD',
+          module: 'EXPORT-AND-LOAD',
         },
       });
 

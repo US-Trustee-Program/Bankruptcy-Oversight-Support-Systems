@@ -53,7 +53,7 @@ export class OrdersController implements CamsController, CamsTimerController {
           return await this.handleConsolidations(context);
         case 'orders':
           return await this.handleOrders(context);
-        case 'orders-sync':
+        case 'sync-orders':
           return await this.handleOrderSync(context);
         case 'orders-suggestions':
           return await this.handleOrdersSuggestions(context);
