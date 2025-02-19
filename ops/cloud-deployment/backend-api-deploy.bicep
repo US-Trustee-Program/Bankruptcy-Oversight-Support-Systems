@@ -144,7 +144,7 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
 
 resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: planName
+  name: '${planName}-api'
   sku: planTypeToSkuMap[planType]
   kind: 'linux'
   properties: {
