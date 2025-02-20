@@ -21,7 +21,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.collectionHumble = collection;
     this.moduleName = moduleName + '_ADAPTER';
   }
-  //NOTE: This is going away
+
   public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
     const countQuery = toMongoQuery(query.values[0]);

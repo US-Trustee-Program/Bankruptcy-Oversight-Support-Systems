@@ -233,8 +233,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
     try {
-      // equals<string>('otherCase.status', 'approved'), this is in the data but i can find a reference anywhere in the code to this
-
       const conditions: ConditionOrConjunction[] = [];
       conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
 
