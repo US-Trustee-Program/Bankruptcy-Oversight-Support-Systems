@@ -17,12 +17,6 @@ import { AlertOptions } from './CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import LocalStorage from '@/lib/utils/local-storage';
 
-const initialFormData: CaseNoteInput = {
-  caseId: '',
-  title: '',
-  content: '',
-};
-
 const formKey = 'CamsCaseNote';
 
 export interface CaseNotesProps {
@@ -34,17 +28,10 @@ export interface CaseNotesProps {
   onNoteCreation: () => void;
   searchString: string;
 }
-//TODO: Do we want a button for clear form?
+
 export default function CaseNotes(props: CaseNotesProps) {
   const { caseNotes, areCaseNotesLoading, searchString } = props;
-  const [formData, setFormData] = useState<CaseNoteInput>(() => {
-    const note = LocalStorage.getForm(formKey) as CaseNoteInput;
-    if (note?.caseId === props.caseId) {
-      return note;
-    } else {
-      return initialFormData;
-    }
-  });
+  const [draftMode, setDraftMode] = useState<boolean>(false);
   const caseNoteDraftAlertRef = useRef<AlertRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
@@ -72,13 +59,19 @@ export default function CaseNotes(props: CaseNotesProps) {
   }
 
   function saveFormData(data: CaseNoteInput) {
-    setFormData((previousValue) => ({ ...previousValue, ...data }));
+    if (data.title?.length > 0 || data.content?.length > 0) {
+      LocalStorage.saveForm(formKey, data);
+      setDraftMode(true);
+    } else {
+      setDraftMode(false);
+    }
   }
 
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
     LocalStorage.clearForm(formKey);
+    setDraftMode(false);
   }
 
   function disableFormFields(disabled: boolean) {
@@ -86,8 +79,10 @@ export default function CaseNotes(props: CaseNotesProps) {
     contentInputRef.current?.disable(disabled);
     buttonRef.current?.disableButton(disabled);
   }
+
   async function putCaseNote() {
-    if (formData.title.length > 0 && formData.content.length > 0) {
+    const formData = LocalStorage.getForm(formKey) as CaseNoteInput;
+    if (formData.title?.length > 0 && formData.content?.length > 0) {
       disableFormFields(true);
       const caseNoteInput: CaseNoteInput = {
         caseId: props.caseId,
@@ -99,8 +94,8 @@ export default function CaseNotes(props: CaseNotesProps) {
         .then(() => {
           if (props.onNoteCreation) props.onNoteCreation();
           disableFormFields(false);
-          clearCaseNoteForm();
           // only clear the form on success
+          clearCaseNoteForm();
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
@@ -169,8 +164,7 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (formData.title.length > 0 || formData.content.length > 0) {
-        LocalStorage.saveForm(formKey, formData);
+      if (draftMode === true) {
         caseNoteDraftAlertRef.current?.show();
       } else {
         caseNoteDraftAlertRef.current?.hide();
@@ -178,12 +172,18 @@ export default function CaseNotes(props: CaseNotesProps) {
     }, 250);
 
     return () => clearTimeout(timeout);
-  }, [formData]);
+  }, [draftMode]);
 
   useEffect(() => {
-    if (formData.caseId === props.caseId) {
+    const formData = LocalStorage.getForm(formKey) as CaseNoteInput;
+    if (
+      formData &&
+      formData.caseId === props.caseId &&
+      (formData.title?.length > 0 || formData.content?.length > 0)
+    ) {
       titleInputRef.current?.setValue(formData.title);
       contentInputRef.current?.setValue(formData.content);
+      setDraftMode(true);
     }
   }, []);
 
@@ -209,14 +209,12 @@ export default function CaseNotes(props: CaseNotesProps) {
             label="Note title"
             includeClearButton={true}
             onChange={handleTitleChange}
-            value={formData.title}
             ref={titleInputRef}
           />
           <TextArea
             id="note-content"
             label="Note Text"
             onChange={handleContentChange}
-            value={formData.content}
             ref={contentInputRef}
           />
           <Button
