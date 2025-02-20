@@ -833,7 +833,7 @@ export default class CasesDxtrGateway implements CasesInterface {
 
   partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
     let debtor: Party;
-    applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR:`, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR`);
 
     (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
       debtor = { name: removeExtraSpaces(record.name) };
@@ -853,11 +853,8 @@ export default class CasesDxtrGateway implements CasesInterface {
     const reopenedDates: Date[] = [];
     const transferDates: Date[] = [];
 
-    applicationContext.logger.debug(
-      MODULE_NAME,
-      `Transaction results received from DXTR:`,
-      queryResult,
-    );
+    applicationContext.logger.debug(MODULE_NAME, `Transaction results received from DXTR`);
+
     (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
       const transactionDate = parseTransactionDate(record);
 
@@ -882,25 +879,25 @@ export default class CasesDxtrGateway implements CasesInterface {
   }
 
   caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Case results received from DXTR:`, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Case results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<CaseSummary>).recordset[0];
   }
 
   casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<CaseSummary[]>).recordset;
   }
 
   casesBasicQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
   }
 
   caseIdsAndMaxTxIdCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR `, queryResult);
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
   }
