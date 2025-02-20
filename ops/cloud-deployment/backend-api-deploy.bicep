@@ -1,7 +1,10 @@
 param location string = resourceGroup().location
 
 @description('Application service plan name')
-param planName string
+param apiPlanName string
+
+@description('Application service plan name')
+param dataflowsPlanName string
 
 @description('Plan type to determine plan Sku')
 @allowed([
@@ -9,7 +12,9 @@ param planName string
   'B2'
   'S1'
 ])
-param planType string = 'P1v2'
+param apiPlanType string = 'P1v2'
+
+param dataflowsPlanType string = 'P1v2'
 
 var planTypeToSkuMap = {
   P1v2: {
@@ -59,7 +64,6 @@ param dataflowsFunctionName string
 param dataflowsFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
-
 
 param privateEndpointSubnetId string
 
@@ -143,15 +147,34 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-resource servicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: planName
-  sku: planTypeToSkuMap[planType]
+  name: apiPlanName
+  sku: planTypeToSkuMap[apiPlanType]
   kind: 'linux'
   properties: {
-    perSiteScaling: false
-    elasticScaleEnabled: false
-    maximumElasticWorkerCount: 1
+    perSiteScaling: true
+    elasticScaleEnabled: true
+    maximumElasticWorkerCount: 10
+    isSpot: false
+    reserved: true // set true for Linux
+    isXenon: false
+    hyperV: false
+    targetWorkerCount: 0
+    targetWorkerSizeId: 0
+    zoneRedundant: false
+  }
+}
+
+resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+  location: location
+  name: dataflowsPlanName
+  sku: planTypeToSkuMap[dataflowsPlanType]
+  kind: 'linux'
+  properties: {
+    perSiteScaling: true
+    elasticScaleEnabled: true
+    maximumElasticWorkerCount: 10
     isSpot: false
     reserved: true // set true for Linux
     isXenon: false
@@ -219,7 +242,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     userAssignedIdentities: userAssignedIdentities
   }
   properties: {
-    serverFarmId: servicePlan.id
+    serverFarmId: apiServicePlan.id
     enabled: true
     httpsOnly: true
     virtualNetworkSubnetId: apiFunctionSubnetId
@@ -231,7 +254,6 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   ]
 }
 
-
 resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: dataflowsFunctionName
   location: location
@@ -241,7 +263,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     userAssignedIdentities: userAssignedIdentities
   }
   properties: {
-    serverFarmId: servicePlan.id
+    serverFarmId: dataflowsServicePlan.id
     enabled: true
     httpsOnly: true
     virtualNetworkSubnetId: dataflowsFunctionSubnetId
@@ -255,7 +277,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 
 //Create App Insights
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
-  name:'appi-${apiFunctionName}-module'
+  name: 'appi-${apiFunctionName}-module'
   scope: resourceGroup()
   params: {
     actionGroupName: actionGroupName
@@ -271,7 +293,7 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
 }
 
 module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
-  name:'appi-${dataflowsFunctionName}-module'
+  name: 'appi-${dataflowsFunctionName}-module'
   scope: resourceGroup()
   params: {
     actionGroupName: actionGroupName
@@ -399,12 +421,21 @@ var baseApplicationSettings = concat(
     ? [
         { name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }
         { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }
-        { name: 'ACMS_MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)' }
-        { name: 'ACMS_MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)' }
+        {
+          name: 'ACMS_MSSQL_USER'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)'
+        }
+        {
+          name: 'ACMS_MSSQL_PASS'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
+        }
       ]
     : [
         { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
-        { name: 'ACMS_MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'}
+        {
+          name: 'ACMS_MSSQL_CLIENT_ID'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
+        }
       ]
 )
 
@@ -418,8 +449,8 @@ var dataflowsApplicationSettings = concat(
   ],
   baseApplicationSettings,
   createApplicationInsights
-  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
-  : []
+    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
+    : []
 )
 
 //API Function Application Settings
@@ -432,8 +463,8 @@ var apiApplicationSettings = concat(
   ],
   baseApplicationSettings,
   createApplicationInsights
-  ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
-  : []
+    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
+    : []
 )
 
 var ipSecurityRestrictionsRules = concat(
@@ -502,8 +533,8 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
-    functionAppScaleLimit: 0
-    minimumElasticInstanceCount: 0
+    functionAppScaleLimit: 1
+    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: ipSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
@@ -532,22 +563,25 @@ resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
       allowedOrigins: dataflowsCorsAllowOrigins
     }
     numberOfWorkers: 1
-    alwaysOn: true
+    alwaysOn: false
     http20Enabled: true
-    functionAppScaleLimit: 0
-    minimumElasticInstanceCount: 0
+    functionAppScaleLimit: 4
+    minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
     ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: concat([
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ], middlewareIpSecurityRestrictionsRules)
+    scmIpSecurityRestrictions: concat(
+      [
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
+        }
+      ],
+      middlewareIpSecurityRestrictionsRules
+    )
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']

@@ -52,6 +52,8 @@ param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
 param dataflowsFunctionName string = '${stackName}-dataflows'
 
+param dataflowsFunctionPlanType string = 'P1v2'
+
 param dataflowsSubnetAddressPrefix string = '10.10.13.0/28'
 
 param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
@@ -62,9 +64,11 @@ param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
   'B2'
   'S1'
 ])
-param functionPlanType string = 'P1v2'
+param apiFunctionPlanType string = 'P1v2'
 
-param functionPlanName string = 'plan-${stackName}-functions'
+param apiFunctionPlanName string = 'plan-${stackName}-functions-api'
+
+param dataflowsFunctionPlanName string = 'plan-${stackName}-functions-dataflows'
 
 
 @description('Name of deployment slot for frontend and backend')
@@ -201,8 +205,10 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
-      planType: functionPlanType
-      planName: functionPlanName
+      apiPlanType: apiFunctionPlanType
+      dataflowsPlanType: dataflowsFunctionPlanType
+      apiPlanName: apiFunctionPlanName
+      dataflowsPlanName: dataflowsFunctionPlanName
       apiFunctionName: apiFunctionName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
       dataflowsFunctionName: dataflowsFunctionName
