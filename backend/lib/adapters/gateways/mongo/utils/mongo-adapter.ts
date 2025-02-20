@@ -9,7 +9,6 @@ import {
   DocumentCollectionAdapter,
   ReplaceResult,
 } from '../../../../use-cases/gateways.types';
-import { ApplicationContext } from '../../../types/basic';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { MongoServerError } from 'mongodb';
@@ -23,14 +22,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
   //NOTE: This is going away
-  public async paginatedFind(
-    query: Pagination,
-    context?: ApplicationContext,
-  ): Promise<CamsPaginationResponse<T>> {
+  public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
-    if (context) {
-      context.logger.debug(this.moduleName, 'MongoQuery for PaginatedFind:  ', mongoQuery);
-    }
     const countQuery = toMongoQuery(query.values[0]);
     try {
       if (!isPagination(query)) {

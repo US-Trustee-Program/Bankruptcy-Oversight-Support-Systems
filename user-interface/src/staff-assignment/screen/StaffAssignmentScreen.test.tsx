@@ -49,6 +49,7 @@ describe('StaffAssignmentScreen', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       chapters: ['15'],
+      excludeChildConsolidations: true,
     };
 
     const SearchResults = vi
@@ -91,6 +92,7 @@ describe('StaffAssignmentScreen', () => {
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       chapters: expect.arrayContaining(['11', '12', '15']),
+      excludeChildConsolidations: true,
     };
 
     const SearchResults = vi

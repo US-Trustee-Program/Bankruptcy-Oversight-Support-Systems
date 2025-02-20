@@ -189,10 +189,7 @@ export type OfficeStaffSyncState = RuntimeState & {
 
 export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
-  paginatedFind: (
-    query: Pagination,
-    context?: ApplicationContext,
-  ) => Promise<CamsPaginationResponse<T>>;
+  paginatedFind: (query: Pagination) => Promise<CamsPaginationResponse<T>>;
   findOne: (query: ConditionOrConjunction) => Promise<T>;
   getAll: (sort?: Sort) => Promise<T[]>;
   replaceOne: (
