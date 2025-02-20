@@ -260,7 +260,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           childConsolidationCaseIds.push(consolidationTo.caseId);
         }
       }
-      this.context.logger.debug(this.moduleName, 'CaseIds to filter: ', childConsolidationCaseIds);
       return childConsolidationCaseIds;
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
