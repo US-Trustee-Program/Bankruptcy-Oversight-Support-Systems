@@ -96,6 +96,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           disableFormFields(false);
           // only clear the form on success
           clearCaseNoteForm();
+          caseNoteDraftAlertRef.current?.hide();
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
@@ -169,7 +170,7 @@ export default function CaseNotes(props: CaseNotesProps) {
       } else {
         caseNoteDraftAlertRef.current?.hide();
       }
-    }, 250);
+    }, 1250);
 
     return () => clearTimeout(timeout);
   }, [draftMode]);
@@ -189,18 +190,6 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   return (
     <div className="case-notes-panel">
-      <div className="measure-6">
-        <Alert
-          type={UswdsAlertStyle.Info}
-          title="Unsaved Draft Note"
-          id="case-note-draft"
-          inline={true}
-          slim={true}
-          ref={caseNoteDraftAlertRef}
-        >
-          Note stored as a draft. Click “Add Note” to save the draft. Unsaved drafts may be lost.
-        </Alert>
-      </div>
       <div className="case-notes-title">
         <h3>Case Notes</h3>
         <div className="case-notes-form-container">
@@ -217,24 +206,39 @@ export default function CaseNotes(props: CaseNotesProps) {
             onChange={handleContentChange}
             ref={contentInputRef}
           />
-          <Button
-            id="submit-case-note"
-            uswdsStyle={UswdsButtonStyle.Default}
-            onClick={putCaseNote}
-            aria-label="Add case note."
-            ref={buttonRef}
-          >
-            Add Note
-          </Button>
-          <Button
-            id="clear-case-note"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
-            onClick={clearCaseNoteForm}
-            aria-label="Clear case note form data."
-            ref={buttonRef}
-          >
-            Clear
-          </Button>
+          {draftMode === true && (
+            <div className="measure-6">
+              <Alert
+                type={UswdsAlertStyle.Info}
+                id="case-note-draft"
+                inline={true}
+                slim={true}
+                ref={caseNoteDraftAlertRef}
+              >
+                Note stored as a draft. Click “Add Note” to save the draft.
+              </Alert>
+            </div>
+          )}
+          <div className="form-button-bar">
+            <Button
+              id="submit-case-note"
+              uswdsStyle={UswdsButtonStyle.Default}
+              onClick={putCaseNote}
+              aria-label="Add case note."
+              ref={buttonRef}
+            >
+              Add Note
+            </Button>
+            <Button
+              id="clear-case-note"
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              onClick={clearCaseNoteForm}
+              aria-label="Clear case note form data."
+              ref={buttonRef}
+            >
+              Clear
+            </Button>
+          </div>
         </div>
         {areCaseNotesLoading && (
           <LoadingSpinner id="notes-loading-indicator" caption="Loading case notes..." />

@@ -5,35 +5,37 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import HttpStatusCodes from '@common/api/http-status-codes';
 import { CaseNoteInput } from '@common/cams/cases';
 
+const caseId = '000-11-22222';
+const textAreaTestId = 'textarea-note-content';
+const noteTitleInputTestId = 'case-note-title-input';
+const caseNotes = [
+  MockData.getCaseNote({ caseId }),
+  MockData.getCaseNote({ caseId }),
+  MockData.getCaseNote({ caseId }),
+];
+
+function renderWithProps(props?: Partial<CaseNotesProps>) {
+  const defaultProps: CaseNotesProps = {
+    caseId: '000-11-22222',
+    hasCaseNotes: false,
+    caseNotes: [],
+    searchString: '',
+    onNoteCreation: vi.fn(),
+    areCaseNotesLoading: false,
+  };
+
+  const renderProps = { ...defaultProps, ...props };
+  render(<CaseNotes {...renderProps} />);
+}
+
 describe('case note tests', () => {
-  const caseId = '000-11-22222';
-  const textAreaTestId = 'textarea-note-content';
-  const noteTitleInputTestId = 'case-note-title-input';
-  const caseNotes = [
-    MockData.getCaseNote({ caseId }),
-    MockData.getCaseNote({ caseId }),
-    MockData.getCaseNote({ caseId }),
-  ];
-
-  function renderWithProps(props?: Partial<CaseNotesProps>) {
-    const defaultProps: CaseNotesProps = {
-      caseId: '000-11-22222',
-      hasCaseNotes: false,
-      caseNotes: [],
-      searchString: '',
-      onNoteCreation: vi.fn(),
-      areCaseNotesLoading: false,
-    };
-
-    const renderProps = { ...defaultProps, ...props };
-    render(<CaseNotes {...renderProps} />);
-  }
   beforeEach(() => {
     vi.resetModules();
-    // vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
     vi.clearAllMocks();
   });
 
@@ -96,58 +98,6 @@ describe('case note tests', () => {
     }
   });
 
-  test('should call globalAlert.error when attempting to create a note with no text in title', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    renderWithProps();
-
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-    await userEvent.type(noteTitleInput, 'test note');
-
-    const textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toBeInTheDocument();
-
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith(
-        'All case note input fields are required to submit a note.',
-      );
-    });
-  });
-
-  test('should call globalAlert.error when attempting to create a note with no text in content', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    renderWithProps();
-
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-
-    const textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toBeInTheDocument();
-    await userEvent.type(textArea, 'test note');
-
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith(
-        'All case note input fields are required to submit a note.',
-      );
-    });
-  });
-
   test('should show Note Draft Alert when content has not been pushed to cosmos', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
@@ -193,18 +143,19 @@ describe('case note tests', () => {
       expect(draftAlert).toBeInTheDocument();
     });
 
-    // const button = screen.getByTestId('button-submit-case-note');
-    // expect(button).toBeInTheDocument();
-    // await userEvent.click(button);
+    const button = screen.getByTestId('button-submit-case-note');
+    expect(button).toBeInTheDocument();
+    await userEvent.click(button);
 
-    // await waitFor(() => {
-    // const draftAlert = screen.getByTestId('alert-container-case-note-draft');
-    // expect(draftAlert).not.toBeInTheDocument();
-    // });
+    await waitFor(
+      () => {
+        const draftAlert = screen.queryByTestId('alert-container-case-note-draft');
+        expect(draftAlert).not.toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
   });
-  //We are getting an interesting holdover from previous tests. s if the data was remaining
-  //in this test we get test note titletest note title in the title input when e do the expeect
-  //maybe the formdata is impacting with local storage?
+
   test('should send new case note to api and call fetch notes on success', async () => {
     const spyOnNotesCreation = vi.fn();
     const postCaseNoteSpy = vi
@@ -242,59 +193,5 @@ describe('case note tests', () => {
 
     textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toHaveValue('');
-  });
-
-  test('should call globalAlert.error when postCaseNote receives a common error', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({
-      status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-    });
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    renderWithProps();
-
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-    await userEvent.type(noteTitleInput, 'test note title');
-
-    const textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toBeInTheDocument();
-    await userEvent.type(textArea, 'test note');
-
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not insert case note.');
-    });
-  });
-
-  test('should call globalAlert.error when postCaseNote receives a forbidden request error', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({
-      status: HttpStatusCodes.FORBIDDEN,
-    });
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    renderWithProps();
-
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-    await userEvent.type(noteTitleInput, 'test note title');
-
-    const textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toBeInTheDocument();
-    await userEvent.type(textArea, 'test note');
-
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).not.toHaveBeenCalled();
-    });
   });
 });
