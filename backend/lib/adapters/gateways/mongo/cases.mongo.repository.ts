@@ -23,7 +23,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, equals, regex, contains, notContains } = QueryBuilder;
+const { paginate, and, or, equals, regex, contains, notContains } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -238,18 +238,16 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const conditions: ConditionOrConjunction[] = [];
       conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
 
-      if (predicate.chapters?.length > 0) {
-        conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
-      }
-
       if (predicate.caseIds?.length > 0) {
         conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
       }
 
       if (predicate.divisionCodes?.length > 0) {
-        conditions.push(
-          contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
-        );
+        const matchers: ConditionOrConjunction[] = [];
+        predicate.divisionCodes.forEach((code) => {
+          matchers.push(regex('caseId', `^${code}`));
+        });
+        conditions.push(or(...matchers));
       }
       const query = QueryBuilder.build(and(...conditions));
 

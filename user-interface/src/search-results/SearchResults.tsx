@@ -14,6 +14,7 @@ import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
+  if (Object.keys(searchPredicate).length === 0) return false;
   return Object.keys(searchPredicate).reduce((isIt, key) => {
     if (['limit', 'offset'].includes(key)) return isIt;
     return isIt || !!searchPredicate[key as keyof CasesSearchPredicate];
@@ -54,15 +55,9 @@ export function SearchResults(props: SearchResultsProps) {
     row: Row,
     ...otherProps
   } = props;
-  const basePredicate: CasesSearchPredicate = {
-    excludeChildConsolidations: true,
-  };
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
-    ...basePredicate,
-    ...searchPredicateProp,
-  });
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
