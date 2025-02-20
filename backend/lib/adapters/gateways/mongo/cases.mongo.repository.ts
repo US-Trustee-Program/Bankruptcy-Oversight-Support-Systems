@@ -314,7 +314,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         //If we don't have this we have a problem
         subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)], sortSpec);
         const query = QueryBuilder.build<Pagination>(subQuery);
-        return await this.getAdapter<SyncedCase>().paginatedFind(query);
+        return await this.getAdapter<SyncedCase>().paginatedFind(query, this.context);
       } else {
         throw new CamsError(MODULE_NAME, {
           message: 'Case Search requires a pagination predicate with a valid limit and offset',
