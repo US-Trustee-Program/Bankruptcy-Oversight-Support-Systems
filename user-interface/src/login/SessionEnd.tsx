@@ -19,6 +19,8 @@ export function SessionEnd() {
   useEffect(() => {
     LocalStorage.removeSession();
     LocalStorage.removeAck();
+    LocalStorage.clearAllForms();
+
     broadcastLogout();
     if (location.pathname !== LOGOUT_SESSION_END_PATH) {
       navigator.navigateTo(LOGOUT_SESSION_END_PATH);
