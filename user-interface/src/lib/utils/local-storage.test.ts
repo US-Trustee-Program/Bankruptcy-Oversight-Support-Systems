@@ -163,6 +163,12 @@ describe('Local storage', () => {
       const actual = LocalStorage.getLastInteraction();
       expect(actual).toEqual(null);
     });
+
+    test('should return null if the timestamp was not set to an integer', () => {
+      window.localStorage.setItem(LAST_INTERACTION_KEY, 'Z');
+      const actual = LocalStorage.getLastInteraction();
+      expect(actual).toEqual(null);
+    });
   });
 
   describe('setLastInteraction', () => {

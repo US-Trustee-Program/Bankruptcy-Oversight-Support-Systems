@@ -97,12 +97,8 @@ function setLastInteraction(timestamp: number) {
 function getNumber(key: string): number | null {
   const value = localStorage.getItem(key);
   if (!value) return null;
-  try {
-    return Number.parseInt(value);
-  } catch {
-    // TODO: need to test
-    return null;
-  }
+  const parsed = Number.parseInt(value);
+  return isNaN(parsed) ? null : parsed;
 }
 
 function setNumber(key: string, value: number) {
