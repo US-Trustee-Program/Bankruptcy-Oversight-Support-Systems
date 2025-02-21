@@ -19,7 +19,7 @@ function purge() {
       const keys = Object.keys(window.localStorage);
       keys.forEach((key) => {
         if (key.startsWith(NAMESPACE)) {
-          // TODO: NEED TO TEST
+          // TODO: Test this branch
           const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
           if (cached && cached.expiresAfter < Date.now()) {
             window.localStorage.removeItem(key);
@@ -28,7 +28,7 @@ function purge() {
       });
     }
   } catch (error) {
-    // TODO: need to test
+    // TODO: Test this branch
     console.error('Purging cache in local storage failed:', error);
   }
 }
@@ -49,7 +49,6 @@ function get<T>(key: string): T | null {
     }
     return value;
   } catch {
-    // Fail safely.
     return null;
   }
 }
@@ -67,27 +66,20 @@ function set<T>(key: string, value: T, ttlSeconds: number = DEFAULT_TTL): boolea
     }
     return success;
   } catch {
-    // Fail safely.
     return false;
   }
 }
 
 function remove(key: string): boolean {
-  try {
-    let success = false;
-    if (canCache) {
-      window.localStorage.removeItem(NAMESPACE + key);
-      success = true;
-    }
-    return success;
-  } catch {
-    // Fail safely.
-    return false;
+  let success = false;
+  if (canCache) {
+    window.localStorage.removeItem(NAMESPACE + key);
+    success = true;
   }
+  return success;
 }
 
 function removeAll() {
-  // TODO: need to test
   removeNamespace();
 }
 
@@ -95,14 +87,12 @@ function removeNamespace(suffix: string = '') {
   const keysToDelete = [];
   if (window.localStorage) {
     for (let i = 0; i < window.localStorage.length; i++) {
-      // TODO: need to test
       const key = window.localStorage.key(i);
       if (key?.startsWith(NAMESPACE + suffix)) {
         keysToDelete.push(key);
       }
     }
     keysToDelete.forEach((key) => {
-      // TODO: need to test
       window.localStorage.removeItem(key);
     });
   }

@@ -8,14 +8,34 @@ describe('LocalCache', () => {
   beforeAll(() => {
     vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', mockLocalStorage);
-
-    vi.spyOn(LocalCache, 'removeNamespace').mockImplementation(() => {
-      mockLocalStorage.clear();
-    });
   });
 
   beforeEach(() => {
     mockLocalStorage.clear();
+  });
+
+  test('should remove all cached values', () => {
+    const keys = ['test1', 'test2', 'test3'];
+    keys.forEach((key) => {
+      LocalCache.set(key, {});
+    });
+    expect(mockLocalStorage.length).toEqual(keys.length);
+
+    LocalCache.removeAll();
+    expect(mockLocalStorage.length).toEqual(0);
+  });
+
+  test('should remove all cached values for a given namespace', () => {
+    const namespace = 'test:';
+    const keysNotInNamespace = ['foo', 'bar'];
+    const keys = [namespace + '1', namespace + '2', namespace + '3', ...keysNotInNamespace];
+    keys.forEach((key) => {
+      LocalCache.set(key, {});
+    });
+    expect(mockLocalStorage.length).toEqual(keys.length);
+
+    LocalCache.removeNamespace(namespace);
+    expect(mockLocalStorage.length).toEqual(keysNotInNamespace.length);
   });
 
   test('should store and retrieve cached values with a TTL', () => {
@@ -124,7 +144,6 @@ describe('LocalCache', () => {
     const calls = [
       () => LocalCache.get('key'),
       () => LocalCache.set('key', 'value'),
-      () => LocalCache.remove('key'),
       () => LocalCache.purge(),
     ];
     calls.forEach((call) => {

@@ -1,6 +1,5 @@
 import { describe, expect, vi, beforeEach } from 'vitest';
 import LocalFormCache from './local-form-cache';
-import LocalCache from './local-cache';
 import { MockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalFormCache', () => {
@@ -9,10 +8,6 @@ describe('LocalFormCache', () => {
   beforeAll(() => {
     vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', mockLocalStorage);
-
-    vi.spyOn(LocalCache, 'removeNamespace').mockImplementation(() => {
-      mockLocalStorage.clear();
-    });
   });
 
   beforeEach(() => {
