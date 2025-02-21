@@ -205,7 +205,6 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
-      apiPlanType: apiFunctionPlanType
       apiPlanName: apiFunctionPlanName
       apiFunctionName: apiFunctionName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
@@ -244,7 +243,6 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: analyticsWorkspaceId
     location: location
-    dataflowsPlanType: dataflowsFunctionPlanType
     dataflowsPlanName: dataflowsFunctionPlanName
     apiFunctionName: apiFunctionName
     dataflowsFunctionName: dataflowsFunctionName
