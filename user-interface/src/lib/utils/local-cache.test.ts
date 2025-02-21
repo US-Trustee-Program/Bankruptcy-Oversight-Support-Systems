@@ -1,28 +1,21 @@
 import { describe, expect, vi, beforeEach } from 'vitest';
 import LocalCache from './local-cache';
+import { MockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalCache', () => {
-  const mockStorage = new Map<string, string>();
+  const mockLocalStorage = new MockLocalStorage();
+
+  beforeAll(() => {
+    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
+    vi.stubGlobal('localStorage', mockLocalStorage);
+
+    vi.spyOn(LocalCache, 'removeNamespace').mockImplementation(() => {
+      mockLocalStorage.clear();
+    });
+  });
 
   beforeEach(() => {
-    // Mocking window.localStorage
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => mockStorage.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        mockStorage.set(key, value);
-      },
-      removeItem: (key: string) => {
-        mockStorage.delete(key);
-      },
-      clear: () => {
-        mockStorage.clear();
-      },
-      key: (index: number) => Object.keys(mockStorage)[index] || null,
-      length: mockStorage.size,
-    });
-    // Clearing mockStorage before each test
-    mockStorage.clear();
+    mockLocalStorage.clear();
   });
 
   test('should store and retrieve cached values with a TTL', () => {
@@ -109,6 +102,8 @@ describe('LocalCache', () => {
 
   test('should check if cache is enabled', async () => {
     vi.resetModules();
+    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
+    vi.stubGlobal('localStorage', mockLocalStorage);
     const reloaded = await import('./local-cache');
     expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
   });
