@@ -238,7 +238,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
     ]
 }
 module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
-  name: '${stackName}-function-module'
+  name: '${stackName}-dataflows-module'
   scope: resourceGroup(appResourceGroup)
   params: {
     deployAppInsights: deployAppInsights
