@@ -401,7 +401,7 @@ resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     cors: {
       allowedOrigins: dataflowsCorsAllowOrigins
     }
-    numberOfWorkers: 1
+    numberOfWorkers: 4
     alwaysOn: false
     http20Enabled: true
     functionAppScaleLimit: 4
