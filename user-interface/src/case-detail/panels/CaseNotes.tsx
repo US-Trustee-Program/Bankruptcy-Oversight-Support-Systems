@@ -1,6 +1,6 @@
 import './CaseNotes.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import TextArea from '@/lib/components/uswds/TextArea';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -33,7 +33,6 @@ export interface CaseNotesProps {
 
 export default function CaseNotes(props: CaseNotesProps) {
   const { caseId, caseNotes, areCaseNotesLoading, searchString } = props;
-  const caseNoteDraftAlertRef = useRef<AlertRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
@@ -105,7 +104,6 @@ export default function CaseNotes(props: CaseNotesProps) {
           disableFormFields(false);
           // only clear the form on success
           clearCaseNoteForm();
-          caseNoteDraftAlertRef.current?.hide(); // TODO: need to test
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
