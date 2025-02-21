@@ -1,7 +1,7 @@
 param location string = resourceGroup().location
 
 @description('Application service plan name')
-param apiPlanName string
+param dataflowsPlanName string
 
 param stackName string = 'ustp-cams'
 
@@ -11,11 +11,13 @@ param functionsVersion string = '~4'
 @description('Storage account name. Default creates unique name from resource group id and stack name')
 @minLength(3)
 @maxLength(24)
-param apiFunctionStorageName string = 'ustpfunc${uniqueString(resourceGroup().id, apiFunctionName)}'
+param dataflowsFunctionStorageName string = 'dataflows${uniqueString(resourceGroup().id, dataflowsFunctionName)}'
+
+param dataflowsFunctionName string
 
 param apiFunctionName string
 
-param apiFunctionSubnetId string
+param dataflowsFunctionSubnetId string
 
 param virtualNetworkResourceGroupName string
 
@@ -44,7 +46,7 @@ param loginProvider string
 param isUstpDeployment bool
 
 @description('List of origins to allow. Need to include protocol')
-param apiCorsAllowOrigins array = []
+param dataflowsCorsAllowOrigins array = []
 
 param sqlServerResourceGroupName string = ''
 
@@ -96,9 +98,9 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
   scope: resourceGroup(kvAppConfigResourceGroupName)
 }
 
-resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
+resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
-  name: apiPlanName
+  name: dataflowsPlanName
   sku: {
     name: 'EP1'
     tier: 'ElasticPremium'
@@ -114,19 +116,18 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
     reserved: true // set true for Linux
     isXenon: false
     hyperV: false
-    targetWorkerCount: 1
-    targetWorkerSizeId: 1
+    targetWorkerCount: 0
+    targetWorkerSizeId: 0
     zoneRedundant: false
   }
 }
 
-
 //Storage Account Resources
-resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: apiFunctionStorageName
+resource dataflowsFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+  name: dataflowsFunctionStorageName
   location: location
   tags: {
-    'Stack Name': apiFunctionName
+    'Stack Name': dataflowsFunctionName
   }
   sku: {
     name: 'Standard_LRS'
@@ -138,6 +139,13 @@ resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01
   }
 }
 
+module dataflowsQueues './lib/storage/storage-queues.bicep' = {
+  name: 'dataflows-queues-module'
+  params: {
+    storageAccountName: dataflowsFunctionStorageName
+  }
+}
+
 //Function App Resources
 var userAssignedIdentities = union(
   {
@@ -146,8 +154,8 @@ var userAssignedIdentities = union(
   createSqlServerVnetRule ? { '${sqlIdentity.id}': {} } : {}
 )
 
-resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
-  name: apiFunctionName
+resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: dataflowsFunctionName
   location: location
   kind: 'functionapp,linux'
   identity: {
@@ -155,10 +163,10 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     userAssignedIdentities: userAssignedIdentities
   }
   properties: {
-    serverFarmId: apiServicePlan.id
+    serverFarmId: dataflowsServicePlan.id
     enabled: true
     httpsOnly: true
-    virtualNetworkSubnetId: apiFunctionSubnetId
+    virtualNetworkSubnetId: dataflowsFunctionSubnetId
     keyVaultReferenceIdentity: appConfigIdentity.id
   }
   dependsOn: [
@@ -168,8 +176,9 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 }
 
 //Create App Insights
-module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
-  name: 'appi-${apiFunctionName}-module'
+
+module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
+  name: 'appi-${dataflowsFunctionName}-module'
   scope: resourceGroup()
   params: {
     actionGroupName: actionGroupName
@@ -177,10 +186,10 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
     analyticsWorkspaceId: analyticsWorkspaceId
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
-    functionAppName: apiFunctionName
+    functionAppName: dataflowsFunctionName
   }
   dependsOn: [
-    apiFunctionApp
+    dataflowsFunctionApp
   ]
 }
 
@@ -315,17 +324,17 @@ var baseApplicationSettings = concat(
       ]
 )
 
-//API Function Application Settings
-var apiApplicationSettings = concat(
+//Data Flows Function Application Settings
+var dataflowsApplicationSettings = concat(
   [
     {
       name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctonStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctonStorageAccount.listKeys().keys[0].value}'
     }
   ],
   baseApplicationSettings,
   createApplicationInsights
-    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
+    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
     : []
 )
 
@@ -352,47 +361,84 @@ var ipSecurityRestrictionsRules = concat(
     : []
 )
 
-resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
-  parent: apiFunctionApp
+var middlewareIpSecurityRestrictionsRules = [
+  {
+    ipAddress: '52.244.134.181/32'
+    action: 'Allow'
+    priority: 1001
+    name: 'Portal mwip 1'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+  {
+    ipAddress: '52.244.176.112/32'
+    action: 'Allow'
+    priority: 1002
+    name: 'Portal mwip 2'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+  {
+    ipAddress: '52.247.148.42/32'
+    action: 'Allow'
+    priority: 1003
+    name: 'Portal mwip 3'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+  {
+    ipAddress: '52.247.163.6/32'
+    action: 'Allow'
+    priority: 1004
+    name: 'Portal mwip 4'
+    description: 'Allow Azure Portal Middleware IPs'
+  }
+]
+
+var dataflowsIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
+
+resource dataflowsFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
+  parent: dataflowsFunctionApp
   name: 'web'
   properties: {
     cors: {
-      allowedOrigins: apiCorsAllowOrigins
+      allowedOrigins: dataflowsCorsAllowOrigins
     }
-    numberOfWorkers: 1
-    alwaysOn: true
+    numberOfWorkers: 4
+    alwaysOn: false
     http20Enabled: true
-    functionAppScaleLimit: 1
+    functionAppScaleLimit: 4
     minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictions: ipSecurityRestrictionsRules
+    ipSecurityRestrictions: dataflowsIpSecurityRestrictionsRules
     ipSecurityRestrictionsDefaultAction: 'Deny'
-    scmIpSecurityRestrictions: [
-      {
-        ipAddress: 'Any'
-        action: 'Deny'
-        priority: 2147483647
-        name: 'Deny all'
-        description: 'Deny all access'
-      }
-    ]
+    scmIpSecurityRestrictions: concat(
+      [
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
+        }
+      ],
+      middlewareIpSecurityRestrictionsRules
+    )
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: apiApplicationSettings
+    appSettings: dataflowsApplicationSettings
     ftpsState: 'Disabled'
   }
 }
 
 //Private Endpoints
-module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
-  name: '${apiFunctionName}-pep-module'
+
+module dataflowsFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${dataflowsFunctionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
     privateLinkGroup: 'sites'
-    stackName: apiFunctionName
+    stackName: dataflowsFunctionName
     location: location
-    privateLinkServiceId: apiFunctionApp.id
+    privateLinkServiceId: dataflowsFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
@@ -400,16 +446,15 @@ module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   }
 }
 
-
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
-module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
+module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlServerResourceGroupName)
-  name: '${apiFunctionName}-sql-vnet-rule-module'
+  name: '${dataflowsFunctionName}-sql-vnet-rule-module'
   params: {
-    stackName: apiFunctionName
+    stackName: dataflowsFunctionName
     sqlServerName: sqlServerName
-    subnetId: apiFunctionSubnetId
+    subnetId: dataflowsFunctionSubnetId
   }
 }
 
@@ -421,7 +466,7 @@ var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
 
 module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSqlServerVnetRule) {
   scope: resourceGroup(sqlIdentityRG)
-  name: '${apiFunctionName}-sql-identity-module'
+  name: '${dataflowsFunctionName}-sql-identity-module'
   params: {
     managedIdentityName: sqlIdentityName
     location: location

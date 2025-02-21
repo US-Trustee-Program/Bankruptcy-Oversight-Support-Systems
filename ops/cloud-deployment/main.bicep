@@ -52,19 +52,9 @@ param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
 param dataflowsFunctionName string = '${stackName}-dataflows'
 
-param dataflowsFunctionPlanType string = 'P1v2'
-
 param dataflowsSubnetAddressPrefix string = '10.10.13.0/28'
 
 param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
-
-@description('Plan type to determine functionapp service plan Sku')
-@allowed([
-  'P1v2'
-  'B2'
-  'S1'
-])
-param apiFunctionPlanType string = 'P1v2'
 
 param apiFunctionPlanName string = 'plan-${stackName}-functions-api'
 
@@ -198,28 +188,22 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     ]
 }
 
-module ustpFunctions 'backend-api-deploy.bicep' = {
+module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
-      apiPlanType: apiFunctionPlanType
-      dataflowsPlanType: dataflowsFunctionPlanType
       apiPlanName: apiFunctionPlanName
-      dataflowsPlanName: dataflowsFunctionPlanName
       apiFunctionName: apiFunctionName
       apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
-      dataflowsFunctionName: dataflowsFunctionName
-      dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
       functionsRuntime: 'node'
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
-      dataflowsCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
@@ -241,4 +225,43 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
     dependsOn: [
       network
     ]
+}
+module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
+  name: '${stackName}-dataflows-module'
+  scope: resourceGroup(appResourceGroup)
+  params: {
+    deployAppInsights: deployAppInsights
+    analyticsWorkspaceId: analyticsWorkspaceId
+    location: location
+    dataflowsPlanName: dataflowsFunctionPlanName
+    apiFunctionName: apiFunctionName
+    dataflowsFunctionName: dataflowsFunctionName
+    dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
+    functionsRuntime: 'node'
+    sqlServerName: sqlServerName
+    sqlServerResourceGroupName: sqlServerResourceGroupName
+    sqlServerIdentityName: sqlServerIdentityName
+    sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+    dataflowsCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+    allowVeracodeScan: allowVeracodeScan
+    idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    virtualNetworkResourceGroupName: networkResourceGroupName
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: analyticsResourceGroupName
+    createAlerts: createAlerts
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    loginProviderConfig: loginProviderConfig
+    loginProvider: loginProvider
+    cosmosDatabaseName: cosmosDatabaseName
+    kvAppConfigName: kvAppConfigName
+    isUstpDeployment: isUstpDeployment
+    mssqlRequestTimeout: mssqlRequestTimeout
+  }
+  dependsOn: [
+    network
+  ]
 }
