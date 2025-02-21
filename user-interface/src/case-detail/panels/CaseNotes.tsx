@@ -17,7 +17,9 @@ import { AlertOptions } from './CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import LocalStorage from '@/lib/utils/local-storage';
 
-const formKey = 'CamsCaseNote';
+function buildCaseNoteFormKey(caseId: string) {
+  return `case-notes-${caseId}`;
+}
 
 export interface CaseNotesProps {
   caseId: string;
@@ -30,7 +32,7 @@ export interface CaseNotesProps {
 }
 
 export default function CaseNotes(props: CaseNotesProps) {
-  const { caseNotes, areCaseNotesLoading, searchString } = props;
+  const { caseId, caseNotes, areCaseNotesLoading, searchString } = props;
   const [draftMode, setDraftMode] = useState<boolean>(false);
   const caseNoteDraftAlertRef = useRef<AlertRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
@@ -41,6 +43,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   const api = Api2;
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
+  const formKey = buildCaseNoteFormKey(caseId);
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
