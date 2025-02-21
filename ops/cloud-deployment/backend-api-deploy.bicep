@@ -359,7 +359,7 @@ resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
     cors: {
       allowedOrigins: apiCorsAllowOrigins
     }
-    numberOfWorkers: 4
+    numberOfWorkers: 1
     alwaysOn: true
     http20Enabled: true
     functionAppScaleLimit: 1
