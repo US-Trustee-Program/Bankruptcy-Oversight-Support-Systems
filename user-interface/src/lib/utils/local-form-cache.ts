@@ -21,6 +21,7 @@ function clearForm(key: string) {
 }
 
 function removeAll() {
+  // TODO: need to test
   removeNamespace(NAMESPACE);
 }
 

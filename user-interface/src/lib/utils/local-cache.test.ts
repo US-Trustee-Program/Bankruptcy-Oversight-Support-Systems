@@ -66,7 +66,9 @@ describe('LocalCache', () => {
   test('should purge expired cache entries', () => {
     const validKey = 'validKey';
     const expiredKey = 'expiredKey';
+    const otherNonCacheKey = 'someOtherKey';
 
+    window.localStorage.setItem(otherNonCacheKey, 'test');
     LocalCache.set(validKey, 'validValue', 5); // Valid for 5 seconds
     LocalCache.set(expiredKey, 'expiredValue', 1); // Valid for 1 second
 
@@ -78,7 +80,9 @@ describe('LocalCache', () => {
 
     expect(LocalCache.get(validKey)).toBe('validValue');
     expect(LocalCache.get(expiredKey)).toBeNull();
+    expect(window.localStorage.getItem(otherNonCacheKey)).toEqual('test');
 
+    window.localStorage.removeItem(otherNonCacheKey);
     vi.useRealTimers();
   });
 

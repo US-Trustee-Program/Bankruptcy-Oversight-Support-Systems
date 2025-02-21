@@ -49,14 +49,14 @@ export default function CaseNotes(props: CaseNotesProps) {
     saveFormData({
       caseId: props.caseId,
       title: event.target.value,
-      content: contentInputRef.current?.getValue() ?? '',
+      content: contentInputRef.current?.getValue() ?? '', // TODO: need to test
     });
   }
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     saveFormData({
       caseId: props.caseId,
-      title: titleInputRef.current?.getValue() ?? '',
+      title: titleInputRef.current?.getValue() ?? '', // TODO: need to test
       content: event.target.value,
     });
   }
@@ -105,7 +105,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           disableFormFields(false);
           // only clear the form on success
           clearCaseNoteForm();
-          caseNoteDraftAlertRef.current?.hide();
+          caseNoteDraftAlertRef.current?.hide(); // TODO: need to test
         })
         .catch((e: HttpResponse) => {
           if (e.status !== HttpStatusCodes.FORBIDDEN) {
@@ -177,7 +177,7 @@ export default function CaseNotes(props: CaseNotesProps) {
     if (
       formData &&
       formData.caseId === props.caseId &&
-      (formData.title?.length > 0 || formData.content?.length > 0)
+      (formData.title?.length > 0 || formData.content?.length > 0) // TODO: need to test
     ) {
       titleInputRef.current?.setValue(formData.title);
       contentInputRef.current?.setValue(formData.content);
