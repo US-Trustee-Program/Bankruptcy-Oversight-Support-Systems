@@ -100,31 +100,69 @@ describe('case note tests', () => {
   test('should show Note Draft Alert when content or title have not been pushed to cosmos, and dissapear on submission', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
+    let submitButton;
+    let clearButton;
     const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
     const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
     renderWithProps();
 
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-    await userEvent.type(noteTitleInput, 'test note title');
-
     const textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toBeInTheDocument();
+
+    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
+    expect(noteTitleInput).toBeInTheDocument();
+
+    await userEvent.type(noteTitleInput, 'test note title');
+    submitButton = screen.getByTestId('button-submit-case-note');
+    clearButton = screen.getByTestId('button-clear-case-note');
+    expect(submitButton).toBeEnabled();
+    expect(clearButton).toBeEnabled();
+
+    await userEvent.clear(noteTitleInput);
+    expect(noteTitleInput).toHaveValue('');
+
+    await waitFor(() => {
+      submitButton = screen.getByTestId('button-submit-case-note');
+      expect(submitButton).toBeDisabled();
+    });
+    clearButton = screen.getByTestId('button-clear-case-note');
+    expect(clearButton).toBeDisabled();
+
     await userEvent.type(textArea, 'test note');
-    //NOTE: Attempting to cover 168-170, might want to refactor to make it reachable by test
     await waitFor(() => {
       expect(setTimeoutSpy).toHaveBeenCalled();
     });
+    await waitFor(() => {
+      submitButton = screen.getByTestId('button-submit-case-note');
+      expect(submitButton).toBeEnabled();
+    });
+    clearButton = screen.getByTestId('button-clear-case-note');
+    expect(clearButton).toBeEnabled();
 
     await userEvent.clear(textArea);
+
+    expect(textArea).toHaveValue('');
+
     await userEvent.clear(noteTitleInput);
 
     await waitFor(() => {
       expect(clearTimeoutSpy).toHaveBeenCalled();
     });
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
+
+    await waitFor(() => {
+      submitButton = screen.getByTestId('button-submit-case-note');
+      expect(submitButton).toBeDisabled();
+    });
+    clearButton = screen.getByTestId('button-clear-case-note');
+    expect(clearButton).toBeDisabled();
+
+    await userEvent.type(noteTitleInput, 'test note title');
+    await userEvent.type(textArea, 'test note');
+    await waitFor(() => {
+      submitButton = screen.getByTestId('button-submit-case-note');
+      expect(submitButton).toBeEnabled();
+    });
+    await userEvent.click(submitButton);
   });
 
   test('should send new case note to api and call fetch notes on success', async () => {
