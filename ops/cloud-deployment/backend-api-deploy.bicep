@@ -100,13 +100,12 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: apiPlanName
   sku: {
-    name: 'FC1'
-    tier: 'FlexConsumption'
-    size: 'FC1'
-    family: 'FC'
+    name: 'EP1'
+    tier: 'ElasticPremium'
+    family: 'EP'
     capacity: 10
   }
-  kind: 'linux'
+  kind: 'elastic'
   properties: {
     perSiteScaling: true
     elasticScaleEnabled: true
