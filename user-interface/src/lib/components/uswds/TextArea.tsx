@@ -38,7 +38,7 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   function clearValue() {
     setInputValue('');
     emitChange('');
-    if (inputRef.current) (inputRef.current as HTMLTextAreaElement).focus();
+    if (inputRef.current) (inputRef.current as HTMLTextAreaElement).focus(); // TODO: need to test
   }
 
   function setValue(value: string) {

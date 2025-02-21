@@ -100,6 +100,7 @@ function getNumber(key: string): number | null {
   try {
     return Number.parseInt(value);
   } catch {
+    // TODO: need to test
     return null;
   }
 }
