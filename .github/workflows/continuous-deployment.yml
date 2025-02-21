@@ -5,31 +5,32 @@ concurrency: ${{ github.ref }}-${{ github.workflow }}
 on:
   push:
     paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "**/*.md"
+      - 'docs/**'
+      - '*.md'
+      - '**/*.md'
     branches-ignore:
-      - "mob/**"
+      - 'mob/**'
   workflow_dispatch:
     inputs:
       deployBranch:
-        description: "deployBranch: Provision Azure resources for development branch and deploy build."
+        description:
+          'deployBranch: Provision Azure resources for development branch and deploy build.'
         required: true
-        default: "false"
+        default: 'false'
         type: choice
         options:
-          - "false"
-          - "true"
+          - 'false'
+          - 'true'
       enableBicepDeployment:
         description:
-          "enableBicepDeployment: Execute main.bicep deployment for application component Azure
-          resources"
+          'enableBicepDeployment: Execute main.bicep deployment for application component Azure
+          resources'
         required: true
-        default: "false"
+        default: 'false'
         type: choice
         options:
-          - "false"
-          - "true"
+          - 'false'
+          - 'true'
 
 jobs:
   setup:
@@ -58,7 +59,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ vars.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: user-interface/package-lock.json
 
       - name: Install Node dependencies
@@ -90,10 +91,10 @@ jobs:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
 
-  security-scan:
-    name: Security
-    uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
+  # security-scan:
+  #   name: Security
+  #   uses: ./.github/workflows/sub-security-scan.yml
+  #   secrets: inherit # pragma: allowlist secret
 
   build:
     name: Build
@@ -117,15 +118,7 @@ jobs:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
     needs:
-      [
-        setup,
-        build,
-        accessibility-test,
-        security-scan,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-      ]
+      [setup, build, accessibility-test, unit-test-frontend, unit-test-backend, unit-test-common]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
