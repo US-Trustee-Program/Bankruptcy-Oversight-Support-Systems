@@ -11,7 +11,7 @@ param functionsVersion string = '~4'
 @description('Storage account name. Default creates unique name from resource group id and stack name')
 @minLength(3)
 @maxLength(24)
-param dataflowsFunctionStorageName string = 'ustpmigr${uniqueString(resourceGroup().id, dataflowsFunctionName)}'
+param dataflowsFunctionStorageName string = 'dataflows${uniqueString(resourceGroup().id, dataflowsFunctionName)}'
 
 param dataflowsFunctionName string
 
