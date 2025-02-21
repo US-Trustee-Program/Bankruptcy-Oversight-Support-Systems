@@ -3,38 +3,38 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param dataflowsPlanName string
 
-// @description('Plan type to determine plan Sku')
-// @allowed([
-//   'P1v2'
-//   'B2'
-//   'S1'
-// ])
+@description('Plan type to determine plan Sku')
+@allowed([
+  'P1v2'
+  'B2'
+  'S1'
+])
 
-// param dataflowsPlanType string = 'P1v2'
+param dataflowsPlanType string = 'P1v2'
 
-// var planTypeToSkuMap = {
-//   P1v2: {
-//     name: 'P1v2'
-//     tier: 'PremiumV2'
-//     size: 'P1v2'
-//     family: 'Pv2'
-//     capacity: 1
-//   }
-//   B2: {
-//     name: 'B2'
-//     tier: 'Basic'
-//     size: 'B2'
-//     family: 'B'
-//     capacity: 1
-//   }
-//   S1: {
-//     name: 'S1'
-//     tier: 'Standard'
-//     size: 'S1'
-//     family: 'S'
-//     capacity: 1
-//   }
-// }
+var planTypeToSkuMap = {
+  P1v2: {
+    name: 'P1v2'
+    tier: 'PremiumV2'
+    size: 'P1v2'
+    family: 'Pv2'
+    capacity: 1
+  }
+  B2: {
+    name: 'B2'
+    tier: 'Basic'
+    size: 'B2'
+    family: 'B'
+    capacity: 1
+  }
+  S1: {
+    name: 'S1'
+    tier: 'Standard'
+    size: 'S1'
+    family: 'S'
+    capacity: 1
+  }
+}
 
 param stackName string = 'ustp-cams'
 
@@ -134,13 +134,7 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
 resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: dataflowsPlanName
-  sku: {
-    name: 'P1v2'
-    tier: 'PremiumV2'
-    size: 'P1v2'
-    family: 'Pv2'
-    capacity: 1
-  }
+  sku: planTypeToSkuMap[dataflowsPlanType]
   kind: 'linux'
   properties: {
     perSiteScaling: true
