@@ -6,6 +6,7 @@ export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
 export const LAST_INTERACTION_KEY = 'cams:last-interaction';
 export const FORM_LIST_KEY = 'cams:saved-form-keys';
+export const FORM_KEY_PREFIX = 'cams:form:';
 
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
@@ -119,15 +120,21 @@ function setNumber(key: string, value: number) {
 
 ////////////// Form Related Functions //////////////
 
+function buildFormKey(key: string) {
+  return FORM_KEY_PREFIX + key;
+}
+
 function getFormKeys() {
   return JSON.parse(localStorage.getItem(FORM_LIST_KEY) || '[]');
 }
 
-function getForm(formKey: string): object {
+function getForm(key: string): object {
+  const formKey = buildFormKey(key);
   return JSON.parse(localStorage.getItem(formKey) || 'null');
 }
 
-function saveForm(formKey: string, data: object) {
+function saveForm(key: string, data: object) {
+  const formKey = buildFormKey(key);
   const formKeys = getFormKeys();
 
   localStorage.setItem(formKey, JSON.stringify(data));
@@ -138,19 +145,20 @@ function saveForm(formKey: string, data: object) {
   }
 }
 
-function clearForm(formKey: string) {
-  const prevFormKeys = getFormKeys();
-
+function clearForm(key: string) {
+  const formKey = buildFormKey(key);
   localStorage.removeItem(formKey);
 
-  const newFormKeys = prevFormKeys.filter((key: string) => key !== formKey);
-  if (newFormKeys.length > 0) localStorage.setItem(FORM_LIST_KEY, JSON.stringify(newFormKeys));
-  else localStorage.removeItem(FORM_LIST_KEY);
+  const formList = getFormKeys().filter((k: string) => k !== formKey);
+  if (formList.length > 0) {
+    localStorage.setItem(FORM_LIST_KEY, JSON.stringify(formList));
+  } else {
+    localStorage.removeItem(FORM_LIST_KEY);
+  }
 }
 
 function clearAllForms() {
-  const formKeys = getFormKeys();
-  for (const key of formKeys) {
+  for (const key of getFormKeys()) {
     localStorage.removeItem(key);
   }
   localStorage.removeItem(FORM_LIST_KEY);
