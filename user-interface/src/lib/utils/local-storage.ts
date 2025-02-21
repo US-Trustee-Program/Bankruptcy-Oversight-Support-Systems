@@ -29,20 +29,8 @@ function setSession(session: CamsSession) {
 }
 
 function removeSession() {
-  const keysToDelete = [LOGIN_LOCAL_STORAGE_SESSION_KEY];
   if (window.localStorage) {
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (
-        key?.startsWith(LOGIN_LOCAL_STORAGE_CACHE_KEY) &&
-        !key?.startsWith(LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY)
-      ) {
-        keysToDelete.push(key);
-      }
-    }
-    keysToDelete.forEach((key) => {
-      window.localStorage.removeItem(key);
-    });
+    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
   }
 }
 

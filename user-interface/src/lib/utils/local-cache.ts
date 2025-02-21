@@ -83,10 +83,31 @@ function remove(key: string): boolean {
   }
 }
 
+function removeAll() {
+  removeNamespace();
+}
+
+function removeNamespace(suffix: string = '') {
+  const keysToDelete = [];
+  if (window.localStorage) {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(NAMESPACE + suffix)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach((key) => {
+      window.localStorage.removeItem(key);
+    });
+  }
+}
+
 export const LocalCache = {
   get,
   set,
   remove,
+  removeAll,
+  removeNamespace,
   isCacheEnabled,
   purge,
 };

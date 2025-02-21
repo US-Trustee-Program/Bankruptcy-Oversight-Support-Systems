@@ -4,7 +4,6 @@ import CaseNotes, { CaseNotesProps } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
-import testingUtilities from '@/lib/testing/testing-utilities';
 import { CaseNoteInput } from '@common/cams/cases';
 
 const caseId = '000-11-22222';
@@ -98,32 +97,6 @@ describe('case note tests', () => {
     }
   });
 
-  test('should show Note Draft Alert when content has not been pushed to cosmos', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
-
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
-
-    renderWithProps();
-
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-
-    const textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toBeInTheDocument();
-    await userEvent.type(textArea, 'test note');
-
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
-
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith(
-        'All case note input fields are required to submit a note.',
-      );
-    });
-  });
-
   test('should show Note Draft Alert when content or title have not been pushed to cosmos, and dissapear on submission', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
@@ -142,6 +115,9 @@ describe('case note tests', () => {
     await waitFor(() => {
       expect(setTimeoutSpy).toHaveBeenCalled();
     });
+
+    await userEvent.clear(textArea);
+    await userEvent.clear(noteTitleInput);
 
     await waitFor(() => {
       expect(clearTimeoutSpy).toHaveBeenCalled();

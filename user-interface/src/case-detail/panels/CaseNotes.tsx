@@ -198,6 +198,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             required={true}
             includeClearButton={true}
             onChange={handleTitleChange}
+            autoComplete="off"
             ref={titleInputRef}
           />
           <TextArea
