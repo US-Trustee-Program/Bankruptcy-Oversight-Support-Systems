@@ -3,38 +3,6 @@ param location string = resourceGroup().location
 @description('Application service plan name')
 param apiPlanName string
 
-@description('Plan type to determine plan Sku')
-@allowed([
-  'P1v2'
-  'B2'
-  'S1'
-])
-param apiPlanType string = 'P1v2'
-
-var planTypeToSkuMap = {
-  P1v2: {
-    name: 'P1v2'
-    tier: 'PremiumV2'
-    size: 'P1v2'
-    family: 'Pv2'
-    capacity: 1
-  }
-  B2: {
-    name: 'B2'
-    tier: 'Basic'
-    size: 'B2'
-    family: 'B'
-    capacity: 1
-  }
-  S1: {
-    name: 'S1'
-    tier: 'Standard'
-    size: 'S1'
-    family: 'S'
-    capacity: 1
-  }
-}
-
 param stackName string = 'ustp-cams'
 
 @description('Azure functions version')
@@ -131,7 +99,13 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
 resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: apiPlanName
-  sku: planTypeToSkuMap[apiPlanType]
+  sku: {
+    name: 'FC1'
+    tier: 'FlexConsumption'
+    size: 'FC1'
+    family: 'FC'
+    capacity: 10
+  }
   kind: 'linux'
   properties: {
     perSiteScaling: true
@@ -141,8 +115,8 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
     reserved: true // set true for Linux
     isXenon: false
     hyperV: false
-    targetWorkerCount: 0
-    targetWorkerSizeId: 0
+    targetWorkerCount: 1
+    targetWorkerSizeId: 1
     zoneRedundant: false
   }
 }
@@ -378,39 +352,6 @@ var ipSecurityRestrictionsRules = concat(
       ]
     : []
 )
-
-var middlewareIpSecurityRestrictionsRules = [
-  {
-    ipAddress: '52.244.134.181/32'
-    action: 'Allow'
-    priority: 1001
-    name: 'Portal mwip 1'
-    description: 'Allow Azure Portal Middleware IPs'
-  }
-  {
-    ipAddress: '52.244.176.112/32'
-    action: 'Allow'
-    priority: 1002
-    name: 'Portal mwip 2'
-    description: 'Allow Azure Portal Middleware IPs'
-  }
-  {
-    ipAddress: '52.247.148.42/32'
-    action: 'Allow'
-    priority: 1003
-    name: 'Portal mwip 3'
-    description: 'Allow Azure Portal Middleware IPs'
-  }
-  {
-    ipAddress: '52.247.163.6/32'
-    action: 'Allow'
-    priority: 1004
-    name: 'Portal mwip 4'
-    description: 'Allow Azure Portal Middleware IPs'
-  }
-]
-
-var dataflowsIpSecurityRestrictionsRules = concat(ipSecurityRestrictionsRules, middlewareIpSecurityRestrictionsRules)
 
 resource apiFunctionConfig 'Microsoft.Web/sites/config@2023-12-01' = {
   parent: apiFunctionApp
