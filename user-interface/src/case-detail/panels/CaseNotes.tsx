@@ -8,14 +8,14 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
 import Input from '@/lib/components/uswds/Input';
 import { AlertOptions } from './CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import LocalStorage from '@/lib/utils/local-storage';
+import LocalFormCache from '@/lib/utils/local-form-cache';
 
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
@@ -33,11 +33,11 @@ export interface CaseNotesProps {
 
 export default function CaseNotes(props: CaseNotesProps) {
   const { caseId, caseNotes, areCaseNotesLoading, searchString } = props;
-  const [draftMode, setDraftMode] = useState<boolean>(false);
   const caseNoteDraftAlertRef = useRef<AlertRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
-  const buttonRef = useRef<ButtonRef>(null);
+  const submitButtonRef = useRef<ButtonRef>(null);
+  const clearButtonRef = useRef<ButtonRef>(null);
   const globalAlert = useGlobalAlert();
 
   const api = Api2;
@@ -61,30 +61,36 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
+  function setFormButtonState(enabled: boolean) {
+    submitButtonRef.current?.disableButton(!enabled);
+    clearButtonRef.current?.disableButton(!enabled);
+  }
+
   function saveFormData(data: CaseNoteInput) {
     if (data.title?.length > 0 || data.content?.length > 0) {
-      LocalStorage.saveForm(formKey, data);
-      setDraftMode(true);
+      LocalFormCache.saveForm(formKey, data);
+      setFormButtonState(true);
     } else {
-      setDraftMode(false);
+      LocalFormCache.clearForm(formKey);
+      setFormButtonState(false);
     }
   }
 
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
-    LocalStorage.clearForm(formKey);
-    setDraftMode(false);
+    LocalFormCache.clearForm(formKey);
+    setFormButtonState(false);
   }
 
   function disableFormFields(disabled: boolean) {
     titleInputRef.current?.disable(disabled);
     contentInputRef.current?.disable(disabled);
-    buttonRef.current?.disableButton(disabled);
+    setFormButtonState(!disabled);
   }
 
   async function putCaseNote() {
-    const formData = LocalStorage.getForm(formKey) as CaseNoteInput;
+    const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
     if (formData.title?.length > 0 && formData.content?.length > 0) {
       disableFormFields(true);
       const caseNoteInput: CaseNoteInput = {
@@ -167,17 +173,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   }, [searchString, caseNotes]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      return draftMode
-        ? caseNoteDraftAlertRef.current?.show()
-        : caseNoteDraftAlertRef.current?.hide();
-    }, 1250);
-
-    return () => clearTimeout(timeout);
-  }, [draftMode]);
-
-  useEffect(() => {
-    const formData = LocalStorage.getForm(formKey) as CaseNoteInput;
+    const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
     if (
       formData &&
       formData.caseId === props.caseId &&
@@ -185,7 +181,9 @@ export default function CaseNotes(props: CaseNotesProps) {
     ) {
       titleInputRef.current?.setValue(formData.title);
       contentInputRef.current?.setValue(formData.content);
-      setDraftMode(true);
+      setFormButtonState(true);
+    } else {
+      setFormButtonState(false);
     }
   }, []);
 
@@ -197,6 +195,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           <Input
             id="case-note-title-input"
             label="Note title"
+            required={true}
             includeClearButton={true}
             onChange={handleTitleChange}
             ref={titleInputRef}
@@ -204,29 +203,17 @@ export default function CaseNotes(props: CaseNotesProps) {
           <TextArea
             id="note-content"
             label="Note Text"
+            required={true}
             onChange={handleContentChange}
             ref={contentInputRef}
           />
-          {draftMode === true && (
-            <div className="measure-6">
-              <Alert
-                type={UswdsAlertStyle.Info}
-                id="case-note-draft"
-                inline={true}
-                slim={true}
-                ref={caseNoteDraftAlertRef}
-              >
-                Note stored as a draft. Click “Add Note” to save the draft.
-              </Alert>
-            </div>
-          )}
           <div className="form-button-bar">
             <Button
               id="submit-case-note"
               uswdsStyle={UswdsButtonStyle.Default}
               onClick={putCaseNote}
               aria-label="Add case note."
-              ref={buttonRef}
+              ref={submitButtonRef}
             >
               Add Note
             </Button>
@@ -235,9 +222,9 @@ export default function CaseNotes(props: CaseNotesProps) {
               uswdsStyle={UswdsButtonStyle.Unstyled}
               onClick={clearCaseNoteForm}
               aria-label="Clear case note form data."
-              ref={buttonRef}
+              ref={clearButtonRef}
             >
-              Clear
+              Discard
             </Button>
           </div>
         </div>

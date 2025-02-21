@@ -1,12 +1,11 @@
 import { CamsSession } from '@common/cams/session';
 
 export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
+export const LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY = 'cams:cache:form:';
 export const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
 export const LAST_INTERACTION_KEY = 'cams:last-interaction';
-export const FORM_LIST_KEY = 'cams:saved-form-keys';
-export const FORM_KEY_PREFIX = 'cams:form:';
 
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
@@ -34,7 +33,10 @@ function removeSession() {
   if (window.localStorage) {
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      if (key?.startsWith(LOGIN_LOCAL_STORAGE_CACHE_KEY)) {
+      if (
+        key?.startsWith(LOGIN_LOCAL_STORAGE_CACHE_KEY) &&
+        !key?.startsWith(LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY)
+      ) {
         keysToDelete.push(key);
       }
     }
@@ -118,54 +120,6 @@ function setNumber(key: string, value: number) {
   localStorage.setItem(key, value.toString());
 }
 
-////////////// Form Related Functions //////////////
-
-function buildFormKey(key: string) {
-  return FORM_KEY_PREFIX + key;
-}
-
-function getFormKeys() {
-  return JSON.parse(localStorage.getItem(FORM_LIST_KEY) || '[]');
-}
-
-function getForm(key: string): object {
-  const formKey = buildFormKey(key);
-  return JSON.parse(localStorage.getItem(formKey) || 'null');
-}
-
-function saveForm(key: string, data: object) {
-  const formKey = buildFormKey(key);
-  const formKeys = getFormKeys();
-
-  localStorage.setItem(formKey, JSON.stringify(data));
-
-  if (!formKeys.includes(formKey)) {
-    formKeys.push(formKey);
-    localStorage.setItem(FORM_LIST_KEY, JSON.stringify(formKeys));
-  }
-}
-
-function clearForm(key: string) {
-  const formKey = buildFormKey(key);
-  localStorage.removeItem(formKey);
-
-  const formList = getFormKeys().filter((k: string) => k !== formKey);
-  if (formList.length > 0) {
-    localStorage.setItem(FORM_LIST_KEY, JSON.stringify(formList));
-  } else {
-    localStorage.removeItem(FORM_LIST_KEY);
-  }
-}
-
-function clearAllForms() {
-  for (const key of getFormKeys()) {
-    localStorage.removeItem(key);
-  }
-  localStorage.removeItem(FORM_LIST_KEY);
-}
-
-////////////// End Form Related Functions //////////////
-
 export const LocalStorage = {
   getSession,
   setSession,
@@ -178,11 +132,6 @@ export const LocalStorage = {
   removeRefreshingToken,
   getLastInteraction,
   setLastInteraction,
-  getFormKeys,
-  getForm,
-  saveForm,
-  clearForm,
-  clearAllForms,
 };
 
 export default LocalStorage;

@@ -13,6 +13,10 @@ button.unstyled-button {
     content: ' *';
     color: $secondary-dark;
   }
+  label:has(+ .usa-textarea-group textarea[required])::after {
+    content: ' *';
+    color: $secondary-dark;
+  }
   label:has(+ .usa-date-picker input[required])::after {
     content: ' *';
     color: $secondary-dark;

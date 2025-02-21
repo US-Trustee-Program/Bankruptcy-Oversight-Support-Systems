@@ -83,7 +83,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
       <div className="usa-form-group">
         <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
           {props.label}
-          {props.required && <span className="required-form-field">{' *'}</span>}
+          {props.required && <span className="required-form-field" />}
         </label>
         {ariaDescription && (
           <div className="usa-hint" id={ariaDescribedBy()}>

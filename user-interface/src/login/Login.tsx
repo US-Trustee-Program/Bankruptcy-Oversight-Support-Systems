@@ -22,6 +22,7 @@ import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { initializeBroadcastLogout } from '@/login/broadcast-logout';
+import LocalCache from '@/lib/utils/local-cache';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -41,6 +42,7 @@ export function Login(props: LoginProps): React.ReactNode {
     return <BadConfiguration message={errorMessage} />;
   }
 
+  LocalCache.purge();
   addApiAfterHook(http401Hook);
   initializeInactiveLogout();
   initializeBroadcastLogout();
