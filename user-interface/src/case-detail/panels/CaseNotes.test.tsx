@@ -10,6 +10,7 @@ import { CaseNoteInput } from '@common/cams/cases';
 const caseId = '000-11-22222';
 const textAreaTestId = 'textarea-note-content';
 const noteTitleInputTestId = 'case-note-title-input';
+const noteAlertMessage = 'Note stored as a draft. Click “Add Note” to save the draft.';
 const caseNotes = [
   MockData.getCaseNote({ caseId }),
   MockData.getCaseNote({ caseId }),
@@ -124,10 +125,11 @@ describe('case note tests', () => {
     });
   });
 
-  test('should show Note Draft Alert when content or title have not been pushed to cosmos', async () => {
+  test('should show Note Draft Alert when content or title have not been pushed to cosmos, and dissapear on submission', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
-
+    const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
     renderWithProps();
 
     const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
@@ -137,19 +139,26 @@ describe('case note tests', () => {
     const textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toBeInTheDocument();
     await userEvent.type(textArea, 'test note');
-
+    //NOTE: Attempting to cover 168-170, might want to refactor to make it reachable by test
     await waitFor(() => {
-      const draftAlert = screen.getByTestId('alert-container-case-note-draft');
-      expect(draftAlert).toBeInTheDocument();
+      expect(setTimeoutSpy).toHaveBeenCalled();
     });
-
+    let draftAlert;
+    await waitFor(() => {
+      draftAlert = screen.getByTestId('alert-container-case-note-draft');
+      expect(draftAlert).toHaveTextContent(noteAlertMessage);
+    });
+    expect(draftAlert).toBeVisible();
+    await waitFor(() => {
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+    });
     const button = screen.getByTestId('button-submit-case-note');
     expect(button).toBeInTheDocument();
     await userEvent.click(button);
 
     await waitFor(
       () => {
-        const draftAlert = screen.queryByTestId('alert-container-case-note-draft');
+        const draftAlert = screen.queryByTestId('alert-message-case-note-draft');
         expect(draftAlert).not.toBeInTheDocument();
       },
       { timeout: 1000 },
@@ -193,5 +202,47 @@ describe('case note tests', () => {
 
     textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toHaveValue('');
+  });
+  //NOTE: if you place this test before 'should send new case note to api', it fails because the value has 'test note titletest note title''. Why???
+  test('should show Note Draft Alert when content or title have not been pushed to cosmos, and dissapear when form fields are cleared', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
+
+    renderWithProps();
+    //Fill in title, check for alert, and clear
+    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
+    expect(noteTitleInput).toBeInTheDocument();
+    await userEvent.type(noteTitleInput, 'test note title');
+
+    await waitFor(() => {
+      const draftAlert = screen.getByTestId('alert-container-case-note-draft');
+      expect(draftAlert).toBeInTheDocument();
+    });
+    await userEvent.clear(noteTitleInput);
+    await waitFor(
+      () => {
+        const draftAlert = screen.queryByTestId('alert-container-case-note-draft');
+        expect(draftAlert).not.toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
+    //Fill in content, check for alert, and clear
+    const textArea = screen.getByTestId(textAreaTestId);
+    expect(textArea).toBeInTheDocument();
+    await userEvent.type(textArea, 'test note');
+
+    await waitFor(() => {
+      const draftAlert = screen.getByTestId('alert-container-case-note-draft');
+      expect(draftAlert).toBeInTheDocument();
+    });
+
+    await userEvent.clear(textArea);
+    await waitFor(
+      () => {
+        const draftAlert = screen.queryByTestId('alert-container-case-note-draft');
+        expect(draftAlert).not.toBeInTheDocument();
+      },
+      { timeout: 1000 },
+    );
   });
 });
