@@ -165,11 +165,9 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (draftMode === true) {
-        caseNoteDraftAlertRef.current?.show();
-      } else {
-        caseNoteDraftAlertRef.current?.hide();
-      }
+      return draftMode
+        ? caseNoteDraftAlertRef.current?.show()
+        : caseNoteDraftAlertRef.current?.hide();
     }, 1250);
 
     return () => clearTimeout(timeout);
