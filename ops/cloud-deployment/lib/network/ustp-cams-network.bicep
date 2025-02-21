@@ -130,9 +130,9 @@ module apiFunctionSubnet './subnet.bicep' = {
     ]
     subnetDelegations: [
       {
-        name: 'Microsoft.Web/environments'
+        name: 'Microsoft.Web/serverfarms'
         properties: {
-          serviceName: 'Microsoft.Web/environments'
+          serviceName: 'Microsoft.Web/serverfarms'
         }
       }
     ]
@@ -167,9 +167,9 @@ module dataflowsFunctionSubnet './subnet.bicep' = {
     ]
     subnetDelegations: [
       {
-        name: 'Microsoft.Web/environments'
+        name: 'Microsoft.Web/serverfarms'
         properties: {
-          serviceName: 'Microsoft.Web/environments'
+          serviceName: 'Microsoft.Web/serverfarms'
         }
       }
     ]
