@@ -8,7 +8,7 @@ export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 export const CONSOLIDATIONS_ENABLED = 'consolidations-enabled';
 export const CASE_NOTES_ENABLED = 'case-notes-enabled';
 export const PRIVILEGED_IDENTITY_MANAGEMENT = 'privileged-identity-management';
-export const SYSTEM_MAINTENANCE_BANNER = 'display-system-maintenance-banner';
+export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
