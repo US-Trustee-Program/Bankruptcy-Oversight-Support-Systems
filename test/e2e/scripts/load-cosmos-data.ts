@@ -54,6 +54,7 @@ async function getCasesFromDxtr(appContext: ApplicationContext) {
   const predicate: CasesSearchPredicate = {
     limit: 25,
     offset: 0,
+    chapters: ['15'],
   };
 
   return await casesGateway.searchCases(appContext, predicate);
@@ -103,3 +104,5 @@ async function syncCases(context: ApplicationContext, caseIds: string[]) {
   });
   return await ExportAndLoadCase.exportAndLoad(context, events);
 }
+
+seedCosmosE2eDatabase();

@@ -8,7 +8,8 @@
     "ui": "playwright test --ui",
     "headless": "playwright test",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts"
   },
   "author": "",
   "license": "ISC",
