@@ -29,3 +29,4 @@ jobs:
           create-issues: false
           path: ${{ inputs.path }}
           artifactname: ${{ inputs.artifactname }}
+          debug: true
