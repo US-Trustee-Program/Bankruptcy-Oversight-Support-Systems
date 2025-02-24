@@ -4,6 +4,7 @@ import './Header.scss';
 import useFeatureFlags, {
   PRIVILEGED_IDENTITY_MANAGEMENT,
   TRANSFER_ORDERS_ENABLED,
+  SYSTEM_MAINTENANCE_BANNER,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
@@ -12,6 +13,7 @@ import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
 import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
 import { ADMIN_PATH } from '@/admin/admin-config';
+import Alert, { UswdsAlertStyle } from './uswds/Alert';
 
 export enum NavState {
   DEFAULT,
@@ -186,6 +188,23 @@ export const Header = () => {
           </div>
         </div>
       </header>
+      {flags[SYSTEM_MAINTENANCE_BANNER] && (
+        <div className="system-maintenance-banner grid-row">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <Alert
+              type={UswdsAlertStyle.Warning}
+              title="System maintenance"
+              slim={true}
+              inline={true}
+              show={true}
+            >
+              {flags[SYSTEM_MAINTENANCE_BANNER]}
+            </Alert>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
+      )}
     </>
   );
 };
