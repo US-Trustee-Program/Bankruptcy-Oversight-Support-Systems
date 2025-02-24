@@ -97,7 +97,7 @@ describe('case note tests', () => {
     }
   });
 
-  test('should show Note Draft Alert when content or title have not been pushed to cosmos, and dissapear on submission', async () => {
+  test('should enable or disable buttons based on form input, and clear button action', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
     vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
     let submitButton;
