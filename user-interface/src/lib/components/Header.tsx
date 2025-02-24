@@ -199,7 +199,7 @@ export const Header = () => {
               inline={true}
               show={true}
             >
-              System performance may be degraded during the update until approximately 9:00 AM EST.
+              {flags[SYSTEM_MAINTENANCE_BANNER]}
             </Alert>
           </div>
           <div className="grid-col-1"></div>
