@@ -2,7 +2,11 @@ import * as dotenv from 'dotenv';
 import ContextCreator from '../../../backend/function-apps/azure/application-context-creator';
 import { createMockAzureFunctionContext } from '../../../backend/function-apps/azure/testing-helpers';
 import { ApplicationContext } from '../../../backend/lib/adapters/types/basic';
-import { getCasesGateway, getOrdersRepository } from '../../../backend/lib/factory';
+import {
+  getCasesGateway,
+  getConsolidationOrdersRepository,
+  getOrdersRepository,
+} from '../../../backend/lib/factory';
 import { CasesSearchPredicate } from '../../../common/src/api/search';
 import { CaseBasics } from '../../../common/src/cams/cases';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
@@ -33,8 +37,9 @@ export async function seedCosmosE2eDatabase() {
   const dxtrCaseIds = dxtrCases.map((bCase) => bCase.caseId);
 
   // Create SYNCED_CASE docs in Cosmos for each of the cases.
+  await syncCases(appContext, dxtrCaseIds);
+
   // 5 cases no orders, 10 with consolidations, 10 with transfers all orders pending
-  const _syncedCaseEvents = syncCases(appContext, dxtrCaseIds);
   const casesWithConsolidations = dxtrCases.slice(5, 15);
   const casesWithTransfers = dxtrCases.slice(15, 25);
 
@@ -42,11 +47,12 @@ export async function seedCosmosE2eDatabase() {
     appContext,
     casesWithConsolidations,
   );
-  const ordersRepo = getOrdersRepository(appContext);
-  await ordersRepo.createMany(consolidationOrders);
+  const consolidationRepo = getConsolidationOrdersRepository(appContext);
+  await consolidationRepo.createMany(consolidationOrders);
 
+  const transfersRepo = getOrdersRepository(appContext);
   const transferOrders = generateTransferOrders(casesWithTransfers);
-  await ordersRepo.createMany(transferOrders);
+  await transfersRepo.createMany(transferOrders);
 }
 
 async function getCasesFromDxtr(appContext: ApplicationContext) {
