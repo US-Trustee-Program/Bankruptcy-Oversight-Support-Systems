@@ -78,27 +78,6 @@ describe('Local storage', () => {
       LocalStorage.removeSession();
 
       expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY)).toBeNull();
-
-      // TODO: Move this to the LocalCache to test the removeAll, removeNamespace functions.
-      // window.localStorage.setItem(
-      //   LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test',
-      //   JSON.stringify({ foo: 'bar' }),
-      // );
-      // window.localStorage.setItem(
-      //   LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test2',
-      //   JSON.stringify({ foo: 'bar' }),
-      // );
-      // expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY)).toEqual(
-      //   JSON.stringify(testSession),
-      // );
-      // expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test')).toEqual(
-      //   JSON.stringify({ foo: 'bar' }),
-      // );
-      // expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test2')).toEqual(
-      //   JSON.stringify({ foo: 'bar' }),
-      // );
-      // expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test')).toBeNull();
-      // expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_CACHE_KEY + '/test2')).toBeNull();
     });
   });
 
