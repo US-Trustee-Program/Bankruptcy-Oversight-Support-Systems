@@ -19,8 +19,12 @@ async function exportAndLoad(
       await repo.syncDxtrCase(
         createAuditRecord<SyncedCase>({ ...event.bCase, documentType: 'SYNCED_CASE' }),
       );
-    } catch (error) {
-      event.error = error;
+    } catch (originalError) {
+      event.error = getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to sync case ${event.caseId}.`,
+      );
     }
   }
   return events;

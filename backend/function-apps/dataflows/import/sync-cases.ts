@@ -46,10 +46,10 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  *
  * @param  context
  */
-async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
+async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
   try {
     const context = await ContextCreator.getApplicationContext({ invocationContext });
-    const { events, lastTxId } = await SyncCases.getCaseIds(context);
+    const { events, lastTxId } = await SyncCases.getCaseIds(context, startMessage['lastTxId']);
 
     if (!events.length) return;
 
