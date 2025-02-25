@@ -109,6 +109,7 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
   const logger = ApplicationContextCreator.getLogger(invocationContext);
   if (isNotFoundError(event.error)) {
     logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`);
+    return;
   }
   logger.info(
     MODULE_NAME,
