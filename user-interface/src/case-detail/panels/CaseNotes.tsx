@@ -8,7 +8,7 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, RefObject } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
@@ -44,18 +44,22 @@ export default function CaseNotes(props: CaseNotesProps) {
   const MINIMUM_SEARCH_CHARACTERS = 3;
   const formKey = buildCaseNoteFormKey(caseId);
 
+  function getInputValue(inputRef: RefObject<TextAreaRef>) {
+    return inputRef.current?.getValue() ?? '';
+  }
+
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
       caseId: props.caseId,
       title: event.target.value,
-      content: contentInputRef.current?.getValue() ?? '', // TODO: need to test
+      content: getInputValue(contentInputRef), // TODO: need to test
     });
   }
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     saveFormData({
       caseId: props.caseId,
-      title: titleInputRef.current?.getValue() ?? '', // TODO: need to test
+      title: getInputValue(titleInputRef), // TODO: need to test
       content: event.target.value,
     });
   }
@@ -102,7 +106,6 @@ export default function CaseNotes(props: CaseNotesProps) {
         .then(() => {
           if (props.onNoteCreation) props.onNoteCreation();
           disableFormFields(false);
-          // only clear the form on success
           clearCaseNoteForm();
         })
         .catch((e: HttpResponse) => {

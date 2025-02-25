@@ -35,7 +35,7 @@ describe('case note tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should display loading indicator if loading', async () => {
