@@ -153,6 +153,10 @@ test.describe('Consolidation Orders', () => {
       .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
       .fill(firstChildCaseId);
 
+    await page.getByTestId('combo-box-input').fill('Manhattan');
+
+    await page.locator('[data-value="087"]').dispatchEvent('click');
+
     // wait for loading assigned attorneys to complete
     await page.waitForSelector(
       `#lead-case-number-loading-spinner-${pendingConsolidationOrder.id}`,
