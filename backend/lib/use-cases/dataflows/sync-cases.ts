@@ -2,17 +2,24 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import Factory, { getCasesGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CasesSyncState } from '../gateways.types';
+import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
-async function getCaseIds(context: ApplicationContext) {
+async function getCaseIds(context: ApplicationContext, lastRunTxId?: string) {
   try {
     const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
 
-    const syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
-    if (!syncState) {
-      // This should only happen until we run the migration.
-      return { events: [] };
+    let syncState: CasesSyncState;
+    if (lastRunTxId) {
+      syncState = {
+        id: randomUUID(),
+        documentType: 'CASES_SYNC_STATE',
+        txId: lastRunTxId,
+      };
+    } else {
+      syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
     }
 
     const casesGateway = getCasesGateway(context);
