@@ -141,7 +141,6 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
       {
         name: 'EnableMongoRetryableWrites'
       }
-
     ]
     publicNetworkAccess: 'Enabled'
     isVirtualNetworkFilterEnabled: allowAllNetworks ? false : true
