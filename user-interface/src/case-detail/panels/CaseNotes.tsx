@@ -8,7 +8,7 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useEffect, useRef, RefObject } from 'react';
+import { useEffect, useRef } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
@@ -19,6 +19,10 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
+}
+
+export function getCaseNotesInputValue(ref: TextAreaRef | null) {
+  return ref?.getValue() ?? '';
 }
 
 export interface CaseNotesProps {
@@ -44,22 +48,18 @@ export default function CaseNotes(props: CaseNotesProps) {
   const MINIMUM_SEARCH_CHARACTERS = 3;
   const formKey = buildCaseNoteFormKey(caseId);
 
-  function getInputValue(inputRef: RefObject<TextAreaRef>) {
-    return inputRef.current?.getValue() ?? '';
-  }
-
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
       caseId: props.caseId,
       title: event.target.value,
-      content: getInputValue(contentInputRef), // TODO: need to test
+      content: getCaseNotesInputValue(contentInputRef.current),
     });
   }
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     saveFormData({
       caseId: props.caseId,
-      title: getInputValue(titleInputRef), // TODO: need to test
+      title: getCaseNotesInputValue(titleInputRef.current),
       content: event.target.value,
     });
   }
@@ -178,7 +178,7 @@ export default function CaseNotes(props: CaseNotesProps) {
     if (
       formData &&
       formData.caseId === props.caseId &&
-      (formData.title?.length > 0 || formData.content?.length > 0) // TODO: need to test
+      (formData.title?.length > 0 || formData.content?.length > 0)
     ) {
       titleInputRef.current?.setValue(formData.title);
       contentInputRef.current?.setValue(formData.content);
