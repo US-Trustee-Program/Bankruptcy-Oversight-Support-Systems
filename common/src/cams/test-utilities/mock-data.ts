@@ -246,6 +246,20 @@ function getSyncedCase(options: Options<SyncedCase> = { entityType: 'person', ov
   return { ...syncedCase, ...override };
 }
 
+function getSyncedCaseNotMatchingCaseIds(exclude: string[]) {
+  const syncedCase: SyncedCase = {
+    ...getDxtrCase(),
+    documentType: 'SYNCED_CASE',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    updatedOn: someDateBeforeThisDate(new Date().toISOString()),
+  };
+  let caseId = randomCaseId();
+  while (exclude.includes(caseId)) {
+    caseId = randomCaseId();
+  }
+  return { ...syncedCase, caseId };
+}
+
 /**
  * @param {T} data There is no simple way to determine what type T is and generate
  *  random data accordingly, so it is required to provide it. We could modify to behave like
@@ -685,6 +699,7 @@ export const MockData = {
   getCaseDetail,
   getDxtrCase,
   getSyncedCase,
+  getSyncedCaseNotMatchingCaseIds,
   getCourts,
   getOffices,
   getParty,
