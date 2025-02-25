@@ -11,11 +11,11 @@ async function exportAndLoad(
   context: ApplicationContext,
   events: CaseSyncEvent[],
 ): Promise<CaseSyncEvent[]> {
-  const factory = getCasesGateway(context);
+  const casesGateway = getCasesGateway(context);
   const repo = getCasesRepository(context);
   for (const event of events) {
     try {
-      event.bCase = await factory.getCaseDetail(context, event.caseId);
+      event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
       await repo.syncDxtrCase(
         createAuditRecord<SyncedCase>({ ...event.bCase, documentType: 'SYNCED_CASE' }),
       );

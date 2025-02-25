@@ -14,6 +14,9 @@ import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import ApplicationContextCreator from '../../azure/application-context-creator';
+import { UnknownError } from '../../../lib/common-errors/unknown-error';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
@@ -34,9 +37,21 @@ const DLQ = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
+const RETRY = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'retry'),
+  connection: 'AzureWebJobsStorage',
+});
+
+const HARD_STOP = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
+  connection: 'AzureWebJobsStorage',
+});
+
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
+const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigrate');
 const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
@@ -88,6 +103,60 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
 
   const failedEvents = processedEvents.filter((event) => !!event.error);
   invocationContext.extraOutputs.set(DLQ, failedEvents);
+}
+
+async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  if (isNotFoundError(event.error)) {
+    logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`);
+  }
+  logger.info(
+    MODULE_NAME,
+    `Error encountered attempting to sync ${event.caseId}: ${event.error['message']}.`,
+  );
+  delete event.error;
+  invocationContext.extraOutputs.set(RETRY, [event]);
+}
+
+async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+
+  const RETRY_LIMIT = 3;
+  if (!event.retryCount) {
+    event.retryCount = 1;
+  } else {
+    event.retryCount += 1;
+  }
+
+  if (event.retryCount > RETRY_LIMIT) {
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    logger.info(MODULE_NAME, `Too many attempts to sync ${event.caseId}.`);
+  } else {
+    const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+
+    if (!event.bCase) {
+      const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
+
+      if (exportResult.bCase) {
+        event.bCase = exportResult.bCase;
+      } else {
+        event.error =
+          exportResult.error ??
+          new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
+        invocationContext.extraOutputs.set(DLQ, [event]);
+        return;
+      }
+    }
+
+    const loadResult = await ExportAndLoadCase.loadCase(appContext, event);
+
+    if (loadResult.error) {
+      event.error = loadResult.error;
+      invocationContext.extraOutputs.set(DLQ, [event]);
+    }
+
+    logger.info(MODULE_NAME, `Successfully retried to sync ${event.caseId}.`);
+  }
 }
 
 /**
@@ -182,6 +251,20 @@ export function setupMigrateCases() {
     queueName: PAGE.queueName,
     handler: handlePage,
     extraOutputs: [DLQ],
+  });
+
+  app.storageQueue(HANDLE_ERROR, {
+    connection: STORAGE_QUEUE_CONNECTION,
+    queueName: DLQ.queueName,
+    handler: handleError,
+    extraOutputs: [RETRY],
+  });
+
+  app.storageQueue(HANDLE_RETRY, {
+    connection: STORAGE_QUEUE_CONNECTION,
+    queueName: RETRY.queueName,
+    handler: handleRetry,
+    extraOutputs: [DLQ, HARD_STOP],
   });
 
   app.http(HTTP_TRIGGER, {
