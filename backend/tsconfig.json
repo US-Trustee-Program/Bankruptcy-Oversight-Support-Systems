@@ -6,8 +6,10 @@
     "sourceMap": true,
     "strict": false,
     "resolveJsonModule": true,
-    "composite": true
+    "isolatedModules": true,
+    "composite": true,
+    "allowSyntheticDefaultImports": true
   },
   "references": [{ "path": "../common" }],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "dist"]
 }
