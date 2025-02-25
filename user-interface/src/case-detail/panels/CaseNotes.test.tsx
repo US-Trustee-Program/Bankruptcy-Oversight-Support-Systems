@@ -1,10 +1,14 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
-import CaseNotes, { CaseNotesProps } from './CaseNotes';
+import CaseNotes, { CaseNotesProps, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
+import LocalFormCache from '../../lib/utils/local-form-cache';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
 import { CaseNoteInput } from '@common/cams/cases';
+import { InputRef } from '@/lib/type-declarations/input-fields';
+import React from 'react';
+import Input from '@/lib/components/uswds/Input';
 
 const caseId = '000-11-22222';
 const textAreaTestId = 'textarea-note-content';
@@ -36,6 +40,48 @@ describe('case note tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('useEffect on component initialization properly sets up form fields based on local form cache values when cache has existing values', async () => {
+    const caseId = '01-12345';
+    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
+      caseId,
+      title: '',
+      content: 'test content',
+    });
+
+    renderWithProps({ caseId });
+
+    const input = document.querySelector('input');
+    const textarea = document.querySelector('textarea');
+    const submitBtn = document.querySelector('#submit-case-note');
+    const clearBtn = document.querySelector('#clear-case-note');
+
+    expect(input).toHaveValue('');
+    expect(textarea).toHaveValue('test content');
+    expect(submitBtn).toBeEnabled();
+    expect(clearBtn).toBeEnabled();
+  });
+
+  test('useEffect on component initialization properly sets up form fields based on local form cache values when cache does not have existing values', async () => {
+    const caseId = '01-12345';
+    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
+      caseId,
+      title: '',
+      content: '',
+    });
+
+    renderWithProps({ caseId });
+
+    const input = document.querySelector('input');
+    const textarea = document.querySelector('textarea');
+    const submitBtn = document.querySelector('#submit-case-note');
+    const clearBtn = document.querySelector('#clear-case-note');
+
+    expect(input).toHaveValue('');
+    expect(textarea).toHaveValue('');
+    expect(submitBtn).toBeDisabled();
+    expect(clearBtn).toBeDisabled();
   });
 
   test('should display loading indicator if loading', async () => {
@@ -202,5 +248,20 @@ describe('case note tests', () => {
 
     textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toHaveValue('');
+  });
+});
+
+describe('test utilities', () => {
+  test('getCaseNotesInputValue should always return an empty string when a null is provided', async () => {
+    const ref = React.createRef<InputRef>();
+    render(<Input ref={ref}></Input>);
+
+    const result1 = getCaseNotesInputValue(ref.current);
+    expect(result1).toEqual('');
+    expect(typeof result1).toEqual('string');
+
+    const result2 = getCaseNotesInputValue(null);
+    expect(result2).toEqual('');
+    expect(typeof result2).toEqual('string');
   });
 });
