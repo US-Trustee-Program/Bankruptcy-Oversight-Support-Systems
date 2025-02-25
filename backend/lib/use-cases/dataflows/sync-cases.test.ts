@@ -14,13 +14,6 @@ describe('getCaseIds tests', () => {
     context = await createMockApplicationContext();
   });
 
-  test('should return empty events array when no sync state is found', async () => {
-    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(undefined);
-
-    const actual = await SyncCases.getCaseIds(context);
-    expect(actual).toEqual({ events: [] });
-  });
-
   test('should return empty events array when error is caught', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('some error'));
     const actual = await SyncCases.getCaseIds(context);
@@ -58,6 +51,35 @@ describe('getCaseIds tests', () => {
     };
 
     expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), syncState.txId);
+    expect(actual).toEqual(expected);
+  });
+
+  test('should use provided lastRunTxId', async () => {
+    jest
+      .spyOn(MockMongoRepository.prototype, 'read')
+      .mockRejectedValue(new Error('this should not be called'));
+
+    const lastRunTxId = '12345678901234567890';
+    const lastTxId = '98765432109876543210';
+    const gatewayResponse: CasesSyncMeta = {
+      caseIds: MockData.buildArray(MockData.randomCaseId, 3),
+      lastTxId,
+    };
+
+    const getIdSpy = jest
+      .spyOn(CasesLocalGateway.prototype, 'getCaseIdsAndMaxTxIdToSync')
+      .mockResolvedValue(gatewayResponse);
+
+    const actual = await SyncCases.getCaseIds(context, '12345678901234567890');
+
+    const expected = {
+      events: gatewayResponse.caseIds.map((caseId) => {
+        return { caseId, type: 'CASE_CHANGED' };
+      }),
+      lastTxId,
+    };
+
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastRunTxId);
     expect(actual).toEqual(expected);
   });
 });

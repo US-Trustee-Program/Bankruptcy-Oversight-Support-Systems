@@ -11,13 +11,13 @@ import { setupSyncOfficeStaff } from './import/sync-office-staff';
 dotenv.config();
 initializeApplicationInsights();
 
-// Setup the recurring syncronization.
+// Setup the recurring synchronization.
 setupSyncCases();
 setupSyncOfficeStaff();
 setupSyncOrders();
 
 // Setup migrations. Migrations can be removed once they are complete.
-const enableMigrateCases = true;
+const enableMigrateCases = false;
 if (enableMigrateCases) setupMigrateCases();
 
 const enableMigrateConsolidations = false;
