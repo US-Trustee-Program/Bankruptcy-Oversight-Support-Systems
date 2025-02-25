@@ -16,8 +16,10 @@ function isCacheEnabled() {
 function purge() {
   try {
     if (window.localStorage) {
-      Object.keys(window.localStorage).forEach((key) => {
+      const keys = Object.keys(window.localStorage);
+      keys.forEach((key) => {
         if (key.startsWith(NAMESPACE)) {
+          // TODO: Test this branch
           const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
           if (cached && cached.expiresAfter < Date.now()) {
             window.localStorage.removeItem(key);
@@ -26,6 +28,7 @@ function purge() {
       });
     }
   } catch (error) {
+    // TODO: Test this branch
     console.error('Purging cache in local storage failed:', error);
   }
 }
@@ -46,7 +49,6 @@ function get<T>(key: string): T | null {
     }
     return value;
   } catch {
-    // Fail safely.
     return null;
   }
 }
@@ -64,22 +66,35 @@ function set<T>(key: string, value: T, ttlSeconds: number = DEFAULT_TTL): boolea
     }
     return success;
   } catch {
-    // Fail safely.
     return false;
   }
 }
 
 function remove(key: string): boolean {
-  try {
-    let success = false;
-    if (canCache) {
-      window.localStorage.removeItem(NAMESPACE + key);
-      success = true;
+  let success = false;
+  if (canCache) {
+    window.localStorage.removeItem(NAMESPACE + key);
+    success = true;
+  }
+  return success;
+}
+
+function removeAll() {
+  removeNamespace();
+}
+
+function removeNamespace(suffix: string = '') {
+  const keysToDelete = [];
+  if (window.localStorage) {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key?.startsWith(NAMESPACE + suffix)) {
+        keysToDelete.push(key);
+      }
     }
-    return success;
-  } catch {
-    // Fail safely.
-    return false;
+    keysToDelete.forEach((key) => {
+      window.localStorage.removeItem(key);
+    });
   }
 }
 
@@ -87,6 +102,8 @@ export const LocalCache = {
   get,
   set,
   remove,
+  removeAll,
+  removeNamespace,
   isCacheEnabled,
   purge,
 };

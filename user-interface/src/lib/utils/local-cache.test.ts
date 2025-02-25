@@ -1,28 +1,41 @@
 import { describe, expect, vi, beforeEach } from 'vitest';
 import LocalCache from './local-cache';
+import { MockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalCache', () => {
-  const mockStorage = new Map<string, string>();
+  const mockLocalStorage = new MockLocalStorage();
+
+  beforeAll(() => {
+    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
+    vi.stubGlobal('localStorage', mockLocalStorage);
+  });
 
   beforeEach(() => {
-    // Mocking window.localStorage
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => mockStorage.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        mockStorage.set(key, value);
-      },
-      removeItem: (key: string) => {
-        mockStorage.delete(key);
-      },
-      clear: () => {
-        mockStorage.clear();
-      },
-      key: (index: number) => Object.keys(mockStorage)[index] || null,
-      length: mockStorage.size,
+    mockLocalStorage.clear();
+  });
+
+  test('should remove all cached values', () => {
+    const keys = ['test1', 'test2', 'test3'];
+    keys.forEach((key) => {
+      LocalCache.set(key, {});
     });
-    // Clearing mockStorage before each test
-    mockStorage.clear();
+    expect(mockLocalStorage.length).toEqual(keys.length);
+
+    LocalCache.removeAll();
+    expect(mockLocalStorage.length).toEqual(0);
+  });
+
+  test('should remove all cached values for a given namespace', () => {
+    const namespace = 'test:';
+    const keysNotInNamespace = ['foo', 'bar'];
+    const keys = [namespace + '1', namespace + '2', namespace + '3', ...keysNotInNamespace];
+    keys.forEach((key) => {
+      LocalCache.set(key, {});
+    });
+    expect(mockLocalStorage.length).toEqual(keys.length);
+
+    LocalCache.removeNamespace(namespace);
+    expect(mockLocalStorage.length).toEqual(keysNotInNamespace.length);
   });
 
   test('should store and retrieve cached values with a TTL', () => {
@@ -66,7 +79,9 @@ describe('LocalCache', () => {
   test('should purge expired cache entries', () => {
     const validKey = 'validKey';
     const expiredKey = 'expiredKey';
+    const otherNonCacheKey = 'someOtherKey';
 
+    window.localStorage.setItem(otherNonCacheKey, 'test');
     LocalCache.set(validKey, 'validValue', 5); // Valid for 5 seconds
     LocalCache.set(expiredKey, 'expiredValue', 1); // Valid for 1 second
 
@@ -78,7 +93,9 @@ describe('LocalCache', () => {
 
     expect(LocalCache.get(validKey)).toBe('validValue');
     expect(LocalCache.get(expiredKey)).toBeNull();
+    expect(window.localStorage.getItem(otherNonCacheKey)).toEqual('test');
 
+    window.localStorage.removeItem(otherNonCacheKey);
     vi.useRealTimers();
   });
 
@@ -105,6 +122,8 @@ describe('LocalCache', () => {
 
   test('should check if cache is enabled', async () => {
     vi.resetModules();
+    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
+    vi.stubGlobal('localStorage', mockLocalStorage);
     const reloaded = await import('./local-cache');
     expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
   });
@@ -125,7 +144,6 @@ describe('LocalCache', () => {
     const calls = [
       () => LocalCache.get('key'),
       () => LocalCache.set('key', 'value'),
-      () => LocalCache.remove('key'),
       () => LocalCache.purge(),
     ];
     calls.forEach((call) => {

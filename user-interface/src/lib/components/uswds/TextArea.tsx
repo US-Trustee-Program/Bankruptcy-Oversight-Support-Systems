@@ -38,7 +38,7 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   function clearValue() {
     setInputValue('');
     emitChange('');
-    if (inputRef.current) (inputRef.current as HTMLTextAreaElement).focus();
+    if (inputRef.current) (inputRef.current as HTMLTextAreaElement).focus(); // TODO: need to test
   }
 
   function setValue(value: string) {
@@ -75,22 +75,25 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
         className={`usa-label ${props.className ? `${props.className}-label` : ''}`}
       >
         {label}
+        {props.required && <span className="required-form-field" />}
       </label>
       {ariaDescription && (
         <div className="usa-hint" id={ariaDescribedBy()}>
           {ariaDescription}
         </div>
       )}
-      <textarea
-        {...otherProps}
-        id={textAreaId}
-        className={`${props.className ?? ''} usa-textarea`}
-        data-testid={textAreaId}
-        onChange={handleOnChange}
-        disabled={inputDisabled}
-        value={inputValue}
-        aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
-      ></textarea>
+      <div className="usa-textarea-group">
+        <textarea
+          {...otherProps}
+          id={textAreaId}
+          className={`${props.className ?? ''} usa-textarea`}
+          data-testid={textAreaId}
+          onChange={handleOnChange}
+          disabled={inputDisabled}
+          value={inputValue}
+          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+        ></textarea>
+      </div>
     </div>
   );
 }

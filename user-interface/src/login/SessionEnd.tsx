@@ -7,6 +7,8 @@ import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 import { BlankPage } from './BlankPage';
 import { broadcastLogout } from '@/login/broadcast-logout';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import LocalCache from '@/lib/utils/local-cache';
+import { API_CACHE_NAMESPACE } from '@/lib/models/api2';
 
 export function SessionEnd() {
   const location = useLocation();
@@ -19,6 +21,8 @@ export function SessionEnd() {
   useEffect(() => {
     LocalStorage.removeSession();
     LocalStorage.removeAck();
+    LocalCache.removeNamespace(API_CACHE_NAMESPACE);
+
     broadcastLogout();
     if (location.pathname !== LOGOUT_SESSION_END_PATH) {
       navigator.navigateTo(LOGOUT_SESSION_END_PATH);
