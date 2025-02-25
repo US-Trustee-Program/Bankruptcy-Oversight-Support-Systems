@@ -80,6 +80,7 @@ jobs:
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
 
+          export CAMS_LOGIN_PROVIDER="mock"
           export MSSQL_HOST=${{ secrets.MSSQL_HOST }}
           export MSSQL_DATABASE_DXTR=${{ secrets.MSSQL_DATABASE_DXTR }}
           export MSSQL_USER=${{ secrets.MSSQL_USER }}
