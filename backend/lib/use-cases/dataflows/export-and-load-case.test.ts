@@ -24,6 +24,44 @@ describe('Export and Load Case Tests', () => {
     context = await createMockApplicationContext();
   });
 
+  describe('exportAndLoadCase', () => {
+    test('should return list of events with case details on each', async () => {
+      const mockCaseDetails = MockData.getCaseDetail();
+      const events = MockData.buildArray(mockCaseSyncEvent, 3);
+
+      const exportSpy = jest
+        .spyOn(CasesLocalGateway.prototype, 'getCaseDetail')
+        .mockResolvedValue(mockCaseDetails);
+      const loadSpy = jest.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      const actual = await ExportAndLoadCase.exportAndLoad(context, events);
+      const expected: CaseSyncEvent[] = events.map((event) => {
+        return {
+          ...event,
+          bCase: mockCaseDetails,
+        };
+      });
+
+      expect(exportSpy).toHaveBeenCalledTimes(events.length);
+      expect(loadSpy).toHaveBeenCalledTimes(events.length);
+      expect(actual).toEqual(expected);
+    });
+
+    test('should return a list of events with an error on each event', async () => {
+      const events = MockData.buildArray(mockCaseSyncEvent, 3);
+
+      const error = new Error('some error');
+      const expectedError = getCamsError(error, expect.anything(), expect.any(String));
+
+      jest.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(error);
+      const actual = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      actual.forEach((event) => {
+        expect(event.error).toEqual(expect.objectContaining(expectedError));
+      });
+    });
+  });
+
   describe('exportCase', () => {
     test('should return CaseDetail on event', async () => {
       const mockCaseDetails = MockData.getCaseDetail();
