@@ -5,6 +5,7 @@ export type CaseSyncEvent = {
   caseId: string;
   bCase?: DxtrCase;
   error?: unknown;
+  retryCount?: number;
 };
 
 export type CaseSyncResults = {
