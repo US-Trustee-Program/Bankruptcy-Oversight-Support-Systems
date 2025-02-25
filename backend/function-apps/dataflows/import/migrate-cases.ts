@@ -55,7 +55,7 @@ const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigrate');
 const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
-// const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
+const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
 
 /**
  * handleStart
@@ -66,8 +66,8 @@ const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable'
  * @param {InvocationContext} context
  */
 async function handleStart(_ignore: StartMessage, context: InvocationContext) {
-  // const isEmpty = await emptyMigrationTable(context);
-  // if (!isEmpty) return;
+  const isEmpty = await emptyMigrationTable(context);
+  if (!isEmpty) return;
 
   const count = await loadMigrationTable(context);
 
@@ -183,18 +183,18 @@ async function loadMigrationTable(invocationContext: InvocationContext) {
  *
  * @param invocationContext
  */
-// async function emptyMigrationTable(invocationContext: InvocationContext) {
-//   const context = await ContextCreator.getApplicationContext({ invocationContext });
-//   const result = await MigrateCases.emptyMigrationTable(context);
-//   if (result.error) {
-//     invocationContext.extraOutputs.set(
-//       DLQ,
-//       buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE),
-//     );
-//     return false;
-//   }
-//   return true;
-// }
+async function emptyMigrationTable(invocationContext: InvocationContext) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const result = await MigrateCases.emptyMigrationTable(context);
+  if (result.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE),
+    );
+    return false;
+  }
+  return true;
+}
 
 /**
  * getCaseIdsToMigrate
