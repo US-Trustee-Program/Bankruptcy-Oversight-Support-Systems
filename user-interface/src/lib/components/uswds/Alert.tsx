@@ -1,3 +1,4 @@
+import './Alert.scss';
 import React, {
   forwardRef,
   PropsWithChildren,
@@ -5,7 +6,6 @@ import React, {
   useImperativeHandle,
   useState,
 } from 'react';
-import './Alert.scss';
 
 export type AlertDetails = {
   message: string;

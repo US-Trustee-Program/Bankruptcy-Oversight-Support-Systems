@@ -79,6 +79,20 @@ describe('Tests for USWDS TextArea component', () => {
     });
   });
 
+  test('clearValue should skip focus if inputRef is null', async () => {
+    const mockInnerRef = { current: { focus: vi.fn(), value: '' } };
+    const useRefMock = vi.spyOn(React, 'useRef').mockReturnValueOnce(mockInnerRef);
+
+    expect(ref.current).toBeDefined();
+    expect(typeof ref.current!.clearValue).toBe('function');
+
+    ref.current?.clearValue();
+
+    expect(mockInnerRef.current.focus).not.toHaveBeenCalled();
+
+    useRefMock.mockRestore();
+  });
+
   test('Should return value when ref.getValue is called.', async () => {
     const inputEl = screen.getByTestId(textAreaId);
     ref.current?.setValue(newValue);

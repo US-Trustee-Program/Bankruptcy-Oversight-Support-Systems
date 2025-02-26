@@ -52,42 +52,6 @@ describe.skip('Api2 mocking', () => {
   });
 });
 
-describe.skip('Api2 cache', () => {
-  // TODO: Why doesn't fetch get called? Why does the mocked cache get not return null on the first call?
-  test('should cache if cache is enabled', async () => {
-    const cacheModule = await import('../utils/local-cache');
-    const apiModule = await import('./api');
-    const api2Module = await import('./api2');
-
-    const isEnabledSpy = vi.spyOn(cacheModule.LocalCache, 'isCacheEnabled').mockResolvedValue(true);
-    const cacheGetSpy = vi
-      .spyOn(cacheModule.LocalCache, 'get')
-      .mockResolvedValueOnce(null)
-      .mockResolvedValue({ data: [] });
-    const cacheSetSpy = vi.spyOn(cacheModule.LocalCache, 'set').mockResolvedValue(true);
-    const fetchSpy = vi.spyOn(apiModule.default, 'get').mockResolvedValue({ data: [] });
-
-    await api2Module.Api2.getOffices();
-
-    expect(isEnabledSpy).toHaveBeenCalledTimes(1);
-    expect(cacheGetSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(cacheSetSpy).toHaveBeenCalledTimes(1);
-
-    isEnabledSpy.mockReset();
-    cacheGetSpy.mockReset();
-    fetchSpy.mockReset();
-    cacheSetSpy.mockReset();
-
-    await api2Module.Api2.getOffices();
-
-    expect(isEnabledSpy).toHaveBeenCalledTimes(1);
-    expect(cacheGetSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy).toHaveBeenCalledTimes(0);
-    expect(cacheSetSpy).toHaveBeenCalledTimes(0);
-  });
-});
-
 describe('extractPathFromUri', () => {
   import.meta.env.CAMS_PA11Y = false;
 
@@ -147,6 +111,14 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getPrivilegedIdentityUsers, null, api);
     await callApiFunction(api2.Api2.getPrivilegedIdentityUser, 'some-id', api);
     await callApiFunction(api2.Api2.deletePrivilegedIdentityUser, 'some-id', api);
+    await callApiFunction(api2.Api2.getRoleAndOfficeGroupNames, 'some-id', api);
+  });
+
+  test('should call api.put function when calling putPrivilegedIdentityUser', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
+    const action = { groups: ['some-group'], expires: '00-00-0000' };
+    api2.Api2.putPrivilegedIdentityUser('some-id', action);
+    expect(putSpy).toHaveBeenCalledWith(`/dev-tools/privileged-identity/some-id`, action, {});
   });
 
   test('should call postCaseNote api function', async () => {
@@ -167,7 +139,7 @@ describe('_Api2 functions', async () => {
     expect(postSpy).toHaveBeenCalledWith(path, { title, content: inputPassedThroughApi }, {});
   });
 
-  test('should get through input input title validation and call postCaseNote', () => {
+  test('should get through input title validation and call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     const content = 'come content';
     const path = '/cases/some-id/notes';
