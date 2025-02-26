@@ -202,7 +202,6 @@ type CacheOptions = {
 function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
   const key = API_CACHE_NAMESPACE + cacheOptions.key;
 
-  // TODO: For now we are only implementing `get`. In the future we may want to cache responses from the other HTTP verbs.
   return {
     get: async function <T = object>(
       path: string,
