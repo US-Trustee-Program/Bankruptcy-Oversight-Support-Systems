@@ -17,8 +17,6 @@ function purge() {
   try {
     if (window.localStorage) {
       const keysToPurge = [];
-      // object.keys will not work in our tests,
-      // so gather keys another way
       for (let i = 0; i < window.localStorage.length; i++) {
         const key = window.localStorage.key(i);
 
