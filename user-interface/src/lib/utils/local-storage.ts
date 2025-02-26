@@ -1,6 +1,7 @@
 import { CamsSession } from '@common/cams/session';
 
 export const LOGIN_LOCAL_STORAGE_SESSION_KEY = 'cams:session';
+export const LOGIN_LOCAL_STORAGE_FORM_CACHE_KEY = 'cams:cache:form:';
 export const LOGIN_LOCAL_STORAGE_CACHE_KEY = 'cams:cache:';
 export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
@@ -28,17 +29,8 @@ function setSession(session: CamsSession) {
 }
 
 function removeSession() {
-  const keysToDelete = [LOGIN_LOCAL_STORAGE_SESSION_KEY];
   if (window.localStorage) {
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (key?.startsWith(LOGIN_LOCAL_STORAGE_CACHE_KEY)) {
-        keysToDelete.push(key);
-      }
-    }
-    keysToDelete.forEach((key) => {
-      window.localStorage.removeItem(key);
-    });
+    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
   }
 }
 
@@ -105,11 +97,8 @@ function setLastInteraction(timestamp: number) {
 function getNumber(key: string): number | null {
   const value = localStorage.getItem(key);
   if (!value) return null;
-  try {
-    return Number.parseInt(value);
-  } catch {
-    return null;
-  }
+  const parsed = Number.parseInt(value);
+  return isNaN(parsed) ? null : parsed;
 }
 
 function setNumber(key: string, value: number) {
