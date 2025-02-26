@@ -486,12 +486,13 @@ export default class CasesDxtrGateway implements CasesInterface {
 
     const query = `
       SELECT
-        CONCAT(C.CS_DIV, '-', C.CASE_ID) AS caseId,
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
         MAX(T.TX_ID) as maxTxId
       FROM AO_TX T
       JOIN AO_CS C ON C.CS_CASEID = T.CS_CASEID AND C.COURT_ID = T.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE T.TX_ID > @txId
-      GROUP BY C.CS_DIV, C.CASE_ID
+      GROUP BY CS_DIV.CS_DIV_ACMS, C.CASE_ID
       ORDER BY MAX(T.TX_ID) DESC
     `;
 
