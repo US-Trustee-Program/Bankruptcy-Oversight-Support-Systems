@@ -4,7 +4,7 @@ import { LoggerHelper } from '../types/basic';
 type LoggerProvider = Console['log'];
 type LogType = 'debug' | 'info' | 'warn' | 'error';
 
-const disallowedProperties = ['ssn', 'taxId'];
+const disallowedProperties = ['ssn', 'taxId', 'ein', 'itin'];
 
 export class LoggerImpl implements LoggerHelper {
   private readonly provider: LoggerProvider;
@@ -20,7 +20,7 @@ export class LoggerImpl implements LoggerHelper {
   }
 
   private logMessage(logType: LogType, moduleName: string, message: string, data?: unknown) {
-    const logString = `[${logType.toUpperCase()}] [${moduleName}] [INVOCATION ${this.invocationId}] ${message} ${
+    const logString = `[${logType.toUpperCase()}] [${moduleName}] [INVOCATION ${this.invocationId}] ${this.scrubMessage(message)} ${
       undefined != data
         ? JSON.stringify(data, (key, value) => {
             let disallowed = false;
@@ -34,6 +34,11 @@ export class LoggerImpl implements LoggerHelper {
         : ''
     }`;
     this.provider(this.sanitize(logString.trim()));
+  }
+
+  private scrubMessage(message: string) {
+    const piiRegex = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b|\b\d{2}[- ]?\d{7}\b/gm;
+    return message.replace(piiRegex, '[REDACTED]');
   }
 
   info(moduleName: string, message: string, data?: unknown) {

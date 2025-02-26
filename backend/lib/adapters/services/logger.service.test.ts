@@ -1,5 +1,6 @@
 import { LoggerImpl } from './logger.service';
 import { randomUUID } from 'crypto';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 
 describe('Basic logger service tests', () => {
   let mockLog;
@@ -66,22 +67,28 @@ describe('Basic logger service tests', () => {
   });
 
   test('should not log properties similar to disallowed properties', async () => {
-    logger.info('FOO-MODULE_NAME', 'test message', {
-      sSN: '111-11-1111',
-      tAxid: '11-1111111',
-      prop1: 'foo',
-      prop2: 'bar',
-      prop3: {
-        ssn: '123-45-6789',
-        prop3a: 'foo-a',
-        prop3b: {
-          taxID: '33-3333333',
-          prop3aa: 'test',
+    logger.info(
+      'FOO-MODULE_NAME',
+      `test message 123456789 ${MockData.randomEin()} ${MockData.randomSsn()}`,
+      {
+        sSN: MockData.randomSsn(),
+        tAxid: MockData.randomEin(),
+        prop1: 'foo',
+        prop2: 'bar',
+        prop3: {
+          ssn: MockData.randomSsn(),
+          prop3a: 'foo-a',
+          prop3b: {
+            taxID: MockData.randomEin(),
+            prop3aa: 'test',
+          },
+          itin: MockData.randomSsn(),
+          ein: MockData.randomEin(),
         },
       },
-    });
+    );
     expect(mockLog).toHaveBeenCalledWith(
-      `[INFO] [FOO-MODULE_NAME] [INVOCATION ${invocationId}] test message {"prop1":"foo","prop2":"bar","prop3":{"prop3a":"foo-a","prop3b":{"prop3aa":"test"}}}`,
+      `[INFO] [FOO-MODULE_NAME] [INVOCATION ${invocationId}] test message [REDACTED] [REDACTED] [REDACTED] {"prop1":"foo","prop2":"bar","prop3":{"prop3a":"foo-a","prop3b":{"prop3aa":"test"}}}`,
     );
   });
 });
