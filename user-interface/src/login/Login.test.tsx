@@ -19,20 +19,33 @@ describe('Login', () => {
   const children = <div data-testid={testId}>{childText}</div>;
   const issuer = 'https://fake.issuer.com/oauth2/default';
 
-  const oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
-  const oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin');
-  const mockLoginComponent = vi.spyOn(mockLoginModule, 'MockLogin');
+  let oktaProviderComponent;
+  let oktaLoginComponent;
+  let mockLoginComponent;
 
-  const sessionComponent = vi.spyOn(sessionModule, 'Session');
-  const badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
+  let sessionComponent;
+  let badConfigurationComponent;
 
-  const getSession = vi.spyOn(LocalStorage, 'getSession');
-  const removeSession = vi.spyOn(LocalStorage, 'removeSession');
+  let getSession;
+  let removeSession;
 
-  const getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuerFromEnv');
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+  let getAuthIssuerFromEnv;
+  let getLoginProviderFromEnv;
 
   beforeEach(() => {
+    oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
+    oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin');
+    mockLoginComponent = vi.spyOn(mockLoginModule, 'MockLogin');
+
+    sessionComponent = vi.spyOn(sessionModule, 'Session');
+    badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
+
+    getSession = vi.spyOn(LocalStorage, 'getSession');
+    removeSession = vi.spyOn(LocalStorage, 'removeSession');
+
+    getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuerFromEnv');
+    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+
     oktaProviderComponent.mockImplementation((props: PropsWithChildren) => {
       return <>{props.children}</>;
     });
@@ -52,7 +65,7 @@ describe('Login', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should load provider from environment vars', async () => {
@@ -146,6 +159,7 @@ describe('Login', () => {
   });
 
   test('should clear an existing session if the provider changed', () => {
+    getAuthIssuerFromEnv.mockReturnValue(issuer);
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
