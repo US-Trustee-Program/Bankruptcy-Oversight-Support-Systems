@@ -1,7 +1,7 @@
 import './TextArea.scss';
 import './forms.scss';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 
 export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   id: string;
@@ -17,8 +17,6 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
 
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
-
-  const inputRef = useRef(null);
 
   function emitChange(value: string) {
     if (props.onChange) {
@@ -38,7 +36,6 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   function clearValue() {
     setInputValue('');
     emitChange('');
-    if (inputRef.current) (inputRef.current as HTMLTextAreaElement).focus(); // TODO: need to test
   }
 
   function setValue(value: string) {

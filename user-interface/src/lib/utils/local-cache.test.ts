@@ -1,10 +1,8 @@
 import { describe, expect, vi, beforeEach } from 'vitest';
 import LocalCache from './local-cache';
-import { MockLocalStorage } from '../testing/mock-local-storage';
+import { mockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalCache', () => {
-  const mockLocalStorage = new MockLocalStorage();
-
   beforeAll(() => {
     vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', mockLocalStorage);
@@ -23,6 +21,67 @@ describe('LocalCache', () => {
 
     LocalCache.removeAll();
     expect(mockLocalStorage.length).toEqual(0);
+  });
+
+  test('should purge only items with valid keys and expired cache', async () => {
+    const randomKey = 'some:random:key:';
+    const camsKey = 'cams:cache:';
+    const mockCamsValue1 = {
+      expiresAfter: 123,
+      value: 'some valid data 1',
+    };
+    const mockCamsValue2 = {
+      expiresAfter: 123,
+      value: 'some valid data 2',
+    };
+    mockLocalStorage.setItem(randomKey + 'one', 'some random value 1');
+    mockLocalStorage.setItem(randomKey + 'two', 'some random value 2');
+    mockLocalStorage.setItem(camsKey + 'one', JSON.stringify(mockCamsValue1));
+    mockLocalStorage.setItem(camsKey + 'two', JSON.stringify(mockCamsValue2));
+
+    let keys = Array.from(mockLocalStorage.store.keys());
+    expect(keys.length).toEqual(4);
+    expect(keys).toContain(randomKey + 'one');
+    expect(keys).toContain(randomKey + 'two');
+    expect(keys).toContain(camsKey + 'one');
+    expect(keys).toContain(camsKey + 'two');
+    expect(mockLocalStorage.getItem(camsKey + 'one')).toEqual(JSON.stringify(mockCamsValue1));
+
+    LocalCache.purge();
+
+    keys = Array.from(mockLocalStorage.store.keys());
+    expect(keys.length).toEqual(2);
+    expect(keys).toContain(randomKey + 'one');
+    expect(keys).toContain(randomKey + 'two');
+    expect(keys).not.toContain(camsKey + 'one');
+    expect(keys).not.toContain(camsKey + 'two');
+
+    expect(mockLocalStorage.getItem(camsKey + 'one')).toEqual(null);
+  });
+
+  test('should properly catch error and call console.error in purge', async () => {
+    const getItemMock = vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+      throw new Error('getItem failed');
+    });
+    const consoleMock = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const mockCamsValue1 = {
+      expiresAfter: 123,
+      value: 'some valid data 1',
+    };
+    const camsKey = 'cams:cache:';
+    mockLocalStorage.setItem(camsKey + 'one', JSON.stringify(mockCamsValue1));
+    mockLocalStorage.setItem(camsKey + 'two', JSON.stringify(mockCamsValue1));
+
+    LocalCache.purge();
+
+    expect(console.error).toHaveBeenCalledWith(
+      'Purging cache in local storage failed:',
+      expect.any(Error),
+    );
+
+    getItemMock.mockRestore();
+    consoleMock.mockRestore();
   });
 
   test('should remove all cached values for a given namespace', () => {
