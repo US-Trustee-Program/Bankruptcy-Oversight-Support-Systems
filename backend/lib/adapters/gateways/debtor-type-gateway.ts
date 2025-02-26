@@ -9,5 +9,5 @@ const debtorTypeLabelMap = new Map<string, string>([
 ]);
 
 export function getDebtorTypeLabel(id: string | null): string {
-  return debtorTypeLabelMap.has(id) ? debtorTypeLabelMap.get(id) : 'Not Available';
+  return debtorTypeLabelMap.has(id) ? debtorTypeLabelMap.get(id) : 'Debtor Type Not Available';
 }
