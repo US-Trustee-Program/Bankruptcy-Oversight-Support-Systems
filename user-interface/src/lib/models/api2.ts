@@ -37,6 +37,8 @@ import {
   RoleAndOfficeGroupNames,
 } from '../../../../common/src/cams/privileged-identity';
 
+export const API_CACHE_NAMESPACE = 'api:';
+
 interface ApiClient {
   headers: Record<string, string>;
   host: string;
@@ -198,19 +200,20 @@ type CacheOptions = {
 };
 
 function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
-  // TODO: For now we are only implementing `get`. In the future we may want to cache responses from the other HTTP verbs.
+  const key = API_CACHE_NAMESPACE + cacheOptions.key;
+
   return {
     get: async function <T = object>(
       path: string,
       options: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
       if (LocalCache.isCacheEnabled()) {
-        const cached = LocalCache.get<ResponseBody<T>>(cacheOptions.key);
+        const cached = LocalCache.get<ResponseBody<T>>(key);
         if (cached) {
           return Promise.resolve(cached);
         } else {
           const response = await api().get<T>(path, options);
-          LocalCache.set<ResponseBody<T>>(cacheOptions.key, response, cacheOptions.ttl);
+          LocalCache.set<ResponseBody<T>>(key, response, cacheOptions.ttl);
           return Promise.resolve(response);
         }
       } else {
