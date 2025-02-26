@@ -6,7 +6,7 @@ describe('Debtor Type Name gateway', () => {
     expect(debtorTypeName).toEqual('Corporate Business');
   });
   test('should return an unknown label for an invalid ID', () => {
-    expect(getDebtorTypeLabel('ZZ')).toEqual('Not Available');
-    expect(getDebtorTypeLabel(null)).toEqual('Not Available');
+    expect(getDebtorTypeLabel('ZZ')).toEqual('Debtor Type Not Available');
+    expect(getDebtorTypeLabel(null)).toEqual('Debtor Type Not Available');
   });
 });

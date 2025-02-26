@@ -20,7 +20,7 @@ describe('Petition Type Label gateway', () => {
         isTransfer: false,
         isVoluntary: false,
         petitionCode: petitionCode ?? '',
-        petitionLabel: 'Not Available',
+        petitionLabel: 'Petition Not Available',
       };
       expect(getPetitionInfo(petitionCode)).toEqual(expected);
     });
