@@ -574,13 +574,13 @@ export default class CasesDxtrGateway implements CasesInterface {
         JOIN [dbo].[AO_REGION] AS R ON grp_des.REGION_ID = R.REGION_ID
         JOIN (
           SELECT DISTINCT
-          T1.COURT_ID,
-          T1.CS_CASEID,
-          substring(REC,108,2) AS petitionCode,
-          substring(REC,34,2) AS debtorTypeCode
+          C1.COURT_ID,
+          C1.CS_CASEID,
+          substring(T1.REC,108,2) AS petitionCode,
+          substring(T1.REC,34,2) AS debtorTypeCode
           FROM [dbo].[AO_CS] AS C1
           JOIN [dbo].[AO_CS_DIV] AS C2 ON C1.CS_DIV = C2.CS_DIV
-          JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
+          LEFT JOIN [dbo].[AO_TX] AS T1 ON T1.CS_CASEID=C1.CS_CASEID AND T1.COURT_ID=C1.COURT_ID AND T1.TX_TYPE='1' AND T1.TX_CODE='1'
           WHERE C1.CASE_ID = @dxtrCaseId
           AND C2.CS_DIV_ACMS = @courtDiv
         ) AS TX ON TX.COURT_ID=CS.COURT_ID AND TX.CS_CASEID=CS.CS_CASEID
