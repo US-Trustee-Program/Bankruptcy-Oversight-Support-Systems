@@ -16,19 +16,25 @@ function isCacheEnabled() {
 function purge() {
   try {
     if (window.localStorage) {
-      const keys = Object.keys(window.localStorage);
-      keys.forEach((key) => {
-        if (key.startsWith(NAMESPACE)) {
-          // TODO: Test this branch
-          const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
-          if (cached && cached.expiresAfter < Date.now()) {
-            window.localStorage.removeItem(key);
-          }
+      const keysToPurge = [];
+      // object.keys will not work in our tests,
+      // so gather keys another way
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+
+        if (key && key.startsWith(NAMESPACE)) {
+          keysToPurge.push(key);
+        }
+      }
+
+      keysToPurge.forEach((key) => {
+        const cached = JSON.parse(window.localStorage.getItem(key)!) as Cachable;
+        if (cached && cached.expiresAfter < Date.now()) {
+          window.localStorage.removeItem(key);
         }
       });
     }
   } catch (error) {
-    // TODO: Test this branch
     console.error('Purging cache in local storage failed:', error);
   }
 }

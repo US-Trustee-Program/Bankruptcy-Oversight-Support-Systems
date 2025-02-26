@@ -1,10 +1,8 @@
 import { describe, expect, vi, beforeEach } from 'vitest';
 import LocalFormCache from './local-form-cache';
-import { MockLocalStorage } from '../testing/mock-local-storage';
+import { mockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalFormCache', () => {
-  const mockLocalStorage = new MockLocalStorage();
-
   beforeAll(() => {
     vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', mockLocalStorage);
