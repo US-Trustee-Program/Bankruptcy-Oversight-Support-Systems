@@ -155,7 +155,7 @@ test.describe('Consolidation Orders', () => {
 
     await page.getByTestId('combo-box-input').fill('Manhattan');
 
-    await page.locator('[data-value="087"]').dispatchEvent('click');
+    await page.locator('[data-value="081"]').dispatchEvent('click');
 
     // wait for loading assigned attorneys to complete
     await page.waitForSelector(
