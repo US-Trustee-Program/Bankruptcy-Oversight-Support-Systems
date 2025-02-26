@@ -1,6 +1,6 @@
 import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { describe } from 'vitest';
+import { describe, MockInstance } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import * as oktaProviderModule from './providers/okta/OktaProvider';
 import * as oktaLoginModule from './providers/okta/OktaLogin';
@@ -12,6 +12,8 @@ import { Login } from './Login';
 import localStorage, { LocalStorage } from '@/lib/utils/local-storage';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
+import { CamsSession } from '@common/cams/session';
+import { JSX } from 'react/jsx-runtime';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -19,18 +21,22 @@ describe('Login', () => {
   const children = <div data-testid={testId}>{childText}</div>;
   const issuer = 'https://fake.issuer.com/oauth2/default';
 
-  let oktaProviderComponent;
-  let oktaLoginComponent;
-  let mockLoginComponent;
+  let oktaProviderComponent: MockInstance<
+    (props: oktaProviderModule.OktaProviderProps) => JSX.Element
+  >;
+  let oktaLoginComponent: MockInstance<() => JSX.Element>;
+  let mockLoginComponent: MockInstance<(props: mockLoginModule.MockLoginProps) => JSX.Element>;
 
-  let sessionComponent;
-  let badConfigurationComponent;
+  let sessionComponent: MockInstance<(props: sessionModule.SessionProps) => JSX.Element>;
+  let badConfigurationComponent: MockInstance<
+    (props: badConfigurationModule.BadConfigurationProps) => JSX.Element
+  >;
 
-  let getSession;
-  let removeSession;
+  let getSession: MockInstance<() => CamsSession | null>;
+  let removeSession: MockInstance<() => void>;
 
-  let getAuthIssuerFromEnv;
-  let getLoginProviderFromEnv;
+  let getAuthIssuerFromEnv: MockInstance<() => string | undefined>;
+  let getLoginProviderFromEnv: MockInstance<() => string>;
 
   beforeEach(() => {
     oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
