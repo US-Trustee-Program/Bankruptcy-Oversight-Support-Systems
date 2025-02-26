@@ -65,6 +65,11 @@ jobs:
           -p ${{ env.priority }} \
           --is-cicd
 
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+          -g ${{ secrets.AZURE_RG }} \
+          --stack-name ${{ inputs.stackName }} \
+          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
+
       - name: CI Backend
         working-directory: backend
         run: |
@@ -136,3 +141,9 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ inputs.stackName }} \
           -r ${name:0:32}
+
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+          -g ${{ secrets.AZURE_RG }} \
+          --stack-name ${{ inputs.stackName }} \
+          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
+          --delete
