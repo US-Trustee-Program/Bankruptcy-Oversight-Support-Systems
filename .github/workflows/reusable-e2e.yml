@@ -65,6 +65,16 @@ jobs:
           -p ${{ env.priority }} \
           --is-cicd
 
+      - name: CI Backend
+        working-directory: backend
+        run: |
+          npm ci
+
+      - name: CI Common
+        working-directory: common
+        run: |
+          npm ci
+
       - name: Install Node dependencies
         working-directory: test/e2e
         run: |

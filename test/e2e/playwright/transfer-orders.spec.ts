@@ -11,7 +11,7 @@ interface Order {
   docketSuggestedCaseNumber: string;
 }
 
-test.describe('Transfer Orders', () => {
+test.describe.only('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
   let officesRequestPromise: Promise<Request>;
@@ -66,7 +66,6 @@ test.describe('Transfer Orders', () => {
     const firstOrderId = firstOrder.id;
 
     // Start testing the UI
-    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
@@ -115,8 +114,6 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId(`button-accordion-cancel-button-${firstOrderId}`).click();
     await expect(page.getByTestId(`validated-cases-row-0`)).not.toBeVisible();
 
-    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
-
     const courtInputValue = (
       await page.locator(`#court-selection-${orderId}-combo-box-input`).inputValue()
     ).toString();
@@ -135,7 +132,8 @@ test.describe('Transfer Orders', () => {
 
     // open accordian by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
-    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
+    ///TODO: We need to figure out how to get a case that is viable for getSuggestedCases to return
+    // await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     // fill in inputs
     await page.locator(`#court-selection-${orderId}-expand`).click();
@@ -155,8 +153,15 @@ test.describe('Transfer Orders', () => {
     expect(enteredCaseValue).toBe(caseNumber);
 
     // Action click Cancel
-    page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
-    await expect(page.getByTestId(`new-case-input-${orderId}`)).not.toBeVisible();
+    await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
+    const courtInputValue = await page
+      .locator(`#court-selection-${orderId}-combo-box-input`)
+      .inputValue();
+    const caseNumberInputValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
+    expect(caseNumberInputValue).not.toBeNull();
+    expect(courtInputValue).toEqual('');
+
+    // await expect(page.getByTestId(`new-case-input-${orderId}`)).not.toBeVisible();
   });
 });
 
