@@ -16,10 +16,12 @@ export interface PetitionInfo {
   isTransfer: boolean;
 }
 
-export function getPetitionInfo(petitionCode: string | undefined): PetitionInfo {
+export function getPetitionInfo(petitionCode: string | null): PetitionInfo {
   return {
-    petitionCode,
-    petitionLabel: petitionLabelMap.has(petitionCode) ? petitionLabelMap.get(petitionCode) : '',
+    petitionCode: petitionCode ?? '',
+    petitionLabel: petitionLabelMap.has(petitionCode)
+      ? petitionLabelMap.get(petitionCode)
+      : 'Not Available',
     isVoluntary: voluntaryCodes.includes(petitionCode),
     isTransfer: transferCodes.includes(petitionCode),
   };

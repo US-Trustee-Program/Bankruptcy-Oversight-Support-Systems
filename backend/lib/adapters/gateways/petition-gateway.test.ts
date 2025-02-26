@@ -14,15 +14,15 @@ describe('Petition Type Label gateway', () => {
     expect(debtorTypeName).toEqual(expected);
   });
 
-  test('should return an unknown label for an invalid ID', () => {
-    const petitionCode = 'ZZ';
-    const debtorTypeName = getPetitionInfo(petitionCode);
-    const expected: PetitionInfo = {
-      isTransfer: false,
-      isVoluntary: false,
-      petitionCode,
-      petitionLabel: '',
-    };
-    expect(debtorTypeName).toEqual(expected);
+  test('should return an not available label for an invalid ID', () => {
+    ['ZZ', null].forEach((petitionCode) => {
+      const expected: PetitionInfo = {
+        isTransfer: false,
+        isVoluntary: false,
+        petitionCode: petitionCode ?? '',
+        petitionLabel: 'Not Available',
+      };
+      expect(getPetitionInfo(petitionCode)).toEqual(expected);
+    });
   });
 });
