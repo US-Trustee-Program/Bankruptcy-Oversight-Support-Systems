@@ -9,7 +9,8 @@
     "headless": "playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts"
+    "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts",
+    "load-data:ci": "tsx ./scripts/load-cosmos-data.ts"
   },
   "author": "",
   "license": "ISC",
