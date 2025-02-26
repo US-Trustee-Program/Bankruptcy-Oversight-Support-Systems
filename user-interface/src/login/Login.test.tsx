@@ -1,6 +1,6 @@
 import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { describe } from 'vitest';
+import { describe, MockInstance } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import * as oktaProviderModule from './providers/okta/OktaProvider';
 import * as oktaLoginModule from './providers/okta/OktaLogin';
@@ -12,6 +12,8 @@ import { Login } from './Login';
 import localStorage, { LocalStorage } from '@/lib/utils/local-storage';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
+import { CamsSession } from '@common/cams/session';
+import { JSX } from 'react/jsx-runtime';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -19,20 +21,37 @@ describe('Login', () => {
   const children = <div data-testid={testId}>{childText}</div>;
   const issuer = 'https://fake.issuer.com/oauth2/default';
 
-  const oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
-  const oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin');
-  const mockLoginComponent = vi.spyOn(mockLoginModule, 'MockLogin');
+  let oktaProviderComponent: MockInstance<
+    (props: oktaProviderModule.OktaProviderProps) => JSX.Element
+  >;
+  let oktaLoginComponent: MockInstance<() => JSX.Element>;
+  let mockLoginComponent: MockInstance<(props: mockLoginModule.MockLoginProps) => JSX.Element>;
 
-  const sessionComponent = vi.spyOn(sessionModule, 'Session');
-  const badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
+  let sessionComponent: MockInstance<(props: sessionModule.SessionProps) => JSX.Element>;
+  let badConfigurationComponent: MockInstance<
+    (props: badConfigurationModule.BadConfigurationProps) => JSX.Element
+  >;
 
-  const getSession = vi.spyOn(LocalStorage, 'getSession');
-  const removeSession = vi.spyOn(LocalStorage, 'removeSession');
+  let getSession: MockInstance<() => CamsSession | null>;
+  let removeSession: MockInstance<() => void>;
 
-  const getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuerFromEnv');
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+  let getAuthIssuerFromEnv: MockInstance<() => string | undefined>;
+  let getLoginProviderFromEnv: MockInstance<() => string>;
 
   beforeEach(() => {
+    oktaProviderComponent = vi.spyOn(oktaProviderModule, 'OktaProvider');
+    oktaLoginComponent = vi.spyOn(oktaLoginModule, 'OktaLogin');
+    mockLoginComponent = vi.spyOn(mockLoginModule, 'MockLogin');
+
+    sessionComponent = vi.spyOn(sessionModule, 'Session');
+    badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
+
+    getSession = vi.spyOn(LocalStorage, 'getSession');
+    removeSession = vi.spyOn(LocalStorage, 'removeSession');
+
+    getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuerFromEnv');
+    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+
     oktaProviderComponent.mockImplementation((props: PropsWithChildren) => {
       return <>{props.children}</>;
     });
@@ -52,7 +71,7 @@ describe('Login', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should load provider from environment vars', async () => {
@@ -146,6 +165,7 @@ describe('Login', () => {
   });
 
   test('should clear an existing session if the provider changed', () => {
+    getAuthIssuerFromEnv.mockReturnValue(issuer);
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
