@@ -1,4 +1,6 @@
-const runHttp = fetch;
+async function runHttp(url: string, init: RequestInit) {
+  return await fetch(url, init);
+}
 
 export async function httpGet(data: { url: string; headers?: object }): Promise<Response> {
   const requestInit: RequestInit = {
