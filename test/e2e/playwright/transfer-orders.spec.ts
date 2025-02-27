@@ -132,7 +132,6 @@ test.describe('Transfer Orders', () => {
 
     // open accordian by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
-    //TODO: When we clear the form, the case note listed section dissapears but radio button
     await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     // fill in inputs
@@ -160,8 +159,6 @@ test.describe('Transfer Orders', () => {
     const caseNumberInputValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
     expect(caseNumberInputValue).not.toBeNull();
     expect(courtInputValue).toEqual('');
-
-    // await expect(page.getByTestId(`new-case-input-${orderId}`)).not.toBeVisible();
   });
 });
 
