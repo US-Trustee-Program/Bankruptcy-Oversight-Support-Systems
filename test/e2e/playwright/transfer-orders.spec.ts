@@ -122,7 +122,7 @@ test.describe('Transfer Orders', () => {
     await expect(page.getByTestId(`new-case-input-${firstOrderId}`)).toBeDisabled();
   });
 
-  test.only('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
+  test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
     // get pending transfer order id
     const pendingTransferOrder: Order = orderResponseBody.find(
       (o) => o.orderType === 'transfer' && o.status === 'pending',
