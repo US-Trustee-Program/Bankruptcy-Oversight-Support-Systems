@@ -10,18 +10,7 @@ import { getCaseIdParts } from '../../../backend/lib/adapters/gateways/dxtr/case
 import { extractAndPrepareSqlData } from './dxtr-utils';
 import { insertConsolidationOrders, insertTransferOrders, syncCases } from './cosmos-utils';
 
-//TEST CASES:
-
-//1. when an consolidation order is approved, the accordion on data-verification should change to 'Approved'
-//////a. on the case Detail of a child, it should show the parent caseId
-//////b. Parent Case Detail should show associations
-//2. when a consolidation order is rejected, the accordion status should change to 'Rejected'
-//////a. should not change the Case Detail Overview
-//3. When a Transfer order is approved should show 'Approved' on data-verification
-//////a. Case Detail Overview should show information appropriately for either case and properly show 'To' and 'From'
-
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-65-67641';
-//a Manually created SQL record that is known to be a good transfer with corresponding AO_PY, and AO_TX record
 export const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
 
 dotenv.config();
