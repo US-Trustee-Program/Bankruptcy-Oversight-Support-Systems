@@ -66,7 +66,7 @@ test.describe('Transfer Orders', () => {
     const firstOrderId = firstOrder.id;
 
     // Start testing the UI
-
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
     await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
     await page.locator(`#court-selection-${orderId}-combo-box-input`).fill(court);
@@ -132,7 +132,7 @@ test.describe('Transfer Orders', () => {
 
     // open accordian by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
-    //TODO: When we clear the form, the case note listed section dissapears but radio button still selected
+    //TODO: When we clear the form, the case note listed section dissapears but radio button
     await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     // fill in inputs
@@ -155,7 +155,7 @@ test.describe('Transfer Orders', () => {
     // Action click Cancel
     await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
     const courtInputValue = await page
-      .locator(`[data-testid^='court-selection-${orderId}-option-item-'][data-value='081']`)
+      .locator(`#court-selection-${orderId}-combo-box-input`)
       .inputValue();
     const caseNumberInputValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
     expect(caseNumberInputValue).not.toBeNull();
