@@ -41,7 +41,7 @@ import {
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { getIsoDate, sortDates } from '../../date-helper';
+import { getIsoDate, getTodaysIsoDate, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
@@ -244,6 +244,20 @@ function getSyncedCase(options: Options<SyncedCase> = { entityType: 'person', ov
     updatedOn: someDateBeforeThisDate(new Date().toISOString()),
   };
   return { ...syncedCase, ...override };
+}
+
+function getSyncedCaseNotMatchingCaseIds(exclude: string[]) {
+  const syncedCase: SyncedCase = {
+    ...getDxtrCase(),
+    documentType: 'SYNCED_CASE',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    updatedOn: someDateBeforeThisDate(getTodaysIsoDate()),
+  };
+  let caseId = randomCaseId();
+  while (exclude.includes(caseId)) {
+    caseId = randomCaseId();
+  }
+  return { ...syncedCase, caseId };
 }
 
 /**
@@ -675,6 +689,7 @@ function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
 }
 
 export const MockData = {
+  randomId,
   randomCaseId,
   randomEin,
   randomOffice,
@@ -687,6 +702,7 @@ export const MockData = {
   getCaseDetail,
   getDxtrCase,
   getSyncedCase,
+  getSyncedCaseNotMatchingCaseIds,
   getCourts,
   getOffices,
   getParty,
