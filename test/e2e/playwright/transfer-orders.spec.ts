@@ -11,7 +11,7 @@ interface Order {
   docketSuggestedCaseNumber: string;
 }
 
-test.describe('Transfer Orders', () => {
+test.describe.only('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
   let officesRequestPromise: Promise<Request>;
@@ -122,7 +122,7 @@ test.describe('Transfer Orders', () => {
     await expect(page.getByTestId(`new-case-input-${firstOrderId}`)).toBeDisabled();
   });
 
-  test('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
+  test.only('should reset multiple input fields when Cancel is clicked', async ({ page }) => {
     // get pending transfer order id
     const pendingTransferOrder: Order = orderResponseBody.find(
       (o) => o.orderType === 'transfer' && o.status === 'pending',
@@ -132,8 +132,8 @@ test.describe('Transfer Orders', () => {
 
     // open accordian by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
-    ///TODO: We need to figure out how to get a case that is viable for getSuggestedCases to return
-    // await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
+    //TODO: When we clear the form, the case note listed section dissapears but radio button still selected
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     // fill in inputs
     await page.locator(`#court-selection-${orderId}-expand`).click();
@@ -155,7 +155,7 @@ test.describe('Transfer Orders', () => {
     // Action click Cancel
     await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
     const courtInputValue = await page
-      .locator(`#court-selection-${orderId}-combo-box-input`)
+      .locator(`[data-testid^='court-selection-${orderId}-option-item-'][data-value='081']`)
       .inputValue();
     const caseNumberInputValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
     expect(caseNumberInputValue).not.toBeNull();

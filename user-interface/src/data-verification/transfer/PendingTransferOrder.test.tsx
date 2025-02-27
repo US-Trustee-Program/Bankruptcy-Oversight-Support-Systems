@@ -568,14 +568,14 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
-    test('should clear radio, remove form, and disable submission button when the Cancel button is clicked', async () => {
+    test('should clear form, and disable submission button when the Cancel button is clicked', async () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValue(mockGetCaseSummaryForToCase);
       vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
         mockGetTransferredCaseSuggestions,
       );
-
+      const testCaseNumber = '23-12345';
       renderWithProps();
       await waitFor(() => {
         const caseTable = document.querySelector('#suggested-cases');
@@ -600,7 +600,7 @@ describe('PendingTransferOrder component', () => {
         expect(approveButton).toBeDisabled();
       });
 
-      enterCaseNumber(caseIdInput, '23-12345');
+      enterCaseNumber(caseIdInput, testCaseNumber);
 
       let cancelButton: HTMLElement;
       await waitFor(async () => {
@@ -613,7 +613,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitFor(() => {
         caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-        expect(caseIdInput).not.toBeInTheDocument();
+        expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
       });
     });
 
