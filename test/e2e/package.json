@@ -8,7 +8,9 @@
     "ui": "playwright test --ui",
     "headless": "playwright test",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts",
+    "load-data:ci": "tsx ./scripts/load-cosmos-data.ts"
   },
   "author": "",
   "license": "ISC",
@@ -28,6 +30,7 @@
     "typescript-eslint": "^8.25.0"
   },
   "dependencies": {
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3"
   }
 }
