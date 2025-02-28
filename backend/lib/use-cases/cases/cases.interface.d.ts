@@ -26,10 +26,7 @@ export interface CasesInterface {
 
   getSuggestedCases(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary[]>;
 
-  getCaseIdsAndMaxTxIdToSync(
-    applicationContext: ApplicationContext,
-    lastTxId: string,
-  ): Promise<CasesSyncMeta>;
+  getUpdatedCaseIds(applicationContext: ApplicationContext, caseId: string): Promise<string[]>;
 
   findTransactionIdRangeForDate(
     context: ApplicationContext,

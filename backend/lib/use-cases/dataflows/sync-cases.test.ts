@@ -3,7 +3,6 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CasesSyncState } from '../gateways.types';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
-import { CasesSyncMeta } from '../cases/cases.interface';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 
@@ -20,66 +19,51 @@ describe('getCaseIds tests', () => {
     expect(actual).toEqual({ events: [] });
   });
 
-  test('should return events to sync and last transaction id', async () => {
-    const initialTxId = '0';
-    const lastTxId = '1000';
-    const gatewayResponse: CasesSyncMeta = {
-      caseIds: MockData.buildArray(MockData.randomCaseId, 3),
-      lastTxId,
-    };
+  test('should return events to sync and last sync date', async () => {
+    const lastSyncDate = '2025-01-01';
+    const gatewayResponse = MockData.buildArray(MockData.randomCaseId, 3);
 
     const getIdSpy = jest
-      .spyOn(CasesLocalGateway.prototype, 'getCaseIdsAndMaxTxIdToSync')
+      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
       .mockResolvedValue(gatewayResponse);
 
     const syncState: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
-      txId: initialTxId,
+      lastSyncDate,
     };
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
-    jest
-      .spyOn(MockMongoRepository.prototype, 'upsert')
-      .mockRejectedValue(new Error('this should not be called'));
 
     const actual = await SyncCases.getCaseIds(context);
 
     const expected = {
-      events: gatewayResponse.caseIds.map((caseId) => {
+      events: gatewayResponse.map((caseId) => {
         return { caseId, type: 'CASE_CHANGED' };
       }),
-      lastTxId,
     };
 
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), syncState.txId);
-    expect(actual).toEqual(expected);
+    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate);
+    expect(actual).toEqual(expect.objectContaining(expected));
+    expect(Date.parse(actual.lastSyncDate)).toBeGreaterThan(Date.parse(lastSyncDate));
   });
 
-  test('should use provided lastRunTxId', async () => {
+  test('should use provided lastSyncDate if provided', async () => {
+    const lastSyncDate = '2025-02-01 23:59:59';
     jest
       .spyOn(MockMongoRepository.prototype, 'read')
       .mockRejectedValue(new Error('this should not be called'));
 
-    const lastRunTxId = '12345678901234567890';
-    const lastTxId = '98765432109876543210';
-    const gatewayResponse: CasesSyncMeta = {
-      caseIds: MockData.buildArray(MockData.randomCaseId, 3),
-      lastTxId,
-    };
+    const mockCaseIds = MockData.buildArray(MockData.randomCaseId, 3);
 
-    const getIdSpy = jest
-      .spyOn(CasesLocalGateway.prototype, 'getCaseIdsAndMaxTxIdToSync')
-      .mockResolvedValue(gatewayResponse);
+    const getUpdatedSpy = jest
+      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
+      .mockResolvedValue(mockCaseIds);
 
-    const actual = await SyncCases.getCaseIds(context, '12345678901234567890');
-
-    const expected = {
-      events: gatewayResponse.caseIds.map((caseId) => {
-        return { caseId, type: 'CASE_CHANGED' };
-      }),
-      lastTxId,
-    };
-
-    expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastRunTxId);
-    expect(actual).toEqual(expected);
+    const actual = await SyncCases.getCaseIds(context, lastSyncDate);
+    expect(getUpdatedSpy).toHaveBeenCalled();
+    expect(actual).toEqual({
+      events: expect.anything(),
+      lastSyncDate: expect.any(String),
+    });
+    expect(Date.parse(actual.lastSyncDate)).toBeGreaterThan(Date.parse(lastSyncDate));
   });
 });

@@ -757,56 +757,6 @@ describe('Test DXTR Gateway', () => {
     });
   });
 
-  describe('getCaseIdsAndMaxTxIdToSync tests', () => {
-    test('should return array of case ids and a max tx id', async () => {
-      const mockRecords = [
-        { caseId: MockData.getCaseBasics().caseId, maxTxId: 10 },
-        { caseId: MockData.getCaseBasics().caseId, maxTxId: 9 },
-        { caseId: MockData.getCaseBasics().caseId, maxTxId: 8 },
-        { caseId: MockData.getCaseBasics().caseId, maxTxId: 7 },
-      ];
-      const mockResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: mockRecords,
-        },
-        message: '',
-      };
-      const expectedReturn = {
-        caseIds: mockRecords.map((rec) => rec.caseId),
-        lastTxId: '10',
-      };
-
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
-      expect(result).toEqual(expectedReturn);
-    });
-
-    test('should return an empty array and the existing max tx id', async () => {
-      const mockResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-      const expectedReturn = {
-        caseIds: [],
-        lastTxId: '0',
-      };
-
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockResults);
-      });
-
-      const result = await testCasesDxtrGateway.getCaseIdsAndMaxTxIdToSync(applicationContext, '0');
-      expect(result).toEqual(expectedReturn);
-    });
-  });
-
   describe('findTransactionIdRangeForDate', () => {
     const dateRangeMock = (_context, _config, query: string, params: DbTableFieldSpec[]) => {
       const mockTxMap = new Map<number, string>([
@@ -897,5 +847,45 @@ describe('Test DXTR Gateway', () => {
         expect(actual).toEqual(expected);
       },
     );
+  });
+
+  describe('getUpdatedCaseIds', () => {
+    test('should return a list of updated case ids', async () => {
+      const recordset = MockData.buildArray(MockData.randomCaseId, 100).map((caseId) => {
+        return { caseId };
+      });
+
+      const executeResults: QueryResults = {
+        success: true,
+        results: {
+          recordset,
+        },
+        message: '',
+      };
+
+      const expectedReturn = recordset.map((record) => record.caseId);
+
+      querySpy.mockImplementationOnce(async () => {
+        return executeResults;
+      });
+
+      const startDate = new Date().toISOString();
+      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, startDate);
+      expect(actual).toEqual(expectedReturn);
+    });
+
+    test('should return an empty array', async () => {
+      const mockResults: QueryResults = {
+        success: true,
+        results: {
+          recordset: [],
+        },
+        message: '',
+      };
+
+      querySpy.mockReturnValue(mockResults);
+      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, 'foo');
+      expect(actual).toEqual([]);
+    });
   });
 });
