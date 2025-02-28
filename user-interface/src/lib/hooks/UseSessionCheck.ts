@@ -11,5 +11,5 @@ export default function useSessionCheck() {
     if (!session || !session.user.offices) {
       navigate(LOGOUT_SESSION_END_PATH);
     }
-  }, []);
+  }, [session, navigate]);
 }
