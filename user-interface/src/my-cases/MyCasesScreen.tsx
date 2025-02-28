@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -27,8 +27,13 @@ export const MyCasesScreen = () => {
   const session = LocalStorage.getSession();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!session || !session.user.offices) {
+      navigate(LOGOUT_SESSION_END_PATH);
+    }
+  }, []);
+
   if (!session || !session.user.offices) {
-    navigate(LOGOUT_SESSION_END_PATH);
     return <></>;
   }
 
