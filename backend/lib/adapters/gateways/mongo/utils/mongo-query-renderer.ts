@@ -24,6 +24,7 @@ const matchCondition: { [key: string]: string } = {
   NOT_EQUAL: '$ne',
   NOT_CONTAINS: '$nin',
   REGEX: '$regex',
+  EXPR: '$expr',
 };
 
 function translateCondition(query: Condition) {
