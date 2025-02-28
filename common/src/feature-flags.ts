@@ -15,4 +15,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'case-search-enabled': true,
   'case-notes-enabled': true,
   'privileged-identity-management': true,
+  'enhanced-case-sync': true,
 };
