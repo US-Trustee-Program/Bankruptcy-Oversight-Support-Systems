@@ -17,7 +17,7 @@ setupSyncOfficeStaff();
 setupSyncOrders();
 
 // Setup migrations. Migrations can be removed once they are complete.
-const enableMigrateCases = false;
+const enableMigrateCases = true;
 if (enableMigrateCases) setupMigrateCases();
 
 const enableMigrateConsolidations = false;
