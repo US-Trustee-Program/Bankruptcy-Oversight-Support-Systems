@@ -141,6 +141,15 @@ function exists<T>(attributeName: keyof T, value: boolean): Condition {
   };
 }
 
+function expression<T>(attributeName: keyof T, value: unknown): Condition {
+  // NEEDED QUERY { "$match": { "$expr": { "$gt": ["$reopenedDate", "$closedDate"] } } }
+  return {
+    condition: 'EXPR',
+    attributeName: attributeName as string,
+    value,
+  };
+}
+
 // function match<T>(attributeName: keyof T, value: boolean): Condition {
 //   return {
 //     condition: 'MATCH',
@@ -198,6 +207,7 @@ const QueryBuilder = {
   contains,
   equals,
   exists,
+  expression,
   greaterThan,
   greaterThanOrEqual,
   lessThan,

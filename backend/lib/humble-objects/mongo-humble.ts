@@ -42,6 +42,7 @@ export class CollectionHumble<T> {
 
   public async aggregate(query: DocumentQuery) {
     const queryArray = Array.isArray(query) ? query : [query];
+    console.log('Query excluding Closed Cases..... ', queryArray);
     return this.collection.aggregate(queryArray);
   }
 }

@@ -305,7 +305,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           and(
             exists('closedDate', true),
             exists('reopenedDate', true),
-            greaterThan('reopenedDate', '$closedDate'),
+            greaterThan('$expr', ['$closedDate', '$reopenedDate']),
+            // expression('$reopenedDate', '$closedDate'),
           ),
         ),
       );
