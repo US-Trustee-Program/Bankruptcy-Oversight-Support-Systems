@@ -23,5 +23,5 @@ Optional - capture notes for nuances or future work that could be done.
 # Definition of Done:
 
 - [ ] Code refactored for clarity - Developers can understand the work simply by reviewing the code
-- [ ] Dependency Rule followed - More important code doesn’t directly depend on less important code
+- [ ] Dependency rule followed - More important code doesn’t directly depend on less important code
 - [ ] Development debt eliminated - UX and code aligns to the team’s latest understanding of the domain
