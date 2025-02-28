@@ -9,6 +9,8 @@ export type Condition = {
     | 'NOT_EQUAL'
     | 'NOT_CONTAINS'
     | 'EXISTS'
+    | 'MATCH'
+    | 'EXPR'
     | 'REGEX';
   attributeName: string;
   value: unknown;
@@ -138,6 +140,22 @@ function exists<T>(attributeName: keyof T, value: boolean): Condition {
     value,
   };
 }
+
+// function match<T>(attributeName: keyof T, value: boolean): Condition {
+//   return {
+//     condition: 'MATCH',
+//     attributeName: attributeName as string,
+//     value,
+//   };
+// }
+
+// function expression<T>(attributeName: keyof T, value: boolean): Condition {
+//   return {
+//     condition: 'EXPR',
+//     attributeName: attributeName as string,
+//     value,
+//   };
+// }
 
 function regex(attributeName: string, value: string): Condition {
   return {
