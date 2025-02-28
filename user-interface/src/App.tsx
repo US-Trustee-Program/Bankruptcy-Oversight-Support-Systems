@@ -17,11 +17,13 @@ import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/G
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
+import useSessionCheck from './lib/hooks/UseSessionCheck';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
 
 function App() {
+  useSessionCheck();
   const { reactPlugin } = useAppInsights();
   const globalAlertRef = useRef<GlobalAlertRef>(null);
 
