@@ -8,7 +8,7 @@ export default function useSessionCheck() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!session || !session.user.offices) {
+    if (!session || !session.user.name || session.expires < Math.floor(Date.now() / 1000)) {
       navigate(LOGOUT_SESSION_END_PATH);
     }
   }, [session, navigate]);
