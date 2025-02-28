@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -16,8 +16,6 @@ import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import { useNavigate } from 'react-router-dom';
-import { LOGOUT_SESSION_END_PATH } from '@/login/login-library';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -25,13 +23,6 @@ export const MyCasesScreen = () => {
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!session || !session.user.offices) {
-      navigate(LOGOUT_SESSION_END_PATH);
-    }
-  }, []);
 
   if (!session || !session.user.offices) {
     return <></>;
