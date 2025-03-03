@@ -11,6 +11,7 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder from '../../../query/query-builder';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { nowInSeconds } from '../../../../../common/src/date-helper';
 
 describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;
@@ -85,7 +86,7 @@ describe('User session cache Cosmos repository tests', () => {
       }),
       true,
     );
-    const maxTtl = Math.floor(camsJwtClaims.exp - Date.now() / 1000);
+    const maxTtl = Math.floor(camsJwtClaims.exp - nowInSeconds());
     expect(argument.ttl).toBeLessThan(maxTtl + 1);
   });
 

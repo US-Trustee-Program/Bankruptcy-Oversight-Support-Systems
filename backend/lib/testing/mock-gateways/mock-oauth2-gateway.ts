@@ -7,6 +7,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { nowInSeconds } from '../../../../common/src/date-helper';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
@@ -20,13 +21,13 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   const validMockRole = mockUsers.find((role) => role.sub === requestedSubject.sub);
 
   const ONE_DAY = 60 * 60 * 24;
-  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
+  const NOW = nowInSeconds();
 
   const claims: CamsJwtClaims = {
     aud: 'api://default',
     sub: validMockRole.sub,
     iss: context.request.url,
-    exp: SECONDS_SINCE_EPOCH + ONE_DAY,
+    exp: NOW + ONE_DAY,
     groups: [],
   };
 
