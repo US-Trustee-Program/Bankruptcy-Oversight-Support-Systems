@@ -2,6 +2,8 @@ import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
 import { addApiBeforeHook } from '@/lib/models/api';
 import { nowInSeconds } from '@common/date-helper';
+import Api2 from '@/lib/models/api2';
+import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
 const SAFE_LIMIT = 2700;
 
@@ -45,9 +47,7 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
     const oktaUser = await oktaAuth.getUser();
     if (accessToken) {
       const jwt = oktaAuth.token.decode(accessToken);
-      // TODO: THIS REFRESH IS NOT "AUGMENTED". WE NEED TO CALL THE /me ENDPOINT.
-      // Map Okta user information to CAMS user
-      // TODO: This is the first of two calls to getUser, but this response is not the one we use. The api returns user details with the /me endpoint. Just skip this call??
+      // Set the skeleton of a CamsSession object in local storage for the API.
       LocalStorage.setSession({
         provider: 'okta',
         accessToken,
@@ -55,6 +55,13 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
         expires: jwt.payload.exp ?? 0,
         issuer: jwt.payload.iss ?? '',
       });
+
+      // Then call the /me endpoint to cache the Okta session on the API side and
+      // and get the full CamsSession with CAMS-specific user detail not available
+      // from Okta.
+      const me = await Api2.getMe();
+      LocalStorage.setSession(me.data);
+      initializeSessionEndLogout(me.data);
     }
   } catch {
     // failed to renew access token.
