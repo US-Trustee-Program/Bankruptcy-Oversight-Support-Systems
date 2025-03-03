@@ -1,6 +1,7 @@
 import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
 import { addApiBeforeHook } from '@/lib/models/api';
+import { nowInSeconds } from '@common/date-helper';
 
 const SAFE_LIMIT = 2700;
 
@@ -9,12 +10,11 @@ export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
 }
 
 export function getCamsUser(oktaUser: UserClaims | null) {
-  // TODO: We need to decide which claim we map to the CamsUser.id
   return { id: oktaUser?.sub ?? 'UNKNOWN', name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
 }
 
 export async function refreshOktaToken(oktaAuth: OktaAuth) {
-  const now = Math.floor(Date.now() / 1000);
+  const now = nowInSeconds();
   const session = LocalStorage.getSession();
   if (!session) return;
 

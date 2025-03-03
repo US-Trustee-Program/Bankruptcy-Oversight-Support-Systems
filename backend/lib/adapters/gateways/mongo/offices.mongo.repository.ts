@@ -9,6 +9,7 @@ import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.ty
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
+import { nowInSeconds } from '../../../../../common/src/date-helper';
 
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -111,7 +112,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   public async putOrExtendOfficeStaff(officeCode: string, staff: Staff, expires: string) {
     try {
       const existing = await this.findOneOfficeStaff(officeCode, staff);
-      const newTtl = (new Date(expires).valueOf() - Date.now()) / 1000;
+      const newTtl = new Date(expires).valueOf() - nowInSeconds();
 
       let officeStaff: OfficeStaff;
       if (existing) {
