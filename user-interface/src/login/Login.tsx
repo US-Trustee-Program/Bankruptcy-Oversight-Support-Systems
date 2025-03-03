@@ -24,6 +24,7 @@ import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { initializeBroadcastLogout } from '@/login/broadcast-logout';
 import LocalCache from '@/lib/utils/local-cache';
 import { nowInSeconds } from '@common/date-helper';
+import { Logout } from './Logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -48,11 +49,10 @@ export function Login(props: LoginProps): React.ReactNode {
   initializeInactiveLogout();
   initializeBroadcastLogout();
 
-  let session: CamsSession | null = LocalStorage.getSession();
+  const session: CamsSession | null = LocalStorage.getSession();
 
   if (session && session.expires < nowInSeconds()) {
-    LocalStorage.removeSession();
-    session = null;
+    return <Logout></Logout>;
   }
 
   if (session) {
