@@ -13,6 +13,8 @@ const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
 const key = 'mock-secret'; //pragma: allowlist secret
 
+const EXPIRE_OVERRIDE = parseInt(process.env.MOCK_SESSION_EXPIRE_LENGTH);
+
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
   if (context.config.authConfig.provider !== 'mock') {
     throw new ForbiddenError(MODULE_NAME, { message: 'Not in mock mode...' });
@@ -23,11 +25,13 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
   const ONE_DAY = 60 * 60 * 24;
   const NOW = nowInSeconds();
 
+  const expiration = isNaN(EXPIRE_OVERRIDE) ? NOW + ONE_DAY : NOW + EXPIRE_OVERRIDE;
+
   const claims: CamsJwtClaims = {
     aud: 'api://default',
     sub: validMockRole.sub,
     iss: context.request.url,
-    exp: NOW + (process.env.MOCK_SESSION_EXPIRE_LENGTH ?? ONE_DAY),
+    exp: expiration,
     groups: [],
   };
 
