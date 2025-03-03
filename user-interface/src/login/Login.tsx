@@ -23,6 +23,8 @@ import { CamsSession } from '@common/cams/session';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
 import { initializeBroadcastLogout } from '@/login/broadcast-logout';
 import LocalCache from '@/lib/utils/local-cache';
+import { nowInSeconds } from '@common/date-helper';
+import { Logout } from './Logout';
 
 export type LoginProps = PropsWithChildren & {
   provider?: LoginProvider;
@@ -48,6 +50,11 @@ export function Login(props: LoginProps): React.ReactNode {
   initializeBroadcastLogout();
 
   const session: CamsSession | null = LocalStorage.getSession();
+
+  if (session && session.expires < nowInSeconds()) {
+    return <Logout></Logout>;
+  }
+
   if (session) {
     if (provider == 'okta') {
       issuer = getAuthIssuerFromEnv();

@@ -7,6 +7,7 @@ import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { UserSessionCacheRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
+import { nowInSeconds } from '../../../../../common/src/date-helper';
 
 const MODULE_NAME: string = 'USER_SESSION_CACHE_MONGO_REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';
@@ -75,7 +76,7 @@ export class UserSessionCacheMongoRepository
     let ttl;
     try {
       const tokenParts = session.accessToken.split('.');
-      ttl = Math.floor(claims.exp - Date.now() / 1000);
+      ttl = Math.floor(claims.exp - nowInSeconds());
       signature = tokenParts[2];
     } catch {
       throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });

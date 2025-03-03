@@ -5,6 +5,7 @@ import OktaGateway from './okta-gateway';
 import { CamsJwtHeader } from '../../../../../common/src/cams/jwt';
 import * as AuthorizationConfiguration from '../../../configs/authorization-configuration';
 import { AuthorizationConfig } from '../../types/authorization';
+import { nowInSeconds } from '../../../../../common/src/date-helper';
 
 describe('Okta gateway tests', () => {
   const gateway = OktaGateway;
@@ -63,7 +64,7 @@ describe('Okta gateway tests', () => {
       sub: 'user@fake.com',
       aud: 'api://default',
       iat: 0,
-      exp: Math.floor(Date.now() / 1000) + 600,
+      exp: nowInSeconds() + 600,
       AD_Groups: ['groupD'],
       ad_groups: ['groupA', 'groupB'],
       groups: ['groupB', 'groupC'],

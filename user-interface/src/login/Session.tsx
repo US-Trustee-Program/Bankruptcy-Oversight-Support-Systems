@@ -8,6 +8,7 @@ import { Interstitial } from './Interstitial';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import { initializeSessionEndLogout } from './session-end-logout';
 
 type SessionState = {
   isLoaded: boolean;
@@ -23,6 +24,7 @@ export function useStateAndActions() {
   });
 
   function postLoginTasks(session: CamsSession) {
+    initializeSessionEndLogout(session);
     session.user.offices?.forEach((office) => {
       Api2.getOfficeAttorneys(office.officeCode);
     });
