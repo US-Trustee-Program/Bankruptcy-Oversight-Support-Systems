@@ -16,8 +16,6 @@ import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import { useNavigate } from 'react-router-dom';
-import { LOGOUT_SESSION_END_PATH } from '@/login/login-library';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -25,10 +23,8 @@ export const MyCasesScreen = () => {
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
-  const navigate = useNavigate();
 
   if (!session || !session.user.offices) {
-    navigate(LOGOUT_SESSION_END_PATH);
     return <></>;
   }
 

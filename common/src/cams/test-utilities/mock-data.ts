@@ -41,7 +41,7 @@ import {
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { getIsoDate, getTodaysIsoDate, sortDates } from '../../date-helper';
+import { getIsoDate, getTodaysIsoDate, nowInSeconds, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
@@ -654,7 +654,7 @@ function getManhattanTrialAttorneySession(): CamsSession {
 }
 
 function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
-  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
+  const NOW = nowInSeconds();
   const ONE_HOUR = 3600;
   const salt = Math.floor(Math.random() * 10);
 
@@ -662,7 +662,7 @@ function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
     iss: 'http://fake.issuer.com/oauth2/default',
     sub: 'user@fake.com',
     aud: 'fakeApi',
-    exp: SECONDS_SINCE_EPOCH + ONE_HOUR + salt,
+    exp: NOW + ONE_HOUR + salt,
     groups: [],
     ...claims,
   };

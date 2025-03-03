@@ -32,10 +32,15 @@ export function getTodaysIsoDate() {
   return getIsoDate(new Date());
 }
 
+export function nowInSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
 export const DateHelper = {
   getIsoDate,
   getTodaysIsoDate,
   isValidDateString,
+  nowInSeconds,
   sortDates,
   sortDatesReverse,
 };
