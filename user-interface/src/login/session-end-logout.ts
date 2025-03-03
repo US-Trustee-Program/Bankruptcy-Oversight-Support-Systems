@@ -14,5 +14,5 @@ export function checkForSessionEnd() {
 }
 
 export function initializeSessionEndLogout(session: CamsSession) {
-  setInterval(checkForSessionEnd, (session.expires - nowInSeconds()) * 1000);
+  setInterval(checkForSessionEnd, Math.floor(session.expires - nowInSeconds()) * 1000);
 }
