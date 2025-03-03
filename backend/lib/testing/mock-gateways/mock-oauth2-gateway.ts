@@ -27,7 +27,7 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
     aud: 'api://default',
     sub: validMockRole.sub,
     iss: context.request.url,
-    exp: NOW + ONE_DAY,
+    exp: NOW + (process.env.MOCK_SESSION_EXPIRE_LENGTH ?? ONE_DAY),
     groups: [],
   };
 
