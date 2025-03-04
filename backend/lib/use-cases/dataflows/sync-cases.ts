@@ -4,7 +4,6 @@ import Factory, { getCasesGateway } from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CasesSyncState } from '../gateways.types';
 import { randomUUID } from 'node:crypto';
-import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
@@ -25,10 +24,6 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     }
 
     const casesGateway = getCasesGateway(context);
-    const start = syncState.lastSyncDate;
-    if (!start) {
-      throw new CamsError(MODULE_NAME);
-    }
     const caseIds = await casesGateway.getUpdatedCaseIds(context, syncState.lastSyncDate);
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
