@@ -15,7 +15,6 @@ describe('Header', () => {
   });
   vi.spyOn(FeatureFlags, 'default').mockReturnValue({
     'transfer-orders-enabled': true,
-    'case-search-enabled': true,
   });
 
   beforeEach(() => {
