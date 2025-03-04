@@ -300,14 +300,25 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     //NOTE: We only want cases that do not have a closed date, or they have a reopened date more recent than closed date
     if (predicate.excludeClosedCases === true) {
       conditions.push(
-        and(
-          exists('closedDate', false),
+        or(
+          and(exists('closedDate', false), exists('dismissedDate', false)),
           and(
             exists('closedDate', true),
+            exists('dismissedDate', false),
             exists('reopenedDate', true),
-            greaterThan('$expr', ['$closedDate', '$reopenedDate']),
-            // expression('$reopenedDate', '$closedDate'),
+            greaterThan('$expr', ['$reopenedDate', '$closedDate']),
           ),
+          and(
+            exists('closedDate', false),
+            exists('dismissedDate', true),
+            exists('reopenedDate', true),
+            greaterThan('$expr', ['$reopenedDate', '$dismissedDate']),
+          ),
+          and(
+            exists('closedDate', true),
+            exists('dismissedDate', true),
+            exists('reopenedDate', true),
+          ), // worst case scenario. these need to be compared to the reopened date. So many questions. --- James
         ),
       );
     }
