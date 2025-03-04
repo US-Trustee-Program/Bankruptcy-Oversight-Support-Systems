@@ -69,7 +69,11 @@ describe('Query Builder', () => {
 
     expect(actual).toEqual(expected);
   });
-  const staticEqualCondition: Condition = { condition: 'EQUALS', attributeName: 'two', value: 45 };
+  const staticEqualCondition: Condition = {
+    condition: 'EQUALS',
+    leftOperand: 'two',
+    rightOperand: 45,
+  };
 
   const simpleQueryCases = [
     {
@@ -170,8 +174,8 @@ describe('Query Builder', () => {
   test('isCondition', () => {
     const condition: Condition = {
       condition: 'REGEX',
-      attributeName: '',
-      value: '',
+      leftOperand: '',
+      rightOperand: '',
     };
     expect(isCondition(condition)).toBeTruthy();
     expect(isCondition({})).toBeFalsy();

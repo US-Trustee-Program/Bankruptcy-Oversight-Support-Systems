@@ -13,7 +13,7 @@ import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
 const isArray = Array.isArray;
 
-const matchCondition: { [key: string]: string } = {
+const mapCondition: { [key: string]: string } = {
   EXISTS: '$exists',
   EQUALS: '$eq',
   GREATER_THAN: '$gt',
@@ -24,21 +24,29 @@ const matchCondition: { [key: string]: string } = {
   NOT_EQUAL: '$ne',
   NOT_CONTAINS: '$nin',
   REGEX: '$regex',
-  EXPR: '$expr',
 };
 
-function translateCondition(query: Condition) {
-  return { [query.attributeName]: { [matchCondition[query.condition]]: query.value } };
+// TODO: create new aggregate renderer
+function translateCondition(query: Condition, isAggregateCondition: boolean = false) {
+  if (isAggregateCondition) {
+    return {
+      $expr: {
+        [mapCondition[query.condition]]: [`$${query.leftOperand}`, `$${query.rightOperand}`],
+      },
+    };
+  } else {
+    return { [query.leftOperand]: { [mapCondition[query.condition]]: query.rightOperand } };
+  }
 }
 
-const matchConjunction: { [key: string]: string } = {
+const mapConjunction: { [key: string]: string } = {
   AND: '$and',
   OR: '$or',
   NOT: '$not',
 };
 
 function translateConjunction(query: Conjunction) {
-  return { [matchConjunction[query.conjunction]]: renderQuery(query.values) };
+  return { [mapConjunction[query.conjunction]]: renderQuery(query.values) };
 }
 
 function translatePagination(query: Pagination) {
@@ -69,20 +77,20 @@ function translatePagination(query: Pagination) {
   return result;
 }
 
-function renderQuery(query: Query) {
+function renderQuery(query: Query, isAggregateCondition: boolean = false) {
   if (isArray(query)) {
-    return query.map((q) => renderQuery(q));
+    return query.map((q) => renderQuery(q, isAggregateCondition));
   } else if (isPagination(query)) {
     return translatePagination(query);
   } else if (isConjunction(query)) {
     return translateConjunction(query);
   } else if (isCondition(query)) {
-    return translateCondition(query);
+    return translateCondition(query, isAggregateCondition);
   }
 }
 
-export function toMongoQuery(query: Query): DocumentQuery {
-  return renderQuery(query);
+export function toMongoQuery(query: Query, isAggregateCondition: boolean = false): DocumentQuery {
+  return renderQuery(query, isAggregateCondition);
 }
 
 export function toMongoSort(sort: Sort): MongoSort {
