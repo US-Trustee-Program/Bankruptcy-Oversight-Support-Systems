@@ -9,11 +9,9 @@ export type Condition = {
     | 'NOT_EQUAL'
     | 'NOT_CONTAINS'
     | 'EXISTS'
-    | 'MATCH'
-    | 'EXPR'
     | 'REGEX';
-  attributeName: string;
-  value: unknown;
+  leftOperand: string;
+  rightOperand: unknown;
 };
 
 export function isCondition(obj: unknown): obj is Condition {
@@ -72,80 +70,80 @@ function not(...values: ConditionOrConjunction[]): Conjunction {
 function equals<T>(attributeName: string, value: T): Condition {
   return {
     condition: 'EQUALS',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function notEqual<T>(attributeName: string, value: T): Condition {
   return {
     condition: 'NOT_EQUAL',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function greaterThan<T>(attributeName: string, value: T): Condition {
   return {
     condition: 'GREATER_THAN',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function greaterThanOrEqual<T>(attributeName: string, value: T): Condition {
   return {
     condition: 'GREATER_THAN_OR_EQUAL',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function contains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'CONTAINS',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function lessThan<T>(attributeName: string, value: T): Condition {
   return {
     condition: 'LESS_THAN',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function lessThanOrEqual<T>(attributeName: string, value: T): Condition {
   return {
     condition: 'LESS_THAN_OR_EQUAL',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function notContains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'NOT_CONTAINS',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function exists<T>(attributeName: keyof T, value: boolean): Condition {
   return {
     condition: 'EXISTS',
-    attributeName: attributeName as string,
-    value,
+    leftOperand: attributeName as string,
+    rightOperand: value,
   };
 }
 
 function regex(attributeName: string, value: string): Condition {
   return {
     condition: 'REGEX',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
