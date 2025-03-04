@@ -177,7 +177,7 @@ export type OrderSyncState = RuntimeState & {
 
 export type CasesSyncState = RuntimeState & {
   documentType: 'CASES_SYNC_STATE';
-  txId: string;
+  lastSyncDate: string;
 };
 
 export type OfficeStaffSyncState = RuntimeState & {
