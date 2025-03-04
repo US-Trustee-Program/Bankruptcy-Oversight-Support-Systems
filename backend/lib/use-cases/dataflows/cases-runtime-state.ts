@@ -13,7 +13,7 @@ async function storeRuntimeState(context: ApplicationContext, lastSyncDate: stri
       lastSyncDate,
     };
     await runtimeStateRepo.upsert(newSyncState);
-    context.logger.info(MODULE_NAME, `Wrote runtime state: ${newSyncState}.`);
+    context.logger.info(MODULE_NAME, `Wrote runtime state: `, newSyncState);
   } catch (originalError) {
     const error = getCamsError(
       originalError,
