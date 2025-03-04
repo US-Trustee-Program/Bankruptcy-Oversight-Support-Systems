@@ -5,13 +5,13 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CasesSyncState } from '../gateways.types';
 import { randomUUID } from 'node:crypto';
 import { CamsError } from '../../common-errors/cams-error';
-import { getIsoDate } from '../../../../common/src/date-helper';
 
 const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
 async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
   try {
-    const now = getIsoDate(new Date());
+    const now = new Date().toISOString();
+
     let syncState: CasesSyncState;
     if (lastSyncDate) {
       syncState = {
