@@ -9,6 +9,8 @@ export type Condition = {
     | 'NOT_EQUAL'
     | 'NOT_CONTAINS'
     | 'EXISTS'
+    | 'MATCH'
+    | 'EXPR'
     | 'REGEX';
   attributeName: string;
   value: unknown;

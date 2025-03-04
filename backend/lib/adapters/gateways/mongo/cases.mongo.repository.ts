@@ -23,7 +23,8 @@ import { CamsError } from '../../../common-errors/cams-error';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, or, equals, regex, contains, notContains } = QueryBuilder;
+const { paginate, and, or, equals, regex, contains, notContains, exists, greaterThan } =
+  QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -270,33 +271,66 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  addConditions(predicate: CasesSearchPredicate): ConditionOrConjunction[] {
+    const conditions: ConditionOrConjunction[] = [];
+    conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
+
+    if (predicate.caseNumber) {
+      conditions.push(equals<SyncedCase['caseNumber']>('caseNumber', predicate.caseNumber));
+    }
+
+    ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
+    if (predicate.caseIds) {
+      conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
+    }
+
+    if (predicate.chapters?.length > 0) {
+      conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
+    }
+
+    if (predicate.divisionCodes?.length > 0) {
+      conditions.push(
+        contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
+      );
+    }
+
+    if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
+      conditions.push(notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds));
+    }
+    //NOTE: We only want cases that do not have a closed date, or they have a reopened date more recent than closed date
+    if (predicate.excludeClosedCases === true) {
+      conditions.push(
+        or(
+          and(exists('closedDate', false), exists('dismissedDate', false)),
+          and(
+            exists('closedDate', true),
+            exists('dismissedDate', false),
+            exists('reopenedDate', true),
+            greaterThan('$expr', ['$reopenedDate', '$closedDate']),
+          ),
+          and(
+            exists('closedDate', false),
+            exists('dismissedDate', true),
+            exists('reopenedDate', true),
+            greaterThan('$expr', ['$reopenedDate', '$dismissedDate']),
+          ),
+          and(
+            exists('closedDate', true),
+            exists('dismissedDate', true),
+            exists('reopenedDate', true),
+          ), // worst case scenario. these need to be compared to the reopened date. So many questions. --- James
+        ),
+      );
+    }
+    return conditions;
+  }
+
   async searchCases(predicate: CasesSearchPredicate) {
     const conditions: ConditionOrConjunction[] = [];
     conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
     let subQuery: Query;
     try {
-      if (predicate.caseNumber) {
-        conditions.push(equals<SyncedCase['caseNumber']>('caseNumber', predicate.caseNumber));
-      }
-
-      ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
-      if (predicate.caseIds) {
-        conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
-      }
-
-      if (predicate.chapters?.length > 0) {
-        conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
-      }
-
-      if (predicate.divisionCodes?.length > 0) {
-        conditions.push(
-          contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
-        );
-      }
-
-      if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
-        conditions.push(notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds));
-      }
+      const conditions = this.addConditions(predicate);
 
       if (predicate.limit && predicate.offset >= 0) {
         const sortSpec: Sort = {
