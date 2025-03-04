@@ -7,31 +7,30 @@ import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
-async function getCaseIds(context: ApplicationContext, lastRunTxId?: string) {
+async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
   try {
-    const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
+    const now = new Date().toISOString();
 
     let syncState: CasesSyncState;
-    if (lastRunTxId) {
+    if (lastSyncDate) {
       syncState = {
         id: randomUUID(),
         documentType: 'CASES_SYNC_STATE',
-        txId: lastRunTxId,
+        lastSyncDate,
       };
     } else {
+      const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
       syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
     }
 
     const casesGateway = getCasesGateway(context);
-    const { caseIds, lastTxId } = await casesGateway.getCaseIdsAndMaxTxIdToSync(
-      context,
-      syncState.txId,
-    );
+    const caseIds = await casesGateway.getUpdatedCaseIds(context, syncState.lastSyncDate);
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
       return { type: 'CASE_CHANGED', caseId };
     });
-    return { events, lastTxId: lastTxId };
+
+    return { events, lastSyncDate: now };
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME);
     context.logger.camsError(error);

@@ -17,6 +17,7 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
+import { getTodaysIsoDate } from '../../../../common/src/date-helper';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
@@ -236,7 +237,7 @@ async function getCaseIdsToMigrate(
  */
 async function storeRuntimeState(invocationContext: InvocationContext) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  return CasesRuntimeState.storeRuntimeState(appContext);
+  return CasesRuntimeState.storeRuntimeState(appContext, getTodaysIsoDate());
 }
 
 export function setupMigrateCases() {

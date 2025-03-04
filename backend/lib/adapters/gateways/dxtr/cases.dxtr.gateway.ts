@@ -1,7 +1,6 @@
 import * as mssql from 'mssql';
 import {
   CasesInterface,
-  CasesSyncMeta,
   TransactionIdRangeForDate,
 } from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
@@ -30,6 +29,7 @@ const orderToTransferCode = 'CTO';
 const NOT_FOUND = -1;
 
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
+type CaseIdRecord = { caseId: string };
 
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
@@ -472,58 +472,45 @@ export default class CasesDxtrGateway implements CasesInterface {
     return bCase;
   }
 
-  async getCaseIdsAndMaxTxIdToSync(
-    context: ApplicationContext,
-    lastTxId: string,
-  ): Promise<CasesSyncMeta> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push({
-      name: 'txId',
-      type: mssql.BigInt,
-      value: parseInt(lastTxId),
+  /**
+   * getUpdatedCaseIds
+   *
+   * Gets the case ids for all cases with LAST_UPDATE_DATE values greater than the provided date.
+   * 2025-02-23 06:35:30.453
+   *
+   * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
+   * @returns {string[]} A list of case ids for updated cases.
+   */
+  async getUpdatedCaseIds(context: ApplicationContext, start: string): Promise<string[]> {
+    const params: DbTableFieldSpec[] = [];
+    params.push({
+      name: 'start',
+      type: mssql.DateTime,
+      value: start,
     });
 
     const query = `
-      SELECT
-        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
-        MAX(T.TX_ID) as maxTxId
-      FROM AO_TX T
-      JOIN AO_CS C ON C.CS_CASEID = T.CS_CASEID AND C.COURT_ID = T.COURT_ID
+      SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
+      FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE T.TX_ID > @txId
-      GROUP BY CS_DIV.CS_DIV_ACMS, C.CASE_ID
-      ORDER BY MAX(T.TX_ID) DESC
+      WHERE C.LAST_UPDATE_DATE > @start
     `;
 
     const queryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
       query,
-      input,
+      params,
     );
 
-    const results = handleQueryResult<RawCaseIdAndMaxId[]>(
+    const results = handleQueryResult<CaseIdRecord[]>(
       context,
       queryResult,
       MODULE_NAME,
-      this.caseIdsAndMaxTxIdCallback,
+      this.getUpdatedCaseIdsCallback,
     );
 
-    let meta: CasesSyncMeta;
-    if (results.length) {
-      meta = {
-        caseIds: results.map((bCase) => bCase.caseId),
-        lastTxId: results[0].maxTxId.toString(),
-      };
-    } else {
-      meta = {
-        caseIds: [],
-        lastTxId,
-      };
-    }
-
-    return meta;
+    return results.map((record) => record.caseId);
   }
 
   private async queryCase(
@@ -901,5 +888,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
+  }
+
+  getUpdatedCaseIdsCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
+
+    return (queryResult.results as mssql.IResult<CaseIdRecord[]>).recordset;
   }
 }
