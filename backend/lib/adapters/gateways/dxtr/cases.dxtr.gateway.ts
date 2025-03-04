@@ -493,7 +493,7 @@ export default class CasesDxtrGateway implements CasesInterface {
       SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE C.LAST_UPDATE_DATE > '@start'
+      WHERE C.LAST_UPDATE_DATE > @start
     `;
 
     const queryResult: QueryResults = await executeQuery(
