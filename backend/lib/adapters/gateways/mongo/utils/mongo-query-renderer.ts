@@ -27,8 +27,9 @@ const mapCondition: { [key: string]: string } = {
 };
 
 // TODO: create new aggregate renderer
-function translateCondition(query: Condition, isAggregateCondition: boolean = false) {
-  if (isAggregateCondition) {
+// https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
+function translateCondition(query: Condition) {
+  if (query.compareFields) {
     return {
       $expr: {
         [mapCondition[query.condition]]: [`$${query.leftOperand}`, `$${query.rightOperand}`],
@@ -77,20 +78,20 @@ function translatePagination(query: Pagination) {
   return result;
 }
 
-function renderQuery(query: Query, isAggregateCondition: boolean = false) {
+function renderQuery(query: Query) {
   if (isArray(query)) {
-    return query.map((q) => renderQuery(q, isAggregateCondition));
+    return query.map((q) => renderQuery(q));
   } else if (isPagination(query)) {
     return translatePagination(query);
   } else if (isConjunction(query)) {
     return translateConjunction(query);
   } else if (isCondition(query)) {
-    return translateCondition(query, isAggregateCondition);
+    return translateCondition(query);
   }
 }
 
-export function toMongoQuery(query: Query, isAggregateCondition: boolean = false): DocumentQuery {
-  return renderQuery(query, isAggregateCondition);
+export function toMongoQuery(query: Query): DocumentQuery {
+  return renderQuery(query);
 }
 
 export function toMongoSort(sort: Sort): MongoSort {

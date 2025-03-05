@@ -12,6 +12,7 @@ export type Condition = {
     | 'REGEX';
   leftOperand: string;
   rightOperand: unknown;
+  compareFields?: boolean;
 };
 
 export function isCondition(obj: unknown): obj is Condition {
@@ -67,35 +68,47 @@ function not(...values: ConditionOrConjunction[]): Conjunction {
   };
 }
 
-function equals<T>(attributeName: string, value: T): Condition {
+function equals<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
   return {
     condition: 'EQUALS',
     leftOperand: attributeName,
     rightOperand: value,
+    compareFields,
   };
 }
 
-function notEqual<T>(attributeName: string, value: T): Condition {
+function notEqual<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
   return {
     condition: 'NOT_EQUAL',
     leftOperand: attributeName,
     rightOperand: value,
+    compareFields,
   };
 }
 
-function greaterThan<T>(attributeName: string, value: T): Condition {
+function greaterThan<T>(
+  attributeName: string,
+  value: T,
+  compareFields: boolean = false,
+): Condition {
   return {
     condition: 'GREATER_THAN',
     leftOperand: attributeName,
     rightOperand: value,
+    compareFields,
   };
 }
 
-function greaterThanOrEqual<T>(attributeName: string, value: T): Condition {
+function greaterThanOrEqual<T>(
+  attributeName: string,
+  value: T,
+  compareFields: boolean = false,
+): Condition {
   return {
     condition: 'GREATER_THAN_OR_EQUAL',
     leftOperand: attributeName,
     rightOperand: value,
+    compareFields,
   };
 }
 
@@ -107,19 +120,25 @@ function contains<T>(attributeName: string, value: T | T[]): Condition {
   };
 }
 
-function lessThan<T>(attributeName: string, value: T): Condition {
+function lessThan<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
   return {
     condition: 'LESS_THAN',
     leftOperand: attributeName,
     rightOperand: value,
+    compareFields,
   };
 }
 
-function lessThanOrEqual<T>(attributeName: string, value: T): Condition {
+function lessThanOrEqual<T>(
+  attributeName: string,
+  value: T,
+  compareFields: boolean = false,
+): Condition {
   return {
     condition: 'LESS_THAN_OR_EQUAL',
     leftOperand: attributeName,
     rightOperand: value,
+    compareFields,
   };
 }
 
