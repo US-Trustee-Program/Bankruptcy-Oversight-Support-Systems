@@ -13,7 +13,7 @@ export type UpgradedCondition<T = unknown> = Omit<Condition, 'leftOperand'> & {
 
 // The functions need to be returned from a closure in order to use function specific generic arguments.
 export function using<T = unknown>() {
-  function equals<R = unknown>(
+  function equals<R = string | number | boolean>(
     leftOperand: Field<T>,
     rightOperand: Field<T> | R,
   ): UpgradedCondition<T> {
