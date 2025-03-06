@@ -51,3 +51,20 @@ console.log('OG 2', JSON.stringify(ogMongoRender(query2)));
 
 console.log('AGGREGATE', JSON.stringify(aggMongoRender(query)));
 console.log('AGGREGATE 2', JSON.stringify(aggMongoRender(query2)));
+
+///
+
+type Primitives = {
+  someText: string;
+  howMany: number;
+  yesNo: boolean;
+};
+
+const testType = using<Primitives>();
+
+testType('howMany').equals(1);
+testType('yesNo').equals(false);
+testType('yesNo').equals('');
+testType('someText').equals('test');
+testType('someText').equals(1);
+testType('someText').equals(true);
