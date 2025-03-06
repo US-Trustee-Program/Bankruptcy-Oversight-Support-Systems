@@ -17,10 +17,10 @@ export type UpgradedCondition<T = unknown> = Omit<Condition, 'leftOperand'> & {
 
 // The functions need to be returned from a closure in order to use function specific generic arguments.
 export function using<T = unknown>() {
-  return (field: keyof T) => {
+  return <F extends keyof T>(field: F) => {
     const leftOperand: Field<T> = { field };
+    type R = T[F];
 
-    type R = T[typeof field];
     function equals(rightOperand: Field<T> | R): UpgradedCondition<T> {
       return {
         condition: 'EQUALS',
