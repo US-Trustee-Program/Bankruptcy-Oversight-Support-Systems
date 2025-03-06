@@ -1,9 +1,9 @@
 import { CaseDetail } from '../../../common/src/cams/cases';
-import { UpgradedCondition, using } from './experiment_module';
+import { isField, UpgradedCondition, using } from './experiment_module';
 
 type Condition = UpgradedCondition<CaseDetail>;
 
-const { equals, isField } = using<CaseDetail>();
+const caseDetail = using<CaseDetail>();
 
 function ogMongoRender(query: Condition) {
   // imagine '$eq" came from query.condition through mapCondition...
@@ -33,18 +33,18 @@ function aggMongoRender(query: Condition) {
 ///
 
 // Adding the second parameter type to the generic argument is OPTIONAL.
-const chapterTest1 = equals<CaseDetail['chapter']>({ field: 'chapter' }, '12');
-const chapterTest2 = equals({ field: 'chapter' }, '12');
+const chapterTest1 = caseDetail('chapter').equals({ field: 'caseId' });
+
+caseDetail('caseId').equals({ field: 'caseId' });
+
+const chapterTest2 = caseDetail('chapter').equals('2025-01-01');
 console.log('chapterTest1', JSON.stringify(ogMongoRender(chapterTest1)));
 console.log('chapterTest2', JSON.stringify(ogMongoRender(chapterTest2)));
 
 ///
 
-const query = equals<CaseDetail['reopenedDate']>(
-  { field: 'reopenedDate' },
-  { field: 'closedDate' },
-);
-const query2 = equals({ field: 'reopenedDate' }, '2025-01-01');
+const query = caseDetail('reopenedDate').equals({ field: 'closedDate' });
+const query2 = caseDetail('reopenedDate').equals('2025-01-01');
 
 console.log('OG', JSON.stringify(ogMongoRender(query)));
 console.log('OG 2', JSON.stringify(ogMongoRender(query2)));
