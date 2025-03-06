@@ -1,7 +1,24 @@
 import { CaseDetail } from '../../../common/src/cams/cases';
-import { UpgradedCondition, using } from './experiment_module';
+import { mod, UpgradedCondition, using } from './experiment_module';
 
 type Condition = UpgradedCondition<CaseDetail>;
+
+const { equals2: myEqual } = mod;
+
+type Foo = {
+  bar: boolean;
+  bar2: number;
+  baz: string;
+  baz2: string[];
+};
+
+// This does seem to get the benefit of TypeScript in that the field names are suggested.
+myEqual<CaseDetail>({ field: 'closedDate' }, { field: 'reopenedDate' });
+myEqual<Foo>({ field: 'bar' }, { field: 'baz2' });
+
+// This is not working as we would hope. Note that the type for `bar` is boolean.
+myEqual<Foo>({ field: 'bar' }, false);
+myEqual<Foo>({ field: 'bar' }, 'hello world');
 
 const { equals, equals2, isField } = using<CaseDetail>();
 
@@ -21,7 +38,7 @@ function field(f: string) {
   return `$${f}`;
 }
 
-function aggMongoRender(query: Condition) {
+export function aggMongoRender(query: Condition) {
   // imagine '$eq" came from query.condition through mapCondition...
   const render = isField(query.rightOperand)
     ? {

@@ -9,6 +9,8 @@ export type UpgradedCondition<T> = Omit<Condition, 'leftOperand'> & {
   rightOperand: Field<T> | string | number | boolean | UpgradedCondition<T> | Conjunction;
 };
 
+// export type
+
 // The interface isn't needed if it is always equal to the using function return value.
 interface Builder<T> {
   equals: (left: keyof T, right: string | number | boolean | Field<T>) => Condition;
@@ -49,3 +51,7 @@ export function using<T = unknown>(): Builder<T> {
     isField,
   };
 }
+
+export const mod = {
+  equals2,
+};
