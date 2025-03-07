@@ -19,45 +19,36 @@ function isOktaRequiredError(err: unknown): err is RequiredError {
   return typeof err === 'object' && 'name' in err && err.name === 'RequiredError';
 }
 
+function copyOktaError(error: object, keys: string[]) {
+  return keys.reduce(
+    (acc, key) => {
+      if (key in error) {
+        acc[key] = error[key];
+      }
+      return acc;
+    },
+    { name: 'UNKNOWN', message: 'UNKNOWN' },
+  );
+}
+
 function buildSerializableError(originalError: Error) {
   if (isOktaRequiredError(originalError)) {
-    const { api, message, method, field, name, stack } = originalError;
-    return {
-      api,
-      message,
-      method,
-      field,
-      name,
-      stack,
-    };
+    return copyOktaError(originalError, ['api', 'message', 'method', 'field', 'name', 'stack']);
   }
   if (isOktaApiError(originalError)) {
-    const {
-      errorCode,
-      errorId,
-      errorLink,
-      errorSummary,
-      headers,
-      message,
-      name,
-      stack,
-      status,
-      url,
-      errorCauses,
-    } = originalError;
-    return {
-      errorCode,
-      errorId,
-      errorLink,
-      errorSummary,
-      headers,
-      message,
-      name,
-      stack,
-      status,
-      url,
-      errorCauses,
-    };
+    return copyOktaError(originalError, [
+      'errorCode',
+      'errorId',
+      'errorLink',
+      'errorSummary',
+      'headers',
+      'message',
+      'name',
+      'stack',
+      'status',
+      'url',
+      'errorCauses',
+    ]);
   }
   return originalError;
 }
