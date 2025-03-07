@@ -7,6 +7,7 @@
 - [Authentication](/architecture/decision-records/Authentication.md)
 - [Azure Resource Manager](/architecture/decision-records/AzureResourceManager.md)
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
+- [Dataflows](/architecture/decision-records/Dataflows.md)
 - [Deployment](/architecture/decision-records/Deployment.md)
 - [Durable Function](/architecture/decision-records/DurableFunction.md)
 - [Frontend Build Tooling](/architecture/decision-records/FrontendBuildTooling.md)
