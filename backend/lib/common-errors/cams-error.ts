@@ -1,4 +1,5 @@
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import * as util from 'node:util';
 
 export type CamsStackInfo = {
   module: string;
@@ -18,7 +19,7 @@ export class CamsError extends Error {
   status: number;
   module: string;
   camsStack: CamsStackInfo[];
-  originalError?: Error;
+  originalError?: string;
   data?: object;
 
   constructor(module: string, options: CamsErrorOptions = {}) {
@@ -27,7 +28,7 @@ export class CamsError extends Error {
 
     this.status = options.status ?? HttpStatusCodes.INTERNAL_SERVER_ERROR;
     this.module = module;
-    this.originalError = options.originalError;
+    this.originalError = util.inspect(options.originalError);
     this.data = options.data;
     this.isCamsError = true;
     this.camsStack = options.camsStackInfo ? [options.camsStackInfo] : [];

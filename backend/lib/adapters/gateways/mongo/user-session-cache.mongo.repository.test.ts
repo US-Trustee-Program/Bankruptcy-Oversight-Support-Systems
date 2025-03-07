@@ -12,14 +12,16 @@ import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder from '../../../query/query-builder';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { nowInSeconds } from '../../../../../common/src/date-helper';
+import { CamsSession } from '../../../../../common/src/cams/session';
 
 describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;
   let repo: UserSessionCacheMongoRepository;
-  const expected = MockData.getCamsSession();
+  let expectedSession: CamsSession;
   const { equals } = QueryBuilder;
 
   beforeEach(async () => {
+    expectedSession = MockData.getCamsSession();
     context = await createMockApplicationContext();
     repo = UserSessionCacheMongoRepository.getInstance(context);
     jest.resetAllMocks();
@@ -44,10 +46,10 @@ describe('User session cache Cosmos repository tests', () => {
   });
 
   test('read should return CamsSession on cache hit', async () => {
-    const session = { ...expected, id: 'some-id', signature: 'some signature', ttl: 42 };
+    const session = { ...expectedSession, id: 'some-id', signature: 'some signature', ttl: 42 };
     jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(session);
     const actual = await repo.read('a.valid.token');
-    expect(actual).toEqual(expected);
+    expect(actual).toEqual(expectedSession);
     expect(actual).not.toEqual(
       expect.objectContaining({
         id: expect.anything(),
@@ -58,26 +60,26 @@ describe('User session cache Cosmos repository tests', () => {
   });
 
   test('upsert should throw for invalid token', async () => {
-    const newSession = { ...expected, accessToken: 'invalid.token' };
+    const newSession = { ...expectedSession, accessToken: 'invalid.token' };
     const insertOne = jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne');
     await expect(repo.upsert(newSession)).rejects.toThrow('Invalid token received.');
     expect(insertOne).not.toHaveBeenCalled();
   });
 
   test('upsert should return CamsSession and create valid ttl on success', async () => {
-    const newSession = { ...expected };
+    const newSession = { ...expectedSession };
     const camsJwtClaims = jwt.decode(newSession.accessToken) as CamsJwtClaims;
-    const insertOne = jest
+    const replaceSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue({ id: 'oid-guid', modifiedCount: 1, upsertedCount: 0 });
     const tokenParts = newSession.accessToken.split('.');
     const signature = tokenParts[2];
     const expectedQuery = QueryBuilder.build(equals('signature', signature));
+    const expectedTtl = Math.floor(camsJwtClaims.exp - nowInSeconds());
 
     const actual = await repo.upsert(newSession);
     expect(actual).toEqual(newSession);
-    const argument = insertOne.mock.calls[0][1] as CachedCamsSession;
-    expect(insertOne).toHaveBeenCalledWith(
+    expect(replaceSpy).toHaveBeenCalledWith(
       expectedQuery,
       expect.objectContaining({
         ...newSession,
@@ -86,12 +88,13 @@ describe('User session cache Cosmos repository tests', () => {
       }),
       true,
     );
-    const maxTtl = Math.floor(camsJwtClaims.exp - nowInSeconds());
-    expect(argument.ttl).toBeLessThan(maxTtl + 1);
+    const argument = replaceSpy.mock.calls[0][1] as CachedCamsSession;
+    expect(argument.ttl).toBeLessThan(expectedTtl + 5);
+    expect(argument.ttl).toBeGreaterThan(expectedTtl - 5);
   });
 
   test('upsert should throw when replaceOne fails', async () => {
-    const newSession = { ...expected };
+    const newSession = { ...expectedSession };
     jest
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockRejectedValue(new Error('some error'));

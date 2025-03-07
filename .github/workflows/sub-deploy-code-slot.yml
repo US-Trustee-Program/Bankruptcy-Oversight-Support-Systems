@@ -264,7 +264,6 @@ jobs:
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       slotName: 'self'
     secrets: inherit # pragma: allowlist secret
-
   enable-access:
     runs-on: ubuntu-latest
     needs: [endpoint-test-application-post-swap]

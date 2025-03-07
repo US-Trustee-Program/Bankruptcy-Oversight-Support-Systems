@@ -43,13 +43,18 @@ async function oktaLogin(page: Page) {
   const username = page.locator('input[name=identifier]').first();
   await username.fill(OKTA_USER_NAME);
 
+  const next = page.locator('input[type=submit]').first();
+  await next.click();
+
   const password = page.locator('input[name="credentials.passcode"]').first();
+  await expect(password).toBeVisible();
   await password.fill(OKTA_PASSWORD);
 
   const submit = page.locator('input[type=submit]').first();
   await submit.click();
 
   await page.waitForURL(TARGET_HOST);
+  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
   await page.context().storageState({ path: authFile });
   await expect(page.context().storageState({ path: authFile })).toBeDefined();
 }

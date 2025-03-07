@@ -53,6 +53,7 @@ import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.m
 import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
+import { getCamsErrorWithStack } from './common-errors/error-utilities';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -272,8 +273,18 @@ export const getUserGroupGateway = async (
     return new MockUserGroupGateway();
   } else if (context.config.authConfig.provider === 'okta') {
     if (!idpApiGateway) {
-      idpApiGateway = new OktaUserGroupGateway();
-      await idpApiGateway.init(context.config.userGroupGatewayConfig);
+      try {
+        idpApiGateway = new OktaUserGroupGateway();
+        await idpApiGateway.init(context.config.userGroupGatewayConfig);
+      } catch (originalError) {
+        idpApiGateway = null;
+        throw getCamsErrorWithStack(originalError, 'FACTORY', {
+          camsStackInfo: {
+            module: 'FACTORY',
+            message: 'Identity provider API Gateway failed to initialize.',
+          },
+        });
+      }
     }
     return idpApiGateway;
   }
