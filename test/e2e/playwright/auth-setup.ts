@@ -54,6 +54,7 @@ async function oktaLogin(page: Page) {
   await submit.click();
 
   await page.waitForURL(TARGET_HOST);
+  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
   await page.context().storageState({ path: authFile });
   await expect(page.context().storageState({ path: authFile })).toBeDefined();
 }
