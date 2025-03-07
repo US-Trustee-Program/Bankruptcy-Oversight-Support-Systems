@@ -10,7 +10,7 @@ Azure Durable Functions are replaced by queues and queue triggers.
 
 ## Status
 
-Supersedes [DurableFunction](./DurableFunction.md)
+Supersedes [DurableFunction](/architecture/decision-records/DurableFunction.md)
 
 ## Consequences
 

@@ -11,7 +11,7 @@ common with the existing web API implemented as an Azure Function application.
 
 ## Status
 
-Superseded by [Dataflows](./Dataflows.md)
+Superseded by [Dataflows](/architecture/decision-records/Dataflows.md)
 
 ## Consequences
 
