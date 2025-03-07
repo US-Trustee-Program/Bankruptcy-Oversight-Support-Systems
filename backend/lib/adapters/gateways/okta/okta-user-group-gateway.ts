@@ -8,6 +8,7 @@ import OktaHumble, {
   ListGroupUsersRequest,
 } from '../../../humble-objects/okta-humble';
 import UsersHelpers from '../../../use-cases/users/users.helpers';
+import * as util from 'node:util';
 
 const MODULE_NAME = 'OKTA-USER-GROUP-GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -155,6 +156,11 @@ class OktaUserGroupGateway implements UserGroupGateway {
       context.logger.info(MODULE_NAME, `Retrieved ${id}`, camsUser);
       return camsUser;
     } catch (originalError) {
+      context.logger.error(
+        MODULE_NAME,
+        'Failed to retrieve user.',
+        util.inspect(originalError, { depth: 5 }),
+      );
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed while getting user by id.' },
       });
