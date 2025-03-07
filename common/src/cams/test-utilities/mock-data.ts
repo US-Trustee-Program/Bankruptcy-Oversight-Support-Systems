@@ -616,6 +616,7 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
     offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
+  const expires = override.expires ?? getExpiration();
   return {
     user: {
       id: randomId(),
@@ -623,10 +624,10 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
       offices,
       roles,
     },
-    accessToken: getJwt(),
+    accessToken: getJwt({ exp: expires }),
     provider: 'mock',
     issuer: 'http://issuer/',
-    expires: Number.MAX_SAFE_INTEGER,
+    expires,
     ...override,
   };
 }
@@ -653,16 +654,20 @@ function getManhattanTrialAttorneySession(): CamsSession {
   });
 }
 
-function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
+function getExpiration(): number {
   const NOW = nowInSeconds();
   const ONE_HOUR = 3600;
   const salt = Math.floor(Math.random() * 10);
 
+  return NOW + ONE_HOUR + salt;
+}
+
+function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   const payload: CamsJwtClaims = {
     iss: 'http://fake.issuer.com/oauth2/default',
     sub: 'user@fake.com',
     aud: 'fakeApi',
-    exp: NOW + ONE_HOUR + salt,
+    exp: getExpiration(),
     groups: [],
     ...claims,
   };
