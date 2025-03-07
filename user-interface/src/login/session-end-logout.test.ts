@@ -34,6 +34,7 @@ describe('Session End Logout tests', () => {
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
 
   beforeEach(() => {
+    // @ts-expect-error `location` is a readonly property. As this is just a test, we do not care.
     window.location = { ...mockLocation };
   });
 
