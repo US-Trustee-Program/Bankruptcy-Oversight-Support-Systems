@@ -21,6 +21,7 @@ describe('Broadcast Logout', () => {
     const closeSpy = vi.spyOn(BroadcastChannelHumble.prototype, 'close').mockReturnValue();
 
     Object.defineProperty(global, 'window', Object.create(window));
+    // @ts-expect-error `location` is a readonly property. As this is just a test, we do not care.
     global.window.location = {
       host: 'some-host',
       protocol: 'http:',
