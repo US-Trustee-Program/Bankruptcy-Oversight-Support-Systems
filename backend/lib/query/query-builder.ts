@@ -179,7 +179,7 @@ export function using<T = unknown>() {
       };
     };
 
-    const notContains = (rightOperand: R[]): Condition<T> => {
+    const notContains = (rightOperand: R | R[]): Condition<T> => {
       return {
         condition: 'NOT_CONTAINS',
         leftOperand,
