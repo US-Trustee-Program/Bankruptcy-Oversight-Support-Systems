@@ -188,20 +188,20 @@ export type OfficeStaffSyncState = RuntimeState & {
 };
 
 export interface DocumentCollectionAdapter<T> {
-  find: (query: ConditionOrConjunction, sort?: Sort) => Promise<T[]>;
-  paginatedFind: (query: Pagination) => Promise<CamsPaginationResponse<T>>;
-  findOne: (query: ConditionOrConjunction) => Promise<T>;
-  getAll: (sort?: Sort) => Promise<T[]>;
+  find: (query: ConditionOrConjunction<T>, sort?: Sort) => Promise<T[]>;
+  paginatedFind: (query: Pagination<T>) => Promise<CamsPaginationResponse<T>>;
+  findOne: (query: ConditionOrConjunction<T>) => Promise<T>;
+  getAll: (sort?: Sort<T>) => Promise<T[]>;
   replaceOne: (
-    query: ConditionOrConjunction,
+    query: ConditionOrConjunction<T>,
     item: unknown,
     upsert?: boolean,
   ) => Promise<ReplaceResult>;
-  insertOne: (item: unknown) => Promise<string>;
-  insertMany: (items: unknown[]) => Promise<string[]>;
-  deleteOne: (query: ConditionOrConjunction) => Promise<number>;
-  deleteMany: (query: ConditionOrConjunction) => Promise<number>;
-  countDocuments: (query: ConditionOrConjunction) => Promise<number>;
+  insertOne: (item: T) => Promise<string>;
+  insertMany: (items: T[]) => Promise<string[]>;
+  deleteOne: (query: ConditionOrConjunction<T>) => Promise<number>;
+  deleteMany: (query: ConditionOrConjunction<T>) => Promise<number>;
+  countDocuments: (query: ConditionOrConjunction<T>) => Promise<number>;
   countAllDocuments: () => Promise<number>;
 }
 
