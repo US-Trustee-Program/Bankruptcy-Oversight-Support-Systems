@@ -317,11 +317,11 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
-    const q = using<SyncedCase>();
+    const doc = using<SyncedCase>();
     const expectedQuery = paginate<SyncedCase>(
       predicate.offset,
       predicate.limit,
-      [and(q('documentType').equals('SYNCED_CASE'), q('chapter').contains(predicate.chapters))],
+      [and(doc('documentType').equals('SYNCED_CASE'), doc('chapter').contains(predicate.chapters))],
       {
         attributes: [
           ['dateFiled', 'DESCENDING'],
@@ -351,15 +351,15 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
-    const q = using<SyncedCase>();
+    const doc = using<SyncedCase>();
     const expectedQuery = paginate<SyncedCase>(
       predicate.offset,
       predicate.limit,
       [
         and(
-          q('documentType').equals('SYNCED_CASE'),
-          q('caseId').contains(predicate.caseIds),
-          q('chapter').contains(predicate.chapters),
+          doc('documentType').equals('SYNCED_CASE'),
+          doc('caseId').contains(predicate.caseIds),
+          doc('chapter').contains(predicate.chapters),
         ),
       ],
       {
@@ -394,16 +394,16 @@ describe('Cases repository', () => {
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     // TODO: can we find a way to not rely on the exact order here?
-    const q = using<SyncedCase>();
+    const doc = using<SyncedCase>();
     const expectedQuery = paginate<SyncedCase>(
       predicate.offset,
       predicate.limit,
       [
         and(
-          q('documentType').equals('SYNCED_CASE'),
-          q('caseId').contains(predicate.caseIds),
-          q('chapter').contains(predicate.chapters),
-          q('caseId').notContains(predicate.excludedCaseIds),
+          doc('documentType').equals('SYNCED_CASE'),
+          doc('caseId').contains(predicate.caseIds),
+          doc('chapter').contains(predicate.chapters),
+          doc('caseId').notContains(predicate.excludedCaseIds),
         ),
       ],
       {

@@ -72,8 +72,8 @@ describe('User session cache Cosmos repository tests', () => {
     const tokenParts = newSession.accessToken.split('.');
     const signature = tokenParts[2];
 
-    const q = QueryBuilder.using<CachedCamsSession>();
-    const expectedQuery = q('signature').equals(signature);
+    const doc = QueryBuilder.using<CachedCamsSession>();
+    const expectedQuery = doc('signature').equals(signature);
 
     const actual = await repo.upsert(newSession);
     expect(actual).toEqual(newSession);

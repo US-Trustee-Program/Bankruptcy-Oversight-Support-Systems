@@ -39,7 +39,7 @@ type TestType = {
 };
 
 describe('Mongo adapter', () => {
-  const testQuery = QueryBuilder.build(and());
+  const testQuery = and();
   const humbleCollection = spies as unknown as CollectionHumble<TestType>;
   const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
@@ -86,7 +86,7 @@ describe('Mongo adapter', () => {
     }
     const sort = jest.fn().mockImplementation(generator);
     find.mockResolvedValue({ sort });
-    const item = await adapter.getAll(orderBy(['name', 'ASCENDING']));
+    const item = await adapter.getAll(orderBy(['foo', 'ASCENDING']));
     expect(item).toEqual([{}, {}, {}]);
     expect(find).toHaveBeenCalled();
     expect(sort).toHaveBeenCalled();
@@ -107,7 +107,7 @@ describe('Mongo adapter', () => {
     }
     const sort = jest.fn().mockImplementation(generator);
     find.mockResolvedValue({ sort });
-    const item = await adapter.find(testQuery, orderBy(['name', 'ASCENDING']));
+    const item = await adapter.find(testQuery, orderBy(['foo', 'ASCENDING']));
     expect(item).toEqual([{}, {}, {}]);
     expect(find).toHaveBeenCalled();
     expect(sort).toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe('Mongo adapter', () => {
       limit: 25,
       skip: 0,
       values: [testQuery as ConditionOrConjunction],
-      sort: orderBy(['name', 'ASCENDING']),
+      sort: orderBy(['foo', 'ASCENDING']),
     });
     expect(item).toEqual(expectedValue);
   });
@@ -145,10 +145,10 @@ describe('Mongo adapter', () => {
     await expect(
       adapter.paginatedFind({
         values: [testQuery as ConditionOrConjunction],
-        sort: orderBy(['name', 'ASCENDING']),
-      } as Pagination),
+        sort: orderBy(['foo', 'ASCENDING']),
+      } as Pagination<TestType>),
     ).rejects.toThrow(
-      'Failed while querying with: {"values":[{"conjunction":"AND","values":[]}],"sort":{"attributes":[["name","ASCENDING"]]}}',
+      'Failed while querying with: {"values":[{"conjunction":"AND","values":[]}],"sort":{"attributes":[["foo","ASCENDING"]]}}',
     );
   });
 

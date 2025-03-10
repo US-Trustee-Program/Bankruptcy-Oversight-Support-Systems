@@ -12,7 +12,7 @@ describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
   let repo: ConsolidationOrdersMongoRepository;
   const { and, orderBy, using } = QueryBuilder;
-  const q = using<ConsolidationOrder>();
+  const doc = using<ConsolidationOrder>();
 
   const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
 
@@ -35,8 +35,8 @@ describe('Consolidations Repository tests', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue([consolidationOrder]);
     const query = and(
-      q('courtDivisionCode').contains([consolidationOrder.courtDivisionCode]),
-      q('consolidationId').equals(consolidationOrder.consolidationId),
+      doc('courtDivisionCode').contains([consolidationOrder.courtDivisionCode]),
+      doc('consolidationId').equals(consolidationOrder.consolidationId),
     );
     const results = await repo.search({
       divisionCodes: ['081'],

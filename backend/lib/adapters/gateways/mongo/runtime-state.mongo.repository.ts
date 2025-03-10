@@ -11,7 +11,7 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 const MODULE_NAME = 'RUNTIME-STATE-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'runtime-state';
 
-const q = QueryBuilder.using<RuntimeState>();
+const doc = QueryBuilder.using<RuntimeState>();
 
 export class RuntimeStateMongoRepository<T extends RuntimeState>
   extends BaseMongoRepository
@@ -22,7 +22,7 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
   }
 
   async read(id: RuntimeStateDocumentType): Promise<T> {
-    const query = q('documentType').equals(id);
+    const query = doc('documentType').equals(id);
     try {
       const adapter = this.getAdapter<T>();
       return await adapter.findOne(query);
@@ -33,7 +33,7 @@ export class RuntimeStateMongoRepository<T extends RuntimeState>
 
   async upsert(data: T): Promise<T> {
     try {
-      const query = q('documentType').equals(data.documentType);
+      const query = doc('documentType').equals(data.documentType);
       const adapter = this.getAdapter<T>();
       const result = await adapter.replaceOne(query, data, true);
       if (result.modifiedCount + result.upsertedCount > 0) {

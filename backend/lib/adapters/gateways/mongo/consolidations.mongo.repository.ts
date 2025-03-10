@@ -20,7 +20,7 @@ export default class ConsolidationOrdersMongoRepository<
   private static referenceCount: number = 0;
   private static instance: ConsolidationOrdersMongoRepository;
 
-  private q = using<T>();
+  private doc = using<T>();
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
@@ -50,7 +50,7 @@ export default class ConsolidationOrdersMongoRepository<
 
   async read(id: string): Promise<T> {
     try {
-      const query = this.q('consolidationId').equals(id);
+      const query = this.doc('consolidationId').equals(id);
       return await this.getAdapter<T>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -78,7 +78,7 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async delete(id: string) {
     try {
-      const query = this.q('id').equals(id);
+      const query = this.doc('id').equals(id);
       await this.getAdapter<T>().deleteOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -90,10 +90,10 @@ export default class ConsolidationOrdersMongoRepository<
 
     try {
       if (predicate?.divisionCodes) {
-        conditions.push(this.q('courtDivisionCode').contains(predicate.divisionCodes));
+        conditions.push(this.doc('courtDivisionCode').contains(predicate.divisionCodes));
       }
       if (predicate?.consolidationId) {
-        conditions.push(this.q('consolidationId').equals(predicate.consolidationId));
+        conditions.push(this.doc('consolidationId').equals(predicate.consolidationId));
       }
       const query = predicate ? and(...conditions) : null;
       return await this.getAdapter<T>().find(query, orderBy(['orderDate', 'ASCENDING']));

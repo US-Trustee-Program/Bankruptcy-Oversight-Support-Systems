@@ -9,7 +9,7 @@ const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
 const { and, using } = QueryBuilder;
-const q = using<CaseAssignment>();
+const doc = using<CaseAssignment>();
 
 export class CaseAssignmentMongoRepository
   extends BaseMongoRepository
@@ -51,7 +51,7 @@ export class CaseAssignmentMongoRepository
   }
 
   async update(caseAssignment: CaseAssignment): Promise<string> {
-    const query = q('id').equals(caseAssignment.id);
+    const query = doc('id').equals(caseAssignment.id);
     try {
       const result = await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
       if (result.modifiedCount > 0) {
@@ -64,9 +64,9 @@ export class CaseAssignmentMongoRepository
 
   async getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
     const query = and(
-      q('documentType').equals('ASSIGNMENT'),
-      q('caseId').contains(caseIds),
-      q('unassignedOn').notExists(),
+      doc('documentType').equals('ASSIGNMENT'),
+      doc('caseId').contains(caseIds),
+      doc('unassignedOn').notExists(),
     );
     try {
       const assignments = await this.getAdapter<CaseAssignment>().find(query);
@@ -89,9 +89,9 @@ export class CaseAssignmentMongoRepository
 
   async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
     const query = and(
-      q('documentType').equals('ASSIGNMENT'),
-      q('userId').equals(userId),
-      q('unassignedOn').notExists(),
+      doc('documentType').equals('ASSIGNMENT'),
+      doc('userId').equals(userId),
+      doc('unassignedOn').notExists(),
     );
 
     try {
