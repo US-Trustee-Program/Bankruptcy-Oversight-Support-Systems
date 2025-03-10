@@ -39,6 +39,7 @@ function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
     divisionCodes: getCourtDivisionCodes(user),
     chapters: getChapters(),
     excludeChildConsolidations: true,
+    excludeClosedCases: true,
   };
 
   return predicate;

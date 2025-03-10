@@ -13,7 +13,7 @@ import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
 const isArray = Array.isArray;
 
-const matchCondition: { [key: string]: string } = {
+const mapCondition: { [key: string]: string } = {
   EXISTS: '$exists',
   EQUALS: '$eq',
   GREATER_THAN: '$gt',
@@ -26,18 +26,28 @@ const matchCondition: { [key: string]: string } = {
   REGEX: '$regex',
 };
 
+// TODO: create new aggregate renderer
+// https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
 function translateCondition(query: Condition) {
-  return { [query.attributeName]: { [matchCondition[query.condition]]: query.value } };
+  if (query.compareFields) {
+    return {
+      $expr: {
+        [mapCondition[query.condition]]: [`$${query.leftOperand}`, `$${query.rightOperand}`],
+      },
+    };
+  } else {
+    return { [query.leftOperand]: { [mapCondition[query.condition]]: query.rightOperand } };
+  }
 }
 
-const matchConjunction: { [key: string]: string } = {
+const mapConjunction: { [key: string]: string } = {
   AND: '$and',
   OR: '$or',
   NOT: '$not',
 };
 
 function translateConjunction(query: Conjunction) {
-  return { [matchConjunction[query.conjunction]]: renderQuery(query.values) };
+  return { [mapConjunction[query.conjunction]]: renderQuery(query.values) };
 }
 
 function translatePagination(query: Pagination) {

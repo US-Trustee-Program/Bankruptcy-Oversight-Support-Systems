@@ -10,8 +10,9 @@ export type Condition = {
     | 'NOT_CONTAINS'
     | 'EXISTS'
     | 'REGEX';
-  attributeName: string;
-  value: unknown;
+  leftOperand: string;
+  rightOperand: unknown;
+  compareFields?: boolean;
 };
 
 export function isCondition(obj: unknown): obj is Condition {
@@ -67,83 +68,101 @@ function not(...values: ConditionOrConjunction[]): Conjunction {
   };
 }
 
-function equals<T>(attributeName: string, value: T): Condition {
+function equals<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
   return {
     condition: 'EQUALS',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
+    compareFields,
   };
 }
 
-function notEqual<T>(attributeName: string, value: T): Condition {
+function notEqual<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
   return {
     condition: 'NOT_EQUAL',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
+    compareFields,
   };
 }
 
-function greaterThan<T>(attributeName: string, value: T): Condition {
+function greaterThan<T>(
+  attributeName: string,
+  value: T,
+  compareFields: boolean = false,
+): Condition {
   return {
     condition: 'GREATER_THAN',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
+    compareFields,
   };
 }
 
-function greaterThanOrEqual<T>(attributeName: string, value: T): Condition {
+function greaterThanOrEqual<T>(
+  attributeName: string,
+  value: T,
+  compareFields: boolean = false,
+): Condition {
   return {
     condition: 'GREATER_THAN_OR_EQUAL',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
+    compareFields,
   };
 }
 
 function contains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'CONTAINS',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
-function lessThan<T>(attributeName: string, value: T): Condition {
+function lessThan<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
   return {
     condition: 'LESS_THAN',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
+    compareFields,
   };
 }
 
-function lessThanOrEqual<T>(attributeName: string, value: T): Condition {
+function lessThanOrEqual<T>(
+  attributeName: string,
+  value: T,
+  compareFields: boolean = false,
+): Condition {
   return {
     condition: 'LESS_THAN_OR_EQUAL',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
+    compareFields,
   };
 }
 
 function notContains<T>(attributeName: string, value: T | T[]): Condition {
   return {
     condition: 'NOT_CONTAINS',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
 function exists<T>(attributeName: keyof T, value: boolean): Condition {
   return {
     condition: 'EXISTS',
-    attributeName: attributeName as string,
-    value,
+    leftOperand: attributeName as string,
+    rightOperand: value,
   };
 }
 
 function regex(attributeName: string, value: string): Condition {
   return {
     condition: 'REGEX',
-    attributeName,
-    value,
+    leftOperand: attributeName,
+    rightOperand: value,
   };
 }
 
