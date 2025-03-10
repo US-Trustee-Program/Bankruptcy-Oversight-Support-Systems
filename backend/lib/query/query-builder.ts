@@ -12,7 +12,6 @@ export type Condition<T = unknown> = {
     | 'REGEX';
   leftOperand: Field<T>;
   rightOperand: unknown;
-  compareFields?: boolean;
 };
 
 export function isCondition(obj: unknown): obj is Condition {
