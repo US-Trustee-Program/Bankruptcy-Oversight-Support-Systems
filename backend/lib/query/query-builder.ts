@@ -1,4 +1,4 @@
-export type Condition = {
+export type Condition<T = unknown> = {
   condition:
     | 'EQUALS'
     | 'GREATER_THAN'
@@ -9,8 +9,9 @@ export type Condition = {
     | 'NOT_EQUAL'
     | 'NOT_CONTAINS'
     | 'EXISTS'
+    | 'NOT_EXISTS'
     | 'REGEX';
-  leftOperand: string;
+  leftOperand: Field<T>;
   rightOperand: unknown;
   compareFields?: boolean;
 };
@@ -19,9 +20,17 @@ export function isCondition(obj: unknown): obj is Condition {
   return typeof obj === 'object' && 'condition' in obj;
 }
 
-export type Conjunction = {
+export type Field<T = unknown> = {
+  field: keyof T;
+};
+
+export function isField(obj: unknown): obj is Field {
+  return obj instanceof Object && 'field' in obj;
+}
+
+export type Conjunction<T = unknown> = {
   conjunction: 'AND' | 'OR' | 'NOT';
-  values: ConditionOrConjunction[];
+  values: ConditionOrConjunction<T>[];
 };
 
 export function isConjunction(obj: unknown): obj is Conjunction {
@@ -41,127 +50,147 @@ export function isPagination(obj: unknown): obj is Pagination {
 
 export type Query = Pagination | ConditionOrConjunction | ConditionOrConjunction[];
 
-export type ConditionOrConjunction = Condition | Conjunction;
+export type ConditionOrConjunction<T = unknown> = Condition<T> | Conjunction<T>;
 
 function build<T extends Query = Query>(query: Query) {
   return query as T;
 }
 
-function and(...values: ConditionOrConjunction[]): Conjunction {
+function and<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
   return {
     conjunction: 'AND',
     values,
   };
 }
 
-function or(...values: ConditionOrConjunction[]): Conjunction {
+function or<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
   return {
     conjunction: 'OR',
     values,
   };
 }
 
-function not(...values: ConditionOrConjunction[]): Conjunction {
+function not<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
   return {
     conjunction: 'NOT',
     values,
   };
 }
 
-function equals<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
+function equals<T, R extends keyof T>(
+  field: R,
+  value: T[R],
+  compareFields: boolean = false,
+): Condition<T> {
   return {
     condition: 'EQUALS',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
     compareFields,
   };
 }
 
-function notEqual<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
+function notEqual<T, R extends keyof T>(
+  field: R,
+  value: T[R],
+  compareFields: boolean = false,
+): Condition<T> {
   return {
     condition: 'NOT_EQUAL',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
     compareFields,
   };
 }
 
-function greaterThan<T>(
-  attributeName: string,
-  value: T,
+function greaterThan<T, R extends keyof T>(
+  field: R,
+  value: T[R],
   compareFields: boolean = false,
-): Condition {
+): Condition<T> {
   return {
     condition: 'GREATER_THAN',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
     compareFields,
   };
 }
 
-function greaterThanOrEqual<T>(
-  attributeName: string,
-  value: T,
+function greaterThanOrEqual<T, R extends keyof T>(
+  field: R,
+  value: T[R],
   compareFields: boolean = false,
-): Condition {
+): Condition<T> {
   return {
     condition: 'GREATER_THAN_OR_EQUAL',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
     compareFields,
   };
 }
 
-function contains<T>(attributeName: string, value: T | T[]): Condition {
+function contains<T, R extends keyof T>(field: R, value: T[R] | T[R][]): Condition<T> {
   return {
     condition: 'CONTAINS',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
   };
 }
 
-function lessThan<T>(attributeName: string, value: T, compareFields: boolean = false): Condition {
+function lessThan<T, R extends keyof T>(
+  field: R,
+  value: T[R],
+  compareFields: boolean = false,
+): Condition<T> {
   return {
     condition: 'LESS_THAN',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
     compareFields,
   };
 }
 
-function lessThanOrEqual<T>(
-  attributeName: string,
-  value: T,
+function lessThanOrEqual<T, R extends keyof T>(
+  field: R,
+  value: T[R],
   compareFields: boolean = false,
-): Condition {
+): Condition<T> {
   return {
     condition: 'LESS_THAN_OR_EQUAL',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
     compareFields,
   };
 }
 
-function notContains<T>(attributeName: string, value: T | T[]): Condition {
+function notContains<T, R extends keyof T>(field: R, value: T[R] | T[R][]): Condition<T> {
   return {
     condition: 'NOT_CONTAINS',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
   };
 }
 
-function exists<T>(attributeName: keyof T, value: boolean): Condition {
+function exists<T, R extends keyof T>(field: R): Condition<T> {
   return {
     condition: 'EXISTS',
-    leftOperand: attributeName as string,
-    rightOperand: value,
+    leftOperand: { field },
+    rightOperand: true,
   };
 }
 
-function regex(attributeName: string, value: string): Condition {
+function notExists<T, R extends keyof T>(field: R): Condition<T> {
+  return {
+    condition: 'NOT_EXISTS',
+    leftOperand: { field },
+    rightOperand: false,
+  };
+}
+
+function regex<T>(field: keyof T, value: string): Condition<T> {
   return {
     condition: 'REGEX',
-    leftOperand: attributeName,
+    leftOperand: { field },
     rightOperand: value,
   };
 }
@@ -180,18 +209,83 @@ function paginate(
   };
 }
 
-export type SortedAttribute = [attributeName: string, direction: 'ASCENDING' | 'DESCENDING'];
+export type SortedAttribute<T = unknown> = [field: keyof T, direction: 'ASCENDING' | 'DESCENDING'];
 
-export type Sort = {
-  attributes: SortedAttribute[];
+export type Sort<T = unknown> = {
+  attributes: SortedAttribute<T>[];
 };
 
 export function isSort(obj: unknown): obj is Sort {
   return typeof obj === 'object' && 'attributes' in obj;
 }
 
-function orderBy(...attributes: SortedAttribute[]): Sort {
+function orderBy<T = unknown>(...attributes: SortedAttribute<T>[]): Sort<T> {
   return { attributes };
+}
+
+// The functions need to be returned from a closure in order to use function specific generic arguments.
+export function using<T = unknown>() {
+  return <F extends keyof T>(field: F) => {
+    const leftOperand: Field<T> = { field };
+    type R = T[F];
+
+    const equals = (rightOperand: Field<T> | R): Condition<T> => {
+      return {
+        condition: 'EQUALS',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const greaterThan = (rightOperand: Field<T> | R): Condition<T> => {
+      return {
+        condition: 'GREATER_THAN',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const greaterThanOrEqual = (rightOperand: Field<T> | R): Condition<T> => {
+      return {
+        condition: 'GREATER_THAN_OR_EQUAL',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const lessThan = (rightOperand: Field<T> | R): Condition<T> => {
+      return {
+        condition: 'LESS_THAN',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const lessThanOrEqual = (rightOperand: Field<T> | R): Condition<T> => {
+      return {
+        condition: 'LESS_THAN_OR_EQUAL',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const notEqual = (rightOperand: Field<T> | R): Condition<T> => {
+      return {
+        condition: 'NOT_EQUAL',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    return {
+      equals,
+      greaterThan,
+      greaterThanOrEqual,
+      lessThan,
+      lessThanOrEqual,
+      notEqual,
+    };
+  };
 }
 
 const QueryBuilder = {
@@ -199,6 +293,7 @@ const QueryBuilder = {
   contains,
   equals,
   exists,
+  notExists,
   greaterThan,
   greaterThanOrEqual,
   lessThan,
@@ -211,6 +306,7 @@ const QueryBuilder = {
   or,
   orderBy,
   paginate,
+  using,
 };
 
 export default QueryBuilder;
