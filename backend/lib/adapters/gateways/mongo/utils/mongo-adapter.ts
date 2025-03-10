@@ -55,7 +55,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async find(query: Query<T>, sort?: Sort): Promise<T[]> {
+  public async find(query: Query<T>, sort?: Sort<T>): Promise<T[]> {
     const mongoQuery = toMongoQuery(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
