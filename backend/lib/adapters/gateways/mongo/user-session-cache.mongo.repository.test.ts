@@ -17,7 +17,6 @@ describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;
   let repo: UserSessionCacheMongoRepository;
   const expected = MockData.getCamsSession();
-  const { equals } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -72,7 +71,9 @@ describe('User session cache Cosmos repository tests', () => {
       .mockResolvedValue({ id: 'oid-guid', modifiedCount: 1, upsertedCount: 0 });
     const tokenParts = newSession.accessToken.split('.');
     const signature = tokenParts[2];
-    const expectedQuery = QueryBuilder.build(equals('signature', signature));
+
+    const q = QueryBuilder.using<CachedCamsSession>();
+    const expectedQuery = q('signature').equals(signature);
 
     const actual = await repo.upsert(newSession);
     expect(actual).toEqual(newSession);
