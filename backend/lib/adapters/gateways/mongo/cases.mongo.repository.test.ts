@@ -4,13 +4,14 @@ import { SyncedCase } from '../../../../../common/src/cams/cases';
 import {
   ConsolidationFrom,
   ConsolidationTo,
+  Transfer,
   TransferFrom,
   TransferTo,
 } from '../../../../../common/src/cams/events';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import QueryBuilder, { Conjunction } from '../../../query/query-builder';
+import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -40,7 +41,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
-  const { and, equals, contains, notContains, paginate } = QueryBuilder;
+  const { and, paginate } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -54,7 +55,7 @@ describe('Cases repository', () => {
   });
 
   test('should getTransfers', async () => {
-    const query: Conjunction = {
+    const query: Conjunction<Transfer> = {
       conjunction: 'AND',
       values: [
         {
@@ -316,23 +317,17 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
-    const expectedQuery = QueryBuilder.build(
-      paginate(
-        predicate.offset,
-        predicate.limit,
-        [
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-          ),
+    const q = using<SyncedCase>();
+    const expectedQuery = paginate<SyncedCase>(
+      predicate.offset,
+      predicate.limit,
+      [and(q('documentType').equals('SYNCED_CASE'), q('chapter').contains(predicate.chapters))],
+      {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
         ],
-        {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        },
-      ),
+      },
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -356,24 +351,23 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
-    const expectedQuery = QueryBuilder.build(
-      paginate(
-        predicate.offset,
-        predicate.limit,
-        [
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
-            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-          ),
+    const q = using<SyncedCase>();
+    const expectedQuery = paginate<SyncedCase>(
+      predicate.offset,
+      predicate.limit,
+      [
+        and(
+          q('documentType').equals('SYNCED_CASE'),
+          q('caseId').contains(predicate.caseIds),
+          q('chapter').contains(predicate.chapters),
+        ),
+      ],
+      {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
         ],
-        {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        },
-      ),
+      },
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -400,25 +394,24 @@ describe('Cases repository', () => {
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     // TODO: can we find a way to not rely on the exact order here?
-    const expectedQuery = QueryBuilder.build(
-      paginate(
-        predicate.offset,
-        predicate.limit,
-        [
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
-            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-            notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds),
-          ),
+    const q = using<SyncedCase>();
+    const expectedQuery = paginate<SyncedCase>(
+      predicate.offset,
+      predicate.limit,
+      [
+        and(
+          q('documentType').equals('SYNCED_CASE'),
+          q('caseId').contains(predicate.caseIds),
+          q('chapter').contains(predicate.chapters),
+          q('caseId').notContains(predicate.excludedCaseIds),
+        ),
+      ],
+      {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
         ],
-        {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        },
-      ),
+      },
     );
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
 
@@ -554,20 +547,18 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(null);
 
-    const expected: Conjunction = {
+    const expected: Conjunction<SyncedCase> = {
       conjunction: 'AND',
       values: [
         {
           condition: 'EQUALS',
-          leftOperand: 'caseId',
+          leftOperand: { field: 'caseId' },
           rightOperand: bCase.caseId,
-          compareFields: false,
         },
         {
           condition: 'EQUALS',
-          leftOperand: 'documentType',
+          leftOperand: { field: 'documentType' },
           rightOperand: 'SYNCED_CASE',
-          compareFields: false,
         },
       ],
     };
