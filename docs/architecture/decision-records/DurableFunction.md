@@ -2,7 +2,7 @@
 
 ## Context
 
-The architecture needs to support long running jobs related to data migration from source systems.
+The architecture needs to support long-running jobs related to data migration from source systems.
 
 ## Decision
 
@@ -11,9 +11,9 @@ common with the existing web API implemented as an Azure Function application.
 
 ## Status
 
-Accepted
+Superseded by [Dataflows](/architecture/decision-records/Dataflows.md)
 
 ## Consequences
 
-The architecture uses a familiar programming paradigm across backend implmentations. It also shares
+The architecture uses a familiar programming paradigm across backend implementations. It also shares
 a common CI/CD pipeline with existing web API.
