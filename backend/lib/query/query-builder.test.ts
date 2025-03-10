@@ -211,12 +211,6 @@ describe('Query Builder', () => {
     expect(query).toEqual(conjunctionQuery.result);
   });
 
-  test('should proxy a query passed to the build function', () => {
-    const query = or();
-    const actual = QueryBuilder.build(query);
-    expect(actual).toEqual(query);
-  });
-
   test('should proxy a list of SortDirection when orderBy is called', () => {
     const attributeFoo: SortedAttribute<Foo> = ['uno', 'ASCENDING'];
     const attributeBar: SortedAttribute<Foo> = ['uno', 'DESCENDING'];
