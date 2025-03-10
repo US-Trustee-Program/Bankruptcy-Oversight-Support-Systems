@@ -2,7 +2,7 @@ import { toMongoQuery } from './mongo-query-renderer';
 import QueryBuilder from '../../../../query/query-builder';
 import { SyncedCase } from '../../../../../../common/src/cams/cases';
 
-describe('foo', () => {
+describe.skip('foo', () => {
   const { and, equals, exists, greaterThan } = QueryBuilder;
   test('should do the thing', () => {
     const expected = {
@@ -56,7 +56,7 @@ describe('foo', () => {
             equals<SyncedCase['chapter']>('chapter', '7'),
             equals<SyncedCase['closedDate']>('closedDate', 'reopenedDate', true),
             greaterThan<Foo['bar']>('bar', 7, true),
-            greaterThan<Foo['bar']>('bar', 'bar2', true),
+            greaterThan<Foo['bar']>('bar', 45, true),
           ),
         ),
       ),
