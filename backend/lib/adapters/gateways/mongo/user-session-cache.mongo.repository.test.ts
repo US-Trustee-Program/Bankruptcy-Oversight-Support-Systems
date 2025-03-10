@@ -74,8 +74,8 @@ describe('User session cache Cosmos repository tests', () => {
 
     const expectedTtl = Math.floor(camsJwtClaims.exp - nowInSeconds());
 
-    const q = QueryBuilder.using<CachedCamsSession>();
-    const expectedQuery = q('signature').equals(signature);
+    const doc = QueryBuilder.using<CachedCamsSession>();
+    const expectedQuery = doc('signature').equals(signature);
 
     const actual = await repo.upsert(newSession);
     expect(actual).toEqual(newSession);

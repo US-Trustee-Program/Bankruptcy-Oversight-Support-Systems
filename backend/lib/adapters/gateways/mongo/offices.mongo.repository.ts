@@ -14,7 +14,7 @@ const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
 
 const { and, using } = QueryBuilder;
-const q = using<OfficeStaff>();
+const doc = using<OfficeStaff>();
 
 export type OfficeStaff = Staff &
   Auditable & {
@@ -63,7 +63,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       ...user,
       ttl: existing ? Math.max(existing.ttl, ttl) : ttl,
     });
-    const query = and(q('id').equals(officeStaff.id), q('officeCode').equals(officeCode));
+    const query = and(doc('id').equals(officeStaff.id), doc('officeCode').equals(officeCode));
     try {
       return await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
     } catch (originalError) {
@@ -74,11 +74,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   async getOfficeAttorneys(officeCode: string): Promise<CamsUserReference[]> {
-    const q = using<OfficeStaff>();
+    const doc = using<OfficeStaff>();
     const query = and(
-      q('documentType').equals('OFFICE_STAFF'),
-      q('roles').contains([CamsRole.TrialAttorney]),
-      q('officeCode').equals(officeCode),
+      doc('documentType').equals('OFFICE_STAFF'),
+      doc('roles').contains([CamsRole.TrialAttorney]),
+      doc('officeCode').equals(officeCode),
     );
 
     try {
@@ -91,9 +91,9 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
 
   public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
     const query = and(
-      q('officeCode').equals(officeCode),
-      q('id').equals(id),
-      q('documentType').equals('OFFICE_STAFF'),
+      doc('officeCode').equals(officeCode),
+      doc('id').equals(id),
+      doc('documentType').equals('OFFICE_STAFF'),
     );
 
     try {
@@ -127,9 +127,9 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       }
 
       const query = and(
-        q('officeCode').equals(officeCode),
-        q('id').equals(staff.id),
-        q('documentType').equals('OFFICE_STAFF'),
+        doc('officeCode').equals(officeCode),
+        doc('id').equals(staff.id),
+        doc('documentType').equals('OFFICE_STAFF'),
       );
 
       await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
@@ -142,9 +142,9 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
 
   private async findOneOfficeStaff(officeCode: string, staff: Staff): Promise<OfficeStaff | null> {
     const query = and(
-      q('officeCode').equals(officeCode),
-      q('id').equals(staff.id),
-      q('documentType').equals('OFFICE_STAFF'),
+      doc('officeCode').equals(officeCode),
+      doc('id').equals(staff.id),
+      doc('documentType').equals('OFFICE_STAFF'),
     );
 
     try {

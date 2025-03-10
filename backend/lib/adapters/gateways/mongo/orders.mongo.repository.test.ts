@@ -138,8 +138,8 @@ describe('orders repo', () => {
       .mockResolvedValue(undefined);
     await repo.update(expected);
 
-    const q = QueryBuilder.using<TransferOrder>();
-    const query = q('id').equals(existing.id);
+    const doc = QueryBuilder.using<TransferOrder>();
+    const query = doc('id').equals(existing.id);
 
     expect(replaceOne).toHaveBeenCalledWith(query, expected);
   });

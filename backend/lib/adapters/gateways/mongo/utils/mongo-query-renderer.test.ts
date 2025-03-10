@@ -9,7 +9,7 @@ type Foo = {
 
 describe('Mongo Query Renderer', () => {
   const { and, or, not, orderBy, paginate, using } = QueryBuilder;
-  const q = using<Foo>();
+  const doc = using<Foo>();
 
   test('should render a mongo query JSON', () => {
     const expected = {
@@ -27,11 +27,11 @@ describe('Mongo Query Renderer', () => {
 
     const actual = toMongoQuery(
       or(
-        q('uno').equals('theValue'),
+        doc('uno').equals('theValue'),
         and(
-          q('two').equals(45),
-          q('three').equals(true),
-          or(q('uno').equals('hello'), q('uno').equals('something')),
+          doc('two').equals(45),
+          doc('three').equals(true),
+          or(doc('uno').equals('hello'), doc('uno').equals('something')),
         ),
       ),
     );
@@ -42,57 +42,57 @@ describe('Mongo Query Renderer', () => {
   const queries = [
     {
       caseName: 'EXISTS',
-      func: () => q('two').exists(),
+      func: () => doc('two').exists(),
       expected: { two: { $exists: true } },
     },
     {
       caseName: 'EQUALS',
-      func: () => q('two').equals(45),
+      func: () => doc('two').equals(45),
       expected: { two: { $eq: 45 } },
     },
     {
       caseName: 'GREATER_THAN',
-      func: () => q('two').greaterThan(45),
+      func: () => doc('two').greaterThan(45),
       expected: { two: { $gt: 45 } },
     },
     {
       caseName: 'GREATER_THAN_OR_EQUAL',
-      func: () => q('two').greaterThanOrEqual(45),
+      func: () => doc('two').greaterThanOrEqual(45),
       expected: { two: { $gte: 45 } },
     },
     {
       caseName: 'CONTAINS',
-      func: () => q('two').contains([45]),
+      func: () => doc('two').contains([45]),
       expected: { two: { $in: [45] } },
     },
     {
       caseName: 'LESS_THAN',
-      func: () => q('two').lessThan(45),
+      func: () => doc('two').lessThan(45),
       expected: { two: { $lt: 45 } },
     },
     {
       caseName: 'LESS_THAN_OR_EQUAL',
-      func: () => q('two').lessThanOrEqual(45),
+      func: () => doc('two').lessThanOrEqual(45),
       expected: { two: { $lte: 45 } },
     },
     {
       caseName: 'NOT_EQUAL',
-      func: () => q('two').notEqual(45),
+      func: () => doc('two').notEqual(45),
       expected: { two: { $ne: 45 } },
     },
     {
       caseName: 'NOT_CONTAINS',
-      func: () => q('two').notContains([45]),
+      func: () => doc('two').notContains([45]),
       expected: { two: { $nin: [45] } },
     },
     {
       caseName: 'REGEX w/ regex',
-      func: () => q('two').regex(/45/),
+      func: () => doc('two').regex(/45/),
       expected: { two: { $regex: /45/ } },
     },
     {
       caseName: 'REGEX w/ string',
-      func: () => q('two').regex('45'),
+      func: () => doc('two').regex('45'),
       expected: { two: { $regex: '45' } },
     },
   ];
@@ -105,17 +105,17 @@ describe('Mongo Query Renderer', () => {
   const conjunctions = [
     {
       caseName: 'AND',
-      func: () => and(q('two').equals(45)),
+      func: () => and(doc('two').equals(45)),
       expected: { $and: [{ two: { $eq: 45 } }] },
     },
     {
       caseName: 'OR',
-      func: () => or(q('two').equals(45)),
+      func: () => or(doc('two').equals(45)),
       expected: { $or: [{ two: { $eq: 45 } }] },
     },
     {
       caseName: 'NOT',
-      func: () => not(q('two').equals(45)),
+      func: () => not(doc('two').equals(45)),
       expected: { $not: [{ two: { $eq: 45 } }] },
     },
   ];
@@ -174,11 +174,11 @@ describe('Mongo Query Renderer', () => {
     ];
 
     const baseQuery = or(
-      q('uno').equals('theValue'),
+      doc('uno').equals('theValue'),
       and(
-        q('two').equals(45),
-        q('three').equals(true),
-        or(q('uno').equals('hello'), q('uno').equals('something')),
+        doc('two').equals(45),
+        doc('three').equals(true),
+        or(doc('uno').equals('hello'), doc('uno').equals('something')),
       ),
     );
 

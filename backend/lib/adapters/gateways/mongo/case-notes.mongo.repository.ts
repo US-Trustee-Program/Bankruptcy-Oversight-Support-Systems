@@ -9,7 +9,7 @@ const MODULE_NAME: string = 'CASE_NOTES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, using } = QueryBuilder;
-const q = using<CaseNote>();
+const doc = using<CaseNote>();
 
 export class CaseNotesMongoRepository extends BaseMongoRepository implements CaseNotesRepository {
   private static referenceCount: number = 0;
@@ -47,7 +47,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
   }
 
   async getNotesByCaseId(caseId: string): Promise<CaseNote[]> {
-    const query = and(q('documentType').equals('NOTE'), q('caseId').equals(caseId));
+    const query = and(doc('documentType').equals('NOTE'), doc('caseId').equals(caseId));
     try {
       const notes = await this.getAdapter<CaseNote>().find(query);
       return notes;

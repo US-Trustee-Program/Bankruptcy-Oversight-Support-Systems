@@ -84,7 +84,7 @@ export default class HealthcheckCosmosDb {
   }
 
   private async checkDbDelete() {
-    const q = QueryBuilder.using<HealthCheckDocument>();
+    const doc = QueryBuilder.using<HealthCheckDocument>();
     try {
       const items = await this.getAdapter<HealthCheckDocument>().getAll();
 
@@ -93,7 +93,7 @@ export default class HealthcheckCosmosDb {
           this.context.logger.debug(MODULE_NAME, `Invoking delete on item ${resource.id}`);
 
           await this.getAdapter<HealthCheckDocument>().deleteOne(
-            q('healthCheckId').equals(resource.healthCheckId),
+            doc('healthCheckId').equals(resource.healthCheckId),
           );
         }
         return true;
