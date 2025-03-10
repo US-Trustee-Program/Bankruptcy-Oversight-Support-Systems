@@ -1,23 +1,26 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, using } from '../../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsError } from '../../../common-errors/error-utilities';
-import { CamsDocument } from '../../../../../common/src/cams/document';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME: string = 'CONSOLIDATIONS_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
 
-const { and, contains, equals, orderBy } = QueryBuilder;
+const { and, orderBy } = QueryBuilder;
 
-export default class ConsolidationOrdersMongoRepository<T extends CamsDocument = ConsolidationOrder>
+export default class ConsolidationOrdersMongoRepository<
+    T extends ConsolidationOrder = ConsolidationOrder,
+  >
   extends BaseMongoRepository
   implements ConsolidationOrdersRepository<T>
 {
   private static referenceCount: number = 0;
   private static instance: ConsolidationOrdersMongoRepository;
+
+  private q = using<T>();
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
@@ -47,9 +50,7 @@ export default class ConsolidationOrdersMongoRepository<T extends CamsDocument =
 
   async read(id: string): Promise<T> {
     try {
-      const query = QueryBuilder.build(
-        equals<ConsolidationOrder['consolidationId']>('consolidationId', id),
-      );
+      const query = this.q('consolidationId').equals(id);
       return await this.getAdapter<T>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -77,7 +78,7 @@ export default class ConsolidationOrdersMongoRepository<T extends CamsDocument =
 
   public async delete(id: string) {
     try {
-      const query = QueryBuilder.build(equals<ConsolidationOrder['id']>('id', id));
+      const query = this.q('id').equals(id);
       await this.getAdapter<T>().deleteOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -85,26 +86,16 @@ export default class ConsolidationOrdersMongoRepository<T extends CamsDocument =
   }
 
   public async search(predicate?: OrdersSearchPredicate): Promise<Array<T>> {
-    const conditions: ConditionOrConjunction[] = [];
+    const conditions: ConditionOrConjunction<T>[] = [];
 
     try {
       if (predicate?.divisionCodes) {
-        conditions.push(
-          contains<ConsolidationOrder['courtDivisionCode']>(
-            'courtDivisionCode',
-            predicate.divisionCodes,
-          ),
-        );
+        conditions.push(this.q('courtDivisionCode').contains(predicate.divisionCodes));
       }
       if (predicate?.consolidationId) {
-        conditions.push(
-          equals<ConsolidationOrder['consolidationId']>(
-            'consolidationId',
-            predicate.consolidationId,
-          ),
-        );
+        conditions.push(this.q('consolidationId').equals(predicate.consolidationId));
       }
-      const query = predicate ? QueryBuilder.build(and(...conditions)) : null;
+      const query = predicate ? and(...conditions) : null;
       return await this.getAdapter<T>().find(query, orderBy(['orderDate', 'ASCENDING']));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
