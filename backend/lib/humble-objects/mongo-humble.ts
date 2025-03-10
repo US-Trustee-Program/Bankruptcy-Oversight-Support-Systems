@@ -29,7 +29,7 @@ export class CollectionHumble<T> {
   }
 
   public async updateOne(query: DocumentQuery, item) {
-    return this.collection.updateOne(query, item);
+    return this.collection.updateOne(query, { $set: item });
   }
 
   public async deleteOne(query: DocumentQuery) {
