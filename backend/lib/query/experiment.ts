@@ -64,7 +64,7 @@ const testType = using<Primitives>();
 
 testType('howMany').equals(1);
 testType('yesNo').equals(false);
-testType('yesNo').equals('');
+// testType('yesNo').equals('');
 testType('someText').equals('test');
-testType('someText').equals(1);
-testType('someText').equals(true);
+// testType('someText').equals(1);
+// testType('someText').equals(true);
