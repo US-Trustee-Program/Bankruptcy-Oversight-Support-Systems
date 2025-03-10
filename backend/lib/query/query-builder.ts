@@ -40,7 +40,7 @@ export type Pagination<T = unknown> = {
   limit: number;
   skip: number;
   values: ConditionOrConjunction<T>[];
-  sort?: Sort;
+  sort?: Sort<T>;
 };
 
 export function isPagination(obj: unknown): obj is Pagination {
@@ -193,12 +193,12 @@ function regex<T>(field: keyof T, value: string): Condition<T> {
   };
 }
 
-function paginate(
+function paginate<T = unknown>(
   skip: number,
   limit: number,
-  values: ConditionOrConjunction[],
-  sort?: Sort,
-): Pagination {
+  values: ConditionOrConjunction<T>[],
+  sort?: Sort<T>,
+): Pagination<T> {
   return {
     skip,
     limit,

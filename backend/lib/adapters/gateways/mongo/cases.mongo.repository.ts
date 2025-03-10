@@ -9,9 +9,9 @@ import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import QueryBuilder, {
   ConditionOrConjunction,
-  Pagination,
   Query,
   Sort,
+  using,
 } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
@@ -23,8 +23,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, or, equals, regex, contains, notContains, exists, greaterThan } =
-  QueryBuilder;
+const { paginate, and, or } = QueryBuilder;
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -56,10 +55,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>> {
+    const q = using<Transfer>();
     try {
-      const query = QueryBuilder.build(
-        and(regex('documentType', '^TRANSFER_'), equals<Transfer['caseId']>('caseId', caseId)),
-      );
+      const query = and(q('documentType').regex('^TRANSFER_'), q('caseId').equals(caseId));
       const adapter = this.getAdapter<Transfer>();
       return await adapter.find(query);
     } catch (originalError) {
@@ -114,10 +112,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+    const q = using<ConsolidationTo | ConsolidationFrom>();
     try {
-      const query = QueryBuilder.build(
-        and(regex('documentType', '^CONSOLIDATION_'), equals<Transfer['caseId']>('caseId', caseId)),
-      );
+      const query = and(q('documentType').regex('^CONSOLIDATION_'), q('caseId').equals(caseId));
       const adapter = this.getAdapter<ConsolidationTo | ConsolidationFrom>();
       return await adapter.find(query);
     } catch (originalError) {
@@ -158,10 +155,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async getCaseHistory(caseId: string): Promise<CaseHistory[]> {
+    const q = using<CaseHistory>();
     try {
-      const query = QueryBuilder.build(
-        and(regex('documentType', '^AUDIT_'), equals<Transfer['caseId']>('caseId', caseId)),
-      );
+      const query = and(q('documentType').regex('^AUDIT_'), q('caseId').equals(caseId));
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);
     } catch (originalError) {
@@ -190,12 +186,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async syncDxtrCase(bCase: SyncedCase): Promise<void> {
-    const query = QueryBuilder.build(
-      and(
-        equals<SyncedCase['caseId']>('caseId', bCase.caseId),
-        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-      ),
-    );
+    const q = using<SyncedCase>();
+    const query = and(q('caseId').equals(bCase.caseId), q('documentType').equals('SYNCED_CASE'));
     try {
       await this.getAdapter<SyncedCase>().replaceOne(query, bCase, true);
     } catch (originalError) {
@@ -204,11 +196,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async deleteSyncedCases(): Promise<void> {
+    const q = using<SyncedCase>();
     try {
       const adapter = this.getAdapter<SyncedCase>();
-      const existingQuery = QueryBuilder.build(
-        equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-      );
+      const existingQuery = q('documentType').equals('SYNCED_CASE');
       const existingCount = await adapter.countDocuments(existingQuery);
       let deletedCount = 0;
       const limit = 10;
@@ -217,11 +208,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         const predicate: CasesSearchPredicate = { limit, offset };
         const page = await this.searchCases(predicate);
         const caseIds = page.data.map((bCase) => bCase.caseId);
-        const deleteQuery = QueryBuilder.build(
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['caseId']>('caseId', caseIds),
-          ),
+        const deleteQuery = and(
+          q('documentType').equals('SYNCED_CASE'),
+          q('caseId').contains(caseIds),
         );
         const deleted = await adapter.deleteMany(deleteQuery);
         offset += limit;
@@ -233,22 +222,23 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]> {
+    const q = using<ConsolidationTo>();
     try {
-      const conditions: ConditionOrConjunction[] = [];
-      conditions.push(equals<string>('documentType', 'CONSOLIDATION_TO'));
+      const conditions: ConditionOrConjunction<ConsolidationTo>[] = [];
+      conditions.push(q('documentType').equals('CONSOLIDATION_TO'));
 
       if (predicate.caseIds?.length > 0) {
-        conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
+        conditions.push(q('caseId').contains(predicate.caseIds));
       }
 
       if (predicate.divisionCodes?.length > 0) {
-        const matchers: ConditionOrConjunction[] = [];
+        const matchers: ConditionOrConjunction<ConsolidationTo>[] = [];
         predicate.divisionCodes.forEach((code) => {
-          matchers.push(regex('caseId', `^${code}`));
+          matchers.push(q('caseId').regex(`^${code}`));
         });
         conditions.push(or(...matchers));
       }
-      const query = QueryBuilder.build(and(...conditions));
+      const query = and(...conditions);
 
       const adapter = this.getAdapter<ConsolidationTo>();
       const childConsolidations = await adapter.find(query);
@@ -271,54 +261,49 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  addConditions(predicate: CasesSearchPredicate): ConditionOrConjunction[] {
-    const conditions: ConditionOrConjunction[] = [];
-    conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
+  addConditions(predicate: CasesSearchPredicate): ConditionOrConjunction<SyncedCase>[] {
+    const q = using<SyncedCase>();
+    const conditions: ConditionOrConjunction<SyncedCase>[] = [];
+    conditions.push(q('documentType').equals('SYNCED_CASE'));
 
     if (predicate.caseNumber) {
-      conditions.push(equals<SyncedCase['caseNumber']>('caseNumber', predicate.caseNumber));
+      conditions.push(q('caseNumber').equals(predicate.caseNumber));
     }
 
     ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
     if (predicate.caseIds) {
-      conditions.push(contains<SyncedCase['caseId']>('caseId', predicate.caseIds));
+      conditions.push(q('caseId').contains(predicate.caseIds));
     }
 
     if (predicate.chapters?.length > 0) {
-      conditions.push(contains<SyncedCase['chapter']>('chapter', predicate.chapters));
+      conditions.push(q('chapter').contains(predicate.chapters));
     }
 
     if (predicate.divisionCodes?.length > 0) {
-      conditions.push(
-        contains<SyncedCase['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
-      );
+      conditions.push(q('courtDivisionCode').contains(predicate.divisionCodes));
     }
 
     if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
-      conditions.push(notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds));
+      conditions.push(q('caseId').notContains(predicate.excludedCaseIds));
     }
     //NOTE: We only want cases that do not have a closed date, or they have a reopened date more recent than closed date
     if (predicate.excludeClosedCases === true) {
       conditions.push(
         or(
-          and(exists('closedDate', false), exists('dismissedDate', false)),
+          and(q('closedDate').notExists(), q('dismissedDate').notExists()),
           and(
-            exists('closedDate', true),
-            exists('dismissedDate', false),
-            exists('reopenedDate', true),
-            greaterThan('$expr', ['$reopenedDate', '$closedDate']),
+            q('closedDate').exists(),
+            q('dismissedDate').exists(),
+            q('reopenedDate').exists(),
+            q('reopenedDate').greaterThan({ field: 'closedDate' }),
           ),
           and(
-            exists('closedDate', false),
-            exists('dismissedDate', true),
-            exists('reopenedDate', true),
-            greaterThan('$expr', ['$reopenedDate', '$dismissedDate']),
+            q('closedDate').notExists(),
+            q('dismissedDate').exists(),
+            q('reopenedDate').exists(),
+            q('reopenedDate').greaterThan({ field: 'dismissedDate' }),
           ),
-          and(
-            exists('closedDate', true),
-            exists('dismissedDate', true),
-            exists('reopenedDate', true),
-          ), // worst case scenario. these need to be compared to the reopened date. So many questions. --- James
+          and(q('closedDate').exists(), q('dismissedDate').exists(), q('reopenedDate').exists()), // worst case scenario. these need to be compared to the reopened date. So many questions. --- James
         ),
       );
     }
@@ -326,14 +311,15 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCases(predicate: CasesSearchPredicate) {
-    const conditions: ConditionOrConjunction[] = [];
-    conditions.push(equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'));
-    let subQuery: Query;
+    const q = using<SyncedCase>();
+    const conditions: ConditionOrConjunction<SyncedCase>[] = [];
+    conditions.push(q('documentType').equals('SYNCED_CASE'));
+    let query: Query<SyncedCase>;
     try {
       const conditions = this.addConditions(predicate);
 
       if (predicate.limit && predicate.offset >= 0) {
-        const sortSpec: Sort = {
+        const sortSpec: Sort<SyncedCase> = {
           attributes: [
             ['dateFiled', 'DESCENDING'],
             ['caseNumber', 'DESCENDING'],
@@ -341,8 +327,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         };
 
         //If we don't have this we have a problem
-        subQuery = paginate(predicate.offset, predicate.limit, [and(...conditions)], sortSpec);
-        const query = QueryBuilder.build<Pagination>(subQuery);
+        query = paginate<SyncedCase>(
+          predicate.offset,
+          predicate.limit,
+          [and(...conditions)],
+          sortSpec,
+        );
         return await this.getAdapter<SyncedCase>().paginatedFind(query);
       } else {
         throw new CamsError(MODULE_NAME, {
