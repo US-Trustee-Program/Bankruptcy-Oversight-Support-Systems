@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../types/basic';
-import { AttorneyUser, Staff } from '../../../../../common/src/cams/users';
+import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
@@ -13,7 +13,8 @@ import { isNotFoundError } from '../../../common-errors/not-found-error';
 const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'offices';
 
-const { and, equals, contains } = QueryBuilder;
+const { and, using } = QueryBuilder;
+const q = using<OfficeStaff>();
 
 export type OfficeStaff = Staff &
   Auditable & {
@@ -62,9 +63,7 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
       ...user,
       ttl: existing ? Math.max(existing.ttl, ttl) : ttl,
     });
-    const query = QueryBuilder.build(
-      and(equals<string>('id', officeStaff.id), equals<string>('officeCode', officeCode)),
-    );
+    const query = and(q('id').equals(officeStaff.id), q('officeCode').equals(officeCode));
     try {
       return await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
     } catch (originalError) {
@@ -74,17 +73,16 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  async getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]> {
-    const query = QueryBuilder.build(
-      and(
-        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-        contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
-        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
-      ),
+  async getOfficeAttorneys(officeCode: string): Promise<CamsUserReference[]> {
+    const q = using<OfficeStaff>();
+    const query = and(
+      q('documentType').equals('OFFICE_STAFF'),
+      q('roles').contains([CamsRole.TrialAttorney]),
+      q('officeCode').equals(officeCode),
     );
 
     try {
-      const result = await this.getAdapter<AttorneyUser>().find(query);
+      const result = await this.getAdapter<OfficeStaff>().find(query);
       return result.map((doc) => getCamsUserReference(doc));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -92,12 +90,10 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
-    const query = QueryBuilder.build(
-      and(
-        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
-        equals<OfficeStaff['id']>('id', id),
-        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-      ),
+    const query = and(
+      q('officeCode').equals(officeCode),
+      q('id').equals(id),
+      q('documentType').equals('OFFICE_STAFF'),
     );
 
     try {
@@ -130,13 +126,12 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
         });
       }
 
-      const query = QueryBuilder.build(
-        and(
-          equals<OfficeStaff['officeCode']>('officeCode', officeCode),
-          equals<OfficeStaff['id']>('id', staff.id),
-          equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-        ),
+      const query = and(
+        q('officeCode').equals(officeCode),
+        q('id').equals(staff.id),
+        q('documentType').equals('OFFICE_STAFF'),
       );
+
       await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -146,12 +141,10 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   private async findOneOfficeStaff(officeCode: string, staff: Staff): Promise<OfficeStaff | null> {
-    const query = QueryBuilder.build(
-      and(
-        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
-        equals<OfficeStaff['id']>('id', staff.id),
-        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-      ),
+    const query = and(
+      q('officeCode').equals(officeCode),
+      q('id').equals(staff.id),
+      q('documentType').equals('OFFICE_STAFF'),
     );
 
     try {

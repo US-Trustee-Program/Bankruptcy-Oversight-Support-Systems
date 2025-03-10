@@ -291,7 +291,7 @@ export function using<T = unknown>() {
       };
     };
 
-    const contains = (rightOperand: R[]): Condition<T> => {
+    const contains = (rightOperand: R | R[]): Condition<T> => {
       return {
         condition: 'CONTAINS',
         leftOperand,
