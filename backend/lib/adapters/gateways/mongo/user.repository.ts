@@ -12,7 +12,7 @@ const MODULE_NAME: string = 'USERS_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'users';
 
 const { and, using } = QueryBuilder;
-const q = using<PrivilegedIdentityUser>();
+const doc = using<PrivilegedIdentityUser>();
 
 export class UsersMongoRepository extends BaseMongoRepository implements UsersRepository {
   private static referenceCount: number = 0;
@@ -51,8 +51,8 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
       updatedBy,
     );
     const query = and(
-      q('id').equals(user.id),
-      q('documentType').equals('PRIVILEGED_IDENTITY_USER'),
+      doc('id').equals(user.id),
+      doc('documentType').equals('PRIVILEGED_IDENTITY_USER'),
     );
     try {
       const result = await this.getAdapter<PrivilegedIdentityUser>().replaceOne(query, user, true);
@@ -73,7 +73,7 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     id: string,
     includeExpired: boolean = true,
   ): Promise<PrivilegedIdentityUser> {
-    const query = and(q('documentType').equals('PRIVILEGED_IDENTITY_USER'), q('id').equals(id));
+    const query = and(doc('documentType').equals('PRIVILEGED_IDENTITY_USER'), doc('id').equals(id));
 
     try {
       const result = await this.getAdapter<PrivilegedIdentityUser>().find(query);
@@ -92,7 +92,7 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
   }
 
   async deletePrivilegedIdentityUser(id: string): Promise<void> {
-    const query = and(q('id').equals(id), q('documentType').equals('PRIVILEGED_IDENTITY_USER'));
+    const query = and(doc('id').equals(id), doc('documentType').equals('PRIVILEGED_IDENTITY_USER'));
 
     try {
       await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);
