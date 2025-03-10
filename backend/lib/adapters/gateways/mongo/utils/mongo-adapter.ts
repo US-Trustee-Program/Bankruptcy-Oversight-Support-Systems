@@ -165,6 +165,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   public async updateOne(query: Query, item: T): Promise<UpdateResult> {
     const mongoQuery = toMongoQuery(query);
     const mongoItem = createOrGetId<T>(item);
+
     try {
       const result = await this.collectionHumble.updateOne(mongoQuery, mongoItem);
       const unknownError = new UnknownError(this.moduleName, {
