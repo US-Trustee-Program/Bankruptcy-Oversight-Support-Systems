@@ -5,6 +5,10 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { ApplicationContext } from '../../types/basic';
 import { CaseNotesMongoRepository } from './case-notes.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import QueryBuilder from '../../../query/query-builder';
+import { CaseNote } from '../../../../../common/src/cams/cases';
+
+const { and, equals } = QueryBuilder;
 
 describe('case notes repo tests', () => {
   let context: ApplicationContext;
@@ -44,6 +48,27 @@ describe('case notes repo tests', () => {
     });
   });
 
+  test('should call updateOne when archiveCaseNote is called.', async () => {
+    const archival = MockData.getCaseNoteArchival();
+
+    const query = QueryBuilder.build(
+      and(
+        equals<CaseNote['documentType']>('documentType', 'NOTE'),
+        equals<string>('id', archival.id),
+        equals<string>('caseId', archival.caseId),
+      ),
+    );
+
+    const updateSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue({
+      id: archival.id,
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
+
+    repo.archiveCaseNote(archival);
+    expect(updateSpy).toHaveBeenCalledWith(query, archival);
+  });
+
   describe('handle errors', () => {
     const error = new Error('some error');
 
@@ -55,6 +80,14 @@ describe('case notes repo tests', () => {
       );
     });
 
+    test('should handle error on archiveNote', async () => {
+      const archiveNote = MockData.getCaseNoteArchival();
+      jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(error);
+      await expect(() => repo.archiveCaseNote(archiveNote)).rejects.toThrow(
+        getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to archive case note.'),
+      );
+    });
+
     test('should handle error on getNotesByCaseId', async () => {
       const caseId = '12-12345';
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
@@ -62,5 +95,7 @@ describe('case notes repo tests', () => {
         getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to retrieve case note.'),
       );
     });
+
+    //test('should handle error on archiveCaseNote', {});
   });
 });

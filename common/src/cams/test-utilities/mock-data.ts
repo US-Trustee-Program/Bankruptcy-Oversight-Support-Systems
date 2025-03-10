@@ -6,6 +6,7 @@ import {
   CaseDocketEntry,
   CaseDocketEntryDocument,
   CaseNote,
+  CaseNoteArchival,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -523,6 +524,16 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   };
 }
 
+function getCaseNoteArchival(override: Partial<CaseNoteArchival> = {}): CaseNoteArchival {
+  const archiveDate = getTodaysIsoDate();
+  return {
+    id: randomId(),
+    caseId: randomCaseId(),
+    archiveDate,
+    ...override,
+  };
+}
+
 function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
@@ -702,6 +713,7 @@ export const MockData = {
   randomUstpOffice,
   getAttorneyAssignment,
   getCaseNote,
+  getCaseNoteArchival,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

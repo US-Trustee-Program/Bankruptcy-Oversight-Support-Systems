@@ -28,6 +28,10 @@ export class CollectionHumble<T> {
     return this.collection.replaceOne(query, item, { upsert });
   }
 
+  public async updateOne(query: DocumentQuery, item) {
+    return this.collection.updateOne(query, item);
+  }
+
   public async deleteOne(query: DocumentQuery) {
     return this.collection.deleteOne(query);
   }

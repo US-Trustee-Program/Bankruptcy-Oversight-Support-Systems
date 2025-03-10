@@ -12,7 +12,7 @@ import {
   TransferTo,
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
-import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
+import { CaseDocket, CaseNote, CaseNoteArchival, SyncedCase } from '../../../common/src/cams/cases';
 import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
@@ -31,6 +31,12 @@ export type ReplaceResult = {
   id: string;
   modifiedCount: number;
   upsertedCount: number;
+};
+
+export type UpdateResult = {
+  id: string;
+  modifiedCount: number;
+  matchedCount: number;
 };
 
 export type UpsertResult = ReplaceResult;
@@ -52,6 +58,7 @@ interface Reads<R> {
 }
 
 interface Updates<T, R = void> {
+  //TODO: why is this named update when we do a replaceOne?
   update(data: T): Promise<R>;
 }
 
@@ -89,6 +96,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
 
 export interface CaseNotesRepository<T = CaseNote> extends Creates<T, string> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
+  archiveCaseNote(archiveNote: CaseNoteArchival): Promise<UpdateResult>; //TODO: replace the current update function with replace? and create new update function
 }
 
 export interface OrdersRepository<T = Order>
@@ -202,6 +210,7 @@ export interface DocumentCollectionAdapter<T> {
   deleteOne: (query: ConditionOrConjunction<T>) => Promise<number>;
   deleteMany: (query: ConditionOrConjunction<T>) => Promise<number>;
   countDocuments: (query: ConditionOrConjunction<T>) => Promise<number>;
+  updateOne: (query: ConditionOrConjunction<T>, item: unknown) => Promise<UpdateResult>;
   countAllDocuments: () => Promise<number>;
 }
 

@@ -1,7 +1,7 @@
-import { CaseNote } from '../../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteArchival } from '../../../../../common/src/cams/cases';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
-import { CaseNotesRepository } from '../../../use-cases/gateways.types';
+import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
@@ -43,6 +43,21 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       return await this.getAdapter<CaseNote>().insertOne(data);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create case note.');
+    }
+  }
+
+  async archiveCaseNote(archiveNote: CaseNoteArchival): Promise<UpdateResult> {
+    const query = QueryBuilder.build(
+      and(
+        equals<CaseNote['documentType']>('documentType', 'NOTE'),
+        equals<string>('id', archiveNote.id),
+        equals<string>('caseId', archiveNote.caseId),
+      ),
+    );
+    try {
+      return await this.getAdapter<CaseNoteArchival>().updateOne(query, archiveNote);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to archive case note.');
     }
   }
 

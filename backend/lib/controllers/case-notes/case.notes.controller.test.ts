@@ -11,6 +11,7 @@ import { CaseNotesController } from './case.notes.controller';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { randomUUID } from 'crypto';
 
 describe('Case note controller tests', () => {
   let applicationContext: ApplicationContext;
@@ -241,6 +242,49 @@ describe('Case note controller tests', () => {
       },
     });
     const expectedCamsError = getCamsError(error, 'CASE-NOTES-CONTROLLER');
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
+  });
+
+  test('should call archiveCaseNote if PATCH request', async () => {
+    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+    const archiveSpy = jest
+      .spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote')
+      .mockResolvedValue({ id: archiveNote.id, matchedCount: 1, modifiedCount: 1 });
+
+    delete archiveNote.archiveDate;
+
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'PATCH',
+      params: {
+        id: archiveNote.caseId,
+      },
+      body: {
+        id: archiveNote.id,
+        caseId: archiveNote.caseId,
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await controller.handleRequest(applicationContext);
+    expect(archiveSpy).toHaveBeenCalledWith(archiveNote);
+  });
+
+  test('should throw error when updateCaseNote throws an error', async () => {
+    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+    const error = new Error('Case notes test error');
+    const expectedCamsError = getCamsError(error, 'CASE-NOTES-CONTROLLER');
+    jest.spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote').mockRejectedValue(error);
+
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'PATCH',
+      params: {
+        caseId: archiveNote.caseId,
+      },
+      body: {
+        id: archiveNote.id,
+        caseId: archiveNote.caseId,
+      },
+    });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
   });

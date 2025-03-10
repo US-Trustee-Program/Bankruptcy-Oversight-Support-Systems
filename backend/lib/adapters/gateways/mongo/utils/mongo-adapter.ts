@@ -8,6 +8,7 @@ import {
   CamsPaginationResponse,
   DocumentCollectionAdapter,
   ReplaceResult,
+  UpdateResult,
 } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
@@ -151,6 +152,41 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         id: mongoItem.id,
         modifiedCount: result.modifiedCount,
         upsertedCount: result.upsertedCount,
+      };
+    } catch (originalError) {
+      throw this.handleError(
+        originalError,
+        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
+        { query, item },
+      );
+    }
+  }
+
+  public async updateOne(query: Query, item: T): Promise<UpdateResult> {
+    const mongoQuery = toMongoQuery(query);
+    const mongoItem = createOrGetId<T>(item);
+    try {
+      const result = await this.collectionHumble.updateOne(mongoQuery, mongoItem);
+      const unknownError = new UnknownError(this.moduleName, {
+        message: 'Failed to insert document into database.',
+      });
+      const notFoundError = new NotFoundError(this.moduleName, {
+        message: 'No matching item found.',
+      });
+      // const unknownMatchError = new NotFoundError(this.moduleName, {
+      // message: `Failed to update document. Query matched ${result.matchedCount} items.`,
+      // });
+
+      if (!result.acknowledged) {
+        throw unknownError;
+      }
+      if (!result.matchedCount) {
+        throw notFoundError;
+      }
+      return {
+        id: mongoItem.id,
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
       };
     } catch (originalError) {
       throw this.handleError(

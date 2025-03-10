@@ -1,4 +1,5 @@
-import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { randomUUID } from 'crypto';
+import { CaseNote, CaseNoteArchival, CaseNoteInput } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
@@ -47,5 +48,25 @@ describe('Test case-notes use case', () => {
     await useCase.createCaseNote(user, caseNoteInput);
 
     expect(createSpy).toHaveBeenCalledWith(expectedNote);
+  });
+
+  test('should update a case Note and call archive with correct parameters when archiveCaseNote is called', async () => {
+    //TODO: how do we want to handle user validation?
+
+    const context = await createMockApplicationContext();
+    const useCase = new CaseNotesUseCase(context);
+    const updateOneSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
+      .mockImplementation(async () => {});
+
+    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+
+    const expectedArchiveNote: CaseNoteArchival = {
+      ...archiveNote,
+      archiveDate: expect.anything(),
+    };
+    await useCase.archiveCaseNote(archiveNote);
+
+    expect(updateOneSpy).toHaveBeenCalledWith(expectedArchiveNote);
   });
 });

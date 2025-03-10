@@ -67,12 +67,19 @@ export type CaseNote = CaseNoteInput &
   Auditable & {
     id?: string;
     documentType: 'NOTE';
+    archivedOn?: string;
   };
 
 export type CaseNoteInput = {
   title: string;
   caseId: string;
   content: string;
+};
+
+export type CaseNoteArchival = {
+  id: string;
+  caseId: string;
+  archiveDate: string;
 };
 
 export type DxtrCase = CaseSummary & {
