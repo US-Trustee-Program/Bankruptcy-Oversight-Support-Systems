@@ -28,7 +28,7 @@ const mapCondition: { [key: string]: string } = {
 
 // TODO: create new aggregate renderer
 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
-function translateCondition(query: Condition) {
+function translateCondition<T = unknown>(query: Condition<T>) {
   if (query.compareFields) {
     return {
       $expr: {
@@ -36,7 +36,7 @@ function translateCondition(query: Condition) {
       },
     };
   } else {
-    return { [query.leftOperand]: { [mapCondition[query.condition]]: query.rightOperand } };
+    return { [query.leftOperand.field]: { [mapCondition[query.condition]]: query.rightOperand } };
   }
 }
 
@@ -78,7 +78,7 @@ function translatePagination(query: Pagination) {
   return result;
 }
 
-function renderQuery(query: Query) {
+function renderQuery<T = unknown>(query: Query<T>) {
   if (isArray(query)) {
     return query.map((q) => renderQuery(q));
   } else if (isPagination(query)) {
@@ -90,13 +90,16 @@ function renderQuery(query: Query) {
   }
 }
 
-export function toMongoQuery(query: Query): DocumentQuery {
+export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
   return renderQuery(query);
 }
 
-export function toMongoSort(sort: Sort): MongoSort {
-  return sort.attributes.reduce((acc, direction) => {
-    acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
-    return acc;
-  }, {});
+export function toMongoSort<T = unknown>(sort: Sort<T>): MongoSort {
+  return sort.attributes.reduce(
+    (acc, direction) => {
+      acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
+      return acc;
+    },
+    {} as Record<keyof T, 1 | -1>,
+  );
 }

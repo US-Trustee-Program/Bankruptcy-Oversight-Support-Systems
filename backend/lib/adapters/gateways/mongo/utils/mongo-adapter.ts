@@ -55,7 +55,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async find(query: Query, sort?: Sort): Promise<T[]> {
+  public async find(query: Query<T>, sort?: Sort): Promise<T[]> {
     const mongoQuery = toMongoQuery(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
@@ -98,7 +98,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async findOne(query: Query): Promise<T> {
+  public async findOne(query: Query<T>): Promise<T> {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.findOne<T>(mongoQuery);
@@ -122,7 +122,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
    * @param {boolean} [upsert=false] Flag indicating whether the upsert operation should be performed if no matching item is found.
    * @returns {string} Returns the id of the item replaced or upserted.
    */
-  public async replaceOne(query: Query, item: T, upsert: boolean = false): Promise<ReplaceResult> {
+  public async replaceOne(
+    query: Query<T>,
+    item: T,
+    upsert: boolean = false,
+  ): Promise<ReplaceResult> {
     const mongoQuery = toMongoQuery(query);
     const mongoItem = createOrGetId<T>(item);
     try {
@@ -198,7 +202,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async deleteOne(query: Query) {
+  public async deleteOne(query: Query<T>) {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.deleteOne(mongoQuery);
@@ -216,7 +220,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async deleteMany(query: Query) {
+  public async deleteMany(query: Query<T>) {
     const mongoQuery = toMongoQuery(query);
     try {
       const result = await this.collectionHumble.deleteMany(mongoQuery);
@@ -232,7 +236,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async countDocuments(query: Query) {
+  public async countDocuments(query: Query<T>) {
     const mongoQuery = toMongoQuery(query);
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);

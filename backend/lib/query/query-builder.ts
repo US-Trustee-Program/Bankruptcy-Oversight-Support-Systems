@@ -9,7 +9,6 @@ export type Condition<T = unknown> = {
     | 'NOT_EQUAL'
     | 'NOT_CONTAINS'
     | 'EXISTS'
-    | 'NOT_EXISTS'
     | 'REGEX';
   leftOperand: Field<T>;
   rightOperand: unknown;
@@ -37,10 +36,10 @@ export function isConjunction(obj: unknown): obj is Conjunction {
   return typeof obj === 'object' && 'conjunction' in obj;
 }
 
-export type Pagination = {
+export type Pagination<T = unknown> = {
   limit: number;
   skip: number;
-  values: ConditionOrConjunction[];
+  values: ConditionOrConjunction<T>[];
   sort?: Sort;
 };
 
@@ -48,13 +47,12 @@ export function isPagination(obj: unknown): obj is Pagination {
   return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
 }
 
-export type Query = Pagination | ConditionOrConjunction | ConditionOrConjunction[];
+export type Query<T = unknown> =
+  | Pagination<T>
+  | ConditionOrConjunction<T>
+  | ConditionOrConjunction<T>[];
 
 export type ConditionOrConjunction<T = unknown> = Condition<T> | Conjunction<T>;
-
-function build<T extends Query = Query>(query: Query) {
-  return query as T;
-}
 
 function and<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
   return {
@@ -181,7 +179,7 @@ function exists<T, R extends keyof T>(field: R): Condition<T> {
 
 function notExists<T, R extends keyof T>(field: R): Condition<T> {
   return {
-    condition: 'NOT_EXISTS',
+    condition: 'EXISTS',
     leftOperand: { field },
     rightOperand: false,
   };
@@ -277,19 +275,63 @@ export function using<T = unknown>() {
       };
     };
 
+    const exists = (): Condition<T> => {
+      return {
+        condition: 'EXISTS',
+        leftOperand,
+        rightOperand: true,
+      };
+    };
+
+    const notExists = (): Condition<T> => {
+      return {
+        condition: 'EXISTS',
+        leftOperand,
+        rightOperand: false,
+      };
+    };
+
+    const contains = (rightOperand: R[]): Condition<T> => {
+      return {
+        condition: 'CONTAINS',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const notContains = (rightOperand: R[]): Condition<T> => {
+      return {
+        condition: 'NOT_CONTAINS',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
+    const regex = (rightOperand: RegExp | string): Condition<T> => {
+      return {
+        condition: 'REGEX',
+        leftOperand,
+        rightOperand,
+      };
+    };
+
     return {
+      contains,
       equals,
+      exists,
+      notExists,
       greaterThan,
       greaterThanOrEqual,
       lessThan,
       lessThanOrEqual,
       notEqual,
+      notContains,
+      regex,
     };
   };
 }
 
 const QueryBuilder = {
-  build,
   contains,
   equals,
   exists,
