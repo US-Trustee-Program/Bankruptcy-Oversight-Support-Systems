@@ -8,6 +8,7 @@ import {
   Pagination,
   isPagination,
   Query,
+  isField,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
@@ -29,7 +30,8 @@ const mapCondition: { [key: string]: string } = {
 // TODO: create new aggregate renderer
 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
 function translateCondition<T = unknown>(query: Condition<T>) {
-  if (query.compareFields) {
+  const compareFields = isField(query.rightOperand);
+  if (compareFields) {
     return {
       $expr: {
         [mapCondition[query.condition]]: [`$${query.leftOperand}`, `$${query.rightOperand}`],
