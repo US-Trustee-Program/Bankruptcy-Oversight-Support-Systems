@@ -293,24 +293,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     if (predicate.excludeClosedCases === true) {
       conditions.push(
         or(
-          and(doc('closedDate').notExists(), doc('dismissedDate').notExists()),
+          doc('closedDate').notExists(),
           and(
             doc('closedDate').exists(),
-            doc('dismissedDate').exists(),
             doc('reopenedDate').exists(),
-            doc('reopenedDate').greaterThan({ field: 'closedDate' }),
+            doc('reopenedDate').greaterThanOrEqual({ field: 'closedDate' }),
           ),
-          and(
-            doc('closedDate').notExists(),
-            doc('dismissedDate').exists(),
-            doc('reopenedDate').exists(),
-            doc('reopenedDate').greaterThan({ field: 'dismissedDate' }),
-          ),
-          and(
-            doc('closedDate').exists(),
-            doc('dismissedDate').exists(),
-            doc('reopenedDate').exists(),
-          ), // worst case scenario. these need to be compared to the reopened date. So many questions. --- James
         ),
       );
     }
