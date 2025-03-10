@@ -75,124 +75,6 @@ function not<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T
   };
 }
 
-function equals<T, R extends keyof T>(
-  field: R,
-  value: T[R],
-  compareFields: boolean = false,
-): Condition<T> {
-  return {
-    condition: 'EQUALS',
-    leftOperand: { field },
-    rightOperand: value,
-    compareFields,
-  };
-}
-
-function notEqual<T, R extends keyof T>(
-  field: R,
-  value: T[R],
-  compareFields: boolean = false,
-): Condition<T> {
-  return {
-    condition: 'NOT_EQUAL',
-    leftOperand: { field },
-    rightOperand: value,
-    compareFields,
-  };
-}
-
-function greaterThan<T, R extends keyof T>(
-  field: R,
-  value: T[R],
-  compareFields: boolean = false,
-): Condition<T> {
-  return {
-    condition: 'GREATER_THAN',
-    leftOperand: { field },
-    rightOperand: value,
-    compareFields,
-  };
-}
-
-function greaterThanOrEqual<T, R extends keyof T>(
-  field: R,
-  value: T[R],
-  compareFields: boolean = false,
-): Condition<T> {
-  return {
-    condition: 'GREATER_THAN_OR_EQUAL',
-    leftOperand: { field },
-    rightOperand: value,
-    compareFields,
-  };
-}
-
-function contains<T, R extends keyof T>(field: R, value: T[R] | T[R][]): Condition<T> {
-  return {
-    condition: 'CONTAINS',
-    leftOperand: { field },
-    rightOperand: value,
-  };
-}
-
-function lessThan<T, R extends keyof T>(
-  field: R,
-  value: T[R],
-  compareFields: boolean = false,
-): Condition<T> {
-  return {
-    condition: 'LESS_THAN',
-    leftOperand: { field },
-    rightOperand: value,
-    compareFields,
-  };
-}
-
-function lessThanOrEqual<T, R extends keyof T>(
-  field: R,
-  value: T[R],
-  compareFields: boolean = false,
-): Condition<T> {
-  return {
-    condition: 'LESS_THAN_OR_EQUAL',
-    leftOperand: { field },
-    rightOperand: value,
-    compareFields,
-  };
-}
-
-function notContains<T, R extends keyof T>(field: R, value: T[R] | T[R][]): Condition<T> {
-  return {
-    condition: 'NOT_CONTAINS',
-    leftOperand: { field },
-    rightOperand: value,
-  };
-}
-
-function exists<T, R extends keyof T>(field: R): Condition<T> {
-  return {
-    condition: 'EXISTS',
-    leftOperand: { field },
-    rightOperand: true,
-  };
-}
-
-function notExists<T, R extends keyof T>(field: R): Condition<T> {
-  return {
-    condition: 'EXISTS',
-    leftOperand: { field },
-    rightOperand: false,
-  };
-}
-
-function regex<T>(field: keyof T, value: string): Condition<T> {
-  return {
-    condition: 'REGEX',
-    leftOperand: { field },
-    rightOperand: value,
-  };
-}
-
 function paginate<T = unknown>(
   skip: number,
   limit: number,
@@ -221,7 +103,6 @@ function orderBy<T = unknown>(...attributes: SortedAttribute<T>[]): Sort<T> {
   return { attributes };
 }
 
-// The functions need to be returned from a closure in order to use function specific generic arguments.
 export function using<T = unknown>() {
   return <F extends keyof T>(field: F) => {
     const leftOperand: Field<T> = { field };
@@ -332,17 +213,6 @@ export function using<T = unknown>() {
 }
 
 const QueryBuilder = {
-  contains,
-  equals,
-  exists,
-  notExists,
-  greaterThan,
-  greaterThanOrEqual,
-  lessThan,
-  lessThanOrEqual,
-  notEqual,
-  notContains,
-  regex,
   not,
   and,
   or,
