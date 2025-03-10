@@ -2,7 +2,7 @@
 
 ## Context
 
-The use of Durable Functions for long-running jobs was not meeting performance expectations.
+The use of Durable Functions for long-running jobs was not meeting performance expectations. Specifically, most of the compute time was spent on orchestration, moving tasks in and out of memory, but performing very few migrations.
 
 ## Decision
 
