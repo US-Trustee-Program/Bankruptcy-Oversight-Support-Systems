@@ -142,8 +142,8 @@ describe('Query Builder', () => {
     },
     {
       condition: 'NOT_CONTAINS',
-      query: () => q('two').notContains([45]),
-      result: { condition: 'NOT_CONTAINS', leftOperand: { field: 'two' }, rightOperand: [45] },
+      query: () => q('two').notContains([45, 55]),
+      result: { condition: 'NOT_CONTAINS', leftOperand: { field: 'two' }, rightOperand: [45, 55] },
     },
     {
       condition: 'REGEX',
