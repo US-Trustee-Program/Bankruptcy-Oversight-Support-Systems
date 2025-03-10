@@ -5,7 +5,7 @@ import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events'
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { Conjunction } from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -48,18 +48,20 @@ describe('Cases repository', () => {
   });
 
   test('should getTransfers', async () => {
-    const query = {
+    const query: Conjunction = {
       conjunction: 'AND',
       values: [
         {
           condition: 'REGEX',
-          attributeName: 'documentType',
-          value: '^TRANSFER_',
+          leftOperand: 'documentType',
+          rightOperand: '^TRANSFER_',
+          compareFields: undefined,
         },
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: '111-82-80331',
+          leftOperand: 'caseId',
+          rightOperand: '111-82-80331',
+          compareFields: false,
         },
       ],
     };
@@ -89,18 +91,20 @@ describe('Cases repository', () => {
   });
 
   test('should getConsolidation', async () => {
-    const query = {
+    const query: Conjunction = {
       conjunction: 'AND',
       values: [
         {
           condition: 'REGEX',
-          attributeName: 'documentType',
-          value: '^CONSOLIDATION_',
+          leftOperand: 'documentType',
+          rightOperand: '^CONSOLIDATION_',
+          compareFields: undefined,
         },
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: '111-82-80331',
+          leftOperand: 'caseId',
+          rightOperand: '111-82-80331',
+          compareFields: false,
         },
       ],
     };
@@ -130,18 +134,20 @@ describe('Cases repository', () => {
   });
 
   test('should getCaseHistory', async () => {
-    const query = {
+    const query: Conjunction = {
       conjunction: 'AND',
       values: [
         {
           condition: 'REGEX',
-          attributeName: 'documentType',
-          value: '^AUDIT_',
+          leftOperand: 'documentType',
+          rightOperand: '^AUDIT_',
+          compareFields: undefined,
         },
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: '111-82-80331',
+          leftOperand: 'caseId',
+          rightOperand: '111-82-80331',
+          compareFields: false,
         },
       ],
     };
@@ -548,18 +554,20 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(null);
 
-    const expected = {
+    const expected: Conjunction = {
       conjunction: 'AND',
       values: [
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: bCase.caseId,
+          leftOperand: 'caseId',
+          rightOperand: bCase.caseId,
+          compareFields: false,
         },
         {
           condition: 'EQUALS',
-          attributeName: 'documentType',
-          value: 'SYNCED_CASE',
+          leftOperand: 'documentType',
+          rightOperand: 'SYNCED_CASE',
+          compareFields: false,
         },
       ],
     };
