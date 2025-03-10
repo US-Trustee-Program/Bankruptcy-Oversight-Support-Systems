@@ -12,7 +12,7 @@ import { nowInSeconds } from '../../../../../common/src/date-helper';
 const MODULE_NAME: string = 'USER_SESSION_CACHE_MONGO_REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';
 
-const { equals } = QueryBuilder;
+const q = QueryBuilder.using<CachedCamsSession>();
 
 export type CachedCamsSession = CamsSession & {
   id?: string;
@@ -59,7 +59,7 @@ export class UserSessionCacheMongoRepository
       throw new UnauthorizedError(MODULE_NAME, { message: 'Invalid token received.' });
     }
     const signature = tokenParts[2];
-    const query = QueryBuilder.build(equals('signature', signature));
+    const query = q('signature').equals(signature);
 
     try {
       const adapter = this.getAdapter<CachedCamsSession>();
@@ -83,7 +83,7 @@ export class UserSessionCacheMongoRepository
     }
 
     try {
-      const query = QueryBuilder.build(equals('signature', signature));
+      const query = q('signature').equals(signature);
       const cached: CachedCamsSession = {
         ...session,
         signature,
