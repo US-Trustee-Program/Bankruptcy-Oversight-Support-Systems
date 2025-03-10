@@ -11,7 +11,9 @@ import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
   let repo: ConsolidationOrdersMongoRepository;
-  const { and, contains, equals, orderBy } = QueryBuilder;
+  const { and, orderBy, using } = QueryBuilder;
+  const q = using<ConsolidationOrder>();
+
   const consolidationId = '823688b3-9e0f-4a02-a7cb-89380e6ad19e';
 
   beforeEach(async () => {
@@ -32,16 +34,9 @@ describe('Consolidations Repository tests', () => {
     const findSpy = jest
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue([consolidationOrder]);
-    const query = QueryBuilder.build(
-      and(
-        contains<ConsolidationOrder['courtDivisionCode']>('courtDivisionCode', [
-          consolidationOrder.courtDivisionCode,
-        ]),
-        equals<ConsolidationOrder['consolidationId']>(
-          'consolidationId',
-          consolidationOrder.consolidationId,
-        ),
-      ),
+    const query = and(
+      q('courtDivisionCode').contains([consolidationOrder.courtDivisionCode]),
+      q('consolidationId').equals(consolidationOrder.consolidationId),
     );
     const results = await repo.search({
       divisionCodes: ['081'],
