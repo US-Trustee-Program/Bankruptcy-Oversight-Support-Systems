@@ -12,6 +12,7 @@ const find = jest.fn();
 const findOne = jest.fn();
 const paginatedFind = jest.fn();
 const replaceOne = jest.fn();
+const updateOne = jest.fn();
 const insertOne = jest.fn();
 const insertMany = jest.fn();
 const deleteOne = jest.fn();
@@ -24,6 +25,7 @@ const spies = {
   findOne,
   paginatedFind,
   replaceOne,
+  updateOne,
   insertOne,
   insertMany,
   deleteOne,
@@ -290,6 +292,30 @@ describe('Mongo adapter', () => {
   test('should throw an error if insertOne does not insert.', async () => {
     insertOne.mockResolvedValue({ acknowledged: false });
     await expect(adapter.insertOne({})).rejects.toThrow('Failed to insert document into database.');
+  });
+
+  test('should throw an error if updateOne does not match.', async () => {
+    updateOne.mockResolvedValue({ acknowledged: true, matchedCount: undefined });
+    await expect(adapter.updateOne(testQuery, {})).rejects.toThrow('No matching item found.');
+  });
+
+  test('should throw an error if updateOne does not update.', async () => {
+    updateOne.mockResolvedValue({ acknowledged: false });
+    await expect(adapter.updateOne(testQuery, {})).rejects.toThrow(
+      'Failed to insert document into database.',
+    );
+  });
+
+  test('should resolve if updateOne is successful.', async () => {
+    const expectedResult = {
+      id: expect.anything(),
+      matchedCount: 1,
+      modifiedCount: 1,
+    };
+
+    updateOne.mockResolvedValue({ ...expectedResult, acknowledged: true });
+    const result = await adapter.updateOne(testQuery, {});
+    expect(result).toEqual(expectedResult);
   });
 
   test('should return a list of Ids from insertMany', async () => {
