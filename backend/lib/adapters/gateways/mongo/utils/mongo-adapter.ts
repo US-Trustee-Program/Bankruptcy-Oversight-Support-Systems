@@ -22,7 +22,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
+  public async paginatedFind(query: Pagination<T>): Promise<CamsPaginationResponse<T>> {
     const mongoQuery = toMongoQuery(query);
     const countQuery = toMongoQuery(query.values[0]);
     try {
