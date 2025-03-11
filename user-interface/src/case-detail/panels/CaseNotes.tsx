@@ -64,26 +64,22 @@ export default function CaseNotes(props: CaseNotesProps) {
   const formKey = buildCaseNoteFormKey(caseId);
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    if (session?.user) {
-      saveFormData({
-        caseId: props.caseId,
-        title: event.target.value,
-        content: getCaseNotesInputValue(contentInputRef.current),
-      });
-    }
+    saveFormData({
+      caseId: props.caseId,
+      title: event.target.value,
+      content: getCaseNotesInputValue(contentInputRef.current),
+    });
   }
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
-    if (session?.user) {
-      saveFormData({
-        caseId: props.caseId,
-        title: getCaseNotesInputValue(titleInputRef.current),
-        content: event.target.value,
-      });
-    }
+    saveFormData({
+      caseId: props.caseId,
+      title: getCaseNotesInputValue(titleInputRef.current),
+      content: event.target.value,
+    });
   }
 
-  function setupArchive(note: CaseNote) {
+  function setupArchive(note: Partial<CaseNote>) {
     setArchiveNote(note);
   }
 
