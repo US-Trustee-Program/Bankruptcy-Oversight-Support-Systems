@@ -8,12 +8,13 @@ import {
   Pagination,
   isPagination,
   Query,
+  isField,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
 const isArray = Array.isArray;
 
-const matchCondition: { [key: string]: string } = {
+const mapCondition: { [key: string]: string } = {
   EXISTS: '$exists',
   EQUALS: '$eq',
   GREATER_THAN: '$gt',
@@ -26,18 +27,32 @@ const matchCondition: { [key: string]: string } = {
   REGEX: '$regex',
 };
 
-function translateCondition(query: Condition) {
-  return { [query.attributeName]: { [matchCondition[query.condition]]: query.value } };
+// TODO: create new aggregate renderer
+// https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
+function translateCondition<T = unknown>(query: Condition<T>) {
+  const compareFields = isField(query.rightOperand);
+  if (compareFields) {
+    return {
+      $expr: {
+        [mapCondition[query.condition]]: [
+          `$${query.leftOperand['field'].toString()}`,
+          `$${query.rightOperand['field'].toString()}`,
+        ],
+      },
+    };
+  } else {
+    return { [query.leftOperand.field]: { [mapCondition[query.condition]]: query.rightOperand } };
+  }
 }
 
-const matchConjunction: { [key: string]: string } = {
+const mapConjunction: { [key: string]: string } = {
   AND: '$and',
   OR: '$or',
   NOT: '$not',
 };
 
 function translateConjunction(query: Conjunction) {
-  return { [matchConjunction[query.conjunction]]: renderQuery(query.values) };
+  return { [mapConjunction[query.conjunction]]: renderQuery(query.values) };
 }
 
 function translatePagination(query: Pagination) {
@@ -68,7 +83,7 @@ function translatePagination(query: Pagination) {
   return result;
 }
 
-function renderQuery(query: Query) {
+function renderQuery<T = unknown>(query: Query<T>) {
   if (isArray(query)) {
     return query.map((q) => renderQuery(q));
   } else if (isPagination(query)) {
@@ -80,13 +95,16 @@ function renderQuery(query: Query) {
   }
 }
 
-export function toMongoQuery(query: Query): DocumentQuery {
+export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
   return renderQuery(query);
 }
 
-export function toMongoSort(sort: Sort): MongoSort {
-  return sort.attributes.reduce((acc, direction) => {
-    acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
-    return acc;
-  }, {});
+export function toMongoSort<T = unknown>(sort: Sort<T>): MongoSort {
+  return sort.attributes.reduce(
+    (acc, direction) => {
+      acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
+      return acc;
+    },
+    {} as Record<keyof T, 1 | -1>,
+  );
 }

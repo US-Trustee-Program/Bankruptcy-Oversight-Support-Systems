@@ -2,7 +2,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { OrdersMongoRepository } from './orders.mongo.repository';
 import { ApplicationContext } from '../../types/basic';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { TransferOrderAction } from '../../../../../common/src/cams/orders';
+import { TransferOrder, TransferOrderAction } from '../../../../../common/src/cams/orders';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { closeDeferred } from '../../../deferrable/defer-close';
@@ -137,7 +137,11 @@ describe('orders repo', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(undefined);
     await repo.update(expected);
-    expect(replaceOne).toHaveBeenCalledWith(QueryBuilder.equals('id', existing.id), expected);
+
+    const doc = QueryBuilder.using<TransferOrder>();
+    const query = doc('id').equals(existing.id);
+
+    expect(replaceOne).toHaveBeenCalledWith(query, expected);
   });
 
   test('should throw CamsError error during createMany when dbAdapter throws error on insertMany', async () => {

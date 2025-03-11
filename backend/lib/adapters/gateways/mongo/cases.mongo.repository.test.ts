@@ -1,11 +1,17 @@
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { ResourceActions } from '../../../../../common/src/cams/actions';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
-import { TransferFrom, TransferTo } from '../../../../../common/src/cams/events';
+import {
+  ConsolidationFrom,
+  ConsolidationTo,
+  Transfer,
+  TransferFrom,
+  TransferTo,
+} from '../../../../../common/src/cams/events';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
@@ -14,6 +20,7 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
+import { CaseHistory } from '../../../../../common/src/cams/history';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -34,7 +41,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
-  const { and, equals, contains, notContains, paginate } = QueryBuilder;
+  const { and, paginate } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -48,18 +55,18 @@ describe('Cases repository', () => {
   });
 
   test('should getTransfers', async () => {
-    const query = {
+    const query: Conjunction<Transfer> = {
       conjunction: 'AND',
       values: [
         {
           condition: 'REGEX',
-          attributeName: 'documentType',
-          value: '^TRANSFER_',
+          leftOperand: { field: 'documentType' },
+          rightOperand: '^TRANSFER_',
         },
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: '111-82-80331',
+          leftOperand: { field: 'caseId' },
+          rightOperand: '111-82-80331',
         },
       ],
     };
@@ -89,18 +96,18 @@ describe('Cases repository', () => {
   });
 
   test('should getConsolidation', async () => {
-    const query = {
+    const query: Conjunction<ConsolidationTo | ConsolidationFrom> = {
       conjunction: 'AND',
       values: [
         {
           condition: 'REGEX',
-          attributeName: 'documentType',
-          value: '^CONSOLIDATION_',
+          leftOperand: { field: 'documentType' },
+          rightOperand: '^CONSOLIDATION_',
         },
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: '111-82-80331',
+          leftOperand: { field: 'caseId' },
+          rightOperand: '111-82-80331',
         },
       ],
     };
@@ -130,18 +137,18 @@ describe('Cases repository', () => {
   });
 
   test('should getCaseHistory', async () => {
-    const query = {
+    const query: Conjunction<CaseHistory> = {
       conjunction: 'AND',
       values: [
         {
           condition: 'REGEX',
-          attributeName: 'documentType',
-          value: '^AUDIT_',
+          leftOperand: { field: 'documentType' },
+          rightOperand: '^AUDIT_',
         },
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: '111-82-80331',
+          leftOperand: { field: 'caseId' },
+          rightOperand: '111-82-80331',
         },
       ],
     };
@@ -310,23 +317,17 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
-    const expectedQuery = QueryBuilder.build(
-      paginate(
-        predicate.offset,
-        predicate.limit,
-        [
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-          ),
+    const doc = using<SyncedCase>();
+    const expectedQuery = paginate<SyncedCase>(
+      predicate.offset,
+      predicate.limit,
+      [and(doc('documentType').equals('SYNCED_CASE'), doc('chapter').contains(predicate.chapters))],
+      {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
         ],
-        {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        },
-      ),
+      },
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -350,24 +351,23 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
-    const expectedQuery = QueryBuilder.build(
-      paginate(
-        predicate.offset,
-        predicate.limit,
-        [
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
-            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-          ),
+    const doc = using<SyncedCase>();
+    const expectedQuery = paginate<SyncedCase>(
+      predicate.offset,
+      predicate.limit,
+      [
+        and(
+          doc('documentType').equals('SYNCED_CASE'),
+          doc('caseId').contains(predicate.caseIds),
+          doc('chapter').contains(predicate.chapters),
+        ),
+      ],
+      {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
         ],
-        {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        },
-      ),
+      },
     );
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
@@ -394,25 +394,24 @@ describe('Cases repository', () => {
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     // TODO: can we find a way to not rely on the exact order here?
-    const expectedQuery = QueryBuilder.build(
-      paginate(
-        predicate.offset,
-        predicate.limit,
-        [
-          and(
-            equals<SyncedCase['documentType']>('documentType', 'SYNCED_CASE'),
-            contains<SyncedCase['caseId']>('caseId', predicate.caseIds),
-            contains<SyncedCase['chapter']>('chapter', predicate.chapters),
-            notContains<SyncedCase['caseId']>('caseId', predicate.excludedCaseIds),
-          ),
+    const doc = using<SyncedCase>();
+    const expectedQuery = paginate<SyncedCase>(
+      predicate.offset,
+      predicate.limit,
+      [
+        and(
+          doc('documentType').equals('SYNCED_CASE'),
+          doc('caseId').contains(predicate.caseIds),
+          doc('chapter').contains(predicate.chapters),
+          doc('caseId').notContains(predicate.excludedCaseIds),
+        ),
+      ],
+      {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
         ],
-        {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        },
-      ),
+      },
     );
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
 
@@ -548,18 +547,18 @@ describe('Cases repository', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
       .mockResolvedValue(null);
 
-    const expected = {
+    const expected: Conjunction<SyncedCase> = {
       conjunction: 'AND',
       values: [
         {
           condition: 'EQUALS',
-          attributeName: 'caseId',
-          value: bCase.caseId,
+          leftOperand: { field: 'caseId' },
+          rightOperand: bCase.caseId,
         },
         {
           condition: 'EQUALS',
-          attributeName: 'documentType',
-          value: 'SYNCED_CASE',
+          leftOperand: { field: 'documentType' },
+          rightOperand: 'SYNCED_CASE',
         },
       ],
     };

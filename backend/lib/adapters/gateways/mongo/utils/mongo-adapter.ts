@@ -22,9 +22,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  public async paginatedFind(query: Pagination): Promise<CamsPaginationResponse<T>> {
-    const mongoQuery = toMongoQuery(query);
-    const countQuery = toMongoQuery(query.values[0]);
+  public async paginatedFind(query: Pagination<T>): Promise<CamsPaginationResponse<T>> {
+    const mongoQuery = toMongoQuery<T>(query);
+    const countQuery = toMongoQuery<T>(query.values[0]);
     try {
       if (!isPagination(query)) {
         throw new Error('Trying to paginate for a query that is not a pagination query');
@@ -55,9 +55,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async find(query: Query, sort?: Sort): Promise<T[]> {
-    const mongoQuery = toMongoQuery(query);
-    const mongoSort = sort ? toMongoSort(sort) : undefined;
+  public async find(query: Query<T>, sort?: Sort<T>): Promise<T[]> {
+    const mongoQuery = toMongoQuery<T>(query);
+    const mongoSort = sort ? toMongoSort<T>(sort) : undefined;
     try {
       const items: T[] = [];
 
@@ -77,9 +77,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async getAll(sort?: Sort): Promise<T[]> {
+  public async getAll(sort?: Sort<T>): Promise<T[]> {
     const mongoQuery = {};
-    const mongoSort = sort ? toMongoSort(sort) : undefined;
+    const mongoSort = sort ? toMongoSort<T>(sort) : undefined;
     try {
       const findPromise = this.collectionHumble.find(mongoQuery);
       const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
@@ -98,8 +98,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async findOne(query: Query): Promise<T> {
-    const mongoQuery = toMongoQuery(query);
+  public async findOne(query: Query<T>): Promise<T> {
+    const mongoQuery = toMongoQuery<T>(query);
     try {
       const result = await this.collectionHumble.findOne<T>(mongoQuery);
       if (!result) {
@@ -122,8 +122,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
    * @param {boolean} [upsert=false] Flag indicating whether the upsert operation should be performed if no matching item is found.
    * @returns {string} Returns the id of the item replaced or upserted.
    */
-  public async replaceOne(query: Query, item: T, upsert: boolean = false): Promise<ReplaceResult> {
-    const mongoQuery = toMongoQuery(query);
+  public async replaceOne(
+    query: Query<T>,
+    item: T,
+    upsert: boolean = false,
+  ): Promise<ReplaceResult> {
+    const mongoQuery = toMongoQuery<T>(query);
     const mongoItem = createOrGetId<T>(item);
     try {
       const result = await this.collectionHumble.replaceOne(mongoQuery, mongoItem, upsert);
@@ -198,8 +202,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async deleteOne(query: Query) {
-    const mongoQuery = toMongoQuery(query);
+  public async deleteOne(query: Query<T>) {
+    const mongoQuery = toMongoQuery<T>(query);
     try {
       const result = await this.collectionHumble.deleteOne(mongoQuery);
       if (result.deletedCount !== 1) {
@@ -216,8 +220,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async deleteMany(query: Query) {
-    const mongoQuery = toMongoQuery(query);
+  public async deleteMany(query: Query<T>) {
+    const mongoQuery = toMongoQuery<T>(query);
     try {
       const result = await this.collectionHumble.deleteMany(mongoQuery);
       if (result.deletedCount < 1) {
@@ -232,8 +236,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async countDocuments(query: Query) {
-    const mongoQuery = toMongoQuery(query);
+  public async countDocuments(query: Query<T>) {
+    const mongoQuery = toMongoQuery<T>(query);
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
