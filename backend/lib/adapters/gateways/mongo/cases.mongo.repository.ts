@@ -7,12 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder, {
-  ConditionOrConjunction,
-  Query,
-  Sort,
-  using,
-} from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Sort, using } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -24,6 +19,10 @@ const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { paginate, and, or } = QueryBuilder;
+
+function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
+  return predicate.limit && predicate.offset >= 0;
+}
 
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
@@ -273,7 +272,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(doc('caseNumber').equals(predicate.caseNumber));
     }
 
-    ///TODO: we repeat very similar logic in the function above. We should be able to extract the conditions to
     if (predicate.caseIds) {
       conditions.push(doc('caseId').contains(predicate.caseIds));
     }
@@ -289,7 +287,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     if (predicate.excludeChildConsolidations === true && predicate.excludedCaseIds?.length > 0) {
       conditions.push(doc('caseId').notContains(predicate.excludedCaseIds));
     }
-    //NOTE: We only want cases that do not have a closed date, or they have a reopened date more recent than closed date
+
     if (predicate.excludeClosedCases === true) {
       conditions.push(
         or(
@@ -307,33 +305,34 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate) {
     const doc = using<SyncedCase>();
+
     const conditions: ConditionOrConjunction<SyncedCase>[] = [];
     conditions.push(doc('documentType').equals('SYNCED_CASE'));
-    let query: Query<SyncedCase>;
+
     try {
       const conditions = this.addConditions(predicate);
 
-      if (predicate.limit && predicate.offset >= 0) {
-        const sortSpec: Sort<SyncedCase> = {
-          attributes: [
-            ['dateFiled', 'DESCENDING'],
-            ['caseNumber', 'DESCENDING'],
-          ],
-        };
-
-        //If we don't have this we have a problem
-        query = paginate<SyncedCase>(
-          predicate.offset,
-          predicate.limit,
-          [and(...conditions)],
-          sortSpec,
-        );
-        return await this.getAdapter<SyncedCase>().paginatedFind(query);
-      } else {
+      if (!hasRequiredSearchFields(predicate)) {
         throw new CamsError(MODULE_NAME, {
           message: 'Case Search requires a pagination predicate with a valid limit and offset',
         });
       }
+
+      const sortSpec: Sort<SyncedCase> = {
+        attributes: [
+          ['dateFiled', 'DESCENDING'],
+          ['caseNumber', 'DESCENDING'],
+        ],
+      };
+
+      const query = paginate<SyncedCase>(
+        predicate.offset,
+        predicate.limit,
+        [and(...conditions)],
+        sortSpec,
+      );
+
+      return await this.getAdapter<SyncedCase>().paginatedFind(query);
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
