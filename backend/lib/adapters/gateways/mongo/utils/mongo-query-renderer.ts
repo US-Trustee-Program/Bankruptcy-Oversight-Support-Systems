@@ -34,7 +34,10 @@ function translateCondition<T = unknown>(query: Condition<T>) {
   if (compareFields) {
     return {
       $expr: {
-        [mapCondition[query.condition]]: [`$${query.leftOperand}`, `$${query.rightOperand}`],
+        [mapCondition[query.condition]]: [
+          `$${query.leftOperand['field'].toString()}`,
+          `$${query.rightOperand['field'].toString()}`,
+        ],
       },
     };
   } else {
