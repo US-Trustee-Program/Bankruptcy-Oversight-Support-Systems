@@ -7,7 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder, { ConditionOrConjunction, Sort, using } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Sort } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -18,7 +18,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, or } = QueryBuilder;
+const { paginate, and, or, using } = QueryBuilder;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
