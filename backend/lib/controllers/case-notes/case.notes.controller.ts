@@ -52,8 +52,9 @@ export class CaseNotesController implements CamsController {
       } else if (context.request.method === 'PATCH') {
         const id = context.request.body['id'];
         const caseId = context.request.body['caseId'];
+        const user = context.request.body['updatedBy'];
         this.validateArchiveRequestParameters(context.request.body);
-        const archiveNote = { id, caseId };
+        const archiveNote = { id, caseId, user };
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,

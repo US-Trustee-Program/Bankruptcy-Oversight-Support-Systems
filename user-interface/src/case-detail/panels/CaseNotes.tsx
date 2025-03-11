@@ -22,6 +22,7 @@ import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/m
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import Icon from '@/lib/components/uswds/Icon';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
@@ -61,19 +62,23 @@ export default function CaseNotes(props: CaseNotesProps) {
   const formKey = buildCaseNoteFormKey(caseId);
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    saveFormData({
-      caseId: props.caseId,
-      title: event.target.value,
-      content: getCaseNotesInputValue(contentInputRef.current),
-    });
+    if (session?.user) {
+      saveFormData({
+        caseId: props.caseId,
+        title: event.target.value,
+        content: getCaseNotesInputValue(contentInputRef.current),
+      });
+    }
   }
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
-    saveFormData({
-      caseId: props.caseId,
-      title: getCaseNotesInputValue(titleInputRef.current),
-      content: event.target.value,
-    });
+    if (session?.user) {
+      saveFormData({
+        caseId: props.caseId,
+        title: getCaseNotesInputValue(titleInputRef.current),
+        content: event.target.value,
+      });
+    }
   }
 
   function setupArchive(note: CaseNote) {
@@ -82,9 +87,13 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   function handleArchiveButtonClick() {
     if (!archiveNote?.id) return;
-
+    const newArchiveNote = {
+      id: archiveNote.id,
+      caseId: archiveNote.caseId,
+      updatedBy: session?.user,
+    };
     api
-      .patchCaseNoteArchival(archiveNote.id, archiveNote.caseId)
+      .patchCaseNoteArchival(newArchiveNote)
       .then(() => {
         if (props.onNoteArchive) props.onNoteArchive();
       })
@@ -132,24 +141,27 @@ export default function CaseNotes(props: CaseNotesProps) {
     const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
     if (formData.title?.length > 0 && formData.content?.length > 0) {
       disableFormFields(true);
-      const caseNoteInput: CaseNoteInput = {
-        caseId: props.caseId,
-        title: formData.title,
-        content: formData.content,
-      };
-      api
-        .postCaseNote(caseNoteInput)
-        .then(() => {
-          if (props.onNoteCreation) props.onNoteCreation();
-          disableFormFields(false);
-          clearCaseNoteForm();
-        })
-        .catch((e: HttpResponse) => {
-          if (e.status !== HttpStatusCodes.FORBIDDEN) {
-            globalAlert?.error('Could not insert case note.');
-          }
-          disableFormFields(false);
-        });
+      if (session?.user) {
+        const caseNoteInput: CaseNoteInput = {
+          caseId: props.caseId,
+          title: formData.title,
+          content: formData.content,
+          updatedBy: getCamsUserReference(session?.user),
+        };
+        api
+          .postCaseNote(caseNoteInput)
+          .then(() => {
+            if (props.onNoteCreation) props.onNoteCreation();
+            disableFormFields(false);
+            clearCaseNoteForm();
+          })
+          .catch((e: HttpResponse) => {
+            if (e.status !== HttpStatusCodes.FORBIDDEN) {
+              globalAlert?.error('Could not insert case note.');
+            }
+            disableFormFields(false);
+          });
+      }
     } else {
       globalAlert?.error('All case note input fields are required to submit a note.');
     }
