@@ -8,7 +8,8 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
-const { and, equals, exists, contains } = QueryBuilder;
+const { and, using } = QueryBuilder;
+const doc = using<CaseAssignment>();
 
 export class CaseAssignmentMongoRepository
   extends BaseMongoRepository
@@ -50,7 +51,7 @@ export class CaseAssignmentMongoRepository
   }
 
   async update(caseAssignment: CaseAssignment): Promise<string> {
-    const query = equals<CaseAssignment['id']>('id', caseAssignment.id);
+    const query = doc('id').equals(caseAssignment.id);
     try {
       const result = await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
       if (result.modifiedCount > 0) {
@@ -62,12 +63,10 @@ export class CaseAssignmentMongoRepository
   }
 
   async getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
-    const query = QueryBuilder.build(
-      and(
-        equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-        contains<CaseAssignment['caseId']>('caseId', caseIds),
-        exists<CaseAssignment>('unassignedOn', false),
-      ),
+    const query = and(
+      doc('documentType').equals('ASSIGNMENT'),
+      doc('caseId').contains(caseIds),
+      doc('unassignedOn').notExists(),
     );
     try {
       const assignments = await this.getAdapter<CaseAssignment>().find(query);
@@ -89,12 +88,10 @@ export class CaseAssignmentMongoRepository
   }
 
   async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
-    const query = QueryBuilder.build(
-      and(
-        equals<CaseAssignment['documentType']>('documentType', 'ASSIGNMENT'),
-        equals<CaseAssignment['userId']>('userId', userId),
-        exists<CaseAssignment>('unassignedOn', false),
-      ),
+    const query = and(
+      doc('documentType').equals('ASSIGNMENT'),
+      doc('userId').equals(userId),
+      doc('unassignedOn').notExists(),
     );
 
     try {

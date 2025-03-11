@@ -50,6 +50,7 @@ describe('StaffAssignmentScreen', () => {
       divisionCodes: getCourtDivisionCodes(user),
       chapters: ['15'],
       excludeChildConsolidations: true,
+      excludeClosedCases: true,
     };
 
     const SearchResults = vi
@@ -93,6 +94,7 @@ describe('StaffAssignmentScreen', () => {
       divisionCodes: getCourtDivisionCodes(user),
       chapters: expect.arrayContaining(['11', '12', '15']),
       excludeChildConsolidations: true,
+      excludeClosedCases: true,
     };
 
     const SearchResults = vi

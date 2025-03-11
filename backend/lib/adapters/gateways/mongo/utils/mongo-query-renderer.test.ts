@@ -1,4 +1,4 @@
-import QueryBuilder, { Sort } from '../../../../query/query-builder';
+import QueryBuilder, { Field, Query, Sort } from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
@@ -8,23 +8,8 @@ type Foo = {
 };
 
 describe('Mongo Query Renderer', () => {
-  const {
-    equals,
-    greaterThan,
-    greaterThanOrEqual,
-    contains,
-    lessThan,
-    lessThanOrEqual,
-    notEqual,
-    notContains,
-    exists,
-    and,
-    or,
-    not,
-    regex,
-    orderBy,
-    paginate,
-  } = QueryBuilder;
+  const { and, or, not, orderBy, paginate, using } = QueryBuilder;
+  const doc = using<Foo>();
 
   test('should render a mongo query JSON', () => {
     const expected = {
@@ -42,11 +27,11 @@ describe('Mongo Query Renderer', () => {
 
     const actual = toMongoQuery(
       or(
-        equals<string>('uno', 'theValue'),
+        doc('uno').equals('theValue'),
         and(
-          equals<Foo['two']>('two', 45),
-          equals('three', true),
-          or(equals('uno', 'hello'), equals('uno', 'something')),
+          doc('two').equals(45),
+          doc('three').equals(true),
+          or(doc('uno').equals('hello'), doc('uno').equals('something')),
         ),
       ),
     );
@@ -57,57 +42,57 @@ describe('Mongo Query Renderer', () => {
   const queries = [
     {
       caseName: 'EXISTS',
-      func: () => exists('two', true),
+      func: () => doc('two').exists(),
       expected: { two: { $exists: true } },
     },
     {
       caseName: 'EQUALS',
-      func: () => equals('two', 45),
+      func: () => doc('two').equals(45),
       expected: { two: { $eq: 45 } },
     },
     {
       caseName: 'GREATER_THAN',
-      func: () => greaterThan('two', 45),
+      func: () => doc('two').greaterThan(45),
       expected: { two: { $gt: 45 } },
     },
     {
       caseName: 'GREATER_THAN_OR_EQUAL',
-      func: () => greaterThanOrEqual('two', 45),
+      func: () => doc('two').greaterThanOrEqual(45),
       expected: { two: { $gte: 45 } },
     },
     {
       caseName: 'CONTAINS',
-      func: () => contains<number>('two', [45]),
+      func: () => doc('two').contains([45]),
       expected: { two: { $in: [45] } },
     },
     {
       caseName: 'LESS_THAN',
-      func: () => lessThan('two', 45),
+      func: () => doc('two').lessThan(45),
       expected: { two: { $lt: 45 } },
     },
     {
       caseName: 'LESS_THAN_OR_EQUAL',
-      func: () => lessThanOrEqual('two', 45),
+      func: () => doc('two').lessThanOrEqual(45),
       expected: { two: { $lte: 45 } },
     },
     {
       caseName: 'NOT_EQUAL',
-      func: () => notEqual('two', 45),
+      func: () => doc('two').notEqual(45),
       expected: { two: { $ne: 45 } },
     },
     {
       caseName: 'NOT_CONTAINS',
-      func: () => notContains<number>('two', [45]),
+      func: () => doc('two').notContains([45]),
       expected: { two: { $nin: [45] } },
     },
     {
       caseName: 'REGEX w/ regex',
-      func: () => regex('two', '45'),
-      expected: { two: { $regex: '45' } },
+      func: () => doc('two').regex(/45/),
+      expected: { two: { $regex: /45/ } },
     },
     {
       caseName: 'REGEX w/ string',
-      func: () => regex('two', '45'),
+      func: () => doc('two').regex('45'),
       expected: { two: { $regex: '45' } },
     },
   ];
@@ -120,17 +105,17 @@ describe('Mongo Query Renderer', () => {
   const conjunctions = [
     {
       caseName: 'AND',
-      func: () => and(equals('two', 45)),
+      func: () => and(doc('two').equals(45)),
       expected: { $and: [{ two: { $eq: 45 } }] },
     },
     {
       caseName: 'OR',
-      func: () => or(equals('two', 45)),
+      func: () => or(doc('two').equals(45)),
       expected: { $or: [{ two: { $eq: 45 } }] },
     },
     {
       caseName: 'NOT',
-      func: () => not(equals('two', 45)),
+      func: () => not(doc('two').equals(45)),
       expected: { $not: [{ two: { $eq: 45 } }] },
     },
   ];
@@ -138,6 +123,59 @@ describe('Mongo Query Renderer', () => {
   test.each(conjunctions)('should render a mongo query for $caseName aggregation', (args) => {
     const actual = toMongoQuery(args.func());
     expect(actual).toEqual(args.expected);
+  });
+
+  type ExprTest = {
+    condition: string;
+    fn: (rightOperand: string | Field<Foo>) => Query<Foo>;
+    mongoOperation: string;
+  };
+  const exprTests: ExprTest[] = [
+    {
+      condition: 'EQUALS',
+      fn: doc('uno').equals,
+      mongoOperation: '$eq',
+    },
+    {
+      condition: 'GREATER_THAN',
+      fn: doc('uno').greaterThan,
+      mongoOperation: '$gt',
+    },
+    {
+      condition: 'GREATER_THAN_OR_EQUAL',
+      fn: doc('uno').greaterThanOrEqual,
+      mongoOperation: '$gte',
+    },
+    {
+      condition: 'LESS_THAN',
+      fn: doc('uno').lessThan,
+      mongoOperation: '$lt',
+    },
+    {
+      condition: 'LESS_THAN_OR_EQUAL',
+      fn: doc('uno').lessThanOrEqual,
+      mongoOperation: '$lte',
+    },
+    {
+      condition: 'EQUALS',
+      fn: doc('uno').equals,
+      mongoOperation: '$eq',
+    },
+    {
+      condition: 'EQUALS',
+      fn: doc('uno').notEqual,
+      mongoOperation: '$ne',
+    },
+  ];
+  test.each(exprTests)('should render $EXPR queries for $condition', (params) => {
+    const expected = {
+      $expr: {
+        [params.mongoOperation]: ['$uno', '$two'],
+      },
+    };
+
+    const actual = toMongoQuery(params.fn({ field: 'two' }));
+    expect(actual).toEqual(expected);
   });
 
   test('sort renders ascending and descending', () => {
@@ -170,8 +208,8 @@ describe('Mongo Query Renderer', () => {
       },
       {
         $sort: {
-          dateFiled: -1,
-          caseId: -1,
+          uno: -1,
+          two: -1,
         },
       },
       {
@@ -189,18 +227,18 @@ describe('Mongo Query Renderer', () => {
     ];
 
     const baseQuery = or(
-      equals<string>('uno', 'theValue'),
+      doc('uno').equals('theValue'),
       and(
-        equals<Foo['two']>('two', 45),
-        equals('three', true),
-        or(equals('uno', 'hello'), equals('uno', 'something')),
+        doc('two').equals(45),
+        doc('three').equals(true),
+        or(doc('uno').equals('hello'), doc('uno').equals('something')),
       ),
     );
 
-    const sort: Sort = {
+    const sort: Sort<Foo> = {
       attributes: [
-        ['dateFiled', 'DESCENDING'],
-        ['caseId', 'DESCENDING'],
+        ['uno', 'DESCENDING'],
+        ['two', 'DESCENDING'],
       ],
     };
 

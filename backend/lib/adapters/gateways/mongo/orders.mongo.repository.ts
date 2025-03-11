@@ -9,7 +9,7 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 const MODULE_NAME = 'ORDERS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'orders';
 
-const { contains, equals, orderBy } = QueryBuilder;
+const { orderBy, using } = QueryBuilder;
 
 export class OrdersMongoRepository extends BaseMongoRepository implements OrdersRepository {
   private static referenceCount: number = 0;
@@ -42,17 +42,12 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   }
 
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
-    let query: Query;
-    if (!predicate) {
-      query = null;
-    } else {
-      query = QueryBuilder.build(
-        contains<Order['courtDivisionCode']>('courtDivisionCode', predicate.divisionCodes),
-      );
-    }
-
     try {
-      return await this.getAdapter<Order>().find(query, orderBy(['orderDate', 'ASCENDING']));
+      const doc = using<Order>();
+      const query: Query<Order> = predicate
+        ? doc('courtDivisionCode').contains(predicate.divisionCodes)
+        : null;
+      return await this.getAdapter<Order>().find(query, orderBy<Order>(['orderDate', 'ASCENDING']));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -60,7 +55,8 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async read(id: string): Promise<Order> {
     try {
-      const query = QueryBuilder.build(equals<string>('id', id));
+      const doc = using<Order>();
+      const query = doc('id').equals(id);
       return await this.getAdapter<Order>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -68,18 +64,24 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   }
 
   async update(data: TransferOrderAction) {
-    const query = QueryBuilder.build(equals<string>('id', data.id));
     try {
+      const existingQuery = using<TransferOrder>()('id').equals(data.id);
+
       const adapter = this.getAdapter<TransferOrder>();
-      const { docketSuggestedCaseNumber: _docketSuggestedCaseNumber, ...existingOrder } =
-        (await adapter.findOne(query)) as TransferOrder;
+      const foundOrder = await adapter.findOne(existingQuery);
+
+      const { docketSuggestedCaseNumber: _ignore, ...existingOrder } = foundOrder;
       const { id: _id, orderType: _orderType, caseId: _caseId, ...mutableProperties } = data;
-      const updatedOrder = {
+
+      const updatedOrder: TransferOrderAction = {
         ...existingOrder,
         ...mutableProperties,
-      } as TransferOrderAction;
+      };
+
+      const replacementQuery = using<TransferOrderAction>()('id').equals(data.id);
+
       if (data.status === 'approved') {
-        await this.getAdapter<TransferOrderAction>().replaceOne(query, updatedOrder);
+        await this.getAdapter<TransferOrderAction>().replaceOne(replacementQuery, updatedOrder);
       }
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

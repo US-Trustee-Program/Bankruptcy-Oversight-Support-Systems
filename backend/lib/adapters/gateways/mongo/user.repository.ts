@@ -11,7 +11,8 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 const MODULE_NAME: string = 'USERS_MONGO_REPOSITORY';
 const COLLECTION_NAME = 'users';
 
-const { and, equals } = QueryBuilder;
+const { and, using } = QueryBuilder;
+const doc = using<PrivilegedIdentityUser>();
 
 export class UsersMongoRepository extends BaseMongoRepository implements UsersRepository {
   private static referenceCount: number = 0;
@@ -49,11 +50,9 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
       privilegedIdentityUser,
       updatedBy,
     );
-    const query = QueryBuilder.build(
-      and(
-        equals<string>('id', user.id),
-        equals<string>('documentType', 'PRIVILEGED_IDENTITY_USER'),
-      ),
+    const query = and(
+      doc('id').equals(user.id),
+      doc('documentType').equals('PRIVILEGED_IDENTITY_USER'),
     );
     try {
       const result = await this.getAdapter<PrivilegedIdentityUser>().replaceOne(query, user, true);
@@ -74,12 +73,7 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     id: string,
     includeExpired: boolean = true,
   ): Promise<PrivilegedIdentityUser> {
-    const query = QueryBuilder.build(
-      and(
-        equals<PrivilegedIdentityUser['documentType']>('documentType', 'PRIVILEGED_IDENTITY_USER'),
-        equals<PrivilegedIdentityUser['id']>('id', id),
-      ),
-    );
+    const query = and(doc('documentType').equals('PRIVILEGED_IDENTITY_USER'), doc('id').equals(id));
 
     try {
       const result = await this.getAdapter<PrivilegedIdentityUser>().find(query);
@@ -98,12 +92,7 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
   }
 
   async deletePrivilegedIdentityUser(id: string): Promise<void> {
-    const query = QueryBuilder.build(
-      and(
-        equals<PrivilegedIdentityUser['id']>('id', id),
-        equals<PrivilegedIdentityUser['documentType']>('documentType', 'PRIVILEGED_IDENTITY_USER'),
-      ),
-    );
+    const query = and(doc('id').equals(id), doc('documentType').equals('PRIVILEGED_IDENTITY_USER'));
 
     try {
       await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);

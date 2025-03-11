@@ -11,46 +11,50 @@ import QueryBuilder, {
 } from './query-builder';
 
 describe('Query Builder', () => {
-  const {
-    equals,
-    greaterThan,
-    greaterThanOrEqual,
-    contains,
-    lessThan,
-    lessThanOrEqual,
-    notEqual,
-    notContains,
-    not,
-    exists,
-    and,
-    or,
-    regex,
-    orderBy,
-  } = QueryBuilder;
+  type Foo = {
+    uno: string;
+    two: number;
+    three: boolean;
+  };
+
+  const { not, and, or, orderBy, using } = QueryBuilder;
+  const q = using<Foo>();
 
   test('should build correct query tree', () => {
-    const { and, or, equals } = QueryBuilder;
-
-    type Foo = {
-      uno: string;
-      two: number;
-      three: boolean;
-    };
-
-    const expected = {
+    const expected: Conjunction<Foo> = {
       conjunction: 'OR',
       values: [
-        { condition: 'EQUALS', attributeName: 'uno', value: 'theValue' },
+        {
+          condition: 'EQUALS',
+          leftOperand: { field: 'uno' },
+          rightOperand: 'theValue',
+        },
         {
           conjunction: 'AND',
           values: [
-            { condition: 'EQUALS', attributeName: 'two', value: 45 },
-            { condition: 'EQUALS', attributeName: 'three', value: true },
+            {
+              condition: 'EQUALS',
+              leftOperand: { field: 'two' },
+              rightOperand: 45,
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { field: 'three' },
+              rightOperand: true,
+            },
             {
               conjunction: 'OR',
               values: [
-                { condition: 'EQUALS', attributeName: 'uno', value: 'hello' },
-                { condition: 'EQUALS', attributeName: 'uno', value: 'something' },
+                {
+                  condition: 'EQUALS',
+                  leftOperand: { field: 'uno' },
+                  rightOperand: 'hello',
+                },
+                {
+                  condition: 'EQUALS',
+                  leftOperand: { field: 'uno' },
+                  rightOperand: 'something',
+                },
               ],
             },
           ],
@@ -59,68 +63,97 @@ describe('Query Builder', () => {
     };
 
     const actual = or(
-      equals<string>('uno', 'theValue'),
+      q('uno').equals('theValue'),
       and(
-        equals<Foo['two']>('two', 45),
-        equals('three', true),
-        or(equals('uno', 'hello'), equals('uno', 'something')),
+        q('two').equals(45),
+        q('three').equals(true),
+        or(q('uno').equals('hello'), q('uno').equals('something')),
       ),
     );
 
     expect(actual).toEqual(expected);
   });
-  const staticEqualCondition: Condition = { condition: 'EQUALS', attributeName: 'two', value: 45 };
+
+  const staticEqualCondition: Condition<Foo> = {
+    condition: 'EQUALS',
+    leftOperand: { field: 'two' },
+    rightOperand: 45,
+  };
 
   const simpleQueryCases = [
     {
       condition: 'EQUALS',
-      query: () => equals('two', 45),
-      result: { condition: 'EQUALS', attributeName: 'two', value: 45 },
+      query: () => q('two').equals(45),
+      result: {
+        condition: 'EQUALS',
+        leftOperand: { field: 'two' },
+        rightOperand: 45,
+      },
     },
     {
       condition: 'GREATER_THAN',
-      query: () => greaterThan('two', 45),
-      result: { condition: 'GREATER_THAN', attributeName: 'two', value: 45 },
+      query: () => q('two').greaterThan(45),
+      result: {
+        condition: 'GREATER_THAN',
+        leftOperand: { field: 'two' },
+        rightOperand: 45,
+      },
     },
     {
       condition: 'GREATER_THAN_OR_EQUAL',
-      query: () => greaterThanOrEqual('two', 45),
-      result: { condition: 'GREATER_THAN_OR_EQUAL', attributeName: 'two', value: 45 },
+      query: () => q('two').greaterThanOrEqual(45),
+      result: {
+        condition: 'GREATER_THAN_OR_EQUAL',
+        leftOperand: { field: 'two' },
+        rightOperand: 45,
+      },
     },
     {
       condition: 'CONTAINS',
-      query: () => contains<number>('two', [45]),
-      result: { condition: 'CONTAINS', attributeName: 'two', value: [45] },
+      query: () => q('two').contains([45]),
+      result: { condition: 'CONTAINS', leftOperand: { field: 'two' }, rightOperand: [45] },
     },
     {
       condition: 'LESS_THAN',
-      query: () => lessThan('two', 45),
-      result: { condition: 'LESS_THAN', attributeName: 'two', value: 45 },
+      query: () => q('two').lessThan(45),
+      result: {
+        condition: 'LESS_THAN',
+        leftOperand: { field: 'two' },
+        rightOperand: 45,
+      },
     },
     {
       condition: 'LESS_THAN_OR_EQUAL',
-      query: () => lessThanOrEqual('two', 45),
-      result: { condition: 'LESS_THAN_OR_EQUAL', attributeName: 'two', value: 45 },
+      query: () => q('two').lessThanOrEqual(45),
+      result: {
+        condition: 'LESS_THAN_OR_EQUAL',
+        leftOperand: { field: 'two' },
+        rightOperand: 45,
+      },
     },
     {
       condition: 'NOT_EQUAL',
-      query: () => notEqual('two', 45),
-      result: { condition: 'NOT_EQUAL', attributeName: 'two', value: 45 },
+      query: () => q('two').notEqual(45),
+      result: {
+        condition: 'NOT_EQUAL',
+        leftOperand: { field: 'two' },
+        rightOperand: 45,
+      },
     },
     {
       condition: 'NOT_CONTAINS',
-      query: () => notContains<number>('two', [45]),
-      result: { condition: 'NOT_CONTAINS', attributeName: 'two', value: [45] },
+      query: () => q('two').notContains([45, 55]),
+      result: { condition: 'NOT_CONTAINS', leftOperand: { field: 'two' }, rightOperand: [45, 55] },
     },
     {
       condition: 'REGEX',
-      query: () => regex('two', '45'),
-      result: { condition: 'REGEX', attributeName: 'two', value: '45' },
+      query: () => q('two').regex('45'),
+      result: { condition: 'REGEX', leftOperand: { field: 'two' }, rightOperand: '45' },
     },
     {
       condition: 'EXISTS',
-      query: () => exists('two', true),
-      result: { condition: 'EXISTS', attributeName: 'two', value: true },
+      query: () => q('two').exists(),
+      result: { condition: 'EXISTS', leftOperand: { field: 'two' }, rightOperand: true },
     },
   ];
 
@@ -141,7 +174,7 @@ describe('Query Builder', () => {
       result: { conjunction: 'OR', values: [staticEqualCondition] },
     },
     {
-      condition: 'NOT',
+      conjunction: 'NOT',
       query: () => not(staticEqualCondition),
       result: { conjunction: 'NOT', values: [staticEqualCondition] },
     },
@@ -152,26 +185,20 @@ describe('Query Builder', () => {
     expect(query).toEqual(conjunctionQuery.result);
   });
 
-  test('should proxy a query passed to the build function', () => {
-    const query = or();
-    const actual = QueryBuilder.build(query);
-    expect(actual).toEqual(query);
-  });
-
   test('should proxy a list of SortDirection when orderBy is called', () => {
-    const attributeFoo: SortedAttribute = ['foo', 'ASCENDING'];
-    const attributeBar: SortedAttribute = ['bar', 'DESCENDING'];
-    expect(orderBy(attributeFoo)).toEqual({ attributes: [attributeFoo] });
-    expect(orderBy(attributeFoo, attributeBar)).toEqual({
+    const attributeFoo: SortedAttribute<Foo> = ['uno', 'ASCENDING'];
+    const attributeBar: SortedAttribute<Foo> = ['uno', 'DESCENDING'];
+    expect(orderBy<Foo>(attributeFoo)).toEqual({ attributes: [attributeFoo] });
+    expect(orderBy<Foo>(attributeFoo, attributeBar)).toEqual({
       attributes: [attributeFoo, attributeBar],
     });
   });
 
   test('isCondition', () => {
-    const condition: Condition = {
+    const condition: Condition<Foo> = {
       condition: 'REGEX',
-      attributeName: '',
-      value: '',
+      leftOperand: { field: 'uno' },
+      rightOperand: '',
     };
     expect(isCondition(condition)).toBeTruthy();
     expect(isCondition({})).toBeFalsy();
@@ -187,8 +214,8 @@ describe('Query Builder', () => {
   });
 
   test('isSort', () => {
-    const sort: Sort = {
-      attributes: [['foo', 'ASCENDING']],
+    const sort: Sort<Foo> = {
+      attributes: [['uno', 'ASCENDING']],
     };
     expect(isSort(sort)).toBeTruthy();
     expect(isSort({})).toBeFalsy();

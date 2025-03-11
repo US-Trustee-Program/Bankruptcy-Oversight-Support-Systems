@@ -6,7 +6,7 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { using } from '../../../query/query-builder';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
@@ -21,8 +21,9 @@ describe('offices repo', () => {
   let context: ApplicationContext;
   let repo: OfficesMongoRepository;
   let session: CamsSession;
-  const { and, equals, contains } = QueryBuilder;
+  const { and } = QueryBuilder;
   const officeCode = 'test_office_code';
+  const doc = using<OfficeStaff>();
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
@@ -46,12 +47,10 @@ describe('offices repo', () => {
       .spyOn(MongoCollectionAdapter.prototype, 'find')
       .mockResolvedValue(attorneyUsers);
 
-    const query = QueryBuilder.build(
-      and(
-        equals<OfficeStaff['documentType']>('documentType', 'OFFICE_STAFF'),
-        contains<OfficeStaff['roles']>('roles', [CamsRole.TrialAttorney]),
-        equals<OfficeStaff['officeCode']>('officeCode', officeCode),
-      ),
+    const query = and(
+      doc('documentType').equals('OFFICE_STAFF'),
+      doc('roles').contains([CamsRole.TrialAttorney]),
+      doc('officeCode').equals(officeCode),
     );
     const attorneys = await repo.getOfficeAttorneys(officeCode);
     expect(findSpy).toHaveBeenCalledWith(query);
