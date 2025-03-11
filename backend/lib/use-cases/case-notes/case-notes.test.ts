@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { CaseNote, CaseNoteArchival, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
@@ -61,9 +61,9 @@ describe('Test case-notes use case', () => {
 
     const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
 
-    const expectedArchiveNote: CaseNoteArchival = {
+    const expectedArchiveNote: Partial<CaseNote> = {
       ...archiveNote,
-      archiveDate: expect.anything(),
+      archivedOn: expect.anything(),
     };
     await useCase.archiveCaseNote(archiveNote);
 

@@ -76,12 +76,6 @@ export type CaseNoteInput = {
   content: string;
 };
 
-export type CaseNoteArchival = {
-  id: string;
-  caseId: string;
-  archiveDate: string;
-};
-
 export type DxtrCase = CaseSummary & {
   closedDate?: string;
   dismissedDate?: string;

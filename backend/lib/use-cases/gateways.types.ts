@@ -12,7 +12,7 @@ import {
   TransferTo,
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
-import { CaseDocket, CaseNote, CaseNoteArchival, SyncedCase } from '../../../common/src/cams/cases';
+import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
 import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
@@ -96,7 +96,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
 
 export interface CaseNotesRepository<T = CaseNote> extends Creates<T, string> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
-  archiveCaseNote(archiveNote: CaseNoteArchival): Promise<UpdateResult>; //TODO: replace the current update function with replace? and create new update function
+  archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>; //TODO: replace the current update function with replace? and create new update function
 }
 
 export interface OrdersRepository<T = Order>

@@ -266,6 +266,13 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   }
 }
 
+async function patchCaseNoteArchival(id: string, caseId: string) {
+  await api().patch<Partial<CaseNote>>(`/cases/${caseId}/notes`, {
+    id,
+    caseId,
+  });
+}
+
 async function getCourts() {
   const path = `/courts`;
   return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
@@ -370,6 +377,7 @@ export const _Api2 = {
   getCaseHistory,
   postCaseNote,
   getCaseNotes,
+  patchCaseNoteArchival,
   getCourts,
   getMe,
   getOfficeAttorneys,

@@ -162,9 +162,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async updateOne(query: Query, item: T): Promise<UpdateResult> {
+  public async updateOne(query: Query<T>, item: Partial<T>): Promise<UpdateResult> {
     const mongoQuery = toMongoQuery(query);
-    const mongoItem = createOrGetId<T>(item);
+    const mongoItem = createOrGetId<Partial<T>>(item);
 
     try {
       const result = await this.collectionHumble.updateOne(mongoQuery, mongoItem);

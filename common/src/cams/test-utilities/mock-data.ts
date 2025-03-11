@@ -6,7 +6,6 @@ import {
   CaseDocketEntry,
   CaseDocketEntryDocument,
   CaseNote,
-  CaseNoteArchival,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -524,12 +523,12 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   };
 }
 
-function getCaseNoteArchival(override: Partial<CaseNoteArchival> = {}): CaseNoteArchival {
-  const archiveDate = getTodaysIsoDate();
+function getCaseNoteArchival(override: Partial<CaseNote> = {}): Partial<CaseNote> {
+  const archivedOn = getTodaysIsoDate();
   return {
     id: randomId(),
     caseId: randomCaseId(),
-    archiveDate,
+    archivedOn,
     ...override,
   };
 }
