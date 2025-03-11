@@ -53,7 +53,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   const [openModalButtonRefs] = useState(
     () => new Map<number, React.RefObject<OpenModalButtonRef>>(null),
   );
-  const [archiveNote, setArchiveNote] = useState<CaseNote | null>(null);
+  const [archiveNote, setArchiveNote] = useState<Partial<CaseNote> | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const archiveConfirmationModalId = '';
@@ -88,23 +88,27 @@ export default function CaseNotes(props: CaseNotesProps) {
   }
 
   function handleArchiveButtonClick() {
-    if (!archiveNote?.id) return;
-    const newArchiveNote = {
-      id: archiveNote.id,
-      caseId: archiveNote.caseId,
-      updatedBy: session?.user,
-    };
-    api
-      .patchCaseNoteArchival(newArchiveNote)
-      .then(() => {
-        if (props.onNoteArchive) props.onNoteArchive();
-      })
-      .catch(() => {
-        globalAlert?.error('There was a problem archiving the note.');
-      })
-      .finally(() => {
-        setArchiveNote(null);
-      });
+    if (archiveNote?.id) {
+      const newArchiveNote = {
+        id: archiveNote.id,
+        caseId: archiveNote.caseId,
+        updatedBy: session?.user,
+      };
+
+      api
+        .patchCaseNoteArchival(newArchiveNote)
+        .then(() => {
+          if (props.onNoteArchive) {
+            props.onNoteArchive();
+          }
+        })
+        .catch(() => {
+          globalAlert?.error('There was a problem archiving the note.');
+        })
+        .finally(() => {
+          setArchiveNote(null);
+        });
+    }
   }
 
   function userCanArchive(note: CaseNote) {
@@ -153,7 +157,9 @@ export default function CaseNotes(props: CaseNotesProps) {
         api
           .postCaseNote(caseNoteInput)
           .then(() => {
-            if (props.onNoteCreation) props.onNoteCreation();
+            if (props.onNoteCreation) {
+              props.onNoteCreation();
+            }
             disableFormFields(false);
             clearCaseNoteForm();
           })
