@@ -21,7 +21,7 @@ import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import Icon from '@/lib/components/uswds/Icon';
 
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
@@ -59,20 +59,6 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
   const formKey = buildCaseNoteFormKey(caseId);
-
-  const archiveConfirmationButtonGroup: SubmitCancelBtnProps = {
-    modalId: archiveConfirmationModalId,
-    modalRef: archiveConfirmationModalRef as React.RefObject<ModalRefType>,
-    submitButton: {
-      label: 'Delete',
-      onClick: handleArchiveButtonClick,
-      disabled: false,
-      closeOnClick: true,
-    },
-    cancelButton: {
-      label: 'Cancel',
-    },
-  };
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
@@ -185,24 +171,8 @@ export default function CaseNotes(props: CaseNotesProps) {
               {sanitizedCaseTitle}
             </h4>
           </div>
-          <div className="case-note-date grid-col-3" data-testid={`case-note-creation-date-${idx}`}>
+          <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
             {formatDateTime(note.updatedOn)}
-          </div>
-          <div className="case-note-toolbar grid-col-1" data-testid={`case-note-toolbar-${idx}`}>
-            {userCanArchive(note) && (
-              <OpenModalButton
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                modalId={archiveConfirmationModalId}
-                modalRef={archiveConfirmationModalRef}
-                ref={openModalButtonRef}
-                openProps={{ id: note.id, caseId: note.caseId }}
-                ariaLabel={`Delete note ${note.id} for case ID ${note.caseId}`}
-                title="Delete Note"
-                onClick={() => setupArchive(note)}
-              >
-                <IconLabel icon="close" label="Delete" />
-              </OpenModalButton>
-            )}
           </div>
         </div>
         <div className="grid-row">
@@ -219,6 +189,23 @@ export default function CaseNotes(props: CaseNotesProps) {
         <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
+        <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
+          {userCanArchive(note) && (
+            <OpenModalButton
+              className="remove-button"
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              modalId={archiveConfirmationModalId}
+              modalRef={archiveConfirmationModalRef}
+              ref={openModalButtonRef}
+              openProps={{ id: note.id, caseId: note.caseId }}
+              ariaLabel={`Remove note titled ${note.title}`}
+              onClick={() => setupArchive(note)}
+            >
+              <Icon name="remove_circle" className="remove-icon" />
+              Remove
+            </OpenModalButton>
+          )}
+        </div>
       </li>
     );
   }
@@ -228,6 +215,20 @@ export default function CaseNotes(props: CaseNotesProps) {
       return showCaseNotes(note, idx);
     });
   }
+
+  const archiveConfirmationButtonGroup: SubmitCancelBtnProps = {
+    modalId: archiveConfirmationModalId,
+    modalRef: archiveConfirmationModalRef as React.RefObject<ModalRefType>,
+    submitButton: {
+      label: 'Remove',
+      onClick: handleArchiveButtonClick,
+      disabled: false,
+      closeOnClick: true,
+    },
+    cancelButton: {
+      label: 'Cancel',
+    },
+  };
 
   useEffect(() => {
     handleHighlight(
@@ -326,8 +327,8 @@ export default function CaseNotes(props: CaseNotesProps) {
         ref={archiveConfirmationModalRef}
         modalId={archiveConfirmationModalId}
         className="archive-confirmation-modal"
-        heading="Archive Note?"
-        content="Once a note is archived, it can not be restored. Please confirm before proceeding."
+        heading="Remove note?"
+        content="Would you like to remove this note? This action cannot be undone."
         actionButtonGroup={archiveConfirmationButtonGroup}
       ></Modal>
     </div>
