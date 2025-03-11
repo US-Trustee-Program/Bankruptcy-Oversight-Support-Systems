@@ -3,7 +3,6 @@ import {
   CaseDetail,
   CaseDocket,
   CaseNote,
-  CaseNoteArchival,
   CaseNoteInput,
   CaseSummary,
   SyncedCase,
@@ -268,7 +267,7 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
 }
 
 async function patchCaseNoteArchival(note: Partial<CaseNote>) {
-  await api().patch<CaseNoteArchival>(`/cases/${note.caseId}/notes`, {
+  await api().patch<Partial<CaseNote>>(`/cases/${note.caseId}/notes`, {
     id: note.id,
     caseId: note.caseId,
     updatedBy: note.updatedBy,

@@ -8,7 +8,6 @@ import {
   CaseDetail,
   CaseDocket,
   CaseNote,
-  CaseNoteArchival,
   CaseNoteInput,
   CaseSummary,
   SyncedCase,
