@@ -1,4 +1,4 @@
-import QueryBuilder, { Sort } from '../../../../query/query-builder';
+import QueryBuilder, { Field, Query, Sort } from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
@@ -123,6 +123,59 @@ describe('Mongo Query Renderer', () => {
   test.each(conjunctions)('should render a mongo query for $caseName aggregation', (args) => {
     const actual = toMongoQuery(args.func());
     expect(actual).toEqual(args.expected);
+  });
+
+  type ExprTest = {
+    condition: string;
+    fn: (rightOperand: string | Field<Foo>) => Query<Foo>;
+    mongoOperation: string;
+  };
+  const exprTests: ExprTest[] = [
+    {
+      condition: 'EQUALS',
+      fn: doc('uno').equals,
+      mongoOperation: '$eq',
+    },
+    {
+      condition: 'GREATER_THAN',
+      fn: doc('uno').greaterThan,
+      mongoOperation: '$gt',
+    },
+    {
+      condition: 'GREATER_THAN_OR_EQUAL',
+      fn: doc('uno').greaterThanOrEqual,
+      mongoOperation: '$gte',
+    },
+    {
+      condition: 'LESS_THAN',
+      fn: doc('uno').lessThan,
+      mongoOperation: '$lt',
+    },
+    {
+      condition: 'LESS_THAN_OR_EQUAL',
+      fn: doc('uno').lessThanOrEqual,
+      mongoOperation: '$lte',
+    },
+    {
+      condition: 'EQUALS',
+      fn: doc('uno').equals,
+      mongoOperation: '$eq',
+    },
+    {
+      condition: 'EQUALS',
+      fn: doc('uno').notEqual,
+      mongoOperation: '$ne',
+    },
+  ];
+  test.each(exprTests)('should render $EXPR queries for $condition', (params) => {
+    const expected = {
+      $expr: {
+        [params.mongoOperation]: ['$uno', '$two'],
+      },
+    };
+
+    const actual = toMongoQuery(params.fn({ field: 'two' }));
+    expect(actual).toEqual(expected);
   });
 
   test('sort renders ascending and descending', () => {
