@@ -50,7 +50,9 @@ export default function CaseNotes(props: CaseNotesProps) {
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
   const archiveConfirmationModalRef = useRef<ModalRefType>(null);
-  const openModalButtonRef = useRef<OpenModalButtonRef>(null);
+  const [openModalButtonRefs] = useState(
+    () => new Map<number, React.RefObject<OpenModalButtonRef>>(null),
+  );
   const [archiveNote, setArchiveNote] = useState<CaseNote | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
@@ -170,6 +172,9 @@ export default function CaseNotes(props: CaseNotesProps) {
   function showCaseNotes(note: CaseNote, idx: number) {
     const sanitizedCaseNote = sanitizeText(note.content);
     const sanitizedCaseTitle = sanitizeText(note.title);
+    if (!openModalButtonRefs.has(idx)) {
+      openModalButtonRefs.set(idx, useRef(null));
+    }
     return (
       <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
         <div className="grid-row case-note-title-and-date">
@@ -205,11 +210,16 @@ export default function CaseNotes(props: CaseNotesProps) {
           {userCanArchive(note) && (
             <OpenModalButton
               className="remove-button"
+              id={`case-note-remove-button-${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
               modalId={archiveConfirmationModalId}
               modalRef={archiveConfirmationModalRef}
-              ref={openModalButtonRef}
-              openProps={{ id: note.id, caseId: note.caseId }}
+              ref={openModalButtonRefs.get(idx)}
+              openProps={{
+                id: note.id,
+                caseId: note.caseId,
+                buttonId: `case-note-remove-button-${idx}`,
+              }}
               ariaLabel={`Remove note titled ${note.title}`}
               onClick={() => setupArchive(note)}
             >
