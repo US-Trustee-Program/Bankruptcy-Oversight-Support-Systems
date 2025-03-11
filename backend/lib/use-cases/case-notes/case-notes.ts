@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCaseNotesRepository } from '../../factory';
 import { CaseNotesRepository, UpdateResult } from '../gateways.types';
-import { CaseNote, CaseNoteArchival, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { getTodaysIsoDate } from '../../../../common/src/date-helper';
 
@@ -31,11 +31,11 @@ export class CaseNotesUseCase {
     return notes;
   }
 
-  public async archiveCaseNote(archiveNote: Partial<CaseNoteArchival>): Promise<UpdateResult> {
-    const newArchiveNote: CaseNoteArchival = {
+  public async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
+    const newArchiveNote: Partial<CaseNote> = {
       caseId: archiveNote.caseId,
       id: archiveNote.id,
-      archiveDate: new Date().toISOString(),
+      archivedOn: new Date().toISOString(),
     };
     return await this.caseNotesRepository.archiveCaseNote(newArchiveNote);
   }

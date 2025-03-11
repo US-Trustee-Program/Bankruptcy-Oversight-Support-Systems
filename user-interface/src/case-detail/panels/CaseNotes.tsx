@@ -8,7 +8,7 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
@@ -16,6 +16,12 @@ import Input from '@/lib/components/uswds/Input';
 import { AlertOptions } from './CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import LocalFormCache from '@/lib/utils/local-form-cache';
+import LocalStorage from '@/lib/utils/local-storage';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import Modal from '@/lib/components/uswds/modal/Modal';
+import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
@@ -32,6 +38,7 @@ export interface CaseNotesProps {
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
   onNoteCreation: () => void;
+  onNoteArchive: () => void;
   searchString: string;
 }
 
@@ -41,12 +48,31 @@ export default function CaseNotes(props: CaseNotesProps) {
   const contentInputRef = useRef<TextAreaRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
+  const archiveConfirmationModalRef = useRef<ModalRefType>(null);
+  const openModalButtonRef = useRef<OpenModalButtonRef>(null);
+  const [archiveNote, setArchiveNote] = useState<CaseNote | null>(null);
   const globalAlert = useGlobalAlert();
+  const session = LocalStorage.getSession();
+  const archiveConfirmationModalId = '';
 
   const api = Api2;
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
   const formKey = buildCaseNoteFormKey(caseId);
+
+  const archiveConfirmationButtonGroup: SubmitCancelBtnProps = {
+    modalId: archiveConfirmationModalId,
+    modalRef: archiveConfirmationModalRef as React.RefObject<ModalRefType>,
+    submitButton: {
+      label: 'Delete',
+      onClick: handleArchiveButtonClick,
+      disabled: false,
+      closeOnClick: true,
+    },
+    cancelButton: {
+      label: 'Cancel',
+    },
+  };
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
@@ -62,6 +88,30 @@ export default function CaseNotes(props: CaseNotesProps) {
       title: getCaseNotesInputValue(titleInputRef.current),
       content: event.target.value,
     });
+  }
+
+  function setupArchive(note: CaseNote) {
+    setArchiveNote(note);
+  }
+
+  function handleArchiveButtonClick() {
+    if (!archiveNote?.id) return;
+
+    api
+      .patchCaseNoteArchival(archiveNote.id, archiveNote.caseId)
+      .then(() => {
+        if (props.onNoteArchive) props.onNoteArchive();
+      })
+      .catch(() => {
+        globalAlert?.error('There was a problem archiving the note.');
+      })
+      .finally(() => {
+        setArchiveNote(null);
+      });
+  }
+
+  function userCanArchive(note: CaseNote) {
+    return session?.user.id === note.updatedBy.id;
   }
 
   function setFormButtonState(enabled: boolean) {
@@ -135,8 +185,24 @@ export default function CaseNotes(props: CaseNotesProps) {
               {sanitizedCaseTitle}
             </h4>
           </div>
-          <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
+          <div className="case-note-date grid-col-3" data-testid={`case-note-creation-date-${idx}`}>
             {formatDateTime(note.updatedOn)}
+          </div>
+          <div className="case-note-toolbar grid-col-1" data-testid={`case-note-toolbar-${idx}`}>
+            {userCanArchive(note) && (
+              <OpenModalButton
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                modalId={archiveConfirmationModalId}
+                modalRef={archiveConfirmationModalRef}
+                ref={openModalButtonRef}
+                openProps={{ id: note.id, caseId: note.caseId }}
+                ariaLabel={`Delete note ${note.id} for case ID ${note.caseId}`}
+                title="Delete Note"
+                onClick={() => setupArchive(note)}
+              >
+                <IconLabel icon="close" label="Delete" />
+              </OpenModalButton>
+            )}
           </div>
         </div>
         <div className="grid-row">
@@ -256,6 +322,14 @@ export default function CaseNotes(props: CaseNotesProps) {
           </>
         )}
       </div>
+      <Modal
+        ref={archiveConfirmationModalRef}
+        modalId={archiveConfirmationModalId}
+        className="archive-confirmation-modal"
+        heading="Archive Note?"
+        content="Once a note is archived, it can not be restored. Please confirm before proceeding."
+        actionButtonGroup={archiveConfirmationButtonGroup}
+      ></Modal>
     </div>
   );
 }

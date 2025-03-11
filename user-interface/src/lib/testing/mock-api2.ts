@@ -307,6 +307,10 @@ async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
   return get<CaseNote[]>(`/cases/${caseId}/notes`);
 }
 
+async function patchCaseNoteArchival(_note: Partial<CaseNote>) {
+  return Promise.resolve();
+}
+
 async function postCaseNote(note: CaseNoteInput): Promise<void> {
   await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
@@ -365,6 +369,7 @@ export const MockApi2 = {
   getCaseHistory,
   postCaseNote,
   getCaseNotes,
+  patchCaseNoteArchival,
   getCourts,
   getMe,
   getOfficeAttorneys,
