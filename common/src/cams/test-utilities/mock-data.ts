@@ -528,6 +528,7 @@ function getCaseNoteArchival(override: Partial<CaseNote> = {}): Partial<CaseNote
   return {
     id: randomId(),
     caseId: randomCaseId(),
+    updatedBy: getCamsUserReference(),
     archivedOn,
     ...override,
   };
