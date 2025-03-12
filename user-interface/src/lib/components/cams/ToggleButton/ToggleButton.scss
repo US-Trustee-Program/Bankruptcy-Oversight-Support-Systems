@@ -1,0 +1,37 @@
+.toggle-button {
+  display: inline-flex;
+  flex-flow: row;
+  flex-direction: row;
+
+  button {
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    margin-right: 0.5rem;
+    padding: 0rem 0.5rem 0.125rem 0.5rem;
+    border-radius: 0.125rem;
+    text-decoration: none;
+    color: white;
+  }
+
+  :hover {
+    cursor: pointer;
+  }
+
+  .inactive {
+    background: #5c5c5c;
+    font-weight: normal;
+    svg {
+      display: none;
+      padding-left: 0.125rem;
+    }
+  }
+
+  .active {
+    background: #0050d8;
+    font-weight: bold;
+    svg {
+      display: inline;
+    }
+  }
+}
