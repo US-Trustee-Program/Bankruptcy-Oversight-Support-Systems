@@ -334,6 +334,7 @@ export default function DataVerificationScreen() {
     </MainContent>
   );
 }
+
 interface FilterProps<T extends string> {
   label: string;
   filterType: T;
