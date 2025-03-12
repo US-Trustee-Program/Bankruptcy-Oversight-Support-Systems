@@ -3,29 +3,14 @@ import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
-test.describe.only('Consolidation Orders', () => {
-  //   let caseNoteResponseBody: CaseNote[];
-  //   let getCaseNoteNoteResponse;
-  //   let caseNoteArchivalRequest;
-  //   let caseNoteArchivalResponse;
+test.describe('Consolidation Orders', () => {
   let caseNoteTitleInput;
   let caseNoteContentInput;
   let submitCaseNoteButton;
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to Case Details and capture network responses
-
     await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
-    // getCaseNoteNoteResponse = page.waitForResponse(
-    //   async (response) =>
-    //     response.url().includes(`api/notes/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}`) && response.ok(),
-    //   timeoutOption,
-    // );
-
-    // const caseNoteResponse = await getCaseNoteNoteResponse;
-    // caseNoteResponseBody = (await caseNoteResponse.json()).data;
-    // expect(caseNoteResponseBody).toEqual([]);
     caseNoteTitleInput = page.getByTestId('case-note-title-input');
     caseNoteContentInput = page.getByTestId('textarea-note-content');
     submitCaseNoteButton = page.getByTestId('button-submit-case-note');
@@ -46,8 +31,10 @@ test.describe.only('Consolidation Orders', () => {
     let openRemovalModalButton;
     let confirmButton;
 
-    caseNoteTitleInput.fill(testNoteTitle);
-    caseNoteContentInput.fill('Test Note Content for E2E purposes');
+    await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
+    await page
+      .locator('[data-testid="textarea-note-content"]')
+      .fill('Test Note Content for E2E purposes');
     submitCaseNoteButton = page.getByTestId('button-submit-case-note');
     expect(submitCaseNoteButton).toBeEnabled();
     submitCaseNoteButton.click();
@@ -66,12 +53,6 @@ test.describe.only('Consolidation Orders', () => {
     caseNoteHeader = page.getByTestId('case-note-0-header');
     await expect(caseNoteHeader).not.toBeVisible();
     openRemovalModalButton = page.getByTestId('open-modal-button-0');
-    await expect(openRemovalModalButton).toBeVisible();
-
-    // caseNoteArchivalRequestPromise = page.waitForEvent('requestfinished', {
-    //   predicate: (e) => e.url().includes('api/courts'),
-    //   timeout: 30000,
-    // });
-    // await caseNoteArchivalRequestPromise;
+    await expect(openRemovalModalButton).not.toBeVisible();
   });
 });
