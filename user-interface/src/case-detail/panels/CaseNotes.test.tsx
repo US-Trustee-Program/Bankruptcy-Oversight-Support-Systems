@@ -16,11 +16,11 @@ const caseId = '000-11-22222';
 const textAreaTestId = 'textarea-note-content';
 const noteTitleInputTestId = 'case-note-title-input';
 const userId = '001';
-const userName = 'Joe Bob';
+const userFullName = 'Joe Bob';
 const caseNotes = [
-  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userName } }),
+  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
   MockData.getCaseNote({ caseId }),
-  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userName } }),
+  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
 ];
 
 function renderWithProps(props?: Partial<CaseNotesProps>) {
@@ -268,7 +268,7 @@ describe('case note tests', () => {
   test('should remove case note when remove button is clicked and modal approval is met.', async () => {
     const session = MockData.getCamsSession();
     session.user.id = userId;
-    session.user.name = userName;
+    session.user.name = userFullName;
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
       data: caseNotes,
@@ -280,7 +280,7 @@ describe('case note tests', () => {
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
     const expectedUser = {
       id: userId,
-      name: userName,
+      name: userFullName,
     };
     const expectedFirstPatchArgument = {
       id: caseNotes[0].id,
