@@ -8,7 +8,7 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote, CaseNoteInput } from '@common/cams/cases';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
 import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
@@ -23,6 +23,7 @@ import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import Icon from '@/lib/components/uswds/Icon';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { CamsUser } from '@common/cams/users';
 
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
@@ -50,9 +51,11 @@ export default function CaseNotes(props: CaseNotesProps) {
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
   const archiveConfirmationModalRef = useRef<ModalRefType>(null);
-  const [openModalButtonRefs] = useState(
-    () => new Map<number, React.RefObject<OpenModalButtonRef>>(null),
-  );
+  const openModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
+  useMemo(() => {
+    openModalButtonRefs.current =
+      caseNotes?.map((_, index) => openModalButtonRefs.current[index] ?? { current: null }) || [];
+  }, [caseNotes]);
   const [archiveNote, setArchiveNote] = useState<Partial<CaseNote> | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
@@ -79,16 +82,12 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
-  function setupArchive(note: Partial<CaseNote>) {
-    setArchiveNote(note);
-  }
-
   function handleArchiveButtonClick() {
     if (archiveNote?.id) {
       const newArchiveNote = {
         id: archiveNote.id,
         caseId: archiveNote.caseId,
-        updatedBy: session?.user,
+        updatedBy: getCamsUserReference(session?.user as CamsUser),
       };
 
       api
@@ -174,9 +173,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   function showCaseNotes(note: CaseNote, idx: number) {
     const sanitizedCaseNote = sanitizeText(note.content);
     const sanitizedCaseTitle = sanitizeText(note.title);
-    if (!openModalButtonRefs.has(idx)) {
-      openModalButtonRefs.set(idx, useRef(null));
-    }
+
     return (
       <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
         <div className="grid-row case-note-title-and-date">
@@ -213,17 +210,18 @@ export default function CaseNotes(props: CaseNotesProps) {
             <OpenModalButton
               className="remove-button"
               id={`case-note-remove-button-${idx}`}
+              buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
               modalId={archiveConfirmationModalId}
               modalRef={archiveConfirmationModalRef}
-              ref={openModalButtonRefs.get(idx)}
+              ref={openModalButtonRefs.current[idx]}
               openProps={{
                 id: note.id,
                 caseId: note.caseId,
                 buttonId: `case-note-remove-button-${idx}`,
               }}
               ariaLabel={`Remove note titled ${note.title}`}
-              onClick={() => setupArchive(note)}
+              onClick={() => setArchiveNote(note)}
             >
               <Icon name="remove_circle" className="remove-icon" />
               Remove

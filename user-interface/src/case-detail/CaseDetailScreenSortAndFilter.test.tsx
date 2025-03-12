@@ -62,7 +62,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -117,7 +117,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[docketEntryPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/court-docket"
+              path="case-detail/:caseId/court-docket"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -159,7 +159,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -204,7 +204,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[docketEntryPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/court-docket"
+              path="case-detail/:caseId/court-docket"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -427,7 +427,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -467,7 +467,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -508,7 +508,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -552,7 +552,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -593,7 +593,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -636,7 +636,7 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:id/*"
+              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}

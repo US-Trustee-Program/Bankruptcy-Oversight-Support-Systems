@@ -9,14 +9,18 @@ import { CaseNoteInput } from '@common/cams/cases';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
+import LocalStorage from '@/lib/utils/local-storage';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const textAreaTestId = 'textarea-note-content';
 const noteTitleInputTestId = 'case-note-title-input';
+const userId = '001';
+const userName = 'Joe Bob';
 const caseNotes = [
+  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userName } }),
   MockData.getCaseNote({ caseId }),
-  MockData.getCaseNote({ caseId }),
-  MockData.getCaseNote({ caseId }),
+  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userName } }),
 ];
 
 function renderWithProps(props?: Partial<CaseNotesProps>) {
@@ -213,6 +217,8 @@ describe('case note tests', () => {
   });
 
   test('should send new case note to api and call fetch notes on success', async () => {
+    const session = MockData.getCamsSession();
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     const spyOnNotesCreation = vi.fn();
     const postCaseNoteSpy = vi
       .spyOn(Api2, 'postCaseNote')
@@ -229,6 +235,10 @@ describe('case note tests', () => {
     expect(textArea).toBeInTheDocument();
     expect(noteTitleInput).toBeInTheDocument();
 
+    // start with a clean slate
+    await userEvent.clear(noteTitleInput);
+    await userEvent.clear(textArea);
+
     await userEvent.type(noteTitleInput, testNoteTitle);
     expect(noteTitleInput).toHaveValue(testNoteTitle);
 
@@ -242,6 +252,10 @@ describe('case note tests', () => {
       title: testNoteTitle,
       content: testNoteContent,
       caseId: caseId,
+      updatedBy: {
+        id: session.user.id,
+        name: session.user.name,
+      },
     };
 
     expect(postCaseNoteSpy).toHaveBeenCalledWith(expectedCaseNoteInput);
@@ -249,6 +263,69 @@ describe('case note tests', () => {
 
     textArea = screen.getByTestId(textAreaTestId);
     expect(textArea).toHaveValue('');
+  });
+
+  test('should remove case note when remove button is clicked and modal approval is met.', async () => {
+    const session = MockData.getCamsSession();
+    session.user.id = userId;
+    session.user.name = userName;
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
+      data: caseNotes,
+    });
+    const patchSpy = vi
+      .spyOn(Api2, 'patchCaseNoteArchival')
+      .mockResolvedValueOnce()
+      .mockRejectedValueOnce(new Error());
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const expectedUser = {
+      id: userId,
+      name: userName,
+    };
+    const expectedFirstPatchArgument = {
+      id: caseNotes[0].id,
+      caseId: caseNotes[0].caseId,
+      updatedBy: expectedUser,
+    };
+    const expectedSecondPatchArgument = {
+      id: caseNotes[2].id,
+      caseId: caseNotes[2].caseId,
+      updatedBy: expectedUser,
+    };
+    const onNoteArchiveSpy = vi.fn();
+
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes, onNoteArchive: onNoteArchiveSpy });
+
+    const button0 = screen.queryByTestId('open-modal-button-0');
+    const button1 = screen.queryByTestId('open-modal-button-1');
+    const button2 = screen.queryByTestId('open-modal-button-2');
+
+    await waitFor(() => {
+      expect(button0).toBeInTheDocument();
+    });
+    expect(button1).not.toBeInTheDocument();
+    expect(button2).toBeInTheDocument();
+
+    await userEvent.click(button0!);
+    const modalSubmitButton0 = screen.queryByTestId('button--submit-button');
+    await waitFor(() => {
+      expect(modalSubmitButton0).toBeVisible();
+    });
+    await userEvent.click(modalSubmitButton0!);
+    expect(patchSpy).toHaveBeenCalledWith(expectedFirstPatchArgument);
+    expect(onNoteArchiveSpy).toHaveBeenCalled();
+
+    await userEvent.click(button2!);
+    const modalSubmitButton2 = screen.queryByTestId('button--submit-button');
+    await waitFor(() => {
+      expect(modalSubmitButton2).toBeVisible();
+    });
+    await userEvent.click(modalSubmitButton2!);
+    expect(patchSpy).toHaveBeenCalledWith(expectedSecondPatchArgument);
+    await waitFor(() => {
+      expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
+    });
+    expect(onNoteArchiveSpy).toHaveBeenCalledTimes(1);
   });
 });
 
