@@ -16,7 +16,7 @@ import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import Icon from '@/lib/components/uswds/Icon';
+import ToggleButton from '@/lib/components/cams/ToggleButton/ToggleButton';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -66,7 +66,7 @@ export const MyCasesScreen = () => {
           <div className="filters case-status">
             <div className="case-status-container">
               <div>
-                <button
+                {/* <button
                   className={`filter show-closed-cases${doShowClosedCases ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
                   aria-label={`${doShowClosedCases ? 'Hide' : 'Show'} closed cases.`}
                   role="switch"
@@ -76,7 +76,14 @@ export const MyCasesScreen = () => {
                 >
                   Closed Cases
                   <Icon name="check" className={doShowClosedCases ? 'active' : ''}></Icon>
-                </button>
+                </button> */}
+                <ToggleButton
+                  id="foobar"
+                  ariaLabel={{ active: 'Hide closed cases.', inactive: 'Show closed cases.' }}
+                  isActive={false}
+                  label="Closed Cases"
+                  onToggle={handleShowClosedCasesToggle}
+                />
               </div>
             </div>
           </div>
