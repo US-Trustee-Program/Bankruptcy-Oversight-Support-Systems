@@ -49,7 +49,6 @@ import { REGION_02_GROUP_NY } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
 import { CaseSyncEvent } from '../../queue/dataflow-types';
-import { randomUUID } from 'crypto';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -529,7 +528,7 @@ function getCaseNoteArchivalRequest(
   override: Partial<CaseNoteArchiveRequest> = {},
 ): CaseNoteArchiveRequest {
   return {
-    id: randomUUID(),
+    id: crypto.randomUUID(),
     caseId: randomCaseId(),
     userId: randomId(),
     ...override,
