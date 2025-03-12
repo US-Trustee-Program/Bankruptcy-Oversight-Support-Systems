@@ -36,7 +36,7 @@ export class CaseNotesController implements CamsController {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
-        const caseId = context.request.params.id;
+        const caseId = context.request.params.caseId;
         const noteContent = context.request.body['content'];
         const noteTitle = context.request.body['title'];
         this.validatePostRequestParameters(caseId, noteContent, noteTitle);
@@ -49,18 +49,18 @@ export class CaseNotesController implements CamsController {
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
         });
-      } else if (context.request.method === 'PATCH') {
-        const id = context.request.body['id'];
-        const caseId = context.request.body['caseId'];
-        const user = context.request.body['updatedBy'];
-        this.validateArchiveRequestParameters(context.request.body);
-        const archiveNote = { id, caseId, user };
+      } else if (context.request.method === 'DELETE') {
+        const id = context.request.params.noteId;
+        const caseId = context.request.params.caseId;
+        const userId = context.request.params.userId;
+        const archiveNote = { id, caseId, userId };
+        this.validateArchiveRequestParameters(archiveNote);
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
         });
       } else {
-        const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.id);
+        const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
         return httpSuccess({
           body: { data: caseNotes },
           statusCode: HttpStatusCodes.CREATED,
@@ -122,6 +122,10 @@ export class CaseNotesController implements CamsController {
       badParams.push('caseId');
     } else if (!request['caseId'].match(VALID_CASEID_PATTERN)) {
       messages.push(INVALID_CASEID_MESSAGE);
+    }
+
+    if (!request['userId']) {
+      badParams.push('userId');
     }
 
     if (badParams.length > 0) {

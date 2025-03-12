@@ -266,12 +266,17 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   }
 }
 
-async function patchCaseNoteArchival(note: Partial<CaseNote>) {
-  await api().patch<Partial<CaseNote>>(`/cases/${note.caseId}/notes`, {
-    id: note.id,
-    caseId: note.caseId,
-    updatedBy: note.updatedBy,
-  });
+async function deleteCaseNote(note: Partial<CaseNote>) {
+  await api().delete<Partial<CaseNote>>(
+    `/cases/${note.caseId}/notes/${note.id}/${note.updatedBy!.id}`,
+    /*
+    {
+      id: note.id,
+      caseId: note.caseId,
+      updatedBy: note.updatedBy,
+    },
+    */
+  );
 }
 
 async function getCourts() {
@@ -378,7 +383,7 @@ export const _Api2 = {
   getCaseHistory,
   postCaseNote,
   getCaseNotes,
-  patchCaseNoteArchival,
+  patchCaseNoteArchival: deleteCaseNote,
   getCourts,
   getMe,
   getOfficeAttorneys,
