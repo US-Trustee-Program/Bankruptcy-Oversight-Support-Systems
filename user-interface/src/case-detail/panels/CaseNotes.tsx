@@ -59,7 +59,7 @@ export default function CaseNotes(props: CaseNotesProps) {
   const [archiveNote, setArchiveNote] = useState<Partial<CaseNote> | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const archiveConfirmationModalId = '';
+  const archiveConfirmationModalId = 'archive-modal';
 
   const api = Api2;
 
