@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -16,6 +16,7 @@ import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import Icon from '@/lib/components/uswds/Icon';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -23,16 +24,18 @@ export const MyCasesScreen = () => {
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
+  const [doShowClosedCases, setDoShowClosedCases] = useState(false);
 
   if (!session || !session.user.offices) {
+    // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
     return <></>;
   }
-
   const searchPredicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     assignments: [getCamsUserReference(session.user)],
     excludeChildConsolidations: true,
+    excludeClosedCases: doShowClosedCases,
   };
 
   const infoModalActionButtonGroup = {
@@ -44,6 +47,10 @@ export const MyCasesScreen = () => {
     },
   };
 
+  function handleShowClosedCasesToggle() {
+    setDoShowClosedCases(!doShowClosedCases);
+  }
+
   return (
     <MainContent className="my-cases case-list">
       <DocumentTitle name="My Cases" />
@@ -54,6 +61,26 @@ export const MyCasesScreen = () => {
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </div>
+
+          <h3>Filters</h3>
+          <div className="filters case-status">
+            <div className="case-status-container">
+              <div>
+                <button
+                  className={`filter show-closed-cases${doShowClosedCases ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
+                  aria-label={`${doShowClosedCases ? 'Hide' : 'Show'} closed cases.`}
+                  role="switch"
+                  aria-checked={doShowClosedCases}
+                  onClick={handleShowClosedCasesToggle}
+                  data-testid="show-closed-cases-toggle"
+                >
+                  Closed Cases
+                  <Icon name="check" className={doShowClosedCases ? 'active' : ''}></Icon>
+                </button>
+              </div>
+            </div>
+          </div>
+
           <SearchResults
             id="search-results"
             searchPredicate={searchPredicate}

@@ -10,4 +10,54 @@
     position: absolute;
     margin-top: 1.5rem;
   }
+  .case-status {
+    span,
+    .filter {
+      display: inline-block;
+      color: white;
+      padding: 0rem 0.5rem 0.125rem 0.5rem;
+      border-radius: 0.125rem;
+      text-decoration: none;
+    }
+    .filter {
+      display: inline-flex;
+      align-items: center;
+      flex-flow: row;
+      flex-direction: row;
+      justify-content: center;
+      svg {
+        display: none;
+        padding-left: 0.125rem;
+      }
+    }
+    .filter {
+      margin-bottom: 1.5rem;
+    }
+    .case-status-container {
+      display: inline-block;
+      flex-flow: row;
+    }
+    .show-closed-cases {
+      background: #0050d8;
+    }
+    .show-closed-cases .inactive {
+      background: #5c5c5c;
+    }
+    .filter {
+      margin-right: 0.5rem;
+    }
+    .filter:hover {
+      cursor: pointer;
+    }
+    .inactive {
+      background: #5c5c5c;
+      font-weight: normal;
+    }
+    .active {
+      font-weight: bold;
+      svg.active {
+        display: inline;
+      }
+    }
+  }
 }
