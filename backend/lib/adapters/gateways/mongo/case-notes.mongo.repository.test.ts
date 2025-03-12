@@ -8,7 +8,8 @@ import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseNote } from '../../../../../common/src/cams/cases';
 
-const { and, equals } = QueryBuilder;
+const { and, using } = QueryBuilder;
+const doc = using<CaseNote>();
 
 describe('case notes repo tests', () => {
   let context: ApplicationContext;
@@ -51,12 +52,10 @@ describe('case notes repo tests', () => {
   test('should call updateOne when archiveCaseNote is called.', async () => {
     const archival = MockData.getCaseNoteArchival();
 
-    const query = QueryBuilder.build(
-      and(
-        equals<CaseNote['documentType']>('documentType', 'NOTE'),
-        equals<string>('id', archival.id),
-        equals<string>('caseId', archival.caseId),
-      ),
+    const query = and(
+      doc('documentType').equals('NOTE'),
+      doc('caseId').equals(archival.caseId),
+      doc('id').equals(archival.id),
     );
 
     const updateSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue({

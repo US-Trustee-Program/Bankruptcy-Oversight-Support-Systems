@@ -71,6 +71,12 @@ export type CaseNote = CaseNoteInput &
     archivedOn?: string;
   };
 
+export type CaseNoteArchiveRequest = {
+  id: string;
+  caseId: string;
+  userId: string;
+};
+
 export type CaseNoteInput = {
   title: string;
   caseId: string;

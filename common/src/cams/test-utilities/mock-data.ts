@@ -6,6 +6,7 @@ import {
   CaseDocketEntry,
   CaseDocketEntryDocument,
   CaseNote,
+  CaseNoteArchiveRequest,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -48,6 +49,7 @@ import { REGION_02_GROUP_NY } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
 import { CaseSyncEvent } from '../../queue/dataflow-types';
+import { randomUUID } from 'crypto';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -523,6 +525,17 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   };
 }
 
+function getCaseNoteArchivalRequest(
+  override: Partial<CaseNoteArchiveRequest> = {},
+): CaseNoteArchiveRequest {
+  return {
+    id: randomUUID(),
+    caseId: randomCaseId(),
+    userId: randomId(),
+    ...override,
+  };
+}
+
 function getCaseNoteArchival(override: Partial<CaseNote> = {}): Partial<CaseNote> {
   const archivedOn = getTodaysIsoDate();
   return {
@@ -714,6 +727,7 @@ export const MockData = {
   getAttorneyAssignment,
   getCaseNote,
   getCaseNoteArchival,
+  getCaseNoteArchivalRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

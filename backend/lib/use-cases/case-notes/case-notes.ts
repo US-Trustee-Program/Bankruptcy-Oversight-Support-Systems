@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCaseNotesRepository } from '../../factory';
 import { CaseNotesRepository, UpdateResult } from '../gateways.types';
-import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteArchiveRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { getTodaysIsoDate } from '../../../../common/src/date-helper';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -34,16 +34,16 @@ export class CaseNotesUseCase {
     return notes;
   }
 
-  public async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
-    const newArchiveNote: Partial<CaseNote> = {
-      caseId: archiveNote.caseId,
-      id: archiveNote.id,
-      archivedOn: new Date().toISOString(),
-      updatedBy: archiveNote.updatedBy,
-    };
-    if (newArchiveNote.updatedBy.id !== this.context.session.user.id) {
+  public async archiveCaseNote(archiveRequest: CaseNoteArchiveRequest): Promise<UpdateResult> {
+    if (archiveRequest.userId !== this.context.session.user.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not creator of the note.' });
     }
+    const newArchiveNote: Partial<CaseNote> = {
+      caseId: archiveRequest.caseId,
+      id: archiveRequest.id,
+      archivedOn: new Date().toISOString(),
+    };
+
     return await this.caseNotesRepository.archiveCaseNote(newArchiveNote);
   }
 }
