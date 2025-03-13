@@ -162,12 +162,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async updateOne(query: Query<T>, item: Partial<T>): Promise<UpdateResult> {
+  public async updateOne(query: Query<T>, itemProperties: Partial<T>): Promise<UpdateResult> {
     const mongoQuery = toMongoQuery(query);
-    const mongoItem = createOrGetId<Partial<T>>(item);
 
     try {
-      const result = await this.collectionHumble.updateOne(mongoQuery, mongoItem);
+      const result = await this.collectionHumble.updateOne(mongoQuery, itemProperties);
       const unknownError = new UnknownError(this.moduleName, {
         message: 'Failed to insert document into database.',
       });
@@ -178,19 +177,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       if (!result.acknowledged) {
         throw unknownError;
       }
+
       if (!result.matchedCount) {
         throw notFoundError;
       }
+
       return {
-        id: mongoItem.id,
         matchedCount: result.matchedCount,
         modifiedCount: result.modifiedCount,
       };
     } catch (originalError) {
       throw this.handleError(
         originalError,
-        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
-        { query, item },
+        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(itemProperties)}`,
+        { query, item: itemProperties },
       );
     }
   }

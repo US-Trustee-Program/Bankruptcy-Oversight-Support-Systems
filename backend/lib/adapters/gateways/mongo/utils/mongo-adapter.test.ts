@@ -308,7 +308,6 @@ describe('Mongo adapter', () => {
 
   test('should resolve if updateOne is successful.', async () => {
     const expectedResult = {
-      id: expect.anything(),
       matchedCount: 1,
       modifiedCount: 1,
     };

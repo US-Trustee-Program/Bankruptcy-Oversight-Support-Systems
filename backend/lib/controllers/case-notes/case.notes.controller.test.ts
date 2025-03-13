@@ -251,7 +251,7 @@ describe('Case note controller tests', () => {
     const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
     const archiveSpy = jest
       .spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote')
-      .mockResolvedValue({ id: archiveNote.id, matchedCount: 1, modifiedCount: 1 });
+      .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     const expectedRequest: CaseNoteArchiveRequest = {
       id: archiveNote.id,
       caseId: archiveNote.caseId,

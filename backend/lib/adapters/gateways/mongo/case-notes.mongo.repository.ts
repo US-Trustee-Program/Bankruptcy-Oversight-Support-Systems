@@ -52,8 +52,13 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       doc('caseId').equals(archiveNote.caseId),
       doc('id').equals(archiveNote.id),
     );
+
+    const archiveDate = {
+      archivedOn: archiveNote.archivedOn,
+    };
+
     try {
-      return await this.getAdapter<CaseNote>().updateOne(query, archiveNote);
+      return await this.getAdapter<CaseNote>().updateOne(query, archiveDate);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to archive case note.');
     }
