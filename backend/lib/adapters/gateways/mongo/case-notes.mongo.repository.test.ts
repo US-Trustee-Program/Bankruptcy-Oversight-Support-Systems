@@ -94,7 +94,5 @@ describe('case notes repo tests', () => {
         getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to retrieve case note.'),
       );
     });
-
-    //test('should handle error on archiveCaseNote', {});
   });
 });

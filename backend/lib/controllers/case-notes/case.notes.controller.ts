@@ -50,10 +50,8 @@ export class CaseNotesController implements CamsController {
           statusCode: HttpStatusCodes.CREATED,
         });
       } else if (context.request.method === 'DELETE') {
-        const id = context.request.params.noteId;
-        const caseId = context.request.params.caseId;
-        const userId = context.request.params.userId;
-        const archiveNote = { id, caseId, userId };
+        const { caseId, noteId, userId } = context.request.params;
+        const archiveNote = { id: noteId, caseId, userId };
         this.validateArchiveRequestParameters(archiveNote);
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({

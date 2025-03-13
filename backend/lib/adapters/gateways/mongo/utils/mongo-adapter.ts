@@ -174,9 +174,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       const notFoundError = new NotFoundError(this.moduleName, {
         message: 'No matching item found.',
       });
-      // const unknownMatchError = new NotFoundError(this.moduleName, {
-      // message: `Failed to update document. Query matched ${result.matchedCount} items.`,
-      // });
 
       if (!result.acknowledged) {
         throw unknownError;
