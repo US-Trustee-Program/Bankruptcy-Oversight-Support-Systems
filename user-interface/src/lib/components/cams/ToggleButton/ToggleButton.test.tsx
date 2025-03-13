@@ -9,6 +9,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label="Test Button"
         ariaLabel="Test Button"
+        tooltipLabel="Test Button"
         isActive={false}
         onToggle={() => false}
       />,
@@ -18,6 +19,7 @@ describe('ToggleButton', () => {
     expect(button).toHaveClass('inactive');
     expect(button).toHaveAttribute('aria-checked', 'false');
     expect(button).toHaveTextContent('Test Button');
+    expect(button).toHaveAttribute('title', 'Test Button');
   });
 
   test('should render with active state', () => {
@@ -26,6 +28,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label="Test Button"
         ariaLabel="Test Button"
+        tooltipLabel="Test Button"
         isActive={true}
         onToggle={() => true}
       />,
@@ -44,6 +47,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label="Test Button"
         ariaLabel="Test Button"
+        tooltipLabel="Test Button"
         isActive={false}
         onToggle={onToggle}
       />,
@@ -68,6 +72,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label={{ active: 'Active Label', inactive: 'Inactive Label' }}
         ariaLabel={{ active: 'Active Aria Label', inactive: 'Inactive Aria Label' }}
+        tooltipLabel={{ active: 'Active Tooltip', inactive: 'Inactive Tooltip' }}
         isActive={false}
         onToggle={() => false}
       />,
@@ -76,11 +81,13 @@ describe('ToggleButton', () => {
     const button = screen.getByRole('switch');
     expect(button).toHaveClass('inactive');
     expect(button).toHaveAttribute('aria-label', 'Inactive Aria Label');
+    expect(button).toHaveAttribute('title', 'Inactive Tooltip');
     expect(button).toHaveTextContent('Inactive Label');
 
     await userEvent.click(button);
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-label', 'Active Aria Label');
+    expect(button).toHaveAttribute('title', 'Active Tooltip');
     expect(button).toHaveTextContent('Active Label');
   });
 
@@ -91,6 +98,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label={staticLabel}
         ariaLabel={staticLabel}
+        tooltipLabel={staticLabel}
         isActive={false}
         onToggle={() => false}
       />,
@@ -99,11 +107,13 @@ describe('ToggleButton', () => {
     const button = screen.getByRole('switch');
     expect(button).toHaveClass('inactive');
     expect(button).toHaveAttribute('aria-label', staticLabel);
+    expect(button).toHaveAttribute('title', staticLabel);
     expect(button).toHaveTextContent(staticLabel);
 
     await userEvent.click(button);
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-label', staticLabel);
+    expect(button).toHaveAttribute('title', staticLabel);
     expect(button).toHaveTextContent(staticLabel);
   });
 
@@ -113,6 +123,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label="Test Button"
         ariaLabel="Test Button"
+        tooltipLabel="Test Button"
         isActive={false}
         onToggle={() => false}
       />,
@@ -126,6 +137,7 @@ describe('ToggleButton', () => {
         id="test-button"
         label="Test Button"
         ariaLabel="Test Button"
+        tooltipLabel="Test Button"
         isActive={true}
         onToggle={() => true}
       />,
