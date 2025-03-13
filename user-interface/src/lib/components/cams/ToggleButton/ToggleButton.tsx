@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Icon from '../../uswds/Icon';
 import './ToggleButton.scss';
 
@@ -36,6 +36,10 @@ function ToggleButton(props: ToggleButtonProps) {
       props.onToggle(!isActive);
     }
   }
+
+  useEffect(() => {
+    setIsActive(props.isActive);
+  }, [props.isActive]);
 
   const ariaLabel = getLabel(props.ariaLabel, isActive);
   const label = getLabel(props.label, isActive);
