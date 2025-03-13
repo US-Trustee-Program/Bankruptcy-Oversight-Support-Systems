@@ -36,7 +36,7 @@ export class CaseNotesController implements CamsController {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
-        const caseId = context.request.params.caseId;
+        const { caseId } = context.request.params;
         const noteContent = context.request.body['content'];
         const noteTitle = context.request.body['title'];
         this.validatePostRequestParameters(caseId, noteContent, noteTitle);
