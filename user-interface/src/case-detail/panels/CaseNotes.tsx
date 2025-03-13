@@ -40,7 +40,7 @@ export interface CaseNotesProps {
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
   onNoteCreation: () => void;
-  onNoteArchive: () => void;
+  onNoteDelete: () => void;
   searchString: string;
 }
 
@@ -50,16 +50,16 @@ export default function CaseNotes(props: CaseNotesProps) {
   const contentInputRef = useRef<TextAreaRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
-  const archiveConfirmationModalRef = useRef<ModalRefType>(null);
+  const deleteConfirmationModalRef = useRef<ModalRefType>(null);
   const openModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
   useMemo(() => {
     openModalButtonRefs.current =
       caseNotes?.map((_, index) => openModalButtonRefs.current[index] ?? { current: null }) || [];
   }, [caseNotes]);
-  const [archiveNote, setArchiveNote] = useState<Partial<CaseNote> | null>(null);
+  const [noteForDeletion, setNoteForDeletion] = useState<Partial<CaseNote> | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const archiveConfirmationModalId = 'archive-modal';
+  const deleteConfirmationModalId = 'delete-note-modal';
 
   const api = Api2;
 
@@ -82,31 +82,31 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
-  function handleArchiveButtonClick() {
-    if (archiveNote?.id) {
-      const newArchiveNote = {
-        id: archiveNote.id,
-        caseId: archiveNote.caseId,
+  function handleDeleteButtonClick() {
+    if (noteForDeletion?.id) {
+      const newDeletionNote = {
+        id: noteForDeletion.id,
+        caseId: noteForDeletion.caseId,
         updatedBy: getCamsUserReference(session?.user as CamsUser),
       };
 
       api
-        .patchCaseNoteArchival(newArchiveNote)
+        .deleteCaseNote(newDeletionNote)
         .then(() => {
-          if (props.onNoteArchive) {
-            props.onNoteArchive();
+          if (props.onNoteDelete) {
+            props.onNoteDelete();
           }
         })
         .catch(() => {
           globalAlert?.error('There was a problem archiving the note.');
         })
         .finally(() => {
-          setArchiveNote(null);
+          setNoteForDeletion(null);
         });
     }
   }
 
-  function userCanArchive(note: CaseNote) {
+  function userCanDelete(note: CaseNote) {
     return session?.user.id === note.updatedBy.id;
   }
 
@@ -145,8 +145,8 @@ export default function CaseNotes(props: CaseNotesProps) {
       if (session?.user) {
         const caseNoteInput: CaseNoteInput = {
           caseId: props.caseId,
-          title: formData.title,
-          content: formData.content,
+          title: getCaseNotesInputValue(titleInputRef.current),
+          content: getCaseNotesInputValue(contentInputRef.current),
           updatedBy: getCamsUserReference(session?.user),
         };
         api
@@ -206,14 +206,14 @@ export default function CaseNotes(props: CaseNotesProps) {
           {note.updatedBy.name}
         </div>
         <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
-          {userCanArchive(note) && (
+          {userCanDelete(note) && (
             <OpenModalButton
               className="remove-button"
               id={`case-note-remove-button-${idx}`}
               buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
-              modalId={archiveConfirmationModalId}
-              modalRef={archiveConfirmationModalRef}
+              modalId={deleteConfirmationModalId}
+              modalRef={deleteConfirmationModalRef}
               ref={openModalButtonRefs.current[idx]}
               openProps={{
                 id: note.id,
@@ -221,7 +221,7 @@ export default function CaseNotes(props: CaseNotesProps) {
                 buttonId: `case-note-remove-button-${idx}`,
               }}
               ariaLabel={`Remove note titled ${note.title}`}
-              onClick={() => setArchiveNote(note)}
+              onClick={() => setNoteForDeletion(note)}
             >
               <Icon name="remove_circle" className="remove-icon" />
               Remove
@@ -238,12 +238,12 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
-  const archiveConfirmationButtonGroup: SubmitCancelBtnProps = {
-    modalId: archiveConfirmationModalId,
-    modalRef: archiveConfirmationModalRef as React.RefObject<ModalRefType>,
+  const deleteConfirmationButtonGroup: SubmitCancelBtnProps = {
+    modalId: deleteConfirmationModalId,
+    modalRef: deleteConfirmationModalRef as React.RefObject<ModalRefType>,
     submitButton: {
       label: 'Remove',
-      onClick: handleArchiveButtonClick,
+      onClick: handleDeleteButtonClick,
       disabled: false,
       closeOnClick: true,
     },
@@ -346,12 +346,12 @@ export default function CaseNotes(props: CaseNotesProps) {
         )}
       </div>
       <Modal
-        ref={archiveConfirmationModalRef}
-        modalId={archiveConfirmationModalId}
-        className="archive-confirmation-modal"
+        ref={deleteConfirmationModalRef}
+        modalId={deleteConfirmationModalId}
+        className="delete-note-confirmation-modal"
         heading="Remove note?"
         content="Would you like to remove this note? This action cannot be undone."
-        actionButtonGroup={archiveConfirmationButtonGroup}
+        actionButtonGroup={deleteConfirmationButtonGroup}
       ></Modal>
     </div>
   );

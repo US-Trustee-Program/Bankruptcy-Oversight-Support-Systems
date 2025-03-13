@@ -376,7 +376,7 @@ export const _Api2 = {
   getCaseHistory,
   postCaseNote,
   getCaseNotes,
-  patchCaseNoteArchival: deleteCaseNote,
+  deleteCaseNote,
   getCourts,
   getMe,
   getOfficeAttorneys,

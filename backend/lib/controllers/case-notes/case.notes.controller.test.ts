@@ -12,7 +12,7 @@ import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-h
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { randomUUID } from 'crypto';
-import { CaseNoteArchiveRequest } from '../../../../common/src/cams/cases';
+import { CaseNoteDeleteRequest } from '../../../../common/src/cams/cases';
 
 describe('Case note controller tests', () => {
   let applicationContext: ApplicationContext;
@@ -252,10 +252,11 @@ describe('Case note controller tests', () => {
     const archiveSpy = jest
       .spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote')
       .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
-    const expectedRequest: CaseNoteArchiveRequest = {
+    const expectedRequest: CaseNoteDeleteRequest = {
       id: archiveNote.id,
       caseId: archiveNote.caseId,
       userId: archiveNote.updatedBy.id,
+      sessionUser: applicationContext.session.user,
     };
 
     applicationContext.request = mockCamsHttpRequest({

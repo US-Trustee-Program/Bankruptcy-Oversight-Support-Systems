@@ -6,7 +6,7 @@ import {
   CaseDocketEntry,
   CaseDocketEntryDocument,
   CaseNote,
-  CaseNoteArchiveRequest,
+  CaseNoteDeleteRequest,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -524,18 +524,20 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   };
 }
 
-function getCaseNoteArchivalRequest(
-  override: Partial<CaseNoteArchiveRequest> = {},
-): CaseNoteArchiveRequest {
+function getCaseNoteDeletionRequest(
+  override: Partial<CaseNoteDeleteRequest> = {},
+): CaseNoteDeleteRequest {
+  const userId = randomId();
   return {
     id: crypto.randomUUID(),
     caseId: randomCaseId(),
-    userId: randomId(),
+    userId,
+    sessionUser: getCamsUserReference({ id: userId }),
     ...override,
   };
 }
 
-function getCaseNoteArchival(override: Partial<CaseNote> = {}): Partial<CaseNote> {
+function getCaseNoteDeletion(override: Partial<CaseNote> = {}): Partial<CaseNote> {
   const archivedOn = getTodaysIsoDate();
   return {
     id: randomId(),
@@ -725,8 +727,8 @@ export const MockData = {
   randomUstpOffice,
   getAttorneyAssignment,
   getCaseNote,
-  getCaseNoteArchival,
-  getCaseNoteArchivalRequest,
+  getCaseNoteArchival: getCaseNoteDeletion,
+  getCaseNoteArchivalRequest: getCaseNoteDeletionRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

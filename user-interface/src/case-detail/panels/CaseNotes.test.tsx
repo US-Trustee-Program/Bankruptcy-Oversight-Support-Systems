@@ -30,7 +30,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     caseNotes: [],
     searchString: '',
     onNoteCreation: vi.fn(),
-    onNoteArchive: vi.fn(),
+    onNoteDelete: vi.fn(),
     areCaseNotesLoading: false,
   };
 
@@ -274,7 +274,7 @@ describe('case note tests', () => {
       data: caseNotes,
     });
     const patchSpy = vi
-      .spyOn(Api2, 'patchCaseNoteArchival')
+      .spyOn(Api2, 'deleteCaseNote')
       .mockResolvedValueOnce()
       .mockRejectedValueOnce(new Error());
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
@@ -282,19 +282,19 @@ describe('case note tests', () => {
       id: userId,
       name: userFullName,
     };
-    const expectedFirstPatchArgument = {
+    const expectedFirstDeleteArgument = {
       id: caseNotes[0].id,
       caseId: caseNotes[0].caseId,
       updatedBy: expectedUser,
     };
-    const expectedSecondPatchArgument = {
+    const expectedSecondDeleteArgument = {
       id: caseNotes[2].id,
       caseId: caseNotes[2].caseId,
       updatedBy: expectedUser,
     };
-    const onNoteArchiveSpy = vi.fn();
+    const onNoteDeleteSpy = vi.fn();
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes, onNoteArchive: onNoteArchiveSpy });
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes, onNoteDelete: onNoteDeleteSpy });
 
     const button0 = screen.queryByTestId('open-modal-button-0');
     const button1 = screen.queryByTestId('open-modal-button-1');
@@ -307,25 +307,25 @@ describe('case note tests', () => {
     expect(button2).toBeInTheDocument();
 
     await userEvent.click(button0!);
-    const modalSubmitButton0 = screen.queryByTestId('button-archive-modal-submit-button');
+    const modalSubmitButton0 = screen.queryByTestId('button-delete-note-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton0).toBeVisible();
     });
     await userEvent.click(modalSubmitButton0!);
-    expect(patchSpy).toHaveBeenCalledWith(expectedFirstPatchArgument);
-    expect(onNoteArchiveSpy).toHaveBeenCalled();
+    expect(patchSpy).toHaveBeenCalledWith(expectedFirstDeleteArgument);
+    expect(onNoteDeleteSpy).toHaveBeenCalled();
 
     await userEvent.click(button2!);
-    const modalSubmitButton2 = screen.queryByTestId('button-archive-modal-submit-button');
+    const modalSubmitButton2 = screen.queryByTestId('button-delete-note-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton2).toBeVisible();
     });
     await userEvent.click(modalSubmitButton2!);
-    expect(patchSpy).toHaveBeenCalledWith(expectedSecondPatchArgument);
+    expect(patchSpy).toHaveBeenCalledWith(expectedSecondDeleteArgument);
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
     });
-    expect(onNoteArchiveSpy).toHaveBeenCalledTimes(1);
+    expect(onNoteDeleteSpy).toHaveBeenCalledTimes(1);
   });
 });
 

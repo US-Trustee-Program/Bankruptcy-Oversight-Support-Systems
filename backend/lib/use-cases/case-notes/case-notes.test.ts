@@ -74,12 +74,14 @@ describe('Test case-notes use case', () => {
     const archiveNoteRequest = MockData.getCaseNoteArchivalRequest({
       id: randomUUID(),
       userId: user.id,
+      sessionUser: userRef,
     });
 
     const expectedArchiveNote: Partial<CaseNote> = {
       id: archiveNoteRequest.id,
       caseId: archiveNoteRequest.caseId,
       archivedOn: expect.anything(),
+      archivedBy: userRef,
     };
 
     await useCase.archiveCaseNote(archiveNoteRequest);
@@ -90,23 +92,24 @@ describe('Test case-notes use case', () => {
   test('should throw error when user is not user on the note when attempting to archive', async () => {
     const userRef = MockData.getCamsUserReference();
     const wrongUserRef = MockData.getCamsUserReference();
-    const wrongUser = {
-      ...wrongUserRef,
+    const user = {
+      ...userRef,
       offices: [REGION_02_GROUP_NY],
       roles: [CamsRole.CaseAssignmentManager],
     };
     const context = await createMockApplicationContext();
-    context.session = await createMockApplicationContextSession({ user: wrongUser });
+    context.session = await createMockApplicationContextSession({ user: user });
 
     const useCase = new CaseNotesUseCase(context);
 
     const archiveNoteRequest = MockData.getCaseNoteArchivalRequest({
       id: randomUUID(),
-      userId: userRef.id,
+      userId: user.id,
+      sessionUser: wrongUserRef,
     });
 
     await expect(useCase.archiveCaseNote(archiveNoteRequest)).rejects.toThrow(
-      'User is not creator of the note.',
+      'User is not the creator of the note.',
     );
   });
 });

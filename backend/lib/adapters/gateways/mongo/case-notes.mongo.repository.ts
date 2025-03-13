@@ -58,6 +58,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
 
     const archiveDate = {
       archivedOn: archiveNote.archivedOn,
+      archivedBy: archiveNote.archivedBy,
     };
 
     try {
