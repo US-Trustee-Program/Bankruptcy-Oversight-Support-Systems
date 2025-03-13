@@ -1,0 +1,38 @@
+button.toggle-button {
+  display: inline-flex;
+  flex-flow: row;
+  flex-direction: row;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-right: 0.5rem;
+  padding: 0rem 0.5rem 0.125rem 0.5rem;
+  border-radius: 0.125rem;
+
+  cursor: pointer;
+  text-decoration: none;
+  color: white;
+}
+
+button.toggle-button.inactive {
+  background: #5c5c5c;
+  font-weight: normal;
+  svg {
+    display: none;
+    padding-left: 0.125rem;
+  }
+}
+
+button.toggle-button.active {
+  background: #0050d8;
+  font-weight: bold;
+  svg {
+    display: inline;
+  }
+}
+
+button.toggle-button:hover {
+  text-decoration: none;
+  color: white;
+}
