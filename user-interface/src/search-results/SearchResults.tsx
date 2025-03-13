@@ -129,6 +129,7 @@ export function SearchResults(props: SearchResultsProps) {
     search();
   }, [searchPredicate]);
 
+  const totalCount = searchResults?.pagination?.totalCount ?? 0;
   return (
     <div {...otherProps} className="search-results">
       {alertInfo && (
@@ -172,7 +173,7 @@ export function SearchResults(props: SearchResultsProps) {
             scrollable="true"
             uswdsStyle={['striped']}
             title="search results."
-            caption={`Search yielded ${new Intl.NumberFormat('en-US').format(searchResults?.pagination?.totalCount ?? 0)} results.`}
+            caption={`Search yielded ${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'result' : 'results'}.`}
           >
             <Header id={id} labels={searchResultsHeaderLabels} />
             <TableBody id={id}>
