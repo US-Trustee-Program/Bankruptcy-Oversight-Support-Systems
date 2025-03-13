@@ -424,7 +424,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setCaseBasicInfo(updatedCaseBasicInfo);
   }
 
-  function handleNotesCreation() {
+  function handleNotesCallback() {
     fetchCaseNotes();
   }
 
@@ -767,7 +767,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           searchString={caseNoteSearchText}
                           areCaseNotesLoading={areCaseNotesLoading}
                           alertOptions={notesAlertOptions}
-                          onNoteCreation={handleNotesCreation}
+                          onNoteCreation={handleNotesCallback}
+                          onRemoveNote={handleNotesCallback}
                         />
                       }
                     />

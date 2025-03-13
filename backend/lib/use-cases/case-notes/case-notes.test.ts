@@ -1,9 +1,15 @@
+import { randomUUID } from 'crypto';
 import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
 import { CaseNotesUseCase } from './case-notes';
+import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { CamsRole } from '../../../../common/src/cams/roles';
 
 describe('Test case-notes use case', () => {
   test('should return a list of case notes when getCaseNotes is called', async () => {
@@ -47,5 +53,63 @@ describe('Test case-notes use case', () => {
     await useCase.createCaseNote(user, caseNoteInput);
 
     expect(createSpy).toHaveBeenCalledWith(expectedNote);
+  });
+
+  test('should update a case Note and call archive with correct parameters when archiveCaseNote is called', async () => {
+    const userRef = MockData.getCamsUserReference();
+    const user = {
+      ...userRef,
+      offices: [REGION_02_GROUP_NY],
+      roles: [CamsRole.CaseAssignmentManager],
+    };
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user });
+
+    const useCase = new CaseNotesUseCase(context);
+    const archiveSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
+      .mockImplementation(async () => {});
+
+    const archiveNoteRequest = MockData.getCaseNoteArchivalRequest({
+      id: randomUUID(),
+      userId: user.id,
+      sessionUser: userRef,
+    });
+
+    const expectedArchiveNote: Partial<CaseNote> = {
+      id: archiveNoteRequest.id,
+      caseId: archiveNoteRequest.caseId,
+      archivedOn: expect.anything(),
+      archivedBy: userRef,
+    };
+
+    await useCase.archiveCaseNote(archiveNoteRequest);
+
+    expect(archiveSpy).toHaveBeenCalledWith(expectedArchiveNote);
+  });
+
+  test('should throw error when user is not user on the note when attempting to archive', async () => {
+    const userRef = MockData.getCamsUserReference();
+    const wrongUserRef = MockData.getCamsUserReference();
+    const user = {
+      ...userRef,
+      offices: [REGION_02_GROUP_NY],
+      roles: [CamsRole.CaseAssignmentManager],
+    };
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: user });
+
+    const useCase = new CaseNotesUseCase(context);
+
+    const archiveNoteRequest = MockData.getCaseNoteArchivalRequest({
+      id: randomUUID(),
+      userId: user.id,
+      sessionUser: wrongUserRef,
+    });
+
+    await expect(useCase.archiveCaseNote(archiveNoteRequest)).rejects.toThrow(
+      'User is not the creator of the note.',
+    );
   });
 });

@@ -6,6 +6,7 @@ import {
   CaseDocketEntry,
   CaseDocketEntryDocument,
   CaseNote,
+  CaseNoteDeleteRequest,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -523,6 +524,30 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   };
 }
 
+function getCaseNoteDeletionRequest(
+  override: Partial<CaseNoteDeleteRequest> = {},
+): CaseNoteDeleteRequest {
+  const userId = randomId();
+  return {
+    id: crypto.randomUUID(),
+    caseId: randomCaseId(),
+    userId,
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getCaseNoteDeletion(override: Partial<CaseNote> = {}): Partial<CaseNote> {
+  const archivedOn = new Date().toISOString();
+  return {
+    id: randomId(),
+    caseId: randomCaseId(),
+    updatedBy: getCamsUserReference(),
+    archivedOn,
+    ...override,
+  };
+}
+
 function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
@@ -702,6 +727,8 @@ export const MockData = {
   randomUstpOffice,
   getAttorneyAssignment,
   getCaseNote,
+  getCaseNoteArchival: getCaseNoteDeletion,
+  getCaseNoteArchivalRequest: getCaseNoteDeletionRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

@@ -34,7 +34,7 @@ describe('Case Note Tests', async () => {
     render(
       <MemoryRouter initialEntries={[infoPath ?? basicInfoPath]}>
         <Routes>
-          <Route path="case-detail/:id/*" element={<CaseDetailScreen {...renderProps} />} />
+          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen {...renderProps} />} />
         </Routes>
       </MemoryRouter>,
     );

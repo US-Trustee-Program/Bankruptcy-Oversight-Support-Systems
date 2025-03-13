@@ -266,6 +266,12 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   }
 }
 
+async function deleteCaseNote(note: Partial<CaseNote>) {
+  await api().delete<Partial<CaseNote>>(
+    `/cases/${note.caseId}/notes/${note.id}/${note.updatedBy!.id}`,
+  );
+}
+
 async function getCourts() {
   const path = `/courts`;
   return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
@@ -370,6 +376,7 @@ export const _Api2 = {
   getCaseHistory,
   postCaseNote,
   getCaseNotes,
+  deleteCaseNote,
   getCourts,
   getMe,
   getOfficeAttorneys,

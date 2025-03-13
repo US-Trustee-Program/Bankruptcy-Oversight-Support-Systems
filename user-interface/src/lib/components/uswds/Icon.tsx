@@ -4,6 +4,7 @@
  */
 export interface IconProps {
   name: string;
+  tooltip?: string;
   className?: string;
   focusable?: boolean;
 }
@@ -20,6 +21,7 @@ export default function Icon(props: IconProps) {
       role="img"
       data-testid="icon"
     >
+      {props.tooltip && <title>{props.tooltip}</title>}
       <use xlinkHref={link}></use>
     </svg>
   );
