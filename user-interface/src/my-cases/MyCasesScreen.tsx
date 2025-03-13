@@ -35,7 +35,7 @@ export const MyCasesScreen = () => {
     offset: DEFAULT_SEARCH_OFFSET,
     assignments: [getCamsUserReference(session.user)],
     excludeChildConsolidations: true,
-    excludeClosedCases: doShowClosedCases,
+    excludeClosedCases: !doShowClosedCases,
   };
 
   const infoModalActionButtonGroup = {
