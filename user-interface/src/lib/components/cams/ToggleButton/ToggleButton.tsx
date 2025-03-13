@@ -32,9 +32,7 @@ function ToggleButton(props: ToggleButtonProps) {
 
   function handleToggle() {
     setIsActive(!isActive);
-    if (props.onToggle) {
-      props.onToggle(!isActive);
-    }
+    props.onToggle(!isActive);
   }
 
   useEffect(() => {
