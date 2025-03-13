@@ -1,4 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import ToggleButton from './ToggleButton';
 
 describe('ToggleButton', () => {
@@ -36,7 +37,7 @@ describe('ToggleButton', () => {
     expect(button).toHaveTextContent('Test Button');
   });
 
-  test('should toggle state on click', () => {
+  test('should toggle state on click', async () => {
     const onToggle = vi.fn();
     render(
       <ToggleButton
@@ -49,19 +50,19 @@ describe('ToggleButton', () => {
     );
 
     const button = screen.getByRole('switch');
-    fireEvent.click(button);
+    await userEvent.click(button);
 
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-checked', 'true');
     expect(onToggle).toHaveBeenCalledWith(true);
 
-    fireEvent.click(button);
+    await userEvent.click(button);
     expect(button).toHaveClass('inactive');
     expect(button).toHaveAttribute('aria-checked', 'false');
     expect(onToggle).toHaveBeenCalledWith(false);
   });
 
-  test('should render with ModeLabel', () => {
+  test('should render with ModeLabel', async () => {
     render(
       <ToggleButton
         id="test-button"
@@ -77,13 +78,13 @@ describe('ToggleButton', () => {
     expect(button).toHaveAttribute('aria-label', 'Inactive Aria Label');
     expect(button).toHaveTextContent('Inactive Label');
 
-    fireEvent.click(button);
+    await userEvent.click(button);
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-label', 'Active Aria Label');
     expect(button).toHaveTextContent('Active Label');
   });
 
-  test('should render with static string labels', () => {
+  test('should render with static string labels', async () => {
     const staticLabel = 'Foo Bar';
     render(
       <ToggleButton
@@ -100,7 +101,7 @@ describe('ToggleButton', () => {
     expect(button).toHaveAttribute('aria-label', staticLabel);
     expect(button).toHaveTextContent(staticLabel);
 
-    fireEvent.click(button);
+    await userEvent.click(button);
     expect(button).toHaveClass('active');
     expect(button).toHaveAttribute('aria-label', staticLabel);
     expect(button).toHaveTextContent(staticLabel);
