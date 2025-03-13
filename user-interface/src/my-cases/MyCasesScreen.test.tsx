@@ -36,6 +36,24 @@ describe('MyCasesScreen', () => {
     expect(modal).toBeInTheDocument();
   });
 
+  test('should toggle closed cases toggle', async () => {
+    render(
+      <BrowserRouter>
+        <MyCasesScreen></MyCasesScreen>
+      </BrowserRouter>,
+    );
+
+    const toggle = screen.getByTestId('closed-cases-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveClass('inactive');
+    fireEvent.click(toggle!);
+
+    expect(toggle).toHaveClass('active');
+    fireEvent.click(toggle!);
+
+    expect(toggle).toHaveClass('inactive');
+  });
+
   test('should render a list of cases assigned to a user', async () => {
     const expectedData = MockData.buildArray(MockData.getSyncedCase, 3);
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
