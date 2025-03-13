@@ -3,7 +3,7 @@ import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
-test.describe('Consolidation Orders', () => {
+test.describe('Case Notes', () => {
   let caseNoteTitleInput;
   let caseNoteContentInput;
   let submitCaseNoteButton;
