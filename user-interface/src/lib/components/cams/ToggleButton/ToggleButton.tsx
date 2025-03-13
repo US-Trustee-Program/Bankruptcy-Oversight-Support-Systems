@@ -24,7 +24,7 @@ type ToggleButtonProps = {
   label: string | ModeLabel;
   ariaLabel: string | ModeLabel;
   isActive: boolean;
-  onToggle: () => void;
+  onToggle: (isActive: boolean) => boolean;
 };
 
 function ToggleButton(props: ToggleButtonProps) {
@@ -33,7 +33,7 @@ function ToggleButton(props: ToggleButtonProps) {
   function handleToggle() {
     setIsActive(!isActive);
     if (props.onToggle) {
-      props.onToggle();
+      props.onToggle(!isActive);
     }
   }
 
@@ -41,20 +41,18 @@ function ToggleButton(props: ToggleButtonProps) {
   const label = getLabel(props.label, isActive);
 
   return (
-    <div className="toggle-button">
-      <button
-        id={props.id}
-        data-testid={props.id}
-        role="switch"
-        className={`${isActive ? 'active' : 'inactive'} usa-tag--big usa-button--unstyled`}
-        aria-label={arialLabel}
-        aria-checked={isActive}
-        onClick={handleToggle}
-      >
-        {label}
-        <Icon name="check"></Icon>
-      </button>
-    </div>
+    <button
+      id={props.id}
+      data-testid={props.id}
+      role="switch"
+      className={`toggle-button ${isActive ? 'active' : 'inactive'} usa-tag--big usa-button--unstyled`}
+      aria-label={arialLabel}
+      aria-checked={isActive}
+      onClick={handleToggle}
+    >
+      {label}
+      <Icon name="check"></Icon>
+    </button>
   );
 }
 
