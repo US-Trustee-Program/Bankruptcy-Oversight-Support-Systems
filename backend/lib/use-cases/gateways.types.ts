@@ -58,7 +58,6 @@ interface Reads<R> {
 }
 
 interface Updates<T, R = void> {
-  //TODO: why is this named update when we do a replaceOne?
   update(data: T): Promise<R>;
 }
 
@@ -96,7 +95,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
 
 export interface CaseNotesRepository<T = CaseNote> extends Creates<T, string> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
-  archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>; //TODO: replace the current update function with replace? and create new update function
+  archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
 }
 
 export interface OrdersRepository<T = Order>
