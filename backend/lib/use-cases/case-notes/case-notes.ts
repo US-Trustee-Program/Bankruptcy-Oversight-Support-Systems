@@ -3,7 +3,6 @@ import { getCaseNotesRepository } from '../../factory';
 import { CaseNotesRepository, UpdateResult } from '../gateways.types';
 import { CaseNote, CaseNoteDeleteRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
 import { CamsUser } from '../../../../common/src/cams/users';
-import { getTodaysIsoDate } from '../../../../common/src/date-helper';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 
@@ -25,7 +24,7 @@ export class CaseNotesUseCase {
         id: user.id,
         name: user.name,
       },
-      updatedOn: getTodaysIsoDate(),
+      updatedOn: new Date().toISOString(),
     };
 
     await this.caseNotesRepository.create(data);
