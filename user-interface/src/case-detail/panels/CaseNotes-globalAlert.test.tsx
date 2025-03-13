@@ -17,7 +17,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     caseNotes: [],
     searchString: '',
     onNoteCreation: vi.fn(),
-    onNoteDelete: vi.fn(),
+    onRemoveNote: vi.fn(),
     areCaseNotesLoading: false,
   };
 

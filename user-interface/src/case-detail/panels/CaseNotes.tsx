@@ -40,7 +40,7 @@ export interface CaseNotesProps {
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
   onNoteCreation: () => void;
-  onNoteDelete: () => void;
+  onRemoveNote: () => void;
   searchString: string;
 }
 
@@ -50,16 +50,16 @@ export default function CaseNotes(props: CaseNotesProps) {
   const contentInputRef = useRef<TextAreaRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
-  const deleteConfirmationModalRef = useRef<ModalRefType>(null);
+  const removeConnfirmationModalRef = useRef<ModalRefType>(null);
   const openModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
   useMemo(() => {
     openModalButtonRefs.current =
       caseNotes?.map((_, index) => openModalButtonRefs.current[index] ?? { current: null }) || [];
   }, [caseNotes]);
-  const [noteForDeletion, setNoteForDeletion] = useState<Partial<CaseNote> | null>(null);
+  const [noteForRemoval, setNoteForRemoval] = useState<Partial<CaseNote> | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
-  const deleteConfirmationModalId = 'delete-note-modal';
+  const removeConfirmationModalId = 'remove-note-modal';
 
   const api = Api2;
 
@@ -82,31 +82,31 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
-  function handleDeleteButtonClick() {
-    if (noteForDeletion?.id) {
-      const newDeletionNote = {
-        id: noteForDeletion.id,
-        caseId: noteForDeletion.caseId,
+  function handleRemoveButtonClick() {
+    if (noteForRemoval?.id) {
+      const newNoteForRemoval = {
+        id: noteForRemoval.id,
+        caseId: noteForRemoval.caseId,
         updatedBy: getCamsUserReference(session?.user as CamsUser),
       };
 
       api
-        .deleteCaseNote(newDeletionNote)
+        .deleteCaseNote(newNoteForRemoval)
         .then(() => {
-          if (props.onNoteDelete) {
-            props.onNoteDelete();
+          if (props.onRemoveNote) {
+            props.onRemoveNote();
           }
         })
         .catch(() => {
           globalAlert?.error('There was a problem archiving the note.');
         })
         .finally(() => {
-          setNoteForDeletion(null);
+          setNoteForRemoval(null);
         });
     }
   }
 
-  function userCanDelete(note: CaseNote) {
+  function userCanRemove(note: CaseNote) {
     return session?.user.id === note.updatedBy.id;
   }
 
@@ -206,14 +206,14 @@ export default function CaseNotes(props: CaseNotesProps) {
           {note.updatedBy.name}
         </div>
         <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
-          {userCanDelete(note) && (
+          {userCanRemove(note) && (
             <OpenModalButton
               className="remove-button"
               id={`case-note-remove-button-${idx}`}
               buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
-              modalId={deleteConfirmationModalId}
-              modalRef={deleteConfirmationModalRef}
+              modalId={removeConfirmationModalId}
+              modalRef={removeConnfirmationModalRef}
               ref={openModalButtonRefs.current[idx]}
               openProps={{
                 id: note.id,
@@ -221,7 +221,7 @@ export default function CaseNotes(props: CaseNotesProps) {
                 buttonId: `case-note-remove-button-${idx}`,
               }}
               ariaLabel={`Remove note titled ${note.title}`}
-              onClick={() => setNoteForDeletion(note)}
+              onClick={() => setNoteForRemoval(note)}
             >
               <Icon name="remove_circle" className="remove-icon" />
               Remove
@@ -238,12 +238,12 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
-  const deleteConfirmationButtonGroup: SubmitCancelBtnProps = {
-    modalId: deleteConfirmationModalId,
-    modalRef: deleteConfirmationModalRef as React.RefObject<ModalRefType>,
+  const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
+    modalId: removeConfirmationModalId,
+    modalRef: removeConnfirmationModalRef as React.RefObject<ModalRefType>,
     submitButton: {
       label: 'Remove',
-      onClick: handleDeleteButtonClick,
+      onClick: handleRemoveButtonClick,
       disabled: false,
       closeOnClick: true,
     },
@@ -346,12 +346,12 @@ export default function CaseNotes(props: CaseNotesProps) {
         )}
       </div>
       <Modal
-        ref={deleteConfirmationModalRef}
-        modalId={deleteConfirmationModalId}
-        className="delete-note-confirmation-modal"
+        ref={removeConnfirmationModalRef}
+        modalId={removeConfirmationModalId}
+        className="remove-note-confirmation-modal"
         heading="Remove note?"
         content="Would you like to remove this note? This action cannot be undone."
-        actionButtonGroup={deleteConfirmationButtonGroup}
+        actionButtonGroup={removeConfirmationButtonGroup}
       ></Modal>
     </div>
   );
