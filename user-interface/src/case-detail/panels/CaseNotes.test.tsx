@@ -307,7 +307,7 @@ describe('case note tests', () => {
     expect(button2).toBeInTheDocument();
 
     await userEvent.click(button0!);
-    const modalSubmitButton0 = screen.queryByTestId('button--submit-button');
+    const modalSubmitButton0 = screen.queryByTestId('button-archive-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton0).toBeVisible();
     });
@@ -316,7 +316,7 @@ describe('case note tests', () => {
     expect(onNoteArchiveSpy).toHaveBeenCalled();
 
     await userEvent.click(button2!);
-    const modalSubmitButton2 = screen.queryByTestId('button--submit-button');
+    const modalSubmitButton2 = screen.queryByTestId('button-archive-modal-submit-button');
     await waitFor(() => {
       expect(modalSubmitButton2).toBeVisible();
     });
