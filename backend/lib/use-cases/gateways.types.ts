@@ -34,7 +34,6 @@ export type ReplaceResult = {
 };
 
 export type UpdateResult = {
-  // id: string;
   modifiedCount: number;
   matchedCount: number;
 };
