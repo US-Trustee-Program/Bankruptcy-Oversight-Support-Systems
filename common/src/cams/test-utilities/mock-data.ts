@@ -538,7 +538,7 @@ function getCaseNoteDeletionRequest(
 }
 
 function getCaseNoteDeletion(override: Partial<CaseNote> = {}): Partial<CaseNote> {
-  const archivedOn = getTodaysIsoDate();
+  const archivedOn = new Date().toISOString();
   return {
     id: randomId(),
     caseId: randomCaseId(),
