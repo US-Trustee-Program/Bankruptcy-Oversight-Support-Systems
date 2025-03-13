@@ -5,7 +5,7 @@ import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
-import { CaseNote, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteDeleteRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
@@ -16,12 +16,6 @@ const INVALID_ID_MESSAGE = 'case note ID must be provided.';
 const INVALID_CASEID_MESSAGE = 'caseId must be formatted like 111-01-12345.';
 const INVALID_NOTE_MESSAGE = 'Note content contains invalid keywords.';
 const INVALID_NOTE_TITLE_MESSAGE = 'Note title contains invalid keywords.';
-
-type ArchiveRequest = {
-  id?: string;
-  caseId?: string;
-  archive?: boolean;
-};
 
 export class CaseNotesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
@@ -106,7 +100,7 @@ export class CaseNotesController implements CamsController {
     }
   }
 
-  private validateArchiveRequestParameters(request: ArchiveRequest) {
+  private validateArchiveRequestParameters(request: Partial<CaseNoteDeleteRequest>) {
     const badParams = [];
     const messages = [];
 
