@@ -307,7 +307,7 @@ async function getCaseNotes(caseId: string): Promise<ResponseBody<CaseNote[]>> {
   return get<CaseNote[]>(`/cases/${caseId}/notes`);
 }
 
-async function patchCaseNoteArchival(_note: Partial<CaseNote>) {
+async function deleteCaseNote(_note: Partial<CaseNote>) {
   return Promise.resolve();
 }
 
@@ -369,7 +369,7 @@ export const MockApi2 = {
   getCaseHistory,
   postCaseNote,
   getCaseNotes,
-  patchCaseNoteArchival,
+  deleteCaseNote,
   getCourts,
   getMe,
   getOfficeAttorneys,
