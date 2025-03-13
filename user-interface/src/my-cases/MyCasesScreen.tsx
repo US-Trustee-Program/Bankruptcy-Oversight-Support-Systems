@@ -47,8 +47,9 @@ export const MyCasesScreen = () => {
     },
   };
 
-  function handleShowClosedCasesToggle() {
-    setDoShowClosedCases(!doShowClosedCases);
+  function handleShowClosedCasesToggle(isActive: boolean) {
+    setDoShowClosedCases(isActive);
+    return isActive;
   }
 
   return (
@@ -66,17 +67,6 @@ export const MyCasesScreen = () => {
           <div className="filters case-status">
             <div className="case-status-container">
               <div>
-                {/* <button
-                  className={`filter show-closed-cases${doShowClosedCases ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
-                  aria-label={`${doShowClosedCases ? 'Hide' : 'Show'} closed cases.`}
-                  role="switch"
-                  aria-checked={doShowClosedCases}
-                  onClick={handleShowClosedCasesToggle}
-                  data-testid="show-closed-cases-toggle"
-                >
-                  Closed Cases
-                  <Icon name="check" className={doShowClosedCases ? 'active' : ''}></Icon>
-                </button> */}
                 <ToggleButton
                   id="foobar"
                   ariaLabel={{ active: 'Hide closed cases.', inactive: 'Show closed cases.' }}
