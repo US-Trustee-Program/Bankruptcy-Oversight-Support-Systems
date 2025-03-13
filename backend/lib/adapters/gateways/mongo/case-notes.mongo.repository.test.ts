@@ -51,6 +51,9 @@ describe('case notes repo tests', () => {
 
   test('should call updateOne when archiveCaseNote is called.', async () => {
     const archival = MockData.getCaseNoteArchival();
+    const expectedDateParameter = {
+      archivedOn: archival.archivedOn,
+    };
 
     const query = and(
       doc('documentType').equals('NOTE'),
@@ -59,13 +62,12 @@ describe('case notes repo tests', () => {
     );
 
     const updateSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue({
-      id: archival.id,
       matchedCount: 1,
       modifiedCount: 1,
     });
 
     repo.archiveCaseNote(archival);
-    expect(updateSpy).toHaveBeenCalledWith(query, archival);
+    expect(updateSpy).toHaveBeenCalledWith(query, expectedDateParameter);
   });
 
   describe('handle errors', () => {
