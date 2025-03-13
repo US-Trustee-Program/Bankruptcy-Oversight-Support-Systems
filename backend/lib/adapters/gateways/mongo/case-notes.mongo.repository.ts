@@ -20,14 +20,17 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CaseNotesMongoRepository.instance)
+    if (!CaseNotesMongoRepository.instance) {
       CaseNotesMongoRepository.instance = new CaseNotesMongoRepository(context);
+    }
     CaseNotesMongoRepository.referenceCount++;
     return CaseNotesMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (CaseNotesMongoRepository.referenceCount > 0) CaseNotesMongoRepository.referenceCount--;
+    if (CaseNotesMongoRepository.referenceCount > 0) {
+      CaseNotesMongoRepository.referenceCount--;
+    }
     if (CaseNotesMongoRepository.referenceCount < 1) {
       CaseNotesMongoRepository.instance.client.close().then();
       CaseNotesMongoRepository.instance = null;
@@ -71,8 +74,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       doc('archivedOn').notExists(),
     );
     try {
-      const notes = await this.getAdapter<CaseNote>().find(query);
-      return notes;
+      return await this.getAdapter<CaseNote>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve case note.');
     }
