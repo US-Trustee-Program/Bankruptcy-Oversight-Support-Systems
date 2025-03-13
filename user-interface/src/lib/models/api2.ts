@@ -269,13 +269,6 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
 async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(
     `/cases/${note.caseId}/notes/${note.id}/${note.updatedBy!.id}`,
-    /*
-    {
-      id: note.id,
-      caseId: note.caseId,
-      updatedBy: note.updatedBy,
-    },
-    */
   );
 }
 

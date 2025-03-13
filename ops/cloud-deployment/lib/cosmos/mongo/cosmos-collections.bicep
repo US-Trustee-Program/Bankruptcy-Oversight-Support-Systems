@@ -189,8 +189,6 @@ resource usersCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
   }
 }
 
-
-
 resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
   name: 'cases'
