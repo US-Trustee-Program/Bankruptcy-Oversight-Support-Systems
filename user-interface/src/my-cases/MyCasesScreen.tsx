@@ -69,7 +69,11 @@ export const MyCasesScreen = () => {
               <div>
                 <ToggleButton
                   id="closed-cases-toggle"
-                  ariaLabel={{ active: 'Hide closed cases.', inactive: 'Show closed cases.' }}
+                  ariaLabel={'Show closed cases.'}
+                  tooltipLabel={{
+                    active: 'Closed cases shown.',
+                    inactive: 'Closed cases hidden.',
+                  }}
                   isActive={false}
                   label="Closed Cases"
                   onToggle={handleShowClosedCasesToggle}
