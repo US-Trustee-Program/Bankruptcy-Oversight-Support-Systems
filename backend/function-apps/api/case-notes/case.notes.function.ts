@@ -34,8 +34,8 @@ export default async function handler(
 }
 
 app.http('case-notes', {
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'DELETE'],
   authLevel: 'anonymous',
   handler,
-  route: 'cases/{id?}/notes',
+  route: 'cases/{caseId}/notes/{noteId?}/{userId?}',
 });

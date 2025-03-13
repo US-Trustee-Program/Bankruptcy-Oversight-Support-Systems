@@ -1,7 +1,7 @@
 import { CaseNote } from '../../../../../common/src/cams/cases';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
-import { CaseNotesRepository } from '../../../use-cases/gateways.types';
+import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
@@ -20,14 +20,17 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CaseNotesMongoRepository.instance)
+    if (!CaseNotesMongoRepository.instance) {
       CaseNotesMongoRepository.instance = new CaseNotesMongoRepository(context);
+    }
     CaseNotesMongoRepository.referenceCount++;
     return CaseNotesMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (CaseNotesMongoRepository.referenceCount > 0) CaseNotesMongoRepository.referenceCount--;
+    if (CaseNotesMongoRepository.referenceCount > 0) {
+      CaseNotesMongoRepository.referenceCount--;
+    }
     if (CaseNotesMongoRepository.referenceCount < 1) {
       CaseNotesMongoRepository.instance.client.close().then();
       CaseNotesMongoRepository.instance = null;
@@ -46,11 +49,33 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     }
   }
 
-  async getNotesByCaseId(caseId: string): Promise<CaseNote[]> {
-    const query = and(doc('documentType').equals('NOTE'), doc('caseId').equals(caseId));
+  async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
+    const query = and(
+      doc('documentType').equals('NOTE'),
+      doc('caseId').equals(archiveNote.caseId),
+      doc('id').equals(archiveNote.id),
+    );
+
+    const archiveDate = {
+      archivedOn: archiveNote.archivedOn,
+      archivedBy: archiveNote.archivedBy,
+    };
+
     try {
-      const notes = await this.getAdapter<CaseNote>().find(query);
-      return notes;
+      return await this.getAdapter<CaseNote>().updateOne(query, archiveDate);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to archive case note.');
+    }
+  }
+
+  async getNotesByCaseId(caseId: string): Promise<CaseNote[]> {
+    const query = and(
+      doc('documentType').equals('NOTE'),
+      doc('caseId').equals(caseId),
+      doc('archivedOn').notExists(),
+    );
+    try {
+      return await this.getAdapter<CaseNote>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve case note.');
     }

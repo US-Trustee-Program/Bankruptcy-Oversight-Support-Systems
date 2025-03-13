@@ -33,6 +33,10 @@
         padding-top: 1rem;
       }
 
+      .remove-button {
+        margin-top: 0.75rem;
+      }
+
       ::highlight(search-results) {
         background-color: colors.$yellow-20;
         color: black;

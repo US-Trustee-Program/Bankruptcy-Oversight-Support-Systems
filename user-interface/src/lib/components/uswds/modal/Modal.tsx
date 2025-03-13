@@ -42,21 +42,6 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   };
 
-  const close = (ev: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
-    closeModal();
-    ev.preventDefault();
-  };
-
-  function closeModal() {
-    if (props.onClose) {
-      props.onClose();
-    }
-
-    hide();
-
-    openModalButtonRef?.current?.focus();
-  }
-
   const handleTab = (
     ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent,
     firstEl: HTMLElement | null,
@@ -121,6 +106,21 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
       setOpenModalButtonRef(openRef);
     }
     show();
+  }
+
+  const close = (ev: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
+    closeModal();
+    ev.preventDefault();
+  };
+
+  function closeModal() {
+    if (props.onClose) {
+      props.onClose();
+    }
+
+    hide();
+
+    openModalButtonRef?.current?.focus();
   }
 
   useImperativeHandle(ref, () => ({

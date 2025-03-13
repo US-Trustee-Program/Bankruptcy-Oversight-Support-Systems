@@ -5,6 +5,11 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { ApplicationContext } from '../../types/basic';
 import { CaseNotesMongoRepository } from './case-notes.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import QueryBuilder from '../../../query/query-builder';
+import { CaseNote } from '../../../../../common/src/cams/cases';
+
+const { and, using } = QueryBuilder;
+const doc = using<CaseNote>();
 
 describe('case notes repo tests', () => {
   let context: ApplicationContext;
@@ -44,6 +49,27 @@ describe('case notes repo tests', () => {
     });
   });
 
+  test('should call updateOne when archiveCaseNote is called.', async () => {
+    const archival = MockData.getCaseNoteArchival();
+    const expectedDateParameter = {
+      archivedOn: archival.archivedOn,
+    };
+
+    const query = and(
+      doc('documentType').equals('NOTE'),
+      doc('caseId').equals(archival.caseId),
+      doc('id').equals(archival.id),
+    );
+
+    const updateSpy = jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockResolvedValue({
+      matchedCount: 1,
+      modifiedCount: 1,
+    });
+
+    repo.archiveCaseNote(archival);
+    expect(updateSpy).toHaveBeenCalledWith(query, expectedDateParameter);
+  });
+
   describe('handle errors', () => {
     const error = new Error('some error');
 
@@ -52,6 +78,14 @@ describe('case notes repo tests', () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
       await expect(() => repo.create(note)).rejects.toThrow(
         getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to create case note.'),
+      );
+    });
+
+    test('should handle error on archiveNote', async () => {
+      const archiveNote = MockData.getCaseNoteArchival();
+      jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(error);
+      await expect(() => repo.archiveCaseNote(archiveNote)).rejects.toThrow(
+        getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to archive case note.'),
       );
     });
 

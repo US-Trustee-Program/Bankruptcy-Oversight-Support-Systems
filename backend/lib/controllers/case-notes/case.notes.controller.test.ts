@@ -11,6 +11,8 @@ import { CaseNotesController } from './case.notes.controller';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { randomUUID } from 'crypto';
+import { CaseNoteDeleteRequest } from '../../../../common/src/cams/cases';
 
 describe('Case note controller tests', () => {
   let applicationContext: ApplicationContext;
@@ -38,7 +40,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: mockCase.caseId,
+        caseId: mockCase.caseId,
       },
       body: {
         title: 'test note title',
@@ -60,7 +62,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'GET',
       params: {
-        id: mockCase.caseId,
+        caseId: mockCase.caseId,
       },
     });
     const controller = new CaseNotesController(applicationContext);
@@ -89,7 +91,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: 'n-1f23',
+        caseId: 'n-1f23',
       },
       body: {},
     });
@@ -105,7 +107,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {},
     });
@@ -121,7 +123,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {
         content: 'test note content',
@@ -139,7 +141,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {
         title: 'test note title',
@@ -158,7 +160,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {
         title: 'test note title',
@@ -179,7 +181,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {
         title: 'test note title',
@@ -198,7 +200,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {
         title: maliciousNote,
@@ -217,7 +219,7 @@ describe('Case note controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
-        id: NORMAL_CASE_ID,
+        caseId: NORMAL_CASE_ID,
       },
       body: {
         title: testMongoInjectedNotes,
@@ -244,4 +246,78 @@ describe('Case note controller tests', () => {
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
   });
+
+  test('should call archiveCaseNote if DELETE request', async () => {
+    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+    const archiveSpy = jest
+      .spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote')
+      .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    const expectedRequest: CaseNoteDeleteRequest = {
+      id: archiveNote.id,
+      caseId: archiveNote.caseId,
+      userId: archiveNote.updatedBy.id,
+      sessionUser: applicationContext.session.user,
+    };
+
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'DELETE',
+      params: {
+        noteId: archiveNote.id,
+        caseId: archiveNote.caseId,
+        userId: archiveNote.updatedBy.id,
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await controller.handleRequest(applicationContext);
+    expect(archiveSpy).toHaveBeenCalledWith(expectedRequest);
+  });
+
+  test('should throw error when updateCaseNote throws an error', async () => {
+    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+    const error = new Error('Case notes test error');
+    const expectedCamsError = getCamsError(error, 'CASE-NOTES-CONTROLLER');
+    jest.spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote').mockRejectedValue(error);
+
+    applicationContext.request = mockCamsHttpRequest({
+      method: 'DELETE',
+      params: {
+        caseId: archiveNote.caseId,
+        noteId: archiveNote.id,
+        userId: archiveNote.updatedBy.id,
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
+  });
+
+  const goodCaseNote = MockData.getCaseNote({ updatedBy: user });
+  const testParams = [
+    ['noteId', undefined, goodCaseNote.caseId, goodCaseNote.updatedBy.id],
+    ['noteId', '@#$%', goodCaseNote.caseId, goodCaseNote.updatedBy.id],
+    ['caseId', goodCaseNote.id, undefined, goodCaseNote.updatedBy.id],
+    ['caseId', goodCaseNote.id, '@#$%', goodCaseNote.updatedBy.id],
+    ['userId', goodCaseNote.id, goodCaseNote.caseId, undefined],
+    ['all params', undefined, undefined, undefined],
+  ];
+
+  test.each(testParams)(
+    'should fail archive request when params are missing %s',
+    async (
+      _testCase: string,
+      id: string | undefined,
+      caseId: string | undefined,
+      userId: string | undefined,
+    ) => {
+      applicationContext.request = mockCamsHttpRequest({
+        method: 'DELETE',
+        params: {
+          noteId: id,
+          caseId: caseId,
+          userId: userId,
+        },
+      });
+      const controller = new CaseNotesController(applicationContext);
+      await expect(controller.handleRequest(applicationContext)).rejects.toThrow();
+    },
+  );
 });

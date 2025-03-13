@@ -8,6 +8,7 @@ import {
   CamsPaginationResponse,
   DocumentCollectionAdapter,
   ReplaceResult,
+  UpdateResult,
 } from '../../../../use-cases/gateways.types';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
@@ -157,6 +158,39 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         originalError,
         `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
         { query, item },
+      );
+    }
+  }
+
+  public async updateOne(query: Query<T>, itemProperties: Partial<T>): Promise<UpdateResult> {
+    const mongoQuery = toMongoQuery(query);
+
+    try {
+      const result = await this.collectionHumble.updateOne(mongoQuery, itemProperties);
+      const unknownError = new UnknownError(this.moduleName, {
+        message: 'Failed to insert document into database.',
+      });
+      const notFoundError = new NotFoundError(this.moduleName, {
+        message: 'No matching item found.',
+      });
+
+      if (!result.acknowledged) {
+        throw unknownError;
+      }
+
+      if (!result.matchedCount) {
+        throw notFoundError;
+      }
+
+      return {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
+      };
+    } catch (originalError) {
+      throw this.handleError(
+        originalError,
+        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(itemProperties)}`,
+        { query, item: itemProperties },
       );
     }
   }

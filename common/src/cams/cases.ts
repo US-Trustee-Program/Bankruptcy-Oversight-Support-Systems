@@ -2,6 +2,7 @@ import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
+import { CamsUserReference } from './users';
 
 export type FlatOfficeDetail = {
   officeName: string;
@@ -67,12 +68,22 @@ export type CaseNote = CaseNoteInput &
   Auditable & {
     id?: string;
     documentType: 'NOTE';
+    archivedOn?: string;
+    archivedBy?: CamsUserReference;
   };
+
+export type CaseNoteDeleteRequest = {
+  id: string;
+  caseId: string;
+  userId: string;
+  sessionUser: CamsUserReference;
+};
 
 export type CaseNoteInput = {
   title: string;
   caseId: string;
   content: string;
+  updatedBy?: CamsUserReference;
 };
 
 export type DxtrCase = CaseSummary & {

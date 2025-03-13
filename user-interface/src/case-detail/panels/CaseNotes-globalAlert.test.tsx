@@ -4,6 +4,8 @@ import CaseNotes, { CaseNotesProps } from './CaseNotes';
 import userEvent from '@testing-library/user-event';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import HttpStatusCodes from '@common/api/http-status-codes';
+import MockData from '@common/cams/test-utilities/mock-data';
+import LocalStorage from '@/lib/utils/local-storage';
 
 const textAreaTestId = 'textarea-note-content';
 const noteTitleInputTestId = 'case-note-title-input';
@@ -15,6 +17,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     caseNotes: [],
     searchString: '',
     onNoteCreation: vi.fn(),
+    onRemoveNote: vi.fn(),
     areCaseNotesLoading: false,
   };
 
@@ -22,6 +25,8 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
   render(<CaseNotes {...renderProps} />);
 }
 
+const session = MockData.getCamsSession();
+vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
 vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
 

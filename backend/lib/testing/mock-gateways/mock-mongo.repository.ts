@@ -15,6 +15,7 @@ import {
   OrdersRepository,
   RuntimeState,
   RuntimeStateRepository,
+  UpdateResult,
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
@@ -114,6 +115,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  updateOne(..._ignore): Promise<UpdateResult> {
+    throw new Error('Method not implemented.');
+  }
+
   upsert(..._ignore): Promise<any | void> {
     throw new Error('Method not implemented.');
   }
@@ -143,6 +148,10 @@ export class MockMongoRepository
   }
 
   getNotesByCaseId(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  archiveCaseNote(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 

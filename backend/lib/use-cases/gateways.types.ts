@@ -33,6 +33,11 @@ export type ReplaceResult = {
   upsertedCount: number;
 };
 
+export type UpdateResult = {
+  modifiedCount: number;
+  matchedCount: number;
+};
+
 export type UpsertResult = ReplaceResult;
 
 export interface Releasable {
@@ -89,6 +94,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
 
 export interface CaseNotesRepository<T = CaseNote> extends Creates<T, string> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
+  archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
 }
 
 export interface OrdersRepository<T = Order>
@@ -202,6 +208,7 @@ export interface DocumentCollectionAdapter<T> {
   deleteOne: (query: ConditionOrConjunction<T>) => Promise<number>;
   deleteMany: (query: ConditionOrConjunction<T>) => Promise<number>;
   countDocuments: (query: ConditionOrConjunction<T>) => Promise<number>;
+  updateOne: (query: ConditionOrConjunction<T>, item: unknown) => Promise<UpdateResult>;
   countAllDocuments: () => Promise<number>;
 }
 
