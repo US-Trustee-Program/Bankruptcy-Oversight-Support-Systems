@@ -3,7 +3,7 @@ import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
-test.describe('Consolidation Orders', () => {
+test.describe('Case Notes', () => {
   let caseNoteTitleInput;
   let caseNoteContentInput;
   let submitCaseNoteButton;
@@ -45,10 +45,10 @@ test.describe('Consolidation Orders', () => {
     openRemovalModalButton = page.getByTestId('open-modal-button-0');
     await expect(openRemovalModalButton).toBeVisible();
     openRemovalModalButton.click();
-    confirmButton = page.getByTestId('button-delete-note-modal-submit-button');
+    confirmButton = page.getByTestId('button-remove-note-modal-submit-button');
     await expect(confirmButton).toBeVisible();
     confirmButton.click();
-    confirmButton = page.getByTestId('button-delete-note-modal-submit-button');
+    confirmButton = page.getByTestId('button-remove-note-modal-submit-button');
     await expect(confirmButton).not.toBeVisible();
     caseNoteHeader = page.getByTestId('case-note-0-header');
     await expect(caseNoteHeader).not.toBeVisible();
