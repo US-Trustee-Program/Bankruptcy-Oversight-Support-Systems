@@ -342,6 +342,12 @@ interface FilterProps<T extends string> {
   callback: (filterString: T) => void;
 }
 
+function generateTooltip(label: string, isActive: boolean) {
+  const base = `${label} ${isActive ? 'shown' : 'hidden'}.`.toLowerCase();
+  const tooltip = base.slice(0, 1).toUpperCase() + base.slice(1);
+  return tooltip;
+}
+
 function Filter<T extends string>(props: FilterProps<T>) {
   const { label, filterType, filters, callback } = props;
   return (
@@ -352,6 +358,7 @@ function Filter<T extends string>(props: FilterProps<T>) {
       aria-checked={filters.includes(filterType) ? true : false}
       onClick={() => callback(filterType)}
       data-testid={`order-status-filter-${filterType}`}
+      title={generateTooltip(label, filters.includes(filterType))}
     >
       {label}
       <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
