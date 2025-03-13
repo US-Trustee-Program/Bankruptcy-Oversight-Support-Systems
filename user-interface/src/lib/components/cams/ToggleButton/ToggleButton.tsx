@@ -37,7 +37,7 @@ function ToggleButton(props: ToggleButtonProps) {
     }
   }
 
-  const arialLabel = getLabel(props.ariaLabel, isActive);
+  const ariaLabel = getLabel(props.ariaLabel, isActive);
   const label = getLabel(props.label, isActive);
 
   return (
@@ -46,7 +46,7 @@ function ToggleButton(props: ToggleButtonProps) {
       data-testid={props.id}
       role="switch"
       className={`toggle-button ${isActive ? 'active' : 'inactive'} usa-tag--big usa-button--unstyled`}
-      aria-label={arialLabel}
+      aria-label={ariaLabel}
       aria-checked={isActive}
       onClick={handleToggle}
     >
