@@ -273,7 +273,7 @@ describe('case note tests', () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
       data: caseNotes,
     });
-    const patchSpy = vi
+    const deleteSpy = vi
       .spyOn(Api2, 'deleteCaseNote')
       .mockResolvedValueOnce()
       .mockRejectedValueOnce(new Error());
@@ -312,7 +312,7 @@ describe('case note tests', () => {
       expect(modalSubmitButton0).toBeVisible();
     });
     await userEvent.click(modalSubmitButton0!);
-    expect(patchSpy).toHaveBeenCalledWith(expectedFirstRemoveArgument);
+    expect(deleteSpy).toHaveBeenCalledWith(expectedFirstRemoveArgument);
     expect(onNoteRemoveSpy).toHaveBeenCalled();
 
     await userEvent.click(button2!);
@@ -321,7 +321,7 @@ describe('case note tests', () => {
       expect(modalSubmitButton2).toBeVisible();
     });
     await userEvent.click(modalSubmitButton2!);
-    expect(patchSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
+    expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
     });
