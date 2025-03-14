@@ -240,7 +240,7 @@ async function storeRuntimeState(invocationContext: InvocationContext) {
   return CasesRuntimeState.storeRuntimeState(appContext, getTodaysIsoDate());
 }
 
-export function setupMigrateCases() {
+function setup() {
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
@@ -276,3 +276,8 @@ export function setupMigrateCases() {
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};

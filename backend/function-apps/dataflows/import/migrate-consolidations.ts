@@ -142,7 +142,7 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationC
   }
 }
 
-export function setupMigrateConsolidations() {
+function setup() {
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
@@ -157,3 +157,8 @@ export function setupMigrateConsolidations() {
     extraOutputs: [HARD_STOP],
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};
