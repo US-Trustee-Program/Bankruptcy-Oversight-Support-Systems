@@ -137,7 +137,7 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationC
       message: item,
       error: getCamsError(originalError, MODULE_NAME),
     };
-    logger.error(MODULE_NAME, JSON.stringify(item), errorMessage.error);
+    logger.error(MODULE_NAME, errorMessage.error.message);
     context.extraOutputs.set(HARD_STOP, [errorMessage]);
   }
 }
