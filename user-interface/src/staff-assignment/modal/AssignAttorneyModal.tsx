@@ -85,44 +85,6 @@ function _AssignAttorneyModal(
     },
   };
 
-  function show(showProps: ModalOpenProps | undefined) {
-    if (showProps) {
-      if (showProps.bCase) {
-        setBCase(showProps.bCase);
-        if (showProps.bCase.assignments) {
-          const attorneys: AttorneyUser[] = [];
-          showProps.bCase.assignments.forEach((assignment) => {
-            attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
-          });
-          setCheckListValues(attorneys);
-          setPreviouslySelectedList(attorneys);
-        }
-        if (showProps.callback) {
-          submitCallbackRef.current = showProps.callback;
-        }
-      }
-    }
-    if (modalRef.current?.show) {
-      const showOptions = {
-        openModalButtonRef: showProps?.openModalButtonRef ?? undefined,
-      };
-      modalRef.current?.show(showOptions);
-    }
-  }
-
-  function hide() {
-    if (modalRef.current?.hide) {
-      modalRef.current?.hide({});
-    }
-  }
-
-  useImperativeHandle(ref, () => {
-    return {
-      show,
-      hide,
-    };
-  });
-
   const fetchAttorneys = async () => {
     let attorneys;
     if (!bCase) return;
@@ -260,6 +222,44 @@ function _AssignAttorneyModal(
       }
     }
   };
+
+  function show(showProps: ModalOpenProps | undefined) {
+    if (showProps) {
+      if (showProps.bCase) {
+        setBCase(showProps.bCase);
+        if (showProps.bCase.assignments) {
+          const attorneys: AttorneyUser[] = [];
+          showProps.bCase.assignments.forEach((assignment) => {
+            attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
+          });
+          setCheckListValues(attorneys);
+          setPreviouslySelectedList(attorneys);
+        }
+        if (showProps.callback) {
+          submitCallbackRef.current = showProps.callback;
+        }
+      }
+    }
+    if (modalRef.current?.show) {
+      const showOptions = {
+        openModalButtonRef: showProps?.openModalButtonRef ?? undefined,
+      };
+      modalRef.current?.show(showOptions);
+    }
+  }
+
+  function hide() {
+    if (modalRef.current?.hide) {
+      modalRef.current?.hide({});
+    }
+  }
+
+  useImperativeHandle(ref, () => {
+    return {
+      show,
+      hide,
+    };
+  });
 
   useEffect(() => {
     fetchAttorneys();

@@ -266,6 +266,20 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   }
 }
 
+async function putCaseNote(note: CaseNoteInput): Promise<void> {
+  if (!note.id) {
+    throw new Error('Id must be provided');
+  }
+  const sanitizedNote = sanitizeText(note.content);
+  const sanitizedTitle = sanitizeText(note.title);
+  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+    await api().put<CaseNoteInput>(`/cases/${note.caseId}/notes/${note.id}`, {
+      title: sanitizedTitle,
+      content: sanitizedNote,
+    });
+  }
+}
+
 async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(
     `/cases/${note.caseId}/notes/${note.id}/${note.updatedBy!.id}`,
@@ -375,6 +389,7 @@ export const _Api2 = {
   getCaseAssociations,
   getCaseHistory,
   postCaseNote,
+  putCaseNote,
   getCaseNotes,
   deleteCaseNote,
   getCourts,

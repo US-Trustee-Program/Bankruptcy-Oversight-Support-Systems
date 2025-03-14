@@ -11,9 +11,9 @@ import { CaseNote, CaseNoteInput } from '@common/cams/cases';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { HttpResponse } from '@okta/okta-auth-js';
-import { HttpStatusCodes } from '../../../../common/src/api/http-status-codes';
+import { HttpStatusCodes } from '@common/api/http-status-codes';
 import Input from '@/lib/components/uswds/Input';
-import { AlertOptions } from './CaseDetailCourtDocket';
+import { AlertOptions } from '../CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -22,9 +22,11 @@ import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/m
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import Icon from '@/lib/components/uswds/Icon';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { getCamsUserReference } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
+import CaseNoteModal, { CaseNoteModalRef } from '@/case-detail/panels/case-notes/CaseNoteModal';
 
+//TODO: does this still makes sense?
 function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
 }
@@ -50,16 +52,27 @@ export default function CaseNotes(props: CaseNotesProps) {
   const contentInputRef = useRef<TextAreaRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
-  const removeConnfirmationModalRef = useRef<ModalRefType>(null);
-  const openModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
+  const removeConfirmationModalRef = useRef<ModalRefType>(null);
+  const caseNoteModalRef = useRef<CaseNoteModalRef>(null);
+  const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
   useMemo(() => {
-    openModalButtonRefs.current =
-      caseNotes?.map((_, index) => openModalButtonRefs.current[index] ?? { current: null }) || [];
+    openArchiveModalButtonRefs.current =
+      caseNotes?.map(
+        (_, index) => openArchiveModalButtonRefs.current[index] ?? { current: null },
+      ) || [];
+  }, [caseNotes]);
+  const openEditModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
+  useMemo(() => {
+    openEditModalButtonRefs.current =
+      caseNotes?.map((_, index) => openEditModalButtonRefs.current[index] ?? { current: null }) ||
+      [];
   }, [caseNotes]);
   const [noteForRemoval, setNoteForRemoval] = useState<Partial<CaseNote> | null>(null);
+  const [_editNoteModalTitle, setEditNoteModalTitle] = useState<string>('Add New Note');
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const removeConfirmationModalId = 'remove-note-modal';
+  const editNoteModalId = 'edit-note-modal';
 
   const api = Api2;
 
@@ -82,7 +95,16 @@ export default function CaseNotes(props: CaseNotesProps) {
     });
   }
 
-  function handleRemoveButtonClick() {
+  function handleEditButtonClick() {
+    setEditNoteModalTitle('Edit Note');
+  }
+
+  /*
+  function handleEditConfirmationButtonClick() {
+    //submit case note edit
+  }
+  */
+  function handleRemoveSubmitButtonClick() {
     if (noteForRemoval?.id) {
       const newNoteForRemoval = {
         id: noteForRemoval.id,
@@ -138,7 +160,7 @@ export default function CaseNotes(props: CaseNotesProps) {
     setFormButtonState(!disabled);
   }
 
-  async function putCaseNote() {
+  async function postCaseNote() {
     const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
     if (formData.title?.length > 0 && formData.content?.length > 0) {
       disableFormFields(true);
@@ -159,6 +181,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             clearCaseNoteForm();
           })
           .catch((e: HttpResponse) => {
+            //TODO: why is this coming from okta?
             if (e.status !== HttpStatusCodes.FORBIDDEN) {
               globalAlert?.error('Could not insert case note.');
             }
@@ -190,6 +213,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
             {formatDateTime(note.updatedOn)}
           </div>
+          <div className="case-note-date grid-col-1"></div>
         </div>
         <div className="grid-row">
           <div className="grid-col-12 case-note-content">
@@ -207,25 +231,48 @@ export default function CaseNotes(props: CaseNotesProps) {
         </div>
         <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
           {userCanRemove(note) && (
-            <OpenModalButton
-              className="remove-button"
-              id={`case-note-remove-button-${idx}`}
-              buttonIndex={`${idx}`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              modalId={removeConfirmationModalId}
-              modalRef={removeConnfirmationModalRef}
-              ref={openModalButtonRefs.current[idx]}
-              openProps={{
-                id: note.id,
-                caseId: note.caseId,
-                buttonId: `case-note-remove-button-${idx}`,
-              }}
-              ariaLabel={`Remove note titled ${note.title}`}
-              onClick={() => setNoteForRemoval(note)}
-            >
-              <Icon name="remove_circle" className="remove-icon" />
-              Remove
-            </OpenModalButton>
+            <>
+              <OpenModalButton
+                className="edit-button"
+                id={`case-note-edit-button-${idx}`}
+                buttonIndex={'${idx}'}
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                modalId={editNoteModalId}
+                modalRef={caseNoteModalRef}
+                ref={openEditModalButtonRefs.current[idx]}
+                openProps={{
+                  id: note.id,
+                  caseId: note.caseId,
+                  buttonId: `case-note-edit-button-${idx}`,
+                  title: note.title,
+                  content: note.content,
+                }}
+                ariaLabel={`Edit note titled ${note.title}`}
+                onClick={handleEditButtonClick}
+              >
+                <Icon name="edit" className="edit-icon" />
+                Edit
+              </OpenModalButton>
+              <OpenModalButton
+                className="remove-button"
+                id={`case-note-remove-button-${idx}`}
+                buttonIndex={`${idx}`}
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                modalId={removeConfirmationModalId}
+                modalRef={removeConfirmationModalRef}
+                ref={openArchiveModalButtonRefs.current[idx]}
+                openProps={{
+                  id: note.id,
+                  caseId: note.caseId,
+                  buttonId: `case-note-remove-button-${idx}`,
+                }}
+                ariaLabel={`Remove note titled ${note.title}`}
+                onClick={() => setNoteForRemoval(note)}
+              >
+                <Icon name="remove_circle" className="remove-icon" />
+                Remove
+              </OpenModalButton>
+            </>
           )}
         </div>
       </li>
@@ -240,10 +287,10 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
     modalId: removeConfirmationModalId,
-    modalRef: removeConnfirmationModalRef as React.RefObject<ModalRefType>,
+    modalRef: removeConfirmationModalRef as React.RefObject<ModalRefType>,
     submitButton: {
       label: 'Remove',
-      onClick: handleRemoveButtonClick,
+      onClick: handleRemoveSubmitButtonClick,
       disabled: false,
       closeOnClick: true,
     },
@@ -302,7 +349,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             <Button
               id="submit-case-note"
               uswdsStyle={UswdsButtonStyle.Default}
-              onClick={putCaseNote}
+              onClick={postCaseNote}
               aria-label="Add case note."
               ref={submitButtonRef}
             >
@@ -345,8 +392,9 @@ export default function CaseNotes(props: CaseNotesProps) {
           </>
         )}
       </div>
+      <CaseNoteModal ref={caseNoteModalRef} modalId="case-note-modal"></CaseNoteModal>
       <Modal
-        ref={removeConnfirmationModalRef}
+        ref={removeConfirmationModalRef}
         modalId={removeConfirmationModalId}
         className="remove-note-confirmation-modal"
         heading="Remove note?"

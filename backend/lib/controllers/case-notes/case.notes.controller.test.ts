@@ -12,10 +12,11 @@ import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-h
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { randomUUID } from 'crypto';
-import { CaseNoteDeleteRequest } from '../../../../common/src/cams/cases';
+import { CaseNoteDeleteRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 describe('Case note controller tests', () => {
-  let applicationContext: ApplicationContext;
+  let applicationContext: ApplicationContext<CaseNoteInput>;
 
   const user = {
     ...MockData.getCamsUserReference(),
@@ -25,7 +26,7 @@ describe('Case note controller tests', () => {
   };
 
   beforeEach(async () => {
-    applicationContext = await createMockApplicationContext();
+    applicationContext = await createMockApplicationContext<CaseNoteInput>();
     applicationContext.session = await createMockApplicationContextSession({ user });
   });
 
@@ -37,15 +38,18 @@ describe('Case note controller tests', () => {
     const createSpy = jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
 
     const mockCase = MockData.getCaseBasics();
+    const body: CaseNoteInput = {
+      caseId: mockCase.caseId,
+      title: 'test note title',
+      content: 'some test string',
+    };
+
     applicationContext.request = mockCamsHttpRequest({
       method: 'POST',
       params: {
         caseId: mockCase.caseId,
       },
-      body: {
-        title: 'test note title',
-        content: 'some test string',
-      },
+      body,
     });
     const controller = new CaseNotesController(applicationContext);
     await controller.handleRequest(applicationContext);
@@ -78,7 +82,11 @@ describe('Case note controller tests', () => {
       params: {
         caseId: '',
       },
-      body: {},
+      body: {
+        caseId: undefined,
+        title: undefined,
+        content: undefined,
+      },
     });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
@@ -88,12 +96,16 @@ describe('Case note controller tests', () => {
 
   test('should throw error when malformed caseId is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: 'n-1f23',
       },
-      body: {},
+      body: {
+        caseId: undefined,
+        title: undefined,
+        content: undefined,
+      },
     });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
@@ -104,12 +116,16 @@ describe('Case note controller tests', () => {
   test('should throw error when empty case note is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
 
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
-      body: {},
+      body: {
+        caseId: undefined,
+        title: undefined,
+        content: undefined,
+      },
     });
     const controller = new CaseNotesController(applicationContext);
     await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
@@ -120,12 +136,14 @@ describe('Case note controller tests', () => {
   test('should throw error when no case note title is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
 
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
       body: {
+        caseId: NORMAL_CASE_ID,
+        title: undefined,
         content: 'test note content',
       },
     });
@@ -138,12 +156,14 @@ describe('Case note controller tests', () => {
   test('should throw error when no case note content is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
 
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
       body: {
+        content: undefined,
+        caseId: NORMAL_CASE_ID,
         title: 'test note title',
       },
     });
@@ -157,12 +177,13 @@ describe('Case note controller tests', () => {
 
   test('should throw error when XSS note content is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
       body: {
+        caseId: NORMAL_CASE_ID,
         title: 'test note title',
         content: maliciousNote,
       },
@@ -178,12 +199,13 @@ describe('Case note controller tests', () => {
 
   test('should throw error when malicious mongo note content is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
       body: {
+        caseId: NORMAL_CASE_ID,
         title: 'test note title',
         content: testMongoInjectedNotes,
       },
@@ -197,12 +219,13 @@ describe('Case note controller tests', () => {
 
   test('should throw error when XSS note title is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
       body: {
+        caseId: NORMAL_CASE_ID,
         title: maliciousNote,
         content: 'some test content.',
       },
@@ -216,12 +239,13 @@ describe('Case note controller tests', () => {
 
   test('should throw error when malicious mongo note title is provided', async () => {
     jest.spyOn(CaseNotesUseCase.prototype, 'createCaseNote').mockResolvedValue();
-    applicationContext.request = mockCamsHttpRequest({
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'POST',
       params: {
         caseId: NORMAL_CASE_ID,
       },
       body: {
+        caseId: NORMAL_CASE_ID,
         title: testMongoInjectedNotes,
         content: 'some test content.',
       },
@@ -248,7 +272,7 @@ describe('Case note controller tests', () => {
   });
 
   test('should call archiveCaseNote if DELETE request', async () => {
-    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+    const archiveNote = MockData.getCaseNoteDeletion({ id: randomUUID() });
     const archiveSpy = jest
       .spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote')
       .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
@@ -273,7 +297,7 @@ describe('Case note controller tests', () => {
   });
 
   test('should throw error when updateCaseNote throws an error', async () => {
-    const archiveNote = MockData.getCaseNoteArchival({ id: randomUUID() });
+    const archiveNote = MockData.getCaseNoteDeletion({ id: randomUUID() });
     const error = new Error('Case notes test error');
     const expectedCamsError = getCamsError(error, 'CASE-NOTES-CONTROLLER');
     jest.spyOn(CaseNotesUseCase.prototype, 'archiveCaseNote').mockRejectedValue(error);
@@ -320,4 +344,32 @@ describe('Case note controller tests', () => {
       await expect(controller.handleRequest(applicationContext)).rejects.toThrow();
     },
   );
+
+  test('should call editCaseNote if PUT request and valid request structure', async () => {
+    const createSpy = jest
+      .spyOn(CaseNotesUseCase.prototype, 'editCaseNote')
+      .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
+    const mockCase = MockData.getCaseBasics();
+    MockData.getCaseNoteEditRequest({
+      note: MockData.getCaseNote({
+        caseId: mockCase.caseId,
+        updatedBy: getCamsUserReference(user),
+      }),
+    });
+    applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
+      method: 'PUT',
+      params: {
+        caseId: mockCase.caseId,
+      },
+      body: {
+        caseId: mockCase.caseId,
+        title: 'test note title',
+        content: 'some test string',
+      },
+    });
+    const controller = new CaseNotesController(applicationContext);
+    await controller.handleRequest(applicationContext);
+
+    expect(createSpy).toHaveBeenCalled();
+  });
 });
