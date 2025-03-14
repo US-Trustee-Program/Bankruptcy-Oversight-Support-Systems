@@ -4,12 +4,9 @@ import { OrdersController } from '../../../lib/controllers/orders/orders.control
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 
-const MODULE_NAME = 'SYNC_ORDERS';
+const MODULE_NAME = 'SYNC-ORDERS';
 
-export async function timerTrigger(
-  _ignore: Timer,
-  invocationContext: InvocationContext,
-): Promise<void> {
+async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
   const logger = ContextCreator.getLogger(invocationContext);
   try {
     const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
@@ -31,7 +28,7 @@ export async function timerTrigger(
  *
  */
 
-export const httpTrigger = buildHttpTrigger(
+const httpTrigger = buildHttpTrigger(
   MODULE_NAME,
   async (invocationContext: InvocationContext, request: HttpRequest) => {
     const logger = ContextCreator.getLogger(invocationContext);
@@ -46,7 +43,7 @@ export const httpTrigger = buildHttpTrigger(
   },
 );
 
-export function setupSyncOrders() {
+function setup() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
     schedule: '0 30 9 * * *',
     handler: timerTrigger,
@@ -58,3 +55,8 @@ export function setupSyncOrders() {
     handler: httpTrigger,
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};
