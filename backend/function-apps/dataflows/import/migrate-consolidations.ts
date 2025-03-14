@@ -180,7 +180,7 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
     // Slice the queue items into pages for the PAGE queue.
     const pages = [];
     for (let i = 0; i < queueItems.length; i += PAGE_SIZE) {
-      pages.push(queueItems.slice(i, i + PAGE_SIZE - 1));
+      pages.push(queueItems.slice(i, i + PAGE_SIZE));
     }
     invocationContext.extraOutputs.set(PAGE, pages);
   } catch (originalError) {
