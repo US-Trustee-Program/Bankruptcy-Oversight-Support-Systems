@@ -89,8 +89,6 @@ export class AcmsOrders {
       report.leadCaseId = basics.leadCaseId;
       const leadCase = await dxtr.getCaseSummary(context, basics.leadCaseId);
 
-      // NOTE! Azure suggests that all work be IDEMPOTENT because activities run _at least once_.
-      // Check if exported child cases have already been migrated.
       const existingConsolidations = await casesRepo.getConsolidation(basics.leadCaseId);
       const existingChildCaseIds = existingConsolidations
         .filter((link) => link.documentType === 'CONSOLIDATION_FROM')
@@ -210,12 +208,12 @@ export class AcmsOrders {
       }
     } catch (error) {
       report.success = false;
-      const camsError = getCamsError(
+      report.error = getCamsError(
         error,
         MODULE_NAME,
         `Transformation failed for lead case ${acmsLeadCaseId}. ${error.message}`,
       );
-      context.logger.camsError(camsError);
+      context.logger.camsError(report.error);
     }
     return report;
   }
