@@ -59,8 +59,7 @@ const registeredDataflows = dataflows.list().join(', ');
 console.log(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 // Enable the data flows specified in from the configuration env var.
-// TODO: Get data flow names to enable from the env var CAMS_ENABLE_DATAFLOWS.
-const envVar = 'SYNC-CASES, FOO';
+const envVar = process.env.CAMS_ENABLE_DATAFLOWS;
 const dataflowNames = envVar.split(',');
 const status = dataflows.enable(...dataflowNames);
 
