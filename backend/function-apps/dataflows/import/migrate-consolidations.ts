@@ -1,11 +1,10 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
-import ContextCreator from '../../azure/application-context-creator';
+import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName, STORAGE_QUEUE_CONNECTION } from '../dataflows-common';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
-import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import {
   AcmsBounds,
@@ -111,7 +110,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
     logger.info(MODULE_NAME, `Too many attempts to sync ${event.caseId}.`);
   } else {
-    const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+    const appContext = await ApplicationContextCreator.getApplicationContext({ invocationContext });
 
     if (!event.bCase) {
       const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
@@ -146,8 +145,11 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
  * @returns
  */
 async function queuePages(predicate: AcmsPredicate, invocationContext: InvocationContext) {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const appContext = await ApplicationContextCreator.getApplicationContext({
+    invocationContext,
+    logger,
+  });
   const controller = new AcmsOrdersController();
 
   try {
@@ -188,8 +190,8 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
 }
 
 async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationContext) {
-  const logger = ContextCreator.getLogger(context);
-  const appContext = await ContextCreator.getApplicationContext({
+  const logger = ApplicationContextCreator.getLogger(context);
+  const appContext = await ApplicationContextCreator.getApplicationContext({
     invocationContext: context,
     logger,
   });
