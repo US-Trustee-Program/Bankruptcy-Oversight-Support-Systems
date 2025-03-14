@@ -26,7 +26,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
-import CaseNotes from './panels/CaseNotes';
+import CaseNotes from './panels/case-notes/CaseNotes';
 import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));

@@ -5,7 +5,12 @@ import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
-import { CaseNote, CaseNoteDeleteRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
+import {
+  CaseNote,
+  CaseNoteDeleteRequest,
+  CaseNoteEditRequest,
+  CaseNoteInput,
+} from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
 
@@ -25,14 +30,15 @@ export class CaseNotesController implements CamsController {
   }
 
   public async handleRequest(
-    context: ApplicationContext,
+    context: ApplicationContext<CaseNoteInput>,
   ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<CaseNote[]>> {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
         const { caseId } = context.request.params;
-        const noteContent = context.request.body['content'];
-        const noteTitle = context.request.body['title'];
+        const note = context.request.body;
+        const noteContent = note.content;
+        const noteTitle = note.title;
         this.validatePostRequestParameters(caseId, noteContent, noteTitle);
         const noteInput: CaseNoteInput = {
           caseId,
@@ -45,12 +51,21 @@ export class CaseNotesController implements CamsController {
         });
       } else if (context.request.method === 'DELETE') {
         const { caseId, noteId, userId } = context.request.params;
-        const archiveNote = { id: noteId, caseId, userId, sessionUser: context.session.user };
+        const archiveNote: CaseNoteDeleteRequest = {
+          id: noteId,
+          caseId,
+          userId,
+          sessionUser: context.session.user,
+        };
         this.validateArchiveRequestParameters(archiveNote);
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
         });
+      } else if (context.request.method === 'PUT') {
+        const note = context.request.body;
+        const request: CaseNoteEditRequest = { note, sessionUser: context.session.user };
+        await caseNotesUseCase.editCaseNote(request);
       } else {
         const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
         return httpSuccess({

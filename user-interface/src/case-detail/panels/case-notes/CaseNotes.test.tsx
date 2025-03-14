@@ -2,15 +2,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import CaseNotes, { CaseNotesProps, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
-import LocalFormCache from '../../lib/utils/local-form-cache';
+import LocalFormCache from '../../../lib/utils/local-form-cache';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
-import { CaseNoteInput } from '@common/cams/cases';
+import { CaseNote, CaseNoteInput } from '@common/cams/cases';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
 import LocalStorage from '@/lib/utils/local-storage';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { ResponseBody } from '@common/api/response';
+import { randomUUID } from 'crypto';
 
 const caseId = '000-11-22222';
 const textAreaTestId = 'textarea-note-content';
@@ -326,6 +328,85 @@ describe('case note tests', () => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
     });
     expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('should send updated case note to api and call fetch notes on success', async () => {
+    const session = MockData.getCamsSession();
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    const spyOnNotesCreation = vi.fn();
+    const originalNote = MockData.getCaseNote({ updatedBy: session.user });
+    const originalNotesResponse: ResponseBody<CaseNote[]> = {
+      data: [originalNote],
+    };
+    const newNoteTitle = 'New note title';
+    const newNoteContent = 'New note content';
+    const updatedOn = new Date().toISOString();
+
+    const newNote = {
+      ...originalNote,
+      id: randomUUID(),
+      title: newNoteTitle,
+      content: newNoteContent,
+      previousVersionId: originalNote.id,
+      updatedBy: originalNote.updatedBy,
+      updatedOn,
+    };
+
+    const newNotesResponse: ResponseBody<CaseNote[]> = {
+      data: [newNote],
+    };
+
+    const expectedPutContent = {
+      id: newNote.id,
+      caseId: newNote.caseId,
+      title: newNoteTitle,
+      content: newNoteContent,
+      updatedBy: originalNote.updatedBy,
+    };
+
+    // TODO: properly set up the original getCaseNotes response
+    vi.spyOn(Api2, 'getCaseNotes')
+      .mockResolvedValueOnce(originalNotesResponse)
+      .mockResolvedValueOnce(newNotesResponse);
+
+    const putCaseNoteSpy = vi
+      .spyOn(Api2, 'putCaseNote')
+      .mockImplementation(async (): Promise<void> => {
+        return Promise.resolve();
+      });
+
+    renderWithProps({ onNoteCreation: spyOnNotesCreation });
+    const editButton = screen.queryByTestId('button-edit-case-note');
+    expect(editButton).toBeVisible();
+    await userEvent.click(editButton!);
+
+    const editTitleInput = screen.queryByTestId('note-title-idx');
+    const editContentInput = screen.queryByTestId('textarea-note-content');
+    const submitButton = screen.queryByTestId('button-submit-case-note');
+    expect(editTitleInput).toBeEnabled();
+    expect(editContentInput).toBeEnabled();
+    expect(submitButton).toBeEnabled();
+
+    await userEvent.clear(editTitleInput!);
+    await userEvent.type(editTitleInput!, newNoteTitle);
+
+    await userEvent.clear(editContentInput!);
+    await userEvent.type(editContentInput!, newNoteContent);
+
+    await userEvent.click(submitButton!);
+
+    expect(putCaseNoteSpy).toHaveBeenCalledWith(expectedPutContent);
+
+    await waitFor(() => {
+      const renderedNoteTitle = screen.queryByTestId('case-note-0-header');
+      expect(renderedNoteTitle).toHaveTextContent(newNoteTitle);
+    });
+
+    const renderedNoteContent = screen.queryByTestId('case-note-0-content');
+    expect(renderedNoteContent).toHaveTextContent(newNoteContent);
+
+    const renderedNoteDate = screen.queryByTestId('case-note-creation-date-0');
+    expect(renderedNoteDate).toHaveTextContent(formatDateTime(updatedOn));
   });
 });
 

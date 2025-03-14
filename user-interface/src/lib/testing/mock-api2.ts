@@ -315,6 +315,10 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
 
+async function putCaseNote(note: CaseNoteInput): Promise<void> {
+  await put(`/cases/${note.caseId}/notes/${note.id}`, { note }, {});
+}
+
 async function putConsolidationOrderApproval(
   data: ConsolidationOrderActionApproval,
 ): Promise<ResponseBody<ConsolidationOrder[]>> {
@@ -368,6 +372,7 @@ export const MockApi2 = {
   getCaseAssociations,
   getCaseHistory,
   postCaseNote,
+  putCaseNote,
   getCaseNotes,
   deleteCaseNote,
   getCourts,
