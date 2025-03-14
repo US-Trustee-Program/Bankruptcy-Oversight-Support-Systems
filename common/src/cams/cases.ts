@@ -70,6 +70,7 @@ export type CaseNote = CaseNoteInput &
     documentType: 'NOTE';
     archivedOn?: string;
     archivedBy?: CamsUserReference;
+    previousVersionId?: string;
   };
 
 export type CaseNoteDeleteRequest = {
@@ -79,7 +80,13 @@ export type CaseNoteDeleteRequest = {
   sessionUser: CamsUserReference;
 };
 
+export type CaseNoteEditRequest = {
+  note: CaseNoteInput;
+  sessionUser: CamsUserReference;
+};
+
 export type CaseNoteInput = {
+  id?: string;
   title: string;
   caseId: string;
   content: string;

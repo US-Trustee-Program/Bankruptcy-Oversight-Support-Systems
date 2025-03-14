@@ -3,8 +3,10 @@ import { CamsHttpRequest } from '../../adapters/types/http';
 
 export const mockRequestUrl = 'http://mockhost/api';
 
-export function mockCamsHttpRequest(override: Partial<CamsHttpRequest> = {}): CamsHttpRequest {
-  const defaults: CamsHttpRequest = {
+export function mockCamsHttpRequest<B = unknown>(
+  override: Partial<CamsHttpRequest<B>> = {},
+): CamsHttpRequest<B> {
+  const defaults: CamsHttpRequest<B> = {
     query: {},
     method: 'GET',
     url: mockRequestUrl,

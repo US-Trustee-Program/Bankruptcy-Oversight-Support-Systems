@@ -50,7 +50,7 @@ describe('case notes repo tests', () => {
   });
 
   test('should call updateOne when archiveCaseNote is called.', async () => {
-    const archival = MockData.getCaseNoteArchival();
+    const archival = MockData.getCaseNoteDeletion();
     const expectedDateParameter = {
       archivedOn: archival.archivedOn,
     };
@@ -82,7 +82,7 @@ describe('case notes repo tests', () => {
     });
 
     test('should handle error on archiveNote', async () => {
-      const archiveNote = MockData.getCaseNoteArchival();
+      const archiveNote = MockData.getCaseNoteDeletion();
       jest.spyOn(MongoCollectionAdapter.prototype, 'updateOne').mockRejectedValue(error);
       await expect(() => repo.archiveCaseNote(archiveNote)).rejects.toThrow(
         getCamsError(error, 'CASE_NOTES_MONGO_REPOSITORY', 'Unable to archive case note.'),
