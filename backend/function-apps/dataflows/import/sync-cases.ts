@@ -90,7 +90,7 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
   invocationContext.extraOutputs.set(DLQ, failedEvents);
 }
 
-export function setupSyncCases() {
+function setup() {
   app.storageQueue(HANDLE_START, {
     connection: 'AzureWebJobsStorage',
     queueName: START.queueName,
@@ -118,3 +118,8 @@ export function setupSyncCases() {
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};

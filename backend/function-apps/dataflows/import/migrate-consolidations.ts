@@ -164,7 +164,7 @@ function formatCaseIdForLog(item: AcmsEtlQueueItem) {
   return [item.divisionCode.padStart(3, '0'), item.chapter, caseNumber].join('-');
 }
 
-export function setupMigrateConsolidations() {
+function setup() {
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
@@ -179,3 +179,8 @@ export function setupMigrateConsolidations() {
     extraOutputs: [HARD_STOP],
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};
