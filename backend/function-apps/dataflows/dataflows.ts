@@ -6,6 +6,7 @@ import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import MigrateCases from './import/migrate-cases';
 import MigrateConsolidations from './import/migrate-consolidations';
+import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 const MODULE_NAME = 'DATAFLOWS_SETUP';
 
@@ -13,6 +14,8 @@ type DataflowSetup = {
   MODULE_NAME: string;
   setup: () => void;
 };
+
+const logger = new LoggerImpl('bootstrap');
 
 class DataflowSetupMap extends Map<string, () => void> {
   add(...dataflows: DataflowSetup[]) {
@@ -34,7 +37,7 @@ class DataflowSetupMap extends Map<string, () => void> {
         this.get(dataflowName)();
         status.push([dataflowName, true]);
       } else {
-        console.warn(MODULE_NAME, 'Dataflow name', dataflowName, 'not found');
+        logger.warn(MODULE_NAME, `Dataflow name ${dataflowName} not found.`);
       }
     }
     for (const dataflowName of this.list()) {
@@ -56,7 +59,7 @@ dataflows.add(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConso
 
 // Log the list of registered data flows.
 const registeredDataflows = dataflows.list().join(', ');
-console.log(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
+logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 // Enable the data flows specified in from the configuration env var.
 const envVar = process.env.CAMS_ENABLE_DATAFLOWS;
@@ -65,7 +68,7 @@ const status = dataflows.enable(...dataflowNames);
 
 // Log the status of each registered data flow.
 status.forEach((s) => {
-  console.log(MODULE_NAME, 'Enabled', s);
+  logger.info(MODULE_NAME, 'Enabled', s);
 });
 
 /*
