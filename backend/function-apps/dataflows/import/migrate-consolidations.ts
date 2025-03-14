@@ -1,11 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName, STORAGE_QUEUE_CONNECTION } from '../dataflows-common';
-import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
-import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import {
   AcmsBounds,
   AcmsEtlQueueItem,
@@ -28,16 +24,6 @@ const PAGE = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
-const DLQ = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'dlq'),
-  connection: 'AzureWebJobsStorage',
-});
-
-const RETRY = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'retry'),
-  connection: 'AzureWebJobsStorage',
-});
-
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
   connection: 'AzureWebJobsStorage',
@@ -46,9 +32,6 @@ const HARD_STOP = output.storageQueue({
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
-const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
-const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
-// const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 /**
  * handleStart
@@ -79,61 +62,6 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
 async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
   for (const event of page) {
     await migrateConsolidation(event, invocationContext);
-  }
-}
-
-async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  if (isNotFoundError(event.error)) {
-    logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`);
-    return;
-  }
-  logger.info(
-    MODULE_NAME,
-    `Error encountered attempting to sync ${event.caseId}: ${event.error['message']}.`,
-  );
-  delete event.error;
-  invocationContext.extraOutputs.set(RETRY, [event]);
-}
-
-async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-
-  const RETRY_LIMIT = 3;
-  if (!event.retryCount) {
-    event.retryCount = 1;
-  } else {
-    event.retryCount += 1;
-  }
-
-  if (event.retryCount > RETRY_LIMIT) {
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.info(MODULE_NAME, `Too many attempts to sync ${event.caseId}.`);
-  } else {
-    const appContext = await ApplicationContextCreator.getApplicationContext({ invocationContext });
-
-    if (!event.bCase) {
-      const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
-
-      if (exportResult.bCase) {
-        event.bCase = exportResult.bCase;
-      } else {
-        event.error =
-          exportResult.error ??
-          new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
-        invocationContext.extraOutputs.set(DLQ, [event]);
-        return;
-      }
-    }
-
-    const loadResult = await ExportAndLoadCase.loadCase(appContext, event);
-
-    if (loadResult.error) {
-      event.error = loadResult.error;
-      invocationContext.extraOutputs.set(DLQ, [event]);
-    }
-
-    logger.info(MODULE_NAME, `Successfully retried to sync ${event.caseId}.`);
   }
 }
 
@@ -226,28 +154,6 @@ export function setupMigrateConsolidations() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [DLQ, HARD_STOP],
+    extraOutputs: [HARD_STOP],
   });
-
-  app.storageQueue(HANDLE_ERROR, {
-    connection: STORAGE_QUEUE_CONNECTION,
-    queueName: DLQ.queueName,
-    handler: handleError,
-    extraOutputs: [RETRY],
-  });
-
-  app.storageQueue(HANDLE_RETRY, {
-    connection: STORAGE_QUEUE_CONNECTION,
-    queueName: RETRY.queueName,
-    handler: handleRetry,
-    extraOutputs: [DLQ, HARD_STOP],
-  });
-
-  // We have stopped using HTTP triggers, preferring to just push a message on the START queue manually.
-  // app.http(HTTP_TRIGGER, {
-  //   route: 'migrate-consolidations',
-  //   methods: ['POST'],
-  //   extraOutputs: [START],
-  //   handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
-  // });
 }
