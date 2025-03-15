@@ -45,6 +45,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> 
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
   multiSelect?: boolean;
   wrapPills?: boolean;
+  value?: string | string[];
 }
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -62,7 +63,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     wrapPills,
     ariaLabelPrefix,
     ariaDescription,
-    value: _value,
+    value,
     options,
     ...otherProps
   } = props;
@@ -73,8 +74,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     disabled !== undefined ? !!disabled : false,
   );
   const [selections, setSelections] = useState<ComboOption[]>(() => {
-    if (props.value) {
-      const selection = options.find((option) => option.value === props.value);
+    if (value) {
+      const selection = options.find((option) => {
+        if (Array.isArray(value)) {
+          return value.includes(option.value);
+        }
+        return option.value === value;
+      });
       if (selection) {
         selection.selected = true;
         return [selection];
@@ -88,6 +94,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(options);
+  const [initialSelectionsComplete, setInitialSelectionsComplete] = useState<boolean>(false);
 
   // ========== REFS ==========
 
@@ -365,10 +372,33 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     filterRef.current?.focus();
   }
 
+  function setUpInitialSelections() {
+    const initialSelections = [];
+    if (value) {
+      const selection = options.find((option) => {
+        if (Array.isArray(value)) {
+          return value.includes(option.value);
+        }
+        return option.value === value;
+      });
+      if (selection) {
+        selection.selected = true;
+        initialSelections.push(selection);
+      }
+    }
+    if (initialSelections.length) {
+      setSelections(initialSelections);
+      setInitialSelectionsComplete(true);
+    }
+  }
+
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
     setFilteredOptions(options);
+    if (!initialSelectionsComplete) {
+      setUpInitialSelections();
+    }
   }, [options]);
 
   useEffect(() => {
@@ -481,6 +511,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           <div
             className={`item-list-container ${expandedClass}`}
             id={`${comboBoxId}-item-list-container`}
+            data-testid={`${comboBoxId}-item-list-container`}
             aria-hidden={expanded}
             tabIndex={-1}
             style={dropdownLocation ?? undefined}

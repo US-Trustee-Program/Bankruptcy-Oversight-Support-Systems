@@ -22,17 +22,27 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import LocalStorage from '@/lib/utils/local-storage';
+import { getCourtDivisionCodes } from '@common/cams/users';
+
+export type CourtSelectionOption = CourtDivisionDetails & {
+  selected: boolean;
+};
 
 export default function SearchScreen() {
+  const session = LocalStorage.getSession();
+  const defaultDivisions = getCourtDivisionCodes(session!.user);
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    divisionCodes: defaultDivisions,
   });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    divisionCodes: defaultDivisions,
   });
 
   const infoModalRef = useRef(null);
@@ -221,7 +231,8 @@ export default function SearchScreen() {
                   onPillSelection={handleCourtSelection}
                   onUpdateSelection={handleCourtClear}
                   onFocus={handleFilterFormElementFocus}
-                  options={getOfficeList(officesList)}
+                  options={getOfficeList(officesList, defaultDivisions)}
+                  value={defaultDivisions}
                   required={false}
                   multiSelect={true}
                   wrapPills={true}
@@ -267,7 +278,7 @@ export default function SearchScreen() {
           {!isValidSearchPredicate(searchPredicate) && (
             <div className="search-alert">
               <Alert
-                id="default-state-alert"
+                id="empty-state-alert"
                 message="Use the Search Filters to find cases."
                 title="Enter search terms"
                 type={UswdsAlertStyle.Info}
