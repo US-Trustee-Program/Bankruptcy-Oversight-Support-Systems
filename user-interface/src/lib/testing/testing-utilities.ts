@@ -30,6 +30,11 @@ async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function delayResolve<T = unknown>(data: T, ms: number = 100) {
+  await delay(ms);
+  return data;
+}
+
 function setUser(override: Partial<CamsUser> = {}) {
   const user = MockData.getCamsUser(override);
   LocalStorage.setSession(MockData.getCamsSession({ user }));
@@ -128,6 +133,7 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
 export const TestingUtilities = {
   waitFor,
   delay,
+  delayResolve,
   setUser,
   setUserWithRoles,
   spyOnGlobalAlert,

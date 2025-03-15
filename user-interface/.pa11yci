@@ -73,7 +73,7 @@
         "wait for element #search-error-alert to be visible",
         "click element #clear-basic-search-field",
         "click element #search-submit",
-        "wait for element [data-testid='alert-default-state-alert'] to be visible",
+        "wait for element [data-testid='alert-empty-state-alert'] to be visible",
         "click element [data-testid='button-court-selections-search-expand']",
         "click element [data-testid='court-selections-search-option-item-2']",
         "click element [data-testid='button-court-selections-search-expand']",

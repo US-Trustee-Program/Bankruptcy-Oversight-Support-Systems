@@ -34,7 +34,7 @@ export type PrivilegedIdentityUser = CamsUserReference & {
 };
 
 export function getCourtDivisionCodes(user: CamsUser): string[] {
-  if (!user.offices) return [];
+  if (!user || !user.offices) return [];
   const reducer = (divisionCodes: string[], office: UstpOfficeDetails) => {
     office.groups.forEach((group) => {
       group.divisions.forEach((division) => {

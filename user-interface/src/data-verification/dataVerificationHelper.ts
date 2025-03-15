@@ -1,6 +1,6 @@
 import { CourtDivisionDetails } from '@common/cams/courts';
 
-export function getOfficeList(officesList: CourtDivisionDetails[]) {
+export function getOfficeList(officesList: CourtDivisionDetails[], selected?: string[]) {
   const mapOutput = officesList.map((court) => {
     let label = `${court.courtName} (${court.courtDivisionName})`;
     if (court.isLegacy) {
@@ -9,6 +9,7 @@ export function getOfficeList(officesList: CourtDivisionDetails[]) {
     return {
       value: court.courtDivisionCode,
       label,
+      selected: selected?.includes(court.courtDivisionCode) ?? false,
     };
   });
   return mapOutput;
