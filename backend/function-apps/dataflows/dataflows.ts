@@ -17,31 +17,33 @@ type DataflowSetup = {
 
 const logger = new LoggerImpl('bootstrap');
 
-class DataflowSetupMap extends Map<string, () => void> {
-  add(...dataflows: DataflowSetup[]) {
+class DataflowSetupMap {
+  private map = new Map<string, () => void>();
+
+  register(...dataflows: DataflowSetup[]) {
     for (const dataflow of dataflows) {
-      this.set(dataflow.MODULE_NAME, dataflow.setup);
+      this.map.set(dataflow.MODULE_NAME, dataflow.setup);
     }
   }
 
   list() {
-    return [...this.keys()];
+    return [...this.map.keys()];
   }
 
-  enable(...dataflowNames: string[]) {
-    const cleanNames = dataflowNames.map((name) => name.trim().toUpperCase());
+  setup(...dataflowNames: string[]) {
+    const uniqueNames = new Set<string>(dataflowNames);
     const status = [];
 
-    for (const dataflowName of cleanNames) {
-      if (this.has(dataflowName)) {
-        this.get(dataflowName)();
+    for (const dataflowName of uniqueNames) {
+      if (this.map.has(dataflowName)) {
+        this.map.get(dataflowName)();
         status.push([dataflowName, true]);
       } else {
         logger.warn(MODULE_NAME, `Dataflow name ${dataflowName} not found.`);
       }
     }
     for (const dataflowName of this.list()) {
-      if (!cleanNames.includes(dataflowName)) {
+      if (!uniqueNames.has(dataflowName)) {
         status.push([dataflowName, false]);
       }
     }
@@ -55,27 +57,27 @@ dotenv.config();
 initializeApplicationInsights();
 
 // Register data flows.
-dataflows.add(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
+dataflows.register(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
 
 // Log the list of registered data flows.
 const registeredDataflows = dataflows.list().join(', ');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 // Enable the data flows specified in from the configuration env var.
-const envVar = process.env.CAMS_ENABLE_DATAFLOWS;
-const dataflowNames = envVar.split(',');
-const status = dataflows.enable(...dataflowNames);
+const envVar = process.env.CAMS_ENABLE_DATAFLOWS ?? '';
+const names = envVar.split(',').map((name) => name.trim().toUpperCase());
+const status = dataflows.setup(...names);
 
 // Log the status of each registered data flow.
 status.forEach((s) => {
-  logger.info(MODULE_NAME, 'Enabled', s);
+  logger.info(MODULE_NAME, s);
 });
 
 /*
 
 Sample log output on startup:
 
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Available Dataflows SYNC-CASES, SYNC-OFFICE-STAFF, SYNC-ORDERS, MIGRATE-CASES, MIGRATE-CONSOLIDATIONS
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Registered Dataflows SYNC-CASES, SYNC-OFFICE-STAFF, SYNC-ORDERS, MIGRATE-CASES, MIGRATE-CONSOLIDATIONS
 [2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Dataflow name FOO not found
 [2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-CASES', true ]
 [2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-OFFICE-STAFF', false ]
