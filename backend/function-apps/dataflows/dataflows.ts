@@ -30,21 +30,21 @@ class DataflowSetupMap {
     return [...this.map.keys()];
   }
 
-  setup(...dataflowNames: string[]) {
-    const uniqueNames = new Set<string>(dataflowNames);
+  setup(...names: string[]) {
+    const uniqueNames = new Set<string>(names);
     const status = [];
 
-    for (const dataflowName of uniqueNames) {
-      if (this.map.has(dataflowName)) {
-        this.map.get(dataflowName)();
-        status.push([dataflowName, true]);
+    for (const name of uniqueNames) {
+      if (this.map.has(name)) {
+        this.map.get(name)();
+        status.push([name, true]);
       } else {
-        logger.warn(MODULE_NAME, `Dataflow name ${dataflowName} not found.`);
+        logger.warn(MODULE_NAME, `Dataflow name ${name} not found.`);
       }
     }
-    for (const dataflowName of this.list()) {
-      if (!uniqueNames.has(dataflowName)) {
-        status.push([dataflowName, false]);
+    for (const name of this.list()) {
+      if (!uniqueNames.has(name)) {
+        status.push([name, false]);
       }
     }
     return status;
