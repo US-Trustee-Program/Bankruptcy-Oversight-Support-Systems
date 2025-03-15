@@ -6,10 +6,7 @@ import { buildFunctionName } from '../dataflows-common';
 
 const MODULE_NAME = 'SYNC-OFFICE-STAFF';
 
-export async function timerTrigger(
-  _ignore: Timer,
-  invocationContext: InvocationContext,
-): Promise<void> {
+async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
   const logger = ContextCreator.getLogger(invocationContext);
   try {
     const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
@@ -20,9 +17,14 @@ export async function timerTrigger(
   }
 }
 
-export function setupSyncOfficeStaff() {
+function setup() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
     schedule: '0 0 5 * * *',
     handler: timerTrigger,
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};

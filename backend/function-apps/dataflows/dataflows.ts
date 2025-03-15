@@ -1,24 +1,88 @@
 import * as dotenv from 'dotenv';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
-import { setupMigrateCases } from './import/migrate-cases';
-import { setupSyncCases } from './import/sync-cases';
-import { setupSyncOrders } from './import/sync-orders';
-import { setupSyncOfficeStaff } from './import/sync-office-staff';
-import { setupMigrateConsolidations } from './import/migrate-consolidations';
+import SyncCases from './import/sync-cases';
+import SyncOrders from './import/sync-orders';
+import SyncOfficeStaff from './import/sync-office-staff';
+import MigrateCases from './import/migrate-cases';
+import MigrateConsolidations from './import/migrate-consolidations';
+import { LoggerImpl } from '../../lib/adapters/services/logger.service';
+
+const MODULE_NAME = 'DATAFLOWS_SETUP';
+
+type DataflowSetup = {
+  MODULE_NAME: string;
+  setup: () => void;
+};
+
+const logger = new LoggerImpl('bootstrap');
+
+class DataflowSetupMap {
+  private map = new Map<string, () => void>();
+
+  register(...dataflows: DataflowSetup[]) {
+    for (const dataflow of dataflows) {
+      this.map.set(dataflow.MODULE_NAME, dataflow.setup);
+    }
+  }
+
+  list() {
+    return [...this.map.keys()];
+  }
+
+  setup(...names: string[]) {
+    const uniqueNames = new Set<string>(names);
+    const status = [];
+
+    for (const name of uniqueNames) {
+      if (this.map.has(name)) {
+        this.map.get(name)();
+        status.push([name, true]);
+      } else {
+        logger.warn(MODULE_NAME, `Dataflow name ${name} not found.`);
+      }
+    }
+    for (const name of this.list()) {
+      if (!uniqueNames.has(name)) {
+        status.push([name, false]);
+      }
+    }
+    return status;
+  }
+}
+const dataflows = new DataflowSetupMap();
 
 // Setup environment and AppInsights.
 dotenv.config();
 initializeApplicationInsights();
 
-// Setup the recurring synchronization.
-setupSyncCases();
-setupSyncOfficeStaff();
-setupSyncOrders();
+// Register data flows.
+dataflows.register(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
 
-// Setup migrations. Migrations can be removed once they are complete.
-const enableMigrateCases = false;
-if (enableMigrateCases) setupMigrateCases();
+// Log the list of registered data flows.
+const registeredDataflows = dataflows.list().join(', ');
+logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
-const enableMigrateConsolidations = true;
-if (enableMigrateConsolidations) setupMigrateConsolidations();
+// Enable the data flows specified in from the configuration env var.
+const envVar = process.env.CAMS_ENABLE_DATAFLOWS ?? '';
+const names = envVar.split(',').map((name) => name.trim().toUpperCase());
+const status = dataflows.setup(...names);
+
+// Log the status of each registered data flow.
+status.forEach((s) => {
+  logger.info(MODULE_NAME, s);
+});
+
+/*
+
+Sample log output on startup:
+
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Registered Dataflows SYNC-CASES, SYNC-OFFICE-STAFF, SYNC-ORDERS, MIGRATE-CASES, MIGRATE-CONSOLIDATIONS
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Dataflow name FOO not found
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-CASES', true ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-OFFICE-STAFF', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-ORDERS', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CASES', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CONSOLIDATIONS', false ]
+
+*/
