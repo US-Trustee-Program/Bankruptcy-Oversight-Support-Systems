@@ -155,6 +155,8 @@ export class AcmsOrders {
 
         await casesRepo.createConsolidationFrom(fromLink);
         await casesRepo.createConsolidationTo(toLink);
+
+        return report;
       }
 
       // Partition history by date.
