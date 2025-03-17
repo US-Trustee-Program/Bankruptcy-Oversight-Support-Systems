@@ -4,10 +4,13 @@ import { ModalRefType, SubmitCancelButtonGroupRef } from '@/lib/components/uswds
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-//import Api2 from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import TextArea from '@/lib/components/uswds/TextArea';
+// import Api2 from '@/lib/models/api2';
+// import HttpStatusCodes from '@common/api/http-status-codes';
+// import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+// import { ResponseBody } from '@common/api/response';
 
 export interface CaseNotesCallbackProps {
   status: 'success' | 'error';
@@ -35,12 +38,13 @@ export type CaseNoteModalProps = {
 };
 
 function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalRef>) {
-  //const api = Api2;
+  // const api = Api2;
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
   const clearButtonRef = useRef<ButtonRef>(null);
+  // const globalAlert = useGlobalAlert();
 
   const editNoteModalId = 'edit-note-modal';
   function handleTitleChange(_event: React.ChangeEvent<HTMLInputElement>) {}
@@ -60,32 +64,28 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     setFormButtonState(false);
   }
 
-  /*
-  function disableFormFields(disabled: boolean) {
-    titleInputRef.current?.disable(disabled);
-    contentInputRef.current?.disable(disabled);
-    setFormButtonState(!disabled);
-  }
-    */
+  // function disableFormFields(disabled: boolean) {
+  //   titleInputRef.current?.disable(disabled);
+  //   contentInputRef.current?.disable(disabled);
+  //   setFormButtonState(!disabled);
+  // }
 
   async function sendCaseNoteToApi() {
-    /*
-    api
-      .postCaseNote(caseNoteInput)
-      .then(() => {
-        if (props.onNoteCreation) {
-          props.onNoteCreation();
-        }
-        disableFormFields(false);
-        clearCaseNoteForm();
-      })
-      .catch((e: HttpResponse) => {
-        if (e.status !== HttpStatusCodes.FORBIDDEN) {
-          globalAlert?.error('Could not insert case note.');
-        }
-        disableFormFields(false);
-      });
-      */
+    // api
+    //   .postCaseNote(caseNoteInput)
+    //   .then(() => {
+    //     if (props.onNoteCreation) {
+    //       props.onNoteCreation();
+    //     }
+    //     disableFormFields(false);
+    //     clearCaseNoteForm();
+    //   })
+    //   .catch((e: ResponseBody) => {
+    //     if (e.data !== HttpStatusCodes.FORBIDDEN) {
+    //       globalAlert?.error('Could not insert case note.');
+    //     }
+    //     disableFormFields(false);
+    //   });
   }
 
   const editNoteButtonGroup: SubmitCancelBtnProps = {
