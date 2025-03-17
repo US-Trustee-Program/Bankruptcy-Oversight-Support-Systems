@@ -135,13 +135,14 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationC
   try {
     logger.debug(
       MODULE_NAME,
-      `Starting migration of case ${item.leadCaseId} for division ${item.divisionCode}, chapter ${item.chapter}.`,
+      `Starting migration of case ${formatCaseIdForLog(item)} for division ${item.divisionCode}, chapter ${item.chapter}.`,
     );
     const controller = new AcmsOrdersController();
     const result = await controller.migrateConsolidation(appContext, item.leadCaseId);
     logger.debug(
       MODULE_NAME,
-      `Migrate consolidation of ${item.leadCaseId} ${result.success ? 'successful' : 'failed'}.`,
+      `Migrate consolidation of case ${formatCaseIdForLog(item)} ${result.success ? 'successful' : 'failed'}.`,
+      result.error ?? result,
     );
 
     if (!result.success && result.error) {
@@ -155,6 +156,12 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationC
     logger.error(MODULE_NAME, errorMessage.error.message);
     context.extraOutputs.set(HARD_STOP, [errorMessage]);
   }
+}
+
+function formatCaseIdForLog(item: AcmsEtlQueueItem) {
+  // The caseId is a numeric string. The divisionCode is not left padded with zeros.
+  const caseNumber = item.leadCaseId.slice(item.leadCaseId.length - 5);
+  return [item.divisionCode.padStart(3, '0'), item.chapter, caseNumber].join('-');
 }
 
 export function setupMigrateConsolidations() {
