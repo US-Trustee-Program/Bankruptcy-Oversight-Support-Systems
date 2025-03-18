@@ -276,6 +276,7 @@ async function putCaseNote(note: CaseNoteInput): Promise<void> {
     await api().put<CaseNoteInput>(`/cases/${note.caseId}/notes/${note.id}`, {
       title: sanitizedTitle,
       content: sanitizedNote,
+      updatedBy: note.updatedBy,
     });
   }
 }

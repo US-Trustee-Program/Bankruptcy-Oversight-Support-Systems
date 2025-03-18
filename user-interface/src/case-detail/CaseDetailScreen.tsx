@@ -767,8 +767,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           searchString={caseNoteSearchText}
                           areCaseNotesLoading={areCaseNotesLoading}
                           alertOptions={notesAlertOptions}
-                          onNoteCreation={handleNotesCallback}
-                          onRemoveNote={handleNotesCallback}
+                          onUpdateNotesRequest={handleNotesCallback}
                         />
                       }
                     />

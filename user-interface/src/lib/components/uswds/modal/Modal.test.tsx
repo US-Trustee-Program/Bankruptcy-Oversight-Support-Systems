@@ -8,6 +8,8 @@ import Checkbox from '../Checkbox';
 import Radio from '../Radio';
 import Button from '../Button';
 
+const testButtonId = 'open-modal-button_open-test';
+
 describe('Test Modal component', () => {
   const modalId = 'test-modal';
   const onOpenModal = vi.fn();
@@ -15,7 +17,7 @@ describe('Test Modal component', () => {
   const submitButtonOnClick = vi.fn();
   const cancelButtonOnClick = vi.fn();
 
-  beforeEach(() => {
+  function createModal() {
     const modalRef = React.createRef<ModalRefType>();
     const actionButtonGroup = {
       modalId: modalId,
@@ -61,10 +63,14 @@ describe('Test Modal component', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+  }
+
+  beforeEach(() => {
+    createModal();
   });
 
   test('should open modal', async () => {
-    const button = screen.getByTestId('open-modal-button-open-test');
+    const button = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -77,7 +83,7 @@ describe('Test Modal component', () => {
   });
 
   test('should close modal and call onClose when we press the `esc` key', async () => {
-    const button = screen.getByTestId('open-modal-button-open-test');
+    const button = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     expect(modal).toHaveClass('is-hidden');
@@ -96,7 +102,7 @@ describe('Test Modal component', () => {
   });
 
   test('should close modal and call onClose when we click on the X', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -115,7 +121,7 @@ describe('Test Modal component', () => {
   });
 
   test('should close modal and call onClose when we click outside of modal', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -134,7 +140,7 @@ describe('Test Modal component', () => {
   });
 
   test('should close modal and call onClose when we click cancel button', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -154,7 +160,7 @@ describe('Test Modal component', () => {
   });
 
   test('should run onClick handler when submit button is clicked', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -168,7 +174,7 @@ describe('Test Modal component', () => {
   });
 
   test('should initially focus first input in modal when modal is first opened, and then move focus to first input in modal when close button is in focus and user presses Tab key', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modalCloseButton = screen.getByTestId(`modal-x-button-${modalId}`);
     const firstElement = document.querySelector('.usa-checkbox__label');
 
@@ -186,7 +192,7 @@ describe('Test Modal component', () => {
   });
 
   test('should move focus to close button if modals first input field is in focus and user presses Shift-Tab key combination', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modalCloseButton = screen.getByTestId(`modal-x-button-${modalId}`);
     const firstElement = document.querySelector('.usa-checkbox__label');
 
@@ -213,7 +219,7 @@ describe('Test Modal component', () => {
 
 describe('Test Modal component with force action set to true', () => {
   const modalId = 'test-modal';
-  beforeEach(() => {
+  function createModal() {
     const modalRef = React.createRef<ModalRefType>();
     const actionButtonGroup = {
       modalId: modalId,
@@ -242,10 +248,13 @@ describe('Test Modal component with force action set to true', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+  }
+  beforeEach(() => {
+    createModal();
   });
 
   test('should not close modal when we press the `esc` key if forceAction is true', async () => {
-    const button = screen.getByTestId('open-modal-button-open-test');
+    const button = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -261,7 +270,7 @@ describe('Test Modal component with force action set to true', () => {
   });
 
   test('should not have an X button if forceAction is true', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -280,7 +289,7 @@ describe('Test Modal component with force action set to true', () => {
   });
 
   test('should not close modal when we click outside of modal if forceAction is true', async () => {
-    const openButton = screen.getByTestId('open-modal-button-open-test');
+    const openButton = screen.getByTestId(testButtonId);
     const modal = screen.getByTestId(`modal-${modalId}`);
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');

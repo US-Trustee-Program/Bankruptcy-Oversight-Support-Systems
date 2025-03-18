@@ -64,7 +64,18 @@ export class CaseNotesController implements CamsController {
         });
       } else if (context.request.method === 'PUT') {
         const note = context.request.body;
-        const request: CaseNoteEditRequest = { note, sessionUser: context.session.user };
+        const { caseId, noteId } = context.request.params;
+        const noteForRequest = {
+          ...note,
+          id: noteId,
+          caseId,
+          updatedBy: note.updatedBy,
+        };
+        const request: CaseNoteEditRequest = {
+          note: noteForRequest,
+          sessionUser: context.session.user,
+        };
+
         await caseNotesUseCase.editCaseNote(request);
       } else {
         const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
