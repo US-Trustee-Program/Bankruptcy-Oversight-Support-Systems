@@ -16,8 +16,8 @@ export default defineConfig({
   },
   timeout: 60000, //Set Test timeout to 1 minute
   testDir: './playwright',
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  /* Do not Run tests in files in parallel */
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */

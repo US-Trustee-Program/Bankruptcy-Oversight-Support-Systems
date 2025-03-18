@@ -137,9 +137,9 @@ describe('case note tests', () => {
       onUpdateNotesRequest: onNoteRemoveSpy,
     });
 
-    const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button-0_0');
-    const button1 = screen.queryByTestId('open-modal-button_case-note-remove-button-1_1');
-    const button2 = screen.queryByTestId('open-modal-button_case-note-remove-button-2_2');
+    const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button_0');
+    const button1 = screen.queryByTestId('open-modal-button_case-note-remove-button_1');
+    const button2 = screen.queryByTestId('open-modal-button_case-note-remove-button_2');
 
     await waitFor(() => {
       expect(button0).toBeInTheDocument();
