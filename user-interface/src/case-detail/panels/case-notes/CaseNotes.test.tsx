@@ -25,7 +25,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     hasCaseNotes: false,
     caseNotes: [],
     searchString: '',
-    onUpdateNotesRequest: vi.fn(),
+    onUpdateNoteRequest: vi.fn(),
     areCaseNotesLoading: false,
   };
 
@@ -134,7 +134,7 @@ describe('case note tests', () => {
       caseId,
       hasCaseNotes: true,
       caseNotes,
-      onUpdateNotesRequest: onNoteRemoveSpy,
+      onUpdateNoteRequest: onNoteRemoveSpy,
     });
 
     const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button_0');

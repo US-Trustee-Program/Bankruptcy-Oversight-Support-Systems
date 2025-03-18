@@ -41,9 +41,15 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     CaseNotesMongoRepository.dropInstance();
   }
 
-  async create(data: CaseNote): Promise<string> {
+  async create(data: CaseNote): Promise<CaseNote> {
     try {
-      return await this.getAdapter<CaseNote>().insertOne(data);
+      const newId = await this.getAdapter<CaseNote>().insertOne(data);
+      const query = and(
+        doc('documentType').equals('NOTE'),
+        doc('caseId').equals(data.caseId),
+        doc('id').equals(newId),
+      );
+      return this.getAdapter<CaseNote>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create case note.');
     }

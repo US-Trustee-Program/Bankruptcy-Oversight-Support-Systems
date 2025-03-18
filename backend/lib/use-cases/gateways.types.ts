@@ -92,7 +92,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
 }
 
-export interface CaseNotesRepository<T = CaseNote> extends Creates<T, string> {
+export interface CaseNotesRepository<T = CaseNote> extends Creates<T, T> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
   archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
 }

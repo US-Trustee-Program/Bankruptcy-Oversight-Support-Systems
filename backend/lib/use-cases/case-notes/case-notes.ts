@@ -51,7 +51,7 @@ export class CaseNotesUseCase {
     return await this.caseNotesRepository.archiveCaseNote(newArchiveNote);
   }
 
-  public async editCaseNote(noteEditRequest: CaseNoteEditRequest): Promise<UpdateResult> {
+  public async editCaseNote(noteEditRequest: CaseNoteEditRequest): Promise<CaseNote> {
     const noteInput = noteEditRequest.note;
     if (noteEditRequest.note.updatedBy.id !== noteEditRequest.sessionUser.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not the creator of the note.' });
@@ -72,7 +72,7 @@ export class CaseNotesUseCase {
       archivedOn: dateOfEdit,
       archivedBy: getCamsUserReference(noteEditRequest.sessionUser),
     };
-    await this.caseNotesRepository.create(newNote);
-    return await this.caseNotesRepository.archiveCaseNote(archiveNote);
+    await this.caseNotesRepository.archiveCaseNote(archiveNote);
+    return await this.caseNotesRepository.create(newNote);
   }
 }

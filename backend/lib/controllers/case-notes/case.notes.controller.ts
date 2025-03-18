@@ -76,7 +76,13 @@ export class CaseNotesController implements CamsController {
           sessionUser: context.session.user,
         };
 
-        await caseNotesUseCase.editCaseNote(request);
+        const newNote = await caseNotesUseCase.editCaseNote(request);
+        return httpSuccess({
+          statusCode: HttpStatusCodes.CREATED,
+          body: {
+            data: [newNote],
+          },
+        });
       } else {
         const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
         return httpSuccess({

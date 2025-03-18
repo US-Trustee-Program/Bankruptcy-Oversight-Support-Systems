@@ -266,18 +266,19 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   }
 }
 
-async function putCaseNote(note: CaseNoteInput): Promise<void> {
+async function putCaseNote(note: CaseNoteInput): Promise<string | undefined> {
   if (!note.id) {
     throw new Error('Id must be provided');
   }
   const sanitizedNote = sanitizeText(note.content);
   const sanitizedTitle = sanitizeText(note.title);
   if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
-    await api().put<CaseNoteInput>(`/cases/${note.caseId}/notes/${note.id}`, {
+    const response = await api().put<CaseNoteInput[]>(`/cases/${note.caseId}/notes/${note.id}`, {
       title: sanitizedTitle,
       content: sanitizedNote,
       updatedBy: note.updatedBy,
     });
+    return response.data[0].id;
   }
 }
 

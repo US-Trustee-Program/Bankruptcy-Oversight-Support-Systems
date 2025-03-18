@@ -7,7 +7,7 @@ import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { CaseNote } from '@common/cams/cases';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { AlertOptions } from '../CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
@@ -25,35 +25,31 @@ export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
 }
 
+export type CaseNotesRef = {
+  focusEditButton: (noteId: string) => void;
+};
+
 export interface CaseNotesProps {
   caseId: string;
   areCaseNotesLoading?: boolean;
   hasCaseNotes: boolean;
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
-  onUpdateNotesRequest: () => void;
+  onUpdateNoteRequest: (noteId?: string) => void;
   searchString: string;
 }
 
-export default function CaseNotes(props: CaseNotesProps) {
-  const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNotesRequest } = props;
+function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
+  const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNoteRequest } = props;
   const removeConfirmationModalRef = useRef<ModalRefType>(null);
   const caseNoteModalRef = useRef<CaseNoteModalRef>(null);
   const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
-  useMemo(() => {
-    openArchiveModalButtonRefs.current =
-      caseNotes?.map(
-        (_, index) => openArchiveModalButtonRefs.current[index] ?? { current: null },
-      ) || [];
-  }, [caseNotes]);
   const openAddModalButtonRef = useRef<OpenModalButtonRef>(null);
-  const openEditModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
-  useMemo(() => {
-    openEditModalButtonRefs.current =
-      caseNotes?.map((_, index) => openEditModalButtonRefs.current[index] ?? { current: null }) ||
-      [];
-  }, [caseNotes]);
+  const openEditModalButtonRefs = useRef(new Map<string, React.RefObject<OpenModalButtonRef>>());
+  useMemo(mapArchiveButtonRefs, [caseNotes]);
+  useMemo(mapEditButtonRefs, [caseNotes]);
   const [noteForRemoval, setNoteForRemoval] = useState<Partial<CaseNote> | null>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const removeConfirmationModalId = 'remove-note-modal';
@@ -63,6 +59,30 @@ export default function CaseNotes(props: CaseNotesProps) {
   const api = Api2;
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
+
+  function mapArchiveButtonRefs() {
+    openArchiveModalButtonRefs.current =
+      caseNotes?.map(
+        (_, index) => openArchiveModalButtonRefs.current[index] ?? { current: null },
+      ) || [];
+  }
+
+  function mapEditButtonRefs() {
+    if (!caseNotes) return;
+
+    const newRefs = new Map<string, React.RefObject<OpenModalButtonRef>>();
+
+    caseNotes.forEach((caseNote) => {
+      if (caseNote.id) {
+        if (!openEditModalButtonRefs.current.has(caseNote.id)) {
+          openEditModalButtonRefs.current.set(caseNote.id, { current: null });
+        }
+        newRefs.set(caseNote.id, openEditModalButtonRefs.current.get(caseNote.id)!);
+      }
+    });
+
+    openEditModalButtonRefs.current = newRefs;
+  }
 
   function handleRemoveSubmitButtonClick() {
     if (noteForRemoval?.id) {
@@ -75,7 +95,7 @@ export default function CaseNotes(props: CaseNotesProps) {
       api
         .deleteCaseNote(newNoteForRemoval)
         .then(() => {
-          onUpdateNotesRequest();
+          onUpdateNoteRequest();
         })
         .catch(() => {
           globalAlert?.error('There was a problem archiving the note.');
@@ -136,14 +156,14 @@ export default function CaseNotes(props: CaseNotesProps) {
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 modalId={editNoteModalId}
                 modalRef={caseNoteModalRef}
-                ref={openEditModalButtonRefs.current[idx]}
+                ref={openEditModalButtonRefs.current.get(note.id!)}
                 openProps={{
                   id: note.id,
                   caseId: note.caseId,
                   buttonId: `case-note-edit-button-${idx}`,
                   title: note.title,
                   content: note.content,
-                  callback: onUpdateNotesRequest,
+                  callback: onUpdateNoteRequest,
                 }}
                 ariaLabel={`Edit note titled ${note.title}`}
               >
@@ -196,6 +216,16 @@ export default function CaseNotes(props: CaseNotesProps) {
     },
   };
 
+  function focusEditButton(noteId: string) {
+    setFocusId(noteId);
+  }
+
+  useImperativeHandle(ref, () => {
+    return {
+      focusEditButton,
+    };
+  });
+
   useEffect(() => {
     handleHighlight(
       window,
@@ -205,6 +235,13 @@ export default function CaseNotes(props: CaseNotesProps) {
       MINIMUM_SEARCH_CHARACTERS,
     );
   }, [searchString, caseNotes]);
+
+  useEffect(() => {
+    if (focusId && openEditModalButtonRefs.current) {
+      const ref = openEditModalButtonRefs.current.get(focusId);
+      ref?.current?.focus();
+    }
+  }, [focusId, openEditModalButtonRefs.current]);
 
   return (
     <div className="case-notes-panel">
@@ -220,7 +257,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           openProps={{
             caseId,
             buttonId: `case-note-add-button`,
-            callback: onUpdateNotesRequest,
+            callback: onUpdateNoteRequest,
           }}
           ariaLabel={`Add new note`}
         >
@@ -265,3 +302,7 @@ export default function CaseNotes(props: CaseNotesProps) {
     </div>
   );
 }
+
+const CaseNotes = forwardRef(_CaseNotes);
+
+export default CaseNotes;
