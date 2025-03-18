@@ -10,7 +10,7 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
 
-const MODULE_NAME: string = 'OFFICES_MONGO_REPOSITORY';
+const MODULE_NAME = 'OFFICES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'offices';
 
 const { and, using } = QueryBuilder;

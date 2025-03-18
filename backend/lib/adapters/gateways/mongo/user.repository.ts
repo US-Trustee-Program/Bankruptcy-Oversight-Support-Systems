@@ -8,7 +8,7 @@ import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsUserReference, PrivilegedIdentityUser } from '../../../../../common/src/cams/users';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 
-const MODULE_NAME: string = 'USERS_MONGO_REPOSITORY';
+const MODULE_NAME = 'USERS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'users';
 
 const { and, using } = QueryBuilder;
