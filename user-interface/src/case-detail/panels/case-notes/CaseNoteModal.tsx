@@ -152,6 +152,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
         if (submitCallbackRef.current) {
           submitCallbackRef.current(noteId);
         }
+        // throw new Error('some nonsense');
         clearCaseNoteForm();
         hide();
       })

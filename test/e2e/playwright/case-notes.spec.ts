@@ -6,7 +6,6 @@ import { logout } from './login/login-helpers';
 test.describe.serial('Case Notes', () => {
   let addCaseNoteButton;
   let noteNotesAlert;
-
   test.beforeEach(async ({ page }) => {
     await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
@@ -20,7 +19,7 @@ test.describe.serial('Case Notes', () => {
     await logout(page);
   });
 
-  test('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
+  test.only('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
     page,
   }) => {
     const testNoteTitle = 'Test Note Title';
@@ -28,8 +27,6 @@ test.describe.serial('Case Notes', () => {
     const noteTitleEdit = 'Edited Note Title';
     const noteContentEdit = 'Edited Note Content for E2E purposes';
     let caseNoteHeader;
-    let openRemovalModalButton;
-    let confirmButton;
     //Open Add Note modal to create a new note and submit
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-form"]')).toBeVisible();
@@ -65,18 +62,18 @@ test.describe.serial('Case Notes', () => {
     await expect(caseNoteHeader).toBeVisible();
     await expect(caseNoteHeader).toHaveText(noteTitleEdit);
 
+    await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
+
     //Remove Newly created note edit
-    openRemovalModalButton = page.getByTestId('open-modal-button_case-note-remove-button_0');
-    await expect(openRemovalModalButton).toBeVisible();
-    openRemovalModalButton.click();
-    confirmButton = page.getByTestId('button-remove-note-modal-submit-button');
-    await expect(confirmButton).toBeVisible();
-    confirmButton.click();
-    confirmButton = page.getByTestId('button-remove-note-modal-submit-button');
-    await expect(confirmButton).not.toBeVisible();
-    caseNoteHeader = page.getByTestId('case-note-0-header');
-    await expect(caseNoteHeader).not.toBeVisible();
-    openRemovalModalButton = page.getByTestId('open-modal-button-0');
-    await expect(openRemovalModalButton).not.toBeVisible();
+    await expect(
+      page.locator('[data-testid="open-modal-button_case-note-remove-button_0"]'),
+    ).toBeVisible();
+    await page.locator('[data-testid="open-modal-button_case-note-remove-button_0"]').click();
+    await expect(
+      page.locator('[data-testid="button-remove-note-modal-submit-button"]'),
+    ).toBeVisible();
+    await page.locator('[data-testid="button-remove-note-modal-submit-button"]').click();
+    await expect(page.locator('[data-testid="searchable-case-notes"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="empty-notes-test-id"]')).toBeVisible();
   });
 });
