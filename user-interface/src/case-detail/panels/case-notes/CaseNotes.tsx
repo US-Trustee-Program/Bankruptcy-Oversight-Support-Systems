@@ -131,7 +131,7 @@ export default function CaseNotes(props: CaseNotesProps) {
             <>
               <OpenModalButton
                 className="edit-button"
-                id={`case-note-edit-button-${idx}`}
+                id={`case-note-edit-button`}
                 buttonIndex={`${idx}`}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 modalId={editNoteModalId}
@@ -152,7 +152,7 @@ export default function CaseNotes(props: CaseNotesProps) {
               </OpenModalButton>
               <OpenModalButton
                 className="remove-button"
-                id={`case-note-remove-button-${idx}`}
+                id={`case-note-remove-button`}
                 buttonIndex={`${idx}`}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 modalId={removeConfirmationModalId}
