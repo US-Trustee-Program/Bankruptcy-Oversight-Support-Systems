@@ -3,7 +3,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
-const MODULE_NAME = 'OFFICES_FUNCTION';
+const MODULE_NAME = 'OFFICES-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
