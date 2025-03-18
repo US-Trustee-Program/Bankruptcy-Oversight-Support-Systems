@@ -79,12 +79,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
   }
 
   const sessionUseCase = getUserSessionUseCase(context);
-  const session = await sessionUseCase.lookup(
-    context,
-    accessToken,
-    context.config.authConfig.provider,
-  );
-  return session;
+  return sessionUseCase.lookup(context, accessToken, context.config.authConfig.provider);
 }
 
 const ContextCreator = {

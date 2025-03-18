@@ -5,7 +5,7 @@ import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.t
 import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME: string = 'CASE_NOTES_MONGO_REPOSITORY';
+const MODULE_NAME = 'CASE-NOTES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, using } = QueryBuilder;
