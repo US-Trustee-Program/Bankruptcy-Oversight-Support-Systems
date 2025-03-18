@@ -2,21 +2,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import CaseNotes, { CaseNotesProps, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
-import LocalFormCache from '../../../lib/utils/local-form-cache';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
-import { CaseNote, CaseNoteInput } from '@common/cams/cases';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
 import LocalStorage from '@/lib/utils/local-storage';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import { ResponseBody } from '@common/api/response';
-import { randomUUID } from 'crypto';
 
 const caseId = '000-11-22222';
-const textAreaTestId = 'textarea-note-content';
-const noteTitleInputTestId = 'case-note-title-input';
 const userId = '001';
 const userFullName = 'Joe Bob';
 const caseNotes = [
@@ -31,8 +25,7 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     hasCaseNotes: false,
     caseNotes: [],
     searchString: '',
-    onNoteCreation: vi.fn(),
-    onRemoveNote: vi.fn(),
+    onUpdateNotesRequest: vi.fn(),
     areCaseNotesLoading: false,
   };
 
@@ -47,48 +40,6 @@ describe('case note tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-  });
-
-  test('useEffect on component initialization properly sets up form fields based on local form cache values when cache has existing values', async () => {
-    const caseId = '01-12345';
-    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
-      caseId,
-      title: '',
-      content: 'test content',
-    });
-
-    renderWithProps({ caseId });
-
-    const input = document.querySelector('input');
-    const textarea = document.querySelector('textarea');
-    const submitBtn = document.querySelector('#submit-case-note');
-    const clearBtn = document.querySelector('#clear-case-note');
-
-    expect(input).toHaveValue('');
-    expect(textarea).toHaveValue('test content');
-    expect(submitBtn).toBeEnabled();
-    expect(clearBtn).toBeEnabled();
-  });
-
-  test('useEffect on component initialization properly sets up form fields based on local form cache values when cache does not have existing values', async () => {
-    const caseId = '01-12345';
-    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
-      caseId,
-      title: '',
-      content: '',
-    });
-
-    renderWithProps({ caseId });
-
-    const input = document.querySelector('input');
-    const textarea = document.querySelector('textarea');
-    const submitBtn = document.querySelector('#submit-case-note');
-    const clearBtn = document.querySelector('#clear-case-note');
-
-    expect(input).toHaveValue('');
-    expect(textarea).toHaveValue('');
-    expect(submitBtn).toBeDisabled();
-    expect(clearBtn).toBeDisabled();
   });
 
   test('should display loading indicator if loading', async () => {
@@ -150,123 +101,6 @@ describe('case note tests', () => {
     }
   });
 
-  test('should enable or disable buttons based on form input, and clear button action', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'postCaseNote').mockImplementation((): Promise<void> => Promise.resolve());
-    let submitButton;
-    let clearButton;
-    const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
-    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-    renderWithProps();
-
-    const textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toBeInTheDocument();
-
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(noteTitleInput).toBeInTheDocument();
-
-    await userEvent.type(noteTitleInput, 'test note title');
-    submitButton = screen.getByTestId('button-submit-case-note');
-    clearButton = screen.getByTestId('button-clear-case-note');
-    expect(submitButton).toBeEnabled();
-    expect(clearButton).toBeEnabled();
-
-    await userEvent.clear(noteTitleInput);
-    expect(noteTitleInput).toHaveValue('');
-
-    await waitFor(() => {
-      submitButton = screen.getByTestId('button-submit-case-note');
-      expect(submitButton).toBeDisabled();
-    });
-    clearButton = screen.getByTestId('button-clear-case-note');
-    expect(clearButton).toBeDisabled();
-
-    await userEvent.type(textArea, 'test note');
-    await waitFor(() => {
-      expect(setTimeoutSpy).toHaveBeenCalled();
-    });
-    await waitFor(() => {
-      submitButton = screen.getByTestId('button-submit-case-note');
-      expect(submitButton).toBeEnabled();
-    });
-    clearButton = screen.getByTestId('button-clear-case-note');
-    expect(clearButton).toBeEnabled();
-
-    await userEvent.clear(textArea);
-
-    expect(textArea).toHaveValue('');
-
-    await userEvent.clear(noteTitleInput);
-
-    await waitFor(() => {
-      expect(clearTimeoutSpy).toHaveBeenCalled();
-    });
-
-    await waitFor(() => {
-      submitButton = screen.getByTestId('button-submit-case-note');
-      expect(submitButton).toBeDisabled();
-    });
-    clearButton = screen.getByTestId('button-clear-case-note');
-    expect(clearButton).toBeDisabled();
-
-    await userEvent.type(noteTitleInput, 'test note title');
-    await userEvent.type(textArea, 'test note');
-    await waitFor(() => {
-      submitButton = screen.getByTestId('button-submit-case-note');
-      expect(submitButton).toBeEnabled();
-    });
-    await userEvent.click(submitButton);
-  });
-
-  test('should send new case note to api and call fetch notes on success', async () => {
-    const session = MockData.getCamsSession();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    const spyOnNotesCreation = vi.fn();
-    const postCaseNoteSpy = vi
-      .spyOn(Api2, 'postCaseNote')
-      .mockImplementation(async (): Promise<void> => {
-        return Promise.resolve();
-      });
-
-    renderWithProps({ onNoteCreation: spyOnNotesCreation });
-
-    const testNoteContent = 'test note content';
-    const testNoteTitle = 'test note title';
-    let textArea = screen.getByTestId(textAreaTestId);
-    const noteTitleInput = screen.getByTestId(noteTitleInputTestId);
-    expect(textArea).toBeInTheDocument();
-    expect(noteTitleInput).toBeInTheDocument();
-
-    // start with a clean slate
-    await userEvent.clear(noteTitleInput);
-    await userEvent.clear(textArea);
-
-    await userEvent.type(noteTitleInput, testNoteTitle);
-    expect(noteTitleInput).toHaveValue(testNoteTitle);
-
-    await userEvent.type(textArea, testNoteContent);
-    expect(textArea).toHaveValue(testNoteContent);
-
-    const button = screen.getByTestId('button-submit-case-note');
-    expect(button).toBeInTheDocument();
-    await userEvent.click(button);
-    const expectedCaseNoteInput: CaseNoteInput = {
-      title: testNoteTitle,
-      content: testNoteContent,
-      caseId: caseId,
-      updatedBy: {
-        id: session.user.id,
-        name: session.user.name,
-      },
-    };
-
-    expect(postCaseNoteSpy).toHaveBeenCalledWith(expectedCaseNoteInput);
-    expect(spyOnNotesCreation).toHaveBeenCalled();
-
-    textArea = screen.getByTestId(textAreaTestId);
-    expect(textArea).toHaveValue('');
-  });
-
   test('should remove case note when remove button is clicked and modal approval is met.', async () => {
     const session = MockData.getCamsSession();
     session.user.id = userId;
@@ -296,11 +130,16 @@ describe('case note tests', () => {
     };
     const onNoteRemoveSpy = vi.fn();
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes, onRemoveNote: onNoteRemoveSpy });
+    renderWithProps({
+      caseId,
+      hasCaseNotes: true,
+      caseNotes,
+      onUpdateNotesRequest: onNoteRemoveSpy,
+    });
 
-    const button0 = screen.queryByTestId('open-modal-button-0');
-    const button1 = screen.queryByTestId('open-modal-button-1');
-    const button2 = screen.queryByTestId('open-modal-button-2');
+    const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button-0_0');
+    const button1 = screen.queryByTestId('open-modal-button_case-note-remove-button-1_1');
+    const button2 = screen.queryByTestId('open-modal-button_case-note-remove-button-2_2');
 
     await waitFor(() => {
       expect(button0).toBeInTheDocument();
@@ -328,85 +167,6 @@ describe('case note tests', () => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
     });
     expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
-  });
-
-  test('should send updated case note to api and call fetch notes on success', async () => {
-    const session = MockData.getCamsSession();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    const spyOnNotesCreation = vi.fn();
-    const originalNote = MockData.getCaseNote({ updatedBy: session.user });
-    const originalNotesResponse: ResponseBody<CaseNote[]> = {
-      data: [originalNote],
-    };
-    const newNoteTitle = 'New note title';
-    const newNoteContent = 'New note content';
-    const updatedOn = new Date().toISOString();
-
-    const newNote = {
-      ...originalNote,
-      id: randomUUID(),
-      title: newNoteTitle,
-      content: newNoteContent,
-      previousVersionId: originalNote.id,
-      updatedBy: originalNote.updatedBy,
-      updatedOn,
-    };
-
-    const newNotesResponse: ResponseBody<CaseNote[]> = {
-      data: [newNote],
-    };
-
-    const expectedPutContent = {
-      id: newNote.id,
-      caseId: newNote.caseId,
-      title: newNoteTitle,
-      content: newNoteContent,
-      updatedBy: originalNote.updatedBy,
-    };
-
-    // TODO: properly set up the original getCaseNotes response
-    vi.spyOn(Api2, 'getCaseNotes')
-      .mockResolvedValueOnce(originalNotesResponse)
-      .mockResolvedValueOnce(newNotesResponse);
-
-    const putCaseNoteSpy = vi
-      .spyOn(Api2, 'putCaseNote')
-      .mockImplementation(async (): Promise<void> => {
-        return Promise.resolve();
-      });
-
-    renderWithProps({ onNoteCreation: spyOnNotesCreation });
-    const editButton = screen.queryByTestId('button-edit-case-note');
-    expect(editButton).toBeVisible();
-    await userEvent.click(editButton!);
-
-    const editTitleInput = screen.queryByTestId('note-title-idx');
-    const editContentInput = screen.queryByTestId('textarea-note-content');
-    const submitButton = screen.queryByTestId('button-submit-case-note');
-    expect(editTitleInput).toBeEnabled();
-    expect(editContentInput).toBeEnabled();
-    expect(submitButton).toBeEnabled();
-
-    await userEvent.clear(editTitleInput!);
-    await userEvent.type(editTitleInput!, newNoteTitle);
-
-    await userEvent.clear(editContentInput!);
-    await userEvent.type(editContentInput!, newNoteContent);
-
-    await userEvent.click(submitButton!);
-
-    expect(putCaseNoteSpy).toHaveBeenCalledWith(expectedPutContent);
-
-    await waitFor(() => {
-      const renderedNoteTitle = screen.queryByTestId('case-note-0-header');
-      expect(renderedNoteTitle).toHaveTextContent(newNoteTitle);
-    });
-
-    const renderedNoteContent = screen.queryByTestId('case-note-0-content');
-    expect(renderedNoteContent).toHaveTextContent(newNoteContent);
-
-    const renderedNoteDate = screen.queryByTestId('case-note-creation-date-0');
-    expect(renderedNoteDate).toHaveTextContent(formatDateTime(updatedOn));
   });
 });
 

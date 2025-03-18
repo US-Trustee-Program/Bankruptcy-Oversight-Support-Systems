@@ -1,21 +1,16 @@
 import './CaseNotes.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import TextArea from '@/lib/components/uswds/TextArea';
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { Api2 } from '@/lib/models/api2';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { formatDateTime } from '@/lib/utils/datetime';
-import { CaseNote, CaseNoteInput } from '@common/cams/cases';
+import { CaseNote } from '@common/cams/cases';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
-import { HttpResponse } from '@okta/okta-auth-js';
-import { HttpStatusCodes } from '@common/api/http-status-codes';
-import Input from '@/lib/components/uswds/Input';
 import { AlertOptions } from '../CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import LocalFormCache from '@/lib/utils/local-form-cache';
 import LocalStorage from '@/lib/utils/local-storage';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
@@ -25,11 +20,6 @@ import Icon from '@/lib/components/uswds/Icon';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import CaseNoteModal, { CaseNoteModalRef } from '@/case-detail/panels/case-notes/CaseNoteModal';
-
-//TODO: does this still makes sense?
-function buildCaseNoteFormKey(caseId: string) {
-  return `case-notes-${caseId}`;
-}
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -41,17 +31,12 @@ export interface CaseNotesProps {
   hasCaseNotes: boolean;
   caseNotes?: CaseNote[];
   alertOptions?: AlertOptions;
-  onNoteCreation: () => void;
-  onRemoveNote: () => void;
+  onUpdateNotesRequest: () => void;
   searchString: string;
 }
 
 export default function CaseNotes(props: CaseNotesProps) {
-  const { caseId, caseNotes, areCaseNotesLoading, searchString } = props;
-  const titleInputRef = useRef<TextAreaRef>(null);
-  const contentInputRef = useRef<TextAreaRef>(null);
-  const submitButtonRef = useRef<ButtonRef>(null);
-  const clearButtonRef = useRef<ButtonRef>(null);
+  const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNotesRequest } = props;
   const removeConfirmationModalRef = useRef<ModalRefType>(null);
   const caseNoteModalRef = useRef<CaseNoteModalRef>(null);
   const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
@@ -61,6 +46,7 @@ export default function CaseNotes(props: CaseNotesProps) {
         (_, index) => openArchiveModalButtonRefs.current[index] ?? { current: null },
       ) || [];
   }, [caseNotes]);
+  const openAddModalButtonRef = useRef<OpenModalButtonRef>(null);
   const openEditModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
   useMemo(() => {
     openEditModalButtonRefs.current =
@@ -77,33 +63,11 @@ export default function CaseNotes(props: CaseNotesProps) {
   const api = Api2;
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
-  const formKey = buildCaseNoteFormKey(caseId);
-
-  function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    saveFormData({
-      caseId: props.caseId,
-      title: event.target.value,
-      content: getCaseNotesInputValue(contentInputRef.current),
-    });
-  }
-
-  function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
-    saveFormData({
-      caseId: props.caseId,
-      title: getCaseNotesInputValue(titleInputRef.current),
-      content: event.target.value,
-    });
-  }
 
   function handleEditButtonClick() {
     setEditNoteModalTitle('Edit Note');
   }
 
-  /*
-  function handleEditConfirmationButtonClick() {
-    //submit case note edit
-  }
-  */
   function handleRemoveSubmitButtonClick() {
     if (noteForRemoval?.id) {
       const newNoteForRemoval = {
@@ -115,9 +79,7 @@ export default function CaseNotes(props: CaseNotesProps) {
       api
         .deleteCaseNote(newNoteForRemoval)
         .then(() => {
-          if (props.onRemoveNote) {
-            props.onRemoveNote();
-          }
+          onUpdateNotesRequest();
         })
         .catch(() => {
           globalAlert?.error('There was a problem archiving the note.');
@@ -130,67 +92,6 @@ export default function CaseNotes(props: CaseNotesProps) {
 
   function userCanRemove(note: CaseNote) {
     return session?.user.id === note.updatedBy.id;
-  }
-
-  function setFormButtonState(enabled: boolean) {
-    submitButtonRef.current?.disableButton(!enabled);
-    clearButtonRef.current?.disableButton(!enabled);
-  }
-
-  function saveFormData(data: CaseNoteInput) {
-    if (data.title?.length > 0 || data.content?.length > 0) {
-      LocalFormCache.saveForm(formKey, data);
-      setFormButtonState(true);
-    } else {
-      LocalFormCache.clearForm(formKey);
-      setFormButtonState(false);
-    }
-  }
-
-  function clearCaseNoteForm() {
-    titleInputRef.current?.clearValue();
-    contentInputRef.current?.clearValue();
-    LocalFormCache.clearForm(formKey);
-    setFormButtonState(false);
-  }
-
-  function disableFormFields(disabled: boolean) {
-    titleInputRef.current?.disable(disabled);
-    contentInputRef.current?.disable(disabled);
-    setFormButtonState(!disabled);
-  }
-
-  async function postCaseNote() {
-    const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
-    if (formData.title?.length > 0 && formData.content?.length > 0) {
-      disableFormFields(true);
-      if (session?.user) {
-        const caseNoteInput: CaseNoteInput = {
-          caseId: props.caseId,
-          title: getCaseNotesInputValue(titleInputRef.current),
-          content: getCaseNotesInputValue(contentInputRef.current),
-          updatedBy: getCamsUserReference(session?.user),
-        };
-        api
-          .postCaseNote(caseNoteInput)
-          .then(() => {
-            if (props.onNoteCreation) {
-              props.onNoteCreation();
-            }
-            disableFormFields(false);
-            clearCaseNoteForm();
-          })
-          .catch((e: HttpResponse) => {
-            //TODO: why is this coming from okta?
-            if (e.status !== HttpStatusCodes.FORBIDDEN) {
-              globalAlert?.error('Could not insert case note.');
-            }
-            disableFormFields(false);
-          });
-      }
-    } else {
-      globalAlert?.error('All case note input fields are required to submit a note.');
-    }
   }
 
   function showCaseNotes(note: CaseNote, idx: number) {
@@ -235,7 +136,7 @@ export default function CaseNotes(props: CaseNotesProps) {
               <OpenModalButton
                 className="edit-button"
                 id={`case-note-edit-button-${idx}`}
-                buttonIndex={'${idx}'}
+                buttonIndex={`${idx}`}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 modalId={editNoteModalId}
                 modalRef={caseNoteModalRef}
@@ -246,6 +147,7 @@ export default function CaseNotes(props: CaseNotesProps) {
                   buttonId: `case-note-edit-button-${idx}`,
                   title: note.title,
                   content: note.content,
+                  callback: onUpdateNotesRequest,
                 }}
                 ariaLabel={`Edit note titled ${note.title}`}
                 onClick={handleEditButtonClick}
@@ -309,63 +211,28 @@ export default function CaseNotes(props: CaseNotesProps) {
     );
   }, [searchString, caseNotes]);
 
-  useEffect(() => {
-    const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
-    if (
-      formData &&
-      formData.caseId === props.caseId &&
-      (formData.title?.length > 0 || formData.content?.length > 0)
-    ) {
-      titleInputRef.current?.setValue(formData.title);
-      contentInputRef.current?.setValue(formData.content);
-      setFormButtonState(true);
-    } else {
-      setFormButtonState(false);
-    }
-  }, []);
-
   return (
     <div className="case-notes-panel">
       <div className="case-notes-title">
         <h3>Case Notes</h3>
-        <div className="case-notes-form-container">
-          <Input
-            id="case-note-title-input"
-            label="Note title"
-            required={true}
-            includeClearButton={true}
-            onChange={handleTitleChange}
-            autoComplete="off"
-            ref={titleInputRef}
-          />
-          <TextArea
-            id="note-content"
-            label="Note Text"
-            required={true}
-            onChange={handleContentChange}
-            ref={contentInputRef}
-          />
-          <div className="form-button-bar">
-            <Button
-              id="submit-case-note"
-              uswdsStyle={UswdsButtonStyle.Default}
-              onClick={postCaseNote}
-              aria-label="Add case note."
-              ref={submitButtonRef}
-            >
-              Add Note
-            </Button>
-            <Button
-              id="clear-case-note"
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={clearCaseNoteForm}
-              aria-label="Clear case note form data."
-              ref={clearButtonRef}
-            >
-              Discard
-            </Button>
-          </div>
-        </div>
+        <OpenModalButton
+          className="add-button"
+          id={'case-note-add-button'}
+          uswdsStyle={UswdsButtonStyle.Default}
+          modalId={editNoteModalId}
+          modalRef={caseNoteModalRef}
+          ref={openAddModalButtonRef}
+          openProps={{
+            caseId,
+            buttonId: `case-note-add-button`,
+            callback: onUpdateNotesRequest,
+          }}
+          ariaLabel={`Add new note`}
+          onClick={handleEditButtonClick}
+        >
+          <Icon name="add_circle_outline" className="add-circle-outline-icon" />
+          Add
+        </OpenModalButton>
         {areCaseNotesLoading && (
           <LoadingSpinner id="notes-loading-indicator" caption="Loading case notes..." />
         )}

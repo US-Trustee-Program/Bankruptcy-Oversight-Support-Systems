@@ -86,6 +86,8 @@ describe('Case Note Tests', async () => {
     });
   });
 
+  // TODO: This test may not be needed any longer.
+  /*
   test('Should set case notes with notes provided in props, submit a case note, and refetch case notes', async () => {
     const mockFeatureFlags = {
       'case-notes-enabled': true,
@@ -121,6 +123,7 @@ describe('Case Note Tests', async () => {
     const submitButton = screen.queryByTestId('button-submit-case-note');
     fireEvent.click(submitButton!);
   });
+  */
 
   test('Should search case notes properly', async () => {
     const mockFeatureFlags = {
