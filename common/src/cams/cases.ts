@@ -66,7 +66,6 @@ export type CaseDocket = Array<CaseDocketEntry>;
 
 export type CaseNote = CaseNoteInput &
   Auditable & {
-    id?: string;
     documentType: 'NOTE';
     archivedOn?: string;
     archivedBy?: CamsUserReference;

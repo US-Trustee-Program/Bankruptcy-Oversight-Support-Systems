@@ -731,6 +731,7 @@ function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
 export const MockData = {
   randomId,
   randomCaseId,
+  randomCaseNumber,
   randomEin,
   randomOffice,
   randomSsn,
