@@ -120,11 +120,36 @@ async function post<T = unknown>(
       response.data = [];
     } else {
       response.data = [
-        { ...MockData.getCaseBasics({ override: { caseId: `011-${caseNumber}` } }), _actions },
-        { ...MockData.getCaseBasics({ override: { caseId: `070-${caseNumber}` } }), _actions },
-        { ...MockData.getCaseBasics({ override: { caseId: `132-${caseNumber}` } }), _actions },
-        { ...MockData.getCaseBasics({ override: { caseId: `3E1-${caseNumber}` } }), _actions },
-        { ...MockData.getCaseBasics({ override: { caseId: `256-${caseNumber}` } }), _actions },
+        {
+          ...MockData.getCaseBasics({
+            override: { caseId: `011-${caseNumber ?? MockData.randomCaseNumber()}` },
+          }),
+          _actions,
+        },
+        {
+          ...MockData.getCaseBasics({
+            override: { caseId: `070-${caseNumber ?? MockData.randomCaseNumber()}` },
+          }),
+          _actions,
+        },
+        {
+          ...MockData.getCaseBasics({
+            override: { caseId: `132-${caseNumber ?? MockData.randomCaseNumber()}` },
+          }),
+          _actions,
+        },
+        {
+          ...MockData.getCaseBasics({
+            override: { caseId: `3E1-${caseNumber ?? MockData.randomCaseNumber()}` },
+          }),
+          _actions,
+        },
+        {
+          ...MockData.getCaseBasics({
+            override: { caseId: `256-${caseNumber ?? MockData.randomCaseNumber()}` },
+          }),
+          _actions,
+        },
       ];
     }
     return response as ResponseBody<ResourceActions<T>>;

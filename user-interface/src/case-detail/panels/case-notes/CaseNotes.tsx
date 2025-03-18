@@ -54,19 +54,15 @@ export default function CaseNotes(props: CaseNotesProps) {
       [];
   }, [caseNotes]);
   const [noteForRemoval, setNoteForRemoval] = useState<Partial<CaseNote> | null>(null);
-  const [_editNoteModalTitle, setEditNoteModalTitle] = useState<string>('Add New Note');
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
+  const addNoteModalId = 'edit-note-modal';
 
   const api = Api2;
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
-
-  function handleEditButtonClick() {
-    setEditNoteModalTitle('Edit Note');
-  }
 
   function handleRemoveSubmitButtonClick() {
     if (noteForRemoval?.id) {
@@ -150,7 +146,6 @@ export default function CaseNotes(props: CaseNotesProps) {
                   callback: onUpdateNotesRequest,
                 }}
                 ariaLabel={`Edit note titled ${note.title}`}
-                onClick={handleEditButtonClick}
               >
                 <Icon name="edit" className="edit-icon" />
                 Edit
@@ -219,7 +214,7 @@ export default function CaseNotes(props: CaseNotesProps) {
           className="add-button"
           id={'case-note-add-button'}
           uswdsStyle={UswdsButtonStyle.Default}
-          modalId={editNoteModalId}
+          modalId={addNoteModalId}
           modalRef={caseNoteModalRef}
           ref={openAddModalButtonRef}
           openProps={{
@@ -228,7 +223,6 @@ export default function CaseNotes(props: CaseNotesProps) {
             callback: onUpdateNotesRequest,
           }}
           ariaLabel={`Add new note`}
-          onClick={handleEditButtonClick}
         >
           <Icon name="add_circle_outline" className="add-circle-outline-icon" />
           Add

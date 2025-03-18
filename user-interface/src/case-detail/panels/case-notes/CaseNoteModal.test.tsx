@@ -181,13 +181,50 @@ describe('case note tests', () => {
     expect(modal).not.toHaveClass('is-visible');
   });
 
-  test('Should display error and not close modal if error occurs submitting case note', async () => {
+  test('Should display error and not close modal if error occurs submitting new case note', async () => {
     const editedNoteTitleText = 'Edited Note Title';
     const editedNoteContentText = 'Edited Note Content';
 
     const modalRef = React.createRef<CaseNoteModalRef>();
     const postSpy = vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({});
     renderWithProps(modalRef);
+
+    const modal = screen.getByTestId('modal-case-note-form');
+    expect(modal).not.toHaveClass('is-visible');
+    const openButton = screen.getByTestId('open-modal-button');
+    expect(openButton).toBeInTheDocument();
+
+    await userEvent.click(openButton);
+    expect(modal).toHaveClass('is-visible');
+
+    const titleInput = screen.getByTestId('case-note-title-input');
+    const contentInput = screen.getByTestId('textarea-note-content');
+
+    await userEvent.type(titleInput, editedNoteTitleText);
+    await userEvent.type(contentInput, editedNoteContentText);
+    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    expect(postSpy).toHaveBeenCalled();
+    const errorMessage = screen.getByTestId('alert-case-note-form-error');
+    expect(errorMessage).toBeVisible();
+    expect(modal).toHaveClass('is-visible');
+  });
+
+  test('Should display error and not close modal if error occurs submitting a case note edit', async () => {
+    const editedNoteTitleText = 'Edited Note Title';
+    const editedNoteContentText = 'Edited Note Content';
+
+    const modalRef = React.createRef<CaseNoteModalRef>();
+    const postSpy = vi.spyOn(Api2, 'putCaseNote').mockRejectedValue({});
+    renderWithProps(
+      modalRef,
+      {},
+      {
+        id: randomUUID(),
+        content: editedNoteContentText,
+        title: editedNoteTitleText,
+        caseId: '111-22-33333',
+      },
+    );
 
     const modal = screen.getByTestId('modal-case-note-form');
     expect(modal).not.toHaveClass('is-visible');

@@ -224,7 +224,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
 
       if (modalRef.current?.show) {
         const showOptions = {
-          openModalButtonRef: showProps?.openModalButtonRef ?? undefined,
+          openModalButtonRef: showProps.openModalButtonRef,
         };
         modalRef.current?.show(showOptions);
       }
