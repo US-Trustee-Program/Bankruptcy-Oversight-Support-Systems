@@ -155,8 +155,6 @@ export class AcmsOrders {
 
         await casesRepo.createConsolidationFrom(fromLink);
         await casesRepo.createConsolidationTo(toLink);
-
-        return report;
       }
 
       // Partition history by date.
@@ -208,6 +206,8 @@ export class AcmsOrders {
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
       }
+
+      return report;
     } catch (error) {
       report.success = false;
       report.error = getCamsError(
