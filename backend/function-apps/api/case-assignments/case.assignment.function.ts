@@ -12,22 +12,18 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+    request,
+  });
+
   try {
-    const applicationContext = await ContextCreator.applicationContextCreator(
-      invocationContext,
-      logger,
-      request,
-    );
     const caseAssignmentController: CaseAssignmentController = new CaseAssignmentController(
-      applicationContext,
+      context,
     );
-    const assignmentResponse = toAzureSuccess(
-      await caseAssignmentController.handleRequest(applicationContext),
-    );
-    return assignmentResponse;
+    return toAzureSuccess(await caseAssignmentController.handleRequest(context));
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

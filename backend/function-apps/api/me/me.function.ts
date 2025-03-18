@@ -7,20 +7,18 @@ const MODULE_NAME = 'ME-FUNCTION';
 
 export async function handler(
   request: HttpRequest,
-  functionContext: InvocationContext,
+  invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(functionContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+    request,
+  });
   try {
-    const applicationContext = await ContextCreator.applicationContextCreator(
-      functionContext,
-      logger,
-      request,
-    );
     const meController = new MeController();
-    const response = await meController.handleRequest(applicationContext);
+    const response = await meController.handleRequest(context);
     return toAzureSuccess(response);
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

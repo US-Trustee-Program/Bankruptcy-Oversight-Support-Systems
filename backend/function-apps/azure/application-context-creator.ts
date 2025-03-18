@@ -18,11 +18,17 @@ function getLogger(invocationContext: InvocationContext) {
   return new LoggerImpl(invocationContext.invocationId, logWrapper);
 }
 
+type ContextCreatorArgs = {
+  invocationContext: InvocationContext;
+  logger?: LoggerImpl;
+  request?: HttpRequest;
+};
+
 async function applicationContextCreator<B = unknown>(
-  invocationContext: InvocationContext,
-  logger: LoggerImpl,
-  request?: HttpRequest,
+  args: ContextCreatorArgs,
 ): Promise<ApplicationContext<B>> {
+  const { invocationContext, logger, request } = args;
+
   const context = await getApplicationContext<B>({ invocationContext, logger, request });
 
   context.session = await getApplicationContextSession(context);
@@ -30,11 +36,9 @@ async function applicationContextCreator<B = unknown>(
   return context;
 }
 
-async function getApplicationContext<B = unknown>(args: {
-  invocationContext: InvocationContext;
-  logger?: LoggerImpl;
-  request?: HttpRequest;
-}): Promise<ApplicationContext<B>> {
+async function getApplicationContext<B = unknown>(
+  args: ContextCreatorArgs,
+): Promise<ApplicationContext<B>> {
   const { invocationContext, logger, request } = args;
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
