@@ -8,7 +8,7 @@ import MigrateCases from './import/migrate-cases';
 import MigrateConsolidations from './import/migrate-consolidations';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
-const MODULE_NAME = 'DATAFLOWS_SETUP';
+const MODULE_NAME = 'DATAFLOWS-SETUP';
 
 type DataflowSetup = {
   MODULE_NAME: string;
