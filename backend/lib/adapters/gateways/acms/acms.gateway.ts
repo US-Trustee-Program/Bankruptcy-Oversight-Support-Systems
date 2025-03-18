@@ -111,7 +111,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       context.logger.debug(
         MODULE_NAME,
         `Child caseIds for lead case id ${formattedLeadCaseId}`,
-        childCases.map((bCase) => this.formatCaseId(bCase.caseId)),
+        childCases,
       );
 
       return {
