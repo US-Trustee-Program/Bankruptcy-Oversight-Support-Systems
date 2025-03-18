@@ -10,7 +10,6 @@ import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { ButtonRef } from '@/lib/components/uswds/Button';
 import TextArea from '@/lib/components/uswds/TextArea';
 import Api2 from '@/lib/models/api2';
 import HttpStatusCodes from '@common/api/http-status-codes';
@@ -28,7 +27,7 @@ function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
 }
 
-type CallbackFunction = () => void;
+type CallbackFunction = (noteId?: string) => void;
 
 export type CaseNoteModalOpenProps = {
   id?: string;
@@ -55,31 +54,46 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   const noteModalId = 'case-note-form';
 
   const [formKey, setFormKey] = useState<string>('');
-  const [noteContent, setNoteContent] = useState<string>('');
-  const [notetitle, setNoteTitle] = useState<string>('');
   const [noteId, setNoteId] = useState<string>('');
   const [caseId, setCaseId] = useState<string>('');
   const [noteModalTitle, setNoteModalTitle] = useState<string>('');
   const [cancelButtonLabel, setCancelButtonLabel] = useState<string>('');
+  const [formValuesFromShowOptions, setFormValuesFromShowOptions] = useState<CaseNoteInput | null>(
+    null,
+  );
   const alertRef = useRef<AlertRefType>(null);
 
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
-  const submitButtonRef = useRef<ButtonRef>(null);
-  const clearButtonRef = useRef<ButtonRef>(null);
   const submitCallbackRef = useRef<CallbackFunction | null>(null);
 
   const session = LocalStorage.getSession();
 
+  function disableSubmitButton(disable: boolean) {
+    const buttons = modalRef.current?.buttons;
+    if (buttons && buttons.current) {
+      buttons.current.disableSubmitButton(disable);
+    }
+  }
+
+  function toggleButtonOnDirtyForm() {
+    const cachedData = LocalFormCache.getForm(formKey) as CaseNoteInput;
+    const dirty =
+      cachedData &&
+      formValuesFromShowOptions &&
+      (formValuesFromShowOptions.title !== cachedData.title ||
+        formValuesFromShowOptions.content !== cachedData.content);
+    disableSubmitButton(!dirty);
+  }
+
   function saveFormData(data: CaseNoteInput) {
     if (data.title?.length > 0 || data.content?.length > 0) {
       LocalFormCache.saveForm(formKey, data);
-      setFormButtonState(true);
     } else {
       LocalFormCache.clearForm(formKey);
-      setFormButtonState(false);
     }
+    toggleButtonOnDirtyForm();
   }
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -98,22 +112,17 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     });
   }
 
-  function setFormButtonState(enabled: boolean) {
-    submitButtonRef.current?.disableButton(!enabled);
-    clearButtonRef.current?.disableButton(!enabled);
-  }
-
   function clearCaseNoteForm() {
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
     LocalFormCache.clearForm(formKey);
-    setFormButtonState(false);
+    toggleButtonOnDirtyForm();
   }
 
   function disableFormFields(disabled: boolean) {
     titleInputRef.current?.disable(disabled);
     contentInputRef.current?.disable(disabled);
-    setFormButtonState(!disabled);
+    disableSubmitButton(disabled);
   }
 
   async function postCaseNote(caseNoteInput: CaseNoteInput) {
@@ -139,9 +148,9 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   async function putCaseNoteEdit(caseNoteInput: CaseNoteInput) {
     api
       .putCaseNote(caseNoteInput)
-      .then(() => {
+      .then((noteId: string | undefined) => {
         if (submitCallbackRef.current) {
-          submitCallbackRef.current();
+          submitCallbackRef.current(noteId);
         }
         clearCaseNoteForm();
         hide();
@@ -203,8 +212,14 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
       setCaseId(showProps.caseId);
       setFormKey(formKey);
       setNoteId(showProps.id ?? '');
-      setNoteContent(showProps.content ?? '');
-      setNoteTitle(showProps.title ?? '');
+      setFormValuesFromShowOptions({
+        caseId: showProps.caseId,
+        title: showProps.title ?? '',
+        content: showProps.content ?? '',
+      });
+
+      titleInputRef.current?.setValue(showProps.title ?? '');
+      contentInputRef.current?.setValue(showProps.content ?? '');
       if (showProps.callback) {
         submitCallbackRef.current = showProps.callback;
       }
@@ -217,9 +232,6 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
       ) {
         titleInputRef.current?.setValue(formData.title);
         contentInputRef.current?.setValue(formData.content);
-        setFormButtonState(true);
-      } else {
-        setFormButtonState(false);
       }
 
       if (modalRef.current?.show) {
@@ -227,6 +239,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
           openModalButtonRef: showProps.openModalButtonRef,
         };
         modalRef.current?.show(showOptions);
+        toggleButtonOnDirtyForm();
       }
     }
   }
@@ -235,6 +248,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     if (modalRef.current?.hide) {
       modalRef.current?.hide({});
     }
+    setFormValuesFromShowOptions(null);
   }
 
   useImperativeHandle(ref, () => {
@@ -272,7 +286,6 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
             onChange={handleTitleChange}
             autoComplete="off"
             ref={titleInputRef}
-            value={notetitle}
           />
           <TextArea
             id="note-content"
@@ -280,7 +293,6 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
             required={true}
             onChange={handleContentChange}
             ref={contentInputRef}
-            value={noteContent}
           />
         </div>
       }

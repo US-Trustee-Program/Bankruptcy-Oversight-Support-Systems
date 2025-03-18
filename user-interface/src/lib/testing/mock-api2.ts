@@ -340,8 +340,8 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
 
-async function putCaseNote(note: CaseNoteInput): Promise<void> {
-  await put(`/cases/${note.caseId}/notes/${note.id}`, { note }, {});
+async function putCaseNote(_note: CaseNoteInput): Promise<string | undefined> {
+  return MockData.randomId();
 }
 
 async function putConsolidationOrderApproval(

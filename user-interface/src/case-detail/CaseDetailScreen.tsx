@@ -26,7 +26,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
-import CaseNotes from './panels/case-notes/CaseNotes';
+import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
 import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
@@ -267,6 +267,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
+  const caseNotesRef = useRef<CaseNotesRef>(null);
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
   const hasCaseNotes = caseNotes && !!caseNotes.length;
 
@@ -307,12 +308,15 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       .finally(() => setIsDocketLoading(false));
   }
 
-  async function fetchCaseNotes() {
+  async function fetchCaseNotes(noteId?: string) {
     setAreCaseNotesLoading(true);
     api
       .getCaseNotes(caseId!)
       .then((response) => {
         setCaseNotes(response.data);
+        if (noteId) {
+          caseNotesRef.current?.focusEditButton(noteId);
+        }
       })
       .catch(() => {
         globalAlert?.error('Could not retrieve case notes.');
@@ -424,8 +428,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setCaseBasicInfo(updatedCaseBasicInfo);
   }
 
-  function handleNotesCallback() {
-    fetchCaseNotes();
+  async function handleNotesCallback(noteId?: string) {
+    fetchCaseNotes(noteId);
   }
 
   useEffect(() => {
@@ -767,7 +771,8 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                           searchString={caseNoteSearchText}
                           areCaseNotesLoading={areCaseNotesLoading}
                           alertOptions={notesAlertOptions}
-                          onUpdateNotesRequest={handleNotesCallback}
+                          onUpdateNoteRequest={handleNotesCallback}
+                          ref={caseNotesRef}
                         />
                       }
                     />
