@@ -7,13 +7,14 @@ import { buildFunctionName } from '../dataflows-common';
 const MODULE_NAME = 'SYNC-OFFICE-STAFF';
 
 async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
-  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+  });
   try {
-    const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
     const controller = new OfficesController();
-    await controller.handleTimer(appContext);
+    await controller.handleTimer(context);
   } catch (error) {
-    toAzureError(logger, MODULE_NAME, error);
+    toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

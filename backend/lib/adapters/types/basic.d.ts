@@ -1,22 +1,14 @@
 import { ApplicationConfiguration } from '../../configs/application-configuration';
-import { CamsError } from '../../common-errors/cams-error';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { CamsHttpRequest } from './http';
 import { Closable } from '../../deferrable/defer-close';
 import { Releasable } from '../../use-cases/gateways.types';
-
-export interface LoggerHelper {
-  debug: (moduleName: string, message: string, data?: unknown) => void;
-  info: (moduleName: string, message: string, data?: unknown) => void;
-  warn: (moduleName: string, message: string, data?: unknown) => void;
-  error: (moduleName: string, message: string, data?: unknown) => void;
-  camsError: (error: CamsError) => void;
-}
+import { LoggerImpl } from '../services/logger.service';
 
 export interface ApplicationContext<B = unknown> {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
-  logger: LoggerHelper;
+  logger: LoggerImpl;
   session?: CamsSession;
   invocationId: string;
   request?: CamsHttpRequest<B>;

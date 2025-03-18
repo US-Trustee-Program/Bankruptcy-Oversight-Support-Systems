@@ -7,13 +7,12 @@ import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 const MODULE_NAME = 'SYNC-ORDERS';
 
 async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
-  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
   try {
-    const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
-    const ordersController = new OrdersController(appContext);
-    await ordersController.handleTimer(appContext);
+    const ordersController = new OrdersController(context);
+    await ordersController.handleTimer(context);
   } catch (error) {
-    toAzureError(logger, MODULE_NAME, error);
+    toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 
@@ -31,10 +30,8 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
 const httpTrigger = buildHttpTrigger(
   MODULE_NAME,
   async (invocationContext: InvocationContext, request: HttpRequest) => {
-    const logger = ContextCreator.getLogger(invocationContext);
     const context = await ContextCreator.getApplicationContext({
       invocationContext,
-      logger,
       request,
     });
 

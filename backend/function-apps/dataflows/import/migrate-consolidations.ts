@@ -77,18 +77,16 @@ async function handlePage(page: AcmsEtlQueueItem[], invocationContext: Invocatio
  * @returns
  */
 async function queuePages(predicate: AcmsPredicate, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const appContext = await ApplicationContextCreator.getApplicationContext({
+  const context = await ApplicationContextCreator.getApplicationContext({
     invocationContext,
-    logger,
   });
   const controller = new AcmsOrdersController();
 
   try {
-    const leadCaseIds = await controller.getLeadCaseIds(appContext, predicate);
+    const leadCaseIds = await controller.getLeadCaseIds(context, predicate);
 
     if (!leadCaseIds.length) {
-      logger.debug(
+      context.logger.debug(
         MODULE_NAME,
         `No consolidations to queue for division ${predicate.divisionCode} chapter ${predicate.chapter}`,
       );
@@ -110,7 +108,7 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
       pages.push(queueItems.slice(i, i + PAGE_SIZE));
     }
 
-    logger.debug(
+    context.logger.debug(
       MODULE_NAME,
       `Queueing ${leadCaseIds.length} consolidations over ${pages.length} pages for division ${predicate.divisionCode} chapter ${predicate.chapter}.`,
     );
@@ -122,23 +120,22 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
       MODULE_NAME,
       `Failed to queue consolidations for division ${predicate.divisionCode} chapter ${predicate.chapter}.`,
     );
-    logger.camsError(error);
+    context.logger.camsError(error);
   }
 }
 
-async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(context);
-  const appContext = await ApplicationContextCreator.getApplicationContext({
-    invocationContext: context,
-    logger,
+async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: InvocationContext) {
+  const context = await ApplicationContextCreator.getApplicationContext({
+    invocationContext,
   });
+  const { logger } = context;
   try {
     logger.debug(
       MODULE_NAME,
       `Starting migration of case ${formatCaseIdForLog(item)} for division ${item.divisionCode}, chapter ${item.chapter}.`,
     );
     const controller = new AcmsOrdersController();
-    const result = await controller.migrateConsolidation(appContext, item.leadCaseId);
+    const result = await controller.migrateConsolidation(context, item.leadCaseId);
     logger.debug(
       MODULE_NAME,
       `Migrate consolidation of case ${formatCaseIdForLog(item)} ${result.success ? 'successful' : 'failed'}.`,
@@ -154,7 +151,7 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationC
       error: getCamsError(originalError, MODULE_NAME),
     };
     logger.error(MODULE_NAME, errorMessage.error.message);
-    context.extraOutputs.set(HARD_STOP, [errorMessage]);
+    invocationContext.extraOutputs.set(HARD_STOP, [errorMessage]);
   }
 }
 
