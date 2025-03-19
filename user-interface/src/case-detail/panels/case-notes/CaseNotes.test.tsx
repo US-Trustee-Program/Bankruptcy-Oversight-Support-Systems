@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
-import CaseNotes, { CaseNotesProps, getCaseNotesInputValue } from './CaseNotes';
+import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { formatDateTime } from '@/lib/utils/datetime';
 import userEvent from '@testing-library/user-event';
@@ -8,7 +8,6 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
 import LocalStorage from '@/lib/utils/local-storage';
-import testingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -18,6 +17,7 @@ const caseNotes = [
   MockData.getCaseNote({ caseId }),
   MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
 ];
+const caseNotesRef = React.createRef<CaseNotesRef>();
 
 function renderWithProps(props?: Partial<CaseNotesProps>) {
   const defaultProps: CaseNotesProps = {
@@ -28,9 +28,8 @@ function renderWithProps(props?: Partial<CaseNotesProps>) {
     onUpdateNoteRequest: vi.fn(),
     areCaseNotesLoading: false,
   };
-
   const renderProps = { ...defaultProps, ...props };
-  render(<CaseNotes {...renderProps} />);
+  render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
 }
 
 describe('case note tests', () => {
@@ -51,6 +50,35 @@ describe('case note tests', () => {
 
     const loadingIndicator = screen.queryByTestId('notes-loading-indicator');
     expect(loadingIndicator).toBeInTheDocument();
+  });
+
+  test('should call focusEditButton on ref', async () => {
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
+      data: caseNotes,
+    });
+    const session = MockData.getCamsSession();
+    session.user.id = userId;
+    session.user.name = userFullName;
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
+
+    await waitFor(() => {
+      expect(caseNotesRef.current).not.toBeNull();
+    });
+
+    // NOTE: This spy MUST be defined AFTER the rendering is complete.
+    // So we wait for current to not be null above, and only then define the spy
+    const caseNotesFocusSpy = vi.spyOn(caseNotesRef.current!, 'focusEditButton');
+    const testNote = caseNotes[0];
+    const testNoteId = testNote.id;
+    caseNotesRef.current!.focusEditButton(testNoteId!);
+    expect(caseNotesFocusSpy).toHaveBeenCalledWith(testNoteId);
+
+    await waitFor(() => {
+      const testButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
+      expect(testButton).toHaveFocus();
+    });
   });
 
   test('should display no case notes message if no case notes exists', async () => {
@@ -113,7 +141,6 @@ describe('case note tests', () => {
       .spyOn(Api2, 'deleteCaseNote')
       .mockResolvedValueOnce()
       .mockRejectedValueOnce(new Error());
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
     const expectedUser = {
       id: userId,
       name: userFullName,
@@ -163,9 +190,6 @@ describe('case note tests', () => {
     });
     await userEvent.click(modalSubmitButton2!);
     expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
-    await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
-    });
     expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
   });
 });

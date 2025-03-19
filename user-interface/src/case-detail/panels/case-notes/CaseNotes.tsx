@@ -13,7 +13,9 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
-import CaseNoteModal, { CaseNoteModalRef } from '@/case-detail/panels/case-notes/CaseNoteModal';
+import CaseNoteFormModal, {
+  CaseNoteFormModalRef,
+} from '@/case-detail/panels/case-notes/CaseNoteFormModal';
 import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
@@ -37,7 +39,7 @@ export interface CaseNotesProps {
 function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNoteRequest } = props;
   const removeConfirmationModalRef = useRef<CaseNoteRemovalModalRef>(null);
-  const caseNoteModalRef = useRef<CaseNoteModalRef>(null);
+  const caseNoteModalRef = useRef<CaseNoteFormModalRef>(null);
   const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
   const openAddModalButtonRef = useRef<OpenModalButtonRef>(null);
   const openEditModalButtonRefs = useRef(new Map<string, React.RefObject<OpenModalButtonRef>>());
@@ -47,7 +49,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const session = LocalStorage.getSession();
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
-  const addNoteModalId = 'edit-note-modal';
+  const addNoteModalId = 'add-note-modal';
 
   const MINIMUM_SEARCH_CHARACTERS = 3;
 
@@ -245,7 +247,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           </>
         )}
       </div>
-      <CaseNoteModal ref={caseNoteModalRef} modalId="case-note-modal"></CaseNoteModal>
+      <CaseNoteFormModal ref={caseNoteModalRef} modalId="case-note-modal"></CaseNoteFormModal>
       <CaseNoteRemovalModal
         ref={removeConfirmationModalRef}
         modalId={removeConfirmationModalId}

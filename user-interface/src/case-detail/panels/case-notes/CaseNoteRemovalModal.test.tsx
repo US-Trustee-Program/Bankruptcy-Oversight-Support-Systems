@@ -1,5 +1,4 @@
 import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -15,6 +14,7 @@ import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import CaseNoteRemovalModal from './CaseNoteRemovalModal';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -24,8 +24,7 @@ const caseNotes = [
   MockData.getCaseNote({ caseId }),
   MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
 ];
-const modalId = 'removal-modal';
-const modalOpenButtonRef = React.createRef<OpenModalButtonRef>();
+const openModalButtonRef = React.createRef<OpenModalButtonRef>();
 
 function renderWithProps(
   modalRef: React.RefObject<CaseNoteRemovalModalRef>,
@@ -33,32 +32,35 @@ function renderWithProps(
   props?: Partial<CaseNoteRemovalProps>,
 ) {
   const defaultProps: CaseNoteRemovalProps = {
-    modalId: randomUUID(),
+    modalId: 'remove-note-modal',
     ...props,
   };
+
   const modalOpenDefaultProps: CaseNoteRemovalModalOpenProps = {
     id: randomUUID(),
     caseId: '000-11-22222',
-    buttonId: '',
+    buttonId: `case-note-remove-button`,
     callback: vi.fn(),
-    openModalButtonRef: modalOpenButtonRef,
+    openModalButtonRef,
     ...openProps,
   };
+
   const renderProps = { ...defaultProps, ...props };
   const openRenderProps = { ...modalOpenDefaultProps, ...openProps };
+
   render(
     <React.StrictMode>
       <BrowserRouter>
         <>
           <OpenModalButton
-            modalId={modalId}
+            modalId={renderProps.modalId}
             modalRef={modalRef}
             openProps={openRenderProps}
-            ref={modalOpenButtonRef}
+            ref={openModalButtonRef}
           >
             Open Modal
           </OpenModalButton>
-          <CaseNoteRemovalModal {...renderProps} />
+          <CaseNoteRemovalModal {...renderProps} ref={modalRef} />
         </>
       </BrowserRouter>
     </React.StrictMode>,
@@ -74,59 +76,138 @@ describe('Case Note Removal Modal Tests', async () => {
     vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
       data: caseNotes,
     });
-    const deleteSpy = vi
-      .spyOn(Api2, 'deleteCaseNote')
-      .mockResolvedValueOnce()
-      .mockRejectedValueOnce(new Error());
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const deleteSpy = vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
+
     const modalRef = React.createRef<CaseNoteRemovalModalRef>();
     const expectedUser = {
       id: userId,
       name: userFullName,
     };
-    const expectedFirstRemoveArgument = {
+    const expectedRemovalArgument = {
       id: caseNotes[0].id,
       caseId: caseNotes[0].caseId,
       updatedBy: expectedUser,
     };
-    const expectedSecondRemoveArgument = {
-      id: caseNotes[2].id,
-      caseId: caseNotes[2].caseId,
+    const callbackSpy = vi.fn();
+
+    const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
+      id: caseNotes[0].id,
+      callback: callbackSpy,
+    };
+
+    renderWithProps(modalRef, openProps);
+
+    const openModalButton = screen.queryByTestId('open-modal-button');
+
+    await waitFor(() => {
+      expect(openModalButton).toBeInTheDocument();
+    });
+
+    await userEvent.click(openModalButton!);
+    const modalSubmitButton = screen.queryByTestId('button-remove-note-modal-submit-button');
+    await waitFor(() => {
+      expect(modalSubmitButton).toBeVisible();
+    });
+    await userEvent.click(modalSubmitButton!);
+    await waitFor(() => {
+      expect(deleteSpy).toHaveBeenCalledWith(expectedRemovalArgument);
+    });
+    expect(callbackSpy).toHaveBeenCalled();
+  });
+
+  test('should not call delete when cancel button is clicked', async () => {
+    const session = MockData.getCamsSession();
+    session.user.id = userId;
+    session.user.name = userFullName;
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
+      data: caseNotes,
+    });
+    const deleteSpy = vi
+      .spyOn(Api2, 'deleteCaseNote')
+      .mockRejectedValue(new Error('This should not be called.'));
+
+    const modalRef = React.createRef<CaseNoteRemovalModalRef>();
+    const callbackSpy = vi.fn();
+
+    const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
+      id: caseNotes[0].id,
+      callback: callbackSpy,
+    };
+
+    renderWithProps(modalRef, openProps);
+
+    const openModalButton = screen.queryByTestId('open-modal-button');
+
+    await waitFor(() => {
+      expect(openModalButton).toBeInTheDocument();
+    });
+
+    await userEvent.click(openModalButton!);
+    let modalCancelButton = screen.queryByTestId('button-remove-note-modal-cancel-button');
+    await waitFor(() => {
+      expect(modalCancelButton).toBeVisible();
+    });
+    await userEvent.click(modalCancelButton!);
+    expect(deleteSpy).not.toHaveBeenCalled();
+    expect(callbackSpy).not.toHaveBeenCalled();
+    modalCancelButton = screen.queryByTestId('button-remove-note-modal-cancel-button');
+  });
+
+  test('should close the modal and display a global alert for api error', async () => {
+    const session = MockData.getCamsSession();
+    session.user.id = userId;
+    session.user.name = userFullName;
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
+      data: caseNotes,
+    });
+    const deleteSpy = vi
+      .spyOn(Api2, 'deleteCaseNote')
+      .mockRejectedValue(new Error('some unknown error'));
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+
+    const modalRef = React.createRef<CaseNoteRemovalModalRef>();
+    const expectedUser = {
+      id: userId,
+      name: userFullName,
+    };
+    const expectedRemovalArgument = {
+      id: caseNotes[0].id,
+      caseId: caseNotes[0].caseId,
       updatedBy: expectedUser,
     };
-    const onNoteRemoveSpy = vi.fn();
+    const callbackSpy = vi.fn();
 
-    renderWithProps(modalRef);
+    const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
+      id: caseNotes[0].id,
+      callback: callbackSpy,
+    };
 
-    const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button_0');
-    const button1 = screen.queryByTestId('open-modal-button_case-note-remove-button_1');
-    const button2 = screen.queryByTestId('open-modal-button_case-note-remove-button_2');
+    renderWithProps(modalRef, openProps);
 
+    const openModalButton = screen.queryByTestId('open-modal-button');
     await waitFor(() => {
-      expect(button0).toBeInTheDocument();
+      expect(openModalButton).toBeInTheDocument();
     });
-    expect(button1).not.toBeInTheDocument();
-    expect(button2).toBeInTheDocument();
 
-    await userEvent.click(button0!);
-    const modalSubmitButton0 = screen.queryByTestId('button-remove-note-modal-submit-button');
+    await userEvent.click(openModalButton!);
+    const modal = screen.queryByTestId('modal-remove-note-modal');
     await waitFor(() => {
-      expect(modalSubmitButton0).toBeVisible();
+      expect(modal).toHaveClass('is-visible');
     });
-    await userEvent.click(modalSubmitButton0!);
-    expect(deleteSpy).toHaveBeenCalledWith(expectedFirstRemoveArgument);
-    expect(onNoteRemoveSpy).toHaveBeenCalled();
-
-    await userEvent.click(button2!);
-    const modalSubmitButton2 = screen.queryByTestId('button-remove-note-modal-submit-button');
+    const modalSubmitButton = screen.queryByTestId('button-remove-note-modal-submit-button');
     await waitFor(() => {
-      expect(modalSubmitButton2).toBeVisible();
+      expect(modalSubmitButton).toBeVisible();
     });
-    await userEvent.click(modalSubmitButton2!);
-    expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
+    await userEvent.click(modalSubmitButton!);
     await waitFor(() => {
-      expect(globalAlertSpy.error).toHaveBeenCalledWith('There was a problem archiving the note.');
+      expect(deleteSpy).toHaveBeenCalledWith(expectedRemovalArgument);
     });
-    expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
+    expect(callbackSpy).not.toHaveBeenCalled();
+    expect(modal).toHaveClass('is-hidden');
+    expect(globalAlertSpy.error).toHaveBeenCalledWith(
+      'There was a problem removing the case note.',
+    );
   });
 });
