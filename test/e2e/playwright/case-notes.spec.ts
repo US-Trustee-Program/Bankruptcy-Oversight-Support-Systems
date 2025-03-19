@@ -19,7 +19,7 @@ test.describe('Case Notes', () => {
     await logout(page);
   });
 
-  test.only('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
+  test('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
     page,
   }) => {
     const testNoteTitle = 'Test Note Title';
