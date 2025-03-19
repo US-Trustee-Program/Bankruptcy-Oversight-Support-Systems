@@ -18,10 +18,9 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "vitest/globals"],
     "paths": {
-      "@/*": ["./src/*"],
+      "@/*": ["./../user-interface/src/*"],
       "@common/*": ["./../common/src/*"]
     }
   },
-  "references": [{ "path": "../common" }],
-  "include": ["src", "vite.config.mts", "../bdd/api2-replacement.ts"]
+  "references": [{ "path": "../common" }]
 }

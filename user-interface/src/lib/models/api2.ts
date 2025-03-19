@@ -395,6 +395,10 @@ export const _Api2 = {
   searchCases,
 };
 
-export const Api2 = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi2 : _Api2;
+export let Api2 = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi2 : _Api2;
+
+export function injectApi2(replacement: Partial<typeof _Api2>) {
+  Api2 = replacement as unknown as typeof _Api2;
+}
 
 export default Api2;
