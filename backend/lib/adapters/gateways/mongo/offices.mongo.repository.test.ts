@@ -166,7 +166,7 @@ describe('offices repo', () => {
   });
 
   describe('error handling', () => {
-    const module = 'OFFICES_MONGO_REPOSITORY';
+    const module = 'OFFICES-MONGO-REPOSITORY';
     const error = new Error('some error');
     const camsError = getCamsError(error, module);
 
