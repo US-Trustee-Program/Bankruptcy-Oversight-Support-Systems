@@ -7,7 +7,7 @@ import { buildFunctionName } from '../dataflows-common';
 const MODULE_NAME = 'SYNC-OFFICE-STAFF';
 
 async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
-  const context = await ContextCreator.applicationContextCreator({
+  const context = await ContextCreator.getApplicationContext({
     invocationContext,
   });
   try {
