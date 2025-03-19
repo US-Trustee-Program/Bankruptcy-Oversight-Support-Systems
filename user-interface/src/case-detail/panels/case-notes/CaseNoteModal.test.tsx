@@ -131,11 +131,11 @@ describe('case note tests', () => {
 
   test('Should properly put case note edit', async () => {
     const putNoteSpy = vi.spyOn(Api2, 'putCaseNote');
-    putNoteSpy.mockResolvedValue();
 
     const editedNoteTitleText = 'Edited Note Title';
     const editedNoteContentText = 'Edited Note Content';
     const note = MockData.getCaseNote();
+    putNoteSpy.mockResolvedValue(note.id);
 
     const modal = await openWithExpectedContent({
       id: note.id,
@@ -303,8 +303,8 @@ describe('case note tests', () => {
   }
 
   test('modal show method should set up form fields based on local form cache values when cache has existing values and then should clear fields after submitting modal', async () => {
-    const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue();
     const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
+    const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue('some-id');
     await setUpAndLoadFromCache();
 
     const submitButton = screen.getByTestId('button-case-note-form-submit-button');
@@ -315,7 +315,7 @@ describe('case note tests', () => {
   });
 
   test('modal show method should set up form fields based on local form cache values when cache has existing values and then should clear fields after canceling modal', async () => {
-    const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue();
+    const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue('some-id');
     const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
     await setUpAndLoadFromCache();
 

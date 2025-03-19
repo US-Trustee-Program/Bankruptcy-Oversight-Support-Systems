@@ -29,10 +29,11 @@ describe('case notes repo tests', () => {
   describe('test happy paths', () => {
     test('should create note', async () => {
       const noteId = 'note123';
-      const note = MockData.getCaseNote();
+      const expectedNote = MockData.getCaseNote();
       jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(noteId);
-      const actual = await repo.create(note);
-      expect(actual).toEqual(noteId);
+      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expectedNote);
+      const actual = await repo.create(expectedNote);
+      expect(actual).toEqual(expectedNote);
     });
 
     test('should return notes list when calling getNotesByCaseId', async () => {
