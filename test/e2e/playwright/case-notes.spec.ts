@@ -2,8 +2,8 @@ import { KNOWN_GOOD_TRANSFER_TO_CASE_ID } from '../scripts/data-generation-utils
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
-
-test.describe.serial('Case Notes', () => {
+test.describe('Case Notes', () => {
+  test.describe.configure({ retries: 0, mode: 'serial' });
   let addCaseNoteButton;
   let noteNotesAlert;
   test.beforeEach(async ({ page }) => {
@@ -73,6 +73,8 @@ test.describe.serial('Case Notes', () => {
       page.locator('[data-testid="button-remove-note-modal-submit-button"]'),
     ).toBeVisible();
     await page.locator('[data-testid="button-remove-note-modal-submit-button"]').click();
+    await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
+
     await expect(page.locator('[data-testid="searchable-case-notes"]')).not.toBeVisible();
     await expect(page.locator('[data-testid="empty-notes-test-id"]')).toBeVisible();
   });
