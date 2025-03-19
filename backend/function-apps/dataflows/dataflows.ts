@@ -15,7 +15,7 @@ dataflows.ts
 This module calls setup functions for each "registered" data flow. Each data flow is defined in a module that exports the DataFlowSetup interface.
 Calling setup configures Azure infrastructure to provision the Azure Function.
 
-A comma delimited list of the MODULE_NAME values is required to appear in a comma delimited list in the CAMS_ENABLE_DATAFLOWS environment variable.
+A comma delimited list of the MODULE_NAME values is required to appear in a comma delimited list in the CAMS_ENABLED_DATAFLOWS environment variable.
 Any module name not listed is not setup and will not appear in the list of Azure Functions in Azure Portal. This enables data flows to be setup
 independenly across environments.
 
@@ -90,7 +90,7 @@ const registeredDataflows = dataflows.list().join(', ');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 // Enable the data flows specified in from the configuration env var.
-const envVar = process.env.CAMS_ENABLE_DATAFLOWS ?? '';
+const envVar = process.env.CAMS_ENABLED_DATAFLOWS ?? '';
 const names = envVar.split(',').map((name) => name.trim().toUpperCase());
 const status = dataflows.setup(...names);
 
