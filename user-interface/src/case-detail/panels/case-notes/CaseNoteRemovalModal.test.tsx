@@ -4,7 +4,11 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CaseNoteRemovalModal, { CaseNoteRemovalProps } from './CaseNoteRemovalModal';
+import {
+  CaseNoteRemovalModalOpenProps,
+  CaseNoteRemovalModalRef,
+  CaseNoteRemovalProps,
+} from './CaseNoteRemovalModal';
 import { randomUUID } from 'crypto';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
@@ -29,18 +33,19 @@ function renderWithProps(
   props?: Partial<CaseNoteRemovalProps>,
 ) {
   const defaultProps: CaseNoteRemovalProps = {
-    id: randomUUID(),
-    caseId: '000-11-22222',
-    onUpdateNoteRequest: vi.fn(),
+    modalId: randomUUID(),
     ...props,
   };
   const modalOpenDefaultProps: CaseNoteRemovalModalOpenProps = {
     id: randomUUID(),
     caseId: '000-11-22222',
-    onUpdateNoteRequest: vi.fn(),
+    buttonId: '',
+    callback: vi.fn(),
+    openModalButtonRef: modalOpenButtonRef,
     ...openProps,
   };
-  const renderProps = { ...defaultProps, ...modalOpenDefaultProps, ...props };
+  const renderProps = { ...defaultProps, ...props };
+  const openRenderProps = { ...modalOpenDefaultProps, ...openProps };
   render(
     <React.StrictMode>
       <BrowserRouter>
@@ -74,6 +79,7 @@ describe('Case Note Removal Modal Tests', async () => {
       .mockResolvedValueOnce()
       .mockRejectedValueOnce(new Error());
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const modalRef = React.createRef<CaseNoteRemovalModalRef>();
     const expectedUser = {
       id: userId,
       name: userFullName,
@@ -90,10 +96,7 @@ describe('Case Note Removal Modal Tests', async () => {
     };
     const onNoteRemoveSpy = vi.fn();
 
-    renderWithProps({
-      caseId,
-      onUpdateNoteRequest: onNoteRemoveSpy,
-    });
+    renderWithProps(modalRef);
 
     const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button_0');
     const button1 = screen.queryByTestId('open-modal-button_case-note-remove-button_1');
