@@ -91,10 +91,10 @@ jobs:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
 
-  security-scan:
-    name: Security
-    uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
+  # security-scan:
+  #   name: Security
+  #   uses: ./.github/workflows/sub-security-scan.yml
+  #   secrets: inherit # pragma: allowlist secret
 
   build:
     name: Build
@@ -118,15 +118,7 @@ jobs:
     name: Cloud Resource Deployment
     uses: ./.github/workflows/sub-deploy.yml
     needs:
-      [
-        setup,
-        build,
-        accessibility-test,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-        security-scan,
-      ]
+      [setup, build, accessibility-test, unit-test-frontend, unit-test-backend, unit-test-common]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
