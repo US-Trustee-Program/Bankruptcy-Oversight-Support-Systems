@@ -1,6 +1,6 @@
-import './CaseNoteModal.scss';
+import './CaseNoteFormModal.scss';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -15,6 +15,26 @@ import { getCamsUserReference } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 
+const useThrottleCallback = (callback: () => void, delay: number) => {
+  const isThrottled = useRef(false);
+  const savedCallback = useRef(callback);
+
+  savedCallback.current = callback;
+
+  return useCallback(() => {
+    if (isThrottled.current) {
+      return;
+    }
+
+    isThrottled.current = true;
+    savedCallback.current();
+
+    setTimeout(() => {
+      isThrottled.current = false;
+    }, delay);
+  }, [delay]);
+};
+
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
 }
@@ -25,7 +45,7 @@ function buildCaseNoteFormKey(caseId: string) {
 
 type CallbackFunction = (noteId?: string) => void;
 
-export type CaseNoteModalOpenProps = {
+export type CaseNoteFormModalOpenProps = {
   id?: string;
   title?: string;
   content?: string;
@@ -34,17 +54,17 @@ export type CaseNoteModalOpenProps = {
   openModalButtonRef: OpenModalButtonRef;
 };
 
-export interface CaseNoteModalRef extends ModalRefType {
-  show: (showProps: CaseNoteModalOpenProps) => void;
+export interface CaseNoteFormModalRef extends ModalRefType {
+  show: (showProps: CaseNoteFormModalOpenProps) => void;
   hide: () => void;
 }
 
-export type CaseNoteModalProps = {
+export type CaseNoteFormModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
 };
 
-const defaultModalOpenOptions: CaseNoteModalOpenProps = {
+const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
   caseId: '',
   callback: () => {},
   openModalButtonRef: {
@@ -53,13 +73,13 @@ const defaultModalOpenOptions: CaseNoteModalOpenProps = {
   },
 };
 
-function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalRef>) {
+function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNoteFormModalRef>) {
   const api = Api2;
   const noteModalId = 'case-note-form';
 
   const [formKey, setFormKey] = useState<string>('');
   const [modalOpenOptions, setModalOpenOptions] =
-    useState<CaseNoteModalOpenProps>(defaultModalOpenOptions);
+    useState<CaseNoteFormModalOpenProps>(defaultModalOpenOptions);
   const [noteModalTitle, setNoteModalTitle] = useState<string>('');
   const [cancelButtonLabel, setCancelButtonLabel] = useState<string>('');
   const [formValuesFromShowOptions, setFormValuesFromShowOptions] = useState<CaseNoteInput | null>(
@@ -129,6 +149,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   }
 
   async function postCaseNote(caseNoteInput: CaseNoteInput) {
+    disableSubmitButton(true);
     api
       .postCaseNote(caseNoteInput)
       .then(() => {
@@ -143,10 +164,12 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
       })
       .finally(() => {
         disableFormFields(false);
+        disableSubmitButton(false);
       });
   }
 
   async function putCaseNoteEdit(caseNoteInput: CaseNoteInput) {
+    disableSubmitButton(true);
     api
       .putCaseNote(caseNoteInput)
       .then((noteId: string | undefined) => {
@@ -161,10 +184,11 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
       })
       .finally(() => {
         disableFormFields(false);
+        disableSubmitButton(false);
       });
   }
 
-  async function sendCaseNoteToApi() {
+  const sendCaseNoteToApi = useThrottleCallback(async () => {
     const title = getCaseNotesInputValue(titleInputRef.current);
     const content = getCaseNotesInputValue(contentInputRef.current);
     if (!modalOpenOptions.id && session?.user) {
@@ -174,7 +198,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
         content,
         updatedBy: getCamsUserReference(session?.user),
       };
-      postCaseNote(caseNoteInput);
+      await postCaseNote(caseNoteInput);
     } else if (modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
         id: modalOpenOptions.id,
@@ -183,9 +207,9 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
         content,
         updatedBy: getCamsUserReference(session?.user),
       };
-      putCaseNoteEdit(caseNoteInput);
+      await putCaseNoteEdit(caseNoteInput);
     }
-  }
+  }, 300);
 
   const caseNoteFormButtonGroup: SubmitCancelBtnProps = {
     modalId: props.modalId,
@@ -202,7 +226,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     },
   };
 
-  function show(showProps: CaseNoteModalOpenProps) {
+  function show(showProps: CaseNoteFormModalOpenProps) {
     setNoteModalTitle(`${showProps.id ? 'Edit' : 'Create'} Case Note`);
     setCancelButtonLabel(`${showProps.id ? 'Cancel' : 'Discard'}`);
     if (showProps) {
@@ -295,6 +319,6 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   );
 }
 
-const CaseNoteModal = forwardRef(_CaseNoteModal);
+const CaseNoteFormModal = forwardRef(_CaseNoteFormModal);
 
-export default CaseNoteModal;
+export default CaseNoteFormModal;

@@ -1,12 +1,16 @@
-import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Modal from '@/lib/components/uswds/modal/Modal';
-import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import {
+  ModalRefType,
+  OpenModalButtonRef,
+  SubmitCancelButtonGroupRef,
+} from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
 
 type CallbackFunction = (noteId?: string) => void;
 
@@ -15,12 +19,12 @@ export type CaseNoteRemovalModalOpenProps = {
   caseId: string;
   buttonId: string;
   callback: CallbackFunction;
-  openModalButtonRef: OpenModalButtonRef;
+  openModalButtonRef: React.Ref<OpenModalButtonRef>;
 };
 
 export interface CaseNoteRemovalModalRef extends ModalRefType {
   show: (showProps: CaseNoteRemovalModalOpenProps) => void;
-  hide: () => void;
+  buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }
 
 export interface CaseNoteRemovalProps {
@@ -36,10 +40,8 @@ function _CaseNoteRemovalModal(
   const session = LocalStorage.getSession();
   const [formValuesFromShowOptions, setFormValuesFromShowOptions] =
     useState<CaseNoteRemovalModalOpenProps | null>(null);
-
-  const alertRef = useRef<AlertRefType>(null);
   const modalRef = useRef<ModalRefType>(null);
-
+  const globalAlert = useGlobalAlert();
   const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
     modalId,
     modalRef: modalRef as React.RefObject<ModalRefType>,
@@ -68,7 +70,7 @@ function _CaseNoteRemovalModal(
           formValuesFromShowOptions.callback();
         })
         .catch(() => {
-          alertRef.current?.show();
+          globalAlert?.error('There was a problem removing the case note.');
         });
     }
   }
@@ -84,19 +86,10 @@ function _CaseNoteRemovalModal(
     }
   }
 
-  function hide() {
-    if (modalRef.current?.hide) {
-      modalRef.current?.hide({});
-    }
-    setFormValuesFromShowOptions(null);
-  }
-
-  useImperativeHandle(ref, () => {
-    return {
-      show,
-      hide,
-    };
-  });
+  useImperativeHandle(ref, () => ({
+    show,
+    hide: () => {},
+  }));
 
   return (
     <Modal
@@ -104,21 +97,7 @@ function _CaseNoteRemovalModal(
       modalId={modalId}
       className="remove-note-confirmation-modal"
       heading="Remove note?"
-      content={
-        <>
-          <Alert
-            id="case-note-removal-error"
-            message="There was a problem archiving the note."
-            type={UswdsAlertStyle.Error}
-            role={'alert'}
-            ref={alertRef}
-            timeout={0}
-            slim={true}
-            inline={true}
-          />
-          <span>Would you like to remove this note? This action cannot be undone.</span>
-        </>
-      }
+      content="Would you like to remove this note? This action cannot be undone."
       actionButtonGroup={removeConfirmationButtonGroup}
     ></Modal>
   );
