@@ -8,6 +8,29 @@ import MigrateCases from './import/migrate-cases';
 import MigrateConsolidations from './import/migrate-consolidations';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
+/*
+
+dataflows.ts
+
+This module calls setup functions for each "registered" data flow. Each data flow is defined in a module that exports the DataFlowSetup interface.
+Calling setup configures Azure infrastructure to provision the Azure Function.
+
+A comma delimited list of the MODULE_NAME values is required to appear in a comma delimited list in the CAMS_ENABLE_DATAFLOWS environment variable.
+Any module name not listed is not setup and will not appear in the list of Azure Functions in Azure Portal. This enables data flows to be setup
+independenly across environments.
+
+The configuration is logged on startup. Example:
+
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Registered Dataflows SYNC-CASES, SYNC-OFFICE-STAFF, SYNC-ORDERS, MIGRATE-CASES, MIGRATE-CONSOLIDATIONS
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Dataflow name FOO not found
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-CASES', true ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-OFFICE-STAFF', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-ORDERS', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CASES', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CONSOLIDATIONS', false ]
+
+*/
+
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
 type DataflowSetup = {
@@ -31,22 +54,25 @@ class DataflowSetupMap {
   }
 
   setup(...names: string[]) {
-    const uniqueNames = new Set<string>(names);
-    const status = [];
+    const uniqueNames = new Set(names);
+    const status: [string, boolean][] = [];
 
-    for (const name of uniqueNames) {
-      if (this.map.has(name)) {
-        this.map.get(name)();
-        status.push([name, true]);
-      } else {
+    // Enable registered data flows based on config.
+    for (const [name, setupFunc] of this.map.entries()) {
+      const enabled = uniqueNames.has(name);
+      if (enabled) {
+        setupFunc();
+      }
+      status.push([name, enabled]);
+    }
+
+    // Warn for names in config that are not registered.
+    uniqueNames.forEach((name) => {
+      if (!this.map.has(name)) {
         logger.warn(MODULE_NAME, `Dataflow name ${name} not found.`);
       }
-    }
-    for (const name of this.list()) {
-      if (!uniqueNames.has(name)) {
-        status.push([name, false]);
-      }
-    }
+    });
+
     return status;
   }
 }
@@ -70,19 +96,5 @@ const status = dataflows.setup(...names);
 
 // Log the status of each registered data flow.
 status.forEach((s) => {
-  logger.info(MODULE_NAME, s);
+  logger.info(MODULE_NAME, `${s}`);
 });
-
-/*
-
-Sample log output on startup:
-
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Registered Dataflows SYNC-CASES, SYNC-OFFICE-STAFF, SYNC-ORDERS, MIGRATE-CASES, MIGRATE-CONSOLIDATIONS
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Dataflow name FOO not found
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-CASES', true ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-OFFICE-STAFF', false ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-ORDERS', false ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CASES', false ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CONSOLIDATIONS', false ]
-
-*/
