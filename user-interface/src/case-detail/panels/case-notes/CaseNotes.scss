@@ -33,8 +33,11 @@
         padding-top: 1rem;
       }
 
-      .remove-button {
+      .case-note-toolbar {
         margin-top: 0.75rem;
+        .edit-button {
+          margin-right: 2rem;
+        }
       }
 
       ::highlight(search-results) {

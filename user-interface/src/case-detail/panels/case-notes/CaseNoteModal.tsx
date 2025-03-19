@@ -1,11 +1,7 @@
 import './CaseNoteModal.scss';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
-import {
-  ModalRefType,
-  OpenModalButtonRef,
-  SubmitCancelButtonGroupRef,
-} from '@/lib/components/uswds/modal/modal-refs';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
@@ -38,15 +34,23 @@ export type CaseNoteModalOpenProps = {
   openModalButtonRef: OpenModalButtonRef;
 };
 
-export type CaseNoteModalRef = {
+export interface CaseNoteModalRef extends ModalRefType {
   show: (showProps: CaseNoteModalOpenProps) => void;
   hide: () => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef>;
-};
+}
 
 export type CaseNoteModalProps = {
   modalId: string;
   alertMessage?: AlertDetails;
+};
+
+const defaultModalOpenOptions: CaseNoteModalOpenProps = {
+  caseId: '',
+  callback: () => {},
+  openModalButtonRef: {
+    focus: () => {},
+    disableButton: (_state: boolean) => {},
+  },
 };
 
 function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalRef>) {
@@ -54,8 +58,8 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   const noteModalId = 'case-note-form';
 
   const [formKey, setFormKey] = useState<string>('');
-  const [noteId, setNoteId] = useState<string>('');
-  const [caseId, setCaseId] = useState<string>('');
+  const [modalOpenOptions, setModalOpenOptions] =
+    useState<CaseNoteModalOpenProps>(defaultModalOpenOptions);
   const [noteModalTitle, setNoteModalTitle] = useState<string>('');
   const [cancelButtonLabel, setCancelButtonLabel] = useState<string>('');
   const [formValuesFromShowOptions, setFormValuesFromShowOptions] = useState<CaseNoteInput | null>(
@@ -66,7 +70,6 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
-  const submitCallbackRef = useRef<CallbackFunction | null>(null);
 
   const session = LocalStorage.getSession();
 
@@ -98,7 +101,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
 
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
-      caseId: caseId,
+      caseId: modalOpenOptions.caseId,
       title: event?.target.value,
       content: getCaseNotesInputValue(contentInputRef.current),
     });
@@ -106,7 +109,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     saveFormData({
-      caseId: caseId,
+      caseId: modalOpenOptions.caseId,
       title: getCaseNotesInputValue(titleInputRef.current),
       content: event.target.value,
     });
@@ -129,9 +132,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     api
       .postCaseNote(caseNoteInput)
       .then(() => {
-        if (submitCallbackRef.current) {
-          submitCallbackRef.current();
-        }
+        modalOpenOptions.callback();
         clearCaseNoteForm();
         hide();
       })
@@ -149,10 +150,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     api
       .putCaseNote(caseNoteInput)
       .then((noteId: string | undefined) => {
-        if (submitCallbackRef.current) {
-          submitCallbackRef.current(noteId);
-        }
-        // throw new Error('some nonsense');
+        modalOpenOptions.callback(noteId);
         clearCaseNoteForm();
         hide();
       })
@@ -169,19 +167,18 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
   async function sendCaseNoteToApi() {
     const title = getCaseNotesInputValue(titleInputRef.current);
     const content = getCaseNotesInputValue(contentInputRef.current);
-    if (!noteId && session?.user) {
-      //Refactor how we validate this
+    if (!modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
-        caseId,
+        caseId: modalOpenOptions.caseId,
         title,
         content,
         updatedBy: getCamsUserReference(session?.user),
       };
       postCaseNote(caseNoteInput);
-    } else if (noteId && session?.user) {
+    } else if (modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
-        id: noteId,
-        caseId,
+        id: modalOpenOptions.id,
+        caseId: modalOpenOptions.caseId,
         title,
         content,
         updatedBy: getCamsUserReference(session?.user),
@@ -210,9 +207,8 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
     setCancelButtonLabel(`${showProps.id ? 'Cancel' : 'Discard'}`);
     if (showProps) {
       const formKey = buildCaseNoteFormKey(showProps.caseId);
-      setCaseId(showProps.caseId);
       setFormKey(formKey);
-      setNoteId(showProps.id ?? '');
+      setModalOpenOptions(showProps);
       setFormValuesFromShowOptions({
         caseId: showProps.caseId,
         title: showProps.title ?? '',
@@ -221,9 +217,6 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
 
       titleInputRef.current?.setValue(showProps.title ?? '');
       contentInputRef.current?.setValue(showProps.content ?? '');
-      if (showProps.callback) {
-        submitCallbackRef.current = showProps.callback;
-      }
 
       const formData = LocalFormCache.getForm(formKey) as CaseNoteInput;
       if (
@@ -250,6 +243,7 @@ function _CaseNoteModal(props: CaseNoteModalProps, ref: React.Ref<CaseNoteModalR
       modalRef.current?.hide({});
     }
     setFormValuesFromShowOptions(null);
+    setModalOpenOptions(defaultModalOpenOptions);
   }
 
   useImperativeHandle(ref, () => {

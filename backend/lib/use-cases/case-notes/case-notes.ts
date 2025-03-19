@@ -72,7 +72,9 @@ export class CaseNotesUseCase {
       archivedOn: dateOfEdit,
       archivedBy: getCamsUserReference(noteEditRequest.sessionUser),
     };
+
+    const creationResponse = await this.caseNotesRepository.create(newNote);
     await this.caseNotesRepository.archiveCaseNote(archiveNote);
-    return await this.caseNotesRepository.create(newNote);
+    return creationResponse;
   }
 }

@@ -346,20 +346,22 @@ describe('Case note controller tests', () => {
   );
 
   test('should call editCaseNote if PUT request and valid request structure', async () => {
-    const createSpy = jest
-      .spyOn(CaseNotesUseCase.prototype, 'editCaseNote')
-      .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     const mockCase = MockData.getCaseBasics();
+    const testNote = MockData.getCaseNote({
+      caseId: mockCase.caseId,
+      updatedBy: getCamsUserReference(user),
+    });
+    const editSpy = jest
+      .spyOn(CaseNotesUseCase.prototype, 'editCaseNote')
+      .mockResolvedValue({ ...testNote });
     MockData.getCaseNoteEditRequest({
-      note: MockData.getCaseNote({
-        caseId: mockCase.caseId,
-        updatedBy: getCamsUserReference(user),
-      }),
+      note: testNote,
     });
     applicationContext.request = mockCamsHttpRequest<CaseNoteInput>({
       method: 'PUT',
       params: {
         caseId: mockCase.caseId,
+        noteId: testNote.id,
       },
       body: {
         caseId: mockCase.caseId,
@@ -370,6 +372,6 @@ describe('Case note controller tests', () => {
     const controller = new CaseNotesController(applicationContext);
     await controller.handleRequest(applicationContext);
 
-    expect(createSpy).toHaveBeenCalled();
+    expect(editSpy).toHaveBeenCalled();
   });
 });
