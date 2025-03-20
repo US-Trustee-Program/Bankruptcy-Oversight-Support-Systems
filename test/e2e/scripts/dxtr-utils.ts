@@ -10,7 +10,7 @@ import {
 export async function getCasesFromDxtr(appContext: ApplicationContext) {
   const casesGateway = getCasesGateway(appContext);
   const predicate: CasesSearchPredicate = {
-    limit: 25,
+    limit: 50,
     offset: 0,
     chapters: ['15'],
     divisionCodes: ['081'],

@@ -6,7 +6,7 @@
   "description": "Bankruptcy Oversight Support System - Graphical Frontend User Interface",
   "dependencies": {
     "@cams/common": "file:../common/dist",
-    "@microsoft/applicationinsights-react-js": "^17.3.6",
+    "@microsoft/applicationinsights-react-js": "^18.3.6",
     "@microsoft/applicationinsights-web": "^3.3.6",
     "@okta/okta-auth-js": "^7.11.1",
     "@okta/okta-react": "^6.9.0",
@@ -30,7 +30,7 @@
     "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.14",
     "@vitejs/plugin-react": "^4.3.4",
-    "@vitest/coverage-v8": "^3.0.8",
+    "@vitest/coverage-v8": "^3.0.9",
     "c8": "^10.1.3",
     "dependency-cruiser": "^16.10.0",
     "eslint": "^9.22.0",
@@ -43,10 +43,10 @@
     "jsdom": "^26.0.0",
     "pa11y-ci": "^3.1.0",
     "prettier": "^3.5.3",
-    "sass-embedded": "^1.85.1",
+    "sass-embedded": "^1.86.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.26.1",
-    "vite": "^6.2.1",
+    "vite": "^6.2.2",
     "vite-plugin-env-compatible": "^2.0.1",
     "vite-plugin-static-copy": "^2.3.0",
     "vite-plugin-svgr": "^4.3.0",
@@ -69,7 +69,8 @@
     ]
   },
   "overrides": {
-    "semver": "^7.5.4"
+    "semver": ">7.5.1 <8.x.x",
+    "@babel/runtime": ">=7.26.10 <8.x.x"
   },
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
