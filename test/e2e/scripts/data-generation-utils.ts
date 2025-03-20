@@ -24,10 +24,10 @@ export async function seedCosmosE2eDatabase() {
 
   await syncCases(appContext, dxtrCaseIds);
 
-  const consolidationOrders = await generateConsolidationOrders(appContext, dxtrCases.slice(5, 15));
+  const consolidationOrders = await generateConsolidationOrders(appContext, dxtrCases.slice(5, 25));
   await insertConsolidationOrders(appContext, consolidationOrders);
 
-  const transferOrders = generateTransferOrders(dxtrCases.slice(15, 19), transferTo, transferFrom);
+  const transferOrders = generateTransferOrders(dxtrCases.slice(25, 45), transferTo, transferFrom);
   await insertTransferOrders(appContext, transferOrders);
 }
 
@@ -50,7 +50,7 @@ async function generateConsolidationOrders(
 function generateTransferOrders(
   cases: CaseBasics[],
   transferTo: CaseSummary,
-  tranferFrom: CaseSummary,
+  transferFrom: CaseSummary,
 ) {
   const transferOrders: TransferOrder[] = [];
   const originalCases = cases.slice(0, 2);
@@ -68,16 +68,16 @@ function generateTransferOrders(
     );
   }
 
-  const knownGoodTransferOrder = createKnownGoodTransferOrder(transferTo, tranferFrom);
+  const knownGoodTransferOrder = createKnownGoodTransferOrder(transferTo, transferFrom);
   transferOrders.push(knownGoodTransferOrder);
 
   return transferOrders;
 }
 
-function createKnownGoodTransferOrder(transferTo: CaseSummary, tranferFrom: CaseSummary) {
+function createKnownGoodTransferOrder(transferTo: CaseSummary, transferFrom: CaseSummary) {
   const { caseNumber } = getCaseIdParts(KNOWN_GOOD_TRANSFER_TO_CASE_ID);
   const knownGoodTransferOrder: TransferOrder = {
-    ...tranferFrom,
+    ...transferFrom,
     id: MockData.randomId(),
     orderDate: new Date().toISOString(),
     orderType: 'transfer',

@@ -23,18 +23,18 @@
     "typescript-eslint": "^8.26.1"
   },
   "dependencies": {
-    "@azure/cosmos": "^4.2.0",
+    "@azure/cosmos": "^4.3.0",
     "@azure/functions": "^4.7.0",
     "@azure/identity": "^4.8.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "@launchdarkly/node-server-sdk": "^9.7.4",
+    "@launchdarkly/node-server-sdk": "^9.7.5",
     "@okta/jwt-verifier": "^4.0.1",
     "@okta/okta-sdk-nodejs": "^7.1.1",
     "applicationinsights": "^3.6.0",
     "dotenv": "^16.4.7",
     "durable-functions": "^3.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.14.2",
+    "mongodb": "^6.15.0",
     "mssql": "^10.0.4"
   },
   "overrides": {
