@@ -52,11 +52,12 @@ function generateTransferOrders(
   transferTo: CaseSummary,
   transferFrom: CaseSummary,
 ) {
+  const count = Math.floor(cases.length / 2);
   const transferOrders: TransferOrder[] = [];
-  const originalCases = cases.slice(0, 2);
-  const newCases = cases.slice(2);
+  const originalCases = cases.slice(0, count);
+  const newCases = cases.slice(count);
   //Create random transfers
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < count; i++) {
     transferOrders.push(
       MockData.getTransferOrder({
         override: {
