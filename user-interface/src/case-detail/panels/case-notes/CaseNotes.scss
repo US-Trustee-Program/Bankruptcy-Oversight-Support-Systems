@@ -14,6 +14,7 @@
   #searchable-case-notes {
     list-style-type: none;
     padding-left: 0;
+    padding-top: 1rem;
 
     .case-note {
       padding-left: 0;
@@ -30,7 +31,8 @@
       }
 
       .case-note-author {
-        padding-top: 1rem;
+        padding-top: 0.5rem;
+        font-style: itali;
       }
 
       .case-note-toolbar {
@@ -45,5 +47,5 @@
         color: black;
       }
     }
- }
+  }
 }
