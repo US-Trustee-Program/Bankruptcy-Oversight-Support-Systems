@@ -62,8 +62,6 @@ test.describe('Case Notes', () => {
     await expect(caseNoteHeader).toBeVisible();
     await expect(caseNoteHeader).toHaveText(noteTitleEdit);
 
-    await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
-
     //Remove Newly created note edit
     await expect(
       page.locator('[data-testid="open-modal-button_case-note-remove-button_0"]'),

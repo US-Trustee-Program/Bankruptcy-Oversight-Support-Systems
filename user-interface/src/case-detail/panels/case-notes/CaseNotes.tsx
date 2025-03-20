@@ -117,6 +117,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
+        <div data-testid={`note-id-${idx}`}>{note.id}</div>
         <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
           {userCanRemove(note) && (
             <>

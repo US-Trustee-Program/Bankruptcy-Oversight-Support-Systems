@@ -52,11 +52,13 @@ async function oktaLogin(page: Page) {
 
   const submit = page.locator('input[type=submit]').first();
   await submit.click();
-
+  //FLAW: when we return from OKTA we return to the base url without the URL
   await page.waitForURL(TARGET_HOST);
-  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
   const state = await page.context().storageState({ path: authFile });
   expect(state).toBeDefined();
+  await await page.goto(TARGET_HOST);
+  await page.waitForURL(TARGET_HOST + '/?x-ms-routing-name=staging');
+  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
 }
 
 function usingAuthenticationProvider() {
