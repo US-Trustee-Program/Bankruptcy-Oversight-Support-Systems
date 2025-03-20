@@ -14,9 +14,10 @@ const doc = using<CaseNote>();
 export class CaseNotesMongoRepository extends BaseMongoRepository implements CaseNotesRepository {
   private static referenceCount: number = 0;
   private static instance: CaseNotesMongoRepository;
-
+  context: ApplicationContext;
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
+    this.context = context;
   }
 
   public static getInstance(context: ApplicationContext) {
@@ -66,7 +67,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       archivedOn: archiveNote.archivedOn,
       archivedBy: archiveNote.archivedBy,
     };
-
+    this.context.logger.debug(MODULE_NAME, `Update Query:      ${query}`);
     try {
       return await this.getAdapter<CaseNote>().updateOne(query, archiveDate);
     } catch (originalError) {

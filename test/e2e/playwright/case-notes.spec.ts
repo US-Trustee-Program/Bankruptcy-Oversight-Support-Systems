@@ -73,7 +73,6 @@ test.describe('Case Notes', () => {
       page.locator('[data-testid="button-remove-note-modal-submit-button"]'),
     ).toBeVisible();
     await page.locator('[data-testid="button-remove-note-modal-submit-button"]').click();
-    await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
     await expect(page.locator('[data-testid="searchable-case-notes"]')).not.toBeVisible();
     await expect(page.locator('[data-testid="empty-notes-test-id"]')).toBeVisible();
