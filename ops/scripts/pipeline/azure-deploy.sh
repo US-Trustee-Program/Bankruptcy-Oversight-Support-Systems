@@ -342,7 +342,7 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${is_ustp_deployment_param}"
         shift
         ;;
-    --enabledDataflows )
+    --enabledDataflows)
         inputParams+=("${1}")
         enabled_dataflows_param="enabledDataflows=${2}"
         deployment_parameters="${deployment_parameters} ${enabled_dataflows_param}"
