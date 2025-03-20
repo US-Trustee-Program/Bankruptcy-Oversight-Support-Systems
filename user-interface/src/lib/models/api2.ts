@@ -46,7 +46,7 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
-  delete(path: string): Promise<ResponseBody | void>;
+  delete(path: string, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
@@ -54,7 +54,7 @@ interface ApiClient {
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
-  delete<T = object>(path: string): Promise<ResponseBody<T>>;
+  delete<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
@@ -145,9 +145,10 @@ export function useGenericApi(): GenericApiClient {
       return body as ResponseBody<T>;
     },
 
-    async delete<T = object>(path: string): Promise<ResponseBody<T>> {
-      const { uriOrPathSubstring } = justThePath(path);
-      const body = await api.delete(uriOrPathSubstring);
+    async delete<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const body = await api.delete(uriOrPathSubstring, options);
       return body as ResponseBody<T>;
     },
 

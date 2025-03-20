@@ -57,7 +57,10 @@ async function oktaLogin(page: Page) {
   const state = await page.context().storageState({ path: authFile });
   expect(state).toBeDefined();
   await await page.goto(TARGET_HOST);
-  await page.waitForURL(TARGET_HOST + '/?x-ms-routing-name=staging');
+  const expectedHost = TARGET_HOST.includes('localhost:3000')
+    ? TARGET_HOST
+    : `${TARGET_HOST}/?x-ms-routing-name=staging`;
+  page.waitForURL(expectedHost);
   await expect(page.getByTestId('app-component-test-id')).toBeVisible();
 }
 
