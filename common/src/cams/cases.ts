@@ -90,6 +90,8 @@ export type CaseNoteInput = {
   caseId: string;
   content: string;
   updatedBy?: CamsUserReference;
+  createdBy?: CamsUserReference;
+  createdOn?: string;
 };
 
 export type DxtrCase = CaseSummary & {

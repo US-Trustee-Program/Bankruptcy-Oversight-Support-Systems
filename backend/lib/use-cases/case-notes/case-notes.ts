@@ -21,14 +21,15 @@ export class CaseNotesUseCase {
   }
 
   public async createCaseNote(user: CamsUser, noteInput: CaseNoteInput): Promise<void> {
+    const userRef = getCamsUserReference(user);
+    const today = new Date().toISOString();
     const data: CaseNote = {
       ...noteInput,
       documentType: 'NOTE',
-      updatedBy: {
-        id: user.id,
-        name: user.name,
-      },
-      updatedOn: new Date().toISOString(),
+      updatedBy: userRef,
+      updatedOn: today,
+      createdBy: userRef,
+      createdOn: today,
     };
 
     await this.caseNotesRepository.create(data);
@@ -60,10 +61,12 @@ export class CaseNotesUseCase {
     const newNote: CaseNote = {
       ...noteInput,
       id: randomUUID(),
+      documentType: 'NOTE',
       previousVersionId: noteInput.id,
       updatedOn: dateOfEdit,
-      documentType: 'NOTE',
       updatedBy: getCamsUserReference(noteEditRequest.sessionUser),
+      createdBy: noteInput.createdBy,
+      createdOn: noteInput.createdOn,
     };
 
     const archiveNote: Partial<CaseNote> = {

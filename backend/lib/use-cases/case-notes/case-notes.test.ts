@@ -41,6 +41,8 @@ describe('Test case-notes use case', () => {
       title: caseNoteTitle,
       documentType: 'NOTE',
       caseId: mockCase.caseId,
+      createdBy: user,
+      createdOn: expect.anything(),
       updatedBy: user,
       updatedOn: expect.anything(),
       content: caseNoteContent,

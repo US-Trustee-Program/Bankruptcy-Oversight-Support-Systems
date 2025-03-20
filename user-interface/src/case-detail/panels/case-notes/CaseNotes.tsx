@@ -83,7 +83,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
 
   function showCaseNotes(note: CaseNote, idx: number) {
     const sanitizedCaseNote = sanitizeText(note.content);
-    const sanitizedCaseTitle = sanitizeText(note.title);
+    const sanitizedCaseNoteTitle = sanitizeText(note.title);
 
     return (
       <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
@@ -92,16 +92,16 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
             <h4
               className="case-note-header usa-tooltip"
               data-testid={`case-note-${idx}-header`}
-              title={sanitizedCaseTitle}
-              aria-label={`Note Title: ${sanitizedCaseTitle}`}
+              title={sanitizedCaseNoteTitle}
+              aria-label={`Note Title: ${sanitizedCaseNoteTitle}`}
             >
-              {sanitizedCaseTitle}
+              {sanitizedCaseNoteTitle}
             </h4>
           </div>
           <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
+            {note.previousVersionId ? 'Edited on: ' : 'Created On: '}
             {formatDateTime(note.updatedOn)}
           </div>
-          <div className="case-note-date grid-col-1"></div>
         </div>
         <div className="grid-row">
           <div className="grid-col-12 case-note-content">
@@ -117,9 +117,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
-        <div data-testid={`note-id-${idx}`}>{note.id}</div>
-        <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
-          {userCanRemove(note) && (
+        {userCanRemove(note) && (
+          <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
             <>
               <OpenModalButton
                 className="edit-button"
@@ -162,8 +161,8 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
                 Remove
               </OpenModalButton>
             </>
-          )}
-        </div>
+          </div>
+        )}
       </li>
     );
   }
@@ -241,7 +240,11 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
               </div>
             )}
             {caseNotes && caseNotes.length > 0 && (
-              <ol id="searchable-case-notes" data-testid="searchable-case-notes">
+              <ol
+                className="search-case-notes"
+                id="searchable-case-notes"
+                data-testid="searchable-case-notes"
+              >
                 {renderCaseNotes()}
               </ol>
             )}
