@@ -69,7 +69,8 @@
     ]
   },
   "overrides": {
-    "semver": "^7.5.4"
+    "semver": "^7.5.4",
+    "@babel/runtime": "^7.26.10"
   },
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
