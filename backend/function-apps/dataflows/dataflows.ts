@@ -12,22 +12,22 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 dataflows.ts
 
-This module calls setup functions for each "registered" data flow. Each data flow is defined in a module that exports the DataFlowSetup interface.
-Calling setup configures Azure infrastructure to provision the Azure Function.
+This module calls setup functions for each "registered" data flow. Each data flow is defined in a module that exports the DataFlowSetup interface. Calling setup configures Azure infrastructure to provision the Azure Function.
 
-A comma delimited list of the MODULE_NAME values is required to appear in a comma delimited list in the CAMS_ENABLED_DATAFLOWS environment variable.
+A comma delimited list of the MODULE_NAME values is required to appear in a comma delimited list in the CAMS_ENABLED_DATAFLOWS environment variable. Due do how hyphens are interpreted in scripts, all hyphens that appear in a given MODULE_NAME must be replaced with underscores.
+
 Any module name not listed is not setup and will not appear in the list of Azure Functions in Azure Portal. This enables data flows to be setup
 independenly across environments.
 
 The configuration is logged on startup. Example:
 
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Registered Dataflows SYNC-CASES, SYNC-OFFICE-STAFF, SYNC-ORDERS, MIGRATE-CASES, MIGRATE-CONSOLIDATIONS
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Registered Dataflows SYNC_CASES, SYNC_OFFICE_STAFF, SYNC_ORDERS, MIGRATE_CASES, MIGRATE_CONSOLIDATIONS
 [2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Dataflow name FOO not found
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-CASES', true ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-OFFICE-STAFF', false ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC-ORDERS', false ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CASES', false ]
-[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE-CONSOLIDATIONS', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC_CASES', true ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC_OFFICE_STAFF', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'SYNC_ORDERS', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE_CASES', false ]
+[2025-03-14T22:41:31.717Z] DATAFLOWS_SETUP Enabled [ 'MIGRATE_CONSOLIDATIONS', false ]
 
 */
 
@@ -39,6 +39,13 @@ type DataflowSetup = {
 };
 
 const logger = new LoggerImpl('bootstrap');
+
+function envVarToNames(envVar: string) {
+  return envVar
+    .replace('_', '-')
+    .split(',')
+    .map((name) => name.trim().toUpperCase());
+}
 
 class DataflowSetupMap {
   private map = new Map<string, () => void>();
@@ -86,12 +93,11 @@ initializeApplicationInsights();
 dataflows.register(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
 
 // Log the list of registered data flows.
-const registeredDataflows = dataflows.list().join(', ');
+const registeredDataflows = dataflows.list().join(', ').replace('-', '_');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 // Enable the data flows specified in from the configuration env var.
-const envVar = process.env.CAMS_ENABLED_DATAFLOWS ?? '';
-const names = envVar.split(',').map((name) => name.trim().toUpperCase());
+const names = envVarToNames(process.env.CAMS_ENABLED_DATAFLOWS ?? '');
 const status = dataflows.setup(...names);
 
 // Log the status of each registered data flow.
