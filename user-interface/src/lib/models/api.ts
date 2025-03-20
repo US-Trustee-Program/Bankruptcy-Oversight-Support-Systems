@@ -110,10 +110,11 @@ export default class Api {
     }
   }
 
-  public static async delete(path: string): Promise<ResponseBody | void> {
+  public static async delete(path: string, options?: ObjectKeyVal): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
-      const pathStr = Api.createPath(path, {});
+      const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
+      const pathStr = Api.createPath(path, apiOptions);
       const response = await httpDelete({ url: Api.host + pathStr, headers: this.headers });
       await this.executeAfterHooks(response);
 
