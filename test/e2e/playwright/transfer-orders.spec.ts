@@ -130,7 +130,7 @@ test.describe('Transfer Orders', () => {
     expect(pendingTransferOrder).not.toBeFalsy();
     const orderId = pendingTransferOrder.id;
 
-    // open accordian by order id
+    // open accordion by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
     await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
