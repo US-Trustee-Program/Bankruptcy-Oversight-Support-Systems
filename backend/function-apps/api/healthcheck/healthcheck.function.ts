@@ -16,28 +16,24 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const applicationContext = await ContextCreator.getApplicationContext({
+  const context = await ContextCreator.getApplicationContext({
     invocationContext,
-    logger,
     request,
   });
-  const healthcheckCosmosDbClient = new HealthcheckCosmosDb(applicationContext);
-  const healthCheckSqlDbClient = new HealthcheckSqlDb(applicationContext);
 
-  applicationContext.logger.debug(MODULE_NAME, 'Health check endpoint invoked');
+  const healthcheckCosmosDbClient = new HealthcheckCosmosDb(context);
+  const healthCheckSqlDbClient = new HealthcheckSqlDb(context);
+
+  context.logger.debug(MODULE_NAME, 'Health check endpoint invoked');
 
   const cosmosStatus = await healthcheckCosmosDbClient.checkDocumentDb();
 
   Object.keys(cosmosStatus).forEach((key) => {
-    applicationContext.logger.debug(MODULE_NAME, key + ': ' + cosmosStatus[key]);
+    context.logger.debug(MODULE_NAME, key + ': ' + cosmosStatus[key]);
   });
   const checkSqlDbReadAccess = await healthCheckSqlDbClient.checkDxtrDbRead();
-  applicationContext.logger.debug(
-    MODULE_NAME,
-    'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess,
-  );
-  const healthcheckInfo = new HealthcheckInfo(applicationContext);
+  context.logger.debug(MODULE_NAME, 'SQL Dxtr Db Read Check return ' + checkSqlDbReadAccess);
+  const healthcheckInfo = new HealthcheckInfo(context);
   const info = healthcheckInfo.getServiceInfo();
 
   const respBody = {
@@ -66,14 +62,14 @@ export default async function handler(
         }),
       )
     : toAzureError(
-        applicationContext,
+        context,
         MODULE_NAME,
         new CamsError(MODULE_NAME, {
           message: JSON.stringify(respBody),
           status: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         }),
       );
-  await closeDeferred(applicationContext);
+  await closeDeferred(context);
   return result;
 }
 

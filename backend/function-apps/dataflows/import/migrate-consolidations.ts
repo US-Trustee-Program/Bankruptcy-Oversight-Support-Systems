@@ -40,8 +40,10 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
  * @param {InvocationContext} context
  */
 async function handleStart(bounds: AcmsBounds, invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
   for (const chapter of bounds.chapters) {
     for (const divisionCode of bounds.divisionCodes) {
+      logger.debug(MODULE_NAME, `Queueing division ${divisionCode} chapter ${chapter}.`);
       await queuePages(
         {
           divisionCode,
@@ -60,6 +62,8 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
  * @param invocationContext
  */
 async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
   for (const event of page) {
     await migrateConsolidation(event, invocationContext);
   }
@@ -73,61 +77,70 @@ async function handlePage(page: AcmsEtlQueueItem[], invocationContext: Invocatio
  * @returns
  */
 async function queuePages(predicate: AcmsPredicate, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const appContext = await ApplicationContextCreator.getApplicationContext({
+  const context = await ApplicationContextCreator.getApplicationContext({
     invocationContext,
-    logger,
   });
   const controller = new AcmsOrdersController();
 
   try {
-    const leadCaseIds = await controller.getLeadCaseIds(appContext, predicate);
+    const leadCaseIds = await controller.getLeadCaseIds(context, predicate);
 
     if (!leadCaseIds.length) {
-      logger.debug(
+      context.logger.debug(
         MODULE_NAME,
-        `No lead case Ids to queue for consolidation migration for division ${predicate.divisionCode} chapter ${predicate.chapter}`,
+        `No consolidations to queue for division ${predicate.divisionCode} chapter ${predicate.chapter}`,
       );
       return;
     }
 
-    logger.debug(MODULE_NAME, `Putting ${leadCaseIds.length} consolidations in the queue.`);
-
-    // Transform the lead case IDs into the queue items.
-    const queueItems = [];
-    for (let i = 0; i < leadCaseIds.length; i++) {
-      const leadCaseIdString = leadCaseIds[i].toString();
-      const queueItem: AcmsEtlQueueItem = {
+    // Transform the lead case IDs into queue items.
+    const queueItems: AcmsEtlQueueItem[] = leadCaseIds.map((leadCaseId) => {
+      return {
         divisionCode: predicate.divisionCode,
         chapter: predicate.chapter,
-        leadCaseId: leadCaseIdString,
+        leadCaseId: leadCaseId.toString(),
       };
-      queueItems.push(queueItem);
-    }
+    });
 
     // Slice the queue items into pages for the PAGE queue.
     const pages = [];
     for (let i = 0; i < queueItems.length; i += PAGE_SIZE) {
       pages.push(queueItems.slice(i, i + PAGE_SIZE));
     }
+
+    context.logger.debug(
+      MODULE_NAME,
+      `Queueing ${leadCaseIds.length} consolidations over ${pages.length} pages for division ${predicate.divisionCode} chapter ${predicate.chapter}.`,
+    );
+
     invocationContext.extraOutputs.set(PAGE, pages);
   } catch (originalError) {
-    const error = getCamsError(originalError, MODULE_NAME, 'Failed to get lead case ids.');
-    logger.camsError(error);
+    const error = getCamsError(
+      originalError,
+      MODULE_NAME,
+      `Failed to queue consolidations for division ${predicate.divisionCode} chapter ${predicate.chapter}.`,
+    );
+    context.logger.camsError(error);
   }
 }
 
-async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(context);
-  const appContext = await ApplicationContextCreator.getApplicationContext({
-    invocationContext: context,
-    logger,
+async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: InvocationContext) {
+  const context = await ApplicationContextCreator.getApplicationContext({
+    invocationContext,
   });
+  const { logger } = context;
   try {
+    logger.debug(
+      MODULE_NAME,
+      `Starting migration of case ${formatCaseIdForLog(item)} for division ${item.divisionCode}, chapter ${item.chapter}.`,
+    );
     const controller = new AcmsOrdersController();
-
-    const result = await controller.migrateConsolidation(appContext, item.leadCaseId);
-    logger.debug(MODULE_NAME, `Migrate consolidation of ${item.leadCaseId}: ${result.success}.`);
+    const result = await controller.migrateConsolidation(context, item.leadCaseId);
+    logger.debug(
+      MODULE_NAME,
+      `Migrate consolidation of case ${formatCaseIdForLog(item)} ${result.success ? 'successful' : 'failed'}.`,
+      result.error ?? result,
+    );
 
     if (!result.success && result.error) {
       throw result.error;
@@ -138,11 +151,17 @@ async function migrateConsolidation(item: AcmsEtlQueueItem, context: InvocationC
       error: getCamsError(originalError, MODULE_NAME),
     };
     logger.error(MODULE_NAME, errorMessage.error.message);
-    context.extraOutputs.set(HARD_STOP, [errorMessage]);
+    invocationContext.extraOutputs.set(HARD_STOP, [errorMessage]);
   }
 }
 
-export function setupMigrateConsolidations() {
+function formatCaseIdForLog(item: AcmsEtlQueueItem) {
+  // The caseId is a numeric string. The divisionCode is not left padded with zeros.
+  const caseNumber = item.leadCaseId.slice(item.leadCaseId.length - 5);
+  return [item.divisionCode.padStart(3, '0'), item.chapter, caseNumber].join('-');
+}
+
+function setup() {
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
@@ -157,3 +176,8 @@ export function setupMigrateConsolidations() {
     extraOutputs: [HARD_STOP],
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};

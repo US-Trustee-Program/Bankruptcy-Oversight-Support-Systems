@@ -8,7 +8,9 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 const MODULE_NAME = 'FUNCTIONS-MODULE';
 
 function azureToCamsDict(it: Iterable<[string, string]>): CamsDict {
-  if (!it) return {};
+  if (!it) {
+    return {};
+  }
   return Array.from(it).reduce((acc, record) => {
     acc[record[0]] = record[1];
     return acc;
@@ -39,7 +41,9 @@ export function toAzureSuccess<T extends object = undefined>(
     headers: response.headers,
     status: response.statusCode,
   };
-  if (response.body) init.jsonBody = response.body;
+  if (response.body) {
+    init.jsonBody = response.body;
+  }
 
   return init;
 }

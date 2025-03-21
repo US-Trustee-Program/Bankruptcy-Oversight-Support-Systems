@@ -84,6 +84,9 @@ param actionGroupResourceGroupName string = ''
 @description('boolean to determine creation and configuration of Alerts')
 param createAlerts bool = false
 
+@description('Comma delimited list of data flow names to enable.')
+param enabledDataflows string
+
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
@@ -296,6 +299,10 @@ var baseApplicationSettings = concat(
     {
       name: 'OKTA_API_KEY'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
+    }
+    {
+      name: 'CAMS_ENABLED_DATAFLOWS'
+      value: enabledDataflows
     }
     {
       name: 'MyTaskHub'

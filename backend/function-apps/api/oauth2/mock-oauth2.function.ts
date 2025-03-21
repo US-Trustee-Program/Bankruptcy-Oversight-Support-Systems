@@ -10,21 +10,19 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+    request,
+  });
   try {
-    const applicationContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-      request,
-    });
-    const token = await mockAuthentication(applicationContext);
+    const token = await mockAuthentication(context);
     return toAzureSuccess(
       httpSuccess({
         body: { data: { value: token } },
       }),
     );
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

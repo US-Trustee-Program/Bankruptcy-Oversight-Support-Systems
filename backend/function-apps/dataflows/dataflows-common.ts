@@ -73,10 +73,7 @@ export function buildHttpTrigger(
   moduleName: string,
   fn: (context: InvocationContext, request?: HttpRequest) => Promise<unknown>,
 ) {
-  async function httpTrigger(
-    request: HttpRequest,
-    context: InvocationContext,
-  ): Promise<HttpResponse> {
+  return async (request: HttpRequest, context: InvocationContext): Promise<HttpResponse> => {
     try {
       if (!isAuthorized(request)) {
         throw new ForbiddenError(moduleName);
@@ -89,8 +86,7 @@ export function buildHttpTrigger(
     } catch (error) {
       return new HttpResponse(toAzureError(ContextCreator.getLogger(context), moduleName, error));
     }
-  }
-  return httpTrigger;
+  };
 }
 
 /**
@@ -120,9 +116,8 @@ export function buildStartQueueHttpTrigger(moduleName: string, queue: StorageQue
  * @returns
  */
 export function buildStartQueueTimerTrigger(_moduleName: string, queue: StorageQueueOutput) {
-  async function timerTrigger(_ignore: Timer, context: InvocationContext) {
+  return async (_ignore: Timer, context: InvocationContext) => {
     const startMessage: StartMessage = {};
     context.extraOutputs.set(queue, startMessage);
-  }
-  return timerTrigger;
+  };
 }

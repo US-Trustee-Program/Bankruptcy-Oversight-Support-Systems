@@ -13,23 +13,22 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  try {
-    const applicationContext = await ContextCreator.applicationContextCreator(
-      invocationContext,
-      logger,
-      request,
-    );
-    const caseNotesController: CaseNotesController = new CaseNotesController(applicationContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+    request,
+  });
 
-    if (applicationContext.featureFlags['case-notes-enabled'] === false) {
+  try {
+    const caseNotesController: CaseNotesController = new CaseNotesController(context);
+
+    if (context.featureFlags['case-notes-enabled'] === false) {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    const controllerResponse = await caseNotesController.handleRequest(applicationContext);
+    const controllerResponse = await caseNotesController.handleRequest(context);
     return toAzureSuccess(controllerResponse);
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

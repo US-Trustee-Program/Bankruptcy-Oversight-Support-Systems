@@ -144,6 +144,11 @@ ACMS_MSSQL_PASS={the ACMS SQL Server Admin user password}
 # Required for connecting to CAMS SQL server database with managed identity
 MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access}
 ACMS_MSSQL_CLIENT_ID={OPTIONAL client id of Managed Identity with access to the ACMS DB}
+
+## Required to enable data flows. Add/Remove the MODULE_NAME of specific data flow modules
+## to the comma-delimited list in the CAMS_ENABLED_DATAFLOWS variable. Replace hyphens with
+## underscores in the MODULE_NAMES added to the CAMS_ENABLED_DATAFLOWS list.
+# CAMS_ENABLED_DATAFLOWS=SYNC_CASES,SYNC_OFFICE_STAFF,SYNC_ORDERS
 ```
 
 !> Replace the curly braces and their contents with the appropriate string.

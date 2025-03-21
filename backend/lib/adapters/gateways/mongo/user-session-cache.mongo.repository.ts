@@ -9,7 +9,7 @@ import { UserSessionCacheRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { nowInSeconds } from '../../../../../common/src/date-helper';
 
-const MODULE_NAME: string = 'USER_SESSION_CACHE_MONGO_REPOSITORY';
+const MODULE_NAME = 'USER-SESSION-CACHE-MONGO-REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';
 
 const doc = QueryBuilder.using<CachedCamsSession>();

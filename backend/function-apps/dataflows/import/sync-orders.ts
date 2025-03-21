@@ -4,19 +4,15 @@ import { OrdersController } from '../../../lib/controllers/orders/orders.control
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 
-const MODULE_NAME = 'SYNC_ORDERS';
+const MODULE_NAME = 'SYNC-ORDERS';
 
-export async function timerTrigger(
-  _ignore: Timer,
-  invocationContext: InvocationContext,
-): Promise<void> {
-  const logger = ContextCreator.getLogger(invocationContext);
+async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
   try {
-    const appContext = await ContextCreator.getApplicationContext({ invocationContext, logger });
-    const ordersController = new OrdersController(appContext);
-    await ordersController.handleTimer(appContext);
+    const ordersController = new OrdersController(context);
+    await ordersController.handleTimer(context);
   } catch (error) {
-    toAzureError(logger, MODULE_NAME, error);
+    toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 
@@ -31,13 +27,11 @@ export async function timerTrigger(
  *
  */
 
-export const httpTrigger = buildHttpTrigger(
+const httpTrigger = buildHttpTrigger(
   MODULE_NAME,
   async (invocationContext: InvocationContext, request: HttpRequest) => {
-    const logger = ContextCreator.getLogger(invocationContext);
     const context = await ContextCreator.getApplicationContext({
       invocationContext,
-      logger,
       request,
     });
 
@@ -46,7 +40,7 @@ export const httpTrigger = buildHttpTrigger(
   },
 );
 
-export function setupSyncOrders() {
+function setup() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
     schedule: '0 30 9 * * *',
     handler: timerTrigger,
@@ -58,3 +52,8 @@ export function setupSyncOrders() {
     handler: httpTrigger,
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};

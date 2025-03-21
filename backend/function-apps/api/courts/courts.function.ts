@@ -3,27 +3,25 @@ import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
 
-const MODULE_NAME = 'COURTS_FUNCTION';
+const MODULE_NAME = 'COURTS-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
-  try {
-    const applicationContext = await ContextCreator.applicationContextCreator(
-      invocationContext,
-      logger,
-      request,
-    );
-    const controller = new CourtsController();
-    applicationContext.session =
-      await ContextCreator.getApplicationContextSession(applicationContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+    request,
+  });
 
-    const responseBody = await controller.handleRequest(applicationContext);
+  try {
+    const controller = new CourtsController();
+    context.session = await ContextCreator.getApplicationContextSession(context);
+
+    const responseBody = await controller.handleRequest(context);
     return toAzureSuccess(responseBody);
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

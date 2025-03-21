@@ -107,6 +107,13 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
             consolidationDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
           };
         });
+
+      context.logger.debug(
+        MODULE_NAME,
+        `Child caseIds for lead case id ${formattedLeadCaseId}`,
+        childCases,
+      );
+
       return {
         leadCaseId: this.formatCaseId(leadCaseId.toString()),
         childCases,

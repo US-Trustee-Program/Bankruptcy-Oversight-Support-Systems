@@ -5,7 +5,7 @@ import { CaseAssignmentRepository } from '../../../use-cases/gateways.types';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME: string = 'CASE_ASSIGNMENT_MONGO_REPOSITORY';
+const MODULE_NAME = 'CASE-ASSIGNMENT-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'assignments';
 
 const { and, using } = QueryBuilder;

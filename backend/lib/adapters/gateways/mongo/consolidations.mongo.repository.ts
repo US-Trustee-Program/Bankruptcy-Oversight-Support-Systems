@@ -6,7 +6,7 @@ import { ApplicationContext } from '../../types/basic';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
-const MODULE_NAME: string = 'CONSOLIDATIONS_MONGO_REPOSITORY';
+const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
 
 const { and, orderBy } = QueryBuilder;

@@ -15,7 +15,7 @@ import { SyncedCase } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 
-const MODULE_NAME: string = 'CASES_MONGO_REPOSITORY';
+const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { paginate, and, or, using } = QueryBuilder;
@@ -35,14 +35,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CasesMongoRepository.instance)
+    if (!CasesMongoRepository.instance) {
       CasesMongoRepository.instance = new CasesMongoRepository(context);
+    }
     CasesMongoRepository.referenceCount++;
     return CasesMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (CasesMongoRepository.referenceCount > 0) CasesMongoRepository.referenceCount--;
+    if (CasesMongoRepository.referenceCount > 0) {
+      CasesMongoRepository.referenceCount--;
+    }
     if (CasesMongoRepository.referenceCount < 1) {
       CasesMongoRepository.instance.client.close().then();
       CasesMongoRepository.instance = null;
