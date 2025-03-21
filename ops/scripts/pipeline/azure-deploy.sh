@@ -335,6 +335,12 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${allow_veracode_scan_param}"
         shift 2
         ;;
+    --enabledDataflows)
+        inputParams+=("${1}")
+        enabled_dataflows_param="enabledDataflows=${2}"
+        deployment_parameters="${deployment_parameters} ${enabled_dataflows_param}"
+        shift 2
+        ;;
     --isUstpDeployment)
         inputParams+=("${1}")
         is_ustp_deployment=true
@@ -342,12 +348,7 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${is_ustp_deployment_param}"
         shift
         ;;
-    --enabledDataflows)
-        inputParams+=("${1}")
-        enabled_dataflows_param="enabledDataflows=${2}"
-        deployment_parameters="${deployment_parameters} ${enabled_dataflows_param}"
-        shift
-        ;;
+
     *)
         echo "Exit on param: ${1}"
         exit 2 # error on unknown flag/switch
