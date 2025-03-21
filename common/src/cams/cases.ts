@@ -72,6 +72,13 @@ export type CaseNote = CaseNoteInput &
     previousVersionId?: string;
   };
 
+export type LegacyCaseNote = {
+  id: string;
+  caseId: string;
+  createdOn: string;
+  createdBy: CamsUserReference;
+};
+
 export type CaseNoteDeleteRequest = {
   id: string;
   caseId: string;

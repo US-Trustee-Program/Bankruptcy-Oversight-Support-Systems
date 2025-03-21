@@ -6,11 +6,13 @@ import {
   CaseNoteDeleteRequest,
   CaseNoteEditRequest,
   CaseNoteInput,
+  LegacyCaseNote,
 } from '../../../../common/src/cams/cases';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { randomUUID } from 'node:crypto';
+import { PaginationParameters } from '../../../../common/src/api/pagination';
 
 const MODULE_NAME = 'CASE-NOTES-USE-CASE';
 
@@ -79,5 +81,24 @@ export class CaseNotesUseCase {
     const creationResponse = await this.caseNotesRepository.create(newNote);
     await this.caseNotesRepository.archiveCaseNote(archiveNote);
     return creationResponse;
+  }
+
+  public async getLegacyCaseNotesPage(pagination: PaginationParameters): Promise<LegacyCaseNote[]> {
+    const notes = await this.caseNotesRepository.getLegacyCaseNotesPage(pagination);
+    return notes.data.reduce((acc, note) => {
+      if (!note.createdOn) {
+        acc.push({
+          id: note.id,
+          caseId: note.caseId,
+          createdOn: note.updatedOn,
+          createdBy: note.updatedBy,
+        });
+      }
+      return acc;
+    }, []);
+  }
+
+  public async updateLegacyCaseNote(note: LegacyCaseNote) {
+    await this.caseNotesRepository.update(note);
   }
 }
