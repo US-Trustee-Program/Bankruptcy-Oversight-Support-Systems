@@ -16,7 +16,7 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator({
+  const context = await ContextCreator.getApplicationContext({
     invocationContext,
     request,
   });
