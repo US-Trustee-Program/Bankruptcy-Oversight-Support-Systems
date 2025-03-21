@@ -1,5 +1,12 @@
 import { CamsError } from '../../common-errors/cams-error';
-import { LoggerHelper } from '../types/basic';
+
+export interface LoggerHelper {
+  debug: (moduleName: string, message: string, data?: unknown) => void;
+  info: (moduleName: string, message: string, data?: unknown) => void;
+  warn: (moduleName: string, message: string, data?: unknown) => void;
+  error: (moduleName: string, message: string, data?: unknown) => void;
+  camsError: (error: CamsError) => void;
+}
 
 type LoggerProvider = Console['log'];
 type LogType = 'debug' | 'info' | 'warn' | 'error';

@@ -119,6 +119,9 @@ param camsReactSelectHash string
 
 param cosmosDatabaseName string
 
+@description('Comma delimited list of data flow names to enable.')
+param enabledDataflows string = ''
+
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -260,6 +263,7 @@ module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
     kvAppConfigName: kvAppConfigName
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
+    enabledDataflows: enabledDataflows
   }
   dependsOn: [
     network

@@ -15,18 +15,17 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const logger = ContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.applicationContextCreator({
+    invocationContext,
+    request,
+  });
+
   try {
-    const applicationContext = await ContextCreator.applicationContextCreator(
-      invocationContext,
-      logger,
-      request,
-    );
     const caseHistoryController = new CaseHistoryController();
-    const responseBody = await caseHistoryController.handleRequest(applicationContext);
+    const responseBody = await caseHistoryController.handleRequest(context);
     return toAzureSuccess(responseBody);
   } catch (error) {
-    return toAzureError(logger, MODULE_NAME, error);
+    return toAzureError(context.logger, MODULE_NAME, error);
   }
 }
 

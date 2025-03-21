@@ -10,6 +10,7 @@ import handler from './me.function';
 import { InvocationContext } from '@azure/functions';
 import { CamsSession } from '../../../../common/src/cams/session';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import { MeController } from '../../../lib/controllers/me/me.controller';
 
 describe('me Function test', () => {
   const context = new InvocationContext({
@@ -33,7 +34,7 @@ describe('me Function test', () => {
 
   test('should handle an error response', async () => {
     const error = new ForbiddenError('FUNCTION_TEST');
-    jest.spyOn(ContextCreator, 'applicationContextCreator').mockRejectedValue(error);
+    jest.spyOn(MeController.prototype, 'handleRequest').mockRejectedValue(error);
     const { azureHttpResponse } = buildTestResponseError(error);
     const response = await handler(request, context);
 

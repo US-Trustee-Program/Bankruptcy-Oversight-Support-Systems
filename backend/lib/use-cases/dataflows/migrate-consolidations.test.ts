@@ -102,7 +102,7 @@ describe('ACMS Orders', () => {
     ]);
 
     const expectedFromLinks = details.childCases.map((bCase) => {
-      const caseId = leadCase.caseId;
+      const { caseId } = leadCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationFrom({
@@ -135,7 +135,7 @@ describe('ACMS Orders', () => {
     });
 
     const expectedToLinks = details.childCases.map((bCase) => {
-      const caseId = bCase.caseId;
+      const { caseId } = bCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationTo({
@@ -410,7 +410,7 @@ describe('ACMS Orders', () => {
     const filterExistingCase = (bCase) => bCase.caseId !== existingChildCaseId;
 
     const expectedFromLinks = details.childCases.filter(filterExistingCase).map((bCase) => {
-      const caseId = leadCase.caseId;
+      const { caseId } = leadCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationFrom({
@@ -452,7 +452,7 @@ describe('ACMS Orders', () => {
     });
 
     const expectedToLinks = details.childCases.filter(filterExistingCase).map((bCase) => {
-      const caseId = bCase.caseId;
+      const { caseId } = bCase;
       const orderDate = bCase.consolidationDate;
       const consolidationType = bCase.consolidationType as ConsolidationType;
       return MockData.getConsolidationTo({

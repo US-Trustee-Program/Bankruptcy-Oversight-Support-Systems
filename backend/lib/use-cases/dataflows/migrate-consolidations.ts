@@ -206,6 +206,8 @@ export class AcmsOrders {
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
       }
+
+      return report;
     } catch (error) {
       report.success = false;
       report.error = getCamsError(

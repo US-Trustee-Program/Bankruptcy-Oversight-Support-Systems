@@ -121,7 +121,8 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
 }
 
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
 
   const RETRY_LIMIT = 3;
   if (!event.retryCount) {
@@ -134,10 +135,8 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
     logger.info(MODULE_NAME, `Too many attempts to sync ${event.caseId}.`);
   } else {
-    const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-
     if (!event.bCase) {
-      const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
+      const exportResult = await ExportAndLoadCase.exportCase(context, event);
 
       if (exportResult.bCase) {
         event.bCase = exportResult.bCase;
@@ -150,7 +149,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
       }
     }
 
-    const loadResult = await ExportAndLoadCase.loadCase(appContext, event);
+    const loadResult = await ExportAndLoadCase.loadCase(context, event);
 
     if (loadResult.error) {
       event.error = loadResult.error;
@@ -240,7 +239,7 @@ async function storeRuntimeState(invocationContext: InvocationContext) {
   return CasesRuntimeState.storeRuntimeState(appContext, getTodaysIsoDate());
 }
 
-export function setupMigrateCases() {
+function setup() {
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
@@ -276,3 +275,8 @@ export function setupMigrateCases() {
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
+
+export default {
+  MODULE_NAME,
+  setup,
+};
