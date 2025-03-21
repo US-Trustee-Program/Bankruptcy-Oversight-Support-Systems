@@ -67,7 +67,6 @@ jobs:
       - name: Deploy Azure resources
         id: azure-deploy
         if: inputs.deployBicep == 'true'
-        ## NOTE: enabledDataflows requires quotes here
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
             --resource-group ${{ steps.rgApp.outputs.out }} \
