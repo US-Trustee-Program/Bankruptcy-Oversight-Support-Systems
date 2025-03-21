@@ -4,9 +4,7 @@ import { test } from './fixture/urlQueryString';
 require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
-const OKTA_USER_NAME = process.env.OKTA_USER_NAME;
-const OKTA_PASSWORD = process.env.OKTA_PASSWORD;
-const TARGET_HOST = process.env.TARGET_HOST;
+const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
 const LOGIN_PATH = '/login';
 const timeoutOption = { timeout: 30000 };
 
