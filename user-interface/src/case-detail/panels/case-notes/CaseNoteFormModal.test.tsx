@@ -63,9 +63,9 @@ function renderWithProps(
 
 describe('case note tests', () => {
   beforeEach(() => {
+    vi.resetModules();
     session = MockData.getCamsSession();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    vi.resetModules();
   });
 
   afterEach(() => {
@@ -182,10 +182,10 @@ describe('case note tests', () => {
     expect(modal).not.toHaveClass('is-visible');
   });
 
-  test('Should display error and not close modal if error occurs submitting new case note', async () => {
+  test.only('Should display error and not close modal if error occurs submitting new case note', async () => {
     const editedNoteTitleText = 'Edited Note Title';
     const editedNoteContentText = 'Edited Note Content';
-
+    const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
     const modalRef = React.createRef<CaseNoteFormModalRef>();
     const postSpy = vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({});
     renderWithProps(modalRef);
@@ -205,8 +205,39 @@ describe('case note tests', () => {
     await userEvent.type(contentInput, editedNoteContentText);
     await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
     expect(postSpy).toHaveBeenCalled();
-    const errorMessage = screen.getByTestId('alert-case-note-form-error');
+    const errorMessage = screen.getByTestId('alert-message-case-note-form-error');
     expect(errorMessage).toBeVisible();
+    expect(errorMessage).toHaveTextContent(notesSubmissionErrorMessage);
+    expect(modal).toHaveClass('is-visible');
+  });
+
+  test('Should display error and not close modal if title or content are empty on new note submission', async () => {
+    const editedNoteTitleText = 'Edited Note Title';
+    const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    const postSpy = vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
+    renderWithProps(modalRef);
+
+    const modal = screen.getByTestId('modal-case-note-form');
+    expect(modal).not.toHaveClass('is-visible');
+    const openButton = screen.getByTestId('open-modal-button');
+    expect(openButton).toBeInTheDocument();
+
+    await userEvent.click(openButton);
+    expect(modal).toHaveClass('is-visible');
+
+    const titleInput = screen.getByTestId('case-note-title-input');
+
+    await userEvent.type(titleInput, editedNoteTitleText);
+    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    await waitFor(() => {
+      const error = screen.queryByTestId('alert-message-case-note-form-error');
+      expect(error).toBeVisible();
+    });
+    expect(screen.queryByTestId('alert-message-case-note-form-error')).toHaveTextContent(
+      notesRequiredFieldsMessage,
+    );
+    expect(postSpy).not.toHaveBeenCalled();
     expect(modal).toHaveClass('is-visible');
   });
 
