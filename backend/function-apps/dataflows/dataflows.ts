@@ -42,9 +42,10 @@ const logger = new LoggerImpl('bootstrap');
 
 function envVarToNames(envVar: string) {
   return envVar
-    .replace('_', '-')
+    .toUpperCase()
+    .replace(/_/g, '-')
     .split(',')
-    .map((name) => name.trim().toUpperCase());
+    .map((name) => name.trim());
 }
 
 class DataflowSetupMap {
@@ -93,7 +94,7 @@ initializeApplicationInsights();
 dataflows.register(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
 
 // Log the list of registered data flows.
-const registeredDataflows = dataflows.list().join(', ').replace('-', '_');
+const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');
 logger.info(MODULE_NAME, 'Registered Dataflows', registeredDataflows);
 
 // Enable the data flows specified in from the configuration env var.
