@@ -21,15 +21,25 @@ import { CaseNoteInput } from '@common/cams/cases';
 const title = 'Test Case Note Title';
 const content = 'Test Case Note Content';
 const testCaseId = '000-11-22222';
-const modalId = 'edit-modal';
+const titleInputId = 'case-note-title-input';
+const contentInputId = 'textarea-note-content';
+const openModalButtonId = 'open-modal-button';
+const modalId = 'modal-case-note-form';
+const cancelButtonId = 'button-case-note-form-cancel-button';
+const submitButtonId = 'button-case-note-form-submit-button';
+const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
+const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
+
 const modalOpenButtonRef = React.createRef<OpenModalButtonRef>();
 let session: CamsSession;
+let renderCount = 0;
 
 function renderWithProps(
   modalRef: React.RefObject<CaseNoteFormModalRef>,
   modalProps?: Partial<CaseNoteFormModalProps>,
   openProps?: Partial<CaseNoteFormModalOpenProps>,
 ) {
+  renderCount++;
   const defaultModalProps = {
     modalId,
     ref: modalOpenButtonRef,
@@ -59,6 +69,91 @@ function renderWithProps(
       </BrowserRouter>
     </React.StrictMode>,
   );
+  console.log(`Rendered the stuff ${renderCount} times!!!!!!!!!!!!!!!!`);
+}
+
+async function openWithExpectedContent(data: CaseNoteInput) {
+  const modalRef = React.createRef<CaseNoteFormModalRef>();
+  const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
+    id: data.id ?? undefined,
+    caseId: data.caseId,
+    title: data.title,
+    content: data.content,
+  };
+
+  renderWithProps(modalRef, {}, noteOpenProps);
+
+  const modal = screen.getByTestId(modalId);
+  expect(modal).not.toHaveClass('is-visible');
+  const openButton = screen.getByTestId(openModalButtonId);
+  expect(openButton).toBeInTheDocument();
+
+  await userEvent.click(openButton);
+  expect(modal).toHaveClass('is-visible');
+
+  const titleInput = screen.getByTestId(titleInputId);
+  const contentInput = screen.getByTestId(contentInputId);
+
+  expect(titleInput).toHaveValue(data.title);
+  expect(contentInput).toHaveValue(data.content);
+
+  return modal;
+}
+
+async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string) {
+  const note = MockData.getCaseNote();
+  const modalRef = React.createRef<CaseNoteFormModalRef>();
+  vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
+    caseId: note.caseId,
+    title: cachedTitle,
+    content: cachedContent,
+  });
+  const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
+  const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
+  const noteId = randomUUID();
+  const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
+    id: noteId,
+    caseId: note.caseId,
+    title: '',
+    content: '',
+  };
+
+  renderWithProps(modalRef, {}, noteOpenProps);
+
+  const modal = screen.getByTestId(`modal-case-note-form`);
+  const openButton = screen.getByTestId(openModalButtonId);
+  await userEvent.click(openButton);
+  expect(modal).toHaveClass('is-visible');
+
+  const input = document.querySelector('input');
+  const textarea = document.querySelector('textarea');
+  const submitBtn = screen.getByTestId(submitButtonId);
+
+  expect(input).toHaveValue(cachedTitle);
+  expect(textarea).toHaveValue(cachedContent);
+
+  const newTitle = 'new title';
+  const newContent = 'new content';
+
+  await userEvent.clear(input!);
+  await userEvent.clear(textarea!);
+  expect(clearFormSpy).toHaveBeenCalledTimes(1);
+
+  await userEvent.click(input!);
+  await userEvent.paste(newTitle);
+  await userEvent.click(textarea!);
+  await userEvent.paste(newContent);
+
+  const expectedSaveContent = {
+    caseId: note.caseId,
+    title: newTitle,
+    content: newContent,
+  };
+
+  expect(saveFormSpy).toHaveBeenCalled();
+  const lastContent = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
+  expect(lastContent.pop()).toEqual(expectedSaveContent);
+  expect(submitBtn).toBeEnabled();
 }
 
 describe('case note tests', () => {
@@ -66,39 +161,12 @@ describe('case note tests', () => {
     vi.resetModules();
     session = MockData.getCamsSession();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({});
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
-
-  async function openWithExpectedContent(data: CaseNoteInput) {
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
-      id: data.id ?? undefined,
-      caseId: data.caseId,
-      title: data.title,
-      content: data.content,
-    };
-
-    renderWithProps(modalRef, {}, noteOpenProps);
-
-    const modal = screen.getByTestId(`modal-case-note-form`);
-    expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId('open-modal-button');
-    expect(openButton).toBeInTheDocument();
-
-    await userEvent.click(openButton);
-    expect(modal).toHaveClass('is-visible');
-
-    const titleInput = screen.getByTestId('case-note-title-input');
-    const contentInput = screen.getByTestId('textarea-note-content');
-
-    expect(titleInput).toHaveValue(data.title);
-    expect(contentInput).toHaveValue(data.content);
-
-    return modal;
-  }
 
   test('Should properly post new case note', async () => {
     const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
@@ -110,14 +178,14 @@ describe('case note tests', () => {
       content: '',
     });
 
-    const titleInput = screen.getByTestId('case-note-title-input');
-    const contentInput = screen.getByTestId('textarea-note-content');
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
     const editedNoteTitleText = 'Edited Note Title';
     const editedNoteContentText = 'Edited Note Content';
 
     await userEvent.type(titleInput, editedNoteTitleText);
     await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    await userEvent.click(screen.getByTestId(submitButtonId));
 
     await waitFor(() => {
       expect(modal).not.toHaveClass('is-visible');
@@ -145,12 +213,12 @@ describe('case note tests', () => {
       content: note.content,
     });
 
-    const titleInput = screen.getByTestId('case-note-title-input');
-    const contentInput = screen.getByTestId('textarea-note-content');
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
 
     await userEvent.type(titleInput, editedNoteTitleText);
     await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    await userEvent.click(screen.getByTestId(submitButtonId));
     await waitFor(() => {
       expect(modal).not.toHaveClass('is-visible');
     });
@@ -163,26 +231,26 @@ describe('case note tests', () => {
 
     const modal = screen.getByTestId(`modal-case-note-form`);
     expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId('open-modal-button');
+    const openButton = screen.getByTestId(openModalButtonId);
     expect(openButton).toBeInTheDocument();
     expect(modal).not.toHaveClass('is-visible');
 
     await userEvent.click(openButton);
     expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId('case-note-title-input');
+    const titleInput = screen.getByTestId(titleInputId);
     await userEvent.type(titleInput, title);
     expect(titleInput).toHaveValue(title);
-    const contentInput = screen.getByTestId('textarea-note-content');
+    const contentInput = screen.getByTestId(contentInputId);
     await userEvent.type(contentInput, content);
     expect(contentInput).toHaveValue(content);
-    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
+    const cancelButton = screen.getByTestId(cancelButtonId);
     expect(cancelButton).toBeVisible();
     await userEvent.click(cancelButton);
     expect(modal).not.toHaveClass('is-visible');
   });
 
-  test.only('Should display error and not close modal if error occurs submitting new case note', async () => {
+  test('Should display error and not close modal if error occurs submitting new case note', async () => {
     const editedNoteTitleText = 'Edited Note Title';
     const editedNoteContentText = 'Edited Note Content';
     const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
@@ -190,20 +258,20 @@ describe('case note tests', () => {
     const postSpy = vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({});
     renderWithProps(modalRef);
 
-    const modal = screen.getByTestId('modal-case-note-form');
+    const modal = screen.getByTestId(modalId);
     expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId('open-modal-button');
+    const openButton = screen.getByTestId(openModalButtonId);
     expect(openButton).toBeInTheDocument();
 
     await userEvent.click(openButton);
     expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId('case-note-title-input');
-    const contentInput = screen.getByTestId('textarea-note-content');
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
 
     await userEvent.type(titleInput, editedNoteTitleText);
     await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    await userEvent.click(screen.getByTestId(submitButtonId));
     expect(postSpy).toHaveBeenCalled();
     const errorMessage = screen.getByTestId('alert-message-case-note-form-error');
     expect(errorMessage).toBeVisible();
@@ -213,23 +281,29 @@ describe('case note tests', () => {
 
   test('Should display error and not close modal if title or content are empty on new note submission', async () => {
     const editedNoteTitleText = 'Edited Note Title';
-    const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
     const modalRef = React.createRef<CaseNoteFormModalRef>();
     const postSpy = vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
     renderWithProps(modalRef);
 
-    const modal = screen.getByTestId('modal-case-note-form');
+    const modal = screen.getByTestId(modalId);
     expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId('open-modal-button');
+    const openButton = screen.getByTestId(openModalButtonId);
     expect(openButton).toBeInTheDocument();
 
     await userEvent.click(openButton);
     expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId('case-note-title-input');
+    const titleInput = screen.getByTestId(titleInputId);
 
+    screen.debug(modal);
+    await waitFor(() => {
+      expect(titleInput).toHaveValue('');
+    });
     await userEvent.type(titleInput, editedNoteTitleText);
-    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    await waitFor(() => {
+      expect(titleInput).toHaveValue(editedNoteTitleText);
+    });
+    await userEvent.click(screen.getByTestId(submitButtonId));
     await waitFor(() => {
       const error = screen.queryByTestId('alert-message-case-note-form-error');
       expect(error).toBeVisible();
@@ -258,88 +332,71 @@ describe('case note tests', () => {
       },
     );
 
-    const modal = screen.getByTestId('modal-case-note-form');
+    const modal = screen.getByTestId(modalId);
     expect(modal).not.toHaveClass('is-visible');
-    const openButton = screen.getByTestId('open-modal-button');
+    const openButton = screen.getByTestId(openModalButtonId);
     expect(openButton).toBeInTheDocument();
 
     await userEvent.click(openButton);
     expect(modal).toHaveClass('is-visible');
 
-    const titleInput = screen.getByTestId('case-note-title-input');
-    const contentInput = screen.getByTestId('textarea-note-content');
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
 
     await userEvent.type(titleInput, editedNoteTitleText);
     await userEvent.type(contentInput, editedNoteContentText);
-    await userEvent.click(screen.getByTestId('button-case-note-form-submit-button'));
+    await userEvent.click(screen.getByTestId(submitButtonId));
     expect(postSpy).toHaveBeenCalled();
     const errorMessage = screen.getByTestId('alert-case-note-form-error');
     expect(errorMessage).toBeVisible();
+    expect(errorMessage).toHaveTextContent(notesSubmissionErrorMessage);
     expect(modal).toHaveClass('is-visible');
   });
 
-  async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string) {
-    const note = MockData.getCaseNote();
+  test('Should display error and not close modal if error occurs submitting a case note edit when note content or title are empty', async () => {
+    const editedNoteTitleText = 'Edited Note Title';
+    const editedNoteContentText = 'Edited Note Content';
+
     const modalRef = React.createRef<CaseNoteFormModalRef>();
-    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
-      caseId: note.caseId,
-      title: cachedTitle,
-      content: cachedContent,
-    });
-    const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
-    const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
-    const noteId = randomUUID();
-    const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
-      id: noteId,
-      caseId: note.caseId,
-      title: '',
-      content: '',
-    };
+    const postSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue('');
+    renderWithProps(
+      modalRef,
+      {},
+      {
+        id: randomUUID(),
+        content: editedNoteContentText,
+        title: editedNoteTitleText,
+        caseId: '111-22-33333',
+      },
+    );
 
-    renderWithProps(modalRef, {}, noteOpenProps);
+    const modal = screen.getByTestId(modalId);
+    expect(modal).not.toHaveClass('is-visible');
+    const openButton = screen.getByTestId(openModalButtonId);
+    expect(openButton).toBeInTheDocument();
 
-    const modal = screen.getByTestId(`modal-case-note-form`);
-    const openButton = screen.getByTestId('open-modal-button');
     await userEvent.click(openButton);
     expect(modal).toHaveClass('is-visible');
 
-    const input = document.querySelector('input');
-    const textarea = document.querySelector('textarea');
-    const submitBtn = screen.getByTestId('button-case-note-form-submit-button');
+    const titleInput = screen.getByTestId(titleInputId);
+    const contentInput = screen.getByTestId(contentInputId);
 
-    expect(input).toHaveValue(cachedTitle);
-    expect(textarea).toHaveValue(cachedContent);
-
-    const newTitle = 'new title';
-    const newContent = 'new content';
-
-    await userEvent.clear(input!);
-    await userEvent.clear(textarea!);
-    expect(clearFormSpy).toHaveBeenCalledTimes(1);
-
-    await userEvent.click(input!);
-    await userEvent.paste(newTitle);
-    await userEvent.click(textarea!);
-    await userEvent.paste(newContent);
-
-    const expectedSaveContent = {
-      caseId: note.caseId,
-      title: newTitle,
-      content: newContent,
-    };
-
-    expect(saveFormSpy).toHaveBeenCalled();
-    const lastContent = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
-    expect(lastContent.pop()).toEqual(expectedSaveContent);
-    expect(submitBtn).toBeEnabled();
-  }
+    await userEvent.type(titleInput, editedNoteTitleText);
+    await userEvent.clear(contentInput);
+    await userEvent.click(screen.getByTestId(submitButtonId));
+    expect(postSpy).not.toHaveBeenCalled();
+    const errorMessage = screen.getByTestId('alert-case-note-form-error');
+    expect(errorMessage).toBeVisible();
+    expect(errorMessage).toHaveTextContent(notesRequiredFieldsMessage);
+    expect(modal).toHaveClass('is-visible');
+  });
 
   test('modal show method should set up form fields based on local form cache values when cache has existing values and then should clear fields after submitting modal', async () => {
     const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
     const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue('some-id');
     await setUpAndLoadFromCache('test title', 'test content');
 
-    const submitButton = screen.getByTestId('button-case-note-form-submit-button');
+    const submitButton = screen.getByTestId(submitButtonId);
     await userEvent.click(submitButton);
 
     expect(putSpy).toHaveBeenCalled();
@@ -351,7 +408,7 @@ describe('case note tests', () => {
     const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
     await setUpAndLoadFromCache('test title', 'test content');
 
-    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
+    const cancelButton = screen.getByTestId(cancelButtonId);
     await userEvent.click(cancelButton);
 
     expect(putSpy).not.toHaveBeenCalled();
@@ -362,7 +419,7 @@ describe('case note tests', () => {
     // expects for this test are all in setUpAndLoadFromCache...
     await setUpAndLoadFromCache('', 'test content');
 
-    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
+    const cancelButton = screen.getByTestId(cancelButtonId);
     await userEvent.click(cancelButton);
   });
 
@@ -370,7 +427,7 @@ describe('case note tests', () => {
     // expects for this test are all in setUpAndLoadFromCache...
     await setUpAndLoadFromCache('test title', '');
 
-    const cancelButton = screen.getByTestId('button-case-note-form-cancel-button');
+    const cancelButton = screen.getByTestId(cancelButtonId);
     await userEvent.click(cancelButton);
   });
 
