@@ -94,4 +94,4 @@ jobs:
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
             --oktaUrl '${{ vars.OKTA_URL }}' \
             --mssqlRequestTimeout ${{ vars.MSSQL_REQUEST_TIMEOUT }} \
-            --enabledDataflows '${{ vars.CAMS_ENABLED_DATAFLOWS }}'
+            --enabledDataflows ${{ vars.CAMS_ENABLED_DATAFLOWS }}
