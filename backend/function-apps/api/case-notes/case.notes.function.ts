@@ -14,13 +14,13 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator({
+  const context = await ContextCreator.applicationContextCreator<CaseNoteInput>({
     invocationContext,
     request,
   });
 
   try {
-    const caseNotesController: CaseNotesController = new CaseNotesController(context);
+    const caseNotesController = new CaseNotesController(context);
 
     if (context.featureFlags['case-notes-enabled'] === false) {
       throw new UnauthorizedError(MODULE_NAME);
