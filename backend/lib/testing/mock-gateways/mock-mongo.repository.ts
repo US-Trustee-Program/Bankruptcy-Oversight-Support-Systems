@@ -148,7 +148,7 @@ export class MockMongoRepository
   }
 
   async getLegacyCaseNotesPage(..._ignore): Promise<any> {
-    throw new Error('getMalformedCaseNotesPage not yet implemented');
+    throw new Error('Method not implemented.');
   }
 
   getNotesByCaseId(..._ignore): Promise<any[]> {
