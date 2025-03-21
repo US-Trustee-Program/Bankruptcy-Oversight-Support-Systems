@@ -6,7 +6,6 @@ import {
   CaseNoteDeleteRequest,
   CaseNoteEditRequest,
   CaseNoteInput,
-  LegacyCaseNote,
 } from '../../../../common/src/cams/cases';
 import { CamsUser } from '../../../../common/src/cams/users';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
@@ -18,8 +17,10 @@ const MODULE_NAME = 'CASE-NOTES-USE-CASE';
 
 export class CaseNotesUseCase {
   private caseNotesRepository: CaseNotesRepository;
+  private context: ApplicationContext;
   constructor(applicationContext: ApplicationContext) {
     this.caseNotesRepository = getCaseNotesRepository(applicationContext);
+    this.context = applicationContext;
   }
 
   public async createCaseNote(user: CamsUser, noteInput: CaseNoteInput): Promise<void> {
@@ -83,9 +84,9 @@ export class CaseNotesUseCase {
     return creationResponse;
   }
 
-  public async getLegacyCaseNotesPage(pagination: PaginationParameters): Promise<LegacyCaseNote[]> {
-    const notes = await this.caseNotesRepository.getLegacyCaseNotesPage(pagination);
-    return notes.data.reduce((acc, note) => {
+  public async migrateLegacyCaseNotesPage(pagination: PaginationParameters) {
+    const notesPage = await this.caseNotesRepository.getLegacyCaseNotesPage(pagination);
+    const legacyNotes = notesPage.data.reduce((acc, note) => {
       if (!note.createdOn) {
         acc.push({
           id: note.id,
@@ -96,9 +97,13 @@ export class CaseNotesUseCase {
       }
       return acc;
     }, []);
-  }
-
-  public async updateLegacyCaseNote(note: LegacyCaseNote) {
-    await this.caseNotesRepository.update(note);
+    for (const note of legacyNotes) {
+      this.context.logger.info(MODULE_NAME, `Inserted NoteId:  ${note.id}`);
+      await this.caseNotesRepository.update(note);
+    }
+    return {
+      metadata: { total: notesPage.metadata.total, ...pagination },
+      data: legacyNotes,
+    };
   }
 }

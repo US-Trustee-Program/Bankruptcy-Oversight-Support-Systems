@@ -195,36 +195,36 @@ describe('Test case-notes use case', () => {
     );
   });
 
-  test('should call update', async () => {
-    const note = MockData.getCaseNote();
-    const expectedNote = {
-      id: note.id,
-      caseId: note.caseId,
-      createdOn: note.updatedOn,
-      createdBy: note.updatedBy,
-    };
-    const updateSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'update')
-      .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
-
-    const user = MockData.getCamsUserReference();
-    const context = await createMockApplicationContext();
-    context.session = await createMockApplicationContextSession({ user: user });
-    const useCase = new CaseNotesUseCase(context);
-    await useCase.updateLegacyCaseNote(expectedNote);
-    expect(updateSpy).toHaveBeenCalledWith({
-      id: note.id,
-      caseId: note.caseId,
-      createdOn: note.updatedOn,
-      createdBy: note.updatedBy,
-    });
-  });
+  // test('should call update', async () => {
+  //   const note = MockData.getCaseNote();
+  //   const expectedNote = {
+  //     id: note.id,
+  //     caseId: note.caseId,
+  //     createdOn: note.updatedOn,
+  //     createdBy: note.updatedBy,
+  //   };
+  //   const updateSpy = jest
+  //     .spyOn(MockMongoRepository.prototype, 'update')
+  //     .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+  //
+  //   const user = MockData.getCamsUserReference();
+  //   const context = await createMockApplicationContext();
+  //   context.session = await createMockApplicationContextSession({ user: user });
+  //   const useCase = new CaseNotesUseCase(context);
+  //   await useCase.updateLegacyCaseNote(expectedNote);
+  //   expect(updateSpy).toHaveBeenCalledWith({
+  //     id: note.id,
+  //     caseId: note.caseId,
+  //     createdOn: note.updatedOn,
+  //     createdBy: note.updatedBy,
+  //   });
+  // });
 
   test('should call getLegacyCaseNotePage', async () => {
     const notes = MockData.buildArray(MockData.getCaseNote, 5);
-    const expectedIds = [];
+    const expectedData = [];
     for (const note of notes) {
-      expectedIds.push({
+      expectedData.push({
         id: note.id,
         caseId: note.caseId,
         createdOn: note.updatedOn,
@@ -240,14 +240,26 @@ describe('Test case-notes use case', () => {
     const getSpy = jest
       .spyOn(MockMongoRepository.prototype, 'getLegacyCaseNotesPage')
       .mockResolvedValue(paginatedNotes);
+    const updateSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'update')
+      .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+
+    const pagination = { limit: 10, offset: 0 };
+    const myNewestExpectedThingForNow = {
+      metadata: { total: notes.length, ...pagination },
+      data: expectedData,
+    };
 
     const user = MockData.getCamsUserReference();
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user: user });
     const useCase = new CaseNotesUseCase(context);
-    const pagination = {};
-    const result = await useCase.getLegacyCaseNotesPage(pagination);
+    const result = await useCase.migrateLegacyCaseNotesPage(pagination);
     expect(getSpy).toHaveBeenCalled();
-    expect(result).toEqual(expectedIds);
+    expect(result).toEqual(myNewestExpectedThingForNow);
+    expect(updateSpy).toHaveBeenCalledTimes(expectedData.length);
+    for (const note of expectedData) {
+      expect(updateSpy).toHaveBeenCalledWith(note);
+    }
   });
 });
