@@ -85,12 +85,14 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const [formValuesFromShowOptions, setFormValuesFromShowOptions] = useState<CaseNoteInput | null>(
     null,
   );
+  const [caseNoteFormError, setCaseNoteFormError] = useState<string>('');
   const alertRef = useRef<AlertRefType>(null);
 
   const modalRef = useRef<ModalRefType>(null);
   const titleInputRef = useRef<TextAreaRef>(null);
   const contentInputRef = useRef<TextAreaRef>(null);
-
+  const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
+  const notesSubmissionErrorMessage = 'There was a problem submitting the case note.';
   const session = LocalStorage.getSession();
 
   function disableSubmitButton(disable: boolean) {
@@ -139,6 +141,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     titleInputRef.current?.clearValue();
     contentInputRef.current?.clearValue();
     LocalFormCache.clearForm(formKey);
+    setCaseNoteFormError('');
+    alertRef.current?.hide();
     toggleButtonOnDirtyForm();
   }
 
@@ -154,11 +158,14 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       .postCaseNote(caseNoteInput)
       .then(() => {
         modalOpenOptions.callback();
+        setCaseNoteFormError('');
+        alertRef.current?.hide();
         clearCaseNoteForm();
         hide();
       })
       .catch((e: ResponseBody) => {
         if (e.data !== HttpStatusCodes.FORBIDDEN) {
+          setCaseNoteFormError(notesSubmissionErrorMessage);
           alertRef.current?.show();
         }
       })
@@ -175,10 +182,13 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       .then((noteId: string | undefined) => {
         modalOpenOptions.callback(noteId);
         clearCaseNoteForm();
+        setCaseNoteFormError('');
+        alertRef.current?.hide();
         hide();
       })
       .catch((e: ResponseBody) => {
         if (e.data !== HttpStatusCodes.FORBIDDEN) {
+          setCaseNoteFormError(notesSubmissionErrorMessage);
           alertRef.current?.show();
         }
       })
@@ -188,9 +198,21 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       });
   }
 
+  function validFields(title: string, content: string) {
+    if (title.length > 0 && content.length > 0) {
+      setCaseNoteFormError('');
+      alertRef.current?.hide();
+      return true;
+    } else {
+      setCaseNoteFormError(notesRequiredFieldsMessage);
+      return false;
+    }
+  }
+
   const sendCaseNoteToApi = useThrottleCallback(async () => {
     const title = getCaseNotesInputValue(titleInputRef.current);
     const content = getCaseNotesInputValue(contentInputRef.current);
+
     if (!modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
         caseId: modalOpenOptions.caseId,
@@ -198,7 +220,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
         content,
         updatedBy: getCamsUserReference(session?.user),
       };
-      await postCaseNote(caseNoteInput);
+      return validFields(title, content)
+        ? await postCaseNote(caseNoteInput)
+        : alertRef.current?.show();
     } else if (modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
         id: modalOpenOptions.id,
@@ -207,7 +231,9 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
         content,
         updatedBy: getCamsUserReference(session?.user),
       };
-      await putCaseNoteEdit(caseNoteInput);
+      return validFields(title, content)
+        ? await putCaseNoteEdit(caseNoteInput)
+        : alertRef.current?.show();
     }
   }, 300);
 
@@ -289,7 +315,7 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
         <div className="case-note-form-container">
           <Alert
             id="case-note-form-error"
-            message="An error occurred while submitting the case note."
+            message={caseNoteFormError}
             type={UswdsAlertStyle.Error}
             role={'alert'}
             ref={alertRef}
