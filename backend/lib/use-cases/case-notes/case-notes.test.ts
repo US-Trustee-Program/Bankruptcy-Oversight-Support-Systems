@@ -10,6 +10,7 @@ import {
 import { CaseNotesUseCase } from './case-notes';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsPaginationResponse } from '../gateways.types';
 
 describe('Test case-notes use case', () => {
   test('should return a list of case notes when getCaseNotes is called', async () => {
@@ -192,5 +193,61 @@ describe('Test case-notes use case', () => {
     await expect(useCase.editCaseNote(editNoteRequest)).rejects.toThrow(
       'User is not the creator of the note.',
     );
+  });
+
+  test('should call update', async () => {
+    const note = MockData.getCaseNote();
+    const expectedNote = {
+      id: note.id,
+      caseId: note.caseId,
+      createdOn: note.updatedOn,
+      createdBy: note.updatedBy,
+    };
+    const updateSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'update')
+      .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+
+    const user = MockData.getCamsUserReference();
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: user });
+    const useCase = new CaseNotesUseCase(context);
+    await useCase.updateLegacyCaseNote(expectedNote);
+    expect(updateSpy).toHaveBeenCalledWith({
+      id: note.id,
+      caseId: note.caseId,
+      createdOn: note.updatedOn,
+      createdBy: note.updatedBy,
+    });
+  });
+
+  test('should call getLegacyCaseNotePage', async () => {
+    const notes = MockData.buildArray(MockData.getCaseNote, 5);
+    const expectedIds = [];
+    for (const note of notes) {
+      expectedIds.push({
+        id: note.id,
+        caseId: note.caseId,
+        createdOn: note.updatedOn,
+        createdBy: note.updatedBy,
+      });
+    }
+
+    const paginatedNotes: CamsPaginationResponse<CaseNote> = {
+      metadata: { total: notes.length },
+      data: notes,
+    };
+
+    const getSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getLegacyCaseNotesPage')
+      .mockResolvedValue(paginatedNotes);
+
+    const user = MockData.getCamsUserReference();
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: user });
+    const useCase = new CaseNotesUseCase(context);
+    const pagination = {};
+    const result = await useCase.getLegacyCaseNotesPage(pagination);
+    expect(getSpy).toHaveBeenCalled();
+    expect(result).toEqual(expectedIds);
   });
 });

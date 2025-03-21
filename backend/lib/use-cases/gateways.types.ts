@@ -26,6 +26,7 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
+import { PaginationParameters } from '../../../common/src/api/pagination';
 
 export type ReplaceResult = {
   id: string;
@@ -92,9 +93,10 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
 }
 
-export interface CaseNotesRepository<T = CaseNote> extends Creates<T, T> {
+export interface CaseNotesRepository<T = CaseNote> extends Creates<T, T>, Updates<Partial<T>> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
   archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
+  getLegacyCaseNotesPage(pagination: PaginationParameters): Promise<CamsPaginationResponse<T>>;
 }
 
 export interface OrdersRepository<T = Order>

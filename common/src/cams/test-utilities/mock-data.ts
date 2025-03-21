@@ -647,7 +647,7 @@ function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
-  if (override?.user?.roles.includes(CamsRole.SuperUser)) {
+  if (override?.user?.roles?.includes(CamsRole.SuperUser)) {
     offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
