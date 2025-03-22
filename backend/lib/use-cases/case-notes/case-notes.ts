@@ -43,40 +43,47 @@ export class CaseNotesUseCase {
   }
 
   public async archiveCaseNote(archiveRequest: CaseNoteDeleteRequest): Promise<UpdateResult> {
-    if (archiveRequest.userId !== archiveRequest.sessionUser.id) {
+    const { caseId, id, sessionUser } = archiveRequest;
+    // TODO: after transform has been run, remove use of updated in lieu of missing created
+    const existingNote = await this.caseNotesRepository.read(archiveRequest.id);
+    const creator = existingNote.createdBy ?? existingNote.updatedBy;
+    if (creator.id !== archiveRequest.sessionUser.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not the creator of the note.' });
     }
     const newArchiveNote: Partial<CaseNote> = {
-      caseId: archiveRequest.caseId,
-      id: archiveRequest.id,
+      caseId,
+      id,
       archivedOn: new Date().toISOString(),
-      archivedBy: getCamsUserReference(archiveRequest.sessionUser),
+      archivedBy: getCamsUserReference(sessionUser),
     };
     return await this.caseNotesRepository.archiveCaseNote(newArchiveNote);
   }
 
   public async editCaseNote(noteEditRequest: CaseNoteEditRequest): Promise<CaseNote> {
-    const noteInput = noteEditRequest.note;
-    if (noteEditRequest.note.updatedBy.id !== noteEditRequest.sessionUser.id) {
+    // TODO: after transform has been run, remove use of updated in lieu of missing created
+    const { note, sessionUser } = noteEditRequest;
+    const existingNote = await this.caseNotesRepository.read(note.id);
+    const noteCreator = existingNote.createdBy ?? existingNote.updatedBy;
+    if (noteCreator.id !== sessionUser.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not the creator of the note.' });
     }
     const dateOfEdit = new Date().toISOString();
     const newNote: CaseNote = {
-      ...noteInput,
+      ...note,
       id: randomUUID(),
       documentType: 'NOTE',
-      previousVersionId: noteInput.id,
+      previousVersionId: note.id,
       updatedOn: dateOfEdit,
       updatedBy: getCamsUserReference(noteEditRequest.sessionUser),
-      createdBy: noteInput.createdBy,
-      createdOn: noteInput.createdOn,
+      createdBy: note.createdBy ?? note.updatedBy,
+      createdOn: note.createdOn ?? note.updatedOn,
     };
 
     const archiveNote: Partial<CaseNote> = {
-      id: noteInput.id,
-      caseId: noteInput.caseId,
+      id: note.id,
+      caseId: note.caseId,
       archivedOn: dateOfEdit,
-      archivedBy: getCamsUserReference(noteEditRequest.sessionUser),
+      archivedBy: getCamsUserReference(sessionUser),
     };
 
     const creationResponse = await this.caseNotesRepository.create(newNote);

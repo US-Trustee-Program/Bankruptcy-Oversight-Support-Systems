@@ -107,7 +107,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       sortSpec,
     );
     try {
-      return this.getAdapter<CaseNote>().paginatedFind(query);
+      return await this.getAdapter<CaseNote>().paginatedFind(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -135,6 +135,20 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
         camsStackInfo: {
           module: MODULE_NAME,
           message: `Failed to update case note ${note.id}.`,
+        },
+      });
+    }
+  }
+
+  async read(id: string): Promise<CaseNote> {
+    try {
+      const query = doc('id').equals(id);
+      return await this.getAdapter<CaseNote>().findOne(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to find case note ${id}.`,
         },
       });
     }

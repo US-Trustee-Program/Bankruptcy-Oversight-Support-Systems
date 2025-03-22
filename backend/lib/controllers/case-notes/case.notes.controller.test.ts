@@ -279,7 +279,6 @@ describe('Case note controller tests', () => {
     const expectedRequest: CaseNoteDeleteRequest = {
       id: archiveNote.id,
       caseId: archiveNote.caseId,
-      userId: archiveNote.updatedBy.id,
       sessionUser: applicationContext.session.user,
     };
 
@@ -288,7 +287,6 @@ describe('Case note controller tests', () => {
       params: {
         noteId: archiveNote.id,
         caseId: archiveNote.caseId,
-        userId: archiveNote.updatedBy.id,
       },
     });
     const controller = new CaseNotesController(applicationContext);

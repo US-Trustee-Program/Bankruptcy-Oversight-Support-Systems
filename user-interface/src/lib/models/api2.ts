@@ -284,9 +284,7 @@ async function putCaseNote(note: CaseNoteInput): Promise<string | undefined> {
 }
 
 async function deleteCaseNote(note: Partial<CaseNote>) {
-  await api().delete<Partial<CaseNote>>(
-    `/cases/${note.caseId}/notes/${note.id}/${note.updatedBy!.id}`,
-  );
+  await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
 }
 
 async function getCourts() {

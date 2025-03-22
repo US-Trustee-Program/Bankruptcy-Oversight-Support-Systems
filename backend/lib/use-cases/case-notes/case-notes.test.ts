@@ -13,6 +13,10 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsPaginationResponse } from '../gateways.types';
 
 describe('Test case-notes use case', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   test('should return a list of case notes when getCaseNotes is called', async () => {
     const expectedCaseNotesArray = MockData.buildArray(MockData.getCaseNote, 3);
     jest
@@ -68,7 +72,8 @@ describe('Test case-notes use case', () => {
 
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user });
-
+    const existingNote = MockData.getCaseNote({ updatedBy: user });
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const useCase = new CaseNotesUseCase(context);
     const archiveSpy = jest
       .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
@@ -76,7 +81,6 @@ describe('Test case-notes use case', () => {
 
     const archiveNoteRequest = MockData.getCaseNoteDeletionRequest({
       id: randomUUID(),
-      userId: user.id,
       sessionUser: userRef,
     });
     const expectedArchiveNote: Partial<CaseNote> = {
@@ -113,6 +117,7 @@ describe('Test case-notes use case', () => {
       .mockImplementation(async () => {});
 
     const existingNote: CaseNote = MockData.getCaseNote({ updatedBy: user });
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const newNote: CaseNote = MockData.getCaseNote({
       ...existingNote,
       previousVersionId: existingNote.id,
@@ -157,13 +162,14 @@ describe('Test case-notes use case', () => {
     };
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user: user });
+    const existingNote = MockData.getCaseNote({ updatedBy: wrongUserRef });
+    jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
 
     const useCase = new CaseNotesUseCase(context);
 
     const archiveNoteRequest = MockData.getCaseNoteDeletionRequest({
       id: randomUUID(),
-      userId: user.id,
-      sessionUser: wrongUserRef,
+      sessionUser: userRef,
     });
 
     await expect(useCase.archiveCaseNote(archiveNoteRequest)).rejects.toThrow(
@@ -180,45 +186,24 @@ describe('Test case-notes use case', () => {
       roles: [CamsRole.CaseAssignmentManager],
     };
     const context = await createMockApplicationContext();
-    context.session = await createMockApplicationContextSession({ user: user });
+    context.session = await createMockApplicationContextSession({ user });
 
     const useCase = new CaseNotesUseCase(context);
-    const existingNote = MockData.getCaseNote();
+    const existingNote = MockData.getCaseNote({ updatedBy: wrongUserRef });
+    const readSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'read')
+      .mockResolvedValue(existingNote);
 
     const editNoteRequest = MockData.getCaseNoteEditRequest({
       note: existingNote,
-      sessionUser: wrongUserRef,
+      sessionUser: userRef,
     });
 
     await expect(useCase.editCaseNote(editNoteRequest)).rejects.toThrow(
       'User is not the creator of the note.',
     );
+    expect(readSpy).toHaveBeenCalledWith(existingNote.id);
   });
-
-  // test('should call update', async () => {
-  //   const note = MockData.getCaseNote();
-  //   const expectedNote = {
-  //     id: note.id,
-  //     caseId: note.caseId,
-  //     createdOn: note.updatedOn,
-  //     createdBy: note.updatedBy,
-  //   };
-  //   const updateSpy = jest
-  //     .spyOn(MockMongoRepository.prototype, 'update')
-  //     .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
-  //
-  //   const user = MockData.getCamsUserReference();
-  //   const context = await createMockApplicationContext();
-  //   context.session = await createMockApplicationContextSession({ user: user });
-  //   const useCase = new CaseNotesUseCase(context);
-  //   await useCase.updateLegacyCaseNote(expectedNote);
-  //   expect(updateSpy).toHaveBeenCalledWith({
-  //     id: note.id,
-  //     caseId: note.caseId,
-  //     createdOn: note.updatedOn,
-  //     createdBy: note.updatedBy,
-  //   });
-  // });
 
   test('should call getLegacyCaseNotePage', async () => {
     const notes = MockData.buildArray(MockData.getCaseNote, 5);
