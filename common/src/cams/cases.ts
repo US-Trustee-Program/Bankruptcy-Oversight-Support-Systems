@@ -66,24 +66,39 @@ export type CaseDocket = Array<CaseDocketEntry>;
 
 export type CaseNote = CaseNoteInput &
   Auditable & {
-    id?: string;
     documentType: 'NOTE';
     archivedOn?: string;
     archivedBy?: CamsUserReference;
+    previousVersionId?: string;
   };
+
+export type LegacyCaseNote = {
+  id: string;
+  caseId: string;
+  createdOn: string;
+  createdBy: CamsUserReference;
+};
 
 export type CaseNoteDeleteRequest = {
   id: string;
   caseId: string;
-  userId: string;
+  sessionUser: CamsUserReference;
+};
+
+export type CaseNoteEditRequest = {
+  note: CaseNoteInput;
   sessionUser: CamsUserReference;
 };
 
 export type CaseNoteInput = {
+  id?: string;
   title: string;
   caseId: string;
   content: string;
   updatedBy?: CamsUserReference;
+  updatedOn?: string;
+  createdBy?: CamsUserReference;
+  createdOn?: string;
 };
 
 export type DxtrCase = CaseSummary & {

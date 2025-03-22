@@ -147,6 +147,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  async getLegacyCaseNotesPage(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   getNotesByCaseId(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

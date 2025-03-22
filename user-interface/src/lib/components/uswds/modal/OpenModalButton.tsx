@@ -3,6 +3,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 
 export interface ModalOpenButtonProps {
+  id?: string;
   children: React.ReactNode;
   buttonIndex?: string;
   uswdsStyle?: UswdsButtonStyle;
@@ -16,6 +17,7 @@ export interface ModalOpenButtonProps {
 
 function OpenModalButtonComponent(
   {
+    id,
     children,
     buttonIndex,
     uswdsStyle,
@@ -30,7 +32,8 @@ function OpenModalButtonComponent(
   }: ModalOpenButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
   ref: React.Ref<OpenModalButtonRef>,
 ) {
-  const dataTestidSuffix = buttonIndex ? `-${buttonIndex}` : '';
+  let dataTestidSuffix = id ? `_${id}` : '';
+  if (buttonIndex && buttonIndex.length) dataTestidSuffix += `_${buttonIndex}`;
 
   let classes = BUTTON_BASE_CLASS;
   const [isDisabled, setIsDisabled] = useState<boolean>(!!disabled);

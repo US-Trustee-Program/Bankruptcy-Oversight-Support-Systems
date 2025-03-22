@@ -7,6 +7,7 @@ import {
   CaseDocketEntryDocument,
   CaseNote,
   CaseNoteDeleteRequest,
+  CaseNoteEditRequest,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -531,7 +532,15 @@ function getCaseNoteDeletionRequest(
   return {
     id: crypto.randomUUID(),
     caseId: randomCaseId(),
-    userId,
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getCaseNoteEditRequest(override: Partial<CaseNoteEditRequest> = {}): CaseNoteEditRequest {
+  const userId = randomId();
+  return {
+    note: MockData.getCaseNote(),
     sessionUser: getCamsUserReference({ id: userId }),
     ...override,
   };
@@ -637,7 +646,7 @@ function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
-  if (override?.user?.roles.includes(CamsRole.SuperUser)) {
+  if (override?.user?.roles?.includes(CamsRole.SuperUser)) {
     offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
@@ -721,14 +730,16 @@ function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
 export const MockData = {
   randomId,
   randomCaseId,
+  randomCaseNumber,
   randomEin,
   randomOffice,
   randomSsn,
   randomUstpOffice,
   getAttorneyAssignment,
   getCaseNote,
-  getCaseNoteArchival: getCaseNoteDeletion,
-  getCaseNoteArchivalRequest: getCaseNoteDeletionRequest,
+  getCaseNoteDeletion,
+  getCaseNoteDeletionRequest,
+  getCaseNoteEditRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

@@ -34,28 +34,30 @@ describe('Staff assignment', () => {
     let firstCaseAssignmentButton;
     await waitFor(async () => {
       // TODO: Can we use a better selector than test ID since it is closer to an implementation detail than a descriptive label?
-      firstCaseAssignmentButton = screen.queryByTestId('open-modal-button-0');
+      firstCaseAssignmentButton = screen.queryByTestId('open-modal-button_0');
       expect(firstCaseAssignmentButton).toBeInTheDocument();
     });
     await userEvent.click(firstCaseAssignmentButton!);
 
+    let attorneyListTbody: HTMLElement | null;
     await waitFor(async () => {
       // TODO: Can we use a better selector than test ID since it is closer to an implementation detail than a descriptive label?
-      const attorneyListTbody = screen.queryByTestId('case-load-table-body');
+      attorneyListTbody = screen.queryByTestId('case-load-table-body');
       expect(attorneyListTbody).toBeInTheDocument();
-      const attorneyNames = [...attorneyListTbody!.childNodes].map((row) => row.textContent);
-      expect(attorneyNames.length).toBeGreaterThan(1);
-      const sortedAttorneyNames = attorneyNames.sort((a, b) => {
-        if (!a) return -1;
-        if (!b) return -1;
-        if (a < b) return -1;
-        if (a > b) return 1;
-        return 0;
-      });
-      attorneyNames.forEach((original, idx) => {
-        expect(original).toBeTruthy();
-        expect(original).toEqual(sortedAttorneyNames[idx]);
-      });
+    });
+
+    const attorneyNames = [...attorneyListTbody!.childNodes].map((row) => row.textContent);
+    expect(attorneyNames.length).toBeGreaterThan(1);
+    const sortedAttorneyNames = attorneyNames.sort((a, b) => {
+      if (!a) return -1;
+      if (!b) return -1;
+      if (a < b) return -1;
+      if (a > b) return 1;
+      return 0;
+    });
+    attorneyNames.forEach((original, idx) => {
+      expect(original).toBeTruthy();
+      expect(original).toEqual(sortedAttorneyNames[idx]);
     });
   });
 });

@@ -13,7 +13,9 @@ export const test = base.extend({
         url += (url as string).includes('?') ? '&' : '?'; // checks if query string already exists
         // TODO: Purpose of this fixture is to include x-ms-routing-name to route traffic to Azure slot environment named 'staging'
         // TODO: Parameterize this to add flexibility target slot environment. Note that passing 'self' will target production slot
-        if (url) url += 'x-ms-routing-name=staging';
+        if (url) {
+          url += 'x-ms-routing-name=staging';
+        }
       }
       return goto(url, options);
     }
