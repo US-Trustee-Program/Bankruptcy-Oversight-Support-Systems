@@ -152,14 +152,13 @@ describe('_Api2 functions', async () => {
 
   test('should call http delete when deleteCaseNote api function is called', async () => {
     const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue();
-
     api2.Api2.deleteCaseNote({
-      id: randomUUID(),
-      caseId: 'some-id',
+      id: 'note-id',
+      caseId: 'case-id',
       updatedBy: MockData.getCamsUserReference(),
     });
 
-    expect(deleteSpy).toHaveBeenCalled();
+    expect(deleteSpy).toHaveBeenCalledWith('/cases/case-id/notes/note-id', {});
   });
 
   test('should get through input input content validation and call postCaseNote', () => {

@@ -93,7 +93,10 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
 }
 
-export interface CaseNotesRepository<T = CaseNote> extends Creates<T, T>, Updates<Partial<T>> {
+export interface CaseNotesRepository<T = CaseNote>
+  extends Creates<T, T>,
+    Updates<Partial<T>>,
+    Reads<T> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
   archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
   getLegacyCaseNotesPage(pagination: PaginationParameters): Promise<CamsPaginationResponse<T>>;

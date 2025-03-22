@@ -50,11 +50,10 @@ export class CaseNotesController implements CamsController {
           statusCode: HttpStatusCodes.CREATED,
         });
       } else if (context.request.method === 'DELETE') {
-        const { caseId, noteId, userId } = context.request.params;
+        const { caseId, noteId } = context.request.params;
         const archiveNote: CaseNoteDeleteRequest = {
           id: noteId,
           caseId,
-          userId,
           sessionUser: context.session.user,
         };
         this.validateArchiveRequestParameters(archiveNote);
@@ -146,10 +145,6 @@ export class CaseNotesController implements CamsController {
       badParams.push('caseId');
     } else if (!request['caseId'].match(VALID_CASEID_PATTERN)) {
       messages.push(INVALID_CASEID_MESSAGE);
-    }
-
-    if (!request['userId']) {
-      badParams.push('userId');
     }
 
     if (badParams.length > 0) {

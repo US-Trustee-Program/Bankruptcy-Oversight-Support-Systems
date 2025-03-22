@@ -82,7 +82,6 @@ export type LegacyCaseNote = {
 export type CaseNoteDeleteRequest = {
   id: string;
   caseId: string;
-  userId: string;
   sessionUser: CamsUserReference;
 };
 
@@ -97,6 +96,7 @@ export type CaseNoteInput = {
   caseId: string;
   content: string;
   updatedBy?: CamsUserReference;
+  updatedOn?: string;
   createdBy?: CamsUserReference;
   createdOn?: string;
 };

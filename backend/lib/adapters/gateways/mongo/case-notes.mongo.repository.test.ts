@@ -1,7 +1,10 @@
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  getTheThrownError,
+} from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { CaseNotesMongoRepository } from './case-notes.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
@@ -131,6 +134,19 @@ describe('case notes repo tests', () => {
       await repo.getLegacyCaseNotesPage(pagination);
       expect(paginatedFindSpy).toHaveBeenCalledWith(expectedQuery);
     });
+
+    test('should call findOne', async () => {
+      const note = MockData.getCaseNote();
+      const findSpy = jest
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(note);
+
+      const query = doc('id').equals(note.id);
+
+      const actual = await repo.read(note.id);
+      expect(actual).toEqual(note);
+      expect(findSpy).toHaveBeenCalledWith(query);
+    });
   });
 
   describe('handle errors', () => {
@@ -195,6 +211,24 @@ describe('case notes repo tests', () => {
       await expect(() => repo.getLegacyCaseNotesPage(pagination)).rejects.toThrow(
         getCamsError(retrievalError, 'CASE_NOTES_MONGO_REPOSITORY', retrievalErrorMessage),
       );
+    });
+
+    test('should handle error on read', async () => {
+      const originalError = new Error('some error');
+      jest.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(originalError);
+      const actual = await getTheThrownError(async () => {
+        await repo.read('some-id');
+      });
+      const expected = {
+        message: 'Unknown Error',
+        module: expect.any(String),
+        originalError: expect.anything(),
+        isCamsError: true,
+        camsStack: expect.anything(),
+        data: undefined,
+        status: 500,
+      };
+      expect(actual).toEqual(expected);
     });
   });
 });

@@ -532,7 +532,6 @@ function getCaseNoteDeletionRequest(
   return {
     id: crypto.randomUUID(),
     caseId: randomCaseId(),
-    userId,
     sessionUser: getCamsUserReference({ id: userId }),
     ...override,
   };
