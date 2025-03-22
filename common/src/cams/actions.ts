@@ -32,8 +32,22 @@ const ManageAssignments: Action = {
   path: '/case-assignments/${caseId}',
 };
 
+const EditNote: Action = {
+  actionName: 'edit note',
+  method: 'PUT',
+  path: '/cases/${caseId}/notes/${id}',
+};
+
+const RemoveNote: Action = {
+  actionName: 'remove note',
+  method: 'DELETE',
+  path: '/cases/${caseId}/notes/${id}',
+};
+
 export const Actions = {
   ManageAssignments,
+  EditNote,
+  RemoveNote,
   contains,
   merge,
 } as const;

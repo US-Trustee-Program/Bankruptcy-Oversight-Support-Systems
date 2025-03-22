@@ -11,6 +11,7 @@ import { CaseNotesUseCase } from './case-notes';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsPaginationResponse } from '../gateways.types';
+import { ResourceActions } from '../../../../common/src/cams/actions';
 
 describe('Test case-notes use case', () => {
   afterEach(() => {
@@ -18,16 +19,41 @@ describe('Test case-notes use case', () => {
   });
 
   test('should return a list of case notes when getCaseNotes is called', async () => {
-    const expectedCaseNotesArray = MockData.buildArray(MockData.getCaseNote, 3);
+    const userRef = MockData.getCamsUserReference();
+    const userNotes = [
+      MockData.getCaseNote({ createdBy: userRef }),
+      MockData.getCaseNote({ createdBy: userRef }),
+    ];
+    const otherNotes = MockData.buildArray(MockData.getCaseNote, 3);
+    const existingCaseNotesArray = [...userNotes, ...otherNotes];
     jest
       .spyOn(MockMongoRepository.prototype, 'getNotesByCaseId')
-      .mockResolvedValue(expectedCaseNotesArray);
+      .mockResolvedValue(existingCaseNotesArray);
+    const expected: ResourceActions<CaseNote>[] = [...otherNotes];
+    for (const userNote of userNotes) {
+      expected.push({
+        ...userNote,
+        _actions: expect.arrayContaining([
+          expect.objectContaining({
+            actionName: 'edit note',
+            method: 'PUT',
+            path: `/cases/${userNote.caseId}/notes/${userNote.id}`,
+          }),
+          expect.objectContaining({
+            actionName: 'remove note',
+            method: 'DELETE',
+            path: `/cases/${userNote.caseId}/notes/${userNote.id}`,
+          }),
+        ]),
+      });
+    }
 
     const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
     const useCase = new CaseNotesUseCase(context);
     const caseNotesResult = await useCase.getCaseNotes(NORMAL_CASE_ID);
 
-    expect(expectedCaseNotesArray).toEqual(caseNotesResult);
+    expect(caseNotesResult).toEqual(expect.arrayContaining(expected));
   });
 
   test('should create a case note when createCaseNote is called', async () => {

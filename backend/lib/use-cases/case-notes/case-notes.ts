@@ -12,6 +12,8 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { randomUUID } from 'node:crypto';
 import { PaginationParameters } from '../../../../common/src/api/pagination';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { Action, Actions, ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-USE-CASE';
 
@@ -38,8 +40,22 @@ export class CaseNotesUseCase {
     await this.caseNotesRepository.create(data);
   }
 
-  public async getCaseNotes(caseId: string): Promise<CaseNote[]> {
-    return await this.caseNotesRepository.getNotesByCaseId(caseId);
+  public async getCaseNotes(caseId: string): Promise<ResourceActions<CaseNote>[]> {
+    try {
+      const notes: ResourceActions<CaseNote>[] =
+        await this.caseNotesRepository.getNotesByCaseId(caseId);
+      for (const note of notes) {
+        note._actions = this.getAction(note) ?? undefined;
+      }
+      return notes;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to get notes for case: ${caseId}.`,
+        },
+      });
+    }
   }
 
   public async archiveCaseNote(archiveRequest: CaseNoteDeleteRequest): Promise<UpdateResult> {
@@ -112,5 +128,13 @@ export class CaseNotesUseCase {
       metadata: { total: notesPage.metadata.total, ...pagination },
       data: legacyNotes,
     };
+  }
+
+  private getAction(note: ResourceActions<CaseNote>): Action[] | undefined {
+    const userRef = getCamsUserReference(this.context.session.user);
+    const creator = note.createdBy ?? note.updatedBy;
+    if (creator.id === userRef.id) {
+      return [Actions.merge(Actions.EditNote, note), Actions.merge(Actions.RemoveNote, note)];
+    }
   }
 }
