@@ -13,6 +13,7 @@ import {
 } from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
+import { ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
@@ -31,7 +32,7 @@ export class CaseNotesController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext<CaseNoteInput>,
-  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<CaseNote[]>> {
+  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<ResourceActions<CaseNote>[]>> {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
