@@ -30,9 +30,11 @@ test.describe('Case Notes', () => {
     const noteTitleEdit = 'Edited Note Title';
     const noteContentEdit = 'Edited Note Content for E2E purposes';
     let caseNoteHeader;
+
     //Open Add Note modal to create a new note and submit
     await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
     await expect(page.locator('[data-testid="modal-content-case-note-form"]')).toBeVisible();
+    
     await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
     await page.locator('[data-testid="textarea-note-content"]').fill(testNoteContent);
     await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeVisible();

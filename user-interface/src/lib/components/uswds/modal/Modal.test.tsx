@@ -219,6 +219,7 @@ describe('Test Modal component', () => {
 
 describe('Test Modal component with force action set to true', () => {
   const modalId = 'test-modal';
+
   function createModal() {
     const modalRef = React.createRef<ModalRefType>();
     const actionButtonGroup = {
@@ -249,6 +250,7 @@ describe('Test Modal component with force action set to true', () => {
       </React.StrictMode>,
     );
   }
+
   beforeEach(() => {
     createModal();
   });
