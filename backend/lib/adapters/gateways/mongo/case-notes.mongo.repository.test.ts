@@ -10,9 +10,8 @@ import { CaseNotesMongoRepository } from './case-notes.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseNote } from '../../../../../common/src/cams/cases';
-import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 
-const { paginate, and, using } = QueryBuilder;
+const { and, using } = QueryBuilder;
 const doc = using<CaseNote>();
 
 describe('case notes repo tests', () => {
@@ -105,36 +104,6 @@ describe('case notes repo tests', () => {
       expect(updateOneSpy).toHaveBeenCalledWith(expectedQuery, expectedData);
     });
 
-    test('should return an array of LegacyCaseNotes', async () => {
-      const expectedCaseNotes = MockData.buildArray(MockData.getCaseNote, 5);
-      const expectedPaginationResponse: CamsPaginationResponse<CaseNote> = {
-        metadata: {
-          total: 0,
-        },
-        data: expectedCaseNotes,
-      };
-      const pagination = {
-        offset: 0,
-        limit: 10,
-      };
-      const conditions = [doc('documentType').equals('NOTE')];
-      const expectedQuery = paginate<CaseNote>(
-        pagination.offset,
-        pagination.limit,
-        [and(...conditions)],
-        {
-          attributes: [['caseId', 'DESCENDING']],
-        },
-      );
-
-      const paginatedFindSpy = jest
-        .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
-        .mockResolvedValue(expectedPaginationResponse);
-
-      await repo.getLegacyCaseNotesPage(pagination);
-      expect(paginatedFindSpy).toHaveBeenCalledWith(expectedQuery);
-    });
-
     test('should call findOne', async () => {
       const note = MockData.getCaseNote();
       const findSpy = jest
@@ -190,27 +159,6 @@ describe('case notes repo tests', () => {
           ),
         );
       await expect(() => repo.update(archiveNote)).rejects.toThrow();
-    });
-
-    test('should handle error on getLegacyCaseNotesPage', async () => {
-      const retrievalErrorMessage = 'Failed retrieving Legacy Case Notes.';
-      const retrievalError = new Error(retrievalErrorMessage);
-      jest
-        .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
-        .mockRejectedValue(
-          getCamsError(
-            retrievalError,
-            'CASE_NOTES_MONGO_REPOSITORY',
-            'Failed retrieving Legacy Case Notes.',
-          ),
-        );
-      const pagination = {
-        offset: 0,
-        limit: 10,
-      };
-      await expect(() => repo.getLegacyCaseNotesPage(pagination)).rejects.toThrow(
-        getCamsError(retrievalError, 'CASE_NOTES_MONGO_REPOSITORY', retrievalErrorMessage),
-      );
     });
 
     test('should handle error on read', async () => {
