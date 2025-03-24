@@ -27,12 +27,13 @@
         .case-note-date {
           font-style: italic;
           text-align: right;
+          white-space: nowrap
         }
       }
 
       .case-note-author {
         padding-top: 0.5rem;
-        font-style: itali;
+        font-style: italic;
       }
 
       .case-note-toolbar {
