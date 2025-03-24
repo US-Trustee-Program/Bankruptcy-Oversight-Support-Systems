@@ -1,5 +1,5 @@
 import { PaginationParameters } from '../../../../../common/src/api/pagination';
-import { CaseNote } from '../../../../../common/src/cams/cases';
+import { CaseNote, CaseNoteBackup } from '../../../../../common/src/cams/cases';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import QueryBuilder, { ConditionOrConjunction, Sort } from '../../../query/query-builder';
 import {
@@ -59,6 +59,15 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     }
   }
 
+  async createCaseNoteBackup(data: CaseNoteBackup): Promise<void> {
+    //TODO: Remove When tested
+    try {
+      await this.getAdapter<CaseNoteBackup>().insertOne(data);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to create case note.');
+    }
+  }
+
   async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
     const query = and(
       doc('documentType').equals('NOTE'),
@@ -91,6 +100,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
   }
 
   async getLegacyCaseNotesPage(
+    //TODO: Remove After migration successful
     pagination: PaginationParameters,
   ): Promise<CamsPaginationResponse<CaseNote>> {
     const doc = using<CaseNote>();

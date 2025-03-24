@@ -274,6 +274,7 @@ describe('Test case-notes use case', () => {
     const updateSpy = jest
       .spyOn(MockMongoRepository.prototype, 'update')
       .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+    jest.spyOn(MockMongoRepository.prototype, 'createCaseNoteBackup').mockResolvedValue();
 
     const pagination = { limit: 10, offset: 0 };
     const myNewestExpectedThingForNow = {

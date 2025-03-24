@@ -151,6 +151,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  createCaseNoteBackup(..._ignore): Promise<void> {
+    //TODO: Remove when tested
+    throw new Error('Method not implemented.');
+  }
+
   getNotesByCaseId(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
