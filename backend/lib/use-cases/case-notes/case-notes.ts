@@ -59,7 +59,6 @@ export class CaseNotesUseCase {
 
   public async archiveCaseNote(archiveRequest: CaseNoteDeleteRequest): Promise<UpdateResult> {
     const { caseId, id, sessionUser } = archiveRequest;
-    // TODO: after transform has been run, remove use of updated in lieu of missing created
     const existingNote = await this.caseNotesRepository.read(archiveRequest.id);
     if (existingNote.createdBy.id !== archiveRequest.sessionUser.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not the creator of the note.' });
@@ -74,7 +73,6 @@ export class CaseNotesUseCase {
   }
 
   public async editCaseNote(noteEditRequest: CaseNoteEditRequest): Promise<CaseNote> {
-    // TODO: after transform has been run, remove use of updated in lieu of missing created
     const { note, sessionUser } = noteEditRequest;
     const existingNote = await this.caseNotesRepository.read(note.id);
     if (existingNote.createdBy.id !== sessionUser.id) {
@@ -88,8 +86,6 @@ export class CaseNotesUseCase {
       previousVersionId: note.id,
       updatedOn: dateOfEdit,
       updatedBy: getCamsUserReference(noteEditRequest.sessionUser),
-      createdBy: note.createdBy,
-      createdOn: note.createdOn,
     };
 
     const archiveNote: Partial<CaseNote> = {
