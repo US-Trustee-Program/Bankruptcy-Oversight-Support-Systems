@@ -9,7 +9,6 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { AlertOptions } from '../CaseDetailCourtDocket';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import LocalStorage from '@/lib/utils/local-storage';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Icon from '@/lib/components/uswds/Icon';
@@ -17,6 +16,7 @@ import CaseNoteFormModal, {
   CaseNoteFormModalRef,
 } from '@/case-detail/panels/case-notes/CaseNoteFormModal';
 import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
+import Actions from '@common/cams/actions';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -46,7 +46,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   useMemo(mapArchiveButtonRefs, [caseNotes]);
   useMemo(mapEditButtonRefs, [caseNotes]);
   const [focusId, setFocusId] = useState<string | null>(null);
-  const session = LocalStorage.getSession();
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
   const addNoteModalId = 'add-note-modal';
@@ -77,10 +76,6 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     openEditModalButtonRefs.current = newRefs;
   }
 
-  function userCanRemove(note: CaseNote) {
-    return session?.user.id === note.updatedBy.id;
-  }
-
   function showCaseNotes(note: CaseNote, idx: number) {
     const sanitizedCaseNote = sanitizeText(note.content);
     const sanitizedCaseNoteTitle = sanitizeText(note.title);
@@ -99,7 +94,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
             </h4>
           </div>
           <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
-            {note.previousVersionId ? 'Edited on: ' : 'Created On: '}
+            {note.previousVersionId ? 'Edited on: ' : 'Created on: '}
             {formatDateTime(note.updatedOn)}
           </div>
         </div>
@@ -117,52 +112,52 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
-        {userCanRemove(note) && (
-          <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
-            <>
-              <OpenModalButton
-                className="edit-button"
-                id={`case-note-edit-button`}
-                buttonIndex={`${idx}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                modalId={editNoteModalId}
-                modalRef={caseNoteModalRef}
-                ref={openEditModalButtonRefs.current.get(note.id!)}
-                openProps={{
-                  id: note.id,
-                  caseId: note.caseId,
-                  buttonId: `case-note-edit-button-${idx}`,
-                  title: note.title,
-                  content: note.content,
-                  callback: onUpdateNoteRequest,
-                }}
-                ariaLabel={`Edit note titled ${note.title}`}
-              >
-                <Icon name="edit" className="edit-icon" />
-                Edit
-              </OpenModalButton>
-              <OpenModalButton
-                className="remove-button"
-                id={`case-note-remove-button`}
-                buttonIndex={`${idx}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                modalId={removeConfirmationModalId}
-                modalRef={removeConfirmationModalRef}
-                ref={openArchiveModalButtonRefs.current[idx]}
-                openProps={{
-                  id: note.id,
-                  caseId: note.caseId,
-                  buttonId: `case-note-remove-button-${idx}`,
-                  callback: onUpdateNoteRequest,
-                }}
-                ariaLabel={`Remove note titled ${note.title}`}
-              >
-                <Icon name="remove_circle" className="remove-icon" />
-                Remove
-              </OpenModalButton>
-            </>
-          </div>
-        )}
+        <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
+          {Actions.contains(note, Actions.EditNote) && (
+            <OpenModalButton
+              className="edit-button"
+              id={`case-note-edit-button`}
+              buttonIndex={`${idx}`}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              modalId={editNoteModalId}
+              modalRef={caseNoteModalRef}
+              ref={openEditModalButtonRefs.current.get(note.id!)}
+              openProps={{
+                id: note.id,
+                caseId: note.caseId,
+                buttonId: `case-note-edit-button-${idx}`,
+                title: note.title,
+                content: note.content,
+                callback: onUpdateNoteRequest,
+              }}
+              ariaLabel={`Edit note titled ${note.title}`}
+            >
+              <Icon name="edit" className="edit-icon" />
+              Edit
+            </OpenModalButton>
+          )}
+          {Actions.contains(note, Actions.RemoveNote) && (
+            <OpenModalButton
+              className="remove-button"
+              id={`case-note-remove-button`}
+              buttonIndex={`${idx}`}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              modalId={removeConfirmationModalId}
+              modalRef={removeConfirmationModalRef}
+              ref={openArchiveModalButtonRefs.current[idx]}
+              openProps={{
+                id: note.id,
+                caseId: note.caseId,
+                buttonId: `case-note-remove-button-${idx}`,
+                callback: onUpdateNoteRequest,
+              }}
+              ariaLabel={`Remove note titled ${note.title}`}
+            >
+              <Icon name="remove_circle" className="remove-icon" />
+              Remove
+            </OpenModalButton>
+          )}
+        </div>
       </li>
     );
   }

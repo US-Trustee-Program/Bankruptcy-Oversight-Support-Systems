@@ -19,7 +19,7 @@
     .case-note {
       padding-left: 0;
       margin-left: 0;
-      padding-bottom: 2rem;
+      padding-bottom: 2.5rem;
 
       .case-note-title-and-date {
         padding-bottom: 1rem;
@@ -36,7 +36,9 @@
       }
 
       .case-note-toolbar {
-        margin-top: 0.75rem;
+        & button {
+          padding-top: 0.75rem;
+        }
         .edit-button {
           margin-right: 2rem;
         }

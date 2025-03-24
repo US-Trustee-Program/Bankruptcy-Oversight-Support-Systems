@@ -8,14 +8,26 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import React from 'react';
 import Input from '@/lib/components/uswds/Input';
 import LocalStorage from '@/lib/utils/local-storage';
+import Actions from '@common/cams/actions';
+import { randomUUID } from 'crypto';
 
 const caseId = '000-11-22222';
 const userId = '001';
 const userFullName = 'Joe Bob';
 const caseNotes = [
-  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
+  MockData.addAction(
+    MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
+    [Actions.EditNote, Actions.RemoveNote],
+  ),
   MockData.getCaseNote({ caseId }),
-  MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
+  MockData.addAction(
+    MockData.getCaseNote({
+      caseId,
+      updatedBy: { id: userId, name: userFullName },
+      previousVersionId: randomUUID(),
+    }),
+    [Actions.EditNote, Actions.RemoveNote],
+  ),
 ];
 const caseNotesRef = React.createRef<CaseNotesRef>();
 
@@ -93,6 +105,8 @@ describe('case note tests', () => {
 
     const caseNotesTable = screen.queryByTestId('searchable-case-notes');
     expect(caseNotesTable).not.toBeInTheDocument();
+    const button0 = screen.queryByTestId('open-modal-button_case-note-edit-button_0');
+    expect(button0).not.toBeInTheDocument();
   });
 
   test('should display table of case notes when notes exist', async () => {
@@ -125,7 +139,11 @@ describe('case note tests', () => {
 
       const dateContents = screen.getByTestId(`case-note-creation-date-${i}`);
       expect(dateContents).toBeInTheDocument();
-      expect(dateContents).toHaveTextContent(formatDateTime(caseNotes[i].updatedOn));
+      const expectedDateText = caseNotes[i].previousVersionId
+        ? `Edited on: ${formatDateTime(caseNotes[i].updatedOn)}`
+        : `Created on: ${formatDateTime(caseNotes[i].updatedOn)}`;
+
+      expect(dateContents).toHaveTextContent(expectedDateText);
     }
   });
 
