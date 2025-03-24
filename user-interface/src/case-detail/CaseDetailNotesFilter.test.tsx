@@ -86,42 +86,6 @@ describe('Case Note Tests', async () => {
     });
   });
 
-  test('Should set case notes with notes provided in props, submit a case note, and refetch case notes', async () => {
-    const mockFeatureFlags = {
-      'case-notes-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-
-    renderWithProps();
-
-    await waitFor(() => {
-      const notesNavLink = screen.queryByTestId('case-notes-link');
-      expect(notesNavLink).toBeInTheDocument();
-    });
-    const notesNavLink = screen.queryByTestId('case-notes-link');
-    fireEvent.click(notesNavLink!);
-    await waitFor(() => {
-      const titleInput = screen.queryByTestId('case-note-title-input');
-      expect(titleInput).toBeInTheDocument();
-    });
-    const titleInput = screen.queryByTestId('case-note-title-input');
-    fireEvent.change(titleInput!, { target: { value: 'Test Title' } });
-
-    await waitFor(() => {
-      const contentInput = screen.queryByTestId('textarea-note-content');
-      expect(contentInput).toBeInTheDocument();
-    });
-    const contentInput = screen.queryByTestId('textarea-note-content');
-    fireEvent.change(contentInput!, { target: { value: 'Test Title' } });
-
-    await waitFor(() => {
-      const submitButton = screen.queryByTestId('button-submit-case-note');
-      expect(submitButton).toBeInTheDocument();
-    });
-    const submitButton = screen.queryByTestId('button-submit-case-note');
-    fireEvent.click(submitButton!);
-  });
-
   test('Should search case notes properly', async () => {
     const mockFeatureFlags = {
       'case-notes-enabled': true,

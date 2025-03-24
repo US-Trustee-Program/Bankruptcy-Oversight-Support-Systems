@@ -321,12 +321,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 }
 
-function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
-  const mongoItem = {
+export function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
+  return {
     id: randomUUID(),
     ...item,
   };
-  return mongoItem;
 }
 
 export function removeIds<T>(item: CamsItem<T>): CamsItem<T> {

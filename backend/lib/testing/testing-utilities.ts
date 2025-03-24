@@ -9,12 +9,12 @@ import { CamsError } from '../common-errors/cams-error';
 
 const invocationContext = new InvocationContext();
 
-export async function createMockApplicationContext(
+export async function createMockApplicationContext<B = unknown>(
   args: {
     env?: Record<string, string>;
-    request?: Partial<CamsHttpRequest>;
+    request?: Partial<CamsHttpRequest<B>>;
   } = {},
-): Promise<ApplicationContext> {
+): Promise<ApplicationContext<B>> {
   process.env = {
     ...process.env,
     DATABASE_MOCK: 'true',

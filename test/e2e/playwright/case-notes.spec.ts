@@ -4,55 +4,80 @@ import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
 test.describe('Case Notes', () => {
-  let caseNoteTitleInput;
-  let caseNoteContentInput;
-  let submitCaseNoteButton;
+  test.describe.configure({ retries: 0, mode: 'serial' });
+
+  let addCaseNoteButton;
+  let noteNotesAlert;
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
-    caseNoteTitleInput = page.getByTestId('case-note-title-input');
-    caseNoteContentInput = page.getByTestId('textarea-note-content');
-    submitCaseNoteButton = page.getByTestId('button-submit-case-note');
-    await expect(caseNoteTitleInput).toBeVisible();
-    await expect(caseNoteContentInput).toBeVisible();
-    await expect(submitCaseNoteButton).toBeDisabled();
+    addCaseNoteButton = page.getByTestId('open-modal-button_case-note-add-button');
+    await expect(addCaseNoteButton).toBeVisible();
+    noteNotesAlert = page.getByTestId('alert-message');
+    await expect(noteNotesAlert).toBeVisible();
   });
 
   test.afterEach(async ({ page }) => {
     await logout(page);
   });
 
-  test('should crete a case note for a case, and be able to remove that case note', async ({
+  test('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
     page,
   }) => {
     const testNoteTitle = 'Test Note Title';
+    const testNoteContent = 'Test Note Content for E2E purposes';
+    const noteTitleEdit = 'Edited Note Title';
+    const noteContentEdit = 'Edited Note Content for E2E purposes';
     let caseNoteHeader;
-    let openRemovalModalButton;
-    let confirmButton;
+
+    //Open Add Note modal to create a new note and submit
+    await page.locator('[data-testid="open-modal-button_case-note-add-button"]').click();
+    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).toBeVisible();
 
     await page.locator('[data-testid="case-note-title-input"]').fill(testNoteTitle);
-    await page
-      .locator('[data-testid="textarea-note-content"]')
-      .fill('Test Note Content for E2E purposes');
-    submitCaseNoteButton = page.getByTestId('button-submit-case-note');
-    expect(submitCaseNoteButton).toBeEnabled();
-    submitCaseNoteButton.click();
+    await page.locator('[data-testid="textarea-note-content"]').fill(testNoteContent);
+    await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeVisible();
+    await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
+    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).not.toBeVisible();
 
+    //Ensure Newly created Note is there
     caseNoteHeader = page.getByTestId('case-note-0-header');
     await expect(caseNoteHeader).toBeVisible();
     await expect(caseNoteHeader).toHaveText(testNoteTitle);
-    openRemovalModalButton = page.getByTestId('open-modal-button-0');
-    await expect(openRemovalModalButton).toBeVisible();
-    openRemovalModalButton.click();
-    confirmButton = page.getByTestId('button-remove-note-modal-submit-button');
-    await expect(confirmButton).toBeVisible();
-    confirmButton.click();
-    confirmButton = page.getByTestId('button-remove-note-modal-submit-button');
-    await expect(confirmButton).not.toBeVisible();
+
+    //Edit newly created Case Note and ensure previous values are populated on first load
+    await expect(
+      page.locator('[data-testid="open-modal-button_case-note-edit-button_0"]'),
+    ).toBeVisible();
+    await page.locator('[data-testid="open-modal-button_case-note-edit-button_0"]').click();
+
+    await expect(page.locator('[data-testid="case-note-title-input"]')).toBeVisible();
+    await expect(page.locator('[data-testid="textarea-note-content"]')).toBeVisible();
+
+    await page.locator('[data-testid="case-note-title-input"]').clear();
+    await page.locator('[data-testid="case-note-title-input"]').fill(noteTitleEdit);
+    await page.locator('[data-testid="textarea-note-content"]').clear();
+    await page.locator('[data-testid="textarea-note-content"]').fill(noteContentEdit);
+
+    await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeEnabled();
+    await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
+
     caseNoteHeader = page.getByTestId('case-note-0-header');
-    await expect(caseNoteHeader).not.toBeVisible();
-    openRemovalModalButton = page.getByTestId('open-modal-button-0');
-    await expect(openRemovalModalButton).not.toBeVisible();
+    await expect(caseNoteHeader).toBeVisible();
+    await expect(caseNoteHeader).toHaveText(noteTitleEdit);
+
+    //Remove Newly created note edit
+    await expect(
+      page.locator('[data-testid="open-modal-button_case-note-remove-button_0"]'),
+    ).toBeVisible();
+    await page.locator('[data-testid="open-modal-button_case-note-remove-button_0"]').click();
+    await expect(
+      page.locator('[data-testid="button-remove-note-modal-submit-button"]'),
+    ).toBeVisible();
+    await page.locator('[data-testid="button-remove-note-modal-submit-button"]').click();
+
+    await expect(page.locator('[data-testid="searchable-case-notes"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="empty-notes-test-id"]')).toBeVisible();
   });
 });

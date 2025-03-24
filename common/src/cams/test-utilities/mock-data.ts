@@ -7,6 +7,7 @@ import {
   CaseDocketEntryDocument,
   CaseNote,
   CaseNoteDeleteRequest,
+  CaseNoteEditRequest,
   CaseSummary,
   DxtrCase,
   SyncedCase,
@@ -318,6 +319,13 @@ function getPaginatedResponseBody<T>(
   };
 }
 
+function addAction<T>(data: T, actions: Action[]): ResourceActions<T> {
+  return {
+    ...data,
+    _actions: actions,
+  };
+}
+
 function getTransferOrder(options: Options<TransferOrder> = { override: {} }): TransferOrder {
   const { entityType, override } = options;
   const summary = getCaseSummary({ entityType });
@@ -512,6 +520,7 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
 
 function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const user = getCamsUserReference();
   return {
     id: randomId(),
     title: 'Note Title',
@@ -519,7 +528,9 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
     caseId: randomCaseId(),
     content: 'Test Note',
     updatedOn: firstDate,
-    updatedBy: getCamsUserReference(),
+    updatedBy: user,
+    createdOn: firstDate,
+    createdBy: user,
     ...override,
   };
 }
@@ -531,7 +542,15 @@ function getCaseNoteDeletionRequest(
   return {
     id: crypto.randomUUID(),
     caseId: randomCaseId(),
-    userId,
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getCaseNoteEditRequest(override: Partial<CaseNoteEditRequest> = {}): CaseNoteEditRequest {
+  const userId = randomId();
+  return {
+    note: MockData.getCaseNote(),
     sessionUser: getCamsUserReference({ id: userId }),
     ...override,
   };
@@ -637,7 +656,7 @@ function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
-  if (override?.user?.roles.includes(CamsRole.SuperUser)) {
+  if (override?.user?.roles?.includes(CamsRole.SuperUser)) {
     offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
@@ -719,16 +738,19 @@ function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
 }
 
 export const MockData = {
+  addAction,
   randomId,
   randomCaseId,
+  randomCaseNumber,
   randomEin,
   randomOffice,
   randomSsn,
   randomUstpOffice,
   getAttorneyAssignment,
   getCaseNote,
-  getCaseNoteArchival: getCaseNoteDeletion,
-  getCaseNoteArchivalRequest: getCaseNoteDeletionRequest,
+  getCaseNoteDeletion,
+  getCaseNoteDeletionRequest,
+  getCaseNoteEditRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

@@ -4,6 +4,7 @@ import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
 import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
+import { CaseNoteInput } from '../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
 
@@ -13,13 +14,13 @@ export default async function handler(
   request: HttpRequest,
   invocationContext: InvocationContext,
 ): Promise<HttpResponseInit> {
-  const context = await ContextCreator.applicationContextCreator({
+  const context = await ContextCreator.applicationContextCreator<CaseNoteInput>({
     invocationContext,
     request,
   });
 
   try {
-    const caseNotesController: CaseNotesController = new CaseNotesController(context);
+    const caseNotesController = new CaseNotesController(context);
 
     if (context.featureFlags['case-notes-enabled'] === false) {
       throw new UnauthorizedError(MODULE_NAME);
@@ -33,7 +34,7 @@ export default async function handler(
 }
 
 app.http('case-notes', {
-  methods: ['GET', 'POST', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   authLevel: 'anonymous',
   handler,
   route: 'cases/{caseId}/notes/{noteId?}/{userId?}',

@@ -5,9 +5,15 @@ import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
-import { CaseNote, CaseNoteDeleteRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
+import {
+  CaseNote,
+  CaseNoteDeleteRequest,
+  CaseNoteEditRequest,
+  CaseNoteInput,
+} from '../../../../common/src/cams/cases';
 import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
+import { ResourceActions } from '../../../../common/src/cams/actions';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
@@ -25,31 +31,55 @@ export class CaseNotesController implements CamsController {
   }
 
   public async handleRequest(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<CaseNote[]>> {
+    context: ApplicationContext<CaseNoteInput>,
+  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<ResourceActions<CaseNote>[]>> {
     try {
       const caseNotesUseCase = new CaseNotesUseCase(context);
       if (context.request.method === 'POST') {
         const { caseId } = context.request.params;
-        const noteContent = context.request.body['content'];
-        const noteTitle = context.request.body['title'];
-        this.validatePostRequestParameters(caseId, noteContent, noteTitle);
+        const { content, title } = context.request.body;
+        this.validatePostRequestParameters(caseId, content, title);
         const noteInput: CaseNoteInput = {
           caseId,
-          title: noteTitle,
-          content: noteContent,
+          title,
+          content,
         };
         await caseNotesUseCase.createCaseNote(context.session.user, noteInput);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
         });
       } else if (context.request.method === 'DELETE') {
-        const { caseId, noteId, userId } = context.request.params;
-        const archiveNote = { id: noteId, caseId, userId, sessionUser: context.session.user };
+        const { caseId, noteId } = context.request.params;
+        const archiveNote: CaseNoteDeleteRequest = {
+          id: noteId,
+          caseId,
+          sessionUser: context.session.user,
+        };
         this.validateArchiveRequestParameters(archiveNote);
         await caseNotesUseCase.archiveCaseNote(archiveNote);
         return httpSuccess({
           statusCode: HttpStatusCodes.CREATED,
+        });
+      } else if (context.request.method === 'PUT') {
+        const note = context.request.body;
+        const { caseId, noteId } = context.request.params;
+        const noteForRequest = {
+          ...note,
+          id: noteId,
+          caseId,
+          updatedBy: note.updatedBy,
+        };
+        const request: CaseNoteEditRequest = {
+          note: noteForRequest,
+          sessionUser: context.session.user,
+        };
+
+        const newNote = await caseNotesUseCase.editCaseNote(request);
+        return httpSuccess({
+          statusCode: HttpStatusCodes.CREATED,
+          body: {
+            data: [newNote],
+          },
         });
       } else {
         const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
@@ -114,10 +144,6 @@ export class CaseNotesController implements CamsController {
       badParams.push('caseId');
     } else if (!request['caseId'].match(VALID_CASEID_PATTERN)) {
       messages.push(INVALID_CASEID_MESSAGE);
-    }
-
-    if (!request['userId']) {
-      badParams.push('userId');
     }
 
     if (badParams.length > 0) {

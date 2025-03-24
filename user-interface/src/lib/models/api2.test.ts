@@ -127,6 +127,40 @@ describe('_Api2 functions', async () => {
     expect(postSpy).toHaveBeenCalled();
   });
 
+  test('should call putCaseNote api function', async () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: ['some-note'] });
+    api2.Api2.putCaseNote({
+      id: 'some-id',
+      caseId: 'some-id',
+      title: 'some title',
+      content: 'some note',
+    });
+    expect(putSpy).toHaveBeenCalled();
+  });
+
+  test('should note call putCaseNote api function and handle error', async () => {
+    const putSpy = vi.spyOn(api.default, 'put');
+    await expect(
+      api2.Api2.putCaseNote({
+        caseId: 'some-id',
+        title: 'some title',
+        content: 'some note',
+      }),
+    ).rejects.toThrow('Id must be provided');
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('should call http delete when deleteCaseNote api function is called', async () => {
+    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue();
+    api2.Api2.deleteCaseNote({
+      id: 'note-id',
+      caseId: 'case-id',
+      updatedBy: MockData.getCamsUserReference(),
+    });
+
+    expect(deleteSpy).toHaveBeenCalledWith('/cases/case-id/notes/note-id', {});
+  });
+
   test('should get through input input content validation and call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     const title = 'some title';

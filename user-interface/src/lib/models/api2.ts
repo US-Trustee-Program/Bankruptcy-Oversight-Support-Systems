@@ -46,7 +46,7 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
-  delete(path: string): Promise<ResponseBody | void>;
+  delete(path: string, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
@@ -54,7 +54,7 @@ interface ApiClient {
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
-  delete<T = object>(path: string): Promise<ResponseBody<T>>;
+  delete<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
@@ -145,9 +145,10 @@ export function useGenericApi(): GenericApiClient {
       return body as ResponseBody<T>;
     },
 
-    async delete<T = object>(path: string): Promise<ResponseBody<T>> {
-      const { uriOrPathSubstring } = justThePath(path);
-      const body = await api.delete(uriOrPathSubstring);
+    async delete<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const body = await api.delete(uriOrPathSubstring, options);
       return body as ResponseBody<T>;
     },
 
@@ -266,10 +267,24 @@ async function postCaseNote(note: CaseNoteInput): Promise<void> {
   }
 }
 
+async function putCaseNote(note: CaseNoteInput): Promise<string | undefined> {
+  if (!note.id) {
+    throw new Error('Id must be provided');
+  }
+  const sanitizedNote = sanitizeText(note.content);
+  const sanitizedTitle = sanitizeText(note.title);
+  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+    const response = await api().put<CaseNoteInput[]>(`/cases/${note.caseId}/notes/${note.id}`, {
+      title: sanitizedTitle,
+      content: sanitizedNote,
+      updatedBy: note.updatedBy,
+    });
+    return response.data[0].id;
+  }
+}
+
 async function deleteCaseNote(note: Partial<CaseNote>) {
-  await api().delete<Partial<CaseNote>>(
-    `/cases/${note.caseId}/notes/${note.id}/${note.updatedBy!.id}`,
-  );
+  await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
 }
 
 async function getCourts() {
@@ -375,6 +390,7 @@ export const _Api2 = {
   getCaseAssociations,
   getCaseHistory,
   postCaseNote,
+  putCaseNote,
   getCaseNotes,
   deleteCaseNote,
   getCourts,

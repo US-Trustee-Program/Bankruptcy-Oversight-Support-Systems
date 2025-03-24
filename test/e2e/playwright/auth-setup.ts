@@ -4,9 +4,7 @@ import { test } from './fixture/urlQueryString';
 require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
-const OKTA_USER_NAME = process.env.OKTA_USER_NAME;
-const OKTA_PASSWORD = process.env.OKTA_PASSWORD;
-const TARGET_HOST = process.env.TARGET_HOST;
+const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
 const LOGIN_PATH = '/login';
 const timeoutOption = { timeout: 30000 };
 
@@ -52,11 +50,15 @@ async function oktaLogin(page: Page) {
 
   const submit = page.locator('input[type=submit]').first();
   await submit.click();
-
   await page.waitForURL(TARGET_HOST);
-  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
   const state = await page.context().storageState({ path: authFile });
   expect(state).toBeDefined();
+  await await page.goto(TARGET_HOST);
+  const expectedHost = TARGET_HOST.includes('localhost:3000')
+    ? TARGET_HOST
+    : `${TARGET_HOST}/?x-ms-routing-name=staging`;
+  page.waitForURL(expectedHost);
+  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
 }
 
 function usingAuthenticationProvider() {

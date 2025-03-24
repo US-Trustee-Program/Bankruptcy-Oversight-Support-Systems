@@ -1,10 +1,6 @@
 import { UriString } from './common';
 import { Pagination } from './pagination';
 
-export type ErrorBody = {
-  message: string;
-};
-
 export type ResponseMetaData = {
   self: UriString;
 };
