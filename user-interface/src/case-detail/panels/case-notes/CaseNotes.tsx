@@ -211,6 +211,9 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
             buttonId: `case-note-add-button`,
             callback: onUpdateNoteRequest,
           }}
+          onClick={() => {
+            setFocusId('');
+          }}
           ariaLabel={`Add new note`}
         >
           <Icon name="add_circle_outline" className="add-circle-outline-icon" />
