@@ -4,6 +4,8 @@ import { getCamsUserReference } from './session';
 export type Auditable = {
   updatedOn: string;
   updatedBy: CamsUserReference;
+  createdOn?: string;
+  createdBy?: CamsUserReference;
 };
 
 export const SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'SYSTEM', name: 'SYSTEM' };

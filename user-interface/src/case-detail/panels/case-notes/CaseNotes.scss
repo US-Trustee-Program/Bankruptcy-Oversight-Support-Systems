@@ -1,4 +1,4 @@
-@use '../../styles/abstracts/colors';
+@use '../../../styles/abstracts/colors';
 
 .case-notes-panel {
   margin-left: 2rem;
@@ -14,11 +14,12 @@
   #searchable-case-notes {
     list-style-type: none;
     padding-left: 0;
+    padding-top: 1rem;
 
     .case-note {
       padding-left: 0;
       margin-left: 0;
-      padding-bottom: 2rem;
+      padding-bottom: 2.5rem;
 
       .case-note-title-and-date {
         padding-bottom: 1rem;
@@ -26,15 +27,22 @@
         .case-note-date {
           font-style: italic;
           text-align: right;
+          white-space: nowrap
         }
       }
 
       .case-note-author {
-        padding-top: 1rem;
+        padding-top: 0.5rem;
+        font-style: italic;
       }
 
-      .remove-button {
-        margin-top: 0.75rem;
+      .case-note-toolbar {
+        & button {
+          padding-top: 0.75rem;
+        }
+        .edit-button {
+          margin-right: 2rem;
+        }
       }
 
       ::highlight(search-results) {
@@ -42,5 +50,5 @@
         color: black;
       }
     }
- }
+  }
 }
