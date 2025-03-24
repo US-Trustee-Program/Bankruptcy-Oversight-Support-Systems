@@ -6,7 +6,6 @@ import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import MigrateCases from './import/migrate-cases';
 import MigrateConsolidations from './import/migrate-consolidations';
-import HandleLegacyCaseNotes from './import/handle-legacy-case-notes';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 /*
@@ -92,14 +91,7 @@ dotenv.config();
 initializeApplicationInsights();
 
 // Register data flows.
-dataflows.register(
-  SyncCases,
-  SyncOfficeStaff,
-  SyncOrders,
-  MigrateCases,
-  MigrateConsolidations,
-  HandleLegacyCaseNotes,
-);
+dataflows.register(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
 
 // Log the list of registered data flows.
 const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');

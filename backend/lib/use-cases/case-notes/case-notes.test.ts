@@ -10,7 +10,6 @@ import {
 import { CaseNotesUseCase } from './case-notes';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsPaginationResponse } from '../gateways.types';
 import { ResourceActions } from '../../../../common/src/cams/actions';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
@@ -247,51 +246,5 @@ describe('Test case-notes use case', () => {
       'User is not the creator of the note.',
     );
     expect(readSpy).toHaveBeenCalledWith(existingNote.id);
-  });
-
-  test('should call getLegacyCaseNotePage', async () => {
-    const notes = MockData.buildArray(() => {
-      return MockData.getCaseNote({ createdBy: undefined, createdOn: undefined });
-    }, 5);
-    const expectedData = [];
-    for (const note of notes) {
-      expectedData.push({
-        id: note.id,
-        caseId: note.caseId,
-        createdOn: note.updatedOn,
-        createdBy: note.updatedBy,
-      });
-    }
-
-    const paginatedNotes: CamsPaginationResponse<CaseNote> = {
-      metadata: { total: notes.length },
-      data: notes,
-    };
-
-    const getSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'getLegacyCaseNotesPage')
-      .mockResolvedValue(paginatedNotes);
-    const updateSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'update')
-      .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
-    jest.spyOn(MockMongoRepository.prototype, 'createCaseNoteBackup').mockResolvedValue();
-
-    const pagination = { limit: 10, offset: 0 };
-    const myNewestExpectedThingForNow = {
-      metadata: { total: notes.length, ...pagination },
-      data: expectedData,
-    };
-
-    const user = MockData.getCamsUserReference();
-    const context = await createMockApplicationContext();
-    context.session = await createMockApplicationContextSession({ user: user });
-    const useCase = new CaseNotesUseCase(context);
-    const result = await useCase.migrateLegacyCaseNotesPage(pagination);
-    expect(getSpy).toHaveBeenCalled();
-    expect(result).toEqual(myNewestExpectedThingForNow);
-    expect(updateSpy).toHaveBeenCalledTimes(expectedData.length);
-    for (const note of expectedData) {
-      expect(updateSpy).toHaveBeenCalledWith(note);
-    }
   });
 });
