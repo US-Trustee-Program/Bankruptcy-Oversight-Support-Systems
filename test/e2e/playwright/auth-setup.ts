@@ -50,7 +50,6 @@ async function oktaLogin(page: Page) {
 
   const submit = page.locator('input[type=submit]').first();
   await submit.click();
-  //FLAW: when we return from OKTA we return to the base url without the URL
   await page.waitForURL(TARGET_HOST);
   const state = await page.context().storageState({ path: authFile });
   expect(state).toBeDefined();
