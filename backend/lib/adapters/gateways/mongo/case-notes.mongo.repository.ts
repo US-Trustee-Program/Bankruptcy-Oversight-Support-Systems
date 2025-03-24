@@ -1,19 +1,14 @@
-import { PaginationParameters } from '../../../../../common/src/api/pagination';
-import { CaseNote, CaseNoteBackup } from '../../../../../common/src/cams/cases';
-import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import QueryBuilder, { ConditionOrConjunction, Sort } from '../../../query/query-builder';
-import {
-  CamsPaginationResponse,
-  CaseNotesRepository,
-  UpdateResult,
-} from '../../../use-cases/gateways.types';
+import { CaseNote } from '../../../../../common/src/cams/cases';
+import { getCamsErrorWithStack, getCamsError } from '../../../common-errors/error-utilities';
+import QueryBuilder from '../../../query/query-builder';
+import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'CASE-NOTES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, using } = QueryBuilder;
+const { and, using } = QueryBuilder;
 const doc = using<CaseNote>();
 
 export class CaseNotesMongoRepository extends BaseMongoRepository implements CaseNotesRepository {
@@ -60,15 +55,6 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     }
   }
 
-  async createCaseNoteBackup(data: CaseNoteBackup): Promise<void> {
-    //TODO: Remove When tested
-    try {
-      await this.getAdapter<CaseNoteBackup>().insertOne(data);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to create case note.');
-    }
-  }
-
   async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
     const query = and(
       doc('documentType').equals('NOTE'),
@@ -99,35 +85,6 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       return await this.getAdapter<CaseNote>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve case note.');
-    }
-  }
-
-  async getLegacyCaseNotesPage(
-    //TODO: Remove After migration successful
-    pagination: PaginationParameters,
-  ): Promise<CamsPaginationResponse<CaseNote>> {
-    const doc = using<CaseNote>();
-
-    const conditions: ConditionOrConjunction<CaseNote>[] = [];
-    conditions.push(doc('documentType').equals('NOTE'));
-    const sortSpec: Sort<CaseNote> = {
-      attributes: [['caseId', 'DESCENDING']],
-    };
-    const query = paginate<CaseNote>(
-      pagination.offset,
-      pagination.limit,
-      [and(...conditions)],
-      sortSpec,
-    );
-    try {
-      return await this.getAdapter<CaseNote>().paginatedFind(query);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          module: MODULE_NAME,
-          message: 'Failed retrieving Legacy Case Notes.',
-        },
-      });
     }
   }
 
