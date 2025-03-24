@@ -12,7 +12,7 @@ import {
   TransferTo,
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
-import { CaseDocket, CaseNote, CaseNoteBackup, SyncedCase } from '../../../common/src/cams/cases';
+import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
 import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
 import {
   AttorneyUser,
@@ -26,7 +26,6 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
-import { PaginationParameters } from '../../../common/src/api/pagination';
 
 export type ReplaceResult = {
   id: string;
@@ -97,10 +96,8 @@ export interface CaseNotesRepository<T = CaseNote>
   extends Creates<T, T>,
     Updates<Partial<T>>,
     Reads<T> {
-  createCaseNoteBackup(noteBackup: CaseNoteBackup): unknown; //TODO: remove when tested
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
   archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
-  getLegacyCaseNotesPage(pagination: PaginationParameters): Promise<CamsPaginationResponse<T>>;
 }
 
 export interface OrdersRepository<T = Order>

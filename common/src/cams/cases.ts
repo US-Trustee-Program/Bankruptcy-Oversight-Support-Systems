@@ -67,27 +67,14 @@ export type CaseDocket = Array<CaseDocketEntry>;
 export type CaseNote = CaseNoteInput &
   Auditable & {
     documentType: 'NOTE';
+    updatedBy: CamsUserReference;
+    updatedOn: string;
+    createdBy: CamsUserReference;
+    createdOn: string;
     archivedOn?: string;
     archivedBy?: CamsUserReference;
     previousVersionId?: string;
   };
-
-//TODO: Remove when tested
-export type CaseNoteBackup = CaseNoteInput &
-  Auditable & {
-    originalId: string;
-    documentType: 'NOTE_BACKUP';
-    archivedOn?: string;
-    archivedBy?: CamsUserReference;
-    previousVersionId?: string;
-  };
-
-export type LegacyCaseNote = {
-  id: string;
-  caseId: string;
-  createdOn: string;
-  createdBy: CamsUserReference;
-};
 
 export type CaseNoteDeleteRequest = {
   id: string;
@@ -96,7 +83,7 @@ export type CaseNoteDeleteRequest = {
 };
 
 export type CaseNoteEditRequest = {
-  note: CaseNoteInput;
+  note: Partial<CaseNote>;
   sessionUser: CamsUserReference;
 };
 
