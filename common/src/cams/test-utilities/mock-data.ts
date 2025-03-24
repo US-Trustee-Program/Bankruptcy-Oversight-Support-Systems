@@ -319,6 +319,13 @@ function getPaginatedResponseBody<T>(
   };
 }
 
+function addAction<T>(data: T, actions: Action[]): ResourceActions<T> {
+  return {
+    ...data,
+    _actions: actions,
+  };
+}
+
 function getTransferOrder(options: Options<TransferOrder> = { override: {} }): TransferOrder {
   const { entityType, override } = options;
   const summary = getCaseSummary({ entityType });
@@ -513,6 +520,7 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
 
 function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
   const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const user = getCamsUserReference();
   return {
     id: randomId(),
     title: 'Note Title',
@@ -520,7 +528,9 @@ function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
     caseId: randomCaseId(),
     content: 'Test Note',
     updatedOn: firstDate,
-    updatedBy: getCamsUserReference(),
+    updatedBy: user,
+    createdOn: firstDate,
+    createdBy: user,
     ...override,
   };
 }
@@ -728,6 +738,7 @@ function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
 }
 
 export const MockData = {
+  addAction,
   randomId,
   randomCaseId,
   randomCaseNumber,

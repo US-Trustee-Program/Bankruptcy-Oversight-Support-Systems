@@ -12,6 +12,7 @@ import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/m
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { CamsPaginationResponse } from '../gateways.types';
 import { ResourceActions } from '../../../../common/src/cams/actions';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 describe('Test case-notes use case', () => {
   afterEach(() => {
@@ -56,6 +57,23 @@ describe('Test case-notes use case', () => {
     expect(caseNotesResult).toEqual(expect.arrayContaining(expected));
   });
 
+  test('should handle error when getCaseNotesByCaseId throws an error', async () => {
+    const userRef = MockData.getCamsUserReference();
+    const error = new Error('Test Error');
+    jest.spyOn(MockMongoRepository.prototype, 'getNotesByCaseId').mockRejectedValue(error);
+    const MODULE_NAME = 'CASE-NOTES-USE-CASE';
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new CaseNotesUseCase(context);
+    const expectedError = getCamsErrorWithStack(error, MODULE_NAME, {
+      camsStackInfo: {
+        module: MODULE_NAME,
+        message: `Failed to get notes for case: ${NORMAL_CASE_ID}.`,
+      },
+    });
+    await expect(useCase.getCaseNotes(NORMAL_CASE_ID)).rejects.toThrow(expectedError);
+  });
+
   test('should create a case note when createCaseNote is called', async () => {
     const mockCase = MockData.getCaseBasics();
     const caseNoteContent = 'Some content relevant to the case.';
@@ -98,7 +116,7 @@ describe('Test case-notes use case', () => {
 
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user });
-    const existingNote = MockData.getCaseNote({ updatedBy: user });
+    const existingNote = MockData.getCaseNote({ updatedBy: user, createdBy: user });
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const useCase = new CaseNotesUseCase(context);
     const archiveSpy = jest
@@ -142,7 +160,7 @@ describe('Test case-notes use case', () => {
       .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
       .mockImplementation(async () => {});
 
-    const existingNote: CaseNote = MockData.getCaseNote({ updatedBy: user });
+    const existingNote: CaseNote = MockData.getCaseNote({ updatedBy: user, createdBy: user });
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const newNote: CaseNote = MockData.getCaseNote({
       ...existingNote,
@@ -232,7 +250,9 @@ describe('Test case-notes use case', () => {
   });
 
   test('should call getLegacyCaseNotePage', async () => {
-    const notes = MockData.buildArray(MockData.getCaseNote, 5);
+    const notes = MockData.buildArray(() => {
+      return MockData.getCaseNote({ createdBy: undefined, createdOn: undefined });
+    }, 5);
     const expectedData = [];
     for (const note of notes) {
       expectedData.push({
