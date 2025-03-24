@@ -3,6 +3,7 @@ import { getCaseNotesRepository } from '../../factory';
 import { CaseNotesRepository, UpdateResult } from '../gateways.types';
 import {
   CaseNote,
+  CaseNoteBackup,
   CaseNoteDeleteRequest,
   CaseNoteEditRequest,
   CaseNoteInput,
@@ -107,8 +108,19 @@ export class CaseNotesUseCase {
     return creationResponse;
   }
 
+  //TODO: Remove when successfully run
   public async migrateLegacyCaseNotesPage(pagination: PaginationParameters) {
     const notesPage = await this.caseNotesRepository.getLegacyCaseNotesPage(pagination);
+    for (const note of notesPage.data) {
+      const noteBackup: CaseNoteBackup = {
+        ...note,
+        originalId: note.id,
+        id: randomUUID(),
+        documentType: 'NOTE_BACKUP',
+      };
+      this.caseNotesRepository.createCaseNoteBackup(noteBackup);
+      this.context.logger.info(MODULE_NAME, `Created Backup for NoteId: ${note.id}`);
+    }
     const legacyNotes = notesPage.data.reduce((acc, note) => {
       if (!note.createdOn) {
         acc.push({
@@ -120,8 +132,10 @@ export class CaseNotesUseCase {
       }
       return acc;
     }, []);
+
     for (const note of legacyNotes) {
       this.context.logger.info(MODULE_NAME, `Inserted NoteId:  ${note.id}`);
+
       await this.caseNotesRepository.update(note);
     }
     return {

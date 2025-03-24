@@ -72,6 +72,16 @@ export type CaseNote = CaseNoteInput &
     previousVersionId?: string;
   };
 
+//TODO: Remove when tested
+export type CaseNoteBackup = CaseNoteInput &
+  Auditable & {
+    originalId: string;
+    documentType: 'NOTE_BACKUP';
+    archivedOn?: string;
+    archivedBy?: CamsUserReference;
+    previousVersionId?: string;
+  };
+
 export type LegacyCaseNote = {
   id: string;
   caseId: string;
