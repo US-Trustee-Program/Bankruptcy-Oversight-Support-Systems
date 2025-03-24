@@ -19,6 +19,7 @@ const doc = using<CaseNote>();
 export class CaseNotesMongoRepository extends BaseMongoRepository implements CaseNotesRepository {
   private static referenceCount: number = 0;
   private static instance: CaseNotesMongoRepository;
+
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
   }
@@ -79,6 +80,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       archivedOn: archiveNote.archivedOn,
       archivedBy: archiveNote.archivedBy,
     };
+
     try {
       return await this.getAdapter<CaseNote>().updateOne(query, archiveDate);
     } catch (originalError) {
@@ -92,6 +94,7 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       doc('caseId').equals(caseId),
       doc('archivedOn').notExists(),
     );
+
     try {
       return await this.getAdapter<CaseNote>().find(query);
     } catch (originalError) {
