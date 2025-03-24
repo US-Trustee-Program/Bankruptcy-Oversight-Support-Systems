@@ -138,7 +138,7 @@ describe('_Api2 functions', async () => {
     expect(putSpy).toHaveBeenCalled();
   });
 
-  test('should call putCaseNote api function', async () => {
+  test('should note call putCaseNote api function and handle error', async () => {
     const putSpy = vi.spyOn(api.default, 'put');
     await expect(
       api2.Api2.putCaseNote({
