@@ -80,7 +80,7 @@ export class CaseNotesUseCase {
     }
     const dateOfEdit = new Date().toISOString();
     const newNote: CaseNote = {
-      ...note,
+      ...existingNote,
       id: randomUUID(),
       documentType: 'NOTE',
       previousVersionId: note.id,

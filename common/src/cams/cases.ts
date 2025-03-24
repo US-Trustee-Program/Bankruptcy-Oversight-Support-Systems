@@ -67,6 +67,10 @@ export type CaseDocket = Array<CaseDocketEntry>;
 export type CaseNote = CaseNoteInput &
   Auditable & {
     documentType: 'NOTE';
+    updatedBy: CamsUserReference;
+    updatedOn: string;
+    createdBy: CamsUserReference;
+    createdOn: string;
     archivedOn?: string;
     archivedBy?: CamsUserReference;
     previousVersionId?: string;
@@ -79,7 +83,7 @@ export type CaseNoteDeleteRequest = {
 };
 
 export type CaseNoteEditRequest = {
-  note: CaseNoteInput;
+  note: Partial<CaseNote>;
   sessionUser: CamsUserReference;
 };
 
