@@ -89,6 +89,7 @@ describe('offices use case tests', () => {
         getOfficeAttorneys: repoSpy,
         findAndDeleteStaff: jest.fn(),
         putOrExtendOfficeStaff: jest.fn(),
+        getOfficeAssignments: jest.fn(),
         close: jest.fn(),
       };
     });
@@ -96,6 +97,30 @@ describe('offices use case tests', () => {
 
     const officeCode = 'new-york';
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
+    expect(officeAttorneys).toEqual(mockAttorneys);
+    expect(repoSpy).toHaveBeenCalledWith(officeCode);
+    expect(attorneysSpy).not.toHaveBeenCalled();
+  });
+
+  test('should return assigned attorneys for office', async () => {
+    const useCase = new OfficesUseCase();
+    const mockAttorneys = [];
+    const repoSpy = jest.fn().mockResolvedValue(mockAttorneys);
+    jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
+      return {
+        release: () => {},
+        putOfficeStaff: jest.fn(),
+        getOfficeAttorneys: jest.fn(),
+        getOfficeAssignments: repoSpy,
+        findAndDeleteStaff: jest.fn(),
+        putOrExtendOfficeStaff: jest.fn(),
+        close: jest.fn(),
+      };
+    });
+    const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
+
+    const officeCode = 'new-york';
+    const officeAttorneys = await useCase.getOfficeAssigments(applicationContext, officeCode);
     expect(officeAttorneys).toEqual(mockAttorneys);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
     expect(attorneysSpy).not.toHaveBeenCalled();

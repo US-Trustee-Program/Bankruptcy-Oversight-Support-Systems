@@ -45,6 +45,14 @@ export class OfficesUseCase {
     return await repository.getOfficeAttorneys(officeCode);
   }
 
+  public async getOfficeAssigments(
+    context: ApplicationContext,
+    officeCode: string,
+  ): Promise<Staff[]> {
+    const repository = getOfficesRepository(context);
+    return await repository.getOfficeAssignments(officeCode);
+  }
+
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
     const officesGateway = getOfficesGateway(context);
     const repository = getOfficesRepository(context);

@@ -32,14 +32,17 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!OfficesMongoRepository.instance)
+    if (!OfficesMongoRepository.instance) {
       OfficesMongoRepository.instance = new OfficesMongoRepository(context);
+    }
     OfficesMongoRepository.referenceCount++;
     return OfficesMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (OfficesMongoRepository.referenceCount > 0) OfficesMongoRepository.referenceCount--;
+    if (OfficesMongoRepository.referenceCount > 0) {
+      OfficesMongoRepository.referenceCount--;
+    }
     if (OfficesMongoRepository.referenceCount < 1) {
       OfficesMongoRepository.instance.client.close().then();
       OfficesMongoRepository.instance = null;
@@ -87,6 +90,25 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  async getOfficeAssignments(_officeCode: string): Promise<CamsUserReference[]> {
+    // TODO: Query the assigmnents collection for the unique set of attorneys assigned to the office's cases.
+
+    // const doc = using<OfficeStaff>();
+    // const query = and(
+    //   doc('documentType').equals('OFFICE_STAFF'),
+    //   doc('roles').contains([CamsRole.TrialAttorney]),
+    //   doc('officeCode').equals(officeCode),
+    // );
+
+    // try {
+    //   const result = await this.getAdapter<OfficeStaff>().find(query);
+    //   return result.map((doc) => getCamsUserReference(doc));
+    // } catch (originalError) {
+    //   throw getCamsError(originalError, MODULE_NAME);
+    // }
+    return [];
   }
 
   public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
