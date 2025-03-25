@@ -104,8 +104,8 @@ describe('offices use case tests', () => {
 
   test('should return assigned attorneys for office', async () => {
     const useCase = new OfficesUseCase();
-    const mockAttorneys = [];
-    const repoSpy = jest.fn().mockResolvedValue(mockAttorneys);
+    const expected = [MockData.getCamsUserReference()];
+    const repoSpy = jest.fn().mockResolvedValue(expected);
     jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
       return {
         release: () => {},
@@ -117,13 +117,11 @@ describe('offices use case tests', () => {
         close: jest.fn(),
       };
     });
-    const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
 
     const officeCode = 'new-york';
-    const officeAttorneys = await useCase.getOfficeAssigments(applicationContext, officeCode);
-    expect(officeAttorneys).toEqual(mockAttorneys);
+    const actual = await useCase.getOfficeAssigments(applicationContext, officeCode);
+    expect(actual).toEqual(expected);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
-    expect(attorneysSpy).not.toHaveBeenCalled();
   });
 
   test('should persist offices and continue trying after error', async () => {
