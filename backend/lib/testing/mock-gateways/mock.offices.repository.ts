@@ -11,4 +11,7 @@ export const MockOfficesRepository = {
   getOfficeAttorneys: () => {
     return Promise.resolve(TRIAL_ATTORNEYS);
   },
+  getOfficeAssignments(_officeCode: string): Promise<CamsUserReference[]> {
+    return Promise.resolve(TRIAL_ATTORNEYS);
+  },
 };
