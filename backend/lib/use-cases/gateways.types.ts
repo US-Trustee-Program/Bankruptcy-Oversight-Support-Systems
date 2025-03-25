@@ -161,6 +161,7 @@ export interface OfficesRepository extends Releasable {
   getOfficeAttorneys(officeCode: string): Promise<AttorneyUser[]>;
   putOfficeStaff(officeCode: string, user: CamsUserReference, ttl?: number): Promise<ReplaceResult>;
   findAndDeleteStaff(officeCode: string, id: string): Promise<void>;
+  getOfficeAssignments(_officeCode: string): Promise<CamsUserReference[]>;
 }
 
 export interface UsersRepository extends Releasable {
