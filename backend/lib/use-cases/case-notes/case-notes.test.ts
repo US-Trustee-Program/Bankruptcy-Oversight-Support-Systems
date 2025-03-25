@@ -163,6 +163,8 @@ describe('Test case-notes use case', () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const newNote: CaseNote = MockData.getCaseNote({
       ...existingNote,
+      content: 'Edited Note Content',
+      title: 'Edited Note Title',
       previousVersionId: existingNote.id,
       updatedBy: userRef,
     });
@@ -175,7 +177,7 @@ describe('Test case-notes use case', () => {
     };
 
     const request: CaseNoteEditRequest = {
-      note: existingNote,
+      note: newNote,
       sessionUser: user,
     };
     await useCase.editCaseNote(request);
