@@ -83,6 +83,7 @@ export class CaseNotesUseCase {
       ...existingNote,
       ...note,
       id: randomUUID(),
+      documentType: 'NOTE',
       previousVersionId: note.id,
       updatedOn: dateOfEdit,
       updatedBy: getCamsUserReference(noteEditRequest.sessionUser),
