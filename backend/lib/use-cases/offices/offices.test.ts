@@ -119,7 +119,7 @@ describe('offices use case tests', () => {
     });
 
     const officeCode = 'new-york';
-    const actual = await useCase.getOfficeAssigments(applicationContext, officeCode);
+    const actual = await useCase.getOfficeAssignments(applicationContext, officeCode);
     expect(actual).toEqual(expected);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
   });
