@@ -48,7 +48,7 @@ function _StaffAssignmentFilter(
 
   return (
     <div id={id ?? ''} data-testid={testId}>
-      {officeAssignees && (
+      {officeAssignees.length && (
         <ComboBox
           id="staff-assignees"
           options={assigneesToComboOptions(officeAssignees)}
