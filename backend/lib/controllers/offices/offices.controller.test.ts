@@ -8,6 +8,7 @@ import { UnknownError } from '../../common-errors/unknown-error';
 
 let getOffices = jest.fn();
 let getOfficeAttorneys = jest.fn();
+let getOfficeAssignments = jest.fn();
 const syncOfficeStaff = jest.fn();
 
 jest.mock('../../use-cases/offices/offices', () => {
@@ -16,6 +17,7 @@ jest.mock('../../use-cases/offices/offices', () => {
       return {
         getOffices,
         getOfficeAttorneys,
+        getOfficeAssignments,
         syncOfficeStaff,
       };
     }),
@@ -113,6 +115,28 @@ describe('offices controller tests', () => {
     );
     expect(getOffices).not.toHaveBeenCalled();
     expect(getOfficeAttorneys).toHaveBeenCalledWith(applicationContext, officeCode);
+  });
+
+  test('should call getOfficeAssignments', async () => {
+    getOffices = jest
+      .fn()
+      .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
+    getOfficeAssignments = jest.fn().mockResolvedValue([]);
+
+    const officeCode = 'new-york';
+    const subResource = 'assignments';
+    const camsHttpRequest = mockCamsHttpRequest({ params: { officeCode, subResource } });
+    applicationContext.request = camsHttpRequest;
+
+    const controller = new OfficesController();
+    const attorneys = await controller.handleRequest(applicationContext);
+    expect(attorneys).toEqual(
+      expect.objectContaining({
+        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: [] },
+      }),
+    );
+    expect(getOffices).not.toHaveBeenCalled();
+    expect(getOfficeAssignments).toHaveBeenCalledWith(applicationContext, officeCode);
   });
 
   test('should call getOffices', async () => {
