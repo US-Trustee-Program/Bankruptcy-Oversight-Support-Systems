@@ -5,6 +5,7 @@ import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/cour
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { UnknownError } from '../../common-errors/unknown-error';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 
 let getOffices = jest.fn();
 let getOfficeAttorneys = jest.fn();
@@ -118,10 +119,11 @@ describe('offices controller tests', () => {
   });
 
   test('should call getOfficeAssignments', async () => {
+    const assignments = [MockData.getCamsUser()];
     getOffices = jest
       .fn()
       .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
-    getOfficeAssignments = jest.fn().mockResolvedValue([]);
+    getOfficeAssignments = jest.fn().mockResolvedValue(assignments);
 
     const officeCode = 'new-york';
     const subResource = 'assignments';
@@ -129,10 +131,10 @@ describe('offices controller tests', () => {
     applicationContext.request = camsHttpRequest;
 
     const controller = new OfficesController();
-    const attorneys = await controller.handleRequest(applicationContext);
-    expect(attorneys).toEqual(
+    const actual = await controller.handleRequest(applicationContext);
+    expect(actual).toEqual(
       expect.objectContaining({
-        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: [] },
+        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: assignments },
       }),
     );
     expect(getOffices).not.toHaveBeenCalled();
