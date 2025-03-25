@@ -21,7 +21,7 @@ import {
 } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
-import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
+import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
 import { CasesSearchPredicate } from '@common/api/search';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
@@ -301,6 +301,11 @@ async function getOfficeAttorneys(officeCode: string) {
   return withCache({ key: path }).get<AttorneyUser[]>(path);
 }
 
+async function getOfficeAssignees(officeCode: string) {
+  const path = `/offices/${officeCode}/assignees`;
+  return withCache({ key: path }).get<Staff[]>(path);
+}
+
 async function getOffices() {
   const path = `/offices`;
   return withCache({ key: path, ttl: DAY }).get<UstpOfficeDetails[]>(path);
@@ -396,6 +401,7 @@ export const _Api2 = {
   getCourts,
   getMe,
   getOfficeAttorneys,
+  getOfficeAssignees,
   getOffices,
   getOrders,
   getOrderSuggestions,

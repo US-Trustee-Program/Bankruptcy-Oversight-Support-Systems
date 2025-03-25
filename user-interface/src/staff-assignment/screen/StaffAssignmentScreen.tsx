@@ -23,6 +23,7 @@ import useFeatureFlags, {
   CHAPTER_TWELVE_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import { Stop } from '@/lib/components/Stop';
+import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 
 function getChapters(): string[] {
   const chapters = ['15'];
@@ -65,6 +66,7 @@ export const StaffAssignmentScreen = () => {
   const hasValidPermission = session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
   const hasAssignedOffices = session?.user?.offices && session?.user?.offices.length > 0;
   const showAssignments = hasValidPermission && hasAssignedOffices;
+  const officeCode = session?.user?.offices ? session?.user?.offices[0].officeCode : '';
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
@@ -101,6 +103,10 @@ export const StaffAssignmentScreen = () => {
               showHelpDeskContact
             ></Stop>
           )}
+          <h3>Filters</h3>
+          <section className="staff-assignment-filter-container">
+            <StaffAssignmentFilter officeCode={officeCode} />
+          </section>
           {showAssignments && (
             <SearchResults
               id="search-results"

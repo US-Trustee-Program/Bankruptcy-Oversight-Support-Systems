@@ -13,7 +13,7 @@ import {
   SyncedCase,
 } from '@common/cams/cases';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
-import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
+import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
 import { CaseHistory } from '@common/cams/history';
 import { CamsSession } from '@common/cams/session';
@@ -308,6 +308,10 @@ async function getOfficeAttorneys(officeCode: string) {
   return get<AttorneyUser[]>(`/offices/${officeCode}/attorneys`);
 }
 
+async function getOfficeAssignees(officeCode: string) {
+  return get<Staff[]>(`/offices/${officeCode}/assignees`);
+}
+
 async function getOffices(): Promise<ResponseBody<UstpOfficeDetails[]>> {
   return get<UstpOfficeDetails[]>(`/offices`);
 }
@@ -403,6 +407,7 @@ export const MockApi2 = {
   getCourts,
   getMe,
   getOfficeAttorneys,
+  getOfficeAssignees,
   getOffices,
   getOrders,
   getOrderSuggestions,

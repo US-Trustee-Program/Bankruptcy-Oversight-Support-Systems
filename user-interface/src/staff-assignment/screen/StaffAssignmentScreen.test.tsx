@@ -24,6 +24,14 @@ describe('StaffAssignmentScreen', () => {
     offices: MOCKED_USTP_OFFICES_ARRAY,
   });
 
+  function renderWithoutProps() {
+    render(
+      <BrowserRouter>
+        <StaffAssignmentScreen></StaffAssignmentScreen>
+      </BrowserRouter>,
+    );
+  }
+
   beforeEach(() => {
     testingUtilities.setUser(user);
 
@@ -37,6 +45,15 @@ describe('StaffAssignmentScreen', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('Filter specific tests', () => {
+    test('screen should contain staff assignment filters', async () => {
+      renderWithoutProps();
+
+      const filter = screen.getByTestId('staff-assignment-filter');
+      expect(filter).toBeInTheDocument();
+    });
   });
 
   test('should render a list of chapter 15 cases for a case assignment manager to review', async () => {
@@ -59,11 +76,7 @@ describe('StaffAssignmentScreen', () => {
         return <></>;
       });
 
-    render(
-      <BrowserRouter>
-        <StaffAssignmentScreen></StaffAssignmentScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     expect(SearchResults).toHaveBeenCalledWith(
       {
@@ -103,11 +116,7 @@ describe('StaffAssignmentScreen', () => {
         return <></>;
       });
 
-    render(
-      <BrowserRouter>
-        <StaffAssignmentScreen></StaffAssignmentScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     expect(SearchResults).toHaveBeenCalledWith(
       {
@@ -123,11 +132,8 @@ describe('StaffAssignmentScreen', () => {
 
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
-    render(
-      <BrowserRouter>
-        <StaffAssignmentScreen></StaffAssignmentScreen>
-      </BrowserRouter>,
-    );
+
+    renderWithoutProps();
 
     expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
   });
@@ -136,11 +142,7 @@ describe('StaffAssignmentScreen', () => {
     testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
     const SearchResults = vi.spyOn(searchResultsModule, 'default');
 
-    render(
-      <BrowserRouter>
-        <StaffAssignmentScreen></StaffAssignmentScreen>
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     expect(SearchResults).not.toHaveBeenCalled();
     expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
