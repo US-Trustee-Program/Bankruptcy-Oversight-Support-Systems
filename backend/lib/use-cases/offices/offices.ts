@@ -45,7 +45,7 @@ export class OfficesUseCase {
     return await repository.getOfficeAttorneys(officeCode);
   }
 
-  public async getOfficeAssigments(
+  public async getOfficeAssignments(
     context: ApplicationContext,
     officeCode: string,
   ): Promise<Staff[]> {
@@ -153,7 +153,9 @@ export function buildOfficeCode(regionId: string, courtDivisionCode: string): st
 }
 
 export function getOfficeName(divisionCode: string): string {
-  if (USTP_OFFICE_NAME_MAP.has(divisionCode)) return USTP_OFFICE_NAME_MAP.get(divisionCode);
+  if (USTP_OFFICE_NAME_MAP.has(divisionCode)) {
+    return USTP_OFFICE_NAME_MAP.get(divisionCode);
+  }
   return 'UNKNOWN_' + divisionCode;
 }
 
