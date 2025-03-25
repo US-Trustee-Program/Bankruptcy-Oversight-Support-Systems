@@ -62,7 +62,10 @@ test.describe('Case Notes', () => {
 
     await expect(page.locator('[data-testid="button-case-note-form-submit-button"]')).toBeEnabled();
     await page.locator('[data-testid="button-case-note-form-submit-button"]').click();
-
+    await expect(
+      page.locator('[data-testid="button-case-note-form-submit-button"]'),
+    ).toBeDisabled();
+    await expect(page.locator('[data-testid="modal-content-case-note-form"]')).not.toBeVisible();
     caseNoteHeader = page.getByTestId('case-note-0-header');
     await expect(caseNoteHeader).toBeVisible();
     await expect(caseNoteHeader).toHaveText(noteTitleEdit);
