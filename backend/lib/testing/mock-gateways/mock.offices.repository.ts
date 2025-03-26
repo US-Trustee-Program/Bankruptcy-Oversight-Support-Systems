@@ -1,5 +1,6 @@
 import { TRIAL_ATTORNEYS } from '../../../../common/src/cams/test-utilities/attorneys.mock';
 import { CamsUserReference, Staff } from '../../../../common/src/cams/users';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 export const MockOfficesRepository = {
   release: () => {},
@@ -11,7 +12,9 @@ export const MockOfficesRepository = {
   getOfficeAttorneys: () => {
     return Promise.resolve(TRIAL_ATTORNEYS);
   },
-  getOfficeAssignments(_officeCode: string): Promise<CamsUserReference[]> {
-    return Promise.resolve(TRIAL_ATTORNEYS);
+  getOfficeAssignments(_officeCode: string): Promise<CaseAssignment[]> {
+    // TODO: make this do something better
+    return Promise.resolve([]);
+    // return Promise.resolve(TRIAL_ATTORNEYS);
   },
 };

@@ -3,13 +3,22 @@ import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
+import {
+  isCondition,
+  isConjunction,
+  isPagination,
+  Pagination,
+  Query,
+  Sort,
+} from '../../../../query/query-builder';
+import { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
 import {
   CamsPaginationResponse,
   DocumentCollectionAdapter,
   ReplaceResult,
   UpdateResult,
 } from '../../../../use-cases/gateways.types';
+import { toMongoAggregate } from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { MongoServerError } from 'mongodb';
@@ -21,6 +30,74 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   constructor(moduleName: string, collection: CollectionHumble<T>) {
     this.collectionHumble = collection;
     this.moduleName = moduleName + '_ADAPTER';
+  }
+
+  // TODO: prototype code here. Trying to create a single entry point for find that can take query builder or query pipeline arguments.
+  public async find2(query: Query<T> | Pipeline) {
+    if (isPipeline(query)) {
+      if (isPaginate(query.stages[query.stages.length - 1])) {
+        return this._paginate(query);
+      } else {
+        return this._aggregate(query);
+      }
+    } else if (isCondition(query) || isConjunction(query)) {
+      return this._find(query);
+    } else {
+      throw new Error('Invalid query type');
+    }
+  }
+
+  async _find(query: Query<T>) {
+    const _mongoQuery = toMongoQuery<T>(query);
+  }
+
+  async _paginate<U = T>(pipeline: Pipeline): Promise<CamsPaginationResponse<U>> {
+    const mongoQuery = toMongoAggregate(pipeline);
+    try {
+      // This is the shape we map to.
+      const aggregationItem: CamsPaginationResponse<U> = {
+        metadata: { total: 0 },
+        data: [],
+      };
+
+      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+
+      // TODO: How do we refactor to get the total count?
+      // aggregationItem.metadata.total = await this.collectionHumble.countDocuments();
+
+      for await (const result of aggregationResult) {
+        for (const doc of result.data) {
+          aggregationItem.data.push(doc as CamsItem<U>);
+        }
+      }
+
+      return aggregationItem;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed while querying aggregate pipeline`, {
+        pipeline,
+      });
+    }
+  }
+
+  async _aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
+    const mongoQuery = toMongoAggregate(pipeline);
+    try {
+      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+
+      const data = [];
+      // TODO: see if we can skip the for looping
+      for await (const result of aggregationResult) {
+        for (const doc of result.data) {
+          data.push(doc as CamsItem<U>);
+        }
+      }
+
+      return data;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed while querying aggregate pipeline`, {
+        pipeline,
+      });
+    }
   }
 
   public async paginatedFind(query: Pagination<T>): Promise<CamsPaginationResponse<T>> {

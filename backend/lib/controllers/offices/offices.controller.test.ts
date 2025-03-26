@@ -126,7 +126,7 @@ describe('offices controller tests', () => {
     getOfficeAssignments = jest.fn().mockResolvedValue(assignments);
 
     const officeCode = 'new-york';
-    const subResource = 'assignments';
+    const subResource = 'assignees';
     const camsHttpRequest = mockCamsHttpRequest({ params: { officeCode, subResource } });
     applicationContext.request = camsHttpRequest;
 

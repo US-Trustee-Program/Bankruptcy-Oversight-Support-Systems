@@ -35,8 +35,8 @@ export class OfficesController implements CamsController, CamsTimerController {
       let data;
       if (params.officeCode && params.subResource === 'attorneys') {
         data = await this.useCase.getOfficeAttorneys(context, params.officeCode);
-      } else if (params.officeCode && params.subResource === 'assignments') {
-        data = await this.useCase.getOfficeAssignments(context, params.officeCode);
+      } else if (params.officeCode && params.subResource === 'assignees') {
+        data = await this.useCase.getOfficeAssignees(context, params.officeCode);
       } else if (params.officeCode && params.subResource) {
         throw new BadRequestError(MODULE_NAME, {
           message: `Sub resource ${params.subResource} is not supported.`,
