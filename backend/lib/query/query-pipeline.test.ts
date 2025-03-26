@@ -6,7 +6,7 @@ import QueryPipeline, {
   SortedAttribute,
 } from './query-pipeline';
 
-const { orderBy } = QueryPipeline;
+const { sort } = QueryPipeline;
 
 describe('Query Pipeline', () => {
   type Foo = {
@@ -18,8 +18,8 @@ describe('Query Pipeline', () => {
   test('should proxy a list of SortDirection when orderBy is called', () => {
     const attributeFoo: SortedAttribute<Foo> = ['uno', 'ASCENDING'];
     const attributeBar: SortedAttribute<Foo> = ['uno', 'DESCENDING'];
-    expect(orderBy(attributeFoo)).toEqual({ stage: 'SORT', attributes: [attributeFoo] });
-    expect(orderBy(attributeFoo, attributeBar)).toEqual({
+    expect(sort(attributeFoo)).toEqual({ stage: 'SORT', attributes: [attributeFoo] });
+    expect(sort(attributeFoo, attributeBar)).toEqual({
       stage: 'SORT',
       attributes: [attributeFoo, attributeBar],
     });
