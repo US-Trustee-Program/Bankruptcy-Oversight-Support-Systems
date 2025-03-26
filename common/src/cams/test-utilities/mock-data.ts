@@ -489,7 +489,6 @@ function getStaffAssignee(override: Partial<Staff> = {}) {
   return {
     id: randomId(),
     name: faker.person.fullName(),
-    role: getRole(),
     ...override,
   };
 }
