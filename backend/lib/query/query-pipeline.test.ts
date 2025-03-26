@@ -18,15 +18,15 @@ describe('Query Pipeline', () => {
   test('should proxy a list of SortDirection when orderBy is called', () => {
     const attributeFoo: SortedAttribute<Foo> = ['uno', 'ASCENDING'];
     const attributeBar: SortedAttribute<Foo> = ['uno', 'DESCENDING'];
-    expect(orderBy<Foo>(attributeFoo)).toEqual({ stage: 'SORT', attributes: [attributeFoo] });
-    expect(orderBy<Foo>(attributeFoo, attributeBar)).toEqual({
+    expect(orderBy(attributeFoo)).toEqual({ stage: 'SORT', attributes: [attributeFoo] });
+    expect(orderBy(attributeFoo, attributeBar)).toEqual({
       stage: 'SORT',
       attributes: [attributeFoo, attributeBar],
     });
   });
 
   test('isSort', () => {
-    const sort: Sort<Foo> = {
+    const sort: Sort = {
       stage: 'SORT',
       attributes: [['uno', 'ASCENDING']],
     };
