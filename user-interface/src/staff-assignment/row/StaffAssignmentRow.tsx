@@ -34,7 +34,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const openAssignmentsModalButtonRef = useRef<OpenModalButtonRef>(null);
   const { state, actions } = Internal.useStateActions(initialState);
 
-  function handleCallback(props: CallbackProps) {
+  function handleAssignmentModalCallback(props: CallbackProps) {
     actions.updateAssignmentsCallback(props).then(() => {
       modalRef.current?.hide();
     });
@@ -46,7 +46,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       buttonIndex: `${idx}`,
       openProps: {
         bCase: { ...bCase, assignments: state.assignments },
-        callback: handleCallback,
+        callback: handleAssignmentModalCallback,
       },
       modalId,
       modalRef,

@@ -87,7 +87,7 @@ function _StaffAssignmentFilter(
           id="staff-assignees"
           options={assigneesToComboOptions(officeAssignees)}
           onUpdateSelection={handleSelectedAssignees}
-          label="Filter by Assigned Attorneys"
+          label="Assigned Attorney"
           ariaDescription=""
           aria-live="off"
           multiSelect={false}
