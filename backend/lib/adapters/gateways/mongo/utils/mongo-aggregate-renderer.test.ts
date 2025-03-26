@@ -8,7 +8,12 @@ type Foo = {
   three: boolean;
 };
 
-const { pipeline, paginate, match } = QueryPipeline;
+type Bar = {
+  uno: string;
+};
+
+const { pipeline, paginate, match, sort, ascending, descending, join, addFields, additionalField } =
+  QueryPipeline;
 const { and, or, using } = QueryBuilder;
 const doc = using<Foo>();
 
@@ -29,12 +34,35 @@ describe('aggregation query renderer tests', () => {
           ],
         },
       },
+      {
+        $lookup: {
+          from: 'bar',
+          localField: 'uno',
+          foreignField: 'uno',
+          as: 'barDocs',
+        },
+      },
+      {
+        $addFields: {
+          matchingBars: {
+            $filter: {
+              input: 'barDocs',
+              cond: {
+                $and: [],
+              },
+            },
+          },
+        },
+      },
       // {
-      //   $lookup: {},
+      //   $project: {},
       // },
-      // {
-      //   $addFields: {},
-      // },
+      {
+        $sort: {
+          uno: -1,
+          two: 1,
+        },
+      },
       {
         $facet: {
           data: [
@@ -49,6 +77,10 @@ describe('aggregation query renderer tests', () => {
       },
     ];
 
+    const sortUno = descending<Foo>('uno');
+    const sortTwo = ascending<Foo>('two');
+
+    const additionalDocs = 'barDocs';
     const query = pipeline(
       match(
         or(
@@ -60,6 +92,9 @@ describe('aggregation query renderer tests', () => {
           ),
         ),
       ),
+      join<Bar>('bar', 'uno').onto<Foo>('uno').as(additionalDocs),
+      addFields(additionalField('matchingBars', additionalDocs, and())),
+      sort(sortUno, sortTwo),
       paginate(0, 5),
     );
 
