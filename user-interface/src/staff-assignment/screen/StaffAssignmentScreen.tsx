@@ -21,6 +21,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
+  STAFF_ASSIGNMENT_FILTER_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import { Stop } from '@/lib/components/Stop';
 import StaffAssignmentFilter, {
@@ -75,6 +76,7 @@ export const StaffAssignmentScreen = () => {
     });
   }
 
+  const featureFlags = useFeatureFlags();
   const session = LocalStorage.getSession();
   const hasValidPermission = session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
   const hasAssignedOffices = session?.user?.offices && session?.user?.offices.length > 0;
@@ -124,10 +126,14 @@ export const StaffAssignmentScreen = () => {
               showHelpDeskContact
             ></Stop>
           )}
-          <h3>Filters</h3>
-          <section className="staff-assignment-filter-container">
-            <StaffAssignmentFilter onFilterAssigneeChange={handleFilterAssignee} />
-          </section>
+          {featureFlags[STAFF_ASSIGNMENT_FILTER_ENABLED] && (
+            <>
+              <h3>Filters</h3>
+              <section className="staff-assignment-filter-container">
+                <StaffAssignmentFilter onFilterAssigneeChange={handleFilterAssignee} />
+              </section>
+            </>
+          )}
           {showAssignments && (
             <SearchResults
               id="search-results"
