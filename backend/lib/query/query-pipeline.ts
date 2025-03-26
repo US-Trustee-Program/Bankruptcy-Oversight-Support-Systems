@@ -1,6 +1,6 @@
 import { ConditionOrConjunction } from './query-builder';
 
-export type Match<T = unknown> = ConditionOrConjunction<T> & {
+export type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
 };
 
@@ -10,6 +10,31 @@ export type Paginate = {
   skip: number;
 };
 
+export function isPaginate(obj: unknown): obj is Paginate {
+  return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
+}
+
+export type SortedAttribute<T = unknown> = [field: keyof T, direction: 'ASCENDING' | 'DESCENDING'];
+
+export type Sort = {
+  stage: 'SORT';
+  attributes: SortedAttribute<never>[];
+};
+
+export function isSort(obj: unknown): obj is Sort {
+  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
+}
+
+export type Stage = Paginate | Sort | Match;
+
+export type Pipeline = {
+  stages: Stage[];
+};
+
+export function isPipeline(obj: unknown): obj is Pipeline {
+  return typeof obj === 'object' && 'stages' in obj;
+}
+
 function paginate(skip: number, limit: number): Paginate {
   return {
     stage: 'PAGINATE',
@@ -18,46 +43,22 @@ function paginate(skip: number, limit: number): Paginate {
   };
 }
 
-export type SortedAttribute<T = unknown> = [field: keyof T, direction: 'ASCENDING' | 'DESCENDING'];
-
-export type Sort<T = unknown> = {
-  stage: 'SORT';
-  attributes: SortedAttribute<T>[];
-};
-
-export function isSort(obj: unknown): obj is Sort {
-  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
+function orderBy(...attributes: SortedAttribute<never>[]): Sort {
+  return {
+    stage: 'SORT',
+    attributes,
+  };
 }
 
-function orderBy<T = unknown>(...attributes: SortedAttribute<T>[]): Sort<T> {
-  return { stage: 'SORT', attributes };
-}
-
-export function isPaginate(obj: unknown): obj is Paginate {
-  return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
-}
-
-function match<T = unknown>(query: ConditionOrConjunction): Match<T> {
+function match(query: ConditionOrConjunction<never>): Match {
   return {
     ...query,
     stage: 'MATCH',
   };
 }
 
-export type Stage = Paginate | Sort;
-
-export type Pipeline = {
-  stages: (Stage | Match)[];
-};
-
-export function isPipeline(obj: unknown): obj is Pipeline {
-  return typeof obj === 'object' && 'stages' in obj;
-}
-
-function pipeline(...stages: (Stage | Match)[]): Pipeline {
-  return {
-    stages,
-  };
+function pipeline(...stages: Stage[]): Pipeline {
+  return { stages };
 }
 
 const QueryPipeline = {

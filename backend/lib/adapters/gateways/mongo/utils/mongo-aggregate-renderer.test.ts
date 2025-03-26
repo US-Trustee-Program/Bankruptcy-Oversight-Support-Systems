@@ -1,5 +1,6 @@
 import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
+import { toMongoAggregate } from './mongo-aggregate-renderer';
 
 type Foo = {
   uno: string;
@@ -7,9 +8,9 @@ type Foo = {
   three: boolean;
 };
 
+const { pipeline, paginate, match } = QueryPipeline;
 const { and, or, using } = QueryBuilder;
 const doc = using<Foo>();
-const { pipeline, orderBy, paginate, match } = QueryPipeline;
 
 describe('aggregation query renderer tests', () => {
   test('should return paginated aggregation query', () => {
@@ -28,12 +29,12 @@ describe('aggregation query renderer tests', () => {
           ],
         },
       },
-      {
-        $lookup: {},
-      },
-      {
-        $addFields: {},
-      },
+      // {
+      //   $lookup: {},
+      // },
+      // {
+      //   $addFields: {},
+      // },
       {
         $facet: {
           data: [
@@ -59,6 +60,12 @@ describe('aggregation query renderer tests', () => {
           ),
         ),
       ),
+      paginate(0, 5),
     );
+
+    const actual = toMongoAggregate(query);
+    expect(actual).toEqual(expected);
+
+    console.log(JSON.stringify(actual, null, 2));
   });
 });
