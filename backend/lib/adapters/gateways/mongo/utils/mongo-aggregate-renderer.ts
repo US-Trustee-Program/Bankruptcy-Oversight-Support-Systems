@@ -3,13 +3,13 @@ import { isPipeline, Paginate, Pipeline, Sort } from '../../../../query/query-pi
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
 
-export function toMongoSort<T = unknown>(sort: Sort<T>): MongoSort {
+export function toMongoSort(sort: Sort): MongoSort {
   return sort.attributes.reduce(
     (acc, direction) => {
       acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
       return acc;
     },
-    {} as Record<keyof T, 1 | -1>,
+    {} as Record<never, 1 | -1>,
   );
 }
 
