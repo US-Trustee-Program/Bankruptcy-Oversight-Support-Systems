@@ -1,7 +1,10 @@
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
-import { Staff } from '@common/cams/users';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsSession } from '@common/cams/session';
+import { CamsUserReference, Staff } from '@common/cams/users';
 import { forwardRef, useEffect, useState } from 'react';
+import { ResponseBody } from '../../../../common/dist/api/response';
 
 export function assigneesToComboOptions(officeAssignees: Staff[]): ComboOption[] {
   const comboOptions: ComboOption[] = [];
@@ -14,36 +17,67 @@ export function assigneesToComboOptions(officeAssignees: Staff[]): ComboOption[]
   return comboOptions;
 }
 
+export async function getOfficeAssignees(
+  apiFunction: (office: string) => Promise<ResponseBody<Staff[]>>,
+  session: CamsSession,
+): Promise<Staff[]> {
+  const offices = session?.user?.offices;
+  const assigneeMap: Map<string, Staff> = new Map();
+  if (offices) {
+    for (const office of offices) {
+      const assignees = await apiFunction(office.officeCode);
+      assignees.data.forEach((assignee) => {
+        if (!assigneeMap.has(assignee.id)) {
+          assigneeMap.set(assignee.id, assignee);
+        }
+      });
+    }
+  }
+  return Array.from(assigneeMap.values());
+}
+
+export type StaffAssignmentScreenFilter = {
+  assignee: CamsUserReference;
+};
+
 export type StaffAssignmentFilterRef = {
   focusEditButton: (noteId: string) => void;
 };
 
 export interface StaffAssignmentFilterProps {
   id?: string;
-  officeCode: string;
+  onFilterAssigneeChange?: (assignee: Staff) => void;
 }
 
 function _StaffAssignmentFilter(
   props: StaffAssignmentFilterProps,
   _ref: React.Ref<StaffAssignmentFilterRef>,
 ) {
-  const { id, officeCode } = props;
+  const { id, onFilterAssigneeChange } = props;
   const api = useApi2();
   const testId = `staff-assignment-filter${id ? `-${id}` : ''}`;
+  const session = LocalStorage.getSession();
 
   const [officeAssignees, setOfficeAssignees] = useState<Staff[]>([]);
 
-  async function handleSelectedAssignees() {}
-
-  async function handleAssigneesClear() {}
-
-  async function getOfficeAssignees() {
-    const assignees = await api.getOfficeAssignees(officeCode);
-    setOfficeAssignees(assignees.data);
+  async function handleSelectedAssignees(assignees: ComboOption[]) {
+    if (onFilterAssigneeChange && assignees[0]) {
+      const newStaff: CamsUserReference = {
+        id: assignees[0].value,
+        name: assignees[0].label,
+      };
+      onFilterAssigneeChange(newStaff);
+    }
   }
 
   useEffect(() => {
-    getOfficeAssignees();
+    if (session) {
+      getOfficeAssignees(api.getOfficeAssignees, session)
+        .then((assignees) => setOfficeAssignees(assignees))
+        .catch((_e) => {
+          // handle error
+        });
+    }
   }, []);
 
   return (
@@ -52,13 +86,11 @@ function _StaffAssignmentFilter(
         <ComboBox
           id="staff-assignees"
           options={assigneesToComboOptions(officeAssignees)}
-          onClose={handleSelectedAssignees}
-          onPillSelection={handleSelectedAssignees}
-          onUpdateSelection={handleAssigneesClear}
+          onUpdateSelection={handleSelectedAssignees}
           label="Filter by Assigned Attorneys"
-          ariaDescription="Select multiple options. Results will update when the dropdown is closed."
+          ariaDescription=""
           aria-live="off"
-          multiSelect={true}
+          multiSelect={false}
         />
       )}
     </div>

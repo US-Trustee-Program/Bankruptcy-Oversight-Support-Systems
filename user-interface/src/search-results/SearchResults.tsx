@@ -14,9 +14,13 @@ import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
-  if (Object.keys(searchPredicate).length === 0) return false;
+  if (Object.keys(searchPredicate).length === 0) {
+    return false;
+  }
   return Object.keys(searchPredicate).reduce((isIt, key) => {
-    if (['limit', 'offset'].includes(key)) return isIt;
+    if (['limit', 'offset'].includes(key)) {
+      return isIt;
+    }
     return isIt || !!searchPredicate[key as keyof CasesSearchPredicate];
   }, false);
 }
@@ -99,19 +103,25 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   function search() {
-    if (!isValidSearchPredicate(searchPredicate)) return;
+    if (!isValidSearchPredicate(searchPredicate)) {
+      return;
+    }
     resetAlert();
 
     trackSearchEvent(searchPredicate);
     setIsSearching(true);
-    if (onStartSearching) onStartSearching();
+    if (onStartSearching) {
+      onStartSearching();
+    }
     api
       .searchCases(searchPredicate, { includeAssignments: true })
       .then(handleSearchResults)
       .catch(handleSearchError)
       .finally(() => {
         setIsSearching(false);
-        if (onEndSearching) onEndSearching();
+        if (onEndSearching) {
+          onEndSearching();
+        }
       });
   }
 
