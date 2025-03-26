@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import StaffAssignmentScreen from './StaffAssignmentScreen';
 import {
   CasesSearchPredicate,
@@ -16,6 +16,7 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import userEvent from '@testing-library/user-event';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -47,43 +48,26 @@ describe('StaffAssignmentScreen', () => {
     vi.restoreAllMocks();
   });
 
-  describe('Filter specific tests', () => {
-    test('screen should contain staff assignment filters', async () => {
-      renderWithoutProps();
+  test('screen should contain staff assignment filters', async () => {
+    renderWithoutProps();
 
-      const filter = screen.getByTestId('staff-assignment-filter');
-      expect(filter).toBeInTheDocument();
-    });
-
-    test.skip('staff assignment filter should filter results when changed', async () => {
-      /*
-      const mockAssignee = { id: 'guid123', name: 'John Doe' };
-      const handleFilterAssigneeSpy = vi.spyOn(
-        StaffAssignmentScreen.prototype,
-        'handleFilterAssignee',
-      );
-      */
-
-      renderWithoutProps(); // Render the component normally
-
-      /*
-      // Find the StaffAssignmentFilter component and call its onFilterAssigneeChange prop
-      const filterComponent = screen.getByTestId('staff-assignment-filter');
-      act(() => {
-        filterComponent.props.onFilterAssigneeChange(mockAssignee); // Call the callback directly
-      });
-
-      expect(handleFilterAssigneeSpy).toHaveBeenCalledWith(mockAssignee);
-      */
-    });
+    const filter = screen.getByTestId('staff-assignment-filter');
+    expect(filter).toBeInTheDocument();
   });
 
-  test('should render a list of chapter 15 cases for a case assignment manager to review', async () => {
+  test('staff assignment filter should pass valid search predicate to search results component when changed filter is updated', async () => {
+    const expectedAssignments = MockData.getStaffAssignee();
+
+    vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({
+      data: [expectedAssignments],
+    });
+
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       data: MockData.buildArray(MockData.getSyncedCase, 3),
     });
 
     const expectedPredicate: CasesSearchPredicate = {
+      assignments: [expectedAssignments],
       limit: DEFAULT_SEARCH_LIMIT,
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
@@ -99,6 +83,23 @@ describe('StaffAssignmentScreen', () => {
       });
 
     renderWithoutProps();
+
+    let comboBoxExpandButton;
+    await waitFor(() => {
+      comboBoxExpandButton = document.querySelector('#staff-assignees-expand');
+      expect(comboBoxExpandButton).toBeInTheDocument();
+    });
+
+    await userEvent.click(comboBoxExpandButton!);
+
+    let assigneeItem;
+    await waitFor(() => {
+      assigneeItem = screen.getByTestId('staff-assignees-option-item-0');
+      expect(assigneeItem).toBeInTheDocument();
+    });
+
+    await userEvent.click(assigneeItem!);
+    await userEvent.click(document.body);
 
     expect(SearchResults).toHaveBeenCalledWith(
       {

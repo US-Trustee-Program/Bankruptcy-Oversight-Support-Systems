@@ -211,6 +211,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: MockData.buildArray(MockData.getAttorneyUser, 5),
     };
+  } else if (path.match(/\/offices\/.*\/assignees/)) {
+    response = {
+      data: MockData.buildArray(MockData.getStaffAssignee, 5),
+    };
   } else if (path.match(/\/offices/)) {
     response = {
       data: MOCKED_USTP_OFFICES_ARRAY,
