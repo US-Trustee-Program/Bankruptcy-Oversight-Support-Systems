@@ -1,6 +1,7 @@
 import { Sort as MongoSort } from 'mongodb';
 import { isPipeline, Paginate, Pipeline, Sort } from '../../../../query/query-pipeline';
 import { toMongoQuery } from './mongo-query-renderer';
+import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
 
 export function toMongoSort<T = unknown>(sort: Sort<T>): MongoSort {
   return sort.attributes.reduce(
@@ -25,10 +26,11 @@ function toMongoPaginatedFacet(paginate: Paginate) {
   };
 }
 
-export function toMongoAggregate(pipeline: Pipeline) {
+export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
   if (!isPipeline(pipeline)) {
     throw new Error('Invalid pipeline');
   }
+
   return pipeline.stages.map((stage) => {
     if (stage.stage === 'SORT') {
       return { $sort: toMongoSort(stage) };
