@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { StaffAssignmentScreen } from './StaffAssignmentScreen';
+import StaffAssignmentScreen from './StaffAssignmentScreen';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -53,6 +53,28 @@ describe('StaffAssignmentScreen', () => {
 
       const filter = screen.getByTestId('staff-assignment-filter');
       expect(filter).toBeInTheDocument();
+    });
+
+    test.skip('staff assignment filter should filter results when changed', async () => {
+      /*
+      const mockAssignee = { id: 'guid123', name: 'John Doe' };
+      const handleFilterAssigneeSpy = vi.spyOn(
+        StaffAssignmentScreen.prototype,
+        'handleFilterAssignee',
+      );
+      */
+
+      renderWithoutProps(); // Render the component normally
+
+      /*
+      // Find the StaffAssignmentFilter component and call its onFilterAssigneeChange prop
+      const filterComponent = screen.getByTestId('staff-assignment-filter');
+      act(() => {
+        filterComponent.props.onFilterAssigneeChange(mockAssignee); // Call the callback directly
+      });
+
+      expect(handleFilterAssigneeSpy).toHaveBeenCalledWith(mockAssignee);
+      */
     });
   });
 
