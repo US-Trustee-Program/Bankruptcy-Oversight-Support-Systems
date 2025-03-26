@@ -11,6 +11,7 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import UsersHelpers from '../users/users.helpers';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -104,8 +105,20 @@ describe('offices use case tests', () => {
 
   test('should return assigned attorneys for office', async () => {
     const useCase = new OfficesUseCase();
-    const expected = [MockData.getCamsUserReference()];
-    const repoSpy = jest.fn().mockResolvedValue(expected);
+    const attorneys = MockData.buildArray(MockData.getAttorneyUser, 5);
+    const assignments = [];
+    attorneys.forEach((attorney) => {
+      assignments.push(
+        ...MockData.buildArray(
+          () => MockData.getAttorneyAssignment({ name: attorney.name, userId: attorney.id }),
+          5,
+        ),
+      );
+    });
+    const expected = attorneys.map((attorney) => {
+      return getCamsUserReference(attorney);
+    });
+    const repoSpy = jest.fn().mockResolvedValue(assignments);
     jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
       return {
         release: () => {},
@@ -119,7 +132,7 @@ describe('offices use case tests', () => {
     });
 
     const officeCode = 'new-york';
-    const actual = await useCase.getOfficeAssignments(applicationContext, officeCode);
+    const actual = await useCase.getOfficeAssignees(applicationContext, officeCode);
     expect(actual).toEqual(expected);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
   });

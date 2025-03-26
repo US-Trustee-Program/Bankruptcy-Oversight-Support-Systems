@@ -9,6 +9,7 @@ import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.ty
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'OFFICES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -92,8 +93,8 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  async getOfficeAssignments(_officeCode: string): Promise<CamsUserReference[]> {
-    // TODO: Query the assigmnents collection for the unique set of attorneys assigned to the office's cases.
+  async getOfficeAssignments(_officeCode: string): Promise<CaseAssignment[]> {
+    // TODO: Query the assignments collection for the unique set of attorneys assigned to the office's cases.
 
     // const doc = using<OfficeStaff>();
     // const query = and(

@@ -1,5 +1,5 @@
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
+import { AttorneyUser, CamsUserReference, Staff } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   getOfficesGateway,
@@ -12,6 +12,7 @@ import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -45,12 +46,23 @@ export class OfficesUseCase {
     return await repository.getOfficeAttorneys(officeCode);
   }
 
-  public async getOfficeAssignments(
+  public async getOfficeAssignees(
     context: ApplicationContext,
     officeCode: string,
   ): Promise<Staff[]> {
     const repository = getOfficesRepository(context);
-    return await repository.getOfficeAssignments(officeCode);
+    const assignments = await repository.getOfficeAssignments(officeCode);
+    const assignees: Map<string, Staff> = assignments.reduce((acc, assignment) => {
+      const userRef: CamsUserReference = {
+        id: assignment.userId,
+        name: assignment.name,
+      };
+      if (!acc.has(userRef.id)) {
+        acc.set(userRef.id, userRef);
+      }
+      return acc;
+    }, new Map<string, Staff>());
+    return Array.from(assignees.values());
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
