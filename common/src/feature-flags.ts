@@ -14,4 +14,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'consolidations-enabled': true,
   'case-notes-enabled': true,
   'privileged-identity-management': true,
+  'staff-assignment-filter-enabled': true,
 };

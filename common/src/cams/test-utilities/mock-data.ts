@@ -39,6 +39,7 @@ import {
   CamsUser,
   CamsUserReference,
   CamsUserGroup,
+  Staff,
 } from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
@@ -484,6 +485,14 @@ function getDocketEntry(override: Partial<CaseDocketEntry> = {}): CaseDocketEntr
   };
 }
 
+function getStaffAssignee(override: Partial<Staff> = {}) {
+  return {
+    id: randomId(),
+    name: faker.person.fullName(),
+    ...override,
+  };
+}
+
 function getDebtorAttorney(override: Partial<DebtorAttorney> = {}): DebtorAttorney {
   return {
     name: faker.person.fullName(),
@@ -746,6 +755,7 @@ export const MockData = {
   randomOffice,
   randomSsn,
   randomUstpOffice,
+  getStaffAssignee,
   getAttorneyAssignment,
   getCaseNote,
   getCaseNoteDeletion,
