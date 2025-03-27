@@ -1,4 +1,10 @@
-import { isValidDateString, sortDates, sortDatesReverse } from './date-helper';
+import {
+  getTodaysIsoDate,
+  isInvalidDate,
+  isValidDateString,
+  sortDates,
+  sortDatesReverse,
+} from './date-helper';
 
 describe('date helper tests', () => {
   test('should sort dates newest first', () => {
@@ -33,5 +39,22 @@ describe('date helper tests', () => {
     expect(isValidDateString('01/01/2024')).toBeFalsy();
 
     expect(isValidDateString('2024-01-01')).toBeTruthy();
+  });
+
+  test('should succeed for valid date', () => {
+    const today = new Date();
+    expect(isInvalidDate(today)).toEqual(false);
+  });
+
+  test('should fail for invalid date', () => {
+    const today = new Date('nonsense');
+    expect(isInvalidDate(today)).toEqual(true);
+  });
+
+  test("should get today's date", () => {
+    // TODO: mock new Date()???
+    const expected = new Date().toISOString().split('T')[0];
+    const actual = getTodaysIsoDate();
+    expect(actual).toEqual(expected);
   });
 });

@@ -14,6 +14,9 @@ import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { CamsRole } from '@common/cams/roles';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 
 const testOffices: CourtDivisionDetails[] = [
   {
@@ -59,6 +62,7 @@ const suggestedCases = MockData.buildArray(MockData.getCaseSummary, 2);
 const caseSummaryError = new Error('Case summary not found for case ID.');
 
 const mockErrorMessage = 'Some mock error';
+const emptySuggestedCasesId = 'button-radio-case-not-listed-radio-button-click-target';
 
 async function waitForLoadToComplete(orderId: string) {
   const testId = `loading-spinner-${orderId}-suggestions`;
@@ -107,7 +111,7 @@ async function fillCaseNotListedForm(
     expect(caseTable).toBeInTheDocument();
   });
 
-  const radio = screen.getByTestId('suggested-cases-radio-empty');
+  const radio = screen.getByTestId(emptySuggestedCasesId);
   fireEvent.click(radio);
 
   const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
@@ -152,6 +156,10 @@ describe('SuggestedTransferCases component', () => {
   }
 
   beforeEach(async () => {
+    testingUtilities.setUser({
+      roles: [CamsRole.DataVerifier],
+      offices: MOCKED_USTP_OFFICES_ARRAY,
+    });
     vi.stubEnv('CAMS_PA11Y', 'true');
     order = MockData.getTransferOrder();
   });
@@ -188,7 +196,7 @@ describe('SuggestedTransferCases component', () => {
       const description = screen.getByTestId('suggested-cases-found');
       expect(description).toBeInTheDocument();
       expect(description).toHaveTextContent(
-        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and enter the new case number.',
+        'Select the new case from the list below. If the case is not listed, select "case not listed" and enter the new court division and case number.',
       );
     });
   });
@@ -218,7 +226,7 @@ describe('SuggestedTransferCases component', () => {
       expect(caseTable).toBeInTheDocument();
     });
 
-    const radio = screen.getByTestId('suggested-cases-radio-0');
+    const radio = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
     fireEvent.click(radio);
 
     expect(onCaseSelection).toHaveBeenCalledWith(expect.objectContaining({ ...suggestedCases[0] }));
@@ -264,12 +272,12 @@ describe('SuggestedTransferCases component', () => {
     ref.current?.cancel();
 
     suggestedCases.forEach((_, idx) => {
-      const radioBtn = screen.getByTestId(`suggested-cases-radio-${idx}`);
+      const radioBtn = screen.getByTestId(`radio-suggested-cases-checkbox-${idx}`);
       expect(radioBtn).not.toBeChecked();
     });
 
     await waitFor(() => {
-      const radioBtn = screen.getByTestId('suggested-cases-radio-empty');
+      const radioBtn = screen.getByTestId(emptySuggestedCasesId);
       expect(radioBtn).not.toBeChecked();
     });
 
@@ -335,7 +343,7 @@ describe('SuggestedTransferCases component', () => {
       expect(caseTable).toBeInTheDocument();
     });
 
-    const radio = screen.getByTestId('suggested-cases-radio-empty');
+    const radio = screen.getByTestId(emptySuggestedCasesId);
     fireEvent.click(radio);
 
     const input = findCaseNumberInput(order.id);

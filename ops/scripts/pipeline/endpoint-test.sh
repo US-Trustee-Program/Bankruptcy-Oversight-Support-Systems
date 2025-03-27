@@ -2,7 +2,7 @@
 
 # Title:        endpoint-test.sh
 # Description:  Verify 200 response from frontend and backend
-# Usage:        ./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix
+# Usage:        ./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName
 #
 # Exitcodes
 # ==========
@@ -18,22 +18,17 @@ isLocalRun=''
 while [[ $# -gt 0 ]]; do
   case $1 in
   -h | --help)
-    echo "./endpoint-test.sh --webappName webappName --apiName apiName --slot slotName --hostSuffix hostSuffix"
+    echo "./endpoint-test.sh --webappName webappName --apiFunctionName apiFunctionName --slot slotName"
     exit 0
     ;;
 
-  --apiName)
+  --apiFunctionName)
     api_name="${2}"
     shift 2
     ;;
 
   --webappName)
     webapp_name="${2}"
-    shift 2
-    ;;
-
-  --hostSuffix)
-    host_suffix="${2}"
     shift 2
     ;;
 
@@ -51,7 +46,6 @@ while [[ $# -gt 0 ]]; do
     isLocalRun="true"
     api_name=""
     webapp_name=""
-    host_suffix=""
     shift
     ;;
   *)
@@ -62,8 +56,8 @@ done
 
 webStatusCode=""
 apiStatusCode=""
-targetApiURL="https://${api_name}.azurewebsites${host_suffix}/api/healthcheck"
-targetWebAppURL="https://${webapp_name}.azurewebsites${host_suffix}"
+targetApiURL="https://${api_name}.azurewebsites.us/api/healthcheck"
+targetWebAppURL="https://${webapp_name}.azurewebsites.us"
 
 if [[ ${slot_name} == "staging" ]]; then
   targetApiURL="${targetApiURL}?x-ms-routing-name=${slot_name}"

@@ -4,9 +4,12 @@ import { getCamsUserReference } from './session';
 export type Auditable = {
   updatedOn: string;
   updatedBy: CamsUserReference;
+  createdOn?: string;
+  createdBy?: CamsUserReference;
 };
 
 export const SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'SYSTEM', name: 'SYSTEM' };
+export const ACMS_SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'ACMS', name: 'ACMS' };
 
 /**
  * Decorates and returns the record with the Auditable properties. Any necessary overriding of the properties must be

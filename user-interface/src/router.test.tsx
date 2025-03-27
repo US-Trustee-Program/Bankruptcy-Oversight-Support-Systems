@@ -27,7 +27,7 @@ describe('App Router Tests', () => {
     expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
   });
 
-  test('should render Not Found 404 page when an invalid URL is supplied', async () => {
+  test('should render My Cases page when an invalid URL is supplied', async () => {
     const badRoute = '/some/bad/route';
 
     // use <MemoryRouter> when you want to manually control the history
@@ -39,7 +39,7 @@ describe('App Router Tests', () => {
 
     // verify navigation to "no match" route
     await waitFor(() => {
-      expect(screen.getByText(/404 - Not Found/i)).toBeInTheDocument();
+      expect(document.querySelector('h1')).toHaveTextContent('My Cases');
     });
   });
 });

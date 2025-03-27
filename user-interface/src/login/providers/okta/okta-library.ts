@@ -1,6 +1,9 @@
 import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 import LocalStorage from '@/lib/utils/local-storage';
 import { addApiBeforeHook } from '@/lib/models/api';
+import { nowInSeconds } from '@common/date-helper';
+import Api2 from '@/lib/models/api2';
+import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
 const SAFE_LIMIT = 2700;
 
@@ -9,16 +12,16 @@ export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
 }
 
 export function getCamsUser(oktaUser: UserClaims | null) {
-  // TODO: We need to decide which claim we map to the CamsUser.id
   return { id: oktaUser?.sub ?? 'UNKNOWN', name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
 }
 
 export async function refreshOktaToken(oktaAuth: OktaAuth) {
-  const now = Math.floor(Date.now() / 1000);
+  const now = nowInSeconds();
   const session = LocalStorage.getSession();
   if (!session) return;
 
   const expiration = session.expires;
+  // THIS IS SUS....
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
@@ -26,6 +29,7 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
     if (isTokenBeingRefreshed === undefined || isTokenBeingRefreshed) {
       return;
     } else if (!isTokenBeingRefreshed) {
+      // THIS IS SUS....
       const theTime = Math.floor(Math.random() * 15);
       setTimeout(() => refreshTheToken(oktaAuth), theTime);
     }
@@ -43,9 +47,7 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
     const oktaUser = await oktaAuth.getUser();
     if (accessToken) {
       const jwt = oktaAuth.token.decode(accessToken);
-      // TODO: THIS REFRESH IS NOT "AUGMENTED". WE NEED TO CALL THE /me ENDPOINT.
-      // Map Okta user information to CAMS user
-      // TODO: This is the first of two calls to getUser, but this response is not the one we use. The api returns user details with the /me endpoint. Just skip this call??
+      // Set the skeleton of a CamsSession object in local storage for the API.
       LocalStorage.setSession({
         provider: 'okta',
         accessToken,
@@ -53,6 +55,13 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
         expires: jwt.payload.exp ?? 0,
         issuer: jwt.payload.iss ?? '',
       });
+
+      // Then call the /me endpoint to cache the Okta session on the API side and
+      // and get the full CamsSession with CAMS-specific user detail not available
+      // from Okta.
+      const me = await Api2.getMe();
+      LocalStorage.setSession(me.data);
+      initializeSessionEndLogout(me.data);
     }
   } catch {
     // failed to renew access token.

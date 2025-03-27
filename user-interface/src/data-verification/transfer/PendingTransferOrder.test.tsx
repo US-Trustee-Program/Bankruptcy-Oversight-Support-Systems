@@ -11,6 +11,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
+import userEvent from '@testing-library/user-event';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -113,7 +114,7 @@ describe('PendingTransferOrder component', () => {
 
       let case0;
       await waitFor(() => {
-        case0 = screen.getByTestId('suggested-cases-radio-0');
+        case0 = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
         expect(case0).toBeInTheDocument();
       });
 
@@ -122,7 +123,7 @@ describe('PendingTransferOrder component', () => {
 
       if (!case0) throw Error();
 
-      fireEvent.click(case0);
+      await userEvent.click(case0);
 
       await waitFor(() => {
         expect(approveButton).toBeEnabled();
@@ -134,7 +135,7 @@ describe('PendingTransferOrder component', () => {
 
       let case0;
       await waitFor(() => {
-        case0 = screen.getByTestId('suggested-cases-radio-0');
+        case0 = screen.getByTestId('button-radio-suggested-cases-checkbox-0-click-target');
         expect(case0).toBeInTheDocument();
       });
 
@@ -143,8 +144,9 @@ describe('PendingTransferOrder component', () => {
 
       if (!case0) throw Error();
 
-      fireEvent.click(case0);
-      expect(case0).toBeChecked();
+      await userEvent.click(case0);
+      const case0RadioBtn = screen.getByTestId('radio-suggested-cases-checkbox-0');
+      expect(case0RadioBtn).toBeChecked();
 
       await waitFor(() => {
         expect(approveButton).toBeEnabled();
@@ -230,7 +232,7 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {
-      const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockImplementation(() => {
+      const patchSpy = vi.spyOn(Api2, 'patchTransferOrderApproval').mockImplementation(() => {
         return Promise.resolve();
       });
       vi.spyOn(Api2, 'getCaseSummary')
@@ -283,7 +285,7 @@ describe('PendingTransferOrder component', () => {
     });
 
     test('should properly reject when API returns a successful response and a reason is supplied', async () => {
-      const patchSpy = vi.spyOn(Api2, 'patchTransferOrder').mockImplementation(() => {
+      const patchSpy = vi.spyOn(Api2, 'patchTransferOrderRejection').mockImplementation(() => {
         return Promise.resolve();
       });
       vi.spyOn(Api2, 'getCaseSummary')
@@ -425,7 +427,7 @@ describe('PendingTransferOrder component', () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'patchTransferOrder').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api2, 'patchTransferOrderApproval').mockRejectedValue(new Error(errorMessage));
       vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
         mockGetTransferredCaseSuggestionsEmpty,
       );
@@ -471,7 +473,7 @@ describe('PendingTransferOrder component', () => {
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValueOnce(mockGetCaseSummaryForToCase);
-      vi.spyOn(Api2, 'patchTransferOrder').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api2, 'patchTransferOrderRejection').mockRejectedValue(new Error(errorMessage));
       vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
         mockGetTransferredCaseSuggestionsEmpty,
       );
@@ -566,21 +568,21 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
-    test('should clear radio, remove form, and disable submission button when the Cancel button is clicked', async () => {
+    test('should clear form, and disable submission button when the Cancel button is clicked', async () => {
       vi.spyOn(Api2, 'getCaseSummary')
         .mockResolvedValueOnce(mockGetCaseSummary)
         .mockResolvedValue(mockGetCaseSummaryForToCase);
       vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
         mockGetTransferredCaseSuggestions,
       );
-
+      const testCaseNumber = '23-12345';
       renderWithProps();
       await waitFor(() => {
         const caseTable = document.querySelector('#suggested-cases');
         expect(caseTable).toBeInTheDocument();
       });
 
-      const radio = screen.getByTestId('suggested-cases-radio-empty');
+      const radio = screen.getByTestId('button-radio-case-not-listed-radio-button-click-target');
       fireEvent.click(radio);
       await waitForCaseEntryForm();
 
@@ -598,7 +600,7 @@ describe('PendingTransferOrder component', () => {
         expect(approveButton).toBeDisabled();
       });
 
-      enterCaseNumber(caseIdInput, '23-12345');
+      enterCaseNumber(caseIdInput, testCaseNumber);
 
       let cancelButton: HTMLElement;
       await waitFor(async () => {
@@ -611,7 +613,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitFor(() => {
         caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
-        expect(caseIdInput).not.toBeInTheDocument();
+        expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
       });
     });
 

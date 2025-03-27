@@ -9,42 +9,42 @@ on:
       enableBicepDeployment:
         required: true
         type: string
-      deployVnet:
-        required: true
-        type: string
     outputs:
       stackName:
-        description: "Application name"
+        description: 'Application name'
         value: ${{ jobs.build-info.outputs.stackName }}
       webappName:
-        description: "Expected Web Application name [used for Azure Resource]"
+        description: 'Expected Web Application name [used for Azure Resource]'
         value: ${{ jobs.build-info.outputs.webappName }}
-      apiName:
-        description: ""
-        value: ${{ jobs.build-info.outputs.apiName }}
+      apiFunctionName:
+        description: ''
+        value: ${{ jobs.build-info.outputs.apiFunctionName }}
       azResourceGrpAppEncrypted:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.azResourceGrpNetworkEncrypted }}
       environmentHash:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.environmentHash }}
+      dataflowsFunctionName:
+        description: ''
+        value: ${{ jobs.build-info.outputs.dataflowsFunctionName }}
       slotName:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.slotName }}
-      execVnetDeploy:
-        description: ""
-        value: ${{ jobs.build-info.outputs.execVnetDeploy }}
+      deployVnet:
+        description: ''
+        value: ${{ jobs.build-info.outputs.deployVnet }}
       deployBicep:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.deployBicep }}
       initialDeployment:
-        description: ""
+        description: ''
         value: ${{ jobs.build-info.outputs.initialDeployment }}
       ghaEnvironment:
-        description: ""
+        description: ''
         value: ${{ inputs.environment }}
 
 jobs:
@@ -56,14 +56,15 @@ jobs:
     outputs:
       stackName: ${{ steps.build-info.outputs.stackName }}
       webappName: ${{ steps.build-info.outputs.webappName }}
-      apiName: ${{ steps.build-info.outputs.apiName }}
+      apiFunctionName: ${{ steps.build-info.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ steps.build-info.outputs.dataflowsFunctionName }}
       azResourceGrpAppEncrypted: ${{ steps.rgApp.outputs.out }}
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
-      execVnetDeploy: ${{ steps.build-info.outputs.execVnetDeploy }}
       slotName: ${{ steps.build-info.outputs.slotName }}
       deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
-      initialDeployment: ${{ steps.check-initial-deployment.outputs.initialDeployment }}
+      deployVnet: ${{ steps.check-deployment.outputs.deployVnet }}
+      initialDeployment: ${{ steps.check-deployment.outputs.initialDeployment }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -77,7 +78,7 @@ jobs:
           shortHash="${hash:0:6}"
           echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
           echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -101,22 +102,22 @@ jobs:
           stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ inputs.environment }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
           echo "Stack Name: $stackName"
           webappName="${stackName}-webapp"
-          echo "Webapp Artifact: $webappName"
-          apiName="${stackName}-node-api"
-          echo "Api Artifact: $apiName"
+          echo "Webapp Name: $webappName"
+          apiFunctionName="${stackName}-node-api"
+          echo "Api Function Name: $apiFunctionName"
+          dataflowsFunctionName="${stackName}-dataflows"
+          echo "Data Flows Function Name: $dataflowsFunctionName"
 
           # Deployment flags
           echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
-          execVnetDeploy=${{ inputs.deployVnet=='true' || 'false' }} # Set to true to attempt to create a new virtual network
-          echo "Execute virtual network deployment: ${execVnetDeploy}"
 
           # Expected job output values
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "azResourceGrpNetwork=${{ secrets.AZ_NETWORK_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
           echo "stackName=${stackName}" >> $GITHUB_OUTPUT
           echo "webappName=${webappName}" >> $GITHUB_OUTPUT
-          echo "apiName=${apiName}" >> $GITHUB_OUTPUT
-          echo "execVnetDeploy=${execVnetDeploy}" >> $GITHUB_OUTPUT
+          echo "apiFunctionName=${apiFunctionName}" >> $GITHUB_OUTPUT
+          echo "dataflowsFunctionName=${dataflowsFunctionName}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
       - uses: cloudposse/github-action-secret-outputs@main
@@ -140,12 +141,23 @@ jobs:
           op: decode
           in: ${{ steps.rgApp.outputs.out }}
 
-      - name: Check Initial Deployment
-        id: check-initial-deployment
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgNetworkDecode
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ steps.rgNetwork.outputs.out }}
+
+      - name: Check Vnet && Initial Deployment
+        id: check-deployment
         run: |
-          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiName }})
+          initialDeployment=$(./ops/scripts/pipeline/check-for-environment.sh --resource-group ${{ steps.rgAppDecode.outputs.out }} --webappName ${{ steps.build-info.outputs.webappName }} --apiName ${{ steps.build-info.outputs.apiFunctionName }})
           echo "initialDeployment=${initialDeployment}" >> $GITHUB_OUTPUT
           echo "Initial Deployment: ${initialDeployment}"
+
+          deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "${{ vars.AZ_NETWORK_VNET_NAME }}" --is-initial-deployment "${initialDeployment}")
+          echo "deployVnet=${deployVnet}" >> $GITHUB_OUTPUT
+          echo "Deploy Vnet: ${deployVnet}"
 
       - name: Check Bicep Deployment
         id: check-bicep

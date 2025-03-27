@@ -41,7 +41,7 @@ mermaid_file="./structurizr-FunctionsAPIwithWebapp.mmd"
   cat "$mermaid_file"
   printf "\n\`\`\`\n"
 } > temp_file.md
-mv temp_file.md ../docs/architecture/diagrams/cams-webapp-with-functions-api.md
+mv temp_file.md ../docs/architecture/diagrams/cams-webapp-with-function-apps-api.md
 
 ## CAMS Webapp Components
 mermaid_file="./structurizr-CAMSWebapp.mmd"
@@ -59,6 +59,6 @@ mermaid_file="./structurizr-FunctionsAPI.mmd"
   cat "$mermaid_file"
   printf "\n\`\`\`\n"
 } > temp_file.md
-mv temp_file.md ../docs/architecture/diagrams/cams-functions-api-components.md
+mv temp_file.md ../docs/architecture/diagrams/cams-function-apps-api-components.md
 
 popd || exit

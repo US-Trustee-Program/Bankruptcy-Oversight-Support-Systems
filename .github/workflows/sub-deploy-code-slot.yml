@@ -15,7 +15,10 @@ on:
       webappName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      dataflowsFunctionName:
         required: true
         type: string
       azResourceGrpAppEncrypted:
@@ -40,8 +43,9 @@ jobs:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       environmentHash: ${{ inputs.environmentHash }}
       stackName: ${{ inputs.stackName }}
-      webAppName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      webappName: ${{ inputs.webappName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
     secrets: inherit # pragma: allowlist secret
 
@@ -56,7 +60,7 @@ jobs:
         with:
           name: ${{ inputs.webappName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -77,7 +81,7 @@ jobs:
           -n ${{ inputs.webappName }} \
           --slotName ${{ inputs.slotName }}
 
-  deploy-service-slot:
+  deploy-api-slot:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
@@ -86,9 +90,9 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4.1.7
         with:
-          name: ${{ inputs.apiName }}-build
+          name: ${{ inputs.apiFunctionName }}-build
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -100,22 +104,56 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
-      - name: Deploy Azure Functions slot backend
-        id: deploy-backend-slot-step
+      - name: Deploy Azure Function API slot
+        id: deploy-api-slot-step
         run: |
           ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
           -g ${{ steps.rgApp.outputs.out }} \
-          -n ${{ inputs.apiName }} \
-          --src ./${{ inputs.apiName }}.zip \
+          -n ${{ inputs.apiFunctionName }} \
+          --src ./${{ inputs.apiFunctionName }}.zip \
+          --slotName ${{ inputs.slotName }}
+
+  deploy-dataflows-slot:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ghaEnvironment }}
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v4.1.7
+        with:
+          name: ${{ inputs.dataflowsFunctionName }}-build
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      - name: Deploy Azure Function Data Flows Function slot
+        id: deploy-dataflows-slot-step
+        run: |
+          az functionapp start -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }}
+
+          ./ops/scripts/pipeline/slots/az-func-slot-deploy.sh \
+          -g ${{ steps.rgApp.outputs.out }} \
+          -n ${{ inputs.dataflowsFunctionName }} \
+          --src ./${{ inputs.dataflowsFunctionName }}.zip \
           --slotName ${{ inputs.slotName }}
 
   endpoint-test-application-slot:
-    needs: [deploy-webapp-slot, deploy-service-slot]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -124,10 +162,10 @@ jobs:
 
   execute-e2e-test:
     needs:
-      [deploy-webapp-slot, deploy-service-slot, endpoint-test-application-slot]
+      [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, endpoint-test-application-slot]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       slotName: ${{ inputs.slotName }}
       webappName: ${{ inputs.webappName }}
       stackName: ${{ inputs.stackName }}
@@ -140,13 +178,13 @@ jobs:
   swap-webapp-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
       slotName: ${{ inputs.slotName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -164,13 +202,13 @@ jobs:
   swap-nodeapi-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-service-slot, execute-e2e-test]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       slotName: ${{ inputs.slotName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -182,31 +220,59 @@ jobs:
           in: ${{ inputs.azResourceGrpAppEncrypted }}
       - name: Swap Deployment Slot
         run: |
-          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
-          az webapp traffic-routing clear --name ${{ env.apiName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ env.apiFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing clear --name ${{ env.apiFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+
+  swap-dataflows-app-deployment-slot:
+    if: ${{ inputs.initialDeployment != 'true' }}
+    runs-on: ubuntu-latest
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
+    environment: ${{ inputs.ghaEnvironment }}
+    env:
+      slotName: ${{ inputs.slotName }}
+    steps:
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+      - uses: cloudposse/github-action-secret-outputs@main
+        id: rgApp
+        with:
+          secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
+          op: decode
+          in: ${{ inputs.azResourceGrpAppEncrypted }}
+      - name: Swap Deployment Slot
+        run: |
+          az functionapp deployment slot swap --slot ${{ env.slotName }} --name ${{ inputs.dataflowsFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az webapp traffic-routing clear --name ${{ inputs.dataflowsFunctionName }} -g ${{ steps.rgApp.outputs.out }}
+          az functionapp stop -g ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --slot ${{ inputs.slotName }}
 
   endpoint-test-application-post-swap:
-    needs: [swap-nodeapi-deployment-slot, swap-webapp-deployment-slot]
+    needs:
+      [
+        swap-nodeapi-deployment-slot,
+        swap-webapp-deployment-slot,
+        swap-dataflows-app-deployment-slot,
+      ]
     uses: ./.github/workflows/reusable-endpoint-test.yml
     with:
       stackName: ${{ inputs.stackName }}
       webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       branchHashId: ${{ inputs.environmentHash }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
-      slotName: "self"
+      slotName: 'self'
     secrets: inherit # pragma: allowlist secret
-
   enable-access:
     runs-on: ubuntu-latest
     needs: [endpoint-test-application-post-swap]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       webappName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -221,4 +287,5 @@ jobs:
       - name: Enable production slot access
         run: |
           az webapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.webappName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
-          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ env.apiFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true
+          az functionapp config access-restriction add --resource-group ${{ steps.rgApp.outputs.out }} --name ${{ inputs.dataflowsFunctionName }} --rule-name AllowAll --action Allow --ip-address 0.0.0.0/0 --priority 100 1>/dev/null || true

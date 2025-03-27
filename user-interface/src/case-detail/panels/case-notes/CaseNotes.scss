@@ -1,0 +1,54 @@
+@use '../../../styles/abstracts/colors';
+
+.case-notes-panel {
+  margin-left: 2rem;
+
+  .case-notes-form-container {
+    padding-bottom: 2rem;
+  }
+
+  #textarea-note-creation {
+    width: 100%;
+  }
+
+  #searchable-case-notes {
+    list-style-type: none;
+    padding-left: 0;
+    padding-top: 1rem;
+
+    .case-note {
+      padding-left: 0;
+      margin-left: 0;
+      padding-bottom: 2.5rem;
+
+      .case-note-title-and-date {
+        padding-bottom: 1rem;
+
+        .case-note-date {
+          font-style: italic;
+          text-align: right;
+          white-space: nowrap
+        }
+      }
+
+      .case-note-author {
+        padding-top: 0.5rem;
+        font-style: italic;
+      }
+
+      .case-note-toolbar {
+        & button {
+          padding-top: 0.75rem;
+        }
+        .edit-button {
+          margin-right: 2rem;
+        }
+      }
+
+      ::highlight(search-results) {
+        background-color: colors.$yellow-20;
+        color: black;
+      }
+    }
+  }
+}

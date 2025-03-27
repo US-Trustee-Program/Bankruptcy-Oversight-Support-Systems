@@ -15,16 +15,19 @@ on:
       stackName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
         required: true
         type: string
-      webAppName:
+      dataflowsFunctionName:
+        required: true
+        type: string
+      webappName:
         required: true
         type: string
       environmentHash:
         required: true
         type: string
-      execVnetDeploy:
+      deployVnet:
         required: true
         type: string
       slotName:
@@ -45,17 +48,36 @@ jobs:
   deploy-infra:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{ inputs.deployBicep == 'true' }}
+    if:
+      ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{
+      inputs.deployBicep == 'true' }}
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
-      execVnetDeploy: ${{ inputs.execVnetDeploy }}
+      deployVnet: ${{ inputs.deployVnet }}
       deployBranch: ${{ inputs.deployBranch }}
       deployBicep: ${{ inputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
+
+  build-frontend-deployment-artifact:
+    needs: [deploy-infra]
+    name: Build Frontend for deployment
+    uses: ./.github/workflows/reusable-build-frontend.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ inputs.webappName }}
+      environment: ${{ inputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
+      isDeployment: true
 
   deploy-db:
     name: ComosDb
@@ -66,7 +88,8 @@ jobs:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       environmentHash: ${{ inputs.environmentHash }}
-      apiName: ${{ inputs.apiName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-slot-resources:
@@ -75,8 +98,9 @@ jobs:
     needs: [deploy-infra]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
-      webAppName: ${{ inputs.webappName }}
-      apiName: ${{ inputs.apiName }}
+      webappName: ${{ inputs.webappName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}

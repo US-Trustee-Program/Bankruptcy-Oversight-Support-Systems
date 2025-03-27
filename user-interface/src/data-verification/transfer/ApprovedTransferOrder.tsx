@@ -27,16 +27,16 @@ export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
             caseId={order.caseId}
             data-testid={`approved-transfer-original-case-link-${order.caseId}`}
           ></CaseNumber>{' '}
-          from
+          from{' '}
           <strong>
             {order.courtName} ({order.courtDivisionName})
-          </strong>
+          </strong>{' '}
           to{' '}
           <CaseNumber
             caseId={order.newCase!.caseId}
             data-testid={`approved-transfer-new-case-link-${order.newCase!.caseId}`}
           ></CaseNumber>{' '}
-          and court
+          and court{' '}
           <strong>
             {order.newCase?.courtName} ({order.newCase?.courtDivisionName}).
           </strong>

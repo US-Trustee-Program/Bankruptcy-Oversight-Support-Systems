@@ -7,6 +7,7 @@ import { ShowOptionParams } from '@/data-verification/consolidation/Consolidatio
 import { CheckboxState } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
 import { ButtonRef } from '@/lib/components/uswds/Button';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 export function useConsolidationControlsMock(): ConsolidationControls {
   const approveButton = {
@@ -41,6 +42,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const leadCaseDivisionRef = {
     current: {
+      setValue: (options: ComboOption[]) => {},
       getValue: () => [
         {
           value: '',

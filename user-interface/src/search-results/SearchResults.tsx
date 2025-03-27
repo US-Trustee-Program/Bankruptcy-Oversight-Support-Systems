@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseBasics } from '@common/cams/cases';
+import { CaseBasics, SyncedCase } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -14,19 +14,24 @@ import './SearchResults.scss';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
+  if (Object.keys(searchPredicate).length === 0) return false;
   return Object.keys(searchPredicate).reduce((isIt, key) => {
     if (['limit', 'offset'].includes(key)) return isIt;
     return isIt || !!searchPredicate[key as keyof CasesSearchPredicate];
   }, false);
 }
 
+const searchResultsHeaderLabels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
+
 export type SearchResultsHeaderProps = {
   id: string;
+  labels: string[];
 };
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
   bCase: CaseBasics;
+  labels: string[];
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
@@ -52,13 +57,11 @@ export function SearchResults(props: SearchResultsProps) {
   } = props;
   const { reactPlugin } = useAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
-    ...searchPredicateProp,
-  });
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
-  const [searchResults, setSearchResults] = useState<ResponseBody<CaseBasics[]> | null>(null);
+  const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
   const pagination: PaginationModel | undefined = searchResults?.pagination
     ? searchResults?.pagination
@@ -69,7 +72,7 @@ export function SearchResults(props: SearchResultsProps) {
 
   const api = useApi2();
 
-  function handleSearchResults(response: ResponseBody<CaseBasics[]> | void) {
+  function handleSearchResults(response: ResponseBody<SyncedCase[]> | void) {
     if (response) {
       setSearchResults(response);
       setEmptyResponse(response.data.length === 0);
@@ -95,7 +98,7 @@ export function SearchResults(props: SearchResultsProps) {
     setAlertInfo(null);
   }
 
-  async function search() {
+  function search() {
     if (!isValidSearchPredicate(searchPredicate)) return;
     resetAlert();
 
@@ -126,6 +129,7 @@ export function SearchResults(props: SearchResultsProps) {
     search();
   }, [searchPredicate]);
 
+  const totalCount = searchResults?.pagination?.totalCount ?? 0;
   return (
     <div {...otherProps} className="search-results">
       {alertInfo && (
@@ -163,11 +167,18 @@ export function SearchResults(props: SearchResultsProps) {
       )}
       {!isSearching && !emptyResponse && (
         <div>
-          <Table id={id} className="case-list" scrollable="true" uswdsStyle={['striped']}>
-            <Header id={id} />
+          <Table
+            id={id}
+            className="case-list"
+            scrollable="true"
+            uswdsStyle={['striped']}
+            title="search results."
+            caption={`Search yielded ${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'result' : 'results'}.`}
+          >
+            <Header id={id} labels={searchResultsHeaderLabels} />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return <Row bCase={bCase} idx={idx} key={idx} />;
+                return <Row bCase={bCase} labels={searchResultsHeaderLabels} idx={idx} key={idx} />;
               })}
             </TableBody>
           </Table>

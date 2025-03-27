@@ -7,18 +7,35 @@ jobs:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: user-interface
+      artifactname: user-interface
     secrets: inherit # pragma: allowlist secret
 
-  sca-scan-backend:
+  sca-scan-backend-lib:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
-      path: backend/functions
+      path: backend
+      artifactname: backend-lib
+    secrets: inherit # pragma: allowlist secret
+
+  sca-scan-backend-api:
+    uses: ./.github/workflows/reusable-sca-scan.yml
+    with:
+      path: backend/function-apps/api
+      artifactname: backend-api
+    secrets: inherit # pragma: allowlist secret
+
+  sca-scan-backend-dataflows:
+    uses: ./.github/workflows/reusable-sca-scan.yml
+    with:
+      path: backend/function-apps/dataflows
+      artifactname: backend-dataflows
     secrets: inherit # pragma: allowlist secret
 
   sca-scan-common:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       path: common
+      artifactname: common
     secrets: inherit # pragma: allowlist secret
 
   sast-pipeline-scan:
@@ -30,7 +47,7 @@ jobs:
       - name: Package source code for scan
         run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}

@@ -15,20 +15,20 @@ test.describe('Transfer Orders', () => {
   let orderResponseBody: Array<Order>;
   let ordersRequestPromise: Promise<Request>;
   let officesRequestPromise: Promise<Request>;
-
+  let orderResponsePromise;
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
-    const orderResponsePromise = page.waitForResponse(
+    orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
     );
+    await page.goto('/data-verification');
     ordersRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/orders'),
     });
     officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
     });
-
-    await page.goto('/data-verification');
+    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
@@ -66,8 +66,7 @@ test.describe('Transfer Orders', () => {
     const firstOrderId = firstOrder.id;
 
     // Start testing the UI
-    await page.getByTestId('suggested-cases-radio-empty').click();
-
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
     await page.locator(`#court-selection-${orderId}-expand`).click();
     const court = 'manhattan';
     await page.locator(`#court-selection-${orderId}-combo-box-input`).fill(court);
@@ -115,8 +114,6 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId(`button-accordion-cancel-button-${firstOrderId}`).click();
     await expect(page.getByTestId(`validated-cases-row-0`)).not.toBeVisible();
 
-    await page.getByTestId('suggested-cases-radio-empty').click();
-
     const courtInputValue = (
       await page.locator(`#court-selection-${orderId}-combo-box-input`).inputValue()
     ).toString();
@@ -133,9 +130,9 @@ test.describe('Transfer Orders', () => {
     expect(pendingTransferOrder).not.toBeFalsy();
     const orderId = pendingTransferOrder.id;
 
-    // open accordian by order id
+    // open accordion by order id
     await page.getByTestId(`accordion-button-order-list-${orderId}`).click();
-    await page.getByTestId('suggested-cases-radio-empty').click();
+    await page.getByTestId('button-radio-case-not-listed-radio-button-click-target').click();
 
     // fill in inputs
     await page.locator(`#court-selection-${orderId}-expand`).click();
@@ -155,8 +152,13 @@ test.describe('Transfer Orders', () => {
     expect(enteredCaseValue).toBe(caseNumber);
 
     // Action click Cancel
-    page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
-    await expect(page.getByTestId(`new-case-input-${orderId}`)).not.toBeVisible();
+    await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
+    const courtInputValue = await page
+      .locator(`#court-selection-${orderId}-combo-box-input`)
+      .inputValue();
+    const caseNumberInputValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
+    expect(caseNumberInputValue).not.toBeNull();
+    expect(courtInputValue).toEqual('');
   });
 });
 

@@ -1,4 +1,4 @@
-import { httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
+import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import config from '../../configuration/apiConfiguration';
 import { ResponseBody } from '@common/api/response';
@@ -110,6 +110,26 @@ export default class Api {
     }
   }
 
+  public static async delete(path: string, options?: ObjectKeyVal): Promise<ResponseBody | void> {
+    try {
+      await this.executeBeforeHooks();
+      const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
+      const pathStr = Api.createPath(path, apiOptions);
+      const response = await httpDelete({ url: Api.host + pathStr, headers: this.headers });
+      await this.executeAfterHooks(response);
+
+      if (response.ok) {
+        const data = await response.text();
+        return data.length > 1 ? JSON.parse(data) : undefined;
+      } else {
+        const data = await response.json();
+        return Promise.reject(new Error(data.message));
+      }
+    } catch (e) {
+      return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
+    }
+  }
+
   /**
    * ONLY USE WITH OUR OWN API!!!!
    * This function makes assumptions about the responses to PATCH requests that do not handle
@@ -148,7 +168,7 @@ export default class Api {
     path: string,
     body: object,
     options?: ObjectKeyVal,
-  ): Promise<ResponseBody> {
+  ): Promise<ResponseBody | void> {
     try {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
@@ -156,11 +176,11 @@ export default class Api {
       const response = await httpPut({ url: Api.host + pathStr, body, headers: this.headers });
       await this.executeAfterHooks(response);
 
-      const data = await response.json();
-
       if (response.ok) {
-        return data;
+        const data = await response.text();
+        return data.length > 1 ? JSON.parse(data) : undefined;
       } else {
+        const data = await response.json();
         return Promise.reject(new Error(data.message));
       }
     } catch (e: unknown) {

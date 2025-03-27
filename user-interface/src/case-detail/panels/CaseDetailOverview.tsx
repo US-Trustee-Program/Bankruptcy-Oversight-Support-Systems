@@ -43,6 +43,13 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
     openModalButtonRef.current?.focus();
   }
 
+  const isAmbiguousTransferIn =
+    !!caseDetail.petitionCode && ['TI', 'TV'].includes(caseDetail.petitionCode);
+  const isAmbiguousTransferOut = !!caseDetail.transferDate;
+  const isAmbiguousTransfer =
+    caseDetail.transfers?.length === 0 && (isAmbiguousTransferIn || isAmbiguousTransferOut);
+  const isVerifiedTransfer = !!caseDetail.transfers?.length && caseDetail.transfers.length > 0;
+
   return (
     <>
       <div className="grid-row grid-gap-lg">
@@ -294,9 +301,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
         <span className="case-card-list grid-col-6">
           {!!caseDetail.consolidation?.length && caseDetail.consolidation.length > 0 && (
             <>
-              <div>
-                <h3>Consolidation</h3>
-              </div>
+              <h3>Consolidation</h3>
               <div className="consolidation case-card">
                 <h4>{consolidationTypeMap.get(caseDetail.consolidation[0].consolidationType)}</h4>
                 <div>
@@ -336,11 +341,18 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </div>
             </>
           )}
-          {!!caseDetail.transfers?.length && caseDetail.transfers.length > 0 && (
+          {isAmbiguousTransfer && (
             <>
-              <div>
-                <h3>Transferred Case</h3>
-              </div>
+              <h3>Transferred Case</h3>
+              <p data-testid="ambiguous-transfer-text">
+                This case was transfered {isAmbiguousTransferOut ? 'to' : 'from'} another court.
+                Review the docket for further details.
+              </p>
+            </>
+          )}
+          {isVerifiedTransfer && (
+            <>
+              <h3 data-testid="verified-transfer-header">Transferred Case</h3>
               <ul className="usa-list usa-list--unstyled transfers case-card">
                 {caseDetail.transfers
                   ?.sort(sortTransfers)

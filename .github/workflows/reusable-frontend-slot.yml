@@ -6,7 +6,7 @@ on:
       webAppName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -27,7 +27,7 @@ jobs:
     environment: ${{ inputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@v3
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -51,7 +51,7 @@ jobs:
           ./ops/scripts/pipeline/slots/az-slot-web-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --webappName ${{ inputs.webappName }} \
-              --apiName ${{ inputs.apiName }} \
+              --apiFunctionName ${{ inputs.apiFunctionName }} \
               --slotName ${{ inputs.slotName }} \
               --subscription ${{ secrets.AZURE_SUBSCRIPTION }} \
               --network-rg ${{ steps.rgNetwork.outputs.out }} \

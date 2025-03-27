@@ -1,11 +1,19 @@
-import { USTP_OFFICE_DATA_MAP, USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICE_DATA_MAP, MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
 
-export const REGION_02_GROUP_NY = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan');
-export const REGION_02_GROUP_BU = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Buffalo');
-export const REGION_02_GROUP_SE = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_18_Office_Seattle');
-export const REGION_03_GROUP_WL = USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_3_Office_Wilmington');
+export const REGION_02_GROUP_NY = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_2_Office_Manhattan',
+);
+export const REGION_02_GROUP_BU = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_2_Office_Buffalo',
+);
+export const REGION_02_GROUP_SE = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_18_Office_Seattle',
+);
+export const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get(
+  'USTP_CAMS_Region_3_Office_Wilmington',
+);
 
 export type MockUser = {
   sub: string;
@@ -16,7 +24,7 @@ export type MockUser = {
 
 function addSuperUserOffices(user: CamsUser) {
   if (user.roles.includes(CamsRole.SuperUser)) {
-    user.offices = USTP_OFFICES_ARRAY;
+    user.offices = MOCKED_USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }
 }
@@ -30,7 +38,7 @@ export const SUPERUSER = {
     roles: [CamsRole.SuperUser],
     offices: [],
   },
-  hide: true,
+  hide: false,
 };
 
 addSuperUserOffices(SUPERUSER.user);
@@ -42,7 +50,7 @@ export const MockUsers: MockUser[] = [
     user: {
       id: 'manAtty0001',
       name: 'Jessica Pearson',
-      roles: [CamsRole.TrialAttorney],
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
   },
@@ -82,7 +90,7 @@ export const MockUsers: MockUser[] = [
     user: {
       id: 'bert@fake.com',
       name: 'Bert',
-      roles: [CamsRole.DataVerifier],
+      roles: [CamsRole.DataVerifier, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
   },
@@ -102,7 +110,7 @@ export const MockUsers: MockUser[] = [
     user: {
       id: 'manAUST0001',
       name: 'Charlie',
-      roles: [CamsRole.CaseAssignmentManager],
+      roles: [CamsRole.CaseAssignmentManager, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
   },
@@ -124,6 +132,26 @@ export const MockUsers: MockUser[] = [
       name: 'Emma',
       roles: [CamsRole.CaseAssignmentManager],
       offices: [REGION_03_GROUP_WL],
+    },
+  },
+  {
+    sub: 'unhoused@fake.com',
+    label: 'Unhoused - No Office',
+    user: {
+      id: 'unhoused',
+      name: 'Unhoused',
+      roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
+      offices: [],
+    },
+  },
+  {
+    sub: 'nobody@fake.com',
+    label: 'Nobody - No Role. No Office',
+    user: {
+      id: 'nobody',
+      name: 'Nobody',
+      roles: [],
+      offices: [],
     },
   },
   SUPERUSER,

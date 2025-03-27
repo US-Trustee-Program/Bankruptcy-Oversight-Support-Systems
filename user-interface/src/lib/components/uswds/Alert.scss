@@ -1,3 +1,25 @@
+.usa-alert-container {
+  position: fixed;
+  display: none;
+  z-index: 10;
+  width: 100%;
+}
+
+.usa-alert-container.visible {
+  display: block;
+}
+
+.header-scrolled-out .usa-alert-container:not(.inline-alert) {
+  top: 0px;
+}
+
+.usa-alert {
+  width: 75%;
+  max-width: 800px;
+  margin: 0.5rem auto;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+}
+
 .usa-alert--info .usa-alert__body::before {
   background: transparent;
   background-size: 2rem;
@@ -32,30 +54,12 @@
   mask-image: url(/assets/styles/img/usa-icons/error.svg), linear-gradient(transparent, transparent);
 }
 
-.usa-alert--slim .usa-alert__body::before {
+.usa-alert.usa-alert--slim .usa-alert__body::before {
   background-size: 1.5rem;
 }
 
-.usa-alert-container {
-  position: fixed;
-  display: none;
-  z-index: 10;
-  width: 100%;
-}
-
-.usa-alert-container.visible {
-  display: block;
-}
-
-.header-scrolled-out .usa-alert-container:not(.inline-alert) {
-  top: 0px;
-}
-
-.usa-alert {
-  width: 75%;
-  max-width: 800px;
-  margin: 0.5rem auto;
-  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+.usa-alert.usa-alert--slim .usa-alert__body {
+  padding-left: 3rem;
 }
 
 .usa-alert__unset {

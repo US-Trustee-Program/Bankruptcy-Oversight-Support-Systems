@@ -59,7 +59,20 @@ trap 'rm -f "$TEMP_FILE"' EXIT
 cat ./ops/scripts/utility/outdated-comment.md >> "$TEMP_FILE"
 OUTDATED=false
 
-PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
+
+# Find outdated packages for root level
+npm ci
+npm outdated | sed -e '1d' \
+                    -e 's/  */ | /g' \
+                    -e 's/^/| /' \
+                    -e 's/ $/ |/' >> "$TEMP_FILE"
+# Check the exit status of npm outdated
+if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+  OUTDATED=true
+fi
+
+# Find outdated packages for sub-projects
 for dir in "${PROJECTS[@]}"; do
   pushd "${dir}" || exit
   npm ci

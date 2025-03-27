@@ -5,37 +5,32 @@ concurrency: ${{ github.ref }}-${{ github.workflow }}
 on:
   push:
     paths-ignore:
-      - "docs/**"
-      - "*.md"
-      - "**/*.md"
+      - 'docs/**'
+      - '*.md'
+      - '**/*.md'
     branches-ignore:
-      - "mob/**"
+      - 'mob/**'
   workflow_dispatch:
     inputs:
       deployBranch:
-        description: "deployBranch: Provision Azure resources for development branch and deploy build."
+        description:
+          'deployBranch: Provision Azure resources for development branch and deploy build.'
         required: true
-        default: "false"
+        default: 'false'
         type: choice
         options:
-          - "false"
-          - "true"
-      deployVnet:
-        description: "deployVnet: Enable Vnet creation. False is environment already provisioned"
-        required: true
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
+          - 'false'
+          - 'true'
       enableBicepDeployment:
-        description: "enableBicepDeployment: Execute main.bicep deployment for application component Azure resources"
+        description:
+          'enableBicepDeployment: Execute main.bicep deployment for application component Azure
+          resources'
         required: true
-        default: "false"
+        default: 'false'
         type: choice
         options:
-          - "false"
-          - "true"
+          - 'false'
+          - 'true'
 
 jobs:
   setup:
@@ -45,7 +40,6 @@ jobs:
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
       enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
-      deployVnet: ${{ inputs.deployVnet }}
 
   accessibility-test:
     defaults:
@@ -65,7 +59,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ vars.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
           cache-dependency-path: user-interface/package-lock.json
 
       - name: Install Node dependencies
@@ -88,7 +82,7 @@ jobs:
   unit-test-backend:
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
-      path: backend/functions
+      path: backend
       node-version: ${{ vars.NODE_VERSION }}
 
   unit-test-common:
@@ -109,14 +103,16 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      camsServerHostname: ${{ needs.setup.outputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}
+      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites.us
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
       webappName: ${{ needs.setup.outputs.webappName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
       environment: ${{ needs.setup.outputs.ghaEnvironment }}
       launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
 
   deploy:
     name: Cloud Resource Deployment
@@ -126,21 +122,22 @@ jobs:
         setup,
         build,
         accessibility-test,
-        security-scan,
         unit-test-frontend,
         unit-test-backend,
         unit-test-common,
+        security-scan,
       ]
-    if: ((github.ref == 'refs/heads/main') || (github.ref == 'refs/heads/dependency-updates-auto') || (inputs.deployBranch == 'true'))
+    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ needs.setup.outputs.azResourceGrpNetworkEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      execVnetDeploy: ${{ needs.setup.outputs.execVnetDeploy }}
+      deployVnet: ${{ needs.setup.outputs.deployVnet }}
       slotName: ${{ needs.setup.outputs.slotName }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
       deployBicep: ${{ needs.setup.outputs.deployBicep }}
@@ -154,8 +151,9 @@ jobs:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       stackName: ${{ needs.setup.outputs.stackName }}
-      apiName: ${{ needs.setup.outputs.apiName }}
-      webAppName: ${{ needs.setup.outputs.webappName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}

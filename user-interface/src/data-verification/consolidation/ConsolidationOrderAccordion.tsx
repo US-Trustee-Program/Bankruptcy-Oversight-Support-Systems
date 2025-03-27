@@ -25,6 +25,7 @@ export interface ConsolidationOrderAccordionProps {
   onOrderUpdate: OnOrderUpdate;
   onExpand?: (id: string) => void;
   expandedId?: string;
+  fieldHeaders: string[];
   hidden?: boolean;
 }
 
@@ -38,7 +39,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     props.onExpand,
   );
 
-  const { hidden, statusType, orderType, expandedId } = props;
+  const { hidden, statusType, orderType, expandedId, fieldHeaders } = props;
 
   useEffect(() => {
     useCase.updateSubmitButtonsState();
@@ -55,6 +56,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
 
   const viewModel: ConsolidationViewModel = {
+    accordionFieldHeaders: fieldHeaders,
     approveButton: consolidationControls.approveButton,
     caseTableActions: consolidationControls.caseTableActions,
     clearButton: consolidationControls.clearButton,

@@ -5,7 +5,12 @@ import {
   CaseDetail,
   CaseDocketEntry,
   CaseDocketEntryDocument,
+  CaseNote,
+  CaseNoteDeleteRequest,
+  CaseNoteEditRequest,
   CaseSummary,
+  DxtrCase,
+  SyncedCase,
 } from '../cases';
 import {
   ConsolidationOrder,
@@ -28,14 +33,23 @@ import {
 import { CaseAssignment } from '../assignments';
 import { ResponseBody } from '../../api/response';
 import { Action, ResourceActions } from '../actions';
-import { AttorneyUser, CamsUser, CamsUserReference } from '../users';
+import {
+  AttorneyUser,
+  PrivilegedIdentityUser,
+  CamsUser,
+  CamsUserReference,
+  CamsUserGroup,
+} from '../users';
 import { CamsSession } from '../session';
 import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
-import { sortDates } from '../../date-helper';
+import { getIsoDate, getTodaysIsoDate, nowInSeconds, sortDates } from '../../date-helper';
 import { CamsRole } from '../roles';
-import { USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
 import { REGION_02_GROUP_NY } from './mock-user';
+import { RoleAndOfficeGroupNames } from '../privileged-identity';
+import { SYSTEM_USER_REFERENCE } from '../auditable';
+import { CaseSyncEvent } from '../../queue/dataflow-types';
 
 type EntityType = 'company' | 'person';
 type BankruptcyChapters = '9' | '11' | '12' | '15';
@@ -83,7 +97,7 @@ function getCourts() {
 }
 
 function getOffices() {
-  return USTP_OFFICES_ARRAY;
+  return MOCKED_USTP_OFFICES_ARRAY;
 }
 
 function randomOffice() {
@@ -96,9 +110,10 @@ function getOffice(courtDivisionCode?: string) {
 }
 
 function randomUstpOffice() {
-  return USTP_OFFICES_ARRAY[randomInt(USTP_OFFICES_ARRAY.length - 1)];
+  return MOCKED_USTP_OFFICES_ARRAY[randomInt(MOCKED_USTP_OFFICES_ARRAY.length - 1)];
 }
 
+// TODO: consider whether this will eventually cause tests to fail
 function randomDate(year = '2024') {
   return someDateAfterThisDate(`${year}-01-01`);
 }
@@ -107,14 +122,14 @@ function someDateAfterThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToAdd = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return someDate.toISOString().split('T')[0];
+  return getIsoDate(someDate);
 }
 
 function someDateBeforeThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
   const daysToSubtract = days || randomInt(1000);
   const someDate = new Date(thisDate.setDate(thisDate.getDate() - daysToSubtract));
-  return someDate.toISOString().split('T')[0];
+  return getIsoDate(someDate);
 }
 
 function randomChapter(chapters: BankruptcyChapters[] = ['9', '11', '12', '15']) {
@@ -211,6 +226,42 @@ function getCaseDetail(
   return { ...caseDetail, _actions, ...override };
 }
 
+function getDxtrCase(options: Options<DxtrCase> = { entityType: 'person', override: {} }) {
+  const { entityType, override } = options;
+  const dxtrCase: DxtrCase = {
+    ...getCaseSummary({ entityType }),
+    closedDate: undefined,
+    dismissedDate: undefined,
+    reopenedDate: undefined,
+  };
+  return { ...dxtrCase, ...override };
+}
+
+function getSyncedCase(options: Options<SyncedCase> = { entityType: 'person', override: {} }) {
+  const { entityType, override } = options;
+  const syncedCase: SyncedCase = {
+    ...getDxtrCase({ entityType }),
+    documentType: 'SYNCED_CASE',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    updatedOn: someDateBeforeThisDate(new Date().toISOString()),
+  };
+  return { ...syncedCase, ...override };
+}
+
+function getSyncedCaseNotMatchingCaseIds(exclude: string[]) {
+  const syncedCase: SyncedCase = {
+    ...getDxtrCase(),
+    documentType: 'SYNCED_CASE',
+    updatedBy: SYSTEM_USER_REFERENCE,
+    updatedOn: someDateBeforeThisDate(getTodaysIsoDate()),
+  };
+  let caseId = randomCaseId();
+  while (exclude.includes(caseId)) {
+    caseId = randomCaseId();
+  }
+  return { ...syncedCase, caseId };
+}
+
 /**
  * @param {T} data There is no simple way to determine what type T is and generate
  *  random data accordingly, so it is required to provide it. We could modify to behave like
@@ -265,6 +316,13 @@ function getPaginatedResponseBody<T>(
       currentPage: override.currentPage ?? 1,
     },
     data,
+  };
+}
+
+function addAction<T>(data: T, actions: Action[]): ResourceActions<T> {
+  return {
+    ...data,
+    _actions: actions,
   };
 }
 
@@ -356,6 +414,11 @@ function getConsolidationReference(
     documentType: 'CONSOLIDATION_FROM',
     orderDate: randomDate(),
     otherCase: getCaseSummary(),
+    updatedBy: options.override?.updatedBy ?? {
+      id: '123',
+      name: faker.person.fullName(),
+    },
+    updatedOn: options.override?.updatedOn ?? someDateAfterThisDate('2024-12-01'),
   };
   return {
     ...reference,
@@ -455,6 +518,55 @@ function getAttorneyAssignment(override: Partial<CaseAssignment> = {}): CaseAssi
   };
 }
 
+function getCaseNote(override: Partial<CaseNote> = {}): CaseNote {
+  const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const user = getCamsUserReference();
+  return {
+    id: randomId(),
+    title: 'Note Title',
+    documentType: 'NOTE',
+    caseId: randomCaseId(),
+    content: 'Test Note',
+    updatedOn: firstDate,
+    updatedBy: user,
+    createdOn: firstDate,
+    createdBy: user,
+    ...override,
+  };
+}
+
+function getCaseNoteDeletionRequest(
+  override: Partial<CaseNoteDeleteRequest> = {},
+): CaseNoteDeleteRequest {
+  const userId = randomId();
+  return {
+    id: crypto.randomUUID(),
+    caseId: randomCaseId(),
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getCaseNoteEditRequest(override: Partial<CaseNoteEditRequest> = {}): CaseNoteEditRequest {
+  const userId = randomId();
+  return {
+    note: MockData.getCaseNote(),
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getCaseNoteDeletion(override: Partial<CaseNote> = {}): Partial<CaseNote> {
+  const archivedOn = new Date().toISOString();
+  return {
+    id: randomId(),
+    caseId: randomCaseId(),
+    updatedBy: getCamsUserReference(),
+    archivedOn,
+    ...override,
+  };
+}
+
 function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
@@ -479,6 +591,10 @@ function getDateBeforeToday() {
   return faker.date.past();
 }
 
+function getDateAfterToday() {
+  return faker.date.future();
+}
+
 function getCamsUserReference(override: Partial<CamsUserReference> = {}): CamsUserReference {
   return {
     id: randomId(),
@@ -497,6 +613,13 @@ function getCamsUser(override: Partial<CamsUser> = {}): CamsUser {
   };
 }
 
+function getCamsUserGroup(): CamsUserGroup {
+  return {
+    id: randomId(),
+    name: faker.lorem.words(4),
+  };
+}
+
 function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   return {
     ...getCamsUser({ roles: [CamsRole.TrialAttorney] }),
@@ -504,13 +627,40 @@ function getAttorneyUser(override: Partial<AttorneyUser> = {}): AttorneyUser {
   };
 }
 
+function getPrivilegedIdentityUser(
+  override: Partial<PrivilegedIdentityUser> = {},
+): PrivilegedIdentityUser {
+  return {
+    claims: {
+      groups: [],
+    },
+    ...getCamsUserReference(),
+    ...override,
+    documentType: 'PRIVILEGED_IDENTITY_USER',
+    expires: override.expires ?? getDateAfterToday().toISOString(),
+  };
+}
+
+function getRole(): string {
+  return 'USTP CAMS ' + faker.lorem.words(2);
+}
+
+function getRoleAndOfficeGroupNames(): RoleAndOfficeGroupNames {
+  const offices = MockData.getOffices().map((office) => office.idpGroupName);
+  return {
+    roles: buildArray(getRole, 5),
+    offices,
+  };
+}
+
 function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
   let offices = [REGION_02_GROUP_NY];
   let roles = [];
-  if (override?.user?.roles.includes(CamsRole.SuperUser)) {
-    offices = USTP_OFFICES_ARRAY;
+  if (override?.user?.roles?.includes(CamsRole.SuperUser)) {
+    offices = MOCKED_USTP_OFFICES_ARRAY;
     roles = Object.values(CamsRole);
   }
+  const expires = override.expires ?? getExpiration();
   return {
     user: {
       id: randomId(),
@@ -518,10 +668,10 @@ function getCamsSession(override: Partial<CamsSession> = {}): CamsSession {
       offices,
       roles,
     },
-    accessToken: getJwt(),
+    accessToken: getJwt({ exp: expires }),
     provider: 'mock',
     issuer: 'http://issuer/',
-    expires: Number.MAX_SAFE_INTEGER,
+    expires,
     ...override,
   };
 }
@@ -548,16 +698,20 @@ function getManhattanTrialAttorneySession(): CamsSession {
   });
 }
 
-function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
-  const SECONDS_SINCE_EPOCH = Math.floor(Date.now() / 1000);
+function getExpiration(): number {
+  const NOW = nowInSeconds();
   const ONE_HOUR = 3600;
   const salt = Math.floor(Math.random() * 10);
 
+  return NOW + ONE_HOUR + salt;
+}
+
+function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   const payload: CamsJwtClaims = {
     iss: 'http://fake.issuer.com/oauth2/default',
     sub: 'user@fake.com',
     aud: 'fakeApi',
-    exp: SECONDS_SINCE_EPOCH + ONE_HOUR + salt,
+    exp: getExpiration(),
     groups: [],
     ...claims,
   };
@@ -572,14 +726,37 @@ function getJwt(claims: Partial<CamsJwtClaims> = {}): string {
   return `${encodedHeader}.${encodedPayload}.${encodedSignature}`;
 }
 
+function getCaseSyncEvent(override: Partial<CaseSyncEvent>) {
+  const defaultEvent: CaseSyncEvent = {
+    type: 'CASE_CHANGED',
+    caseId: randomCaseId(),
+  };
+  return {
+    ...defaultEvent,
+    ...override,
+  };
+}
+
 export const MockData = {
+  addAction,
+  randomId,
   randomCaseId,
+  randomCaseNumber,
+  randomEin,
   randomOffice,
+  randomSsn,
   randomUstpOffice,
   getAttorneyAssignment,
+  getCaseNote,
+  getCaseNoteDeletion,
+  getCaseNoteDeletionRequest,
+  getCaseNoteEditRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,
+  getDxtrCase,
+  getSyncedCase,
+  getSyncedCaseNotMatchingCaseIds,
   getCourts,
   getOffices,
   getParty,
@@ -599,14 +776,22 @@ export const MockData = {
   buildArray,
   getTrialAttorneys,
   getConsolidationHistory,
+  getDateAfterToday,
   getDateBeforeToday,
   getCamsUserReference,
   getCamsUser,
+  getCamsUserGroup,
   getAttorneyUser,
+  getPrivilegedIdentityUser,
+  getRole,
+  getRoleAndOfficeGroupNames,
   getCamsSession,
   getManhattanAssignmentManagerSession,
   getManhattanTrialAttorneySession,
   getJwt,
+  someDateAfterThisDate,
+  someDateBeforeThisDate,
+  getCaseSyncEvent,
 };
 
 export default MockData;

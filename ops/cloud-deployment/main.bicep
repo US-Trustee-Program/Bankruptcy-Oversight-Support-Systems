@@ -19,7 +19,7 @@ param linkVnetIds array = []
 @description('Flag: determines the setup of DNS Zone, Link virtual networks to zone.')
 param deployDns bool = true
 
-param privateDnsZoneName string = 'privatelink.azurewebsites.net'
+param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = networkResourceGroupName
 
@@ -44,26 +44,25 @@ param webappSubnetAddressPrefix string = '10.10.10.0/28'
 ])
 param webappPlanType string = 'P1v2'
 
-param functionName string = '${stackName}-node-api'
+param apiFunctionName string = '${stackName}-node-api'
 
-param functionSubnetName string = 'snet-${functionName}'
+param apiFunctionSubnetName string = 'snet-${apiFunctionName}'
 
-param functionSubnetAddressPrefix string = '10.10.11.0/28'
+param apiFunctionSubnetAddressPrefix string = '10.10.11.0/28'
 
-@description('Plan type to determine functionapp service plan Sku')
-@allowed([
-  'P1v2'
-  'B2'
-  'S1'
-])
-param functionPlanType string = 'P1v2'
+param dataflowsFunctionName string = '${stackName}-dataflows'
 
+param dataflowsSubnetAddressPrefix string = '10.10.13.0/28'
+
+param dataflowsSubnetName string = 'snet-${dataflowsFunctionName}'
+
+param apiFunctionPlanName string = 'plan-${stackName}-functions-api'
+
+param dataflowsFunctionPlanName string = 'plan-${stackName}-functions-dataflows'
 
 
 @description('Name of deployment slot for frontend and backend')
 param slotName string = 'staging'
-
-param azHostSuffix string = '.us'
 
 param sqlServerName string = ''
 
@@ -120,8 +119,9 @@ param camsReactSelectHash string
 
 param cosmosDatabaseName string
 
+@description('Comma delimited list of data flow names to enable.')
+param enabledDataflows string = ''
 
-//TODO: Break out Alerts && Action Group
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -139,9 +139,12 @@ module network './lib//network/ustp-cams-network.bicep' = {
     networkResourceGroupName: networkResourceGroupName
     deployVnet: deployVnet
     location: location
-    functionName: functionName
-    functionSubnetName: functionSubnetName
-    functionSubnetAddressPrefix: functionSubnetAddressPrefix
+    apiFunctionName: apiFunctionName
+    apiFunctionSubnetName: apiFunctionSubnetName
+    apiFunctionSubnetAddressPrefix: apiFunctionSubnetAddressPrefix
+    dataflowsFunctionName: dataflowsFunctionName
+    dataflowsSubnetAddressPrefix: dataflowsSubnetAddressPrefix
+    dataflowsSubnetName: dataflowsSubnetName
     webappName: webappName
     webappSubnetAddressPrefix: webappSubnetAddressPrefix
     webappSubnetName: webappSubnetName
@@ -172,7 +175,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
-      targetApiServerHost: '${functionName}.azurewebsites${azHostSuffix} ${functionName}-${slotName}.azurewebsites${azHostSuffix}' //adding both production and slot hostname to CSP
+      targetApiServerHost: '${apiFunctionName}.azurewebsites.us ${apiFunctionName}-${slotName}.azurewebsites.us' //adding both production and slot hostname to CSP
       ustpIssueCollectorHash: ustpIssueCollectorHash
       camsReactSelectHash: camsReactSelectHash
       webappSubnetId: network.outputs.webappSubnetId
@@ -188,23 +191,22 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     ]
 }
 
-module ustpFunctions 'backend-api-deploy.bicep' = {
+module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: analyticsWorkspaceId
       location: location
-      planType: functionPlanType
-      planName: 'plan-${functionName}'
-      functionName: functionName
+      apiPlanName: apiFunctionPlanName
+      apiFunctionName: apiFunctionName
+      apiFunctionSubnetId: network.outputs.apiFunctionSubnetId
       functionsRuntime: 'node'
-      functionSubnetId: network.outputs.functionSubnetId
       sqlServerName: sqlServerName
       sqlServerResourceGroupName: sqlServerResourceGroupName
       sqlServerIdentityName: sqlServerIdentityName
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
-      corsAllowOrigins: ['https://${webappName}.azurewebsites${azHostSuffix}']
+      apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
       allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
@@ -228,11 +230,43 @@ module ustpFunctions 'backend-api-deploy.bicep' = {
     ]
 }
 
-// main.bicep outputs
-
-resource identityKeyVaultAppConfig 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: idKeyvaultAppConfiguration
-  scope: resourceGroup(kvAppConfigResourceGroupName)
+module ustpDatflowsFunction 'dataflows-resource-deploy.bicep' = {
+  name: '${stackName}-dataflows-module'
+  scope: resourceGroup(appResourceGroup)
+  params: {
+    deployAppInsights: deployAppInsights
+    analyticsWorkspaceId: analyticsWorkspaceId
+    location: location
+    dataflowsPlanName: dataflowsFunctionPlanName
+    apiFunctionName: apiFunctionName
+    dataflowsFunctionName: dataflowsFunctionName
+    dataflowsFunctionSubnetId: network.outputs.dataflowsFunctionSubnetId
+    functionsRuntime: 'node'
+    sqlServerName: sqlServerName
+    sqlServerResourceGroupName: sqlServerResourceGroupName
+    sqlServerIdentityName: sqlServerIdentityName
+    sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
+    dataflowsCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
+    allowVeracodeScan: allowVeracodeScan
+    idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
+    kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
+    virtualNetworkResourceGroupName: networkResourceGroupName
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    actionGroupName: actionGroupName
+    actionGroupResourceGroupName: analyticsResourceGroupName
+    createAlerts: createAlerts
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    loginProviderConfig: loginProviderConfig
+    loginProvider: loginProvider
+    cosmosDatabaseName: cosmosDatabaseName
+    kvAppConfigName: kvAppConfigName
+    isUstpDeployment: isUstpDeployment
+    mssqlRequestTimeout: mssqlRequestTimeout
+    enabledDataflows: enabledDataflows
+  }
+  dependsOn: [
+    network
+  ]
 }
-output keyVaultId string = identityKeyVaultAppConfig.id
-output keyVaultManagedIdName string = identityKeyVaultAppConfig.name

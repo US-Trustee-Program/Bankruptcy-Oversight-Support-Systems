@@ -6,25 +6,31 @@
   "scripts": {
     "clean": "rm -rf node_modules & rm -rf test-results & rm -rf playwright-report",
     "ui": "playwright test --ui",
-    "headless": "playwright test"
+    "headless": "playwright test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts",
+    "load-data:ci": "tsx ./scripts/load-cosmos-data.ts"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@playwright/test": "^1.49.0",
-    "@types/node": "^22.9.1",
-    "@typescript-eslint/eslint-plugin": "^7.18.0",
-    "dotenv": "^16.4.5",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.0",
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.51.1",
+    "@types/node": "^22.13.13",
+    "dotenv": "^16.4.7",
+    "eslint": "^9.23.0",
+    "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-import": "^2.31.0",
-    "eslint-plugin-n": "^16.6.2",
-    "eslint-plugin-prettier": "^5.2.1",
-    "eslint-plugin-promise": "^6.6.0",
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3"
+    "eslint-plugin-n": "^17.17.0",
+    "eslint-plugin-prettier": "^5.2.5",
+    "eslint-plugin-promise": "^7.2.1",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.28.0"
   },
   "dependencies": {
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3"
   }
 }

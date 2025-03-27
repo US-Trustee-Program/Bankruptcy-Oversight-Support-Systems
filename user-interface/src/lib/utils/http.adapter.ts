@@ -1,3 +1,7 @@
+async function runHttp(url: string, init: RequestInit) {
+  return await fetch(url, init);
+}
+
 export async function httpGet(data: { url: string; headers?: object }): Promise<Response> {
   const requestInit: RequestInit = {
     method: 'GET',
@@ -9,7 +13,21 @@ export async function httpGet(data: { url: string; headers?: object }): Promise<
     cache: 'default',
   };
 
-  return await fetch(data.url, requestInit);
+  return await runHttp(data.url, requestInit);
+}
+
+export async function httpDelete(data: { url: string; headers?: object }): Promise<Response> {
+  const requestInit: RequestInit = {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json;charset=UTF-8',
+      ...data.headers,
+    },
+    cache: 'default',
+  };
+
+  return await runHttp(data.url, requestInit);
 }
 
 export async function httpPost(data: {
@@ -27,7 +45,7 @@ export async function httpPost(data: {
     cache: 'default',
   };
 
-  return await fetch(data.url, requestInit);
+  return await runHttp(data.url, requestInit);
 }
 
 export async function httpPatch(data: {
@@ -45,7 +63,7 @@ export async function httpPatch(data: {
     cache: 'default',
   };
 
-  return await fetch(data.url, requestInit);
+  return await runHttp(data.url, requestInit);
 }
 
 export async function httpPut(data: {
@@ -63,5 +81,5 @@ export async function httpPut(data: {
     cache: 'default',
   };
 
-  return await fetch(data.url, requestInit);
+  return await runHttp(data.url, requestInit);
 }

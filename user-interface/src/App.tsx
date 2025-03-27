@@ -6,10 +6,8 @@ import { createContext, useRef } from 'react';
 import { withLDProvider } from 'launchdarkly-react-client-sdk';
 import { getFeatureFlagConfiguration } from './configuration/featureFlagConfiguration';
 import CaseDetailScreen from './case-detail/CaseDetailScreen';
-import NotFound from './error/NotFound';
 import ScrollToTopButton from './lib/components/ScrollToTopButton';
 import DataVerificationScreen from './data-verification/DataVerificationScreen';
-import useFeatureFlags, { TRANSFER_ORDERS_ENABLED } from './lib/hooks/UseFeatureFlags';
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import { MyCasesScreen } from './my-cases/MyCasesScreen';
@@ -17,20 +15,20 @@ import { StaffAssignmentScreen } from './staff-assignment/screen/StaffAssignment
 import './App.scss';
 import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/GlobalAlert';
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
+import { AdminScreen } from './admin/AdminScreen';
+import { GoHome } from './lib/components/GoHome';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
 
 function App() {
   const { reactPlugin } = useAppInsights();
-  const flags = useFeatureFlags();
-
   const globalAlertRef = useRef<GlobalAlertRef>(null);
 
   return (
     <AppInsightsErrorBoundary
       onError={(_error) => {
-        return <h1>Something Went Wrong</h1>;
+        return <h1 data-testid="error-boundary-message">Something Went Wrong</h1>;
       }}
       appInsights={reactPlugin}
     >
@@ -40,15 +38,15 @@ function App() {
         <GlobalAlertContext.Provider value={globalAlertRef}>
           <div className="cams-content">
             <Routes>
+              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
               <Route path="/search" element={<SearchScreen />}></Route>
               <Route path="/staff-assignment" element={<StaffAssignmentScreen />}></Route>
               <Route path="/search/:caseId" element={<SearchScreen />}></Route>
-              <Route path="/my-cases" element={<MyCasesScreen />}></Route>
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
-              {flags[TRANSFER_ORDERS_ENABLED] && (
-                <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
-              )}
-              <Route path="*" element={<NotFound />}></Route>
+              <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
+              <Route path="/admin/*" element={<AdminScreen />}></Route>
+              <Route index element={<GoHome />}></Route>
+              <Route path="*" element={<GoHome />}></Route>
             </Routes>
             <ScrollToTopButton data-testid="scroll-to-top-button" />
           </div>

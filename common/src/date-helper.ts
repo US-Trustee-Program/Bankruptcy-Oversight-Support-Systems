@@ -19,3 +19,30 @@ export function isValidDateString(dateString: string | null | undefined) {
   const evaluation = dateString.match(/[\d]{4}-[\d]{2}-[\d]{2}/);
   return !!evaluation && evaluation.length === 1;
 }
+
+export function isInvalidDate(dateValue: Date) {
+  return dateValue instanceof Date && isNaN(dateValue.getTime());
+}
+
+export function getIsoDate(date: Date) {
+  return date.toISOString().split('T')[0];
+}
+
+export function getTodaysIsoDate() {
+  return getIsoDate(new Date());
+}
+
+export function nowInSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
+export const DateHelper = {
+  getIsoDate,
+  getTodaysIsoDate,
+  isValidDateString,
+  nowInSeconds,
+  sortDates,
+  sortDatesReverse,
+};
+
+export default DateHelper;

@@ -18,11 +18,11 @@ on:
       environmentHash:
         required: true
         type: string
-      execVnetDeploy:
+      deployVnet:
         required: true
         type: string
       deployBranch:
-        default: "false"
+        default: 'false'
         type: string
       deployBicep:
         required: true
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@main
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -79,12 +79,11 @@ jobs:
             --kvAppConfigResourceGroupName ${{secrets.AZURE_RG }} \
             --kvAppConfigName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --cosmosDatabaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
-            --deployVnet ${{ inputs.execVnetDeploy }} \
+            --deployVnet ${{ inputs.deployVnet }} \
             --camsReactSelectHash ${{ secrets.CAMS_REACT_SELECT_HASH }} \
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
-            --createAlerts ${{ inputs.ghaEnvironment != 'Main-Gov' }} \
+            --createAlerts ${{ inputs.ghaEnvironment == 'Main-Gov' }} \
             --deployAppInsights true \
-            --functionPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
@@ -92,5 +91,6 @@ jobs:
             --sqlServerResourceGroupName ${{ secrets.AZURE_RG }} \
             --sqlServerIdentityName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
             --actionGroupName ${{ secrets.AZ_ACTION_GROUP_NAME }} \
-            --oktaUrl ${{ vars.OKTA_URL }} \
-            --mssqlRequestTimeout ${{ vars.MSSQL_REQUEST_TIMEOUT }}
+            --oktaUrl '${{ vars.OKTA_URL }}' \
+            --mssqlRequestTimeout ${{ vars.MSSQL_REQUEST_TIMEOUT }} \
+            --enabledDataflows ${{ vars.CAMS_ENABLED_DATAFLOWS }}

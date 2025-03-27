@@ -7,19 +7,23 @@ const timeoutOption = { timeout: 30000 };
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
+  let officesRequestPromise;
+  let orderResponsePromise;
 
   test.beforeEach(async ({ page }) => {
     // Navigate to Data Verification and capture network responses
-    const orderResponsePromise = page.waitForResponse(
+    await page.goto('/data-verification');
+    orderResponsePromise = page.waitForResponse(
       async (response) => response.url().includes('api/order') && response.ok(),
       timeoutOption,
     );
-    const officesRequestPromise = page.waitForEvent('requestfinished', {
+    officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
       timeout: 30000,
     });
-    await page.goto('/data-verification');
+    await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
     await expect(page.getByTestId('accordion-group')).toBeVisible();
+
     await officesRequestPromise;
 
     const orderResponse = await orderResponsePromise;
@@ -93,7 +97,7 @@ test.describe('Consolidation Orders', () => {
 
     const modalConsolidationText = await page.waitForSelector('.modal-consolidation-type');
     expect(await modalConsolidationText.textContent()).toEqual(
-      'This will confirm the Substantive Consolidation of',
+      'This will confirm the Substantive Consolidation of the following cases.',
     );
   });
 
@@ -144,7 +148,6 @@ test.describe('Consolidation Orders', () => {
       .dispatchEvent('click');
 
     // Action fill form for selecting a lead case not listed in child cases
-    await page.locator('#lead-case-court div').first().click();
 
     await page
       .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
@@ -161,6 +164,10 @@ test.describe('Consolidation Orders', () => {
     );
 
     // Action click validate (approve button)
+    await expect(
+      page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
+    ).toBeEnabled();
+
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
       .click();

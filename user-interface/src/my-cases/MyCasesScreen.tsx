@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
@@ -16,6 +16,7 @@ import './MyCasesScreen.scss';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import ToggleButton from '@/lib/components/cams/ToggleButton/ToggleButton';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -23,15 +24,18 @@ export const MyCasesScreen = () => {
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
   const session = LocalStorage.getSession();
+  const [doShowClosedCases, setDoShowClosedCases] = useState(false);
 
   if (!session || !session.user.offices) {
-    return <>Invalid user expectation</>;
+    // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
+    return <></>;
   }
-
   const searchPredicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     assignments: [getCamsUserReference(session.user)],
+    excludeChildConsolidations: true,
+    excludeClosedCases: !doShowClosedCases,
   };
 
   const infoModalActionButtonGroup = {
@@ -43,6 +47,11 @@ export const MyCasesScreen = () => {
     },
   };
 
+  function handleShowClosedCasesToggle(isActive: boolean) {
+    setDoShowClosedCases(isActive);
+    return isActive;
+  }
+
   return (
     <MainContent className="my-cases case-list">
       <DocumentTitle name="My Cases" />
@@ -53,6 +62,26 @@ export const MyCasesScreen = () => {
             <h1 data-testid="case-list-heading">{screenTitle}</h1>
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </div>
+
+          <h3>Filters</h3>
+          <div className="filters case-status">
+            <div className="case-status-container">
+              <div>
+                <ToggleButton
+                  id="closed-cases-toggle"
+                  ariaLabel={'Show closed cases.'}
+                  tooltipLabel={{
+                    active: 'Closed cases shown.',
+                    inactive: 'Closed cases hidden.',
+                  }}
+                  isActive={false}
+                  label="Closed Cases"
+                  onToggle={handleShowClosedCasesToggle}
+                />
+              </div>
+            </div>
+          </div>
+
           <SearchResults
             id="search-results"
             searchPredicate={searchPredicate}
@@ -66,7 +95,7 @@ export const MyCasesScreen = () => {
       <Modal
         ref={infoModalRef}
         modalId={infoModalId}
-        className="assign-attorney-modal"
+        className="my-cases-info-modal"
         heading="My Cases - Using This Page"
         content={
           <>

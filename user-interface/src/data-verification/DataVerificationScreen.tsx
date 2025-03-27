@@ -17,7 +17,10 @@ import {
   isTransferOrder,
 } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import useFeatureFlags, { CONSOLIDATIONS_ENABLED } from '../lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  CONSOLIDATIONS_ENABLED,
+  TRANSFER_ORDERS_ENABLED,
+} from '../lib/hooks/UseFeatureFlags';
 import { sortByDate } from '@/lib/utils/datetime';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -25,8 +28,8 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { courtSorter } from './dataVerificationHelper';
+import { Stop } from '@/lib/components/Stop';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
@@ -43,17 +46,17 @@ export default function DataVerificationScreen() {
     timeOut: 8,
   });
 
-  const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
+  const hasValidPermissions = session?.user?.roles?.includes(CamsRole.DataVerifier);
+  const hasOffices = session?.user?.offices && session?.user?.offices.length > 0;
+  const showDataVerification = hasValidPermissions && hasOffices;
 
-  const regionNumber = '02';
+  // TODO: This needs to be dynamic!
+  const regionHeader = 'Region 02';
 
   const api = useApi2();
 
-  if (!session?.user?.roles?.includes(CamsRole.DataVerifier)) {
-    globalAlert?.error('Invalid Permissions');
-    return <></>;
-  }
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
 
   async function getOrders() {
     setIsOrderListLoading(true);
@@ -141,8 +144,10 @@ export default function DataVerificationScreen() {
   }
 
   useEffect(() => {
-    getOrders();
-    getCourts();
+    if (showDataVerification) {
+      getOrders();
+      getCourts();
+    }
   }, []);
 
   let visibleItemCount = 0;
@@ -151,6 +156,13 @@ export default function DataVerificationScreen() {
     .filter((o) => {
       if (isConsolidationOrder(o)) {
         return featureFlags[CONSOLIDATIONS_ENABLED];
+      } else {
+        return true;
+      }
+    })
+    .filter((o) => {
+      if (isTransferOrder(o)) {
+        return featureFlags[TRANSFER_ORDERS_ENABLED];
       } else {
         return true;
       }
@@ -171,6 +183,7 @@ export default function DataVerificationScreen() {
           orderType={orderType}
           statusType={orderStatusType}
           onOrderUpdate={handleTransferOrderUpdate}
+          fieldHeaders={accordionFieldHeaders}
           hidden={isHidden}
         ></TransferOrderAccordion>
       ) : (
@@ -182,6 +195,7 @@ export default function DataVerificationScreen() {
           orderType={orderType}
           statusType={orderStatusType}
           onOrderUpdate={handleConsolidationOrderUpdate}
+          fieldHeaders={accordionFieldHeaders}
           hidden={isHidden}
         ></ConsolidationOrderAccordion>
       );
@@ -202,34 +216,52 @@ export default function DataVerificationScreen() {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1>Data Verification</h1>
-          <h2>Region {regionNumber}</h2>
-          {isOrderListLoading && <LoadingSpinner caption="Loading court orders..." />}
-          {!isOrderListLoading && (
+          {!hasValidPermissions && (
+            <Stop
+              id="forbidden-alert"
+              title="Forbidden"
+              message="You do not have permission to verify orders in CAMS."
+              asError
+            ></Stop>
+          )}
+          {hasValidPermissions && !hasOffices && (
+            <Stop
+              id="no-office"
+              title="No Office Assigned"
+              message="You cannot verify orders because you are not currently assigned to a USTP office in Active Directory."
+              showHelpDeskContact
+            ></Stop>
+          )}
+          {isOrderListLoading && showDataVerification && (
+            <LoadingSpinner caption="Loading court orders..." />
+          )}
+          {!isOrderListLoading && showDataVerification && (
             <>
+              <h2>{regionHeader}</h2>
               <h3>Filters</h3>
               <section className="order-list-container">
                 <div className="filters order-status">
-                  {featureFlags[CONSOLIDATIONS_ENABLED] && (
-                    <>
-                      <div className="event-type-container">
-                        <h4 className="event-header">Event Status</h4>
-                        <div>
-                          <Filter<OrderType>
-                            label="Transfer"
-                            filterType="transfer"
-                            filters={typeFilter}
-                            callback={handleTypeFilter}
-                          />
-                          <Filter<OrderType>
-                            label="Consolidation"
-                            filterType="consolidation"
-                            filters={typeFilter}
-                            callback={handleTypeFilter}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
+                  <div className="event-type-container">
+                    <h4 className="event-header">Event Status</h4>
+                    <div>
+                      {featureFlags[TRANSFER_ORDERS_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Transfer"
+                          filterType="transfer"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                      {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Consolidation"
+                          filterType="consolidation"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                    </div>
+                  </div>
                   <div className="event-status-container">
                     <h4 className="event-header">Event Status</h4>
                     <div>
@@ -283,11 +315,11 @@ export default function DataVerificationScreen() {
                     <div className="data-verification-accordion-header" data-testid="orders-header">
                       <div className="grid-row grid-gap-lg">
                         <div className="grid-col-6 text-no-wrap">
-                          <h3>Court District</h3>
+                          <h3>{accordionFieldHeaders[0]}</h3>
                         </div>
-                        <h3 className="grid-col-2 text-no-wrap">Order Filed</h3>
-                        <h3 className="grid-col-2 text-no-wrap">Event Type</h3>
-                        <h3 className="grid-col-2 text-no-wrap">Event Status</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[1]}</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[2]}</h3>
+                        <h3 className="grid-col-2 text-no-wrap">{accordionFieldHeaders[3]}</h3>
                       </div>
                     </div>
                     <AccordionGroup>{...accordionItems}</AccordionGroup>
@@ -302,11 +334,18 @@ export default function DataVerificationScreen() {
     </MainContent>
   );
 }
+
 interface FilterProps<T extends string> {
   label: string;
   filterType: T;
   filters: T[];
   callback: (filterString: T) => void;
+}
+
+function generateTooltip(label: string, isActive: boolean) {
+  const base = `${label} ${isActive ? 'shown' : 'hidden'}.`.toLowerCase();
+  const tooltip = base.slice(0, 1).toUpperCase() + base.slice(1);
+  return tooltip;
 }
 
 function Filter<T extends string>(props: FilterProps<T>) {
@@ -319,6 +358,7 @@ function Filter<T extends string>(props: FilterProps<T>) {
       aria-checked={filters.includes(filterType) ? true : false}
       onClick={() => callback(filterType)}
       data-testid={`order-status-filter-${filterType}`}
+      title={generateTooltip(label, filters.includes(filterType))}
     >
       {label}
       <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>

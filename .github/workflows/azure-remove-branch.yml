@@ -1,20 +1,19 @@
 name: Clean up Flexion Azure Resources
 
 on:
-  pull_request:
-    types: [closed]
+  delete:
   workflow_dispatch:
     inputs:
       hashId:
-        description: "Hash id of target branch deployemnt"
-        default: ""
+        description: 'Hash id of target branch deployment'
+        default: ''
         type: string
 
 jobs:
   list:
     runs-on: ubuntu-latest
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -25,22 +24,23 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: inputs.hashId != '' || github.event.action == 'closed'
-    environment: "Develop"
+    if: ${{ inputs.hashId != ''  || github.event.ref_type == 'branch' }}
+    environment: 'Develop'
     outputs:
       executeCleanup: ${{ steps.check.outputs.executeCleanup }}
       targetBranchHashId: ${{ steps.check.outputs.targetBranchHashId }}
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
-
-      - name: Genereate branch hash id
+      - name: Generate Target Branch Hash
         id: hash
-        if: github.event.action == 'closed'
+        if: ${{ github.event.ref_type == 'branch' }}
         run: |
-          hash=$(echo -n ${{ github.event.pull_request.head.ref }} | openssl sha256 | awk '{print $2}')
+
+          branchRef="${{ github.event.ref}}"
+          hash=$(echo -n "${branchRef}" | openssl sha256 | awk '{print $2}')
           shortHash="${hash:0:6}"
           echo "hashId=$shortHash" >> $GITHUB_OUTPUT
 
@@ -64,27 +64,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: [check]
     if: needs.check.outputs.executeCleanup == 'true'
-    environment: "Develop"
+    environment: 'Develop'
     env:
-      environment: "Develop"
+      environment: 'Develop'
 
     steps:
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
       - uses: actions/checkout@v3
-      - name: Clean up e2e test database
-        run: |
-          echo "Adding suffix to database name.."
-          e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e-${{ needs.check.outputs.targetBranchHashId }}"
-
-          az cosmosdb mongodb database delete \
-          --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
-          --name "${e2eDatabaseName}" \
-          --resource-group  ${{ secrets.AZURE_RG }} \
-          --yes
-
-          echo "Finished Removing Database..."
-
-      - run: ./ops/scripts/utility/az-delete-branch-resources.sh ${{ needs.check.outputs.targetBranchHashId }} false
+      - name: Delete Branch Resources
+        uses: azure/cli@v2
+        id: deleteBranchResourcues
+        with:
+          azcliversion: 2.62.0
+          inlineScript: |
+            ./ops/scripts/utility/az-delete-branch-resources.sh \
+            --app-resource-group=${{ secrets.AZ_APP_RG }} \
+            --db-account=${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            --db-resource-group=${{ secrets.AZURE_RG }} \
+            --network-resource-group=${{ secrets.AZ_NETWORK_RG }} \
+            --short-hash=${{ needs.check.outputs.targetBranchHashId }}

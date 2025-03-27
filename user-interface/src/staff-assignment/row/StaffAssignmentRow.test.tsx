@@ -21,6 +21,7 @@ describe('StaffAssignmentRow tests', () => {
   function renderWithProps(props: Partial<TestComponentProps> = {}) {
     const defaultProps: TestComponentProps = {
       bCase,
+      labels: [],
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -33,6 +34,7 @@ describe('StaffAssignmentRow tests', () => {
 
   type TestComponentProps = {
     bCase: ResourceActions<CaseBasics>;
+    labels: [];
   };
 
   function TestComponent(props: TestComponentProps) {
@@ -46,7 +48,12 @@ describe('StaffAssignmentRow tests', () => {
       <div>
         <table>
           <tbody>
-            <StaffAssignmentRow bCase={props.bCase} idx={0} options={options} />
+            <StaffAssignmentRow
+              labels={props.labels}
+              bCase={props.bCase}
+              idx={0}
+              options={options}
+            />
           </tbody>
         </table>
         <AssignAttorneyModal modalId={'test-modal-id'} ref={modalRef} />
@@ -61,33 +68,35 @@ describe('StaffAssignmentRow tests', () => {
 
     renderWithProps({ bCase: { ...bCase, assignments: [assignedAttorney] } });
 
+    let rows: NodeListOf<HTMLTableCellElement> | undefined;
     await waitFor(() => {
       const firstTable = document.querySelector('table');
-      const rows = firstTable?.querySelectorAll('td');
+      rows = firstTable?.querySelectorAll('td');
       expect(rows?.length).toEqual(5);
-      expect(rows?.[0]).toHaveTextContent(getCaseNumber(bCase.caseId));
-      expect(rows?.[0]).toHaveTextContent(bCase.courtDivisionName);
-      expect(rows?.[1]).toHaveTextContent(bCase.caseTitle);
-      expect(rows?.[2]).toHaveTextContent(bCase.chapter);
-      expect(rows?.[3]).toHaveTextContent(formatDate(bCase.dateFiled));
-      expect(rows?.[4]).toHaveTextContent(assignedAttorney.name);
-      expect(screen.getByTestId('attorney-list-0')).toBeVisible();
     });
+    expect(rows?.[0]).toHaveTextContent(getCaseNumber(bCase.caseId));
+    expect(rows?.[0]).toHaveTextContent(bCase.courtDivisionName);
+    expect(rows?.[1]).toHaveTextContent(bCase.caseTitle);
+    expect(rows?.[2]).toHaveTextContent(bCase.chapter);
+    expect(rows?.[3]).toHaveTextContent(formatDate(bCase.dateFiled));
+    expect(rows?.[4]).toHaveTextContent(assignedAttorney.name);
+    expect(screen.getByTestId('attorney-list-0')).toBeVisible();
   });
 
   test('should show "unassigned" if there is not an assigned attorney', async () => {
     renderWithProps();
 
+    let cols: NodeListOf<HTMLTableCellElement> | undefined;
     await waitFor(() => {
       const firstTable = document.querySelector('table');
-      const cols = firstTable?.querySelectorAll('td');
+      cols = firstTable?.querySelectorAll('td');
       expect(cols?.[4]).toHaveTextContent('(unassigned)');
-      const button = cols?.[4].querySelector('button');
-      expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
-      expect(button).toHaveTextContent('Assign');
-      expect(button).toHaveAttribute('title', 'Add Staff Assignments');
-      expect(button).toHaveAttribute('data-testid', 'open-modal-button-0');
     });
+    const button = cols?.[4].querySelector('button');
+    expect(button).not.toHaveClass(UswdsButtonStyle.Outline);
+    expect(button).toHaveTextContent('Assign');
+    expect(button).toHaveAttribute('title', 'Add Staff Assignments');
+    expect(button).toHaveAttribute('data-testid', 'open-modal-button_0');
   });
 
   test('should show assigned attorney names for assigned attorneys', async () => {
@@ -107,7 +116,7 @@ describe('StaffAssignmentRow tests', () => {
         expect(button).toHaveClass(UswdsButtonStyle.Outline);
         expect(button).toHaveTextContent('Edit');
         expect(button).toHaveAttribute('title', 'Edit Staff Assignments');
-        expect(button).toHaveAttribute('data-testid', 'open-modal-button-0');
+        expect(button).toHaveAttribute('data-testid', 'open-modal-button_0');
       });
     });
   });

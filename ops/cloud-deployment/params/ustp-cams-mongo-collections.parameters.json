@@ -10,11 +10,6 @@
           "partitionKeys": ["/caseId"]
         },
         {
-          "name": "cases",
-          "partitionKey1": "caseId",
-          "partitionKeys": ["/caseId"]
-        },
-        {
           "name": "consolidations",
           "partitionKey1": "consolidationId",
           "partitionKeys": ["/consolidationId"]

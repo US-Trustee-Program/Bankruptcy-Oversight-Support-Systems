@@ -3,10 +3,13 @@ name: Azure Deployment - Backend Slot Creation
 on:
   workflow_call:
     inputs:
-      webAppName:
+      webappName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      dataflowsFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -31,7 +34,7 @@ jobs:
     environment: ${{ inputs.ghaEnvironment }}
     steps:
       - uses: actions/checkout@v3
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -51,16 +54,19 @@ jobs:
 
       - name: Create API Slot Resource
         run: |
-          slotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          dataflowsSlotStorageAccountName=ustpslot${{ inputs.environmentHash }}
+          apiSlotStorageAccountName=dataflowsslot${{ inputs.environmentHash }}
 
           ./ops/scripts/pipeline/slots/az-slot-api-resource-deploy.sh \
               --resourceGroup ${{ steps.rgApp.outputs.out }} \
               --idResourceGroup ${{ secrets.AZURE_RG }} \
-              --apiName ${{ inputs.apiName }} \
+              --apiFunctionName ${{ inputs.apiFunctionName }} \
+              --dataflowsFunctionName ${{ inputs.dataflowsFunctionName }} \
               --webappName ${{ inputs.webappName }} \
               --slotName ${{ inputs.slotName }} \
               --kvIdName ${{ secrets.AZ_KV_APP_CONFIG_MANAGED_ID }} \
               --sqlIdName ${{ secrets.AZ_SQL_IDENTITY_NAME }} \
-              --storageAccName ${slotStorageAccountName:0:24} \
+              --apiStorageAccName ${apiSlotStorageAccountName:0:24} \
+              --dataflowsStorageAccName ${dataflowsSlotStorageAccountName:0:24} \
               --databaseName ${{ secrets.AZ_COSMOS_DATABASE_NAME }} \
               --infoSha ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}

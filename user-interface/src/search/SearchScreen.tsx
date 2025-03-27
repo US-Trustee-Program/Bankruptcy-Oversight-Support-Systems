@@ -1,3 +1,4 @@
+import './SearchScreen.scss';
 import { useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
@@ -10,7 +11,6 @@ import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getOfficeList } from '@/data-verification/dataVerificationHelper';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import './SearchScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -19,16 +19,24 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
+import Modal from '@/lib/components/uswds/modal/Modal';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 
 export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
+    excludeChildConsolidations: false,
   });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
+    excludeChildConsolidations: false,
   });
+
+  const infoModalRef = useRef(null);
+  const infoModalId = 'info-modal';
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
   const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
@@ -153,6 +161,15 @@ export default function SearchScreen() {
     setSearchPredicate(temporarySearchPredicate);
   }
 
+  const infoModalActionButtonGroup = {
+    modalId: infoModalId,
+    modalRef: infoModalRef as React.RefObject<ModalRefType>,
+    cancelButton: {
+      label: 'Return',
+      uswdsStyle: UswdsButtonStyle.Default,
+    },
+  };
+
   useEffect(() => {
     getCourts();
     getChapters();
@@ -165,14 +182,15 @@ export default function SearchScreen() {
         <div className="grid-col-1"></div>
         <div className="grid-col-10">
           <h1>Case Search</h1>
+          <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
         </div>
         <div className="grid-col-1"></div>
       </div>
-      <div className="grid-row grid-gap-lg">
+      <div className="grid-row grid-gap-lg search-pane">
         <div className="grid-col-1"></div>
         <div className="grid-col-2">
           <h2>Search By</h2>
-          <div className={`filter-and-search`} data-testid="filter-and-search-panel">
+          <div className="filter-and-search" data-testid="filter-and-search-panel">
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
@@ -273,6 +291,20 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-1"></div>
       </div>
+      <Modal
+        ref={infoModalRef}
+        modalId={infoModalId}
+        className="search-info-modal"
+        heading="Case Search - Using This Page"
+        content={
+          <>
+            Case Search allows you to search for any case in the system, across regions and offices.
+            Use the filters to find the case you’re interested in. You can view details about a case
+            in the search results by clicking on its case number.
+          </>
+        }
+        actionButtonGroup={infoModalActionButtonGroup}
+      ></Modal>
     </MainContent>
   );
 }

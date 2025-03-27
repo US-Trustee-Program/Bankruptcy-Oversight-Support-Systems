@@ -2,10 +2,10 @@ import { Staff } from './users';
 
 //TODO: Some of these probably do not belong here
 export type UstpOfficeDetails = {
-  officeCode: string; // Active Directory Group name (for now)
+  officeCode: string; // Active Directory Group name (for now) e.g. USTP_CAMS_My_Group_Name
   officeName: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices and dxtr.constants.ts
   groups: UstpGroup[];
-  idpGroupId: string; // Okta
+  idpGroupName: string; // Okta group name e.g. USTP CAMS My Group Name
   regionId: string; // DXTR AO_REGION
   regionName: string; // DXTR AO_REGION
   state?: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices
@@ -37,10 +37,10 @@ export type CourtOffice = {
   courtOfficeName: string; // DXTR AO_OFFICE.OFFICE_DISPLAY_NAME
 };
 
-export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
+export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   {
     officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
-    idpGroupId: 'USTP CAMS Region 18 Office Seattle',
+    idpGroupName: 'USTP CAMS Region 18 Office Seattle',
     officeName: 'Seattle',
     groups: [
       {
@@ -115,7 +115,7 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   },
   {
     officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-    idpGroupId: 'USTP CAMS Region 3 Office Wilmington',
+    idpGroupName: 'USTP CAMS Region 3 Office Wilmington',
     officeName: 'Wilmington',
     groups: [
       {
@@ -137,7 +137,7 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   },
   {
     officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-    idpGroupId: 'USTP CAMS Region 2 Office Manhattan',
+    idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
     officeName: 'Manhattan',
     groups: [
       {
@@ -167,7 +167,7 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   },
   {
     officeCode: 'USTP_CAMS_Region_2_Office_Buffalo',
-    idpGroupId: 'USTP CAMS Region 2 Office Buffalo',
+    idpGroupName: 'USTP CAMS Region 2 Office Buffalo',
     officeName: 'Buffalo',
     groups: [
       {
@@ -189,6 +189,6 @@ export const USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   },
 ];
 
-export const USTP_OFFICE_DATA_MAP = new Map<string, UstpOfficeDetails>(
-  USTP_OFFICES_ARRAY.map((office) => [office.officeCode, office]),
+export const MOCKED_USTP_OFFICE_DATA_MAP = new Map<string, UstpOfficeDetails>(
+  MOCKED_USTP_OFFICES_ARRAY.map((office) => [office.officeCode, office]),
 );

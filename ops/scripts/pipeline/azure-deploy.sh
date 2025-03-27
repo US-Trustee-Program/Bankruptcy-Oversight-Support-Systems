@@ -16,12 +16,12 @@ deployment_parameters=''
 is_ustp_deployment=false
 inputParams=()
 
-requiredUSTPParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
+requiredUSTPParams=("--enabledDataflows" "--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--privateEndpointSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns")
 
-requiredFlexionParams=("--mssqlRequestTimeout" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
+requiredFlexionParams=("--enabledDataflows" "--mssqlRequestTimeout" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--kvAppConfigName" "--kvAppConfigResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityName" "--actionGroupName" "--oktaUrl")
 
 # shellcheck disable=SC2034 # REASON: to have a reference for all possible parameters
-allParams=("--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--functionPlanType" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--functionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--functionSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--azHostSuffix" "--allowVeracodeScan")
+allParams=("--enabledDataflows" "--mssqlRequestTimeout" "--isUstpDeployment" "--resource-group" "--file" "--stackName" "--networkResourceGroupName" "--virtualNetworkName" "--analyticsWorkspaceId" "--idKeyvaultAppConfiguration" "--kvAppConfigName" "--cosmosDatabaseName" "--deployVnet" "--camsReactSelectHash" "--ustpIssueCollectorHash" "--createAlerts" "--deployAppInsights" "--apiFunctionPlanName" "--dataflowsFunctionPlanName" "--webappPlanType" "--loginProvider" "--loginProviderConfig" "--sqlServerName" "--sqlServerResourceGroupName" "--sqlServerIdentityResourceGroupName" "--sqlServerIdentityName"  "--actionGroupName" "--oktaUrl" "--location" "--webappSubnetName" "--apiFunctionSubnetName" "--privateEndpointSubnetName" "--webappSubnetAddressPrefix" "--apiFunctionSubnetAddressPrefix" "--dataflowsSubnetName" "--dataflowsSubnetAddressPrefix" "--vnetAddressPrefix" "--linkVnetIds" "--privateDnsZoneName" "--privateDnsZoneResourceGroup" "--privateDnsZoneSubscriptionId" "--analyticsResourceGroupName" "--kvAppConfigResourceGroupName" "--deployDns" "--allowVeracodeScan")
 
 
 function az_vnet_exists_func() {
@@ -158,16 +158,28 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${webapp_subnet_address_prefix_param}"
         shift 2
         ;;
-    --functionSubnetName)
+    --apiFunctionSubnetName)
         inputParams+=("${1}")
-        function_subnet_name_param="functionSubnetName=${2}"
-        deployment_parameters="${deployment_parameters} ${function_subnet_name_param}"
+        api_function_subnet_name_param="apiFunctionSubnetName=${2}"
+        deployment_parameters="${deployment_parameters} ${api_function_subnet_name_param}"
         shift 2
         ;;
-    --functionSubnetAddressPrefix)
+    --apiFunctionSubnetAddressPrefix)
         inputParams+=("${1}")
-        function_subnet_address_prefix_param="functionSubnetAddressPrefix=${2}"
-        deployment_parameters="${deployment_parameters} ${function_subnet_address_prefix_param}"
+        api_function_subnet_address_prefix_param="apiFunctionSubnetAddressPrefix=${2}"
+        deployment_parameters="${deployment_parameters} ${api_function_subnet_address_prefix_param}"
+        shift 2
+        ;;
+    --dataflowsSubnetName)
+        inputParams+=("${1}")
+        dataflows_subnet_name_param="dataflowsSubnetName=${2}"
+        deployment_parameters="${deployment_parameters} ${dataflows_subnet_name_param}"
+        shift 2
+        ;;
+    --dataflowsSubnetAddressPrefix)
+        inputParams+=("${1}")
+        dataflows_subnet_address_prefix_param="dataflowsSubnetAddressPrefix=${2}"
+        deployment_parameters="${deployment_parameters} ${dataflows_subnet_address_prefix_param}"
         shift 2
         ;;
     --privateEndpointSubnetName)
@@ -284,12 +296,21 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${webapp_plan_type_param}"
         shift 2
         ;;
-    --functionPlanType)
+
+    --apiFunctionPlanName)
         inputParams+=("${1}")
-        function_plan_type_param="functionPlanType=${2}"
-        deployment_parameters="${deployment_parameters} ${function_plan_type_param}"
+        api_function_plan_name_param="apiFunctionPlanName=${2}"
+        deployment_parameters="${deployment_parameters} ${api_function_plan_name_param}"
         shift 2
         ;;
+
+    --dataflowsFunctionPlanName)
+        inputParams+=("${1}")
+        dataflows_function_plan_name_param="dataflowsFunctionPlanName=${2}"
+        deployment_parameters="${deployment_parameters} ${dataflows_function_plan_name_param}"
+        shift 2
+        ;;
+
     --oktaUrl)
         inputParams+=("${1}")
         okta_url_param="oktaUrl=${2}"
@@ -308,16 +329,16 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${login_provider_config_param}"
         shift 2
         ;;
-    --azHostSuffix)
-        inputParams+=("${1}")
-        az_host_suffix_param="azHostSuffix=${2}"
-        deployment_parameters="${deployment_parameters} ${az_host_suffix_param}"
-        shift 2
-        ;;
     --allowVeracodeScan)
         inputParams+=("${1}")
         allow_veracode_scan_param="allowVeracodeScan=${2}"
         deployment_parameters="${deployment_parameters} ${allow_veracode_scan_param}"
+        shift 2
+        ;;
+    --enabledDataflows)
+        inputParams+=("${1}")
+        enabled_dataflows_param="enabledDataflows=${2}"
+        deployment_parameters="${deployment_parameters} ${enabled_dataflows_param}"
         shift 2
         ;;
     --isUstpDeployment)
@@ -327,6 +348,7 @@ while [[ $# -gt 0 ]]; do
         deployment_parameters="${deployment_parameters} ${is_ustp_deployment_param}"
         shift
         ;;
+
     *)
         echo "Exit on param: ${1}"
         exit 2 # error on unknown flag/switch

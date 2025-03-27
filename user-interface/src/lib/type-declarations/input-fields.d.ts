@@ -8,7 +8,16 @@ export interface InputRef {
   getValue: () => string;
 }
 
+export interface TextAreaRef {
+  setValue: (value: string) => void;
+  disable: (value: boolean) => void;
+  clearValue: () => void;
+  resetValue: () => void;
+  getValue: () => string;
+}
+
 export interface ComboBoxRef {
+  setValue: (options: ComboOption[]) => void;
   getValue: () => ComboOption[];
   clearValue: () => void;
   disable: (value: boolean) => void;

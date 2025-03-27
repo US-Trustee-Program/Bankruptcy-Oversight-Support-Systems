@@ -7,12 +7,29 @@
   "scripts": {
     "clean:all": "./ops/scripts/utility/clean-all-projects.sh",
     "ci:all": "./ops/scripts/utility/clean-install-all-projects.sh",
-    "start:backend": "cd backend/functions && npm run start",
-    "start:frontend": "cd user-interface && npm run start",
+    "start:backend": "pushd backend && npm run start && popd",
+    "start:frontend": "pushd user-interface && npm run start && popd",
     "build": "npm run build:common && npm run build:backend && npm run build:frontend",
-    "build:backend": "cd backend/functions && npm run build",
-    "build:frontend": "cd user-interface && npm run build",
-    "build:common": "cd common && npm run build",
-    "clean-and-build": "npm run clean:all && npm run ci:all && npm run build"
+    "build:backend": "pushd backend && npm run build && npm run build:api && npm run build:dataflows && popd",
+    "build:frontend": "pushd user-interface && npm run build && popd",
+    "build:common": "pushd common && npm run build && popd",
+    "clean-and-build": "npm run clean:all && npm run ci:all && npm run build",
+    "lint": "eslint . -c eslint.config.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "@typescript-eslint/parser": "^8.18.2",
+    "eslint": "^9.23.0",
+    "eslint-config-prettier": "^10.1.1",
+    "eslint-plugin-jest": "^28.11.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.2.5",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-testing-library": "^7.1.1",
+    "prettier": "^3.5.3",
+    "react": "^18.3.1",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.28.0"
   }
 }

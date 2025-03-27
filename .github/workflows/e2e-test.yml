@@ -12,13 +12,12 @@ jobs:
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
       enableBicepDeployment: "true"
-      deployVnet: "false"
 
   execute-e2e-test:
     needs: [setup]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
-      apiName: ${{ needs.setup.outputs.apiName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
       slotName: ${{ needs.setup.outputs.slotName }}
       webappName: ${{ needs.setup.outputs.webappName }}
       stackName: ${{ needs.setup.outputs.stackName }}

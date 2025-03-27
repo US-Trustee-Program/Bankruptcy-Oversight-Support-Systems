@@ -1,6 +1,8 @@
 import { DebtorAttorney, Party } from './parties';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
+import { Auditable } from './auditable';
+import { CamsUserReference } from './users';
 
 export type FlatOfficeDetail = {
   officeName: string;
@@ -18,6 +20,7 @@ export type FlatOfficeDetail = {
 export type CaseBasics = FlatOfficeDetail & {
   dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
   caseId: string;
+  caseNumber?: string;
   chapter: string;
   caseTitle: string;
   dateFiled: string;
@@ -36,7 +39,7 @@ export type CaseDetail = CaseSummary & {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
-  courtId: string;
+  transferDate?: string;
   transfers?: Array<TransferFrom | TransferTo>;
   consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
   debtorAttorney?: DebtorAttorney;
@@ -60,3 +63,49 @@ export type CaseDocketEntry = {
 };
 
 export type CaseDocket = Array<CaseDocketEntry>;
+
+export type CaseNote = CaseNoteInput &
+  Auditable & {
+    documentType: 'NOTE';
+    updatedBy: CamsUserReference;
+    updatedOn: string;
+    createdBy: CamsUserReference;
+    createdOn: string;
+    archivedOn?: string;
+    archivedBy?: CamsUserReference;
+    previousVersionId?: string;
+  };
+
+export type CaseNoteDeleteRequest = {
+  id: string;
+  caseId: string;
+  sessionUser: CamsUserReference;
+};
+
+export type CaseNoteEditRequest = {
+  note: Partial<CaseNote>;
+  sessionUser: CamsUserReference;
+};
+
+export type CaseNoteInput = {
+  id?: string;
+  title: string;
+  caseId: string;
+  content: string;
+  updatedBy?: CamsUserReference;
+  updatedOn?: string;
+  createdBy?: CamsUserReference;
+  createdOn?: string;
+};
+
+export type DxtrCase = CaseSummary & {
+  closedDate?: string;
+  dismissedDate?: string;
+  reopenedDate?: string;
+};
+
+export type SyncedCase = DxtrCase &
+  Auditable & {
+    documentType: 'SYNCED_CASE';
+    id?: string;
+  };

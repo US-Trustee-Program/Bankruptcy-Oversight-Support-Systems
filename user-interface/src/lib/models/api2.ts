@@ -1,5 +1,12 @@
 import { CaseAssignment, StaffAssignmentAction } from '@common/cams/assignments';
-import { CaseBasics, CaseDetail, CaseDocket, CaseSummary } from '@common/cams/cases';
+import {
+  CaseDetail,
+  CaseDocket,
+  CaseNote,
+  CaseNoteInput,
+  CaseSummary,
+  SyncedCase,
+} from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { Consolidation } from '@common/cams/events';
@@ -10,10 +17,11 @@ import {
   FlexibleTransferOrderAction,
   Order,
   TransferOrder,
+  TransferOrderActionRejection,
 } from '@common/cams/orders';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
-import { AttorneyUser } from '@common/cams/users';
+import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import { CasesSearchPredicate } from '@common/api/search';
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
@@ -21,7 +29,15 @@ import LocalStorage from '../utils/local-storage';
 import Api from './api';
 import MockApi2 from '../testing/mock-api2';
 import LocalCache from '../utils/local-cache';
-import { DAY } from '../utils/datetime';
+import { DAY, MINUTE } from '../utils/datetime';
+import { sanitizeText } from '../utils/sanitize-text';
+import { isValidUserInput } from '../../../../common/src/cams/sanitization';
+import {
+  ElevatePrivilegedUserAction,
+  RoleAndOfficeGroupNames,
+} from '../../../../common/src/cams/privileged-identity';
+
+export const API_CACHE_NAMESPACE = 'api:';
 
 interface ApiClient {
   headers: Record<string, string>;
@@ -30,13 +46,15 @@ interface ApiClient {
 
   post(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   get(path: string, options?: ObjectKeyVal): Promise<ResponseBody>;
+  delete(path: string, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   patch(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
-  put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody>;
+  put(path: string, body: object, options?: ObjectKeyVal): Promise<ResponseBody | void>;
   getQueryStringsToPassThrough(search: string, options: ObjectKeyVal): ObjectKeyVal;
 }
 
 interface GenericApiClient {
   get<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
+  delete<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>>;
 
   /**
    * ONLY USE WITH OUR OWN API!!!!
@@ -127,6 +145,13 @@ export function useGenericApi(): GenericApiClient {
       return body as ResponseBody<T>;
     },
 
+    async delete<T = object>(path: string, options?: ObjectKeyVal): Promise<ResponseBody<T>> {
+      const { uriOrPathSubstring, queryParams } = justThePath(path);
+      options = { ...options, ...queryParams };
+      const body = await api.delete(uriOrPathSubstring, options);
+      return body as ResponseBody<T>;
+    },
+
     async patch<T extends object = object, U extends object = object>(
       path: string,
       body: U,
@@ -176,19 +201,20 @@ type CacheOptions = {
 };
 
 function withCache(cacheOptions: CacheOptions): Pick<GenericApiClient, 'get'> {
-  // TODO: For now we are only implementing `get`. In the future we may want to cache responses from the other HTTP verbs.
+  const key = API_CACHE_NAMESPACE + cacheOptions.key;
+
   return {
     get: async function <T = object>(
       path: string,
       options: ObjectKeyVal,
     ): Promise<ResponseBody<T>> {
       if (LocalCache.isCacheEnabled()) {
-        const cached = LocalCache.get<ResponseBody<T>>(cacheOptions.key);
+        const cached = LocalCache.get<ResponseBody<T>>(key);
         if (cached) {
           return Promise.resolve(cached);
         } else {
           const response = await api().get<T>(path, options);
-          LocalCache.set<ResponseBody<T>>(cacheOptions.key, response, cacheOptions.ttl);
+          LocalCache.set<ResponseBody<T>>(key, response, cacheOptions.ttl);
           return Promise.resolve(response);
         }
       } else {
@@ -226,6 +252,41 @@ async function getCaseHistory(caseId: string) {
   return api().get<CaseHistory[]>(`/cases/${caseId}/history`);
 }
 
+async function getCaseNotes(caseId: string) {
+  return api().get<CaseNote[]>(`/cases/${caseId}/notes`);
+}
+
+async function postCaseNote(note: CaseNoteInput): Promise<void> {
+  const sanitizedNote = sanitizeText(note.content);
+  const sanitizedTitle = sanitizeText(note.title);
+  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+    await api().post<CaseNoteInput>(`/cases/${note.caseId}/notes`, {
+      title: sanitizedTitle,
+      content: sanitizedNote,
+    });
+  }
+}
+
+async function putCaseNote(note: CaseNoteInput): Promise<string | undefined> {
+  if (!note.id) {
+    throw new Error('Id must be provided');
+  }
+  const sanitizedNote = sanitizeText(note.content);
+  const sanitizedTitle = sanitizeText(note.title);
+  if (sanitizedNote.length > 0 && sanitizedTitle.length > 0 && isValidUserInput(sanitizedNote)) {
+    const response = await api().put<CaseNoteInput[]>(`/cases/${note.caseId}/notes/${note.id}`, {
+      title: sanitizedTitle,
+      content: sanitizedNote,
+      updatedBy: note.updatedBy,
+    });
+    return response.data[0].id;
+  }
+}
+
+async function deleteCaseNote(note: Partial<CaseNote>) {
+  await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
+}
+
 async function getCourts() {
   const path = `/courts`;
   return withCache({ key: path, ttl: DAY }).get<CourtDivisionDetails[]>(path);
@@ -253,8 +314,17 @@ async function getOrderSuggestions(caseId: string) {
   return api().get<CaseSummary[]>(`/orders-suggestions/${caseId}/`, {});
 }
 
-async function patchTransferOrder(data: FlexibleTransferOrderAction) {
+async function patchTransferOrderApproval(data: Partial<FlexibleTransferOrderAction>) {
   await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+}
+
+async function patchTransferOrderRejection(data: Partial<TransferOrderActionRejection>) {
+  if (data.reason) {
+    data.reason = sanitizeText(data.reason);
+    if (isValidUserInput(data.reason)) {
+      await api().patch<TransferOrder, FlexibleTransferOrderAction>(`/orders/${data.id}`, data);
+    }
+  }
 }
 
 async function putConsolidationOrderApproval(data: ConsolidationOrderActionApproval) {
@@ -265,24 +335,53 @@ async function putConsolidationOrderApproval(data: ConsolidationOrderActionAppro
 }
 
 async function putConsolidationOrderRejection(data: ConsolidationOrderActionRejection) {
-  return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
-    '/consolidations/reject',
-    data,
-  );
+  if (data.reason) {
+    data.reason = sanitizeText(data.reason);
+    if (isValidUserInput(data.reason)) {
+      return api().put<ConsolidationOrder[], ConsolidationOrderActionRejection>(
+        '/consolidations/reject',
+        data,
+      );
+    }
+  }
 }
 
 async function searchCases(
   predicate: CasesSearchPredicate,
   options: { includeAssignments?: boolean } = {},
 ) {
-  return api().post<CaseBasics[], CasesSearchPredicate>('/cases', predicate, options);
+  return api().post<SyncedCase[], CasesSearchPredicate>('/cases', predicate, options);
 }
 
-async function postStaffAssignments(action: StaffAssignmentAction): Promise<void> {
+async function postStaffAssignments(action: StaffAssignmentAction) {
   await api().post('/case-assignments', action);
 }
 
+async function getRoleAndOfficeGroupNames() {
+  const path = '/dev-tools/privileged-identity/groups';
+  return withCache({ key: path, ttl: MINUTE * 15 }).get<RoleAndOfficeGroupNames>(path);
+}
+
+async function getPrivilegedIdentityUsers() {
+  const path = '/dev-tools/privileged-identity';
+  return withCache({ key: path, ttl: MINUTE * 15 }).get<CamsUserReference[]>(path);
+}
+
+async function getPrivilegedIdentityUser(userId: string) {
+  const path = `/dev-tools/privileged-identity/${userId}`;
+  return withCache({ key: path, ttl: MINUTE * 15 }).get<PrivilegedIdentityUser>(path);
+}
+
+async function putPrivilegedIdentityUser(userId: string, action: ElevatePrivilegedUserAction) {
+  await api().put(`/dev-tools/privileged-identity/${userId}`, action);
+}
+
+async function deletePrivilegedIdentityUser(userId: string) {
+  await api().delete(`/dev-tools/privileged-identity/${userId}`);
+}
+
 export const _Api2 = {
+  deletePrivilegedIdentityUser,
   getAttorneys,
   getCaseDetail,
   getCaseDocket,
@@ -290,16 +389,25 @@ export const _Api2 = {
   getCaseAssignments,
   getCaseAssociations,
   getCaseHistory,
+  postCaseNote,
+  putCaseNote,
+  getCaseNotes,
+  deleteCaseNote,
   getCourts,
   getMe,
   getOfficeAttorneys,
   getOffices,
   getOrders,
   getOrderSuggestions,
-  patchTransferOrder,
+  getPrivilegedIdentityUsers,
+  getPrivilegedIdentityUser,
+  getRoleAndOfficeGroupNames,
+  patchTransferOrderApproval,
+  patchTransferOrderRejection,
   postStaffAssignments,
   putConsolidationOrderApproval,
   putConsolidationOrderRejection,
+  putPrivilegedIdentityUser,
   searchCases,
 };
 

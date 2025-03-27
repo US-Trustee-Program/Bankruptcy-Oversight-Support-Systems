@@ -6,13 +6,19 @@ import envCompatible from 'vite-plugin-env-compatible';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import svgr from 'vite-plugin-svgr';
+import { fileURLToPath } from 'node:url';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
-        includePaths: ['node_modules/', 'node_modules/@uswds/uswds/packages/', 'src/'],
+        api: 'modern-compiler',
+        loadPaths: [
+          fileURLToPath(new URL('./node_modules/', import.meta.url)),
+          fileURLToPath(new URL('./node_modules/@uswds/uswds/packages/', import.meta.url)),
+          fileURLToPath(new URL('./src/', import.meta.url)),
+        ],
       },
     },
   },

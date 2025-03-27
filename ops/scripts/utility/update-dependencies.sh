@@ -72,8 +72,13 @@ else
 fi
 
 
-PROJECTS=("backend/functions" "common" "dev-tools" "test/e2e" "user-interface")
+PROJECTS=("backend" "common" "dev-tools" "test/e2e" "user-interface")
 
+# Update root level
+npm ci
+npm update --save
+
+# Update sub-projects
 for str in "${PROJECTS[@]}"; do
   pushd "${str}" || exit
   npm run clean
@@ -86,7 +91,7 @@ git add .
 git commit -m "Update all npm projects"
 git push -u origin "${BRANCH_NAME}"
 
-if [[ -c "${CICD}" ]]; then
+if [[ -n "${CICD}" ]]; then
   exit 0
 fi
 

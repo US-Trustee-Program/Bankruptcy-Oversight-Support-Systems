@@ -63,7 +63,7 @@ function _PendingTransferOrder(
     } as TransferOrder;
 
     api
-      .patchTransferOrder(orderTransfer)
+      .patchTransferOrderApproval(orderTransfer)
       .then(() => {
         props.onOrderUpdate(
           {
@@ -92,7 +92,7 @@ function _PendingTransferOrder(
     };
 
     api
-      .patchTransferOrder(rejection)
+      .patchTransferOrderRejection(rejection)
       .then((_foo) => {
         props.onOrderUpdate(
           {

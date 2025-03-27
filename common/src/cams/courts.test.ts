@@ -6,37 +6,24 @@ describe('common court library tests', () => {
   test('should filter court offices list by court division', async () => {
     const expectedOffices = [
       {
-        courtDivisionCode: '3N3',
-        groupDesignator: 'NR',
-        courtId: '053N',
-        officeName: '',
+        officeName: 'Baton Rouge',
         officeCode: '3',
-        state: 'LA',
-        courtName: 'Middle District of Louisiana',
-        courtDivisionName: 'Baton Rouge',
-        regionId: '05',
-        regionName: 'NEW ORLEANS',
-      },
-      {
-        courtDivisionCode: '3N4',
-        groupDesignator: 'NR',
         courtId: '053N',
-        officeName: '',
-        officeCode: '4',
-        state: 'LA',
         courtName: 'Middle District of Louisiana',
-        courtDivisionName: 'Opelousas',
-        regionId: '05',
+        courtDivisionCode: '313',
+        courtDivisionName: 'Baton Rouge',
+        groupDesignator: 'NR',
+        regionId: '5',
         regionName: 'NEW ORLEANS',
       },
     ];
-    const newOfficeList = filterCourtByDivision('3N3', COURT_DIVISIONS);
+    const newOfficeList = filterCourtByDivision('313', COURT_DIVISIONS);
 
-    expect(newOfficeList.length).toEqual(2);
+    expect(newOfficeList.length).toEqual(1);
     expect(newOfficeList).toEqual(expect.arrayContaining([...expectedOffices]));
   });
 
-  test('should filter court offices list by court division', async () => {
+  test('should filter court offices list by court division #2', async () => {
     const newOfficeList = filterCourtByDivision('555', COURT_DIVISIONS);
     expect(newOfficeList).toBeNull();
   });
@@ -129,7 +116,7 @@ describe('common court library tests', () => {
 
 const seattleOffice = {
   officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
-  idpGroupId: 'USTP CAMS Region 18 Office Seattle',
+  idpGroupName: 'USTP CAMS Region 18 Office Seattle',
   officeName: 'Seattle',
   groups: [
     {

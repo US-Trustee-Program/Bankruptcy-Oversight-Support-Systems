@@ -7,11 +7,11 @@ export interface FeatureFlagSet {
   [key: string]: boolean | string | number;
 }
 
-export const defaultFeatureFlags: FeatureFlagSet = {
+export const testFeatureFlags: FeatureFlagSet = {
   'chapter-twelve-enabled': true,
   'chapter-eleven-enabled': true,
   'transfer-orders-enabled': true,
   'consolidations-enabled': true,
-  'case-search-enabled': true,
-  'restrict-case-assignment': true,
+  'case-notes-enabled': true,
+  'privileged-identity-management': true,
 };

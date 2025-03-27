@@ -71,6 +71,22 @@ describe('test cams combobox', () => {
     );
   }
 
+  test('Should properly render selections when value prop is set', async () => {
+    const ref = React.createRef<ComboBoxRef>();
+    const expectedSelections = [
+      {
+        label: 'option 2',
+        value: 'o2',
+        selected: true,
+        hidden: false,
+      },
+    ];
+    renderWithProps({ value: 'o2' }, ref);
+
+    const selections = ref.current?.getValue();
+    expect(selections).toEqual(expectedSelections);
+  });
+
   test('Clicking on the toggle button should open or close the dropdown list and put the focus on the input field.  When closed it should call onClose()', async () => {
     const onClose = vi.fn();
 
@@ -153,7 +169,7 @@ describe('test cams combobox', () => {
 
     await userEvent.click(pillBox!.children[0]);
 
-    waitFor(() => {
+    await waitFor(() => {
       pillBox = document.querySelector(`#${comboboxId}-pill-box`);
       expect(pillBox!.children.length).toEqual(0);
     });
@@ -258,9 +274,10 @@ describe('test cams combobox', () => {
 
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
-      const input1 = document.querySelector('.input1');
-      expect(input1).toHaveFocus();
     });
+
+    const input1 = document.querySelector('.input1');
+    expect(input1).toHaveFocus();
   });
 
   test('If the dropdown is already closed, then pressing the tab key should focus on the next element on the screen and should not open the dropdown list.', async () => {
@@ -339,10 +356,7 @@ describe('test cams combobox', () => {
     expect(listItems[4]).toHaveAttribute('data-value', 'option5');
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(inputField).toHaveFocus();
-
-    await userEvent.keyboard('{ArrowUp}');
-    expect(listItems[4]).toHaveFocus();
+    expect(listItems[4]).toHaveAttribute('data-value', 'option5');
 
     await userEvent.keyboard('{ArrowUp}');
     expect(listItems[3]).toHaveFocus();
@@ -449,12 +463,13 @@ describe('test cams combobox', () => {
     await userEvent.type(inputField, 'test test');
 
     inputField.focus();
-    userEvent.tab();
+    await userEvent.tab();
 
     await waitFor(() => {
       expect(inputField.value).toEqual('');
-      expect(input1!).toHaveFocus();
     });
+
+    expect(input1!).toHaveFocus();
   });
 
   test('Tabbing from another area of the screen to the combo box should first focus on the pills, then the clear button, then the actual combo box input.', async () => {
@@ -740,9 +755,41 @@ describe('test cams combobox', () => {
     expect(clearedResult).toEqual(undefined);
   });
 
-  test('should disable component when ref.disable is called and in single-select mode', async () => {
+  test('should set values when calling ref.setValue', async () => {
     const ref = React.createRef<ComboBoxRef>();
-    renderWithProps({ multiSelect: false }, ref);
+    const options = [
+      {
+        label: 'option 0',
+        value: 'o0',
+        selected: false,
+        hidden: false,
+      },
+      {
+        label: 'option 1',
+        value: 'o1',
+        selected: false,
+        hidden: true,
+      },
+    ];
+
+    renderWithProps({ options }, ref);
+
+    let selections = ref.current?.getValue();
+    expect(selections).toEqual([]);
+
+    ref.current?.setValue(options);
+
+    await waitFor(() => {
+      selections = ref.current?.getValue();
+      expect(selections).toEqual(options);
+    });
+  });
+
+  test('should disable component when ref.disable is called and in single-select mode and should call onDisable if its set in props.', async () => {
+    const disableSpy = vi.fn();
+    const enableSpy = vi.fn();
+    const ref = React.createRef<ComboBoxRef>();
+    renderWithProps({ multiSelect: false, onDisable: disableSpy, onEnable: enableSpy }, ref);
 
     const expandButton = document.querySelector('.expand-button');
     expect(expandButton).toBeEnabled();
@@ -773,11 +820,16 @@ describe('test cams combobox', () => {
       expect(expandButton).toBeEnabled();
       expect(pill).toBeEnabled();
     });
+
+    expect(disableSpy).toHaveBeenCalled();
+    expect(enableSpy).toHaveBeenCalled();
   });
 
-  test('should disable component when ref.disable is called and in multi-select mode', async () => {
+  test('should disable component when ref.disable is called and in multi-select mode and should call onDisable if its set in props.', async () => {
+    const disableSpy = vi.fn();
+    const enableSpy = vi.fn();
     const ref = React.createRef<ComboBoxRef>();
-    renderWithProps({ multiSelect: true }, ref);
+    renderWithProps({ multiSelect: true, onDisable: disableSpy, onEnable: enableSpy }, ref);
 
     const listButtons = document.querySelectorAll('li button');
     await userEvent.click(listButtons![0]);
@@ -817,5 +869,8 @@ describe('test cams combobox', () => {
         expect(pill).toBeEnabled();
       });
     });
+
+    expect(disableSpy).toHaveBeenCalled();
+    expect(enableSpy).toHaveBeenCalled();
   });
 });

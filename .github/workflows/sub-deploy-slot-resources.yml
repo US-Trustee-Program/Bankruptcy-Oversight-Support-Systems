@@ -3,10 +3,13 @@ name: Azure Deployment - Backend Slot Creation
 on:
   workflow_call:
     inputs:
-      webAppName:
+      webappName:
         required: true
         type: string
-      apiName:
+      apiFunctionName:
+        required: true
+        type: string
+      dataflowsFunctionName:
         required: true
         type: string
       ghaEnvironment:
@@ -28,8 +31,8 @@ jobs:
   deploy-frontend-slot-resources:
     uses: ./.github/workflows/reusable-frontend-slot.yml
     with:
-      webAppName: ${{ inputs.webAppName }}
-      apiName: ${{ inputs.apiName }}
+      webappName: ${{ inputs.webappName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
@@ -39,8 +42,9 @@ jobs:
   deploy-backend-slot-resources:
     uses: ./.github/workflows/reusable-backend-slot.yml
     with:
-      webAppName: ${{ inputs.webAppName }}
-      apiName: ${{ inputs.apiName }}
+      webappName: ${{ inputs.webappName }}
+      apiFunctionName: ${{ inputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}

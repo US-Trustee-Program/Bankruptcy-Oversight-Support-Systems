@@ -50,9 +50,9 @@ describe('ConsolidationOrderModalComponent', () => {
     const onCancelSpy = vitest.fn();
 
     // Render and activate the modal.
-    const ref = renderModalWithProps({ id, onConfirm: onConfirmSpy, onCancel: onCancelSpy });
+    const view = renderModalWithProps({ id, onConfirm: onConfirmSpy, onCancel: onCancelSpy });
     await waitFor(() => {
-      ref.current?.show({ status: 'rejected', cases });
+      view.current?.show({ status: 'rejected', cases });
     });
 
     // Check heading
@@ -81,7 +81,7 @@ describe('ConsolidationOrderModalComponent', () => {
     });
 
     await waitFor(() => {
-      ref.current?.show({ status: 'rejected', cases });
+      view.current?.show({ status: 'rejected', cases });
     });
     const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
     expect(cancelButton).toBeVisible();
@@ -113,9 +113,9 @@ describe('ConsolidationOrderModalComponent', () => {
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentResponse);
 
     // Render and activate the modal.
-    const ref = renderModalWithProps({ id, courts });
+    const view = renderModalWithProps({ id, courts });
     await waitFor(() => {
-      ref.current?.show({ status: 'approved', cases: childCases, leadCase, consolidationType });
+      view.current?.show({ status: 'approved', cases: childCases, leadCase, consolidationType });
     });
 
     const modal = screen.getByTestId('modal-test');
@@ -153,7 +153,7 @@ describe('ConsolidationOrderModalComponent', () => {
     });
 
     await waitFor(() => {
-      ref.current?.show({ status: 'approved', cases: childCases });
+      view.current?.show({ status: 'approved', cases: childCases });
     });
     const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
     expect(cancelButton).toBeVisible();
@@ -166,10 +166,10 @@ describe('ConsolidationOrderModalComponent', () => {
     const id = 'test';
     const cases = MockData.buildArray(MockData.getCaseSummary, 2);
 
-    const ref = renderModalWithProps({ id });
+    const view = renderModalWithProps({ id });
 
     await waitFor(() => {
-      ref.current?.show({ status: 'rejected', cases });
+      view.current?.show({ status: 'rejected', cases });
     });
 
     const button = screen.queryByTestId(`button-${id}-cancel-button`);

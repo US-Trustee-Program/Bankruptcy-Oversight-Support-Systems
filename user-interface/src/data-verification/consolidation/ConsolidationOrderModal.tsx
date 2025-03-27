@@ -233,6 +233,7 @@ function ConsolidationOrderModalComponent(
       <div>
         <div className="modal-consolidation-type">
           This will confirm the <strong>{consolidationTypeMap.get(consolidationType!)}</strong> of
+          the following cases.
         </div>
         <div
           data-testid="modal-case-list-container"
@@ -247,7 +248,13 @@ function ConsolidationOrderModalComponent(
             ))}
           </ul>
         </div>
-        <div className="modal-assignments-list">
+        <div
+          className="modal-assignments-list"
+          aria-label={
+            `with ${getCaseNumber(leadCase?.caseId)} as the Lead Case. All cases will be ` +
+            `assigned to ${formatListForDisplay(getAssigneeNames(leadCase?.attorneyAssignments ?? []))}.`
+          }
+        >
           with <strong>{getCaseNumber(leadCase?.caseId)}</strong> as the Lead Case. All cases will
           be assigned to{' '}
           <strong>

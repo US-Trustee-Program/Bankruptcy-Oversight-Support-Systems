@@ -2,8 +2,9 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LOGOUT_PATH } from '@/login/login-library';
 import './Header.scss';
 import useFeatureFlags, {
-  CASE_SEARCH_ENABLED,
+  PRIVILEGED_IDENTITY_MANAGEMENT,
   TRANSFER_ORDERS_ENABLED,
+  SYSTEM_MAINTENANCE_BANNER,
 } from '../hooks/UseFeatureFlags';
 import { Banner } from './uswds/Banner';
 import { useEffect, useState } from 'react';
@@ -11,6 +12,8 @@ import LocalStorage from '../utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import Icon from './uswds/Icon';
 import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
+import { ADMIN_PATH } from '@/admin/admin-config';
+import Alert, { UswdsAlertStyle } from './uswds/Alert';
 
 export enum NavState {
   DEFAULT,
@@ -61,9 +64,17 @@ export const Header = () => {
   const location = useLocation();
   const flags = useFeatureFlags();
   const transferOrdersFlag = flags[TRANSFER_ORDERS_ENABLED];
-  const caseSearchFlag = flags[CASE_SEARCH_ENABLED];
 
   const [activeNav, setActiveNav] = useState<NavState>(mapNavState(location.pathname));
+
+  if (flags[PRIVILEGED_IDENTITY_MANAGEMENT] && session?.user.roles?.includes(CamsRole.SuperUser)) {
+    if (!userMenuItems.find((menuItem) => menuItem.label === 'Admin')) {
+      userMenuItems.unshift({
+        label: 'Admin',
+        address: ADMIN_PATH,
+      });
+    }
+  }
 
   useEffect(() => {
     setActiveNav(mapNavState(location.pathname));
@@ -93,7 +104,7 @@ export const Header = () => {
             </div>
           </div>
           <div className="cams-main-navigation">
-            <nav aria-label="Primary navigation" className="usa-nav cams-nav-bar" role="navigation">
+            <nav aria-label="Main menu" className="usa-nav cams-nav-bar" role="navigation">
               <ul className="usa-nav__primary">
                 <li className="usa-nav__primary-item">
                   <NavLink
@@ -145,21 +156,19 @@ export const Header = () => {
                     </li>
                   )}
 
-                {caseSearchFlag && (
-                  <li className="usa-nav__primary-item">
-                    <NavLink
-                      to="/search"
-                      data-testid="header-search-link"
-                      className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
-                      onClick={() => {
-                        return setActiveNav(NavState.SEARCH);
-                      }}
-                      title="search for cases"
-                    >
-                      Case Search
-                    </NavLink>
-                  </li>
-                )}
+                <li className="usa-nav__primary-item">
+                  <NavLink
+                    to="/search"
+                    data-testid="header-search-link"
+                    className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                    onClick={() => {
+                      return setActiveNav(NavState.SEARCH);
+                    }}
+                    title="search for cases"
+                  >
+                    Case Search
+                  </NavLink>
+                </li>
 
                 {session && (
                   <li className="usa-nav__primary-item">
@@ -179,6 +188,23 @@ export const Header = () => {
           </div>
         </div>
       </header>
+      {flags[SYSTEM_MAINTENANCE_BANNER] && (
+        <div className="system-maintenance-banner grid-row">
+          <div className="grid-col-1"></div>
+          <div className="grid-col-10">
+            <Alert
+              type={UswdsAlertStyle.Warning}
+              title="System maintenance"
+              slim={true}
+              inline={true}
+              show={true}
+            >
+              {flags[SYSTEM_MAINTENANCE_BANNER]}
+            </Alert>
+          </div>
+          <div className="grid-col-1"></div>
+        </div>
+      )}
     </>
   );
 };

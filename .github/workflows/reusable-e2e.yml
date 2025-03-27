@@ -3,7 +3,7 @@ name: End-to-end Tests
 on:
   workflow_call:
     inputs:
-      apiName:
+      apiFunctionName:
         required: true
         type: string
       slotName:
@@ -38,7 +38,7 @@ jobs:
       - name: Get source code
         uses: actions/checkout@v3
 
-      - uses: azure/login@v1
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
@@ -65,6 +65,27 @@ jobs:
           -p ${{ env.priority }} \
           --is-cicd
 
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+          -g ${{ secrets.AZURE_RG }} \
+          --stack-name ${{ inputs.stackName }} \
+          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
+
+      - name: CI Backend
+        working-directory: backend
+        run: |
+          npm ci
+
+      - name: CI Common
+        working-directory: common
+        run: |
+          npm ci
+
+      - name: Install Node dependencies
+        working-directory: test/e2e
+        run: |
+          npm ci
+          npx playwright install chromium msedge
+
       - name: Seed e2e database ##If E2E CosmosDB exists and has been seeded, we do not want to seed again
         if: ${{ inputs.e2eCosmosDbExists == 'false' }}
         run: |
@@ -74,27 +95,28 @@ jobs:
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
 
-          echo "Seeding E2E CosmosDB..."
-          curl -v -d '{"txIdOverride": '0'}' -H "Content-Type: application/json" https://${{ inputs.apiName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }}/api/orders-sync?x-ms-routing-name=${{ inputs.slotName }}
+          export CAMS_LOGIN_PROVIDER="mock"
+          export MSSQL_HOST=${{ secrets.MSSQL_HOST }}
+          export MSSQL_DATABASE_DXTR=${{ secrets.MSSQL_DATABASE_DXTR }}
+          export MSSQL_USER=${{ secrets.MSSQL_USER }}
+          export MSSQL_PASS=${{ secrets.MSSQL_PASS }}
+          export MSSQL_ENCRYPT=true
+          export MSSQL_TRUST_UNSIGNED_CERT=true
+          export MONGO_CONNECTION_STRING="${{ secrets.MONGO_CONNECTION_STRING }}"
+          export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
+          export DATABASE_MOCK=false
 
-      - name: Restart API and Install Node dependencies
-        working-directory: test/e2e
-        run: |
-          az functionapp restart --name ${{ inputs.apiName }} --resource-group ${{ steps.rgApp.outputs.out }} & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }}
-          az functionapp restart --name ${{ inputs.apiName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging & az webapp restart --name ${{ inputs.webappName }} --resource-group ${{ steps.rgApp.outputs.out }} --slot staging
-          sleep 10
-          npm ci
-          npx playwright install chromium msedge
+          echo "Seeding E2E CosmosDB..."
+
+          cd ./test/e2e && npm run load-data:ci
 
       - name: Run E2E Tests
         id: e2eTests
         working-directory: test/e2e
         run: |
-          echo "Wait 60s for seed to finish and apps to restart..."
-          sleep 60
           echo "Running Playwright Tests..."
           mkdir -p playwright/.auth
-          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites${{ vars.AZ_HOSTNAME_SUFFIX }} CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
+          OKTA_USER_NAME=${{secrets.OKTA_USER_NAME_USTP}} OKTA_PASSWORD=${{secrets.OKTA_PASSWORD_USTP}} TARGET_HOST=https://${{ inputs.webappName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
         uses: actions/upload-artifact@v4.4.0
@@ -119,3 +141,9 @@ jobs:
           -g ${{ steps.rgApp.outputs.out }} \
           -s ${{ inputs.stackName }} \
           -r ${name:0:32}
+
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+          -g ${{ secrets.AZURE_RG }} \
+          --stack-name ${{ inputs.stackName }} \
+          --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
+          --delete

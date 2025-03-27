@@ -36,21 +36,21 @@ describe('Test DateRangePicker component', async () => {
       <React.StrictMode>
         <DateRangePicker
           id={'date-picker'}
-          minDate="01/01/2024"
-          maxDate="01/01/2025"
+          minDate="2024-01-01"
+          maxDate="2025-01-01"
         ></DateRangePicker>
       </React.StrictMode>,
     );
 
     const startDateText = screen.getByTestId('date-picker-date-start');
     expect(startDateText).toBeInTheDocument();
-    expect(startDateText).toHaveAttribute('min', '01/01/2024');
-    expect(startDateText).toHaveAttribute('max', '01/01/2025');
+    expect(startDateText).toHaveAttribute('min', '2024-01-01');
+    expect(startDateText).toHaveAttribute('max', '2025-01-01');
 
     const endDateText = screen.getByTestId('date-picker-date-end');
     expect(endDateText).toBeInTheDocument();
-    expect(endDateText).toHaveAttribute('min', '01/01/2024');
-    expect(endDateText).toHaveAttribute('max', '01/01/2025');
+    expect(endDateText).toHaveAttribute('min', '2024-01-01');
+    expect(endDateText).toHaveAttribute('max', '2025-01-01');
   });
 
   test('should adjust min and max attributes when start or end date is changed, and reset when cleared', async () => {
@@ -58,8 +58,8 @@ describe('Test DateRangePicker component', async () => {
       <React.StrictMode>
         <DateRangePicker
           id={'date-picker'}
-          minDate="01/01/2020"
-          maxDate="01/01/2035"
+          minDate="2020-01-01"
+          maxDate="2035-01-01"
         ></DateRangePicker>
       </React.StrictMode>,
     );
@@ -67,14 +67,14 @@ describe('Test DateRangePicker component', async () => {
     let startDateText = screen.getByTestId('date-picker-date-start');
     let endDateText = screen.getByTestId('date-picker-date-end');
     expect(startDateText).toBeInTheDocument();
-    expect(startDateText).toHaveAttribute('max', '01/01/2035');
-    expect(endDateText).toHaveAttribute('min', '01/01/2020');
+    expect(startDateText).toHaveAttribute('max', '2035-01-01');
+    expect(endDateText).toHaveAttribute('min', '2020-01-01');
 
     fireEvent.change(startDateText, { target: { value: '2022-05-01' } });
 
     startDateText = screen.getByTestId('date-picker-date-start');
     endDateText = screen.getByTestId('date-picker-date-end');
-    expect(startDateText).toHaveAttribute('max', '01/01/2035');
+    expect(startDateText).toHaveAttribute('max', '2035-01-01');
     expect(endDateText).toHaveAttribute('min', '2022-05-01');
 
     fireEvent.change(endDateText, { target: { value: '2025-07-01' } });
@@ -87,12 +87,12 @@ describe('Test DateRangePicker component', async () => {
     fireEvent.change(startDateText, { target: { value: '' } });
 
     expect(startDateText).toHaveAttribute('max', '2025-07-01');
-    expect(endDateText).toHaveAttribute('min', '01/01/2020');
+    expect(endDateText).toHaveAttribute('min', '2020-01-01');
 
     fireEvent.change(endDateText, { target: { value: '' } });
 
-    expect(startDateText).toHaveAttribute('max', '01/01/2035');
-    expect(endDateText).toHaveAttribute('min', '01/01/2020');
+    expect(startDateText).toHaveAttribute('max', '2035-01-01');
+    expect(endDateText).toHaveAttribute('min', '2020-01-01');
   });
 
   // TODO: There is a weird unexplainable behavior in vitest it seems.
