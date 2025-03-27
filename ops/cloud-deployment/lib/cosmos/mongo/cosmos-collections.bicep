@@ -206,6 +206,11 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
         }
         {
           key: {
+            keys: ['id']
+          }
+        }
+        {
+          key: {
             keys: ['caseId']
           }
         }
