@@ -7,8 +7,8 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { CamsUser, getCourtDivisionCodes } from '@common/cams/users';
-import { useRef } from 'react';
+import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
+import { useRef, useState } from 'react';
 import SearchResults, { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
@@ -21,23 +21,35 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
+  STAFF_ASSIGNMENT_FILTER_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 import { Stop } from '@/lib/components/Stop';
+import StaffAssignmentFilter, {
+  StaffAssignmentScreenFilter,
+} from '../filters/StaffAssignmentFilter';
 
 function getChapters(): string[] {
   const chapters = ['15'];
   const featureFlags = useFeatureFlags();
-  if (featureFlags[CHAPTER_ELEVEN_ENABLED]) chapters.push('11');
-  if (featureFlags[CHAPTER_TWELVE_ENABLED]) chapters.push('12');
+  if (featureFlags[CHAPTER_ELEVEN_ENABLED]) {
+    chapters.push('11');
+  }
+  if (featureFlags[CHAPTER_TWELVE_ENABLED]) {
+    chapters.push('12');
+  }
   return chapters;
 }
 
-function getPredicateByUserContext(user: CamsUser): CasesSearchPredicate {
+function getPredicateByUserContextWithFilter(
+  user: CamsUser,
+  filter?: StaffAssignmentScreenFilter,
+): CasesSearchPredicate {
   const predicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     divisionCodes: getCourtDivisionCodes(user),
     chapters: getChapters(),
+    assignments: filter?.assignee ? [filter.assignee] : undefined,
     excludeChildConsolidations: true,
     excludeClosedCases: true,
   };
@@ -53,6 +65,9 @@ export const StaffAssignmentScreen = () => {
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const assignmentModalId = 'assign-attorney-modal';
+  const [staffAssignmentFilter, setStaffAssignmentFilter] = useState<
+    StaffAssignmentScreenFilter | undefined
+  >();
 
   function StaffAssignmentRowClosure(props: SearchResultsRowProps) {
     return StaffAssignmentRow({
@@ -61,6 +76,7 @@ export const StaffAssignmentScreen = () => {
     });
   }
 
+  const featureFlags = useFeatureFlags();
   const session = LocalStorage.getSession();
   const hasValidPermission = session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
   const hasAssignedOffices = session?.user?.offices && session?.user?.offices.length > 0;
@@ -74,6 +90,15 @@ export const StaffAssignmentScreen = () => {
       uswdsStyle: UswdsButtonStyle.Default,
     },
   };
+
+  function handleFilterAssignee(assignee: CamsUserReference | undefined) {
+    if (assignee) {
+      setStaffAssignmentFilter((prevFilter) => ({
+        ...prevFilter,
+        assignee,
+      }));
+    }
+  }
 
   return (
     <MainContent className="staff-assignment case-list">
@@ -101,10 +126,21 @@ export const StaffAssignmentScreen = () => {
               showHelpDeskContact
             ></Stop>
           )}
+          {featureFlags[STAFF_ASSIGNMENT_FILTER_ENABLED] && (
+            <>
+              <h3>Filters</h3>
+              <section className="staff-assignment-filter-container">
+                <StaffAssignmentFilter onFilterAssigneeChange={handleFilterAssignee} />
+              </section>
+            </>
+          )}
           {showAssignments && (
             <SearchResults
               id="search-results"
-              searchPredicate={getPredicateByUserContext(session!.user)}
+              searchPredicate={getPredicateByUserContextWithFilter(
+                session!.user,
+                staffAssignmentFilter,
+              )}
               noResultsMessage="No cases currently assigned."
               header={StaffAssignmentHeader}
               row={StaffAssignmentRowClosure}
@@ -135,3 +171,5 @@ export const StaffAssignmentScreen = () => {
     </MainContent>
   );
 };
+
+export default StaffAssignmentScreen;

@@ -30,13 +30,13 @@ const eslintUiTestConfig = tsEslint.config(eslintUiConfig, {
     'testing-library/no-promise-in-fire-event': 'error',
     'testing-library/no-render-in-lifecycle': 'warn', // default: error
     'testing-library/no-unnecessary-act': 'error',
-    'testing-library/no-wait-for-multiple-assertions': 'warn', // default: error
-    'testing-library/no-wait-for-side-effects': 'warn', // default: error
+    'testing-library/no-wait-for-multiple-assertions': 'off', // default: error
+    'testing-library/no-wait-for-side-effects': 'off', // default: error
     'testing-library/no-wait-for-snapshot': 'error',
     'testing-library/prefer-find-by': 'error',
-    'testing-library/prefer-presence-queries': 'warn', // default: error
+    'testing-library/prefer-presence-queries': 'off', // default: error
     'testing-library/prefer-query-by-disappearance': 'error',
-    'testing-library/prefer-screen-queries': 'warn', // default: error
+    'testing-library/prefer-screen-queries': 'off', // default: error
     'testing-library/render-result-naming-convention': 'error',
   },
 });

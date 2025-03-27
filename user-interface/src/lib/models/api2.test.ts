@@ -103,6 +103,7 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.Api2.getMe, null, api);
     await callApiFunction(api2.Api2.getOffices, null, api);
     await callApiFunction(api2.Api2.getOfficeAttorneys, null, api);
+    await callApiFunction(api2.Api2.getOfficeAssignees, null, api);
     await callApiFunction(api2.Api2.getOrders, null, api);
     await callApiFunction(api2.Api2.getOrderSuggestions, 'some-id', api);
     await callApiFunction(api2.Api2.putConsolidationOrderApproval, 'some-id', api);
