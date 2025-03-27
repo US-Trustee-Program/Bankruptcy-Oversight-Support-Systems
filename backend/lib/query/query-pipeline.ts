@@ -1,4 +1,44 @@
-import { ConditionOrConjunction, Query } from './query-builder';
+import { ConditionOrConjunction } from './query-builder';
+
+function source<T = unknown>(source?: string) {
+  return {
+    field(name: keyof T): FieldReference<T> {
+      const reference: FieldReference<T> = {
+        name: name,
+      };
+      if (source) {
+        reference.source = source;
+      }
+      return reference;
+    },
+  };
+}
+
+// TODO: this is hopefully temporary as part of expand and contract
+export type FilterCondition = {
+  condition:
+    | 'EQUALS'
+    | 'GREATER_THAN'
+    | 'GREATER_THAN_OR_EQUAL'
+    | 'IF_NULL'
+    | 'CONTAINS'
+    | 'LESS_THAN'
+    | 'LESS_THAN_OR_EQUAL'
+    | 'NOT_EQUAL'
+    | 'NOT_CONTAINS'
+    | 'REGEX';
+  leftOperand: unknown;
+  rightOperand: unknown;
+};
+
+// TODO: this is hopefully temporary as part of expand and contract
+export type FilterConjunction = {
+  conjunction: 'AND' | 'OR' | 'NOT';
+  values: FilterConditionOrConjunction[];
+};
+
+// TODO: this is hopefully temporary as part of expand and contract
+export type FilterConditionOrConjunction = FilterCondition | FilterConjunction;
 
 export type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
@@ -14,14 +54,14 @@ export function isPaginate(obj: unknown): obj is Paginate {
   return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
 }
 
-export type SortedAttribute<T = unknown> = {
-  field: keyof T;
+export type SortedField = {
+  field: FieldReference<never>;
   direction: 'ASCENDING' | 'DESCENDING';
 };
 
 export type Sort = {
   stage: 'SORT';
-  attributes: SortedAttribute<never>[];
+  fields: SortedField[];
 };
 
 export function isSort(obj: unknown): obj is Sort {
@@ -39,11 +79,11 @@ export type AddFields = {
 
 export type ExcludeFields = {
   stage: 'EXCLUDE';
-  fields: string[];
+  fields: FieldReference<never>[];
 };
 
 export type FieldReference<T> = {
-  field: keyof T;
+  name: keyof T;
   source?: string;
 };
 
@@ -51,13 +91,14 @@ export type Join = {
   stage: 'JOIN';
   local: FieldReference<never>;
   foreign: FieldReference<never>;
-  alias: string;
+  alias: FieldReference<never>;
 };
 
+// TODO: Field and source properties are ambiguous
 export type AdditionalField = {
-  field: string;
-  source: string;
-  query: Query;
+  newField: FieldReference<never>;
+  source: FieldReference<never>;
+  query: FilterConditionOrConjunction;
 };
 
 export type Stage = Paginate | Sort | Match | Join | AddFields | ExcludeFields;
@@ -74,48 +115,41 @@ function paginate(skip: number, limit: number): Paginate {
   };
 }
 
-function sort(...attributes: SortedAttribute<never>[]): Sort {
+function sort(...fields: SortedField[]): Sort {
   return {
     stage: 'SORT',
-    attributes,
+    fields,
   };
 }
 
-function ascending<T>(field: keyof T): SortedAttribute<T> {
+function ascending(field: FieldReference<never>): SortedField {
   return {
     field,
     direction: 'ASCENDING',
   };
 }
 
-function descending<T>(field: keyof T): SortedAttribute<T> {
+function descending(field: FieldReference<never>): SortedField {
   return {
     field,
     direction: 'DESCENDING',
   };
 }
 
-function join<Foreign = unknown>(source: string, foreignField: keyof Foreign) {
+function join<Foreign = never>(foreign: FieldReference<Foreign>) {
   return {
-    onto: <Local = unknown>(localField: keyof Local) => {
+    onto: <Local = never>(local: FieldReference<Local>) => {
       return {
-        as: (name: string): Join => {
+        as: <T = never>(alias: FieldReference<T>): Join => {
           return {
             stage: 'JOIN',
-            local: reference(localField, null),
-            foreign: reference(foreignField, source),
-            alias: name,
+            local,
+            foreign,
+            alias,
           };
         },
       };
     },
-  };
-}
-
-function reference<T = unknown>(field: keyof T, source?: string): FieldReference<T> {
-  return {
-    field,
-    source,
   };
 }
 
@@ -126,9 +160,13 @@ function match(query: ConditionOrConjunction<never>): Match {
   };
 }
 
-function additionalField(field: string, source: string, query: Query): AdditionalField {
+function additionalField(
+  field: FieldReference<never>,
+  source: FieldReference<never>,
+  query: FilterConditionOrConjunction,
+): AdditionalField {
   return {
-    field,
+    newField: field,
     source,
     query,
   };
@@ -138,8 +176,8 @@ function addFields(...fields: AdditionalField[]): AddFields {
   return { stage: 'ADD_FIELDS', fields };
 }
 
-function exclude<T = unknown>(fields: (keyof T)[]): ExcludeFields {
-  return { stage: 'EXCLUDE', fields: fields as string[] };
+function exclude(...fields: FieldReference<never>[]): ExcludeFields {
+  return { stage: 'EXCLUDE', fields };
 }
 
 function pipeline(...stages: Stage[]): Pipeline {
@@ -156,8 +194,8 @@ const QueryPipeline = {
   match,
   paginate,
   pipeline,
-  reference,
   sort,
+  source,
 };
 
 export default QueryPipeline;

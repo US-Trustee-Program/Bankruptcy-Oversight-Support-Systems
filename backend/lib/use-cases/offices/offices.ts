@@ -2,6 +2,7 @@ import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { AttorneyUser, CamsUserReference, Staff } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
+  getCasesRepository,
   getOfficesGateway,
   getOfficesRepository,
   getOfficeStaffSyncStateRepo,
@@ -12,7 +13,7 @@ import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -50,8 +51,19 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<Staff[]> {
-    const repository = getOfficesRepository(context);
-    const assignments = await repository.getOfficeAssignments(officeCode);
+    const officesGateway = getOfficesGateway(context);
+    const offices = await officesGateway.getOffices(context);
+    const office = offices.find((office) => office.officeCode === officeCode);
+    const divisionCodes = ustpOfficeToCourtDivision(office).map((div) => div.courtDivisionCode);
+
+    const repository = getCasesRepository(context);
+    const cases = await repository.searchCasesForOfficeAssignees({
+      divisionCodes,
+      excludeClosedCases: true,
+    });
+    const assignments = cases.reduce((acc, bCase) => {
+      return acc.concat(bCase.assignments);
+    }, []);
     const assignees: Map<string, Staff> = assignments.reduce((acc, assignment) => {
       const userRef: CamsUserReference = {
         id: assignment.userId,

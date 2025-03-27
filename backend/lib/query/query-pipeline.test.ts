@@ -1,9 +1,10 @@
 import QueryPipeline, {
+  FieldReference,
+  FilterCondition,
   isPaginate,
   isSort,
   Paginate,
   Sort,
-  SortedAttribute,
   Stage,
 } from './query-pipeline';
 
@@ -18,6 +19,7 @@ const {
   join,
   addFields,
   additionalField,
+  source,
 } = QueryPipeline;
 
 describe('Query Pipeline', () => {
@@ -33,15 +35,22 @@ describe('Query Pipeline', () => {
     five: boolean;
   };
 
-  const additionalDocs = 'barDocs';
+  type FooExtension = Foo & {
+    barDocs: Bar[];
+    matchingBars: Bar[];
+  };
 
   test('should proxy a list of SortDirection when orderBy is called', () => {
-    const attributeFoo: SortedAttribute<Foo> = ascending<Foo>('uno');
-    const attributeBar: SortedAttribute<Bar> = descending<Bar>('four');
-    expect(sort(attributeFoo)).toEqual({ stage: 'SORT', attributes: [attributeFoo] });
+    const fooCollection = source<Foo>('fooCollection');
+    const barCollection = source<Bar>('barCollection');
+
+    const attributeFoo = ascending(fooCollection.field('uno'));
+    const attributeBar = descending(barCollection.field('four'));
+
+    expect(sort(attributeFoo)).toEqual({ stage: 'SORT', fields: [attributeFoo] });
     expect(sort(attributeFoo, attributeBar)).toEqual({
       stage: 'SORT',
-      attributes: [attributeFoo, attributeBar],
+      fields: [attributeFoo, attributeBar],
     });
   });
 
@@ -49,17 +58,27 @@ describe('Query Pipeline', () => {
     const expected = {
       stage: 'JOIN',
       local: {
-        field: 'uno',
-        source: null,
+        name: 'uno',
+        source: 'fooCollection',
       },
       foreign: {
-        field: 'uno',
-        source: 'bar',
+        name: 'uno',
+        source: 'barCollection',
       },
-      alias: 'barDocs',
+      alias: {
+        name: 'barDocs',
+      },
     };
 
-    const actual = join<Bar>('bar', 'uno').onto<Foo>('uno').as(additionalDocs);
+    const fooCollection = source<Foo>('fooCollection');
+    const barCollection = source<Bar>('barCollection');
+    const extension = source<FooExtension>();
+
+    const fooKey = fooCollection.field('uno');
+    const barKey = barCollection.field('uno');
+    const additionalDocs = extension.field('barDocs');
+
+    const actual = join(barKey).onto(fooKey).as(additionalDocs);
 
     expect(actual).toEqual(expected);
   });
@@ -69,20 +88,53 @@ describe('Query Pipeline', () => {
       stage: 'ADD_FIELDS',
       fields: [
         {
-          field: 'matchingBars',
-          source: 'barDocs',
+          field: { name: 'matchingBars' },
+          source: { name: 'barDocs' },
           query: {
             conjunction: 'AND',
-            values: [],
+            values: [
+              {
+                condition: 'EQUALS',
+                leftOperand: {
+                  condition: 'IF_NULL',
+                  leftOperand: {
+                    name: 'uno',
+                    source: 'fooCollection',
+                  },
+                  rightOperand: null,
+                },
+                rightOperand: null,
+              },
+            ],
           },
         },
       ],
     };
 
+    const matchingBars: FieldReference<FooExtension> = {
+      name: 'matchingBars',
+    };
+    const additionalDocs: FieldReference<FooExtension> = {
+      name: 'barDocs',
+    };
+
+    const fooCollection = source<Foo>('fooCollection');
+    const ifNullField = fooCollection.field('uno');
+    const ifNull: FilterCondition = {
+      condition: 'IF_NULL',
+      leftOperand: ifNullField,
+      rightOperand: null,
+    };
+    const query: FilterCondition = {
+      condition: 'EQUALS',
+      leftOperand: ifNull,
+      rightOperand: null,
+    };
+
     const actual = addFields(
-      additionalField('matchingBars', additionalDocs, {
+      additionalField(matchingBars, additionalDocs, {
         conjunction: 'AND',
-        values: [],
+        values: [query],
       }),
     );
 
@@ -92,10 +144,14 @@ describe('Query Pipeline', () => {
   test('should proxy an Exclude stage', () => {
     const expected = {
       stage: 'EXCLUDE',
-      fields: ['four', 'five'],
+      fields: [{ name: 'four' }, { name: 'five' }],
     };
 
-    const actual = exclude<Bar>(['four', 'five']);
+    const barCollection = source<Bar>();
+    const fourField = barCollection.field('four');
+    const fiveField = barCollection.field('five');
+
+    const actual = exclude(fourField, fiveField);
 
     expect(actual).toEqual(expected);
   });
@@ -135,7 +191,7 @@ describe('Query Pipeline', () => {
     };
     const stageTwo: Stage = {
       stage: 'EXCLUDE',
-      fields: ['four', 'five'],
+      fields: [{ name: 'four' }, { name: 'five' }],
     };
 
     const expected = {
@@ -150,7 +206,7 @@ describe('Query Pipeline', () => {
   test('isSort', () => {
     const sort: Sort = {
       stage: 'SORT',
-      attributes: [{ field: 'uno', direction: 'ASCENDING' }],
+      fields: [{ field: { name: 'uno' }, direction: 'ASCENDING' }],
     };
     expect(isSort(sort)).toBeTruthy();
     expect(isSort({})).toBeFalsy();

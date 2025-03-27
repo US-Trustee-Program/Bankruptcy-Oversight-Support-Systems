@@ -178,4 +178,8 @@ export class MockMongoRepository
   getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
     throw new Error('Method not implemented.');
   }
+
+  searchCasesForOfficeAssignees(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
 }

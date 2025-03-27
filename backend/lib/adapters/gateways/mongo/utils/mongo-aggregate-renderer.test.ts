@@ -1,5 +1,5 @@
-import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
-import { toMongoAggregate } from './mongo-aggregate-renderer';
+import QueryPipeline, { FilterCondition, Stage } from '../../../../query/query-pipeline';
+import { toMongoAggregate, toMongoFilterCondition } from './mongo-aggregate-renderer';
 
 const { pipeline } = QueryPipeline;
 
@@ -78,6 +78,18 @@ describe('aggregation query renderer tests', () => {
     const actual = toMongoAggregate(query);
     expect(actual).toEqual(expected);
   });
+
+  test('should render simple filter condition', () => {
+    const expected = { $eq: ['$$this.name', 'Bob Newhart'] };
+
+    const query: FilterCondition = {
+      condition: 'EQUALS',
+      leftOperand: 'name',
+      rightOperand: 'Bob Newhart',
+    };
+    const actual = toMongoFilterCondition(query);
+    expect(actual).toEqual(expected);
+  });
 });
 
 const queryMatch: Stage = {
@@ -135,22 +147,22 @@ const queryMatch: Stage = {
 const queryJoin: Stage = {
   stage: 'JOIN',
   local: {
-    field: 'uno',
+    name: 'uno',
     source: null,
   },
   foreign: {
-    field: 'uno',
+    name: 'uno',
     source: 'bar',
   },
-  alias: 'barDocs',
+  alias: { name: 'barDocs' },
 };
 
 const queryAddFields: Stage = {
   stage: 'ADD_FIELDS',
   fields: [
     {
-      field: 'matchingBars',
-      source: 'barDocs',
+      newField: { name: 'matchingBars' },
+      source: { name: 'barDocs' },
       query: {
         conjunction: 'AND',
         values: [],
@@ -161,18 +173,18 @@ const queryAddFields: Stage = {
 
 const queryProject: Stage = {
   stage: 'EXCLUDE',
-  fields: ['four', 'five'],
+  fields: [{ name: 'four' }, { name: 'five' }],
 };
 
 const querySort: Stage = {
   stage: 'SORT',
-  attributes: [
+  fields: [
     {
-      field: 'uno',
+      field: { name: 'uno' },
       direction: 'DESCENDING',
     },
     {
-      field: 'two',
+      field: { name: 'two' },
       direction: 'ASCENDING',
     },
   ],
