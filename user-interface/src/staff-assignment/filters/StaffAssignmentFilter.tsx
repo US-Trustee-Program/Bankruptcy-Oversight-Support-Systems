@@ -3,7 +3,7 @@ import useApi2 from '@/lib/hooks/UseApi2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
 import { CamsUserReference, Staff } from '@common/cams/users';
-import { forwardRef, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ResponseBody } from '../../../../common/dist/api/response';
 
 export function assigneesToComboOptions(officeAssignees: Staff[]): ComboOption[] {
@@ -40,19 +40,12 @@ export type StaffAssignmentScreenFilter = {
   assignee: CamsUserReference;
 };
 
-export type StaffAssignmentFilterRef = {
-  focusEditButton: (noteId: string) => void;
-};
-
 export interface StaffAssignmentFilterProps {
   id?: string;
   onFilterAssigneeChange?: (assignee: Staff) => void;
 }
 
-function _StaffAssignmentFilter(
-  props: StaffAssignmentFilterProps,
-  _ref: React.Ref<StaffAssignmentFilterRef>,
-) {
+export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps) {
   const { id, onFilterAssigneeChange } = props;
   const api = useApi2();
   const testId = `staff-assignment-filter${id ? `-${id}` : ''}`;
@@ -96,7 +89,3 @@ function _StaffAssignmentFilter(
     </div>
   );
 }
-
-const StaffAssignmentFilter = forwardRef(_StaffAssignmentFilter);
-
-export default StaffAssignmentFilter;
