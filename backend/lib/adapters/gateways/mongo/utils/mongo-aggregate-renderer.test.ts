@@ -1,21 +1,7 @@
-import QueryBuilder from '../../../../query/query-builder';
-import QueryPipeline from '../../../../query/query-pipeline';
+import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
 import { toMongoAggregate } from './mongo-aggregate-renderer';
 
-type Foo = {
-  uno: string;
-  two: number;
-  three: boolean;
-};
-
-type Bar = {
-  uno: string;
-};
-
-const { pipeline, paginate, match, sort, ascending, descending, join, addFields, additionalField } =
-  QueryPipeline;
-const { and, or, using } = QueryBuilder;
-const doc = using<Foo>();
+const { pipeline } = QueryPipeline;
 
 describe('aggregation query renderer tests', () => {
   test('should return paginated aggregation query', () => {
@@ -54,9 +40,12 @@ describe('aggregation query renderer tests', () => {
           },
         },
       },
-      // {
-      //   $project: {},
-      // },
+      {
+        $project: {
+          four: 0,
+          five: 0,
+        },
+      },
       {
         $sort: {
           uno: -1,
@@ -77,30 +66,120 @@ describe('aggregation query renderer tests', () => {
       },
     ];
 
-    const sortUno = descending<Foo>('uno');
-    const sortTwo = ascending<Foo>('two');
-
-    const additionalDocs = 'barDocs';
     const query = pipeline(
-      match(
-        or(
-          doc('uno').equals('theValue'),
-          and(
-            doc('two').equals(45),
-            doc('three').equals(true),
-            or(doc('uno').equals('hello'), doc('uno').equals('something')),
-          ),
-        ),
-      ),
-      join<Bar>('bar', 'uno').onto<Foo>('uno').as(additionalDocs),
-      addFields(additionalField('matchingBars', additionalDocs, and())),
-      sort(sortUno, sortTwo),
-      paginate(0, 5),
+      queryMatch,
+      queryJoin,
+      queryAddFields,
+      queryProject,
+      querySort,
+      queryPaginate,
     );
 
     const actual = toMongoAggregate(query);
     expect(actual).toEqual(expected);
-
-    console.log(JSON.stringify(actual, null, 2));
   });
 });
+
+const queryMatch: Stage = {
+  conjunction: 'OR',
+  values: [
+    {
+      condition: 'EQUALS',
+      leftOperand: {
+        field: 'uno',
+      },
+      rightOperand: 'theValue',
+    },
+    {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: {
+            field: 'two',
+          },
+          rightOperand: 45,
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: {
+            field: 'three',
+          },
+          rightOperand: true,
+        },
+        {
+          conjunction: 'OR',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: {
+                field: 'uno',
+              },
+              rightOperand: 'hello',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: {
+                field: 'uno',
+              },
+              rightOperand: 'something',
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  stage: 'MATCH',
+};
+
+const queryJoin: Stage = {
+  stage: 'JOIN',
+  local: {
+    field: 'uno',
+    source: null,
+  },
+  foreign: {
+    field: 'uno',
+    source: 'bar',
+  },
+  alias: 'barDocs',
+};
+
+const queryAddFields: Stage = {
+  stage: 'ADD_FIELDS',
+  fields: [
+    {
+      field: 'matchingBars',
+      source: 'barDocs',
+      query: {
+        conjunction: 'AND',
+        values: [],
+      },
+    },
+  ],
+};
+
+const queryProject: Stage = {
+  stage: 'EXCLUDE',
+  fields: ['four', 'five'],
+};
+
+const querySort: Stage = {
+  stage: 'SORT',
+  attributes: [
+    {
+      field: 'uno',
+      direction: 'DESCENDING',
+    },
+    {
+      field: 'two',
+      direction: 'ASCENDING',
+    },
+  ],
+};
+
+const queryPaginate: Stage = {
+  stage: 'PAGINATE',
+  skip: 0,
+  limit: 5,
+};

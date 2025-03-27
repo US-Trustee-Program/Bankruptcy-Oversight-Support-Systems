@@ -1,10 +1,10 @@
 import {
-  isPipeline,
   Paginate,
   Pipeline,
   Sort,
   Join,
   AddFields,
+  ExcludeFields,
 } from '../../../../query/query-pipeline';
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
@@ -60,11 +60,17 @@ export function toMongoAddFields(stage: AddFields) {
   };
 }
 
-export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
-  if (!isPipeline(pipeline)) {
-    throw new Error('Invalid pipeline');
-  }
+export function toMongoProject(stage: ExcludeFields) {
+  // Note that we could extend this by letting stage be another type.
+  // https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
+  const fields = stage.fields.reduce((acc, field) => {
+    acc[field] = 0;
+    return acc;
+  }, {});
+  return { $project: fields };
+}
 
+export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
   return pipeline.stages.map((stage) => {
     if (stage.stage === 'SORT') {
       return toMongoSort(stage);
@@ -80,6 +86,9 @@ export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
     }
     if (stage.stage === 'ADD_FIELDS') {
       return toMongoAddFields(stage);
+    }
+    if (stage.stage === 'EXCLUDE') {
+      return toMongoProject(stage);
     }
   });
 }
