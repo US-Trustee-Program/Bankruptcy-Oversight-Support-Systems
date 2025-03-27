@@ -21,6 +21,8 @@ import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { CaseHistory } from '../../../../../common/src/cams/history';
+import { toMongoAggregate } from './utils/mongo-aggregate-renderer';
+import { Pipeline } from '../../../query/query-pipeline';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -574,5 +576,26 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('some error'));
 
     await expect(repo.syncDxtrCase(bCase)).rejects.toThrow(UnknownError);
+  });
+
+  test('searchCasesForOfficeAssignees', async () => {
+    const expected = {};
+    const predicate: CasesSearchPredicate = {
+      divisionCodes: ['081'],
+      excludeClosedCases: true,
+      offset: 0,
+      limit: 25,
+    };
+
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, '_aggregate')
+      .mockImplementation((...params: unknown[]) => {
+        const _q = toMongoAggregate(params[0] as Pipeline);
+        return Promise.resolve([]);
+      });
+
+    const actual = repo.searchCasesForOfficeAssignees(predicate);
+
+    expect(actual).toEqual(expected);
   });
 });

@@ -5,15 +5,17 @@ import {
   Join,
   AddFields,
   ExcludeFields,
+  FilterConditionOrConjunction,
+  FilterCondition,
 } from '../../../../query/query-pipeline';
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
 
 export function toMongoSort(sort: Sort) {
   return {
-    $sort: sort.attributes.reduce(
+    $sort: sort.fields.reduce(
       (acc, attribute) => {
-        acc[attribute.field] = attribute.direction === 'ASCENDING' ? 1 : -1;
+        acc[attribute.field.name] = attribute.direction === 'ASCENDING' ? 1 : -1;
         return acc;
       },
       {} as Record<never, 1 | -1>,
@@ -38,19 +40,19 @@ export function toMongoLookup(join: Join) {
   return {
     $lookup: {
       from: join.foreign.source,
-      foreignField: join.foreign.field,
-      localField: join.local.field,
-      as: join.alias,
+      foreignField: join.foreign.name,
+      localField: join.local.name,
+      as: join.alias.name,
     },
   };
 }
 
 export function toMongoAddFields(stage: AddFields) {
   const fields = stage.fields.reduce((acc, additional) => {
-    acc[additional.field] = {
+    acc[additional.newField.name] = {
       $filter: {
-        input: additional.source,
-        cond: toMongoQuery(additional.query),
+        input: additional.source.name,
+        cond: toMongoFilterCondition(additional.query),
       },
     };
     return acc;
@@ -64,11 +66,40 @@ export function toMongoProject(stage: ExcludeFields) {
   // Note that we could extend this by letting stage be another type.
   // https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
   const fields = stage.fields.reduce((acc, field) => {
-    acc[field] = 0;
+    acc[field.name] = 0;
     return acc;
   }, {});
   return { $project: fields };
 }
+
+export function toMongoFilterCondition(query: FilterConditionOrConjunction) {
+  if (isFilterCondition(query)) {
+    return translatedCondition(query);
+  }
+}
+
+export function translatedCondition(query: FilterCondition) {
+  return {
+    [mapCondition[query.condition]]: [`$$this.${query.leftOperand}`, query.rightOperand],
+  };
+}
+
+export function isFilterCondition(obj: unknown): obj is FilterCondition {
+  return typeof obj === 'object' && 'condition' in obj;
+}
+
+const mapCondition: { [key: string]: string } = {
+  EQUALS: '$eq',
+  GREATER_THAN: '$gt',
+  GREATER_THAN_OR_EQUAL: '$gte',
+  CONTAINS: '$in',
+  LESS_THAN: '$lt',
+  LESS_THAN_OR_EQUAL: '$lte',
+  NOT_EQUAL: '$ne',
+  NOT_CONTAINS: '$nin',
+  REGEX: '$regex',
+  IF_NULL: '$ifNull',
+};
 
 export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
   return pipeline.stages.map((stage) => {

@@ -12,7 +12,7 @@ import {
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
-const isArray = Array.isArray;
+const { isArray } = Array;
 
 const mapCondition: { [key: string]: string } = {
   EXISTS: '$exists',
