@@ -37,6 +37,11 @@ export type AddFields = {
   fields: AdditionalField[];
 };
 
+export type ExcludeFields = {
+  stage: 'EXCLUDE';
+  fields: string[];
+};
+
 export type FieldReference<T> = {
   field: keyof T;
   source?: string;
@@ -55,7 +60,7 @@ export type AdditionalField = {
   query: Query;
 };
 
-export type Stage = Paginate | Sort | Match | Join | AddFields;
+export type Stage = Paginate | Sort | Match | Join | AddFields | ExcludeFields;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -133,6 +138,10 @@ function addFields(...fields: AdditionalField[]): AddFields {
   return { stage: 'ADD_FIELDS', fields };
 }
 
+function exclude<T = unknown>(fields: (keyof T)[]): ExcludeFields {
+  return { stage: 'EXCLUDE', fields: fields as string[] };
+}
+
 function pipeline(...stages: Stage[]): Pipeline {
   return { stages };
 }
@@ -142,6 +151,7 @@ const QueryPipeline = {
   additionalField,
   ascending,
   descending,
+  exclude,
   join,
   match,
   paginate,

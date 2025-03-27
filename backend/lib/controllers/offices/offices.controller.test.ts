@@ -9,7 +9,7 @@ import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 
 let getOffices = jest.fn();
 let getOfficeAttorneys = jest.fn();
-let getOfficeAssignments = jest.fn();
+let getOfficeAssignees = jest.fn();
 const syncOfficeStaff = jest.fn();
 
 jest.mock('../../use-cases/offices/offices', () => {
@@ -18,7 +18,7 @@ jest.mock('../../use-cases/offices/offices', () => {
       return {
         getOffices,
         getOfficeAttorneys,
-        getOfficeAssignments,
+        getOfficeAssignees,
         syncOfficeStaff,
       };
     }),
@@ -118,12 +118,12 @@ describe('offices controller tests', () => {
     expect(getOfficeAttorneys).toHaveBeenCalledWith(applicationContext, officeCode);
   });
 
-  test('should call getOfficeAssignments', async () => {
+  test('should call getOfficeAssignees', async () => {
     const assignments = [MockData.getCamsUser()];
     getOffices = jest
       .fn()
       .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
-    getOfficeAssignments = jest.fn().mockResolvedValue(assignments);
+    getOfficeAssignees = jest.fn().mockResolvedValue(assignments);
 
     const officeCode = 'new-york';
     const subResource = 'assignees';
@@ -138,7 +138,7 @@ describe('offices controller tests', () => {
       }),
     );
     expect(getOffices).not.toHaveBeenCalled();
-    expect(getOfficeAssignments).toHaveBeenCalledWith(applicationContext, officeCode);
+    expect(getOfficeAssignees).toHaveBeenCalledWith(applicationContext, officeCode);
   });
 
   test('should call getOffices', async () => {
