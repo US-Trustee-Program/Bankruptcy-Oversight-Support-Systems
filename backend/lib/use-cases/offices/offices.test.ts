@@ -115,21 +115,16 @@ describe('offices use case tests', () => {
         ),
       );
     });
+    const cases = MockData.buildArray(MockData.getCaseSummary, 25);
+    for (let i = 0; i < cases.length; i++) {
+      cases[i].assignments = [assignments[i]];
+    }
     const expected = attorneys.map((attorney) => {
       return getCamsUserReference(attorney);
     });
-    const repoSpy = jest.fn().mockResolvedValue(assignments);
-    jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
-      return {
-        release: () => {},
-        putOfficeStaff: jest.fn(),
-        getOfficeAttorneys: jest.fn(),
-        getOfficeAssignments: repoSpy,
-        findAndDeleteStaff: jest.fn(),
-        putOrExtendOfficeStaff: jest.fn(),
-        close: jest.fn(),
-      };
-    });
+    const repoSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'searchCasesForOfficeAssignees')
+      .mockResolvedValue(cases);
 
     const officeCode = 'new-york';
     const actual = await useCase.getOfficeAssignees(applicationContext, officeCode);

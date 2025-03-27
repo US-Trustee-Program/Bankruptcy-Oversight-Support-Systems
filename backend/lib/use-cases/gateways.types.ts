@@ -151,6 +151,7 @@ export interface CasesRepository extends Releasable {
   searchCases(predicate: CasesSearchPredicate);
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   deleteSyncedCases(): Promise<void>;
+  searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]>;
 }
 
 export interface OfficesRepository extends Releasable {
