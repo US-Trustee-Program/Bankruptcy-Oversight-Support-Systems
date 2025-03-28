@@ -1,15 +1,23 @@
 import {
+  AddFields,
+  ExcludeFields,
+  FilterCondition,
+  Join,
   Paginate,
   Pipeline,
   Sort,
-  Join,
-  AddFields,
-  ExcludeFields,
-  FilterConditionOrConjunction,
-  FilterCondition,
 } from '../../../../query/query-pipeline';
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
+import {
+  Condition,
+  ConditionOrConjunction,
+  isCondition,
+  isField,
+} from '../../../../query/query-builder';
+import { CamsError } from '../../../../common-errors/cams-error';
+
+const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
 
 export function toMongoSort(sort: Sort) {
   return {
@@ -72,15 +80,27 @@ export function toMongoProject(stage: ExcludeFields) {
   return { $project: fields };
 }
 
-export function toMongoFilterCondition(query: FilterConditionOrConjunction) {
-  if (isFilterCondition(query)) {
-    return translatedCondition(query);
+export function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
+  if (isCondition(query)) {
+    return translateCondition(query);
   }
 }
 
-export function translatedCondition(query: FilterCondition) {
+export function translateCondition<T = unknown>(query: Condition<T>) {
+  if (!isField(query.leftOperand)) {
+    throw new CamsError(MODULE_NAME, { message: 'leftOperand must be a field' });
+  }
+  const { field } = query.leftOperand;
+  let left: unknown = `$$this.${field}`;
+  let right = query.rightOperand;
+  let condition = mapCondition[query.condition];
+  if (query.condition === 'EXISTS') {
+    left = { $ifNull: [`$$this.${field}`, null] };
+    condition = right ? '$ne' : '$eq';
+    right = null;
+  }
   return {
-    [mapCondition[query.condition]]: [`$$this.${query.leftOperand}`, query.rightOperand],
+    [condition]: [left, right],
   };
 }
 

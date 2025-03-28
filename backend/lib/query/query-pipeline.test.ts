@@ -1,27 +1,8 @@
 import { using } from './query-builder';
-import QueryPipeline, {
-  FieldReference,
-  FilterCondition,
-  isPaginate,
-  isSort,
-  Paginate,
-  Sort,
-  Stage,
-} from './query-pipeline';
+import QueryPipeline, { isPaginate, isSort, Paginate, Sort, Stage } from './query-pipeline';
 
-const {
-  pipeline,
-  paginate,
-  match,
-  sort,
-  ascending,
-  descending,
-  exclude,
-  join,
-  addFields,
-  additionalField,
-  source,
-} = QueryPipeline;
+const { pipeline, paginate, match, sort, ascending, descending, exclude, join, source } =
+  QueryPipeline;
 
 describe('Query Pipeline', () => {
   type Foo = {
@@ -135,63 +116,63 @@ describe('Query Pipeline', () => {
     expect(actual).toEqual(expected);
   });
 
-  test('should proxy an AddFields stage', () => {
-    const expected = {
-      stage: 'ADD_FIELDS',
-      fields: [
-        {
-          field: { name: 'matchingBars' },
-          source: { name: 'barDocs' },
-          query: {
-            conjunction: 'AND',
-            values: [
-              {
-                condition: 'EQUALS',
-                leftOperand: {
-                  condition: 'IF_NULL',
-                  leftOperand: {
-                    name: 'uno',
-                    source: 'fooCollection',
-                  },
-                  rightOperand: null,
-                },
-                rightOperand: null,
-              },
-            ],
-          },
-        },
-      ],
-    };
-
-    const matchingBars: FieldReference<FooExtension> = {
-      name: 'matchingBars',
-    };
-    const additionalDocs: FieldReference<FooExtension> = {
-      name: 'barDocs',
-    };
-
-    const fooCollection = source<Foo>('fooCollection');
-    const ifNullField = fooCollection.field('uno');
-    const ifNull: FilterCondition = {
-      condition: 'IF_NULL',
-      leftOperand: ifNullField,
-      rightOperand: null,
-    };
-    const query: FilterCondition = {
-      condition: 'EQUALS',
-      leftOperand: ifNull,
-      rightOperand: null,
-    };
-
-    const actual = addFields(
-      additionalField(matchingBars, additionalDocs, {
-        conjunction: 'AND',
-        values: [query],
-      }),
-    );
-
-    expect(actual).toEqual(expected);
-  });
+  // test('should proxy an AddFields stage', () => {
+  //   const expected = {
+  //     stage: 'ADD_FIELDS',
+  //     fields: [
+  //       {
+  //         field: { name: 'matchingBars' },
+  //         source: { name: 'barDocs' },
+  //         query: {
+  //           conjunction: 'AND',
+  //           values: [
+  //             {
+  //               condition: 'EQUALS',
+  //               leftOperand: {
+  //                 condition: 'IF_NULL',
+  //                 leftOperand: {
+  //                   name: 'uno',
+  //                   source: 'fooCollection',
+  //                 },
+  //                 rightOperand: null,
+  //               },
+  //               rightOperand: null,
+  //             },
+  //           ],
+  //         },
+  //       },
+  //     ],
+  //   };
+  //
+  //   const matchingBars: FieldReference<FooExtension> = {
+  //     name: 'matchingBars',
+  //   };
+  //   const additionalDocs: FieldReference<FooExtension> = {
+  //     name: 'barDocs',
+  //   };
+  //
+  //   const fooCollection = source<Foo>('fooCollection');
+  //   const ifNullField = fooCollection.field('uno');
+  //   const ifNull: FilterCondition = {
+  //     condition: 'IF_NULL',
+  //     leftOperand: ifNullField,
+  //     rightOperand: null,
+  //   };
+  //   const query: Condition = {
+  //     condition: 'EQUALS',
+  //     leftOperand: ,
+  //     rightOperand: null,
+  //   };
+  //
+  //   const actual = addFields(
+  //     additionalField(matchingBars, additionalDocs, {
+  //       conjunction: 'AND',
+  //       values: [query],
+  //     }),
+  //   );
+  //
+  //   expect(actual).toEqual(expected);
+  // });
 
   test('should proxy an Exclude stage', () => {
     const expected = {

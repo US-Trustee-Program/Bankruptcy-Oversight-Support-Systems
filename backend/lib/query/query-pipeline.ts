@@ -88,9 +88,9 @@ export type Pipeline = {
   stages: Stage[];
 };
 
-export type AddFields = {
+export type AddFields<T = never> = {
   stage: 'ADD_FIELDS';
-  fields: AdditionalField[];
+  fields: AdditionalField<T>[];
 };
 
 export type ExcludeFields = {
@@ -113,13 +113,13 @@ export type Join = {
 };
 
 // TODO: Field and source properties are ambiguous
-export type AdditionalField = {
+export type AdditionalField<T = never> = {
   newField: FieldReference<never>;
   source: FieldReference<never>;
-  query: FilterConditionOrConjunction;
+  query: ConditionOrConjunction<T>;
 };
 
-export type Stage = Paginate | Sort | Match | Join | AddFields | ExcludeFields;
+export type Stage<T = never> = Paginate | Sort | Match | Join | AddFields<T> | ExcludeFields;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -178,10 +178,10 @@ function match(query: ConditionOrConjunction<never>): Match {
   };
 }
 
-function additionalField(
+function additionalField<T = never>(
   field: FieldReference<never>,
   source: FieldReference<never>,
-  query: FilterConditionOrConjunction,
+  query: ConditionOrConjunction<T>,
 ): AdditionalField {
   return {
     newField: field,
