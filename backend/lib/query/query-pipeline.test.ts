@@ -62,7 +62,7 @@ describe('Query Pipeline', () => {
       // TODO: The fields function could return an array we deconstruct from rather than a record.
       // That way we could more easily name the deconstructed variables. Think useState hook. Like:
       //     const [ fooPrimaryKey, theOtherFooField ] = s.fields('uno', 'two');
-      const { uno, two: _ } = s.fields('uno', 'two');
+      const [uno, _] = s.fields('uno', 'two');
 
       expect(uno.source).toEqual(collectionName);
 
