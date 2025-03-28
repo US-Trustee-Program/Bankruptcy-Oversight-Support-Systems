@@ -12,6 +12,14 @@ import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.
 import UsersHelpers from '../users/users.helpers';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { ustpOfficeToDivision } from '../../testing/analysis/acms-dxtr-divisions/compare-divisions';
+
+const MANHATTAN_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
+  (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
+);
+const SEATTLE_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
+  (office) => office.officeCode === 'USTP_CAMS_Region_18_Office_Seattle',
+);
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
@@ -42,12 +50,9 @@ describe('offices use case tests', () => {
 
   test('should flag legacy offices', async () => {
     const useCase = new OfficesUseCase();
-    const manhattanOffice = MOCKED_USTP_OFFICES_ARRAY.find(
-      (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
-    );
 
     const legacyDivisionCode = '087';
-    const officeWithLegacyFlag = { ...manhattanOffice };
+    const officeWithLegacyFlag = { ...MANHATTAN_OFFICE };
     officeWithLegacyFlag.groups[0].divisions.find(
       (d) => d.divisionCode === legacyDivisionCode,
     ).isLegacy = true;
@@ -56,7 +61,7 @@ describe('offices use case tests', () => {
     jest.spyOn(factory, 'getOfficesGateway').mockImplementation(() => {
       return {
         getOfficeName: jest.fn(),
-        getOffices: jest.fn().mockResolvedValue([manhattanOffice]),
+        getOffices: jest.fn().mockResolvedValue([MANHATTAN_OFFICE]),
       };
     });
 
@@ -96,7 +101,7 @@ describe('offices use case tests', () => {
     });
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
 
-    const officeCode = 'new-york';
+    const { officeCode } = MANHATTAN_OFFICE;
     const officeAttorneys = await useCase.getOfficeAttorneys(applicationContext, officeCode);
     expect(officeAttorneys).toEqual(mockAttorneys);
     expect(repoSpy).toHaveBeenCalledWith(officeCode);
@@ -126,15 +131,21 @@ describe('offices use case tests', () => {
       .spyOn(MockMongoRepository.prototype, 'searchCasesForOfficeAssignees')
       .mockResolvedValue(cases);
 
-    const officeCode = 'new-york';
+    const { officeCode } = MANHATTAN_OFFICE;
+
+    const expectedPredicate = {
+      divisionCodes: ustpOfficeToDivision(MANHATTAN_OFFICE).map((div) => div.dxtrDivisionCode),
+      excludeClosedCases: true,
+    };
+
     const actual = await useCase.getOfficeAssignees(applicationContext, officeCode);
     expect(actual).toEqual(expected);
-    expect(repoSpy).toHaveBeenCalledWith(officeCode);
+    expect(repoSpy).toHaveBeenCalledWith(expectedPredicate);
   });
 
   test('should persist offices and continue trying after error', async () => {
     const seattleGroup: CamsUserGroup = { id: 'three', name: 'USTP CAMS Region 18 Office Seattle' };
-    const seattleOfficeCode = 'USTP_CAMS_Region_18_Office_Seattle';
+    const seattleOfficeCode = SEATTLE_OFFICE.officeCode;
     const trialAttorneyGroup: CamsUserGroup = { id: 'four', name: 'USTP CAMS Trial Attorney' };
     const dataVerifierGroup: CamsUserGroup = { id: 'five', name: 'USTP CAMS Data Verifier' };
     const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 4);

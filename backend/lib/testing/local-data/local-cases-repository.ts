@@ -84,4 +84,8 @@ export class LocalCasesRepository implements CasesRepository {
   async deleteSyncedCases(): Promise<void> {
     throw new Error('Not implemented.');
   }
+
+  searchCasesForOfficeAssignees(_ignore: CasesSearchPredicate): Promise<SyncedCase[]> {
+    throw new Error('Method not implemented.');
+  }
 }

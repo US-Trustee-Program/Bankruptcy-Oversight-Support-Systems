@@ -57,9 +57,9 @@ export function toMongoLookup(join: Join) {
 
 export function toMongoAddFields(stage: AddFields) {
   const fields = stage.fields.reduce((acc, additional) => {
-    acc[additional.newField.name] = {
+    acc[additional.fieldToAdd.name] = {
       $filter: {
-        input: additional.source.name,
+        input: additional.querySource.name,
         cond: toMongoFilterCondition(additional.query),
       },
     };
@@ -90,7 +90,7 @@ export function translateCondition<T = unknown>(query: Condition<T>) {
   if (!isField(query.leftOperand)) {
     throw new CamsError(MODULE_NAME, { message: 'leftOperand must be a field' });
   }
-  const { field } = query.leftOperand;
+  const { name: field } = query.leftOperand;
   let left: unknown = `$$this.${field}`;
   let right = query.rightOperand;
   let condition = mapCondition[query.condition];

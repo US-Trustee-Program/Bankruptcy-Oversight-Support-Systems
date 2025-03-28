@@ -1,4 +1,4 @@
-import { ConditionFunctions, ConditionOrConjunction, using } from './query-builder';
+import { ConditionFunctions, ConditionOrConjunction, Field, using } from './query-builder';
 
 function source<T = unknown>(source?: string) {
   return {
@@ -98,8 +98,7 @@ export type ExcludeFields = {
   fields: FieldReference<never>[];
 };
 
-export type FieldReference<T> = {
-  name: keyof T;
+export type FieldReference<T> = Field<T> & {
   source?: string;
 };
 
@@ -114,8 +113,8 @@ export type Join = {
 
 // TODO: Field and source properties are ambiguous
 export type AdditionalField<T = never> = {
-  newField: FieldReference<never>;
-  source: FieldReference<never>;
+  fieldToAdd: FieldReference<never>;
+  querySource: FieldReference<never>;
   query: ConditionOrConjunction<T>;
 };
 
@@ -179,13 +178,13 @@ function match(query: ConditionOrConjunction<never>): Match {
 }
 
 function additionalField<T = never>(
-  field: FieldReference<never>,
-  source: FieldReference<never>,
+  fieldToAdd: FieldReference<never>,
+  querySource: FieldReference<never>,
   query: ConditionOrConjunction<T>,
 ): AdditionalField {
   return {
-    newField: field,
-    source,
+    fieldToAdd,
+    querySource,
     query,
   };
 }
