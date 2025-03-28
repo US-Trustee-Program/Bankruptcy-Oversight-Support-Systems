@@ -62,12 +62,12 @@ describe('Cases repository', () => {
       values: [
         {
           condition: 'REGEX',
-          leftOperand: { field: 'documentType' },
+          leftOperand: { name: 'documentType' },
           rightOperand: '^TRANSFER_',
         },
         {
           condition: 'EQUALS',
-          leftOperand: { field: 'caseId' },
+          leftOperand: { name: 'caseId' },
           rightOperand: '111-82-80331',
         },
       ],
@@ -103,12 +103,12 @@ describe('Cases repository', () => {
       values: [
         {
           condition: 'REGEX',
-          leftOperand: { field: 'documentType' },
+          leftOperand: { name: 'documentType' },
           rightOperand: '^CONSOLIDATION_',
         },
         {
           condition: 'EQUALS',
-          leftOperand: { field: 'caseId' },
+          leftOperand: { name: 'caseId' },
           rightOperand: '111-82-80331',
         },
       ],
@@ -144,12 +144,12 @@ describe('Cases repository', () => {
       values: [
         {
           condition: 'REGEX',
-          leftOperand: { field: 'documentType' },
+          leftOperand: { name: 'documentType' },
           rightOperand: '^AUDIT_',
         },
         {
           condition: 'EQUALS',
-          leftOperand: { field: 'caseId' },
+          leftOperand: { name: 'caseId' },
           rightOperand: '111-82-80331',
         },
       ],
@@ -554,12 +554,12 @@ describe('Cases repository', () => {
       values: [
         {
           condition: 'EQUALS',
-          leftOperand: { field: 'caseId' },
+          leftOperand: { name: 'caseId' },
           rightOperand: bCase.caseId,
         },
         {
           condition: 'EQUALS',
-          leftOperand: { field: 'documentType' },
+          leftOperand: { name: 'documentType' },
           rightOperand: 'SYNCED_CASE',
         },
       ],
@@ -579,7 +579,7 @@ describe('Cases repository', () => {
   });
 
   test('searchCasesForOfficeAssignees', async () => {
-    const expected = {};
+    const expected = [];
     const predicate: CasesSearchPredicate = {
       divisionCodes: ['081'],
       excludeClosedCases: true,
@@ -594,7 +594,7 @@ describe('Cases repository', () => {
         return Promise.resolve([]);
       });
 
-    const actual = repo.searchCasesForOfficeAssignees(predicate);
+    const actual = await repo.searchCasesForOfficeAssignees(predicate);
 
     expect(actual).toEqual(expected);
   });

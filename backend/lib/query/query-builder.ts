@@ -19,11 +19,12 @@ export function isCondition(obj: unknown): obj is Condition {
 }
 
 export type Field<T = unknown> = {
-  field: keyof T;
+  name: keyof T;
 };
 
 export function isField(obj: unknown): obj is Field {
-  return obj instanceof Object && 'field' in obj;
+  // TODO: This inference is speced ver wide and could return many false positives.
+  return obj instanceof Object && 'name' in obj;
 }
 
 export type Conjunction<T = unknown> = {
@@ -118,7 +119,7 @@ export interface ConditionFunctions<T = unknown, R = T[keyof T]> {
 
 export function using<T = unknown>() {
   return <F extends keyof T>(field: F) => {
-    const leftOperand: Field<T> = { field };
+    const leftOperand: Field<T> = { name: field };
     type R = T[F];
 
     const equals = (rightOperand: Field<T> | R): Condition<T> => {

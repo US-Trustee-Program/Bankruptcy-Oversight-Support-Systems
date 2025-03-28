@@ -312,7 +312,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           and(
             doc('closedDate').exists(),
             doc('reopenedDate').exists(),
-            doc('reopenedDate').greaterThanOrEqual({ field: 'closedDate' }),
+            doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
           ),
         ),
       );

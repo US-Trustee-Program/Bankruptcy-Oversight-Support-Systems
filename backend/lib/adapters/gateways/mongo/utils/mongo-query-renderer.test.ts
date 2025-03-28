@@ -174,7 +174,7 @@ describe('Mongo Query Renderer', () => {
       },
     };
 
-    const actual = toMongoQuery(params.fn({ field: 'two' }));
+    const actual = toMongoQuery(params.fn({ name: 'two' }));
     expect(actual).toEqual(expected);
   });
 

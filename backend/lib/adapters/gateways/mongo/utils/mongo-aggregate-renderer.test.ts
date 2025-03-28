@@ -83,7 +83,7 @@ describe('aggregation query renderer tests', () => {
     const expected = { $eq: ['$$this.name', 'Bob Newhart'] };
 
     const leftOperand: Field<CaseAssignment> = {
-      field: 'name',
+      name: 'name',
     };
 
     const query: Condition<CaseAssignment> = {
@@ -107,7 +107,7 @@ describe('aggregation query renderer tests', () => {
       };
 
       const leftOperand: Field<CaseAssignment> = {
-        field: 'unassignedOn',
+        name: 'unassignedOn',
       };
 
       const query: Condition<CaseAssignment> = {
@@ -128,7 +128,7 @@ const queryMatch: Stage = {
     {
       condition: 'EQUALS',
       leftOperand: {
-        field: 'uno',
+        name: 'uno',
       },
       rightOperand: 'theValue',
     },
@@ -138,14 +138,14 @@ const queryMatch: Stage = {
         {
           condition: 'EQUALS',
           leftOperand: {
-            field: 'two',
+            name: 'two',
           },
           rightOperand: 45,
         },
         {
           condition: 'EQUALS',
           leftOperand: {
-            field: 'three',
+            name: 'three',
           },
           rightOperand: true,
         },
@@ -155,14 +155,14 @@ const queryMatch: Stage = {
             {
               condition: 'EQUALS',
               leftOperand: {
-                field: 'uno',
+                name: 'uno',
               },
               rightOperand: 'hello',
             },
             {
               condition: 'EQUALS',
               leftOperand: {
-                field: 'uno',
+                name: 'uno',
               },
               rightOperand: 'something',
             },
@@ -190,7 +190,7 @@ const queryJoin: Stage = {
 const filterCondition: Condition<CaseAssignment> = {
   condition: 'EQUALS',
   leftOperand: {
-    field: 'name',
+    name: 'name',
   },
   rightOperand: 'Bob Newhart',
 };
@@ -199,8 +199,8 @@ const queryAddFields: Stage = {
   stage: 'ADD_FIELDS',
   fields: [
     {
-      newField: { name: 'matchingBars' },
-      source: { name: 'barDocs' },
+      fieldToAdd: { name: 'matchingBars' },
+      querySource: { name: 'barDocs' },
       query: filterCondition,
     },
   ],
