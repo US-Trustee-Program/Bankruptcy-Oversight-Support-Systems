@@ -31,13 +31,15 @@ export class OfficesController implements CamsController, CamsTimerController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<UstpOfficeDetails[] | CamsUserReference[]>> {
     try {
-      const params = context.request.params;
+      const { params } = context.request;
       let data;
-      if (params?.officeCode && params?.subResource === 'attorneys') {
+      if (params.officeCode && params.subResource === 'attorneys') {
         data = await this.useCase.getOfficeAttorneys(context, params.officeCode);
-      } else if (params?.officeCode && params?.subResource) {
+      } else if (params.officeCode && params.subResource === 'assignees') {
+        data = await this.useCase.getOfficeAssignees(context, params.officeCode);
+      } else if (params.officeCode && params.subResource) {
         throw new BadRequestError(MODULE_NAME, {
-          message: `Sub resource ${params?.subResource} is not supported.`,
+          message: `Sub resource ${params.subResource} is not supported.`,
         });
       } else {
         data = await this.useCase.getOffices(context);

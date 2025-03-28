@@ -5,9 +5,11 @@ import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/cour
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { UnknownError } from '../../common-errors/unknown-error';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 
 let getOffices = jest.fn();
 let getOfficeAttorneys = jest.fn();
+let getOfficeAssignees = jest.fn();
 const syncOfficeStaff = jest.fn();
 
 jest.mock('../../use-cases/offices/offices', () => {
@@ -16,6 +18,7 @@ jest.mock('../../use-cases/offices/offices', () => {
       return {
         getOffices,
         getOfficeAttorneys,
+        getOfficeAssignees,
         syncOfficeStaff,
       };
     }),
@@ -113,6 +116,29 @@ describe('offices controller tests', () => {
     );
     expect(getOffices).not.toHaveBeenCalled();
     expect(getOfficeAttorneys).toHaveBeenCalledWith(applicationContext, officeCode);
+  });
+
+  test('should call getOfficeAssignees', async () => {
+    const assignments = [MockData.getCamsUser()];
+    getOffices = jest
+      .fn()
+      .mockRejectedValue(new CamsError('TEST', { message: 'some known error' }));
+    getOfficeAssignees = jest.fn().mockResolvedValue(assignments);
+
+    const officeCode = 'new-york';
+    const subResource = 'assignees';
+    const camsHttpRequest = mockCamsHttpRequest({ params: { officeCode, subResource } });
+    applicationContext.request = camsHttpRequest;
+
+    const controller = new OfficesController();
+    const actual = await controller.handleRequest(applicationContext);
+    expect(actual).toEqual(
+      expect.objectContaining({
+        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: assignments },
+      }),
+    );
+    expect(getOffices).not.toHaveBeenCalled();
+    expect(getOfficeAssignees).toHaveBeenCalledWith(applicationContext, officeCode);
   });
 
   test('should call getOffices', async () => {

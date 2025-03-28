@@ -57,6 +57,24 @@ describe('offices repo', () => {
     expect(attorneys).toEqual(attorneyUsers);
   });
 
+  test('getOfficeAssignments', async () => {
+    // const assigments = MockData.buildArray(MockData.getCamsUserReference, 3);
+    const assigments = []; // pass for now.
+    const officeCode = 'office_code';
+    // const findSpy = jest
+    //   .spyOn(MongoCollectionAdapter.prototype, 'find')
+    //   .mockResolvedValue(assigments);
+
+    // const query = and(
+    //   doc('documentType').equals('OFFICE_STAFF'),
+    //   doc('roles').contains([CamsRole.TrialAttorney]),
+    //   doc('officeCode').equals(officeCode),
+    // );
+    const actual = await repo.getOfficeAssignments(officeCode);
+    // expect(findSpy).toHaveBeenCalledWith(query);
+    expect(actual).toEqual(assigments);
+  });
+
   test('putOfficeStaff', async () => {
     const staff = createAuditRecord<OfficeStaff>({
       id: session.user.id,

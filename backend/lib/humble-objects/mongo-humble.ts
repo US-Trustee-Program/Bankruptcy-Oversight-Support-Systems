@@ -44,7 +44,7 @@ export class CollectionHumble<T> {
     return this.collection.countDocuments(query);
   }
 
-  public async aggregate(query: DocumentQuery) {
+  public async aggregate(query: AggregateQuery) {
     const queryArray = Array.isArray(query) ? query : [query];
     return this.collection.aggregate(queryArray);
   }
@@ -95,6 +95,8 @@ export type BooleanOperation = {
 export type DocumentQuery = BooleanOperation & {
   [key: string]: Filter | Filter[] | BooleanOperation;
 };
+
+export type AggregateQuery = MongoDocument;
 
 export function isMongoDocumentArray(arr: unknown): arr is MongoDocument[] {
   return (

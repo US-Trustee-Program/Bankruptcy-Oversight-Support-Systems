@@ -26,7 +26,7 @@ describe('Query Builder', () => {
       values: [
         {
           condition: 'EQUALS',
-          leftOperand: { field: 'uno' },
+          leftOperand: { name: 'uno' },
           rightOperand: 'theValue',
         },
         {
@@ -34,12 +34,12 @@ describe('Query Builder', () => {
           values: [
             {
               condition: 'EQUALS',
-              leftOperand: { field: 'two' },
+              leftOperand: { name: 'two' },
               rightOperand: 45,
             },
             {
               condition: 'EQUALS',
-              leftOperand: { field: 'three' },
+              leftOperand: { name: 'three' },
               rightOperand: true,
             },
             {
@@ -47,12 +47,12 @@ describe('Query Builder', () => {
               values: [
                 {
                   condition: 'EQUALS',
-                  leftOperand: { field: 'uno' },
+                  leftOperand: { name: 'uno' },
                   rightOperand: 'hello',
                 },
                 {
                   condition: 'EQUALS',
-                  leftOperand: { field: 'uno' },
+                  leftOperand: { name: 'uno' },
                   rightOperand: 'something',
                 },
               ],
@@ -76,7 +76,7 @@ describe('Query Builder', () => {
 
   const staticEqualCondition: Condition<Foo> = {
     condition: 'EQUALS',
-    leftOperand: { field: 'two' },
+    leftOperand: { name: 'two' },
     rightOperand: 45,
   };
 
@@ -86,7 +86,7 @@ describe('Query Builder', () => {
       query: () => q('two').equals(45),
       result: {
         condition: 'EQUALS',
-        leftOperand: { field: 'two' },
+        leftOperand: { name: 'two' },
         rightOperand: 45,
       },
     },
@@ -95,7 +95,7 @@ describe('Query Builder', () => {
       query: () => q('two').greaterThan(45),
       result: {
         condition: 'GREATER_THAN',
-        leftOperand: { field: 'two' },
+        leftOperand: { name: 'two' },
         rightOperand: 45,
       },
     },
@@ -104,21 +104,21 @@ describe('Query Builder', () => {
       query: () => q('two').greaterThanOrEqual(45),
       result: {
         condition: 'GREATER_THAN_OR_EQUAL',
-        leftOperand: { field: 'two' },
+        leftOperand: { name: 'two' },
         rightOperand: 45,
       },
     },
     {
       condition: 'CONTAINS',
       query: () => q('two').contains([45]),
-      result: { condition: 'CONTAINS', leftOperand: { field: 'two' }, rightOperand: [45] },
+      result: { condition: 'CONTAINS', leftOperand: { name: 'two' }, rightOperand: [45] },
     },
     {
       condition: 'LESS_THAN',
       query: () => q('two').lessThan(45),
       result: {
         condition: 'LESS_THAN',
-        leftOperand: { field: 'two' },
+        leftOperand: { name: 'two' },
         rightOperand: 45,
       },
     },
@@ -127,7 +127,7 @@ describe('Query Builder', () => {
       query: () => q('two').lessThanOrEqual(45),
       result: {
         condition: 'LESS_THAN_OR_EQUAL',
-        leftOperand: { field: 'two' },
+        leftOperand: { name: 'two' },
         rightOperand: 45,
       },
     },
@@ -136,24 +136,24 @@ describe('Query Builder', () => {
       query: () => q('two').notEqual(45),
       result: {
         condition: 'NOT_EQUAL',
-        leftOperand: { field: 'two' },
+        leftOperand: { name: 'two' },
         rightOperand: 45,
       },
     },
     {
       condition: 'NOT_CONTAINS',
       query: () => q('two').notContains([45, 55]),
-      result: { condition: 'NOT_CONTAINS', leftOperand: { field: 'two' }, rightOperand: [45, 55] },
+      result: { condition: 'NOT_CONTAINS', leftOperand: { name: 'two' }, rightOperand: [45, 55] },
     },
     {
       condition: 'REGEX',
       query: () => q('two').regex('45'),
-      result: { condition: 'REGEX', leftOperand: { field: 'two' }, rightOperand: '45' },
+      result: { condition: 'REGEX', leftOperand: { name: 'two' }, rightOperand: '45' },
     },
     {
       condition: 'EXISTS',
       query: () => q('two').exists(),
-      result: { condition: 'EXISTS', leftOperand: { field: 'two' }, rightOperand: true },
+      result: { condition: 'EXISTS', leftOperand: { name: 'two' }, rightOperand: true },
     },
   ];
 
@@ -197,7 +197,7 @@ describe('Query Builder', () => {
   test('isCondition', () => {
     const condition: Condition<Foo> = {
       condition: 'REGEX',
-      leftOperand: { field: 'uno' },
+      leftOperand: { name: 'uno' },
       rightOperand: '',
     };
     expect(isCondition(condition)).toBeTruthy();
