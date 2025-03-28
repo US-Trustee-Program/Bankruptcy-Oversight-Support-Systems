@@ -2,7 +2,7 @@ import { ConditionFunctions, ConditionOrConjunction, Field, using } from './quer
 
 function source<T = unknown>(source?: string) {
   return {
-    fields: (...names: (keyof T)[]) => {
+    usingFields: (...names: (keyof T)[]) => {
       const q = using<T>();
       return names.reduce(
         (acc, name) => {
@@ -15,16 +15,18 @@ function source<T = unknown>(source?: string) {
         {} as Record<keyof T, QueryFieldReference<T>>,
       );
     },
-    field(name: keyof T): QueryFieldReference<T> {
+    fields: (...names: (keyof T)[]) => {
       const q = using<T>();
-      const reference: QueryFieldReference<T> = {
-        name: name,
-        ...q(name),
-      };
-      if (source) {
-        reference.source = source;
-      }
-      return reference;
+      return names.map((name) => {
+        const reference: QueryFieldReference<T> = { name, ...q(name) };
+        if (source) {
+          reference.source = source;
+        }
+        return reference;
+      });
+    },
+    field(name: keyof T): QueryFieldReference<T> {
+      return this.fields(name)[0];
     },
     name: source,
   };

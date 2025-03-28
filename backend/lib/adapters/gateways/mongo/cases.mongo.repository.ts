@@ -362,14 +362,38 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]> {
-    type Intermediate = SyncedCase & {
-      assignmentDocs: CaseAssignment[];
+    // type Intermediate = SyncedCase & {
+    //   allAssignments: CaseAssignment[];
+    //   matchingAssignments: CaseAssignment[];
+    //   assignments: CaseAssignment[];
+    // };
+    type TempFields = {
+      allAssignments: CaseAssignment[];
       matchingAssignments: CaseAssignment[];
-      assignments: CaseAssignment[];
     };
 
     const { assignments: assignmentsPredicate, ...initialPredicate } = predicate;
-    const initialQuery = and(...this.addConditions(initialPredicate));
+    const initialMatch = and(...this.addConditions(initialPredicate));
+
+    // Field references from the assignments collection.
+    const assignmentDocs = source<CaseAssignment>('assignments');
+    const [assignmentName, assignmentUnassignedOn] = assignmentDocs.fields('name', 'unassignedOn');
+
+    // Field references from the cases collection.
+    const caseDocs = source<SyncedCase>('cases');
+    const [casesCaseId, assignmentsField] = caseDocs.fields('caseId', 'assignments');
+
+    // Field references for the intermediate shape of the documents in the aggregation
+    const [allAssignmentsTempField, matchingAssignmentsTempField] = source<TempFields>().fields(
+      'allAssignments',
+      'matchingAssignments',
+    );
+
+    // TODO: we need to find a way to produce $$this.field name for $filter conditions
+    // TODO: we also need to handle this way of doing $eq and the $ifNull
+    // { $and: [
+    //   { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] }
+    // ] }
 
     // TODO: The following supports getting a specific staff's assigned cases.
     // TODO: assignmentsQuery will not produce the following, but it needs to
@@ -378,49 +402,32 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     //   { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] }
     // ] }
 
-    const excludeUnassignedCasesQuery = using<Intermediate>()('matchingAssignments').notEqual([]);
-    const tempDoc = using<CaseAssignment>();
+    const matchingAssignments = additionalField(
+      matchingAssignmentsTempField,
+      allAssignmentsTempField,
+      predicate.assignments
+        ? and(
+            assignmentName.equals(
+              predicate.assignments[0].name,
+            ) /* TODO: { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] } */,
+          )
+        : and(),
+    );
 
-    const assignmentsQuery = predicate.assignments
-      ? and(
-          tempDoc('name').equals(
-            predicate.assignments[0].name,
-          ) /* TODO: { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] } */,
-        )
-      : and();
-
-    // TODO: we need to find a way to produce $$this.field name for $filter conditions
-    // TODO: we also need to handle this way of doing $eq and the $ifNull
-    // { $and: [
-    //   { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] }
-    // ] }
-    const excludeUnassignedStaffQuery = tempDoc('unassignedOn').equals(null);
-
-    const casesCollection = source<SyncedCase>('cases');
-    const assignmentsCollection = source<CaseAssignment>('assignments');
-    const temp = source<Intermediate>();
-
-    const joinedTemp = temp.field('assignmentDocs');
-    const matchesTemp = temp.field('matchingAssignments');
-    const assignmentsCaseId = assignmentsCollection.field('caseId');
-    const assignmentsField = casesCollection.field('assignments');
-    const casesCaseId = casesCollection.field('caseId');
-
-    const matchingAssignments = additionalField(matchesTemp, joinedTemp, assignmentsQuery);
-    const assignments = additionalField<CaseAssignment>(
+    const assignments = additionalField(
       assignmentsField,
-      joinedTemp,
-      excludeUnassignedStaffQuery,
+      allAssignmentsTempField,
+      assignmentUnassignedOn.equals(null),
     );
 
     const pipelineQuery = pipeline(
-      match(initialQuery),
-      join<CaseAssignment>(assignmentsCaseId)
-        .onto<SyncedCase>(casesCaseId)
-        .as<Intermediate>(joinedTemp),
+      match(initialMatch),
+      join<CaseAssignment>(assignmentDocs.field('caseId'))
+        .onto<SyncedCase>(caseDocs.field('caseId'))
+        .as<TempFields>(allAssignmentsTempField),
       addFields(matchingAssignments, assignments),
-      match(excludeUnassignedCasesQuery),
-      exclude(joinedTemp, matchesTemp),
+      match(matchingAssignmentsTempField.notEqual([])),
+      exclude(allAssignmentsTempField, matchingAssignmentsTempField),
       sort(ascending(casesCaseId)),
       paginate(predicate.offset, predicate.limit),
     );
