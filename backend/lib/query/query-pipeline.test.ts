@@ -1,8 +1,26 @@
-import { using } from './query-builder';
-import QueryPipeline, { isPaginate, isSort, Paginate, Sort, Stage } from './query-pipeline';
+import { Condition, using } from './query-builder';
+import QueryPipeline, {
+  FieldReference,
+  isPaginate,
+  isSort,
+  Paginate,
+  Sort,
+  Stage,
+} from './query-pipeline';
 
-const { pipeline, paginate, match, sort, ascending, descending, exclude, join, source } =
-  QueryPipeline;
+const {
+  pipeline,
+  paginate,
+  match,
+  sort,
+  ascending,
+  descending,
+  exclude,
+  join,
+  source,
+  addFields,
+  additionalField,
+} = QueryPipeline;
 
 describe('Query Pipeline', () => {
   type Foo = {
@@ -29,10 +47,12 @@ describe('Query Pipeline', () => {
       const s = source<Foo>(collectionName);
 
       expect(s.name).toEqual(collectionName);
-      expect(s.field('uno')).toEqual({
-        name: 'uno',
-        source: collectionName,
-      });
+      expect(s.field('uno')).toEqual(
+        expect.objectContaining({
+          name: 'uno',
+          source: collectionName,
+        }),
+      );
     });
 
     test('should return a fields function that generates a Record<keyof T, QueryFieldReference>', () => {
@@ -46,30 +66,41 @@ describe('Query Pipeline', () => {
 
       expect(uno.source).toEqual(collectionName);
 
-      expect('equals' in uno).toBeTruthy();
-      expect('greaterThan' in uno).toBeTruthy();
-      expect('greaterThanOrEqual' in uno).toBeTruthy();
-      expect('lessThan' in uno).toBeTruthy();
-      expect('lessThanOrEqual' in uno).toBeTruthy();
-      expect('notEqual' in uno).toBeTruthy();
-      expect('exists' in uno).toBeTruthy();
-      expect('notExists' in uno).toBeTruthy();
-      expect('contains' in uno).toBeTruthy();
-      expect('notContains' in uno).toBeTruthy();
-      expect('regex' in uno).toBeTruthy();
+      const keys = [
+        'equals',
+        'greaterThan',
+        'greaterThanOrEqual',
+        'lessThan',
+        'lessThanOrEqual',
+        'notEqual',
+        'exists',
+        'notExists',
+        'contains',
+        'notContains',
+        'regex',
+      ];
+      keys.forEach((key) => {
+        expect(key in uno).toBeTruthy();
+      });
 
       const q = using<Foo>();
-      expect(uno.equals('test')).toEqual(q('uno').equals('test'));
-      expect(uno.greaterThan('test')).toEqual(q('uno').greaterThan('test'));
-      expect(uno.greaterThanOrEqual('test')).toEqual(q('uno').greaterThanOrEqual('test'));
-      expect(uno.lessThan('test')).toEqual(q('uno').lessThan('test'));
-      expect(uno.lessThanOrEqual('test')).toEqual(q('uno').lessThanOrEqual('test'));
-      expect(uno.notEqual('test')).toEqual(q('uno').notEqual('test'));
-      expect(uno.exists()).toEqual(q('uno').exists());
-      expect(uno.notExists()).toEqual(q('uno').notExists());
-      expect(uno.contains('test')).toEqual(q('uno').contains('test'));
-      expect(uno.notContains('test')).toEqual(q('uno').notContains('test'));
-      expect(uno.regex('test')).toEqual(q('uno').regex('test'));
+      const comparisions = [
+        [uno.equals('test'), q('uno').equals('test')],
+        [uno.greaterThan('test'), q('uno').greaterThan('test')],
+        [uno.greaterThanOrEqual('test'), q('uno').greaterThanOrEqual('test')],
+        [uno.lessThan('test'), q('uno').lessThan('test')],
+        [uno.lessThanOrEqual('test'), q('uno').lessThanOrEqual('test')],
+        [uno.notEqual('test'), q('uno').notEqual('test')],
+        [uno.exists(), q('uno').exists()],
+        [uno.notExists(), q('uno').notExists()],
+        [uno.contains('test'), q('uno').contains('test')],
+        [uno.notContains('test'), q('uno').notContains('test')],
+        [uno.regex('test'), q('uno').regex('test')],
+      ];
+      comparisions.forEach((comparision) => {
+        const [actual, expected] = comparision;
+        expect(actual).toEqual(expected);
+      });
     });
   });
 
@@ -90,17 +121,17 @@ describe('Query Pipeline', () => {
   test('should proxy a Join stage', () => {
     const expected = {
       stage: 'JOIN',
-      local: {
+      local: expect.objectContaining({
         name: 'uno',
         source: 'fooCollection',
-      },
-      foreign: {
+      }),
+      foreign: expect.objectContaining({
         name: 'uno',
         source: 'barCollection',
-      },
-      alias: {
+      }),
+      alias: expect.objectContaining({
         name: 'barDocs',
-      },
+      }),
     };
 
     const fooCollection = source<Foo>('fooCollection');
@@ -116,68 +147,62 @@ describe('Query Pipeline', () => {
     expect(actual).toEqual(expected);
   });
 
-  // test('should proxy an AddFields stage', () => {
-  //   const expected = {
-  //     stage: 'ADD_FIELDS',
-  //     fields: [
-  //       {
-  //         field: { name: 'matchingBars' },
-  //         source: { name: 'barDocs' },
-  //         query: {
-  //           conjunction: 'AND',
-  //           values: [
-  //             {
-  //               condition: 'EQUALS',
-  //               leftOperand: {
-  //                 condition: 'IF_NULL',
-  //                 leftOperand: {
-  //                   name: 'uno',
-  //                   source: 'fooCollection',
-  //                 },
-  //                 rightOperand: null,
-  //               },
-  //               rightOperand: null,
-  //             },
-  //           ],
-  //         },
-  //       },
-  //     ],
-  //   };
-  //
-  //   const matchingBars: FieldReference<FooExtension> = {
-  //     name: 'matchingBars',
-  //   };
-  //   const additionalDocs: FieldReference<FooExtension> = {
-  //     name: 'barDocs',
-  //   };
-  //
-  //   const fooCollection = source<Foo>('fooCollection');
-  //   const ifNullField = fooCollection.field('uno');
-  //   const ifNull: FilterCondition = {
-  //     condition: 'IF_NULL',
-  //     leftOperand: ifNullField,
-  //     rightOperand: null,
-  //   };
-  //   const query: Condition = {
-  //     condition: 'EQUALS',
-  //     leftOperand: ,
-  //     rightOperand: null,
-  //   };
-  //
-  //   const actual = addFields(
-  //     additionalField(matchingBars, additionalDocs, {
-  //       conjunction: 'AND',
-  //       values: [query],
-  //     }),
-  //   );
-  //
-  //   expect(actual).toEqual(expected);
-  // });
+  test('should proxy an AddFields stage', () => {
+    const expected = {
+      stage: 'ADD_FIELDS',
+      fields: [
+        {
+          fieldToAdd: expect.objectContaining({ name: 'matchingBars' }),
+          querySource: expect.objectContaining({ name: 'barDocs' }),
+          query: {
+            conjunction: 'AND',
+            values: [
+              {
+                condition: 'EXISTS',
+                leftOperand: expect.objectContaining({
+                  name: 'uno',
+                  source: 'fooCollection',
+                }),
+                rightOperand: false,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const matchingBars: FieldReference<FooExtension> = {
+      name: 'matchingBars',
+    };
+    const additionalDocs: FieldReference<FooExtension> = {
+      name: 'barDocs',
+    };
+
+    const fooCollection = source<Foo>('fooCollection');
+    const ifNullField = fooCollection.field('uno');
+    const query: Condition<Foo> = {
+      condition: 'EXISTS',
+      leftOperand: ifNullField,
+      rightOperand: false,
+    };
+
+    const actual = addFields(
+      additionalField(matchingBars, additionalDocs, {
+        conjunction: 'AND',
+        values: [query],
+      }),
+    );
+
+    expect(actual).toEqual(expected);
+  });
 
   test('should proxy an Exclude stage', () => {
     const expected = {
       stage: 'EXCLUDE',
-      fields: [{ name: 'four' }, { name: 'five' }],
+      fields: [
+        expect.objectContaining({ name: 'four' }),
+        expect.objectContaining({ name: 'five' }),
+      ],
     };
 
     const barCollection = source<Bar>();
