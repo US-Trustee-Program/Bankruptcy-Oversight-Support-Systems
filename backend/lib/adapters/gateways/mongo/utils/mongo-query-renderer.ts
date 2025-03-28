@@ -11,6 +11,9 @@ import {
   isField,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
+import { CamsError } from '../../../../common-errors/cams-error';
+
+const MODULE_NAME = 'MONGO-QUERY-RENDERER';
 
 const { isArray } = Array;
 
@@ -41,7 +44,16 @@ function translateCondition<T = unknown>(query: Condition<T>) {
       },
     };
   } else {
-    return { [query.leftOperand.field]: { [mapCondition[query.condition]]: query.rightOperand } };
+    // TODO: figure out how we know this is in need of special handling vis-a-vis aggregate pipeline filter
+    // or do it in the aggregate renderer
+    if (isField(query.leftOperand)) {
+      return { [query.leftOperand.field]: { [mapCondition[query.condition]]: query.rightOperand } };
+    } else {
+      // TODO: handle the case where leftOperand is a Condition
+      throw new CamsError(MODULE_NAME, {
+        message: 'The base renderer currently cannot handle nested Conditions.',
+      });
+    }
   }
 }
 

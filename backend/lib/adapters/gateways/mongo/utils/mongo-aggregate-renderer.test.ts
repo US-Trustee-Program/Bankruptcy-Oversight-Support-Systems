@@ -1,5 +1,7 @@
-import QueryPipeline, { FilterCondition, Stage } from '../../../../query/query-pipeline';
+import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
 import { toMongoAggregate, toMongoFilterCondition } from './mongo-aggregate-renderer';
+import { Condition, Field } from '../../../../query/query-builder';
+import { CaseAssignment } from '../../../../../../common/src/cams/assignments';
 
 const { pipeline } = QueryPipeline;
 
@@ -33,9 +35,7 @@ describe('aggregation query renderer tests', () => {
           matchingBars: {
             $filter: {
               input: 'barDocs',
-              cond: {
-                $and: [],
-              },
+              cond: { $eq: ['$$this.name', 'Bob Newhart'] },
             },
           },
         },
@@ -82,14 +82,44 @@ describe('aggregation query renderer tests', () => {
   test('should render simple filter condition', () => {
     const expected = { $eq: ['$$this.name', 'Bob Newhart'] };
 
-    const query: FilterCondition = {
+    const leftOperand: Field<CaseAssignment> = {
+      field: 'name',
+    };
+
+    const query: Condition<CaseAssignment> = {
       condition: 'EQUALS',
-      leftOperand: 'name',
+      leftOperand,
       rightOperand: 'Bob Newhart',
     };
-    const actual = toMongoFilterCondition(query);
+    const actual = toMongoFilterCondition<CaseAssignment>(query);
     expect(actual).toEqual(expected);
   });
+
+  const ifNullCases = [
+    ['exists', '$ne', true],
+    ['not exists', '$eq', false],
+  ];
+  test.each(ifNullCases)(
+    'should render an $ifNull for the %s case',
+    (_caseName: string, condition: string, right: boolean) => {
+      const expected = {
+        [condition]: [{ $ifNull: ['$$this.unassignedOn', null] }, null],
+      };
+
+      const leftOperand: Field<CaseAssignment> = {
+        field: 'unassignedOn',
+      };
+
+      const query: Condition<CaseAssignment> = {
+        condition: 'EXISTS',
+        leftOperand,
+        rightOperand: right,
+      };
+
+      const actual = toMongoFilterCondition<CaseAssignment>(query);
+      expect(actual).toEqual(expected);
+    },
+  );
 });
 
 const queryMatch: Stage = {
@@ -157,16 +187,21 @@ const queryJoin: Stage = {
   alias: { name: 'barDocs' },
 };
 
+const filterCondition: Condition<CaseAssignment> = {
+  condition: 'EQUALS',
+  leftOperand: {
+    field: 'name',
+  },
+  rightOperand: 'Bob Newhart',
+};
+
 const queryAddFields: Stage = {
   stage: 'ADD_FIELDS',
   fields: [
     {
       newField: { name: 'matchingBars' },
       source: { name: 'barDocs' },
-      query: {
-        conjunction: 'AND',
-        values: [],
-      },
+      query: filterCondition,
     },
   ],
 };
