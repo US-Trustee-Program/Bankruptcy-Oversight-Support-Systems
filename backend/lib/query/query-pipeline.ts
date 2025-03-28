@@ -1,16 +1,32 @@
-import { ConditionOrConjunction } from './query-builder';
+import { ConditionFunctions, ConditionOrConjunction, using } from './query-builder';
 
 function source<T = unknown>(source?: string) {
   return {
-    field(name: keyof T): FieldReference<T> {
-      const reference: FieldReference<T> = {
+    fields: (...names: (keyof T)[]) => {
+      const q = using<T>();
+      return names.reduce(
+        (acc, name) => {
+          acc[name] = { name, ...q(name) };
+          if (source) {
+            acc[name].source = source;
+          }
+          return acc;
+        },
+        {} as Record<keyof T, QueryFieldReference<T>>,
+      );
+    },
+    field(name: keyof T): QueryFieldReference<T> {
+      const q = using<T>();
+      const reference: QueryFieldReference<T> = {
         name: name,
+        ...q(name),
       };
       if (source) {
         reference.source = source;
       }
       return reference;
     },
+    name: source,
   };
 }
 
@@ -86,6 +102,8 @@ export type FieldReference<T> = {
   name: keyof T;
   source?: string;
 };
+
+export type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
 
 export type Join = {
   stage: 'JOIN';
