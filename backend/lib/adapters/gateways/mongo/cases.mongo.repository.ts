@@ -407,7 +407,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     const casesCaseId = casesCollection.field('caseId');
 
     const matchingAssignments = additionalField(matchesTemp, joinedTemp, assignmentsQuery);
-    const assignments = additionalField(assignmentsField, joinedTemp, excludeUnassignedStaffQuery);
+    const assignments = additionalField<CaseAssignment>(
+      assignmentsField,
+      joinedTemp,
+      excludeUnassignedStaffQuery,
+    );
 
     const pipelineQuery = pipeline(
       match(initialQuery),
