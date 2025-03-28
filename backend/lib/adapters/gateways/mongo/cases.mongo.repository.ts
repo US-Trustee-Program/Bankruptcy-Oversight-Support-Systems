@@ -381,7 +381,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     // Field references from the cases collection.
     const caseDocs = source<SyncedCase>('cases');
-    const [casesCaseId, assignmentsField] = caseDocs.fields('caseId', 'assignments');
+    const assignmentsField = caseDocs.field('assignments');
 
     // Field references for the intermediate shape of the documents in the aggregation
     const [allAssignmentsTempField, matchingAssignmentsTempField] = source<TempFields>().fields(
@@ -428,7 +428,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       addFields(matchingAssignments, assignments),
       match(matchingAssignmentsTempField.notEqual([])),
       exclude(allAssignmentsTempField, matchingAssignmentsTempField),
-      sort(ascending(casesCaseId)),
+      sort(ascending(caseDocs.field('caseId'))),
       paginate(predicate.offset, predicate.limit),
     );
 
