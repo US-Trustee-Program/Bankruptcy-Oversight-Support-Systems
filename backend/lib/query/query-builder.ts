@@ -102,6 +102,20 @@ function orderBy<T = unknown>(...attributes: SortedAttribute<T>[]): Sort<T> {
   return { attributes };
 }
 
+export interface ConditionFunctions<T = unknown, R = T[keyof T]> {
+  equals: (rightOperand: Field<T> | R) => Condition<T>;
+  greaterThan: (rightOperand: Field<T> | R) => Condition<T>;
+  greaterThanOrEqual: (rightOperand: Field<T> | R) => Condition<T>;
+  lessThan: (rightOperand: Field<T> | R) => Condition<T>;
+  lessThanOrEqual: (rightOperand: Field<T> | R) => Condition<T>;
+  notEqual: (rightOperand: Field<T> | R) => Condition<T>;
+  exists: () => Condition<T>;
+  notExists: () => Condition<T>;
+  contains: (rightOperand: R | R[]) => Condition<T>;
+  notContains: (rightOperand: R | R[]) => Condition<T>;
+  regex: (rightOperand: RegExp | string) => Condition<T>;
+}
+
 export function using<T = unknown>() {
   return <F extends keyof T>(field: F) => {
     const leftOperand: Field<T> = { field };

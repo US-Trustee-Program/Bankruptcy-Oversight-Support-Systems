@@ -1,3 +1,4 @@
+import { using } from './query-builder';
 import QueryPipeline, {
   FieldReference,
   FilterCondition,
@@ -39,6 +40,57 @@ describe('Query Pipeline', () => {
     barDocs: Bar[];
     matchingBars: Bar[];
   };
+
+  describe('source', () => {
+    test('should return a field function that generates QueryFieldReference', () => {
+      const collectionName = 'collection';
+
+      const s = source<Foo>(collectionName);
+
+      expect(s.name).toEqual(collectionName);
+      expect(s.field('uno')).toEqual({
+        name: 'uno',
+        source: collectionName,
+      });
+    });
+
+    test('should return a fields function that generates a Record<keyof T, QueryFieldReference>', () => {
+      const collectionName = 'coll';
+
+      const s = source<Foo>(collectionName);
+      // TODO: The fields function could return an array we deconstruct from rather than a record.
+      // That way we could more easily name the deconstructed variables. Think useState hook. Like:
+      //     const [ fooPrimaryKey, theOtherFooField ] = s.fields('uno', 'two');
+      const { uno, two: _ } = s.fields('uno', 'two');
+
+      expect(uno.source).toEqual(collectionName);
+
+      expect('equals' in uno).toBeTruthy();
+      expect('greaterThan' in uno).toBeTruthy();
+      expect('greaterThanOrEqual' in uno).toBeTruthy();
+      expect('lessThan' in uno).toBeTruthy();
+      expect('lessThanOrEqual' in uno).toBeTruthy();
+      expect('notEqual' in uno).toBeTruthy();
+      expect('exists' in uno).toBeTruthy();
+      expect('notExists' in uno).toBeTruthy();
+      expect('contains' in uno).toBeTruthy();
+      expect('notContains' in uno).toBeTruthy();
+      expect('regex' in uno).toBeTruthy();
+
+      const q = using<Foo>();
+      expect(uno.equals('test')).toEqual(q('uno').equals('test'));
+      expect(uno.greaterThan('test')).toEqual(q('uno').greaterThan('test'));
+      expect(uno.greaterThanOrEqual('test')).toEqual(q('uno').greaterThanOrEqual('test'));
+      expect(uno.lessThan('test')).toEqual(q('uno').lessThan('test'));
+      expect(uno.lessThanOrEqual('test')).toEqual(q('uno').lessThanOrEqual('test'));
+      expect(uno.notEqual('test')).toEqual(q('uno').notEqual('test'));
+      expect(uno.exists()).toEqual(q('uno').exists());
+      expect(uno.notExists()).toEqual(q('uno').notExists());
+      expect(uno.contains('test')).toEqual(q('uno').contains('test'));
+      expect(uno.notContains('test')).toEqual(q('uno').notContains('test'));
+      expect(uno.regex('test')).toEqual(q('uno').regex('test'));
+    });
+  });
 
   test('should proxy a list of SortDirection when orderBy is called', () => {
     const fooCollection = source<Foo>('fooCollection');
