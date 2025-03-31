@@ -308,7 +308,7 @@ function loadAcmsRegionDivisions() {
   return divisions;
 }
 
-export function ustpOfficeToDivision(ustp: UstpOfficeDetails): DxtrRegionDivision[] {
+function ustpOfficeToDivision(ustp: UstpOfficeDetails): DxtrRegionDivision[] {
   const courtDivisions: DxtrRegionDivision[] = [];
   ustp.groups.reduce((acc, group) => {
     group.divisions.forEach((division) => {

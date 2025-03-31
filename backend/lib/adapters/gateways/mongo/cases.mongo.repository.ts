@@ -14,11 +14,15 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
+import QueryPipeline from '../../../query/query-pipeline';
+import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { paginate, and, or, using } = QueryBuilder;
+const { and, or, using, paginate: qbPaginate } = QueryBuilder;
+const { pipeline, match, sort, ascending, exclude, join, addFields, additionalField, source } =
+  QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
@@ -298,7 +302,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           and(
             doc('closedDate').exists(),
             doc('reopenedDate').exists(),
-            doc('reopenedDate').greaterThanOrEqual({ field: 'closedDate' }),
+            doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
           ),
         ),
       );
@@ -328,7 +332,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         ],
       };
 
-      const query = paginate<SyncedCase>(
+      const query = qbPaginate<SyncedCase>(
         predicate.offset,
         predicate.limit,
         [and(...conditions)],
@@ -345,5 +349,53 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       });
       throw error;
     }
+  }
+
+  async searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]> {
+    type TempFields = {
+      allAssignments: CaseAssignment[];
+      matchingAssignments: CaseAssignment[];
+    };
+
+    const { assignments: assignmentsPredicate, ...initialPredicate } = predicate;
+    const initialMatch = and(...this.addConditions(initialPredicate));
+
+    // Field references from the assignments collection.
+    const assignmentDocs = source<CaseAssignment>('assignments');
+    const [assignmentName, assignmentUnassignedOn] = assignmentDocs.fields('name', 'unassignedOn');
+
+    // Field references from the cases collection.
+    const caseDocs = source<SyncedCase>('cases');
+    const assignmentsField = caseDocs.field('assignments');
+
+    // Field references for the intermediate shape of the documents in the aggregation
+    const [allAssignmentsTempField, matchingAssignmentsTempField] = source<TempFields>().fields(
+      'allAssignments',
+      'matchingAssignments',
+    );
+    const matchingAssignments = additionalField(
+      matchingAssignmentsTempField,
+      allAssignmentsTempField,
+      predicate.assignments ? and(assignmentName.equals(predicate.assignments[0].name)) : and(),
+    );
+
+    const assignments = additionalField(
+      assignmentsField,
+      allAssignmentsTempField,
+      assignmentUnassignedOn.notExists(),
+    );
+
+    const pipelineQuery = pipeline(
+      match(initialMatch),
+      join<CaseAssignment>(assignmentDocs.field('caseId'))
+        .onto<SyncedCase>(caseDocs.field('caseId'))
+        .as<TempFields>(allAssignmentsTempField),
+      addFields(matchingAssignments, assignments),
+      match(assignmentsField.notEqual([])),
+      exclude(allAssignmentsTempField, matchingAssignmentsTempField),
+      sort(ascending(caseDocs.field('caseId'))),
+    );
+
+    return await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
   }
 }

@@ -9,6 +9,7 @@ import { MockInstance } from 'vitest';
 import { CamsSession } from '@common/cams/session';
 import LocalStorage from '@/lib/utils/local-storage';
 import userEvent from '@testing-library/user-event';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const offices = MockData.getOffices();
 
@@ -79,6 +80,13 @@ describe('Tests for Staff Assignment Screen Filters', () => {
     expect(filter).toBeInTheDocument();
   });
 
+  test('should set id to staff-assignment-filter if no id is provided', async () => {
+    renderWithProps({ id: undefined });
+
+    const filter = screen.getByTestId('staff-assignment-filter');
+    expect(filter).toBeInTheDocument();
+  });
+
   test('should return an array of type Staff with a list of assignees from all offices the session user is assigned to', async () => {
     const expectedResults = officeStaffData.flat(2);
     const staffArray = await getOfficeAssignees(Api2.getOfficeAssignees, session);
@@ -128,5 +136,18 @@ describe('Tests for Staff Assignment Screen Filters', () => {
     changeSpy.mock.calls.forEach((spy) => {
       expect(spy[0]).toEqual(expectedAssignee);
     });
+  });
+
+  test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
+    vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const assigneeError = 'There was a problem getting the list of assignees.';
+    renderWithProps();
+
+    await waitFor(() => {
+      const itemList = document.querySelector('#staff-assignment-filter');
+      expect(itemList!).not.toBeInTheDocument();
+    });
+    expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
   });
 });
