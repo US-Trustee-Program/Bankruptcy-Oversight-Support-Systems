@@ -84,20 +84,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
 
-      // This seems to cause an infinite loop?????
-      // while (aggregationResult.hasNext()) {
-      //   const next = await aggregationResult.next();
-      //   console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!NEXT!!!!!!!!!!!!!!!!!!!!!!!!!!!', next);
-      // }
-
       const data = [];
-      // TODO: see if we can skip the for looping
       for await (const result of aggregationResult) {
         data.push(result);
-        // console.log('Data::::::::::', result.data);
-        // for (const doc of result.data) {
-        //   data.push(doc as CamsItem<U>);
-        // }
       }
 
       return data;

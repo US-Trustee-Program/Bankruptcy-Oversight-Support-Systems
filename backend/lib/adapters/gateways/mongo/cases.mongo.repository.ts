@@ -352,11 +352,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]> {
-    // type Intermediate = SyncedCase & {
-    //   allAssignments: CaseAssignment[];
-    //   matchingAssignments: CaseAssignment[];
-    //   assignments: CaseAssignment[];
-    // };
     type TempFields = {
       allAssignments: CaseAssignment[];
       matchingAssignments: CaseAssignment[];
@@ -378,20 +373,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       'allAssignments',
       'matchingAssignments',
     );
-
-    // TODO: we need to find a way to produce $$this.field name for $filter conditions
-    // TODO: we also need to handle this way of doing $eq and the $ifNull
-    // { $and: [
-    //   { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] }
-    // ] }
-
-    // TODO: The following supports getting a specific staff's assigned cases.
-    // TODO: assignmentsQuery will not produce the following, but it needs to
-    // { $and: [
-    //   { $eq: [ "$$this.name", "Last, First" ] },
-    //   { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] }
-    // ] }
-
     const matchingAssignments = additionalField(
       matchingAssignmentsTempField,
       allAssignmentsTempField,
@@ -399,7 +380,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         ? and(
             assignmentName.equals(
               predicate.assignments[0].name,
-            ) /* TODO: { $eq: [ { $ifNull: [ "$$this.unassignedOn", null ] }, null ] } */,
+            ),
           )
         : and(),
     );

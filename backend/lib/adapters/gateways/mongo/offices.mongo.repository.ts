@@ -93,25 +93,6 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  async getOfficeAssignments(_officeCode: string): Promise<CaseAssignment[]> {
-    // TODO: Query the assignments collection for the unique set of attorneys assigned to the office's cases.
-
-    // const doc = using<OfficeStaff>();
-    // const query = and(
-    //   doc('documentType').equals('OFFICE_STAFF'),
-    //   doc('roles').contains([CamsRole.TrialAttorney]),
-    //   doc('officeCode').equals(officeCode),
-    // );
-
-    // try {
-    //   const result = await this.getAdapter<OfficeStaff>().find(query);
-    //   return result.map((doc) => getCamsUserReference(doc));
-    // } catch (originalError) {
-    //   throw getCamsError(originalError, MODULE_NAME);
-    // }
-    return [];
-  }
-
   public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
     const query = and(
       doc('officeCode').equals(officeCode),

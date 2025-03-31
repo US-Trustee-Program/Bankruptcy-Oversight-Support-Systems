@@ -49,7 +49,6 @@ function translateCondition<T = unknown>(query: Condition<T>) {
   if (isField(query.leftOperand)) {
     return { [query.leftOperand.name]: { [mapCondition[query.condition]]: query.rightOperand } };
   } else {
-    // TODO: handle the case where leftOperand is a Condition
     throw new CamsError(MODULE_NAME, {
       message: 'The base renderer currently cannot handle nested Conditions.',
     });

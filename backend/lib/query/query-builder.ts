@@ -23,7 +23,7 @@ export type Field<T = unknown> = {
 };
 
 export function isField(obj: unknown): obj is Field {
-  // TODO: This inference is speced ver wide and could return many false positives.
+  // TODO: This inference is specced very wide and could return many false positives.
   return obj instanceof Object && 'name' in obj;
 }
 
