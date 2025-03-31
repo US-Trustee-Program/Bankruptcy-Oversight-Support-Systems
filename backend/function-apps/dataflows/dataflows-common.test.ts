@@ -9,6 +9,20 @@ import {
 } from './dataflows-common';
 
 describe('Dataflows Common', () => {
+  const RIGHT = 'this-is-a-key';
+  const WRONG = 'this-is-a-bad-key';
+
+  const { env } = process;
+  beforeEach(() => {
+    process.env = {
+      ADMIN_KEY: RIGHT,
+    };
+  });
+
+  afterEach(() => {
+    process.env = env;
+  });
+
   describe('buildFunctionName', () => {
     test('should return a function name according to our naming convention', () => {
       expect(buildFunctionName()).toEqual('');
@@ -26,20 +40,6 @@ describe('Dataflows Common', () => {
   });
 
   describe('isAuthorized', () => {
-    const RIGHT = 'this-is-a-key';
-    const WRONG = 'this-is-a-bad-key';
-
-    const { env } = process;
-    beforeAll(() => {
-      process.env = {
-        ADMIN_KEY: RIGHT,
-      };
-    });
-
-    afterAll(() => {
-      process.env = env;
-    });
-
     test('should return true', async () => {
       const request = {
         headers: new Map<string, string>([['Authorization', `ApiKey ${RIGHT}`]]),
