@@ -138,14 +138,14 @@ describe('Tests for Staff Assignment Screen Filters', () => {
     });
   });
 
-  test('should grab staff assignees from Api', async () => {
+  test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
     vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
     const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
     const assigneeError = 'There was a problem getting the list of assignees.';
     renderWithProps();
 
     await waitFor(() => {
-      const itemList = document.querySelector('#staff-assignment-filter-0');
+      const itemList = document.querySelector('#staff-assignment-filter');
       expect(itemList!).not.toBeInTheDocument();
     });
     expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);

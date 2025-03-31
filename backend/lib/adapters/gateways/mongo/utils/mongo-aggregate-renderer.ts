@@ -1,7 +1,6 @@
 import {
   AddFields,
   ExcludeFields,
-  FilterCondition,
   Join,
   Paginate,
   Pipeline,
@@ -102,10 +101,6 @@ export function translateCondition<T = unknown>(query: Condition<T>) {
   return {
     [condition]: [left, right],
   };
-}
-
-export function isFilterCondition(obj: unknown): obj is FilterCondition {
-  return typeof obj === 'object' && 'condition' in obj;
 }
 
 const mapCondition: { [key: string]: string } = {
