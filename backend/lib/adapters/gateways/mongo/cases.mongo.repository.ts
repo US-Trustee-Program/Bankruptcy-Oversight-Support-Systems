@@ -376,13 +376,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     const matchingAssignments = additionalField(
       matchingAssignmentsTempField,
       allAssignmentsTempField,
-      predicate.assignments
-        ? and(
-            assignmentName.equals(
-              predicate.assignments[0].name,
-            ),
-          )
-        : and(),
+      predicate.assignments ? and(assignmentName.equals(predicate.assignments[0].name)) : and(),
     );
 
     const assignments = additionalField(
