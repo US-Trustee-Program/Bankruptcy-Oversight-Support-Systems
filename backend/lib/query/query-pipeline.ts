@@ -32,32 +32,6 @@ function source<T = unknown>(source?: string) {
   };
 }
 
-// TODO: this is hopefully temporary as part of expand and contract
-export type FilterCondition = {
-  condition:
-    | 'EQUALS'
-    | 'GREATER_THAN'
-    | 'GREATER_THAN_OR_EQUAL'
-    | 'IF_NULL'
-    | 'CONTAINS'
-    | 'LESS_THAN'
-    | 'LESS_THAN_OR_EQUAL'
-    | 'NOT_EQUAL'
-    | 'NOT_CONTAINS'
-    | 'REGEX';
-  leftOperand: unknown;
-  rightOperand: unknown;
-};
-
-// TODO: this is hopefully temporary as part of expand and contract
-export type FilterConjunction = {
-  conjunction: 'AND' | 'OR' | 'NOT';
-  values: FilterConditionOrConjunction[];
-};
-
-// TODO: this is hopefully temporary as part of expand and contract
-export type FilterConditionOrConjunction = FilterCondition | FilterConjunction;
-
 export type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
 };
@@ -113,7 +87,6 @@ export type Join = {
   alias: FieldReference<never>;
 };
 
-// TODO: Field and source properties are ambiguous
 export type AdditionalField<T = never> = {
   fieldToAdd: FieldReference<never>;
   querySource: FieldReference<never>;

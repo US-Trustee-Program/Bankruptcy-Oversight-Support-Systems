@@ -49,9 +49,9 @@ export interface StaffAssignmentFilterProps {
 }
 
 export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps) {
-  const { id, onFilterAssigneeChange } = props;
+  const { id: idInput, onFilterAssigneeChange } = props;
   const api = useApi2();
-  const testId = `staff-assignment-filter${id ? `-${id}` : ''}`;
+  const id = idInput ? `staff-assignment-filter-${idInput}` : 'staff-assignment-filter';
   const session = LocalStorage.getSession();
   const globalAlert = useGlobalAlert();
   const [officeAssigneesError, setOfficeAssigneesError] = useState<boolean>(false);
@@ -82,7 +82,7 @@ export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps)
   }, []);
 
   return (
-    <div id={id ?? ''} data-testid={testId} className="staff-assignment-filters">
+    <div id={id} data-testid={id} className="staff-assignment-filters">
       {officeAssignees.length > 0 && officeAssigneesError === false && (
         <ComboBox
           id="staff-assignees"
