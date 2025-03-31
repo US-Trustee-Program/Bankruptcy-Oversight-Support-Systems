@@ -12,7 +12,7 @@ import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.
 import UsersHelpers from '../users/users.helpers';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { ustpOfficeToDivision } from '../../testing/analysis/acms-dxtr-divisions/compare-divisions';
+import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 const MANHATTAN_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
   (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
@@ -23,10 +23,10 @@ const SEATTLE_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
 
 describe('offices use case tests', () => {
   let applicationContext: ApplicationContext;
-  jest.spyOn(MockUserGroupGateway.prototype, 'init').mockResolvedValue();
 
   beforeEach(async () => {
     applicationContext = await createMockApplicationContext();
+    jest.spyOn(MockUserGroupGateway.prototype, 'init').mockResolvedValue();
   });
 
   afterEach(() => {
@@ -134,7 +134,9 @@ describe('offices use case tests', () => {
     const { officeCode } = MANHATTAN_OFFICE;
 
     const expectedPredicate = {
-      divisionCodes: ustpOfficeToDivision(MANHATTAN_OFFICE).map((div) => div.dxtrDivisionCode),
+      divisionCodes: ustpOfficeToCourtDivision(MANHATTAN_OFFICE).map(
+        (div) => div.courtDivisionCode,
+      ),
       excludeClosedCases: true,
     };
 

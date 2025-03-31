@@ -9,7 +9,7 @@ import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CaseDocket, CaseDocketEntryDocument } from '../../../../../common/src/cams/cases';
 
-const MODULENAME = 'CASE-DOCKET-DXTR-GATEWAY';
+const MODULE_NAME = 'CASE-DOCKET-DXTR-GATEWAY';
 
 export type DxtrCaseDocketEntryDocument = {
   sequenceNumber: number;
@@ -132,10 +132,10 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
 
     if (queryResult.success) {
       const recordset = (queryResult.results as mssql.IResult<CaseDocket>).recordset;
-      if (!recordset.length) throw new NotFoundError(MODULENAME, { data: { caseId } });
+      if (!recordset.length) throw new NotFoundError(MODULE_NAME, { data: { caseId } });
       return recordset;
     } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message, data: { caseId } });
+      throw new CamsError(MODULE_NAME, { message: queryResult.message, data: { caseId } });
     }
   }
 
@@ -337,7 +337,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrCaseDocketEntryDocument>).recordset;
     } else {
-      throw new CamsError(MODULENAME, { message: queryResult.message, data: { caseId } });
+      throw new CamsError(MODULE_NAME, { message: queryResult.message, data: { caseId } });
     }
   }
 }
