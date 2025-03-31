@@ -1,6 +1,4 @@
-import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { AcmsGateway } from '../gateways.types';
 import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './migrate-consolidations';
 import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
@@ -12,32 +10,20 @@ import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { ConsolidationFrom } from '../../../../common/src/cams/events';
 
-const mockAcmsGateway: AcmsGateway = {
-  getLeadCaseIds: function (..._ignore): Promise<string[]> {
-    throw new Error('Function not implemented.');
-  },
-  getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
-    throw new Error('Function not implemented.');
-  },
-  loadMigrationTable: function (..._ignore) {
-    throw new Error('Function not implemented.');
-  },
-  getMigrationCaseIds: function (..._ignore) {
-    throw new Error('Function not implemented.');
-  },
-  emptyMigrationTable: function (..._ignore) {
-    throw new Error('Function not implemented.');
-  },
-  getMigrationCaseCount(..._ignore) {
-    throw new Error('Function not implemented.');
-  },
-};
-
 describe('ACMS Orders', () => {
   let context;
 
   beforeAll(async () => {
     context = await createMockApplicationContext({ env: { DATABASE_MOCK: 'false' } });
+  });
+
+  beforeEach(async () => {
+    jest
+      .spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds')
+      .mockRejectedValue(new Error('unknown error'));
+    jest
+      .spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails')
+      .mockRejectedValue(new Error('unknown error'));
   });
 
   afterEach(() => {
@@ -47,9 +33,8 @@ describe('ACMS Orders', () => {
   test('should return a page of consolidation orders', async () => {
     const expected: string[] = ['811100000', '1231111111'];
     const getConsolidationOrders = jest
-      .spyOn(mockAcmsGateway, 'getLeadCaseIds')
+      .spyOn(AcmsGatewayImpl.prototype, 'getLeadCaseIds')
       .mockResolvedValue(expected);
-    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
 
     const predicateAndPage: AcmsPredicate = {
       divisionCode: '000',
@@ -566,7 +551,6 @@ describe('ACMS Orders', () => {
   });
 
   test('should throw exceptions', async () => {
-    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
     const useCase = new AcmsOrders();
 
     const predicate: AcmsPredicate = {
@@ -582,7 +566,6 @@ describe('ACMS Orders', () => {
   });
 
   test('should not throw exceptions', async () => {
-    jest.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
     const useCase = new AcmsOrders();
 
     await expect(useCase.migrateConsolidation(context, '000-11-22222')).resolves.toEqual(
