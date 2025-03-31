@@ -32,14 +32,17 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!OfficesMongoRepository.instance)
+    if (!OfficesMongoRepository.instance) {
       OfficesMongoRepository.instance = new OfficesMongoRepository(context);
+    }
     OfficesMongoRepository.referenceCount++;
     return OfficesMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (OfficesMongoRepository.referenceCount > 0) OfficesMongoRepository.referenceCount--;
+    if (OfficesMongoRepository.referenceCount > 0) {
+      OfficesMongoRepository.referenceCount--;
+    }
     if (OfficesMongoRepository.referenceCount < 1) {
       OfficesMongoRepository.instance.client.close().then();
       OfficesMongoRepository.instance = null;

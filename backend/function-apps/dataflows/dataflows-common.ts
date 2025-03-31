@@ -79,8 +79,7 @@ export function buildHttpTrigger(
         throw new ForbiddenError(moduleName);
       }
 
-      const result = await fn(context, request);
-      context.debug(result);
+      await fn(context, request);
 
       return new HttpResponse(toAzureSuccess({ statusCode: 201 }));
     } catch (error) {

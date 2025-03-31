@@ -11,8 +11,11 @@ import {
   isField,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
+import { CamsError } from '../../../../common-errors/cams-error';
 
-const isArray = Array.isArray;
+const MODULE_NAME = 'MONGO-QUERY-RENDERER';
+
+const { isArray } = Array;
 
 const mapCondition: { [key: string]: string } = {
   EXISTS: '$exists',
@@ -30,18 +33,25 @@ const mapCondition: { [key: string]: string } = {
 // TODO: create new aggregate renderer
 // https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
 function translateCondition<T = unknown>(query: Condition<T>) {
-  const compareFields = isField(query.rightOperand);
-  if (compareFields) {
+  if (isField(query.rightOperand)) {
     return {
       $expr: {
         [mapCondition[query.condition]]: [
-          `$${query.leftOperand['field'].toString()}`,
-          `$${query.rightOperand['field'].toString()}`,
+          `$${query.leftOperand.name.toString()}`,
+          `$${query.rightOperand.name}`,
         ],
       },
     };
+  }
+
+  // TODO: figure out how we know this is in need of special handling vis-a-vis aggregate pipeline filter
+  // or do it in the aggregate renderer
+  if (isField(query.leftOperand)) {
+    return { [query.leftOperand.name]: { [mapCondition[query.condition]]: query.rightOperand } };
   } else {
-    return { [query.leftOperand.field]: { [mapCondition[query.condition]]: query.rightOperand } };
+    throw new CamsError(MODULE_NAME, {
+      message: 'The base renderer currently cannot handle nested Conditions.',
+    });
   }
 }
 

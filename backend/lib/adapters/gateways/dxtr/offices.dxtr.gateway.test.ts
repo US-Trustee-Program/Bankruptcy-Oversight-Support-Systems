@@ -2,7 +2,7 @@ import OfficesDxtrGateway from './offices.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import * as database from '../../utils/database';
-import { QueryResults } from '../../types/database';
+import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';
 import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
 import {
   MOCKED_USTP_OFFICES_ARRAY,
@@ -25,15 +25,26 @@ describe('offices gateway tests', () => {
 
   describe('getOffices test', () => {
     let applicationContext: ApplicationContext;
-    const querySpy = jest.spyOn(database, 'executeQuery');
+    let querySpy: jest.SpyInstance<
+      Promise<QueryResults>,
+      [
+        applicationContext: ApplicationContext<unknown>,
+        module: string,
+        databaseConfig: IDbConfig,
+        query: string,
+        input?: DbTableFieldSpec[],
+      ],
+      unknown
+    >;
 
     beforeEach(async () => {
+      querySpy = jest.spyOn(database, 'executeQuery');
       applicationContext = await createMockApplicationContext();
-      querySpy.mockImplementation(jest.fn());
     });
 
     afterEach(() => {
-      jest.clearAllMocks();
+      jest.restoreAllMocks();
+      jest.resetModules();
     });
 
     test('Should get Offices', async () => {
@@ -44,14 +55,12 @@ describe('offices gateway tests', () => {
         },
         message: '',
       };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
+      querySpy.mockResolvedValue(mockResults);
 
       const expectedOffices: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
 
       const gateway = new OfficesDxtrGateway();
-      const offices = await gateway.getOffices(applicationContext);
+      const offices = await gateway.getOffices(applicationContext, 'gateway-test');
 
       expectedOffices.forEach((expectedOffice) => {
         const actualOffice = offices.find((o) => o.officeCode === expectedOffice.officeCode);
@@ -68,14 +77,12 @@ describe('offices gateway tests', () => {
         results: {},
         message: 'Some expected SQL error.',
       };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
+      querySpy.mockResolvedValue(mockResults);
 
       const gateway = new OfficesDxtrGateway();
 
       await expect(async () => {
-        await gateway.getOffices(applicationContext);
+        await gateway.getOffices(applicationContext, 'gateway-test');
       }).rejects.toThrow('Some expected SQL error.');
     });
   });

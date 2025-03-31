@@ -1,7 +1,8 @@
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
+import { AttorneyUser, CamsUserReference, Staff } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
+  getCasesRepository,
   getOfficesGateway,
   getOfficesRepository,
   getOfficeStaffSyncStateRepo,
@@ -12,6 +13,7 @@ import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
+import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -43,6 +45,35 @@ export class OfficesUseCase {
   ): Promise<AttorneyUser[]> {
     const repository = getOfficesRepository(context);
     return await repository.getOfficeAttorneys(officeCode);
+  }
+
+  public async getOfficeAssignees(
+    context: ApplicationContext,
+    officeCode: string,
+  ): Promise<Staff[]> {
+    const officesGateway = getOfficesGateway(context);
+    const offices = await officesGateway.getOffices(context);
+    const office = offices.find((office) => office.officeCode === officeCode);
+    const divisionCodes = ustpOfficeToCourtDivision(office).map((div) => div.courtDivisionCode);
+
+    const repository = getCasesRepository(context);
+    const cases = await repository.searchCasesForOfficeAssignees({
+      divisionCodes,
+      excludeClosedCases: true,
+    });
+    const assignees = new Map<string, CamsUserReference>();
+    for await (const bCase of cases) {
+      bCase.assignments.forEach((assignment) => {
+        assignees.set(assignment.userId, {
+          id: assignment.userId,
+          name: assignment.name,
+        });
+      });
+    }
+
+    return Array.from(assignees.values()).sort((a, b) => {
+      return a.name < b.name ? -1 : 1;
+    });
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
@@ -145,7 +176,9 @@ export function buildOfficeCode(regionId: string, courtDivisionCode: string): st
 }
 
 export function getOfficeName(divisionCode: string): string {
-  if (USTP_OFFICE_NAME_MAP.has(divisionCode)) return USTP_OFFICE_NAME_MAP.get(divisionCode);
+  if (USTP_OFFICE_NAME_MAP.has(divisionCode)) {
+    return USTP_OFFICE_NAME_MAP.get(divisionCode);
+  }
   return 'UNKNOWN_' + divisionCode;
 }
 

@@ -4,12 +4,14 @@ import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
+import { Pipeline } from '../../../../query/query-pipeline';
 import {
   CamsPaginationResponse,
   DocumentCollectionAdapter,
   ReplaceResult,
   UpdateResult,
 } from '../../../../use-cases/gateways.types';
+import { toMongoAggregate } from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
 import { MongoServerError } from 'mongodb';
@@ -21,6 +23,24 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   constructor(moduleName: string, collection: CollectionHumble<T>) {
     this.collectionHumble = collection;
     this.moduleName = moduleName + '_ADAPTER';
+  }
+
+  async _aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
+    const mongoQuery = toMongoAggregate(pipeline);
+    try {
+      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
+
+      const data = [];
+      for await (const result of aggregationResult) {
+        data.push(result);
+      }
+
+      return data;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed while querying aggregate pipeline`, {
+        pipeline,
+      });
+    }
   }
 
   public async paginatedFind(query: Pagination<T>): Promise<CamsPaginationResponse<T>> {
