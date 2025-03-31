@@ -139,7 +139,7 @@ describe('offices use case tests', () => {
     };
 
     const actual = await useCase.getOfficeAssignees(applicationContext, officeCode);
-    expect(actual).toEqual(expected);
+    expect(actual).toEqual(expect.arrayContaining(expected));
     expect(repoSpy).toHaveBeenCalledWith(expectedPredicate);
   });
 

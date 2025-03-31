@@ -61,20 +61,19 @@ export class OfficesUseCase {
       divisionCodes,
       excludeClosedCases: true,
     });
-    const assignments = cases.reduce((acc, bCase) => {
-      return acc.concat(bCase.assignments);
-    }, []);
-    const assignees: Map<string, Staff> = assignments.reduce((acc, assignment) => {
-      const userRef: CamsUserReference = {
-        id: assignment.userId,
-        name: assignment.name,
-      };
-      if (!acc.has(userRef.id)) {
-        acc.set(userRef.id, userRef);
-      }
-      return acc;
-    }, new Map<string, Staff>());
-    return Array.from(assignees.values());
+    const assignees = new Map<string, CamsUserReference>();
+    for await (const bCase of cases) {
+      bCase.assignments.forEach((assignment) => {
+        assignees.set(assignment.userId, {
+          id: assignment.userId,
+          name: assignment.name,
+        });
+      });
+    }
+
+    return Array.from(assignees.values()).sort((a, b) => {
+      return a.name < b.name ? -1 : 1;
+    });
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {

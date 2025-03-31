@@ -21,18 +21,8 @@ const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, or, using, paginate: qbPaginate } = QueryBuilder;
-const {
-  pipeline,
-  paginate,
-  match,
-  sort,
-  ascending,
-  exclude,
-  join,
-  addFields,
-  additionalField,
-  source,
-} = QueryPipeline;
+const { pipeline, match, sort, ascending, exclude, join, addFields, additionalField, source } =
+  QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
@@ -417,7 +407,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     const assignments = additionalField(
       assignmentsField,
       allAssignmentsTempField,
-      assignmentUnassignedOn.equals(null),
+      assignmentUnassignedOn.notExists(),
     );
 
     const pipelineQuery = pipeline(
@@ -426,18 +416,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         .onto<SyncedCase>(caseDocs.field('caseId'))
         .as<TempFields>(allAssignmentsTempField),
       addFields(matchingAssignments, assignments),
-      match(matchingAssignmentsTempField.notEqual([])),
+      match(assignmentsField.notEqual([])),
       exclude(allAssignmentsTempField, matchingAssignmentsTempField),
       sort(ascending(caseDocs.field('caseId'))),
-      paginate(predicate.offset, predicate.limit),
     );
 
-    const results = await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
-
-    for await (const result of results) {
-      console.log(result);
-    }
-
-    return [];
+    return await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
   }
 }
