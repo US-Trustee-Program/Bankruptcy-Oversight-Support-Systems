@@ -59,8 +59,8 @@ export function toMongoAddFields(stage: AddFields) {
   const fields = stage.fields.reduce((acc, additional) => {
     acc[additional.fieldToAdd.name] = {
       $filter: {
-        input: additional.querySource.name,
-        cond: toMongoFilterCondition(additional.query),
+        input: { $ifNull: [`$${additional.querySource.name.toString()}`, []] },
+        cond: toMongoFilterCondition(additional.query) ?? {},
       },
     };
     return acc;

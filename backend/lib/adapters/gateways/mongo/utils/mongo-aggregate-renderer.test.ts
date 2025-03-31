@@ -34,7 +34,7 @@ describe('aggregation query renderer tests', () => {
         $addFields: {
           matchingBars: {
             $filter: {
-              input: 'barDocs',
+              input: { $ifNull: ['$barDocs', []] },
               cond: { $eq: ['$$this.name', 'Bob Newhart'] },
             },
           },
