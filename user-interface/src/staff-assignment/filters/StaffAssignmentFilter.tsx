@@ -5,7 +5,7 @@ import useApi2 from '@/lib/hooks/UseApi2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
 import { CamsUserReference, Staff } from '@common/cams/users';
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { ResponseBody } from '../../../../common/dist/api/response';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
@@ -36,19 +36,26 @@ export async function getOfficeAssignees(
       });
     }
   }
-  return Array.from(assigneeMap.values());
+  return Array.from(assigneeMap.values()).sort((a, b) => (a.name < b.name ? -1 : 1));
 }
 
 export type StaffAssignmentScreenFilter = {
   assignee: CamsUserReference;
 };
 
+export type StaffAssignmentFilterRef = {
+  fetchAssignees: () => void;
+};
+
 export interface StaffAssignmentFilterProps {
   id?: string;
-  onFilterAssigneeChange?: (assignee: Staff) => void;
+  onFilterAssigneeChange?: (assignee: CamsUserReference | undefined) => void;
 }
 
-export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps) {
+function _StaffAssignmentFilter(
+  props: StaffAssignmentFilterProps,
+  ref: React.Ref<StaffAssignmentFilterRef>,
+) {
   const { id: idInput, onFilterAssigneeChange } = props;
   const api = useApi2();
   const id = idInput ? `staff-assignment-filter-${idInput}` : 'staff-assignment-filter';
@@ -58,16 +65,20 @@ export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps)
   const [officeAssignees, setOfficeAssignees] = useState<Staff[]>([]);
 
   async function handleSelectedAssignees(assignees: ComboOption[]) {
-    if (onFilterAssigneeChange && assignees[0]) {
-      const newStaff: CamsUserReference = {
-        id: assignees[0].value,
-        name: assignees[0].label,
-      };
-      onFilterAssigneeChange(newStaff);
+    if (onFilterAssigneeChange) {
+      if (assignees[0]) {
+        const newStaff: CamsUserReference = {
+          id: assignees[0].value,
+          name: assignees[0].label,
+        };
+        onFilterAssigneeChange(newStaff);
+      } else {
+        onFilterAssigneeChange(undefined);
+      }
     }
   }
 
-  useEffect(() => {
+  function fetchAssignees() {
     if (session) {
       getOfficeAssignees(api.getOfficeAssignees, session)
         .then((assignees) => {
@@ -79,6 +90,16 @@ export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps)
           globalAlert?.error('There was a problem getting the list of assignees.');
         });
     }
+  }
+
+  useImperativeHandle(ref, () => {
+    return {
+      fetchAssignees,
+    };
+  });
+
+  useEffect(() => {
+    fetchAssignees();
   }, []);
 
   return (
@@ -97,3 +118,7 @@ export default function StaffAssignmentFilter(props: StaffAssignmentFilterProps)
     </div>
   );
 }
+
+const StaffAssignmentFilter = forwardRef(_StaffAssignmentFilter);
+
+export default StaffAssignmentFilter;

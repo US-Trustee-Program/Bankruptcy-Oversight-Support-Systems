@@ -67,9 +67,7 @@ export function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
-  const pagination: PaginationModel | undefined = searchResults?.pagination
-    ? searchResults?.pagination
-    : undefined;
+  const pagination: PaginationModel | undefined = searchResults?.pagination;
 
   const noResultsMessage =
     noResultsMessageProp ?? 'Modify your search criteria to include more cases.';
