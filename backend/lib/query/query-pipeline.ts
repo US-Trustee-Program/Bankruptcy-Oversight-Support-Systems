@@ -6,7 +6,12 @@ function source<T = unknown>(source?: string) {
       const q = using<T>();
       return names.reduce(
         (acc, name) => {
-          acc[name] = { name, ...q(name) };
+          acc[name] = {
+            name,
+            ...q(name),
+            ascending: () => ascending({ name }),
+            descending: () => descending({ name }),
+          };
           if (source) {
             acc[name].source = source;
           }
@@ -18,7 +23,12 @@ function source<T = unknown>(source?: string) {
     fields: (...names: (keyof T)[]) => {
       const q = using<T>();
       return names.map((name) => {
-        const reference: QueryFieldReference<T> = { name, ...q(name) };
+        const reference: QueryFieldReference<T> = {
+          name,
+          ...q(name),
+          ascending: () => ascending({ name }),
+          descending: () => descending({ name }),
+        };
         if (source) {
           reference.source = source;
         }
@@ -78,7 +88,11 @@ export type FieldReference<T> = Field<T> & {
   source?: string;
 };
 
-export type QueryFieldReference<T> = FieldReference<T> & ConditionFunctions<T>;
+export type QueryFieldReference<T> = FieldReference<T> &
+  ConditionFunctions<T> & {
+    ascending: () => SortedField;
+    descending: () => SortedField;
+  };
 
 export type Join = {
   stage: 'JOIN';
@@ -115,6 +129,7 @@ function sort(...fields: SortedField[]): Sort {
 }
 
 function ascending(field: FieldReference<never>): SortedField {
+  const { name, source, ..._ } = field;
   return {
     field,
     direction: 'ASCENDING',
@@ -122,8 +137,9 @@ function ascending(field: FieldReference<never>): SortedField {
 }
 
 function descending(field: FieldReference<never>): SortedField {
+  const { name, source, ..._ } = field;
   return {
-    field,
+    field: { name, source },
     direction: 'DESCENDING',
   };
 }

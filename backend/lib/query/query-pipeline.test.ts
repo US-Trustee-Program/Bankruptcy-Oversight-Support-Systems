@@ -59,9 +59,6 @@ describe('Query Pipeline', () => {
       const collectionName = 'coll';
 
       const s = source<Foo>(collectionName);
-      // TODO: The fields function could return an array we deconstruct from rather than a record.
-      // That way we could more easily name the deconstructed variables. Think useState hook. Like:
-      //     const [ fooPrimaryKey, theOtherFooField ] = s.fields('uno', 'two');
       const [uno, _] = s.fields('uno', 'two');
 
       expect(uno.source).toEqual(collectionName);
@@ -78,6 +75,8 @@ describe('Query Pipeline', () => {
         'contains',
         'notContains',
         'regex',
+        'ascending',
+        'descending',
       ];
       keys.forEach((key) => {
         expect(key in uno).toBeTruthy();
@@ -96,6 +95,14 @@ describe('Query Pipeline', () => {
         [uno.contains('test'), q('uno').contains('test')],
         [uno.notContains('test'), q('uno').notContains('test')],
         [uno.regex('test'), q('uno').regex('test')],
+        [
+          uno.ascending(),
+          expect.objectContaining({ field: { name: uno.name }, direction: 'ASCENDING' }),
+        ],
+        [
+          uno.descending(),
+          expect.objectContaining({ field: { name: uno.name }, direction: 'DESCENDING' }),
+        ],
       ];
       comparisions.forEach((comparision) => {
         const [actual, expected] = comparision;
