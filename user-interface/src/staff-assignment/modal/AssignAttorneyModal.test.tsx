@@ -43,6 +43,7 @@ describe('Test Assign Attorney Modal Component', () => {
   ) {
     const defaults: AssignAttorneyModalProps = {
       modalId,
+      assignmentChangeCallback: vi.fn(),
     };
 
     const propsToRender: AssignAttorneyModalProps = {
