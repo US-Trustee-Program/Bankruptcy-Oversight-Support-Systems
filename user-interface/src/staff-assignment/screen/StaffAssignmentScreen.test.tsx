@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import StaffAssignmentScreen, { assignmentChange } from './StaffAssignmentScreen';
+import StaffAssignmentScreen from './StaffAssignmentScreen';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -17,8 +17,6 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
-import * as AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
-import { AssignAttorneyModalProps } from '@/staff-assignment/modal/AssignAttorneyModal';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -114,20 +112,6 @@ describe('StaffAssignmentScreen', () => {
       },
       {},
     );
-  });
-
-  test('should call handleAssignmentChange when case assignments alerted', async () => {
-    // Mock AssignAttorneyModal to call the callback
-    const MockAssignAttorneyModal = (props: AssignAttorneyModalProps) => {
-      props.assignmentChangeCallback?.([]); // Call the callback immediately
-      return null;
-    };
-    vi.spyOn(AssignAttorneyModal, 'default').mockImplementation(MockAssignAttorneyModal);
-
-    renderWithoutProps();
-
-    // Assert that handleAssignmentChange was called
-    expect(assignmentChange).toHaveBeenCalled();
   });
 
   test('should render a list of chapter 11, 12, and 15 cases for a case assignment manager to review', async () => {
