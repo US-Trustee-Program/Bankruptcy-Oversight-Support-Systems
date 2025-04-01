@@ -11,7 +11,7 @@ import DataVerificationScreen from './data-verification/DataVerificationScreen';
 import SearchScreen from './search/SearchScreen';
 import { PrivacyActFooter } from './lib/components/uswds/PrivacyActFooter';
 import { MyCasesScreen } from './my-cases/MyCasesScreen';
-import { StaffAssignmentScreen } from './staff-assignment/screen/StaffAssignmentScreen';
+import StaffAssignmentScreen from './staff-assignment/screen/StaffAssignmentScreen';
 import './App.scss';
 import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/GlobalAlert';
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
