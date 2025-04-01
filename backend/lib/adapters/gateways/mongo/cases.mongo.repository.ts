@@ -21,8 +21,7 @@ const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, or, using, paginate: qbPaginate } = QueryBuilder;
-const { pipeline, match, sort, ascending, exclude, join, addFields, additionalField, source } =
-  QueryPipeline;
+const { pipeline, match, sort, exclude, join, addFields, additionalField, source } = QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
@@ -393,7 +392,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       addFields(matchingAssignments, assignments),
       match(assignmentsField.notEqual([])),
       exclude(allAssignmentsTempField, matchingAssignmentsTempField),
-      sort(ascending(caseDocs.field('caseId'))),
+      sort(caseDocs.field('caseId').ascending()),
     );
 
     return await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
