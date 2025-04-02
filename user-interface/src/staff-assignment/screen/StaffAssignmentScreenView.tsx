@@ -4,43 +4,11 @@ import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import { Stop } from '@/lib/components/Stop';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { STAFF_ASSIGNMENT_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
-import SearchResults, { SearchResultsRowProps } from '@/search-results/SearchResults';
-import StaffAssignmentFilter, {
-  StaffAssignmentFilterRef,
-  StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter';
+import SearchResults from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
-import AssignAttorneyModal, { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { CamsUserReference } from '@common/cams/users';
-import { ReactNode, RefObject, LegacyRef } from 'react';
-import { CasesSearchPredicate } from '@common/api/search';
-import { FeatureFlagSet } from '@common/feature-flags';
-import { CamsSession } from '@common/cams/session';
-
-interface StaffAssignmentViewModel {
-  assignmentModalId: string;
-  assignmentModalRef: React.Ref<AssignAttorneyModalRef> | undefined;
-  featureFlags: FeatureFlagSet;
-  filterRef: LegacyRef<StaffAssignmentFilterRef> | undefined;
-  hasAssignedOffices: boolean;
-  hasValidPermission: boolean;
-  infoModalActionButtonGroup: SubmitCancelBtnProps;
-  infoModalId: string;
-  infoModalRef: RefObject<ModalRefType>;
-  screenTitle: ReactNode;
-  session: CamsSession | null;
-  staffAssignmentFilter: StaffAssignmentScreenFilter;
-
-  getPredicateByUserContextWithFilter(
-    user: CamsUserReference,
-    staffAssignmentFilter: StaffAssignmentScreenFilter,
-  ): CasesSearchPredicate;
-  handleAssignmentChange: (assignees: CamsUserReference[]) => void;
-  handleFilterAssignee: ((assignee: CamsUserReference | undefined) => void) | undefined;
-  StaffAssignmentRowClosure: (props: SearchResultsRowProps) => JSX.Element;
-}
+import AssignAttorneyModal from '../modal/AssignAttorneyModal';
+import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
+import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 
 export type StaffAssignmentScreenViewProps = {
   viewModel: StaffAssignmentViewModel;
