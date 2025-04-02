@@ -4,8 +4,9 @@ import { initializeApplicationInsights } from '../azure/app-insights';
 import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
-import MigrateCases from './import/migrate-cases';
-import MigrateConsolidations from './import/migrate-consolidations';
+import MigrateCases from './migrations/migrate-cases';
+import MigrateConsolidations from './migrations/migrate-consolidations';
+import MigrateAssignees from './migrations/migrate-assignees';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 /*
@@ -14,10 +15,10 @@ dataflows.ts
 
 This module calls setup functions for each "registered" data flow. Each data flow is defined in a module that exports the DataFlowSetup interface. Calling setup configures Azure infrastructure to provision the Azure Function.
 
-A comma delimited list of the MODULE_NAME values is required to appear in a comma delimited list in the CAMS_ENABLED_DATAFLOWS environment variable. Due do how hyphens are interpreted in scripts, all hyphens that appear in a given MODULE_NAME must be replaced with underscores.
+A comma-delimited list of the MODULE_NAME values is required to appear in a comma-delimited list in the CAMS_ENABLED_DATAFLOWS environment variable. Due to how hyphens are interpreted in scripts, all hyphens that appear in a given MODULE_NAME must be replaced with underscores.
 
 Any module name not listed is not setup and will not appear in the list of Azure Functions in Azure Portal. This enables data flows to be setup
-independenly across environments.
+independently across environments.
 
 The configuration is logged on startup. Example:
 
@@ -91,7 +92,14 @@ dotenv.config();
 initializeApplicationInsights();
 
 // Register data flows.
-dataflows.register(SyncCases, SyncOfficeStaff, SyncOrders, MigrateCases, MigrateConsolidations);
+dataflows.register(
+  SyncCases,
+  SyncOfficeStaff,
+  SyncOrders,
+  MigrateCases,
+  MigrateConsolidations,
+  MigrateAssignees,
+);
 
 // Log the list of registered data flows.
 const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');
