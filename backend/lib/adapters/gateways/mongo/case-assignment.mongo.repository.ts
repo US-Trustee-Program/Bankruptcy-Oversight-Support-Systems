@@ -23,15 +23,17 @@ export class CaseAssignmentMongoRepository
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CaseAssignmentMongoRepository.instance)
+    if (!CaseAssignmentMongoRepository.instance) {
       CaseAssignmentMongoRepository.instance = new CaseAssignmentMongoRepository(context);
+    }
     CaseAssignmentMongoRepository.referenceCount++;
     return CaseAssignmentMongoRepository.instance;
   }
 
   public static dropInstance() {
-    if (CaseAssignmentMongoRepository.referenceCount > 0)
+    if (CaseAssignmentMongoRepository.referenceCount > 0) {
       CaseAssignmentMongoRepository.referenceCount--;
+    }
     if (CaseAssignmentMongoRepository.referenceCount < 1) {
       CaseAssignmentMongoRepository.instance.client.close().then();
       CaseAssignmentMongoRepository.instance = null;
@@ -98,6 +100,16 @@ export class CaseAssignmentMongoRepository
       return await this.getAdapter<CaseAssignment>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignment.');
+    }
+  }
+
+  async getAllActiveAssignments(): Promise<CaseAssignment[]> {
+    const query = and(doc('documentType').equals('ASSIGNMENT'), doc('unassignedOn').notExists());
+
+    try {
+      return await this.getAdapter<CaseAssignment>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignments.');
     }
   }
 }

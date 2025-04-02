@@ -230,7 +230,7 @@ function getCaseDetail(
 function getDxtrCase(options: Options<DxtrCase> = { entityType: 'person', override: {} }) {
   const { entityType, override } = options;
   const dxtrCase: DxtrCase = {
-    ...getCaseSummary({ entityType }),
+    ...getCaseSummary({ entityType, override }),
     closedDate: undefined,
     dismissedDate: undefined,
     reopenedDate: undefined,
@@ -241,7 +241,7 @@ function getDxtrCase(options: Options<DxtrCase> = { entityType: 'person', overri
 function getSyncedCase(options: Options<SyncedCase> = { entityType: 'person', override: {} }) {
   const { entityType, override } = options;
   const syncedCase: SyncedCase = {
-    ...getDxtrCase({ entityType }),
+    ...getDxtrCase({ entityType, override }),
     documentType: 'SYNCED_CASE',
     updatedBy: SYSTEM_USER_REFERENCE,
     updatedOn: someDateBeforeThisDate(new Date().toISOString()),
