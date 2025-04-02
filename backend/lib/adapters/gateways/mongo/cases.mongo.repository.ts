@@ -398,4 +398,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     return await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
   }
+
+  async getCase(_caseId: string): Promise<SyncedCase> {
+    // TODO: Implement this.
+    throw new Error('not implemented');
+  }
 }

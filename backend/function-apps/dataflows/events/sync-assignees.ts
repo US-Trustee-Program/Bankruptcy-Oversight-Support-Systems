@@ -1,6 +1,7 @@
 import { app } from '@azure/functions';
+import { SYNC_ASSIGNEES } from '../queue';
 
-const MODULE_NAME = 'SYNC_ASSIGNEES';
+const MODULE_NAME = SYNC_ASSIGNEES;
 
 function setup() {
   app.storageQueue('start', {

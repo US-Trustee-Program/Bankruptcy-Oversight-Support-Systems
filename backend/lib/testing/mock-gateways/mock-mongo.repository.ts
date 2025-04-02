@@ -178,4 +178,16 @@ export class MockMongoRepository
   searchCasesForOfficeAssignees(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
+
+  getAllActiveAssignments(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getCase(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  deleteMany(_ignore: any): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
 }
