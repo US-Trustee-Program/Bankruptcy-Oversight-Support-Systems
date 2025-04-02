@@ -1,14 +1,15 @@
-import { Ref, RefObject } from 'react';
-import { StaffAssignmentFilterRef } from '../filters/StaffAssignmentFilter';
+import { RefObject } from 'react';
 import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { CamsUserReference } from '@common/cams/users';
+
+export type StaffAssignmentScreenFilter = {
+  assignee: CamsUserReference;
+};
 
 interface StaffAssignmentControls {
-  filterRef: Ref<StaffAssignmentFilterRef>;
   infoModalRef: React.RefObject<ModalRefType>;
   assignmentModalRef: RefObject<AssignAttorneyModalRef>;
-
-  fetchAssignees: () => void;
 }
 
 export type { StaffAssignmentControls };
