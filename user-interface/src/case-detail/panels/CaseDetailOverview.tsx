@@ -410,6 +410,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               }
             : undefined
         }
+        assignmentChangeCallback={() => {}}
       ></AssignAttorneyModal>
     </>
   );

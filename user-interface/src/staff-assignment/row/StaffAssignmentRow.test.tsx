@@ -56,7 +56,11 @@ describe('StaffAssignmentRow tests', () => {
             />
           </tbody>
         </table>
-        <AssignAttorneyModal modalId={'test-modal-id'} ref={modalRef} />
+        <AssignAttorneyModal
+          modalId={'test-modal-id'}
+          ref={modalRef}
+          assignmentChangeCallback={vi.fn()}
+        />
       </div>
     );
   }

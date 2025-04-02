@@ -88,7 +88,7 @@ describe('Tests for Staff Assignment Screen Filters', () => {
   });
 
   test('should return an array of type Staff with a list of assignees from all offices the session user is assigned to', async () => {
-    const expectedResults = officeStaffData.flat(2);
+    const expectedResults = officeStaffData.flat(2).sort((a, b) => (a.name < b.name ? -1 : 1));
     const staffArray = await getOfficeAssignees(Api2.getOfficeAssignees, session);
     expect(staffArray).toEqual(expectedResults);
   });
@@ -108,10 +108,8 @@ describe('Tests for Staff Assignment Screen Filters', () => {
 
   test('should call callback function when assignees are selected', async () => {
     const changeSpy = vi.fn();
-    const expectedAssignee = {
-      id: officeStaffData[1][0].id,
-      name: officeStaffData[1][0].name,
-    };
+    const sortedAssignees = officeStaffData.flat(2).sort((a, b) => (a.name < b.name ? -1 : 1));
+    const expectedAssignee = sortedAssignees[1];
 
     renderWithProps({ onFilterAssigneeChange: changeSpy });
 
@@ -125,7 +123,7 @@ describe('Tests for Staff Assignment Screen Filters', () => {
 
     let assigneeItem;
     await waitFor(() => {
-      assigneeItem = screen.getByTestId('staff-assignees-option-item-4');
+      assigneeItem = screen.getByTestId('staff-assignees-option-item-1');
       expect(assigneeItem).toBeInTheDocument();
     });
 
@@ -133,9 +131,8 @@ describe('Tests for Staff Assignment Screen Filters', () => {
     await userEvent.click(document.body);
 
     expect(changeSpy).toHaveBeenCalled();
-    changeSpy.mock.calls.forEach((spy) => {
-      expect(spy[0]).toEqual(expectedAssignee);
-    });
+    const count = changeSpy.mock.calls.length;
+    expect(changeSpy.mock.calls[count - 1][0]).toEqual(expectedAssignee);
   });
 
   test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
