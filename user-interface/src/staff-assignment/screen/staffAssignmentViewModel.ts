@@ -5,18 +5,15 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsSession } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
-import { LegacyRef, RefObject, ReactNode } from 'react';
-import {
-  StaffAssignmentFilterRef,
-  StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter';
+import { RefObject, ReactNode } from 'react';
 import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { StaffAssignmentScreenFilter } from './staffAssignmentControls';
 
 interface StaffAssignmentViewModel {
   assignmentModalId: string;
   assignmentModalRef: React.Ref<AssignAttorneyModalRef> | undefined;
   featureFlags: FeatureFlagSet;
-  filterRef: LegacyRef<StaffAssignmentFilterRef> | undefined;
   hasAssignedOffices: boolean;
   hasValidPermission: boolean;
   infoModalActionButtonGroup: SubmitCancelBtnProps;
@@ -25,13 +22,16 @@ interface StaffAssignmentViewModel {
   screenTitle: ReactNode;
   session: CamsSession | null;
   staffAssignmentFilter: StaffAssignmentScreenFilter | undefined;
+  officeAssignees: CamsUserReference[];
+  officeAssigneesError: boolean;
 
+  assigneesToComboOptions: (assignees: CamsUserReference[]) => ComboOption[];
   getPredicateByUserContextWithFilter(
     user: CamsUserReference,
     staffAssignmentFilter?: StaffAssignmentScreenFilter,
   ): CasesSearchPredicate;
   handleAssignmentChange: (assignees: CamsUserReference[]) => void;
-  handleFilterAssignee: ((assignee: CamsUserReference | undefined) => void) | undefined;
+  handleFilterAssignee: (assignees: ComboOption[]) => void;
   StaffAssignmentRowClosure: (props: SearchResultsRowProps) => JSX.Element;
 }
 
