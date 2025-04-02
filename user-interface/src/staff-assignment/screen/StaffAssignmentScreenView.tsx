@@ -8,7 +8,7 @@ import SearchResults from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
 import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
-import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
+import ComboBox from '@/lib/components/combobox/ComboBox';
 
 export type StaffAssignmentScreenViewProps = {
   viewModel: StaffAssignmentViewModel;
@@ -51,10 +51,18 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
             <>
               <h3>Filters</h3>
               <section className="staff-assignment-filter-container">
-                <StaffAssignmentFilter
-                  onFilterAssigneeChange={viewModel.handleFilterAssignee}
-                  ref={viewModel.filterRef}
-                />
+                {viewModel.officeAssignees.length > 0 &&
+                  viewModel.officeAssigneesError === false && (
+                    <ComboBox
+                      id="staff-assignees"
+                      options={viewModel.assigneesToComboOptions(viewModel.officeAssignees)}
+                      onUpdateSelection={viewModel.handleFilterAssignee}
+                      label="Assigned Attorney"
+                      ariaDescription=""
+                      aria-live="off"
+                      multiSelect={false}
+                    />
+                  )}
               </section>
             </>
           )}

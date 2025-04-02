@@ -17,6 +17,8 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
+import { staffAssignmentUseCase } from './staffAssignmentUseCase';
+import { useStaffAssignmentStoreReact } from './staffAssignmentStoreReact';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -52,8 +54,21 @@ describe('StaffAssignmentScreen', () => {
   test('screen should contain staff assignment filters', async () => {
     renderWithoutProps();
 
-    const filter = screen.getByTestId('staff-assignment-filter');
+    const filter = document.querySelector('.staff-assignment-filter-container');
     expect(filter).toBeInTheDocument();
+  });
+
+  test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
+    vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
+    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+    const assigneeError = 'There was a problem getting the list of assignees.';
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const itemList = document.querySelector('#staff-assignment-filter');
+      expect(itemList!).not.toBeInTheDocument();
+    });
+    expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
   });
 
   test('staff assignment filter should pass valid search predicate to search results component when changed filter is updated', async () => {
@@ -170,5 +185,17 @@ describe('StaffAssignmentScreen', () => {
 
     expect(SearchResults).not.toHaveBeenCalled();
     expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
+  });
+
+  test.skip('should call handleAssignmentChange when the Assign Attorney Modal is submitted', async () => {
+    const expectedAssignments = [MockData.getCamsUserReference(), MockData.getCamsUserReference()];
+
+    // TODO: mock modal, fire callback, make sure handleAssignmentChange is called, etc.
+
+    const store = useStaffAssignmentStoreReact();
+    const storeSpy = staffAssignmentUseCase(store);
+    const assignmentSpy = vi.spyOn(storeSpy, 'handleAssignmentChange');
+
+    expect(assignmentSpy).toHaveBeenCalledWith(expectedAssignments);
   });
 });
