@@ -243,3 +243,38 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
     }
   }
 }
+
+resource officeAssigneesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'office-assignees'
+  properties: {
+    resource: {
+      id: 'office-assignees'
+      shardKey: {
+        officeCode: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['caseId']
+          }
+        }
+        {
+          key: {
+            keys: ['officeCode']
+          }
+        }
+        {
+          key: {
+            keys: ['userId']
+          }
+        }
+      ]
+    }
+  }
+}
