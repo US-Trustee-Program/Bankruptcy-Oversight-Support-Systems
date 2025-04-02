@@ -32,6 +32,7 @@ module.exports = {
     'function-apps/dataflows/migration/client/',
     'function-apps/dataflows/migration/orchestration/',
     'function-apps/dataflows/migration/migration.ts',
+    'function-apps/dataflows/events/*',
     'function-apps/dataflows/import/*',
     'function-apps/dataflows/dataflows-queues.ts',
     'function-apps/dataflows/dataflows.ts',
