@@ -13,7 +13,11 @@ import {
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
 import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
-import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
+import {
+  CasesSearchPredicate,
+  OfficeAssigneePredicate,
+  OrdersSearchPredicate,
+} from '../../../common/src/api/search';
 import {
   AttorneyUser,
   PrivilegedIdentityUser,
@@ -26,6 +30,7 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
+import { OfficeAssignee } from './dataflows/office-assignees';
 
 export type ReplaceResult = {
   id: string;
@@ -68,6 +73,10 @@ interface Deletes {
   delete(id: string): Promise<void>;
 }
 
+interface DeletesMany<T> {
+  deleteMany(predicate: T): Promise<void>;
+}
+
 interface Searches<P, R> {
   search(predicate?: P): Promise<R[]>;
 }
@@ -90,6 +99,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
     Updates<CaseAssignment, string> {
   getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>>;
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
+  getAllActiveAssignments(): Promise<CaseAssignment[]>;
 }
 
 export interface CaseNotesRepository<T = CaseNote>
@@ -152,6 +162,7 @@ export interface CasesRepository extends Releasable {
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   deleteSyncedCases(): Promise<void>;
   searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]>;
+  getCase(caseId: string): Promise<SyncedCase>;
 }
 
 export interface OfficesRepository extends Releasable {
@@ -169,6 +180,12 @@ export interface UsersRepository extends Releasable {
   ): Promise<ReplaceResult>;
   deletePrivilegedIdentityUser(id: string): Promise<void>;
 }
+
+export interface OfficeAssigneesRepository
+  extends Creates<OfficeAssignee>,
+    DeletesMany<OfficeAssigneePredicate>,
+    Searches<OfficeAssigneePredicate, OfficeAssignee>,
+    Releasable {}
 
 export type RuntimeStateDocumentType =
   | 'ORDERS_SYNC_STATE'
