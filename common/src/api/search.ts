@@ -31,3 +31,9 @@ export type OrdersSearchPredicate = {
   divisionCodes?: string[];
   consolidationId?: string;
 };
+
+export type OfficeAssigneePredicate = {
+  officeCode?: string;
+  caseId?: string;
+  userId?: string;
+};
