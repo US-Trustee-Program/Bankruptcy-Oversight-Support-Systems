@@ -303,7 +303,7 @@ async function getOfficeAttorneys(officeCode: string) {
 
 async function getOfficeAssignees(officeCode: string) {
   const path = `/offices/${officeCode}/assignees`;
-  return withCache({ key: path }).get<Staff[]>(path);
+  return api().get<Staff[]>(path);
 }
 
 async function getOffices() {

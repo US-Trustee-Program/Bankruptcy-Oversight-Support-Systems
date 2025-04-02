@@ -44,6 +44,7 @@ export interface AssignAttorneyModalRef {
 export interface AssignAttorneyModalProps {
   modalId: string;
   alertMessage?: AlertDetails;
+  assignmentChangeCallback: (assignees: CamsUserReference[]) => void;
 }
 
 function _AssignAttorneyModal(
@@ -157,6 +158,7 @@ function _AssignAttorneyModal(
           status: 'success',
           apiResult: {},
         });
+        props.assignmentChangeCallback(finalAttorneyList);
       }
       setCheckListValues([]);
       setIsUpdatingAssignment(false);

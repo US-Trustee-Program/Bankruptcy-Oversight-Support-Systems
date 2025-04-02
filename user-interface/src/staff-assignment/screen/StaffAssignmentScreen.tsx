@@ -25,6 +25,7 @@ import useFeatureFlags, {
 } from '@/lib/hooks/UseFeatureFlags';
 import { Stop } from '@/lib/components/Stop';
 import StaffAssignmentFilter, {
+  StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
 } from '../filters/StaffAssignmentFilter';
 
@@ -57,9 +58,10 @@ function getPredicateByUserContextWithFilter(
   return predicate;
 }
 
-export const StaffAssignmentScreen = () => {
+const StaffAssignmentScreen = () => {
   const screenTitle = 'Staff Assignment';
 
+  const filterRef = useRef<StaffAssignmentFilterRef>(null);
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
 
@@ -97,6 +99,14 @@ export const StaffAssignmentScreen = () => {
         ...prevFilter,
         assignee,
       }));
+    } else {
+      setStaffAssignmentFilter(undefined);
+    }
+  }
+
+  function handleAssignmentChange(assignees: CamsUserReference[]) {
+    if (assignees.length && filterRef.current) {
+      filterRef.current?.fetchAssignees();
     }
   }
 
@@ -130,7 +140,10 @@ export const StaffAssignmentScreen = () => {
             <>
               <h3>Filters</h3>
               <section className="staff-assignment-filter-container">
-                <StaffAssignmentFilter onFilterAssigneeChange={handleFilterAssignee} />
+                <StaffAssignmentFilter
+                  onFilterAssigneeChange={handleFilterAssignee}
+                  ref={filterRef}
+                />
               </section>
             </>
           )}
@@ -167,6 +180,7 @@ export const StaffAssignmentScreen = () => {
       <AssignAttorneyModal
         ref={assignmentModalRef}
         modalId={`${assignmentModalId}`}
+        assignmentChangeCallback={handleAssignmentChange}
       ></AssignAttorneyModal>
     </MainContent>
   );
