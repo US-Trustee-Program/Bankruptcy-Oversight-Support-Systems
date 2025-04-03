@@ -30,6 +30,7 @@ export type UstpDivision = UstpDivisionMeta & {
 export type Court = {
   courtId: string; // DXTR AO_CS_DIV.COURT_ID
   courtName?: string; // DXTR AO_COURT.COURT_NAME
+  state?: string;
 };
 
 export type CourtOffice = {
@@ -48,7 +49,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
         divisions: [
           {
             divisionCode: '812',
-            court: { courtId: '0981', courtName: 'Western District of Washington' },
+            court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
             courtOffice: {
               courtOfficeCode: '2',
               courtOfficeName: 'Seattle',
@@ -56,7 +57,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
           },
           {
             divisionCode: '813',
-            court: { courtId: '0981', courtName: 'Western District of Washington' },
+            court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
             courtOffice: {
               courtOfficeCode: '3',
               courtOfficeName: 'Tacoma',
@@ -69,7 +70,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
         divisions: [
           {
             divisionCode: '710',
-            court: { courtId: '097-', courtName: 'District of Alaska' },
+            court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Juneau',
@@ -77,7 +78,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
           },
           {
             divisionCode: '720',
-            court: { courtId: '097-', courtName: 'District of Alaska' },
+            court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '2',
               courtOfficeName: 'Nome',
@@ -85,7 +86,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
           },
           {
             divisionCode: '730',
-            court: { courtId: '097-', courtName: 'District of Alaska' },
+            court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '3',
               courtOfficeName: 'Anchorage',
@@ -93,7 +94,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
           },
           {
             divisionCode: '740',
-            court: { courtId: '097-', courtName: 'District of Alaska' },
+            court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '4',
               courtOfficeName: 'Fairbanks',
@@ -101,7 +102,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
           },
           {
             divisionCode: '750',
-            court: { courtId: '097-', courtName: 'District of Alaska' },
+            court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '5',
               courtOfficeName: 'Ketchikan',
@@ -123,7 +124,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
         divisions: [
           {
             divisionCode: '111',
-            court: { courtId: '0311', courtName: 'District of Delaware' },
+            court: { courtId: '0311', courtName: 'District of Delaware', state: 'DE' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Delaware',
@@ -145,7 +146,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
         divisions: [
           {
             divisionCode: '081',
-            court: { courtId: '0208', courtName: 'Southern District of New York' },
+            court: { courtId: '0208', courtName: 'Southern District of New York', state: 'NY' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Manhattan',
@@ -153,7 +154,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
           },
           {
             divisionCode: '087',
-            court: { courtId: '0208', courtName: 'Southern District of New York' },
+            court: { courtId: '0208', courtName: 'Southern District of New York', state: 'NY' },
             courtOffice: {
               courtOfficeCode: '7',
               courtOfficeName: 'White Plains',
@@ -175,7 +176,7 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
         divisions: [
           {
             divisionCode: '091',
-            court: { courtId: '0209', courtName: 'Western District of New York' },
+            court: { courtId: '0209', courtName: 'Western District of New York', state: 'NY' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Buffalo',

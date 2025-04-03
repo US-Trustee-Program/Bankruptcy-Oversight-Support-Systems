@@ -40,7 +40,7 @@ type DxtrFlatOfficeDetails = {
   staff?: CamsUserReference[];
 };
 
-// TODO: Maybe we need to add configuration options here for the Seatle => SE+AK mapping edge case.
+// TODO: Maybe we need to add configuration options here for the Seattle => SE+AK mapping edge case.
 function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOfficeDetails[] {
   const ustpOfficeDetailsMap = new Map<string, UstpOfficeDetails>();
   flatOfficeDetails.forEach((flatOffice) => {
@@ -76,6 +76,7 @@ function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOf
       court: {
         courtId: flatOffice.courtId,
         courtName: flatOffice.courtName,
+        state: flatOffice.state,
       },
       courtOffice: {
         courtOfficeCode: flatOffice.officeCode,
