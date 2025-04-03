@@ -21,7 +21,9 @@ function setup() {
   });
 }
 
-export default {
+const MigrateAssignees = {
   MODULE_NAME,
   setup,
 };
+
+export default MigrateAssignees;
