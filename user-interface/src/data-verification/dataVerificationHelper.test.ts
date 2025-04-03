@@ -171,8 +171,32 @@ describe('data verification helper tests', () => {
         regionId: '02',
         regionName: 'NEW YORK',
       },
+      {
+        courtDivisionCode: '008',
+        groupDesignator: 'AE',
+        courtId: '0102',
+        officeCode: '2',
+        officeName: 'B1',
+        state: 'CA',
+        courtName: 'B',
+        courtDivisionName: 'California 1',
+        regionId: '02',
+        regionName: 'NEW YORK',
+      },
     ];
     const expectedOffices: CourtDivisionDetails[] = [
+      {
+        courtDivisionCode: '008',
+        groupDesignator: 'AE',
+        courtId: '0102',
+        officeCode: '2',
+        officeName: 'B1',
+        state: 'CA',
+        courtName: 'B',
+        courtDivisionName: 'California 1',
+        regionId: '02',
+        regionName: 'NEW YORK',
+      },
       {
         courtDivisionCode: '001',
         groupDesignator: 'AA',
