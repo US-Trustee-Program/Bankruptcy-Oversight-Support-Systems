@@ -237,3 +237,9 @@ export type CamsPaginationResponse<T> = {
   metadata?: { total: number };
   data: T[];
 };
+
+export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
+
+export interface QueueGateway {
+  add<T = unknown>(context: ApplicationContext, queueName: LogicalQueueNames, data: T): void;
+}
