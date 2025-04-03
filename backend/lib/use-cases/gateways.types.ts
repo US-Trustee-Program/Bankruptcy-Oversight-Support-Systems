@@ -241,5 +241,8 @@ export type CamsPaginationResponse<T> = {
 export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
 
 export interface QueueGateway {
-  add<T = unknown>(context: ApplicationContext, queueName: LogicalQueueNames, data: T): void;
+  using<T = unknown>(
+    context: ApplicationContext,
+    queueName: LogicalQueueNames,
+  ): { enqueue: (...messages: T[]) => void };
 }
