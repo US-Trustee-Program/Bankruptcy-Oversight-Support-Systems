@@ -29,7 +29,6 @@ describe('offices gateway tests', () => {
       Promise<QueryResults>,
       [
         applicationContext: ApplicationContext<unknown>,
-        module: string,
         databaseConfig: IDbConfig,
         query: string,
         input?: DbTableFieldSpec[],
@@ -60,7 +59,7 @@ describe('offices gateway tests', () => {
       const expectedOffices: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
 
       const gateway = new OfficesDxtrGateway();
-      const offices = await gateway.getOffices(applicationContext, 'gateway-test');
+      const offices = await gateway.getOffices(applicationContext);
 
       expectedOffices.forEach((expectedOffice) => {
         const actualOffice = offices.find((o) => o.officeCode === expectedOffice.officeCode);
@@ -82,7 +81,7 @@ describe('offices gateway tests', () => {
       const gateway = new OfficesDxtrGateway();
 
       await expect(async () => {
-        await gateway.getOffices(applicationContext, 'gateway-test');
+        await gateway.getOffices(applicationContext);
       }).rejects.toThrow('Some expected SQL error.');
     });
   });

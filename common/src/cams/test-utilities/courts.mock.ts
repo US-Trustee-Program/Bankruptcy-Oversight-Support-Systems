@@ -15,6 +15,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AK',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'AK',
   },
   {
     officeName: 'Nome',
@@ -26,6 +27,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AK',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'AK',
   },
   {
     officeName: 'Anchorage',
@@ -37,6 +39,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AK',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'AK',
   },
   {
     officeName: 'Fairbanks',
@@ -48,6 +51,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AK',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'AK',
   },
   {
     officeName: 'Ketchikan',
@@ -59,6 +63,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AK',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'AK',
   },
   {
     officeName: 'Seattle',
@@ -70,6 +75,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SE',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'WA',
   },
   {
     officeName: 'Tacoma',
@@ -81,6 +87,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SE',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'WA',
   },
   {
     officeName: 'Albany',
@@ -92,6 +99,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AL',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Burlington',
@@ -103,6 +111,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AL',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Poughkeepsie',
@@ -114,6 +123,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AL',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Rutland',
@@ -125,6 +135,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AL',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Albuquerque',
@@ -136,6 +147,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AQ',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'NM',
   },
   {
     officeName: 'Atlanta',
@@ -147,6 +159,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AT',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'St. Croix',
@@ -158,6 +171,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AT',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Gainesville',
@@ -169,6 +183,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AT',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Newnan',
@@ -180,6 +195,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AT',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'St. Thomas',
@@ -191,6 +207,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AT',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Rome',
@@ -202,6 +219,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AT',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Austin',
@@ -213,6 +231,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AU',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Waco',
@@ -224,6 +243,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AU',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Midland',
@@ -235,6 +255,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AU',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Alexandria',
@@ -246,6 +267,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AX',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'Washington, D.C.',
@@ -257,6 +279,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'AX',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'DC',
   },
   {
     officeName: 'Baltimore',
@@ -268,6 +291,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BA',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'MD',
   },
   {
     officeName: 'Boston',
@@ -279,6 +303,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BO',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'MD',
   },
   {
     officeName: 'Brooklyn',
@@ -290,6 +315,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BR',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Boise',
@@ -301,6 +327,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BS',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'ID',
   },
   {
     officeName: 'Coeur dAlene',
@@ -312,6 +339,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BS',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'ID',
   },
   {
     officeName: 'Moscow',
@@ -323,6 +351,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BS',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'ID',
   },
   {
     officeName: 'Pocatello',
@@ -334,6 +363,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BS',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'ID',
   },
   {
     officeName: 'Twin Falls',
@@ -345,6 +375,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BS',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'ID',
   },
   {
     officeName: 'Buffalo',
@@ -356,6 +387,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'BU',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Columbus',
@@ -367,6 +399,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CB',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Dayton',
@@ -378,6 +411,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CB',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Brownsville',
@@ -389,6 +423,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CC',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Corpus Christi',
@@ -400,6 +435,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CC',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Laredo',
@@ -411,6 +447,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CC',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'McAllen',
@@ -422,6 +459,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CC',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Eastern Division',
@@ -433,6 +471,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CH',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'IL',
   },
   {
     officeName: 'Western Division',
@@ -444,6 +483,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CH',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'IL',
   },
   {
     officeName: 'Eau Claire',
@@ -455,6 +495,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MD',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'WI',
   },
   {
     officeName: 'La Crosse',
@@ -466,6 +507,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MD',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'WI',
   },
   {
     officeName: 'Madison',
@@ -477,6 +519,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MD',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'WI',
   },
   {
     officeName: 'Wausau',
@@ -488,6 +531,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MD',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'WI',
   },
   {
     officeName: 'Cincinnati',
@@ -499,6 +543,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CI',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Cleveland',
@@ -510,6 +555,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CL',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Toledo',
@@ -521,6 +567,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CL',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Youngstown',
@@ -532,6 +579,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CL',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Akron',
@@ -543,6 +591,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CL',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Canton',
@@ -554,6 +603,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CL',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'OH',
   },
   {
     officeName: 'Chattanooga',
@@ -565,6 +615,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CN',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Greeneville',
@@ -576,6 +627,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CN',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Winchester',
@@ -587,6 +639,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CN',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Johnson City',
@@ -598,6 +651,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CN',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Knoxville',
@@ -609,6 +663,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CN',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Charleston',
@@ -620,6 +675,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CO',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'SC',
   },
   {
     officeName: 'Columbia',
@@ -631,6 +687,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CO',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'SC',
   },
   {
     officeName: 'Greenville',
@@ -642,6 +699,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CO',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'SC',
   },
   {
     officeName: 'Spartanburg',
@@ -653,6 +711,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CO',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'SC',
   },
   {
     officeName: 'Cedar Rapids',
@@ -664,6 +723,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CR',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Dubuque',
@@ -675,6 +735,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CR',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Fort Dodge',
@@ -686,6 +747,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CR',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Mason City',
@@ -697,6 +759,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CR',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Sioux City',
@@ -708,6 +771,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CR',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Waterloo',
@@ -719,6 +783,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CR',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Clarksburg',
@@ -730,6 +795,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Bluefield',
@@ -741,6 +807,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Charleston',
@@ -752,6 +819,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Elkins',
@@ -763,6 +831,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Martinsburg',
@@ -774,6 +843,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Huntington',
@@ -785,6 +855,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: '(do not select) Parkersburg',
@@ -796,6 +867,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Beckley',
@@ -807,6 +879,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Wheeling',
@@ -818,6 +891,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Parkersburg',
@@ -829,6 +903,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CT',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'WV',
   },
   {
     officeName: 'Casper',
@@ -840,6 +915,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CY',
     regionId: '19',
     regionName: 'DENVER',
+    state: 'WY',
   },
   {
     officeName: 'Cheyenne',
@@ -851,6 +927,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'CY',
     regionId: '19',
     regionName: 'DENVER',
+    state: 'WY',
   },
   {
     officeName: 'Abilene',
@@ -862,6 +939,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Amarillo',
@@ -873,6 +951,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Dallas',
@@ -884,6 +963,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Ft. Worth',
@@ -895,6 +975,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Lubbock',
@@ -906,6 +987,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'San Angelo',
@@ -917,6 +999,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Wichita Falls',
@@ -928,6 +1011,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DA',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Bay City',
@@ -939,6 +1023,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DE',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'MI',
   },
   {
     officeName: 'Detroit',
@@ -950,6 +1035,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DE',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'MI',
   },
   {
     officeName: 'Flint',
@@ -961,6 +1047,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DE',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'MI',
   },
   {
     officeName: 'Council Bluffs',
@@ -972,6 +1059,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DM',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Davenport',
@@ -983,6 +1071,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DM',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Des Moines',
@@ -994,6 +1083,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DM',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'IA',
   },
   {
     officeName: 'Denver',
@@ -1005,6 +1095,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'DV',
     regionId: '19',
     regionName: 'DENVER',
+    state: 'CO',
   },
   {
     officeName: 'Eugene',
@@ -1016,6 +1107,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'EG',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'OR',
   },
   {
     officeName: 'Fresno',
@@ -1027,6 +1119,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'FR',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'BIL',
@@ -1038,6 +1131,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'GF',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'MT',
   },
   {
     officeName: 'Butte',
@@ -1049,6 +1143,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'GF',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'MT',
   },
   {
     officeName: 'GTF',
@@ -1060,6 +1155,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'GF',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'MT',
   },
   {
     officeName: 'MSO',
@@ -1071,6 +1167,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'GF',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'MT',
   },
   {
     officeName: 'Grand Rapids',
@@ -1082,6 +1179,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'GR',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'MI',
   },
   {
     officeName: 'Marquette',
@@ -1093,6 +1191,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'GR',
     regionId: '9',
     regionName: 'CLEVELAND',
+    state: 'MI',
   },
   {
     officeName: 'Harrisburg',
@@ -1104,6 +1203,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HA',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Williamsport',
@@ -1115,6 +1215,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HA',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Wilkes-Barre',
@@ -1126,6 +1227,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HA',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Honolulu',
@@ -1137,6 +1239,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HI',
     regionId: '15',
     regionName: 'SAN DIEGO',
+    state: 'HI',
   },
   {
     officeName: 'Hagatna',
@@ -1148,6 +1251,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HI',
     regionId: '15',
     regionName: 'SAN DIEGO',
+    state: 'GU',
   },
   {
     officeName: 'Northern Mariana Islands',
@@ -1159,6 +1263,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HI',
     regionId: '15',
     regionName: 'SAN DIEGO',
+    state: 'MP',
   },
   {
     officeName: 'Ponce',
@@ -1170,6 +1275,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HR',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'PR',
   },
   {
     officeName: 'Old San Juan',
@@ -1181,6 +1287,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HR',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'PR',
   },
   {
     officeName: 'Galveston',
@@ -1192,6 +1299,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HU',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Houston',
@@ -1203,6 +1311,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HU',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Victoria',
@@ -1214,6 +1323,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'HU',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Indianapolis',
@@ -1225,6 +1335,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'IN',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'Terre Haute',
@@ -1236,6 +1347,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'IN',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'Evansville',
@@ -1247,6 +1359,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'IN',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'New Albany',
@@ -1258,6 +1371,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'IN',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'Aberdeen',
@@ -1269,6 +1383,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'JA',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'MS',
   },
   {
     officeName: 'Gulfport-1 Divisional Office',
@@ -1280,6 +1395,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'JA',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'MS',
   },
   {
     officeName: 'Jackson-3 Divisional Office',
@@ -1291,6 +1407,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'JA',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'MS',
   },
   {
     officeName: 'Gulfport-6 Divisional Office',
@@ -1302,6 +1419,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'JA',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'MS',
   },
   {
     officeName: 'Jefferson City',
@@ -1313,6 +1431,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'KC',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'Joplin',
@@ -1324,6 +1443,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'KC',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'Kansas City',
@@ -1335,6 +1455,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'KC',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'St. Joseph',
@@ -1346,6 +1467,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'KC',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'Springfield',
@@ -1357,6 +1479,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'KC',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'Los Angeles',
@@ -1368,6 +1491,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LA',
     regionId: '16',
     regionName: 'LOS ANGELES',
+    state: 'CA',
   },
   {
     officeName: 'Central Islip',
@@ -1379,6 +1503,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LI',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Bowling Green',
@@ -1390,6 +1515,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LO',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Louisville',
@@ -1401,6 +1527,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LO',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Owensboro',
@@ -1412,6 +1539,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LO',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Paducah',
@@ -1423,6 +1551,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LO',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'El Dorado',
@@ -1434,6 +1563,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Batesville',
@@ -1445,6 +1575,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Delta Division',
@@ -1456,6 +1587,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Fort Smith',
@@ -1467,6 +1599,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Harrison',
@@ -1478,6 +1611,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Northern Division',
@@ -1489,6 +1623,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Central Division',
@@ -1500,6 +1635,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Texarkana',
@@ -1511,6 +1647,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Fayetteville',
@@ -1522,6 +1659,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Pine Bluff',
@@ -1533,6 +1671,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Hot Springs',
@@ -1544,6 +1683,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LR',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'AR',
   },
   {
     officeName: 'Las Vegas',
@@ -1555,6 +1695,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LV',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'NV',
   },
   {
     officeName: 'Ashland',
@@ -1566,6 +1707,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Covington',
@@ -1577,6 +1719,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Frankfort',
@@ -1588,6 +1731,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Lexington',
@@ -1599,6 +1743,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'London',
@@ -1610,6 +1755,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Pikeville',
@@ -1621,6 +1767,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Test Division',
@@ -1632,6 +1779,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'LX',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'KY',
   },
   {
     officeName: 'Albany',
@@ -1643,6 +1791,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MC',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Athens',
@@ -1654,6 +1803,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MC',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Columbus',
@@ -1665,6 +1815,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MC',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Macon',
@@ -1676,6 +1827,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MC',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Thomasville',
@@ -1687,6 +1839,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MC',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Valdosta',
@@ -1698,6 +1851,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MC',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Superior',
@@ -1709,6 +1863,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MD',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'WI',
   },
   {
     officeName: 'Jackson',
@@ -1720,6 +1875,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'ME',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Memphis',
@@ -1731,6 +1887,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'ME',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Milwaukee',
@@ -1742,6 +1899,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MI',
     regionId: '11',
     regionName: 'CHICAGO',
+    state: 'WI',
   },
   {
     officeName: 'Fort Lauderdale',
@@ -1753,6 +1911,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MM',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Miami',
@@ -1764,6 +1923,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MM',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'West Palm Beach',
@@ -1775,6 +1935,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MM',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'St Paul',
@@ -1786,6 +1947,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MN',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'MN',
   },
   {
     officeName: 'Minneapolis',
@@ -1797,6 +1959,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MN',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'MN',
   },
   {
     officeName: 'Duluth',
@@ -1808,6 +1971,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MN',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'MN',
   },
   {
     officeName: 'Fergus Falls',
@@ -1819,6 +1983,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MN',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'MN',
   },
   {
     officeName: 'Concord',
@@ -1830,6 +1995,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'MR',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'NH',
   },
   {
     officeName: 'Columbia',
@@ -1841,6 +2007,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NA',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Cookeville',
@@ -1852,6 +2019,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NA',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Nashville',
@@ -1863,6 +2031,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NA',
     regionId: '8',
     regionName: 'MEMPHIS',
+    state: 'TN',
   },
   {
     officeName: 'Camden',
@@ -1874,6 +2043,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NE',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'NJ',
   },
   {
     officeName: 'Newark',
@@ -1885,6 +2055,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NE',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'NJ',
   },
   {
     officeName: 'Trenton',
@@ -1896,6 +2067,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NE',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'NJ',
   },
   {
     officeName: 'Hartford',
@@ -1907,6 +2079,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NH',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'CT',
   },
   {
     officeName: 'New Haven',
@@ -1918,6 +2091,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NH',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'CT',
   },
   {
     officeName: 'Bridgeport',
@@ -1929,6 +2103,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NH',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'CT',
   },
   {
     officeName: 'Norfolk',
@@ -1940,6 +2115,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NO',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'Newport News',
@@ -1951,6 +2127,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NO',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'New Orleans',
@@ -1962,6 +2139,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NR',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'Baton Rouge',
@@ -1973,6 +2151,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NR',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'Manhattan',
@@ -1984,6 +2163,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NY',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'White Plains',
@@ -1995,6 +2175,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'NY',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Oakland',
@@ -2006,6 +2187,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'OA',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'Oklahoma City',
@@ -2017,6 +2199,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'OC',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'OK',
   },
   {
     officeName: 'Lincoln Office',
@@ -2028,6 +2211,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'OM',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'NE',
   },
   {
     officeName: 'Omaha Office',
@@ -2039,6 +2223,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'OM',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'NE',
   },
   {
     officeName: 'Jacksonville',
@@ -2050,6 +2235,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'OR',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Orlando',
@@ -2061,6 +2247,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'OR',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Peoria',
@@ -2072,6 +2259,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'Urbana',
@@ -2083,6 +2271,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'Springfield',
@@ -2094,6 +2283,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'East St Louis',
@@ -2105,6 +2295,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'Benton',
@@ -2116,6 +2307,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'Alton',
@@ -2127,6 +2319,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'Effingham',
@@ -2138,6 +2331,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PE',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IL',
   },
   {
     officeName: 'X',
@@ -2149,6 +2343,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PH',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Philadelphia',
@@ -2160,6 +2355,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PH',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Reading',
@@ -2171,6 +2367,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PH',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'XXX',
@@ -2182,6 +2379,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PH',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'XXX',
@@ -2193,6 +2391,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PI',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Erie',
@@ -2204,6 +2403,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PI',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Pittsburgh',
@@ -2215,6 +2415,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PI',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Johnstown',
@@ -2226,6 +2427,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PI',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'IV',
@@ -2237,6 +2439,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PI',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'PA',
   },
   {
     officeName: 'Portland',
@@ -2248,6 +2451,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PL',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'OR',
   },
   {
     officeName: 'Bangor',
@@ -2259,6 +2463,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PO',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'ME',
   },
   {
     officeName: 'Portland',
@@ -2270,6 +2475,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PO',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'ME',
   },
   {
     officeName: 'Providence',
@@ -2281,6 +2487,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PR',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'RI',
   },
   {
     officeName: 'Yuma',
@@ -2292,6 +2499,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PX',
     regionId: '14',
     regionName: 'PHOENIX',
+    state: 'AZ',
   },
   {
     officeName: 'Phoenix',
@@ -2303,6 +2511,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PX',
     regionId: '14',
     regionName: 'PHOENIX',
+    state: 'AZ',
   },
   {
     officeName: 'Prescott',
@@ -2314,6 +2523,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PX',
     regionId: '14',
     regionName: 'PHOENIX',
+    state: 'AZ',
   },
   {
     officeName: 'Tucson',
@@ -2325,6 +2535,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'PX',
     regionId: '14',
     regionName: 'PHOENIX',
+    state: 'AZ',
   },
   {
     officeName: 'Reno',
@@ -2336,6 +2547,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RE',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'NV',
   },
   {
     officeName: 'Richmond',
@@ -2347,6 +2559,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RH',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'Greenbelt',
@@ -2358,6 +2571,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RK',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'MD',
   },
   {
     officeName: 'Harrisonburg',
@@ -2369,6 +2583,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RN',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'Lynchburg',
@@ -2380,6 +2595,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RN',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'Roanoke',
@@ -2391,6 +2607,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RN',
     regionId: '4',
     regionName: 'COLUMBIA',
+    state: 'VA',
   },
   {
     officeName: 'Rochester',
@@ -2402,6 +2619,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'RO',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Santa Ana',
@@ -2413,6 +2631,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SA',
     regionId: '16',
     regionName: 'LOS ANGELES',
+    state: 'CA',
   },
   {
     officeName: 'Riverside',
@@ -2424,6 +2643,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SB',
     regionId: '16',
     regionName: 'LOS ANGELES',
+    state: 'CA',
   },
   {
     officeName: 'Sacramento',
@@ -2435,6 +2655,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SC',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'Modesto',
@@ -2446,6 +2667,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SC',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'San Diego',
@@ -2457,6 +2679,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SD',
     regionId: '15',
     regionName: 'SAN DIEGO',
+    state: 'CA',
   },
   {
     officeName: 'Santa Rosa',
@@ -2468,6 +2691,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SF',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'San Francisco',
@@ -2479,6 +2703,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SF',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'Alexandria',
@@ -2490,6 +2715,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SH',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'Lake Charles',
@@ -2501,6 +2727,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SH',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'Monroe',
@@ -2512,6 +2739,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SH',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'Lafayette',
@@ -2523,6 +2751,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SH',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'Shreveport',
@@ -2534,6 +2763,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SH',
     regionId: '5',
     regionName: 'NEW ORLEANS',
+    state: 'LA',
   },
   {
     officeName: 'San Jose',
@@ -2545,6 +2775,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SJ',
     regionId: '17',
     regionName: 'SAN FRANCISCO',
+    state: 'CA',
   },
   {
     officeName: 'Salt Lake City',
@@ -2556,6 +2787,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SK',
     regionId: '19',
     regionName: 'DENVER',
+    state: 'UT',
   },
   {
     officeName: 'St. George',
@@ -2567,6 +2799,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SK',
     regionId: '19',
     regionName: 'DENVER',
+    state: 'UT',
   },
   {
     officeName: 'Cape Girardeau',
@@ -2578,6 +2811,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SL',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'Hannibal',
@@ -2589,6 +2823,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SL',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'St. Louis',
@@ -2600,6 +2835,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SL',
     regionId: '13',
     regionName: 'KANSAS CITY',
+    state: 'MO',
   },
   {
     officeName: 'El Paso',
@@ -2611,6 +2847,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SN',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'San Antonio',
@@ -2622,6 +2859,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SN',
     regionId: '7',
     regionName: 'HOUSTON',
+    state: 'TX',
   },
   {
     officeName: 'Fort Wayne Division',
@@ -2633,6 +2871,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SO',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'Hammond Division',
@@ -2644,6 +2883,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SO',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'South Bend Division',
@@ -2655,6 +2895,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SO',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'Hammond Division at Lafayette',
@@ -2666,6 +2907,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SO',
     regionId: '10',
     regionName: 'INDIANAPOLIS',
+    state: 'IN',
   },
   {
     officeName: 'Spokane',
@@ -2677,6 +2919,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SP',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'WA',
   },
   {
     officeName: 'Spokane/Yakima',
@@ -2688,6 +2931,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SP',
     regionId: '18',
     regionName: 'SEATTLE',
+    state: 'WA',
   },
   {
     officeName: 'Augusta',
@@ -2699,6 +2943,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SV',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Brunswick',
@@ -2710,6 +2955,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SV',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Dublin',
@@ -2721,6 +2967,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SV',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Savannah',
@@ -2732,6 +2979,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SV',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Waycross',
@@ -2743,6 +2991,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SV',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Statesboro',
@@ -2754,6 +3003,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SV',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'GA',
   },
   {
     officeName: 'Northern (Aberdeen)',
@@ -2765,6 +3015,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SX',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'SD',
   },
   {
     officeName: 'Central (Pierre)',
@@ -2776,6 +3027,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SX',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'SD',
   },
   {
     officeName: 'Fargo',
@@ -2787,6 +3039,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SX',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'ND',
   },
   {
     officeName: 'Southern (Sioux Falls)',
@@ -2798,6 +3051,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SX',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'SD',
   },
   {
     officeName: 'Western (Rapid City)',
@@ -2809,6 +3063,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'SX',
     regionId: '12',
     regionName: 'MINNEAPOLIS',
+    state: 'SD',
   },
   {
     officeName: 'Gainesville',
@@ -2820,6 +3075,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TL',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Pensacola',
@@ -2831,6 +3087,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TL',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Tallahassee',
@@ -2842,6 +3099,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TL',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Panama City',
@@ -2853,6 +3111,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TL',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Ft. Myers',
@@ -2864,6 +3123,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TP',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Tampa',
@@ -2875,6 +3135,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TP',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Ft. Myers',
@@ -2886,6 +3147,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TP',
     regionId: '21',
     regionName: 'ATLANTA',
+    state: 'FL',
   },
   {
     officeName: 'Tulsa',
@@ -2897,6 +3159,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TU',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'OK',
   },
   {
     officeName: 'Muskogee',
@@ -2908,6 +3171,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TU',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'OK',
   },
   {
     officeName: 'Beaumont',
@@ -2919,6 +3183,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Marshall',
@@ -2930,6 +3195,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Paris',
@@ -2941,6 +3207,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Sherman',
@@ -2952,6 +3219,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Texarkana',
@@ -2963,6 +3231,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Tyler',
@@ -2974,6 +3243,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Lufkin',
@@ -2985,6 +3255,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'TY',
     regionId: '6',
     regionName: 'DALLAS',
+    state: 'TX',
   },
   {
     officeName: 'Syracuse',
@@ -2996,6 +3267,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'UT',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'Utica',
@@ -3007,6 +3279,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'UT',
     regionId: '2',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     officeName: 'San Fernando Valley',
@@ -3018,6 +3291,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WH',
     regionId: '16',
     regionName: 'LOS ANGELES',
+    state: 'CA',
   },
   {
     officeName: 'Santa Barbara',
@@ -3029,6 +3303,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WH',
     regionId: '16',
     regionName: 'LOS ANGELES',
+    state: 'CA',
   },
   {
     officeName: 'Kansas City',
@@ -3040,6 +3315,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WI',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'KS',
   },
   {
     officeName: 'Topeka',
@@ -3051,6 +3327,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WI',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'KS',
   },
   {
     officeName: 'Wichita',
@@ -3062,6 +3339,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WI',
     regionId: '20',
     regionName: 'WICHITA',
+    state: 'KS',
   },
   {
     officeName: 'Delaware',
@@ -3073,6 +3351,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WL',
     regionId: '3',
     regionName: 'PHILADELPHIA',
+    state: 'DE',
   },
   {
     officeName: 'Springfield',
@@ -3084,6 +3363,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WO',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'MA',
   },
   {
     officeName: 'Worcester',
@@ -3095,6 +3375,7 @@ export const COURT_DIVISIONS: CourtDivisionDetails[] = [
     groupDesignator: 'WO',
     regionId: '1',
     regionName: 'BOSTON',
+    state: 'MA',
   },
 ];
 

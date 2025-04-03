@@ -41,6 +41,7 @@ describe('common court library tests', () => {
         officeName: 'Seattle',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'WA',
       },
       {
         courtDivisionCode: '813',
@@ -52,6 +53,7 @@ describe('common court library tests', () => {
         officeName: 'Tacoma',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'WA',
       },
       {
         courtDivisionCode: '710',
@@ -63,6 +65,7 @@ describe('common court library tests', () => {
         officeName: 'Juneau',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'AK',
       },
       {
         courtDivisionCode: '720',
@@ -74,6 +77,7 @@ describe('common court library tests', () => {
         officeName: 'Nome',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'AK',
       },
       {
         courtDivisionCode: '730',
@@ -85,6 +89,7 @@ describe('common court library tests', () => {
         officeName: 'Anchorage',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'AK',
       },
       {
         courtDivisionCode: '740',
@@ -96,6 +101,7 @@ describe('common court library tests', () => {
         officeName: 'Fairbanks',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'AK',
       },
       {
         courtDivisionCode: '750',
@@ -107,6 +113,7 @@ describe('common court library tests', () => {
         officeName: 'Ketchikan',
         regionId: '18',
         regionName: 'Seattle',
+        state: 'AK',
       },
     ];
     const courtOffices = ustpOfficeToCourtDivision(ustpOffice);
@@ -124,7 +131,7 @@ const seattleOffice = {
       divisions: [
         {
           divisionCode: '812',
-          court: { courtId: '0981', courtName: 'Western District of Washington' },
+          court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
           courtOffice: {
             courtOfficeCode: '2',
             courtOfficeName: 'Seattle',
@@ -132,7 +139,7 @@ const seattleOffice = {
         },
         {
           divisionCode: '813',
-          court: { courtId: '0981', courtName: 'Western District of Washington' },
+          court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
           courtOffice: {
             courtOfficeCode: '3',
             courtOfficeName: 'Tacoma',
@@ -145,7 +152,7 @@ const seattleOffice = {
       divisions: [
         {
           divisionCode: '710',
-          court: { courtId: '097-', courtName: 'District of Alaska' },
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '1',
             courtOfficeName: 'Juneau',
@@ -153,7 +160,7 @@ const seattleOffice = {
         },
         {
           divisionCode: '720',
-          court: { courtId: '097-', courtName: 'District of Alaska' },
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '2',
             courtOfficeName: 'Nome',
@@ -161,7 +168,7 @@ const seattleOffice = {
         },
         {
           divisionCode: '730',
-          court: { courtId: '097-', courtName: 'District of Alaska' },
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '3',
             courtOfficeName: 'Anchorage',
@@ -169,7 +176,7 @@ const seattleOffice = {
         },
         {
           divisionCode: '740',
-          court: { courtId: '097-', courtName: 'District of Alaska' },
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '4',
             courtOfficeName: 'Fairbanks',
@@ -177,7 +184,7 @@ const seattleOffice = {
         },
         {
           divisionCode: '750',
-          court: { courtId: '097-', courtName: 'District of Alaska' },
+          court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '5',
             courtOfficeName: 'Ketchikan',
