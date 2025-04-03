@@ -14,6 +14,7 @@ export interface ApplicationContext<B = unknown> {
   request?: CamsHttpRequest<B>;
   closables: Closable[];
   releasables: Releasable[];
+  extraOutputs: unknown;
 }
 
 export interface ObjectKeyVal {
