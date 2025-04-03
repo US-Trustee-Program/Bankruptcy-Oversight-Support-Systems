@@ -17,7 +17,7 @@ import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { getTodaysIsoDate } from '../../../../common/src/date-helper';
-import { STORAGE_QUEUE_CONNECTION } from '../queue';
+import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
