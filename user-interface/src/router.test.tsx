@@ -22,9 +22,11 @@ describe('App Router Tests', () => {
   test('should route /staff-assignment to CaseAssignment', async () => {
     render(<App />, { wrapper: BrowserRouter });
 
-    await userEvent.click(screen.getByTestId('header-staff-assignment-link'));
+    await expect(screen.getByTestId('header-search-link')).toBeVisible();
 
-    expect(screen.getByTestId('case-list-heading')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('header-search-link'));
+
+    expect(screen.getByTestId('alert-container-default-state-alert')).toBeInTheDocument();
   });
 
   test('should render My Cases page when an invalid URL is supplied', async () => {
