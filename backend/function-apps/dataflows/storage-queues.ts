@@ -6,7 +6,6 @@ export const MIGRATE_ASSIGNEES = 'MIGRATE-ASSIGNEES';
 
 export const STORAGE_QUEUE_CONNECTION = 'AzureWebJobsStorage';
 
-// Yeah. Funny eh?
 const connection = STORAGE_QUEUE_CONNECTION;
 
 export const MIGRATE_ASSIGNEES_START = output.storageQueue({

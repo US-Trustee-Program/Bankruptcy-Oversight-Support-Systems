@@ -1,6 +1,6 @@
 import { app, InvocationContext } from '@azure/functions';
 import { buildFunctionName, StartMessage } from '../dataflows-common';
-import { MIGRATE_ASSIGNEES, MIGRATE_ASSIGNEES_START } from '../queue';
+import { MIGRATE_ASSIGNEES, MIGRATE_ASSIGNEES_START } from '../storage-queues';
 import ContextCreator from '../../azure/application-context-creator';
 
 const MODULE_NAME = MIGRATE_ASSIGNEES;

@@ -9,7 +9,7 @@ import {
 } from '../../../lib/use-cases/dataflows/migrate-consolidations';
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { STORAGE_QUEUE_CONNECTION } from '../queue';
+import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 
 const MODULE_NAME = 'MIGRATE-CONSOLIDATIONS';
 const PAGE_SIZE = 10;
