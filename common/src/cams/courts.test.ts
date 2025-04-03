@@ -15,6 +15,7 @@ describe('common court library tests', () => {
         groupDesignator: 'NR',
         regionId: '5',
         regionName: 'NEW ORLEANS',
+        state: 'LA',
       },
     ];
     const newOfficeList = filterCourtByDivision('313', COURT_DIVISIONS);
