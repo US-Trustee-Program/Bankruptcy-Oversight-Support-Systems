@@ -18,3 +18,7 @@ export function useStaffAssignmentStoreReact() {
     setStaffAssignmentFilter,
   };
 }
+
+export default {
+  useStaffAssignmentStoreReact,
+};
