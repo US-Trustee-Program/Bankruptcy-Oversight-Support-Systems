@@ -1,5 +1,5 @@
 import { app } from '@azure/functions';
-import { SYNC_ASSIGNEES } from '../queue';
+import { SYNC_ASSIGNEES } from '../storage-queues';
 
 const MODULE_NAME = SYNC_ASSIGNEES;
 
