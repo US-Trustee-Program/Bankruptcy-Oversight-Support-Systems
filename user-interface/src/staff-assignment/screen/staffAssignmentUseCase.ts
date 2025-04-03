@@ -30,9 +30,6 @@ export interface StaffAssignmentUseCase {
 }
 
 const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUseCase => {
-  const api = useApi2();
-  const globalAlert = useGlobalAlert();
-
   function assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[] {
     const comboOptions: ComboOption[] = [];
     officeAssignees.forEach((assignee) => {
@@ -45,6 +42,8 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
   }
 
   const fetchAssignees = () => {
+    const globalAlert = useGlobalAlert();
+    const api = useApi2();
     const session = LocalStorage.getSession();
     if (session?.user.offices) {
       const { offices } = session.user;
@@ -138,3 +137,5 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
 };
 
 export { staffAssignmentUseCase };
+
+export default staffAssignmentUseCase;
