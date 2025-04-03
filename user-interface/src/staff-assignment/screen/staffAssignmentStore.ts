@@ -1,5 +1,5 @@
 import { CamsUserReference } from '@common/cams/users';
-import { StaffAssignmentScreenFilter } from '../filters/StaffAssignmentFilter';
+import { StaffAssignmentScreenFilter } from './staffAssignmentControls';
 
 interface StaffAssignmentStore {
   officeAssignees: CamsUserReference[];
