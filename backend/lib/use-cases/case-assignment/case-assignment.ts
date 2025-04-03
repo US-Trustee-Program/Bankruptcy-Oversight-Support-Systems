@@ -1,6 +1,6 @@
-import Factory, { getAssignmentRepository } from '../../factory';
+import Factory, { getAssignmentRepository, getQueueGateway } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentRepository } from '../gateways.types';
+import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from '../cases/case-management';
@@ -14,10 +14,12 @@ const MODULE_NAME = 'CASE-ASSIGNMENT';
 export class CaseAssignmentUseCase {
   private context: ApplicationContext;
   private assignmentRepository: CaseAssignmentRepository;
+  private queueGateway: QueueGateway;
 
   constructor(applicationContext: ApplicationContext) {
     this.context = applicationContext;
     this.assignmentRepository = getAssignmentRepository(applicationContext);
+    this.queueGateway = getQueueGateway(applicationContext);
   }
 
   public async createTrialAttorneyAssignments(
@@ -88,6 +90,10 @@ export class CaseAssignmentUseCase {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
+    // TODO: Collect the additions and deletetions and add them to the assignment change queue.
+    const addedAssignments = [];
+    const removedAssignments = [];
+
     const existingAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([caseId]);
     const existingAssignmentRecords = existingAssignmentRecordsMap.get(caseId) ?? [];
     for (const existingAssignment of existingAssignmentRecords) {
@@ -98,10 +104,12 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        await assignmentRepo.update({
+        const removedAssignment = {
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
-        });
+        };
+        await assignmentRepo.update(removedAssignment);
+        removedAssignments.push(removedAssignment);
       }
     }
 
@@ -129,6 +137,11 @@ export class CaseAssignmentUseCase {
     );
     history.updatedOn = currentDate;
     await casesRepo.createCaseHistory(history);
+
+    // Queue the change events
+    this.queueGateway
+      .using(context, 'CASE_ASSIGNMENT_EVENT')
+      .enqueue(...addedAssignments, ...removedAssignments);
 
     context.logger.info(
       MODULE_NAME,
