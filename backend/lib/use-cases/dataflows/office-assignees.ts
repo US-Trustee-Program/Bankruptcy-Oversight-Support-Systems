@@ -54,13 +54,23 @@ async function migrateAssignments(context: ApplicationContext) {
     };
   });
 
-  // TODO: [how] do we want to collect metadata?
-  const results = [];
-  for (const assignee of officeAssignees) {
-    results.push(await createOfficeAssignee(context, assignee));
-  }
+  const results = await Promise.all(
+    officeAssignees.map((assignee) => createOfficeAssignee(context, assignee)),
+  );
 
-  return results;
+  const summary = results.reduce(
+    (acc, success) => {
+      if (success) {
+        acc.success += 1;
+      } else {
+        acc.fail += 1;
+      }
+      return acc;
+    },
+    { success: 0, fail: 0 },
+  );
+
+  context.logger.info(MODULE_NAME, 'Office assignees migration results', summary);
 }
 
 async function createOfficeAssignee(context: ApplicationContext, assignee: OfficeAssignee) {
@@ -75,12 +85,9 @@ async function createOfficeAssignee(context: ApplicationContext, assignee: Offic
         module: MODULE_NAME,
       },
     });
+    context.logger.camsError(error);
   }
-  if (!error) {
-    return { assignee, success: true };
-  } else {
-    return { assignee, success: false };
-  }
+  return !error;
 }
 
 const OfficeAssignees = {
