@@ -12,13 +12,14 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { SearchResultsProps } from '@/search-results/SearchResults';
 import { CamsRole } from '@common/cams/roles';
 import { BrowserRouter } from 'react-router-dom';
-import { getCourtDivisionCodes } from '@common/cams/users';
+import { CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
 import { staffAssignmentUseCase } from './staffAssignmentUseCase';
-import { useStaffAssignmentStoreReact } from './staffAssignmentStoreReact';
+import staffAssignmentStore from './staffAssignmentStoreReact';
+import { AssignAttorneyModalProps } from '../modal/AssignAttorneyModal';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -187,15 +188,64 @@ describe('StaffAssignmentScreen', () => {
     expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
   });
 
+  /*
+  test('should call handleAssignmentChange when the Assign Attorney Modal is submitted', async () => {
+    const storeMock = new StaffAssignmentStoreMock();
+    vi.spyOn(staffAssignmentStore, 'useStaffAssignmentStoreReact').mockImplementation(
+      useStaffAssignmentStoreMock,
+    );
+    const assignmentSpy = vi.spyOn(staffAssignmentUseCase, 'handleAssignmentChange');
+
+    renderWithoutProps();
+
+    expect(assignmentSpy).toHaveBeenCalledWith(mockedAssignments);
+  });
+  */
+
   test.skip('should call handleAssignmentChange when the Assign Attorney Modal is submitted', async () => {
-    const expectedAssignments = [MockData.getCamsUserReference(), MockData.getCamsUserReference()];
+    const mockSetOfficeAssignees = vi.fn(); // Mock the setter directly
+    const mockSetOfficeAssigneesError = vi.fn();
+    const mockSetStaffAssignmentFilter = vi.fn();
+    const mockedAssignments = MockData.buildArray(MockData.getCamsUserReference, 2);
 
-    // TODO: mock modal, fire callback, make sure handleAssignmentChange is called, etc.
+    vi.mock('@/lib/hooks/UseGlobalAlert', () => ({
+      default: vi.fn(),
+      useGlobalAlert: vi.fn(),
+    }));
+    const mockStore = {
+      officeAssignees: [],
+      setOfficeAssignees: mockSetOfficeAssignees,
+      officeAssigneesError: false,
+      setOfficeAssigneesError: mockSetOfficeAssigneesError,
+      staffAssignmentFilter: undefined,
+      setStaffAssignmentFilter: mockSetStaffAssignmentFilter,
+    };
 
-    const store = useStaffAssignmentStoreReact();
-    const storeSpy = staffAssignmentUseCase(store);
-    const assignmentSpy = vi.spyOn(storeSpy, 'handleAssignmentChange');
+    vi.doMock('../modal/AssignAttorneyModal', () => {
+      return {
+        default: (props: AssignAttorneyModalProps) => {
+          props.assignmentChangeCallback?.(mockedAssignments);
+          return <div>Mocked Modal</div>;
+        },
+      };
+    });
+    vi.resetModules();
 
-    expect(assignmentSpy).toHaveBeenCalledWith(expectedAssignments);
+    vi.spyOn(staffAssignmentStore, 'useStaffAssignmentStoreReact').mockReturnValue(mockStore);
+    const useCase = staffAssignmentUseCase(mockStore);
+    const handleAssignmentChangeSpy = vi.spyOn(useCase, 'handleAssignmentChange');
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-content-assign-attorney-modal') as HTMLElement & {
+        props: {
+          assignmentChangeCallback?: (assignments: CamsUserReference[]) => void;
+        };
+      };
+      modal.props.assignmentChangeCallback?.(mockedAssignments);
+
+      expect(handleAssignmentChangeSpy).toHaveBeenCalled();
+    });
   });
 });
