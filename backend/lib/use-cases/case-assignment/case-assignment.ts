@@ -104,12 +104,12 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        const removedAssignment = {
+        const updatedAssignment = {
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
         };
-        await assignmentRepo.update(removedAssignment);
-        removedAssignments.push(removedAssignment);
+        await assignmentRepo.update(updatedAssignment);
+        removedAssignments.push(updatedAssignment);
       }
     }
 
@@ -118,9 +118,11 @@ export class CaseAssignmentUseCase {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
+        addedAssignments.push(assignment);
         const assignmentId = await assignmentRepo.create(assignment);
-        if (!listOfAssignmentIdsCreated.includes(assignmentId))
+        if (!listOfAssignmentIdsCreated.includes(assignmentId)) {
           listOfAssignmentIdsCreated.push(assignmentId);
+        }
       }
     }
 
@@ -139,6 +141,7 @@ export class CaseAssignmentUseCase {
     await casesRepo.createCaseHistory(history);
 
     // Queue the change events
+    // TODO: Do we need to map these to a different "event" shape?
     this.queueGateway
       .using(context, 'CASE_ASSIGNMENT_EVENT')
       .enqueue(...addedAssignments, ...removedAssignments);
