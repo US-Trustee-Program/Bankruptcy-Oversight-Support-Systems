@@ -52,6 +52,7 @@ async function getApplicationContext<B = unknown>(
     session: undefined,
     closables: [],
     releasables: [],
+    extraOutputs: invocationContext.extraOutputs,
   } satisfies ApplicationContext<B | unknown>;
 }
 
