@@ -1,9 +1,12 @@
-import { OfficeAssignee } from '../../../use-cases/dataflows/office-assignees';
+import { OfficeAssignee } from '../../../use-cases/dataflows/migrate-office-assignees';
 import { OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneePredicate } from '../../../../../common/src/api/search';
-import { Query } from '../../../query/query-builder';
+import QueryBuilder, { using } from '../../../query/query-builder';
+import { CamsError } from '../../../common-errors/cams-error';
+
+const { and } = QueryBuilder;
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'office-assignees';
@@ -45,15 +48,22 @@ export class OfficeAssigneeMongoRepository
     await this.getAdapter().insertOne(data);
   }
 
-  async search(_predicate?: OfficeAssigneePredicate): Promise<OfficeAssignee[]> {
-    // TODO: Transalate predicate to query.
-    const query = {} as Query<OfficeAssignee>;
-    return this.getAdapter<OfficeAssignee>().find(query);
+  async search(predicate?: OfficeAssigneePredicate): Promise<OfficeAssignee[]> {
+    return this.getAdapter<OfficeAssignee>().find(this.toQuery(predicate));
   }
 
-  async deleteMany<T>(_predicate: T): Promise<void> {
-    // TODO: Transalate predicate to query.
-    const query = {} as Query<OfficeAssignee>;
-    await this.getAdapter<OfficeAssignee>().deleteMany(query);
+  async deleteMany(predicate: OfficeAssigneePredicate): Promise<void> {
+    await this.getAdapter<OfficeAssignee>().deleteMany(this.toQuery(predicate));
+  }
+
+  toQuery(predicate: OfficeAssigneePredicate) {
+    const doc = using<OfficeAssignee>();
+    if (predicate.caseId && predicate.userId) {
+      return and(doc('userId').equals(predicate.userId), doc('caseId').equals(predicate.caseId));
+    } else if (predicate.officeCode) {
+      return doc('officeCode').equals(predicate.officeCode);
+    } else {
+      throw new CamsError(MODULE_NAME, { message: 'Invalid predicate', data: predicate });
+    }
   }
 }

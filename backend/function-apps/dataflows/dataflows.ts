@@ -1,13 +1,15 @@
 import * as dotenv from 'dotenv';
 import { initializeApplicationInsights } from '../azure/app-insights';
 
+import { LoggerImpl } from '../../lib/adapters/services/logger.service';
+
 import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateConsolidations from './migrations/migrate-consolidations';
 import MigrateAssignees from './migrations/migrate-assignees';
-import { LoggerImpl } from '../../lib/adapters/services/logger.service';
+import CaseAssignmentEvent from './events/case-assignment-event';
 
 /*
 
@@ -93,6 +95,7 @@ initializeApplicationInsights();
 
 // Register data flows.
 dataflows.register(
+  CaseAssignmentEvent,
   SyncCases,
   SyncOfficeStaff,
   SyncOrders,
