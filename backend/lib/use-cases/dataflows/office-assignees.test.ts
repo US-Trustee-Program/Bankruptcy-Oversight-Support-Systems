@@ -1,4 +1,4 @@
-import OfficeAssignees from './office-assignees';
+import MigrateOfficeAssigneesUseCase from './migrate-office-assignees';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -38,7 +38,7 @@ describe('office-assignees use case tests', () => {
     const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue({});
 
     const context: ApplicationContext = await createMockApplicationContext();
-    await OfficeAssignees.migrateAssignments(context);
+    await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
 
     expect(assignmentsSpy).toHaveBeenCalled();
     expect(caseSpy).toHaveBeenCalledTimes(cases.length);

@@ -1,0 +1,35 @@
+import { app, InvocationContext } from '@azure/functions';
+import { CASE_ASSIGNMENT_EVENT } from '../module-names';
+import { CASE_ASSIGNMENT_EVENT_DLQ, CASE_ASSIGNMENT_EVENT_QUEUE } from '../storage-queues';
+import { buildFunctionName } from '../dataflows-common';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import ContextCreator from '../../azure/application-context-creator';
+import CaseAssignmentEventUseCase from '../../../lib/use-cases/dataflows/case-assignment-event';
+
+const MODULE_NAME = CASE_ASSIGNMENT_EVENT;
+const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
+
+async function handler(event: CaseAssignment, invocationContext: InvocationContext) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  try {
+    await CaseAssignmentEventUseCase.handleCaseAssignmentEvent(context, event);
+  } catch (error) {
+    invocationContext.extraOutputs.set(CASE_ASSIGNMENT_EVENT_DLQ, { event, error });
+  }
+}
+
+function setup() {
+  app.storageQueue(HANDLER, {
+    connection: CASE_ASSIGNMENT_EVENT_QUEUE.connection,
+    queueName: CASE_ASSIGNMENT_EVENT_QUEUE.queueName,
+    handler,
+    extraOutputs: [CASE_ASSIGNMENT_EVENT_DLQ],
+  });
+}
+
+const CaseAssignmentEvent = {
+  MODULE_NAME,
+  setup,
+};
+
+export default CaseAssignmentEvent;
