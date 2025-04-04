@@ -10,6 +10,7 @@ import MigrateCases from './migrations/migrate-cases';
 import MigrateConsolidations from './migrations/migrate-consolidations';
 import MigrateAssignees from './migrations/migrate-assignees';
 import CaseAssignmentEvent from './events/case-assignment-event';
+import CaseClosedEvent from './events/case-closed-event';
 
 /*
 
@@ -96,6 +97,7 @@ initializeApplicationInsights();
 // Register data flows.
 dataflows.register(
   CaseAssignmentEvent,
+  CaseClosedEvent,
   SyncCases,
   SyncOfficeStaff,
   SyncOrders,

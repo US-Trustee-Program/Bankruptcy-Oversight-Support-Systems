@@ -60,6 +60,8 @@ export class OfficeAssigneeMongoRepository
     const doc = using<OfficeAssignee>();
     if (predicate.caseId && predicate.userId) {
       return and(doc('userId').equals(predicate.userId), doc('caseId').equals(predicate.caseId));
+    } else if (predicate.caseId) {
+      return doc('caseId').equals(predicate.caseId);
     } else if (predicate.officeCode) {
       return doc('officeCode').equals(predicate.officeCode);
     } else {
