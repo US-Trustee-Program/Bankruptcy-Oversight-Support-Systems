@@ -162,7 +162,7 @@ export interface CasesRepository extends Releasable {
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   deleteSyncedCases(): Promise<void>;
   searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]>;
-  getCase(caseId: string): Promise<SyncedCase>;
+  getSyncedCase(caseId: string): Promise<SyncedCase>;
 }
 
 export interface OfficesRepository extends Releasable {
@@ -185,7 +185,9 @@ export interface OfficeAssigneesRepository
   extends Creates<OfficeAssignee>,
     DeletesMany<OfficeAssigneePredicate>,
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
-    Releasable {}
+    Releasable {
+  getDistinctAssigneesByOffice: (officeCode) => Promise<CamsUserReference[]>;
+}
 
 export type RuntimeStateDocumentType =
   | 'ORDERS_SYNC_STATE'

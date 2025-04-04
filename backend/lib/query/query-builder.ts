@@ -18,7 +18,7 @@ export function isCondition(obj: unknown): obj is Condition {
   return typeof obj === 'object' && 'condition' in obj;
 }
 
-export type Field<T = unknown> = {
+export type Field<T = never> = {
   name: keyof T;
 };
 
