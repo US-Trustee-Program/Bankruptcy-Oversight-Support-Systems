@@ -17,8 +17,10 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
+import { GlobalAlertRef } from '@/lib/components/cams/GlobalAlert/GlobalAlert';
 
 describe('StaffAssignmentScreen', () => {
+  let globalAlertSpy: GlobalAlertRef;
   let mockFeatureFlags: FeatureFlagSet;
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager],
@@ -43,6 +45,7 @@ describe('StaffAssignmentScreen', () => {
       'staff-assignment-filter-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    globalAlertSpy = testingUtilities.spyOnGlobalAlert();
   });
 
   afterEach(() => {
@@ -58,7 +61,6 @@ describe('StaffAssignmentScreen', () => {
 
   test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
     vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
-    const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
     const assigneeError = 'There was a problem getting the list of assignees.';
     renderWithoutProps();
 
