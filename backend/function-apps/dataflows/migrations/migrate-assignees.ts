@@ -1,22 +1,26 @@
-import { app, InvocationContext } from '@azure/functions';
-import { buildFunctionName, StartMessage } from '../dataflows-common';
-import { MIGRATE_ASSIGNEES, MIGRATE_ASSIGNEES_START } from '../storage-queues';
+import { app, InvocationContext, output } from '@azure/functions';
+import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import ContextCreator from '../../azure/application-context-creator';
-import OfficeAssignees from '../../../lib/use-cases/dataflows/office-assignees';
+import MigrateOfficeAssigneesUseCase from '../../../lib/use-cases/dataflows/migrate-office-assignees';
+import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 
-const MODULE_NAME = MIGRATE_ASSIGNEES;
+const MODULE_NAME = 'MIGRATE-ASSIGNEES';
 
 const START = buildFunctionName(MODULE_NAME, 'start');
+const QUEUE = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'start'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
 
 async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  await OfficeAssignees.migrateAssignments(context);
+  await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
 }
 
 function setup() {
   app.storageQueue(START, {
-    connection: MIGRATE_ASSIGNEES_START.connection,
-    queueName: MIGRATE_ASSIGNEES_START.queueName,
+    connection: QUEUE.connection,
+    queueName: QUEUE.queueName,
     handler: start,
   });
 }

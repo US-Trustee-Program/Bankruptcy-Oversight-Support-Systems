@@ -30,7 +30,7 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
-import { OfficeAssignee } from './dataflows/office-assignees';
+import { OfficeAssignee } from './dataflows/migrate-office-assignees';
 
 export type ReplaceResult = {
   id: string;

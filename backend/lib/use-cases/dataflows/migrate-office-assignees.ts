@@ -11,7 +11,7 @@ import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { isCaseOpen } from '../../../../common/src/cams/cases';
 
-const MODULE_NAME = 'OFFICE-ASSIGNEES';
+const MODULE_NAME = 'MIGRATE-OFFICE-ASSIGNEES-USE-CASE';
 
 export type OfficeAssignee = {
   caseId: string;
@@ -90,8 +90,8 @@ async function createOfficeAssignee(context: ApplicationContext, assignee: Offic
   return !error;
 }
 
-const OfficeAssignees = {
+const MigrateOfficeAssigneesUseCase = {
   migrateAssignments,
 };
 
-export default OfficeAssignees;
+export default MigrateOfficeAssigneesUseCase;

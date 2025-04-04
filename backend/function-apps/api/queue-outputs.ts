@@ -1,3 +1,3 @@
-import { CASE_ASSIGNMENT_EVENT } from '../dataflows/storage-queues';
+import { CASE_ASSIGNMENT_EVENT_QUEUE } from '../dataflows/storage-queues';
 
-export const extraOutputs = [CASE_ASSIGNMENT_EVENT];
+export const extraOutputs = [CASE_ASSIGNMENT_EVENT_QUEUE];
