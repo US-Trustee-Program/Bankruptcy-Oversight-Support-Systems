@@ -1,8 +1,8 @@
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { AttorneyUser, CamsUserReference, Staff } from '../../../../common/src/cams/users';
+import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
-  getCasesRepository,
+  getOfficeAssigneesRepository,
   getOfficesGateway,
   getOfficesRepository,
   getOfficeStaffSyncStateRepo,
@@ -13,7 +13,6 @@ import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
-import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -51,29 +50,13 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<Staff[]> {
-    const officesGateway = getOfficesGateway(context);
-    const offices = await officesGateway.getOffices(context);
-    const office = offices.find((office) => office.officeCode === officeCode);
-    const divisionCodes = ustpOfficeToCourtDivision(office).map((div) => div.courtDivisionCode);
-
-    const repository = getCasesRepository(context);
-    const cases = await repository.searchCasesForOfficeAssignees({
-      divisionCodes,
-      excludeClosedCases: true,
-    });
-    const assignees = new Map<string, CamsUserReference>();
-    for await (const bCase of cases) {
-      bCase.assignments.forEach((assignment) => {
-        assignees.set(assignment.userId, {
-          id: assignment.userId,
-          name: assignment.name,
-        });
-      });
+    const repository = getOfficeAssigneesRepository(context);
+    const response = await repository.getDistinctAssigneesByOffice(officeCode);
+    const assignees: Staff[] = [];
+    for await (const assignee of response) {
+      assignees.push(assignee);
     }
-
-    return Array.from(assignees.values()).sort((a, b) => {
-      return a.name < b.name ? -1 : 1;
-    });
+    return assignees;
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
