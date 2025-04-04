@@ -598,4 +598,31 @@ describe('Cases repository', () => {
 
     expect(actual).toEqual(expected);
   });
+
+  test('should get synced case by caseId', async () => {
+    const bCase = MockData.getSyncedCase();
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockResolvedValue(bCase);
+
+    const actual = await repo.getSyncedCase(bCase.caseId);
+
+    expect(actual).toEqual(bCase);
+    expect(findSpy).toHaveBeenCalledWith({
+      conjunction: 'AND',
+      values: [
+        { condition: 'EQUALS', leftOperand: { name: 'caseId' }, rightOperand: bCase.caseId },
+        { condition: 'EQUALS', leftOperand: { name: 'documentType' }, rightOperand: 'SYNCED_CASE' },
+      ],
+    });
+  });
+
+  test('should handle error getting synced case', async () => {
+    const bCase = MockData.getSyncedCase();
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockRejectedValue(new Error('some error'));
+
+    await expect(repo.getSyncedCase(bCase.caseId)).rejects.toThrow(UnknownError);
+  });
 });

@@ -399,8 +399,18 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     return await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
   }
 
-  async getCase(_caseId: string): Promise<SyncedCase> {
-    // TODO: Implement this.
-    throw new Error('not implemented');
+  async getSyncedCase(caseId: string): Promise<SyncedCase> {
+    const doc = using<SyncedCase>();
+    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
+    try {
+      return await this.getAdapter<SyncedCase>().findOne(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to retrieve synced case: ${caseId}`,
+        },
+      });
+    }
   }
 }
