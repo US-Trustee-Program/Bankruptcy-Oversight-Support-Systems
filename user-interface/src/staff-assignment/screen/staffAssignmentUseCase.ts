@@ -23,6 +23,10 @@ export interface StaffAssignmentUseCase {
   handleFilterAssignee(assignees: ComboOption[]): void;
   handleAssignmentChange(assignees: CamsUserReference[]): void;
   getChapters(): string[];
+  getOfficeAssignees(
+    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
+    offices: UstpOfficeDetails[],
+  ): Promise<CamsUserReference[]>;
   getPredicateByUserContextWithFilter(
     user: CamsUser,
     filter?: StaffAssignmentScreenFilter,
@@ -41,21 +45,20 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
     return comboOptions;
   }
 
-  const fetchAssignees = () => {
+  const fetchAssignees = async () => {
     const globalAlert = useGlobalAlert();
     const api = useApi2();
     const session = LocalStorage.getSession();
     if (session?.user.offices) {
       const { offices } = session.user;
-      getOfficeAssignees(api.getOfficeAssignees, offices)
-        .then((assignees) => {
-          store.setOfficeAssignees(assignees);
-          store.setOfficeAssigneesError(false);
-        })
-        .catch((_e) => {
-          store.setOfficeAssigneesError(true);
-          globalAlert?.error('There was a problem getting the list of assignees.');
-        });
+      try {
+        const assignees = await getOfficeAssignees(api.getOfficeAssignees, offices);
+        store.setOfficeAssignees(assignees);
+        store.setOfficeAssigneesError(false);
+      } catch (_e) {
+        store.setOfficeAssigneesError(true);
+        globalAlert?.error('There was a problem getting the list of assignees.');
+      }
     }
   };
 
@@ -91,9 +94,9 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
     }
   }
 
-  function handleAssignmentChange(assignees: CamsUserReference[]) {
-    if (assignees.length) {
-      fetchAssignees();
+  async function handleAssignmentChange(assignees: CamsUserReference[]) {
+    if (assignees.length > 0) {
+      await fetchAssignees();
     }
   }
 
@@ -130,6 +133,7 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
     assigneesToComboOptions,
     fetchAssignees,
     getChapters,
+    getOfficeAssignees,
     getPredicateByUserContextWithFilter,
     handleAssignmentChange,
     handleFilterAssignee,

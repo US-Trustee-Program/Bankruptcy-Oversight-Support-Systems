@@ -56,6 +56,20 @@ export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
     officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
     idpGroupName: 'USTP CAMS Region 18 Office Seattle',
     officeName: 'Seattle',
+    staff: [
+      {
+        id: 's0',
+        name: 'Seattle 0',
+      },
+      {
+        id: 's1',
+        name: 'Seattle 0',
+      },
+      {
+        id: 's3',
+        name: 'Seattle 0',
+      },
+    ],
     groups: [
       {
         groupDesignator: 'SE',

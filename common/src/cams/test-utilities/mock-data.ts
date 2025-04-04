@@ -101,6 +101,29 @@ function getOffices() {
   return MOCKED_USTP_OFFICES_ARRAY;
 }
 
+function getOfficeWithStaff(staff?: Staff[]) {
+  const office = randomUstpOffice();
+  if (staff) {
+    office.staff = staff;
+  } else {
+    office.staff = [
+      {
+        id: office.officeCode + '_0',
+        name: `staff_${office.officeName}_0`,
+      },
+      {
+        id: office.officeCode + '_1',
+        name: `staff_${office.officeName}_1`,
+      },
+      {
+        id: office.officeCode + '_2',
+        name: `staff_${office.officeName}_2`,
+      },
+    ];
+  }
+  return office;
+}
+
 function randomOffice() {
   return COURT_DIVISIONS[randomInt(COURT_DIVISIONS.length - 1)];
 }
@@ -769,6 +792,7 @@ export const MockData = {
   getSyncedCaseNotMatchingCaseIds,
   getCourts,
   getOffices,
+  getOfficeWithStaff,
   getParty,
   getDocketEntry,
   getNonPaginatedResponseBody,
