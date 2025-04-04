@@ -30,7 +30,7 @@ describe('office-assignees use case tests', () => {
       .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
 
     const caseSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'getCase')
+      .spyOn(MockMongoRepository.prototype, 'getSyncedCase')
       .mockImplementation((caseId: string) =>
         Promise.resolve(cases.find((bCase) => bCase.caseId === caseId)),
       );

@@ -32,6 +32,19 @@ function source<T = unknown>(source?: string) {
   };
 }
 
+export type First = {
+  accumulator: 'FIRST';
+  as: Field;
+  field: Field;
+};
+
+export type Count = {
+  accumulator: 'COUNT';
+  as: Field;
+};
+
+export type Accumulator = Count | First;
+
 export type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
 };
@@ -74,6 +87,12 @@ export type ExcludeFields = {
   fields: FieldReference<never>[];
 };
 
+export type Group = {
+  stage: 'GROUP';
+  groupBy: Field[];
+  accumulators: Accumulator[];
+};
+
 export type FieldReference<T> = Field<T> & {
   source?: string;
 };
@@ -93,7 +112,14 @@ export type AdditionalField<T = never> = {
   query: ConditionOrConjunction<T>;
 };
 
-export type Stage<T = never> = Paginate | Sort | Match | Join | AddFields<T> | ExcludeFields;
+export type Stage<T = never> =
+  | Paginate
+  | Sort
+  | Match
+  | Join
+  | AddFields<T>
+  | ExcludeFields
+  | Group;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -176,12 +202,27 @@ function pipeline(...stages: Stage[]): Pipeline {
   return { stages };
 }
 
+function group(groupBy: Field[], accumulators: Accumulator[]): Group {
+  return { stage: 'GROUP', groupBy, accumulators };
+}
+
+function count(as: Field): Count {
+  return { accumulator: 'COUNT', as: { name: as.name } };
+}
+
+function first(field: Field, as: Field): First {
+  return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
+}
+
 const QueryPipeline = {
   addFields,
   additionalField,
   ascending,
+  count,
   descending,
   exclude,
+  first,
+  group,
   join,
   match,
   paginate,

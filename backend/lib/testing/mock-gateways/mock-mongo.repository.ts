@@ -6,11 +6,13 @@ import {
   ConsolidationFrom,
 } from '../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../common/src/cams/history';
+import { CamsUserReference } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
+  OfficeAssigneesRepository,
   OfficesRepository,
   OrdersRepository,
   RuntimeState,
@@ -29,7 +31,8 @@ export class MockMongoRepository
     OfficesRepository,
     RuntimeStateRepository,
     UsersRepository,
-    UserSessionCacheRepository
+    UserSessionCacheRepository,
+    OfficeAssigneesRepository
 {
   deleteSyncedCases(): Promise<void> {
     throw new Error('Method not implemented.');
@@ -183,11 +186,15 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getCase(..._ignore): Promise<any> {
+  getSyncedCase(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
   deleteMany(_ignore: any): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getDistinctAssigneesByOffice(_ignore: any): Promise<CamsUserReference[]> {
     throw new Error('Method not implemented.');
   }
 }
