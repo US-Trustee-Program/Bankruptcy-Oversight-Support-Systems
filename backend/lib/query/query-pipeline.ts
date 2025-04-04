@@ -90,7 +90,7 @@ export type ExcludeFields = {
 export type Group = {
   stage: 'GROUP';
   groupBy: Field[];
-  accumulators: Accumulator[];
+  accumulators?: Accumulator[];
 };
 
 export type FieldReference<T> = Field<T> & {

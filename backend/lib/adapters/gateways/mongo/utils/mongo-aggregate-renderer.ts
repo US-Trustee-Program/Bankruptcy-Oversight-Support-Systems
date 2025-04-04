@@ -1,6 +1,8 @@
 import {
+  Accumulator,
   AddFields,
   ExcludeFields,
+  Group,
   Join,
   Paginate,
   Pipeline,
@@ -69,6 +71,31 @@ export function toMongoAddFields(stage: AddFields) {
   };
 }
 
+export function toMongoAccumulatorOperator(spec: Accumulator) {
+  if (spec.accumulator === 'FIRST') {
+    return {
+      $first: `$${spec.field.name.toString()}`,
+    };
+  } else if (spec.accumulator === 'COUNT') {
+    return {
+      $count: {},
+    };
+  }
+}
+
+export function toMongoGroup(stage: Group) {
+  const group = {
+    $group: {
+      _id: stage.groupBy.map((field) => `$${field.name.toString()}`).join(''),
+    },
+  };
+
+  return stage.accumulators.reduce((acc, spec) => {
+    acc.$group[spec.as.name.toString()] = toMongoAccumulatorOperator(spec);
+    return acc;
+  }, group);
+}
+
 export function toMongoProject(stage: ExcludeFields) {
   // Note that we could extend this by letting stage be another type.
   // https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
@@ -90,11 +117,11 @@ export function translateCondition<T = unknown>(query: Condition<T>) {
     throw new CamsError(MODULE_NAME, { message: 'leftOperand must be a field' });
   }
   const { name: field } = query.leftOperand;
-  let left: unknown = `$$this.${field}`;
+  let left: unknown = `$$this.${field.toString()}`;
   let right = query.rightOperand;
   let condition = mapCondition[query.condition];
   if (query.condition === 'EXISTS') {
-    left = { $ifNull: [`$$this.${field}`, null] };
+    left = { $ifNull: [`$$this.${field.toString()}`, null] };
     condition = right ? '$ne' : '$eq';
     right = null;
   }
@@ -135,6 +162,9 @@ export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
     }
     if (stage.stage === 'EXCLUDE') {
       return toMongoProject(stage);
+    }
+    if (stage.stage === 'GROUP') {
+      return toMongoGroup(stage);
     }
   });
 }
