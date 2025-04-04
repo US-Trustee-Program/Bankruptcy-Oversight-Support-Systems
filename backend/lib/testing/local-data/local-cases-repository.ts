@@ -89,7 +89,7 @@ export class LocalCasesRepository implements CasesRepository {
     throw new Error('Method not implemented.');
   }
 
-  getCase(_ignore: string): Promise<SyncedCase> {
+  getSyncedCase(_ignore: string): Promise<SyncedCase> {
     throw new Error('Method not implemented.');
   }
 }
