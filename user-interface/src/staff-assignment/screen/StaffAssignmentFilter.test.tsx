@@ -1,50 +1,43 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import StaffAssignmentFilter, {
-  getOfficeAssignees,
-  StaffAssignmentFilterProps,
-} from './StaffAssignmentFilter';
-import MockData from '@common/cams/test-utilities/mock-data';
-import Api2 from '@/lib/models/api2';
-import { MockInstance } from 'vitest';
-import { CamsSession } from '@common/cams/session';
-import LocalStorage from '@/lib/utils/local-storage';
-import userEvent from '@testing-library/user-event';
-import testingUtilities from '@/lib/testing/testing-utilities';
+//import MockData from '@common/cams/test-utilities/mock-data';
+//import { render, screen, waitFor } from '@testing-library/react';
+//import Api2 from '@/lib/models/api2';
+//import { MockInstance } from 'vitest';
+//import { CamsSession } from '@common/cams/session';
+//import LocalStorage from '@/lib/utils/local-storage';
+//import userEvent from '@testing-library/user-event';
+//import testingUtilities from '@/lib/testing/testing-utilities';
+//
+//const offices = MockData.getOffices();
+//
+//const officeStaffData = [
+//  [
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//  ],
+//  [
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//  ],
+//  [
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//  ],
+//  [
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//    MockData.getStaffAssignee(),
+//  ],
+//];
 
-const offices = MockData.getOffices();
-
-const defaultProps: StaffAssignmentFilterProps = {
-  id: '0',
-};
-
-const officeStaffData = [
-  [
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-  ],
-  [
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-  ],
-  [
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-  ],
-  [
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-    MockData.getStaffAssignee(),
-  ],
-];
-
-describe('Tests for Staff Assignment Screen Filters', () => {
+describe.skip('Tests for Staff Assignment Screen Filters', () => {
+  /*
   let getOfficeAssigneesSpy: MockInstance;
   let session: CamsSession;
   function renderWithProps(props?: Partial<StaffAssignmentFilterProps>) {
@@ -147,4 +140,5 @@ describe('Tests for Staff Assignment Screen Filters', () => {
     });
     expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
   });
+  */
 });

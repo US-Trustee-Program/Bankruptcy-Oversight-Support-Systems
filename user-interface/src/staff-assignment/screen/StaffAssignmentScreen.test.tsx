@@ -17,8 +17,10 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
+import { GlobalAlertRef } from '@/lib/components/cams/GlobalAlert/GlobalAlert';
 
 describe('StaffAssignmentScreen', () => {
+  let globalAlertSpy: GlobalAlertRef;
   let mockFeatureFlags: FeatureFlagSet;
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager],
@@ -43,6 +45,7 @@ describe('StaffAssignmentScreen', () => {
       'staff-assignment-filter-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    globalAlertSpy = testingUtilities.spyOnGlobalAlert();
   });
 
   afterEach(() => {
@@ -52,8 +55,20 @@ describe('StaffAssignmentScreen', () => {
   test('screen should contain staff assignment filters', async () => {
     renderWithoutProps();
 
-    const filter = screen.getByTestId('staff-assignment-filter');
+    const filter = document.querySelector('.staff-assignment-filter-container');
     expect(filter).toBeInTheDocument();
+  });
+
+  test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
+    vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
+    const assigneeError = 'There was a problem getting the list of assignees.';
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const itemList = document.querySelector('#staff-assignment-filter');
+      expect(itemList!).not.toBeInTheDocument();
+    });
+    expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
   });
 
   test('staff assignment filter should pass valid search predicate to search results component when changed filter is updated', async () => {
