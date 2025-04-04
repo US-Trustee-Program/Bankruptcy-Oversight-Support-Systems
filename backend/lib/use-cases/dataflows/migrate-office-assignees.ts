@@ -31,7 +31,7 @@ async function migrateAssignments(context: ApplicationContext) {
   const casesRepo = getCasesRepository(context);
   const safeGetCase = async (caseId: string) => {
     try {
-      return await casesRepo.getCase(caseId);
+      return await casesRepo.getSyncedCase(caseId);
     } catch {
       return null;
     }

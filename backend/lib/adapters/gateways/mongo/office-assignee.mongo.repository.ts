@@ -5,8 +5,11 @@ import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneePredicate } from '../../../../../common/src/api/search';
 import QueryBuilder, { using } from '../../../query/query-builder';
 import { CamsError } from '../../../common-errors/cams-error';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
+import QueryPipeline from '../../../query/query-pipeline';
 
 const { and } = QueryBuilder;
+const { descending, first, group, match, pipeline, sort, source } = QueryPipeline;
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'office-assignees';
@@ -50,6 +53,47 @@ export class OfficeAssigneeMongoRepository
 
   async search(predicate?: OfficeAssigneePredicate): Promise<OfficeAssignee[]> {
     return this.getAdapter<OfficeAssignee>().find(this.toQuery(predicate));
+  }
+
+  /**
+   *  Target rendered query:
+   *    const query = [
+   *      { $match: { officeCode } },
+   *      { $group: { _id: '$userId', name: { $first: '$name' } } },
+   *      { $sort: { name: 1 } },
+   *    ];
+   */
+  async getDistinctAssigneesByOffice(officeCode): Promise<CamsUserReference[]> {
+    // DistinctAssignee is shaped after the $group stage in the aggregate pipeline
+    type DistinctAssignee = {
+      _id: string;
+      name: string;
+    };
+
+    // TODO: Translate this using the query pipeline API.
+    // TODO: We need to add $group to the query pipeline and mongo renderer.
+    // const query = [
+    //   { $match: { officeCode } },
+    //   { $group: { _id: '$userId', name: { $first: '$name' } } },
+    //   { $sort: { name: 1 } },
+    // ];
+    const doc = source<OfficeAssignee>('office-assignment').usingFields(
+      'name',
+      'officeCode',
+      'userId',
+    );
+    const query = pipeline(
+      match(doc.officeCode.equals(officeCode)),
+      group([doc.userId], [first(doc.name, doc.name)]),
+      sort(descending(doc.name)),
+    );
+    const results = await this.getAdapter<DistinctAssignee>()._aggregate(query);
+    return results.map((result) => {
+      return {
+        id: result._id,
+        name: result.name,
+      };
+    });
   }
 
   async deleteMany(predicate: OfficeAssigneePredicate): Promise<void> {
