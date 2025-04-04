@@ -123,8 +123,14 @@ describe('aggregation query renderer tests', () => {
 
   test('should render a grouped query', () => {
     const expected = [
-      { $match: { assignedOn: 'foo' } },
-      { $group: { _id: '$userId', name: { $first: '$name' } } },
+      {
+        $match: {
+          two: {
+            $eq: 'hello',
+          },
+        },
+      },
+      { $group: { _id: '$userId', name: { $first: '$name' }, total: { $count: {} } } },
     ];
 
     const simpleMatch: Stage = {
@@ -134,10 +140,13 @@ describe('aggregation query renderer tests', () => {
       rightOperand: 'hello',
     };
 
-    // I'm not sure about the 'fields' yet. Is that right? Do we need a different structure?
     const group: Stage = {
       stage: 'GROUP',
-      fields: [{ name: 'userId' }, { name: 'first' }],
+      groupBy: [{ name: 'userId' }],
+      accumulators: [
+        { accumulator: 'FIRST', as: { name: 'name' }, field: { name: 'name' } },
+        { accumulator: 'COUNT', as: { name: 'total' } },
+      ],
     };
 
     const query = pipeline(simpleMatch, group);

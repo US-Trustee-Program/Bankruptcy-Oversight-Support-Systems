@@ -38,7 +38,7 @@ function translateCondition<T = unknown>(query: Condition<T>) {
       $expr: {
         [mapCondition[query.condition]]: [
           `$${query.leftOperand.name.toString()}`,
-          `$${query.rightOperand.name}`,
+          `$${query.rightOperand.name.toString()}`,
         ],
       },
     };
