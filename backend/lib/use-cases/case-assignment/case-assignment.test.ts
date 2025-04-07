@@ -10,6 +10,7 @@ import CaseManagement from '../cases/case-management';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ConsolidationOrder } from '../../../../common/src/cams/orders';
+import OfficeAssigneesUseCase from '../../use-cases/offices/office-assignees';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -160,6 +161,10 @@ describe('Case assignment tests', () => {
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
+      const assignmentEventSpy = jest
+        .spyOn(OfficeAssigneesUseCase, 'handleCaseAssignmentEvent')
+        .mockResolvedValue();
+
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
       const assignmentOne = {
@@ -187,6 +192,8 @@ describe('Case assignment tests', () => {
 
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentTwo));
       expect(createAssignment).toHaveBeenCalledTimes(1);
+
+      expect(assignmentEventSpy).toHaveBeenCalledWith(expect.anything, assignmentTwo);
     });
 
     test('should remove assignments', async () => {
