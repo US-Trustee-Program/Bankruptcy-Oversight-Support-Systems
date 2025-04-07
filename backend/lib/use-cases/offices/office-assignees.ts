@@ -4,13 +4,17 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
 
-const MODULE_NAME = 'CASE-ASSIGNMENT-EVENT-USE-CASE';
+const MODULE_NAME = 'OFFICE-ASSIGNEES-USE-CASE';
 
 export type OfficeAssignee = {
   caseId: string;
   officeCode: string;
   userId: string;
   name: string;
+};
+
+export type CaseClosedEvent = {
+  caseId: string;
 };
 
 async function getDivisionCodeMap(context: ApplicationContext) {
@@ -60,8 +64,24 @@ async function deleteCaseAssignment(context: ApplicationContext, assignee: Offic
   await repo.deleteMany({ caseId, userId });
 }
 
-const CaseAssignmentEventUseCase = {
+async function handleCaseClosedEvent(context: ApplicationContext, event: CaseClosedEvent) {
+  try {
+    const repo = getOfficeAssigneesRepository(context);
+    await repo.deleteMany({ caseId: event.caseId });
+  } catch (originalError) {
+    throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+      camsStackInfo: {
+        message: 'Failed to handle case closed event.',
+        module: MODULE_NAME,
+      },
+      data: event,
+    });
+  }
+}
+
+const OfficeAssigneesUseCase = {
   handleCaseAssignmentEvent,
+  handleCaseClosedEvent,
 };
 
-export default CaseAssignmentEventUseCase;
+export default OfficeAssigneesUseCase;

@@ -4,7 +4,7 @@ import { CASE_CLOSED_EVENT_DLQ, CASE_CLOSED_EVENT_QUEUE } from '../storage-queue
 import { buildFunctionName } from '../dataflows-common';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import ContextCreator from '../../azure/application-context-creator';
-import CaseClosedEventUseCase from '../../../lib/use-cases/dataflows/case-closed-event';
+import OfficeAssigneesUseCase from '../../../lib/use-cases/offices/office-assignees';
 
 const MODULE_NAME = CASE_CLOSED_EVENT;
 const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
@@ -12,7 +12,7 @@ const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
 async function handler(event: CaseAssignment, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   try {
-    await CaseClosedEventUseCase.handleCaseClosedEvent(context, event);
+    await OfficeAssigneesUseCase.handleCaseClosedEvent(context, event);
   } catch (error) {
     invocationContext.extraOutputs.set(CASE_CLOSED_EVENT_DLQ, { event, error });
   }
