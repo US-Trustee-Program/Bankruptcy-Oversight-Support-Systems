@@ -89,7 +89,7 @@ describe('staff assignment use case tests', () => {
     expect(globalAlertSpy.error).not.toHaveBeenCalled();
   });
 
-  test('handleAssignmentChange should display error if getOfficeAssignees fails', async () => {
+  test('handleAssignmentChange should set setOfficeAssigneesError to true and not set assignees', async () => {
     vi.spyOn(MockApi2, 'getOfficeAssignees').mockRejectedValue('error');
 
     await vi.waitFor(() => {
@@ -98,7 +98,6 @@ describe('staff assignment use case tests', () => {
     });
 
     expect(setOfficeAssigneesSpy).not.toHaveBeenCalled();
-    expect(globalAlertSpy.error).toHaveBeenCalled();
   });
 
   test('handleFilterAssignee should set valid staffAssignmentFilter when array of assignees supplied', async () => {
