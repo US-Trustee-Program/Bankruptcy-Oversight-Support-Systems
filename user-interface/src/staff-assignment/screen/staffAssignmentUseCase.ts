@@ -14,7 +14,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import useApi2 from '@/lib/hooks/UseApi2';
 import { ResponseBody } from '@common/api/response';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { StaffAssignmentScreenFilter } from './staffAssignmentControls';
 
 export interface StaffAssignmentUseCase {
@@ -46,7 +45,6 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
   }
 
   const fetchAssignees = async () => {
-    const globalAlert = useGlobalAlert();
     const api = useApi2();
     const session = LocalStorage.getSession();
     if (session?.user.offices) {
@@ -57,7 +55,6 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
         store.setOfficeAssigneesError(false);
       } catch (_e) {
         store.setOfficeAssigneesError(true);
-        globalAlert?.error('There was a problem getting the list of assignees.');
       }
     }
   };

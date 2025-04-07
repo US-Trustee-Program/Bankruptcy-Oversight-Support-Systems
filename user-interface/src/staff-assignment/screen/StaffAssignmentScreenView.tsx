@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
@@ -9,6 +10,7 @@ import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
 import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
 import ComboBox from '@/lib/components/combobox/ComboBox';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
 export type StaffAssignmentScreenViewProps = {
   viewModel: StaffAssignmentViewModel;
@@ -16,7 +18,14 @@ export type StaffAssignmentScreenViewProps = {
 
 export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
   const { viewModel } = props;
+  const globalAlert = useGlobalAlert();
   const showAssignments = viewModel.hasValidPermission && viewModel.hasAssignedOffices;
+
+  useEffect(() => {
+    if (viewModel.officeAssigneesError) {
+      globalAlert?.error('There was a problem getting the list of assignees.');
+    }
+  }, [viewModel.officeAssigneesError]);
 
   return (
     <MainContent className="staff-assignment case-list">
