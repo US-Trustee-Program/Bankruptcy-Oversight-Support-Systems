@@ -5,7 +5,7 @@ import { nowInSeconds } from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
 
-const SAFE_LIMIT = 2700;
+const SAFE_LIMIT = 300;
 
 export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
   addApiBeforeHook(async () => refreshOktaToken(oktaAuth));
@@ -22,6 +22,8 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
 
   const expiration = session.expires;
   // THIS IS SUS....
+  // TODO: FRITZ 04/07: This causing the No Permissions alert on the Staff Assignment screen
+  // to come up any time the user is 5 min from expiration and none of the screen interaction works properly.
   const expirationLimit = expiration - SAFE_LIMIT;
 
   if (now > expirationLimit) {
