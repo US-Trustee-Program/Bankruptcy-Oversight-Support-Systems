@@ -44,6 +44,8 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
     return comboOptions;
   }
 
+  // TODO: FRITZ 04/07: THIS IS BEING CALLED BEFORE THE BACKEND QUEUE HAS COMPLETED.
+  // The user doesn't have any way of knowing when the backend queue has completed.
   const fetchAssignees = async () => {
     const api = useApi2();
     const session = LocalStorage.getSession();
