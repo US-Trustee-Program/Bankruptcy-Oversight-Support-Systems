@@ -50,9 +50,13 @@ describe('StaffAssignmentScreen', () => {
   });
 
   test('screen should contain staff assignment filters', async () => {
+    const expectedAssignments = MockData.getStaffAssignee();
+    vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({
+      data: [expectedAssignments],
+    });
     renderWithoutProps();
 
-    const filter = screen.getByTestId('staff-assignment-filter');
+    const filter = document.querySelector('.staff-assignment-filter-container');
     expect(filter).toBeInTheDocument();
   });
 
@@ -154,21 +158,51 @@ describe('StaffAssignmentScreen', () => {
     );
   });
 
-  test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
-    testingUtilities.setUserWithRoles([]);
+  describe('StaffAssignmentScreen - other errors', () => {
+    const user = MockData.getCamsUser({
+      roles: [CamsRole.CaseAssignmentManager],
+      offices: MOCKED_USTP_OFFICES_ARRAY,
+    });
 
-    renderWithoutProps();
+    beforeEach(() => {
+      testingUtilities.setUser(user);
+    });
 
-    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
+      testingUtilities.setUserWithRoles([]);
+
+      renderWithoutProps();
+
+      expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    });
+
+    test('should show an alert if user has no offices', async () => {
+      testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
+      const SearchResults = vi.spyOn(searchResultsModule, 'default');
+
+      renderWithoutProps();
+
+      expect(SearchResults).not.toHaveBeenCalled();
+      expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
+    });
   });
 
-  test('should show an alert if user has no offices', async () => {
-    testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
-    const SearchResults = vi.spyOn(searchResultsModule, 'default');
+  describe('StaffAssignmentScreen with global alert', () => {
+    test('should properly handle and display global alert error when getOfficeAssignees throws', async () => {
+      const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+      vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
+      const assigneeError = 'There was a problem getting the list of assignees.';
+      renderWithoutProps();
 
-    renderWithoutProps();
-
-    expect(SearchResults).not.toHaveBeenCalled();
-    expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
+      await waitFor(() => {
+        const itemList = document.querySelector('#staff-assignment-filter');
+        expect(itemList!).not.toBeInTheDocument();
+      });
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
+    });
   });
 });
