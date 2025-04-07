@@ -4,7 +4,7 @@ import { CASE_ASSIGNMENT_EVENT_DLQ, CASE_ASSIGNMENT_EVENT_QUEUE } from '../stora
 import { buildFunctionName } from '../dataflows-common';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import ContextCreator from '../../azure/application-context-creator';
-import CaseAssignmentEventUseCase from '../../../lib/use-cases/dataflows/case-assignment-event';
+import OfficeAssigneesUseCase from '../../../lib/use-cases/offices/office-assignees';
 
 const MODULE_NAME = CASE_ASSIGNMENT_EVENT;
 const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
@@ -12,7 +12,7 @@ const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
 async function handler(event: CaseAssignment, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   try {
-    await CaseAssignmentEventUseCase.handleCaseAssignmentEvent(context, event);
+    await OfficeAssigneesUseCase.handleCaseAssignmentEvent(context, event);
   } catch (error) {
     invocationContext.extraOutputs.set(CASE_ASSIGNMENT_EVENT_DLQ, { event, error });
   }
