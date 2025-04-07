@@ -17,10 +17,8 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
-import { GlobalAlertRef } from '@/lib/components/cams/GlobalAlert/GlobalAlert';
 
 describe('StaffAssignmentScreen', () => {
-  let globalAlertSpy: GlobalAlertRef;
   let mockFeatureFlags: FeatureFlagSet;
   const user = MockData.getCamsUser({
     roles: [CamsRole.CaseAssignmentManager],
@@ -45,7 +43,6 @@ describe('StaffAssignmentScreen', () => {
       'staff-assignment-filter-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-    globalAlertSpy = testingUtilities.spyOnGlobalAlert();
   });
 
   afterEach(() => {
@@ -53,22 +50,14 @@ describe('StaffAssignmentScreen', () => {
   });
 
   test('screen should contain staff assignment filters', async () => {
+    const expectedAssignments = MockData.getStaffAssignee();
+    vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({
+      data: [expectedAssignments],
+    });
     renderWithoutProps();
 
     const filter = document.querySelector('.staff-assignment-filter-container');
     expect(filter).toBeInTheDocument();
-  });
-
-  test('should properly handle error when getOfficeAssignees throws and display global alert error', async () => {
-    vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
-    const assigneeError = 'There was a problem getting the list of assignees.';
-    renderWithoutProps();
-
-    await waitFor(() => {
-      const itemList = document.querySelector('#staff-assignment-filter');
-      expect(itemList!).not.toBeInTheDocument();
-    });
-    expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
   });
 
   test('staff assignment filter should pass valid search predicate to search results component when changed filter is updated', async () => {
@@ -169,21 +158,51 @@ describe('StaffAssignmentScreen', () => {
     );
   });
 
-  test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
-    testingUtilities.setUserWithRoles([]);
+  describe('StaffAssignmentScreen - other errors', () => {
+    const user = MockData.getCamsUser({
+      roles: [CamsRole.CaseAssignmentManager],
+      offices: MOCKED_USTP_OFFICES_ARRAY,
+    });
 
-    renderWithoutProps();
+    beforeEach(() => {
+      testingUtilities.setUser(user);
+    });
 
-    expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
+      testingUtilities.setUserWithRoles([]);
+
+      renderWithoutProps();
+
+      expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+    });
+
+    test('should show an alert if user has no offices', async () => {
+      testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
+      const SearchResults = vi.spyOn(searchResultsModule, 'default');
+
+      renderWithoutProps();
+
+      expect(SearchResults).not.toHaveBeenCalled();
+      expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
+    });
   });
 
-  test('should show an alert if user has no offices', async () => {
-    testingUtilities.setUser({ offices: [], roles: [CamsRole.CaseAssignmentManager] });
-    const SearchResults = vi.spyOn(searchResultsModule, 'default');
+  describe('StaffAssignmentScreen with global alert', () => {
+    test('should properly handle and display global alert error when getOfficeAssignees throws', async () => {
+      const globalAlertSpy = testingUtilities.spyOnGlobalAlert();
+      vi.spyOn(Api2, 'getOfficeAssignees').mockRejectedValueOnce('Error');
+      const assigneeError = 'There was a problem getting the list of assignees.';
+      renderWithoutProps();
 
-    renderWithoutProps();
-
-    expect(SearchResults).not.toHaveBeenCalled();
-    expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
+      await waitFor(() => {
+        const itemList = document.querySelector('#staff-assignment-filter');
+        expect(itemList!).not.toBeInTheDocument();
+      });
+      expect(globalAlertSpy.error).toHaveBeenCalledWith(assigneeError);
+    });
   });
 });
