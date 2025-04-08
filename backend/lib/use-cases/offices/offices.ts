@@ -51,12 +51,7 @@ export class OfficesUseCase {
     officeCode: string,
   ): Promise<Staff[]> {
     const repository = getOfficeAssigneesRepository(context);
-    const response = await repository.getDistinctAssigneesByOffice(officeCode);
-    const assignees: Staff[] = [];
-    for await (const assignee of response) {
-      assignees.push(assignee);
-    }
-    return assignees;
+    return await repository.getDistinctAssigneesByOffice(officeCode);
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {

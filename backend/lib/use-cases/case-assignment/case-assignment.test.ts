@@ -193,7 +193,10 @@ describe('Case assignment tests', () => {
       expect(createAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentTwo));
       expect(createAssignment).toHaveBeenCalledTimes(1);
 
-      expect(assignmentEventSpy).toHaveBeenCalledWith(expect.anything, assignmentTwo);
+      expect(assignmentEventSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ...assignmentTwo }),
+      );
     });
 
     test('should remove assignments', async () => {
@@ -204,6 +207,9 @@ describe('Case assignment tests', () => {
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
+      const assignmentEventSpy = jest
+        .spyOn(OfficeAssigneesUseCase, 'handleCaseAssignmentEvent')
+        .mockResolvedValue();
 
       const assignments = [];
 
@@ -225,6 +231,10 @@ describe('Case assignment tests', () => {
 
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
+      expect(assignmentEventSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ...assignmentOne }),
+      );
     });
 
     test('should not do anything if user does not have the CaseAssignmentManager role', async () => {
