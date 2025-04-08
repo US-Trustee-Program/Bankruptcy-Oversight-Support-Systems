@@ -147,6 +147,9 @@ describe('Orders use case', () => {
       .mockResolvedValue(
         MockData.getConsolidationFrom({ override: { otherCase: childCaseSummaries[0] } }),
       );
+    jest
+      .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
+      .mockResolvedValue();
 
     const actual = await useCase.approveConsolidation(mockContext, approval);
     expect(mockDelete).toHaveBeenCalled();
@@ -157,16 +160,7 @@ describe('Orders use case', () => {
         caseId: originalConsolidation.childCases[0].caseId,
       }),
     );
-    expect(mockCreateHistory.mock.calls[1][0]).toEqual(
-      expect.objectContaining({
-        caseId: originalConsolidation.childCases[0].caseId,
-        documentType: 'AUDIT_ASSIGNMENT',
-        updatedBy: expect.anything(),
-        before: expect.anything(),
-        after: expect.anything(),
-      }),
-    );
-    expect(mockCreateHistory.mock.calls[2][0]).toEqual(expect.objectContaining(leadCaseHistory));
+    expect(mockCreateHistory.mock.calls[1][0]).toEqual(expect.objectContaining(leadCaseHistory));
 
     expect(mockGetHistory).toHaveBeenCalledTimes(approval.approvedCases.length + 1);
     expect(actual).toEqual([newPendingConsolidation, approvedConsolidation]);

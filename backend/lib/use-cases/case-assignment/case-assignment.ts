@@ -8,6 +8,7 @@ import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import OfficeAssigneesUseCase from '../offices/office-assignees';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
@@ -90,7 +91,7 @@ export class CaseAssignmentUseCase {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
-    // TODO: Collect the additions and deletetions and add them to the assignment change queue.
+    // TODO: Collect the additions and deletions and add them to the assignment change queue.
     const addedAssignments = [];
     const removedAssignments = [];
 
@@ -140,11 +141,9 @@ export class CaseAssignmentUseCase {
     history.updatedOn = currentDate;
     await casesRepo.createCaseHistory(history);
 
-    // Queue the change events
-    // TODO: Do we need to map these to a different "event" shape?
-    this.queueGateway
-      .using(context, 'CASE_ASSIGNMENT_EVENT')
-      .enqueue(...addedAssignments, ...removedAssignments);
+    for (const assignment of [...addedAssignments, ...removedAssignments]) {
+      await OfficeAssigneesUseCase.handleCaseAssignmentEvent(context, assignment);
+    }
 
     context.logger.info(
       MODULE_NAME,
