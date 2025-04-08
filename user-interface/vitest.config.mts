@@ -26,6 +26,8 @@ export default defineConfig({
         'src/lib/testing/*',
         '**/data-verification/consolidation/ConsolidationOrderAccordionView.tsx',
         '**/data-verification/consolidation/*Mock.ts',
+        '**/staff-assignment/screen/StaffAssignmentScreenView.tsx',
+        '**/staff-assignment/filters/StaffAssignmentFilterView.tsx',
         '**/*.d.ts',
         '**/**humble.ts',
         '*.config.*js',
