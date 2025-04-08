@@ -1,21 +1,12 @@
 import ComboBox from '@/lib/components/combobox/ComboBox';
-import { StaffAssignmentFilterViewModel } from './staffAssignmentFilterViewModel';
-import { useEffect } from 'react';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { ViewModel } from './staffAssignmentFilter.types';
 
 type StaffAssignmentFilterViewProps = {
-  viewModel: StaffAssignmentFilterViewModel;
+  viewModel: ViewModel;
 };
 
 function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
-  const globalAlert = useGlobalAlert();
   const { viewModel } = props;
-
-  useEffect(() => {
-    if (viewModel.officeAssigneesError) {
-      globalAlert?.error('There was a problem getting the list of assignees.');
-    }
-  }, [viewModel.officeAssigneesError]);
 
   return (
     <div>
