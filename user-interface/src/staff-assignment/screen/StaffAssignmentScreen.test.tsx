@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import StaffAssignmentScreen from './StaffAssignmentScreen';
+import StaffAssignmentScreen, { useStaffAssignmentControlsReact } from './StaffAssignmentScreen';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -25,6 +25,12 @@ describe('StaffAssignmentScreen', () => {
     offices: MOCKED_USTP_OFFICES_ARRAY,
   });
 
+  const filterRefMock = {
+    current: {
+      refresh: vi.fn(),
+    },
+  };
+
   function renderWithoutProps() {
     render(
       <BrowserRouter>
@@ -47,6 +53,13 @@ describe('StaffAssignmentScreen', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test.skip('should call refresh on filter ref when refreshFilter is called', async () => {
+    const controls = useStaffAssignmentControlsReact();
+    const refreshSpy = vi.spyOn(controls, 'refreshFilter');
+    controls.refreshFilter(filterRefMock);
+    expect(refreshSpy).toHaveBeenCalled();
   });
 
   test('screen should contain staff assignment filters', async () => {

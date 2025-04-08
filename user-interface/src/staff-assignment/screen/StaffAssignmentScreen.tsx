@@ -4,18 +4,21 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
 import { CamsRole } from '@common/cams/roles';
-import { useStaffAssignmentStoreReact } from './staffAssignmentStoreReact';
-import { StaffAssignmentStore } from './staffAssignmentStore';
-import { StaffAssignmentControls } from './staffAssignmentControls';
-import { useStaffAssignmentControlsReact } from './staffAssignmentControlsReact';
+import { Store, Controls, ViewModel } from './StaffAssignment.types';
 import { staffAssignmentUseCase } from './staffAssignmentUseCase';
 import { StaffAssignmentScreenView } from './StaffAssignmentScreenView';
-import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import {
+  StaffAssignmentFilterRef,
+  StaffAssignmentScreenFilter,
+} from '../filters/StaffAssignmentFilter';
+import { useRef, useState } from 'react';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 
 const StaffAssignmentScreen = () => {
-  const store: StaffAssignmentStore = useStaffAssignmentStoreReact();
-  const controls: StaffAssignmentControls = useStaffAssignmentControlsReact();
+  const store: Store = useStaffAssignmentStoreReact();
+  const controls: Controls = useStaffAssignmentControlsReact();
   const useCase = staffAssignmentUseCase(store, controls);
 
   const infoModalId = 'info-modal';
@@ -43,7 +46,7 @@ const StaffAssignmentScreen = () => {
     },
   };
 
-  const viewModel: StaffAssignmentViewModel = {
+  const viewModel: ViewModel = {
     screenTitle: 'Staff Assignment',
 
     assignmentModalId,
@@ -68,3 +71,30 @@ const StaffAssignmentScreen = () => {
 };
 
 export default StaffAssignmentScreen;
+
+export function useStaffAssignmentStoreReact() {
+  const [staffAssignmentFilter, setStaffAssignmentFilter] = useState<
+    StaffAssignmentScreenFilter | undefined
+  >();
+
+  return {
+    staffAssignmentFilter,
+    setStaffAssignmentFilter,
+  };
+}
+
+export function useStaffAssignmentControlsReact(): Controls {
+  const infoModalRef = useRef<ModalRefType>(null);
+  const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
+  const filterRef = useRef<StaffAssignmentFilterRef>(null);
+  const refreshFilter = (ref: React.RefObject<StaffAssignmentFilterRef>) => {
+    ref.current?.refresh();
+  };
+
+  return {
+    assignmentModalRef,
+    infoModalRef,
+    filterRef,
+    refreshFilter,
+  };
+}
