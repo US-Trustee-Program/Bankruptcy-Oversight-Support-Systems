@@ -1,4 +1,10 @@
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import {
+  StaffAssignmentFilterRef,
+  StaffAssignmentScreenFilter,
+} from '../filters/StaffAssignmentFilter';
+import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { CasesSearchPredicate } from '@common/api/search';
@@ -6,14 +12,20 @@ import { CamsSession } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { RefObject, ReactNode } from 'react';
-import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import {
-  StaffAssignmentFilterRef,
-  StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter';
 
-interface StaffAssignmentViewModel {
+interface Store {
+  staffAssignmentFilter: StaffAssignmentScreenFilter | undefined;
+  setStaffAssignmentFilter(val: StaffAssignmentScreenFilter | undefined): void;
+}
+
+interface Controls {
+  infoModalRef: React.RefObject<ModalRefType>;
+  assignmentModalRef: RefObject<AssignAttorneyModalRef>;
+  filterRef: RefObject<StaffAssignmentFilterRef>;
+  refreshFilter: (ref: RefObject<StaffAssignmentFilterRef>) => void;
+}
+
+interface ViewModel {
   assignmentModalId: string;
   assignmentModalRef: React.Ref<AssignAttorneyModalRef> | undefined;
   featureFlags: FeatureFlagSet;
@@ -36,4 +48,4 @@ interface StaffAssignmentViewModel {
   StaffAssignmentRowClosure: (props: SearchResultsRowProps) => JSX.Element;
 }
 
-export type { StaffAssignmentViewModel };
+export type { Store, Controls, ViewModel };

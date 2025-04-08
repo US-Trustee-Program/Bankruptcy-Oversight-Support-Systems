@@ -1,5 +1,5 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { StaffAssignmentStore } from './staffAssignmentStore';
+import { Controls, Store } from './StaffAssignment.types';
 import staffAssignmentUseCase from './staffAssignmentUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
 import * as commonUsers from '@common/cams/users';
@@ -12,8 +12,52 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { StaffAssignmentScreenFilter } from '../filters/StaffAssignmentFilter';
-import { useStaffAssignmentControlsMock } from './staffAssignmentControlsMock';
+import {
+  StaffAssignmentFilterRef,
+  StaffAssignmentScreenFilter,
+} from '../filters/StaffAssignmentFilter';
+import { RefObject } from 'react';
+
+function useStaffAssignmentControlsMock(): Controls {
+  const infoModalRef = {
+    current: {
+      show: () => {},
+      hide: () => {},
+      buttons: {
+        current: {
+          disableSubmitButton: (_state: boolean) => {},
+        },
+      },
+    },
+  };
+
+  const assignmentModalRef = {
+    current: {
+      show: () => {},
+      hide: () => {},
+      buttons: {
+        current: {
+          disableSubmitButton: (_state: boolean) => {},
+        },
+      },
+    },
+  };
+
+  const filterRef = {
+    current: {
+      refresh: () => {},
+    },
+  };
+
+  const refreshFilter = (_ref: RefObject<StaffAssignmentFilterRef>) => {};
+
+  return {
+    assignmentModalRef,
+    infoModalRef,
+    filterRef,
+    refreshFilter,
+  };
+}
 
 describe('staff assignment use case tests', () => {
   let setStaffAssignmentFilterSpy: MockInstance<
@@ -23,7 +67,7 @@ describe('staff assignment use case tests', () => {
   let mockFeatureFlags: FeatureFlagSet;
 
   const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
-  const mockStore: StaffAssignmentStore = {
+  const mockStore: Store = {
     staffAssignmentFilter: undefined,
     setStaffAssignmentFilter: vi.fn(),
   };
@@ -44,6 +88,18 @@ describe('staff assignment use case tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('should call refresh on filterRef when assignees length is great than 0', async () => {
+    const refreshSpy = vi.spyOn(controls, 'refreshFilter');
+    useCase.handleAssignmentChange(assignees);
+    expect(refreshSpy).toHaveBeenCalledWith(controls.filterRef);
+  });
+
+  test('should not call refresh on filterRef when assignees length is great than 0', async () => {
+    const refreshSpy = vi.spyOn(controls, 'refreshFilter');
+    useCase.handleAssignmentChange([]);
+    expect(refreshSpy).not.toHaveBeenCalled();
   });
 
   test('handleFilterAssignee should set valid staffAssignmentFilter when array of assignees supplied', async () => {
