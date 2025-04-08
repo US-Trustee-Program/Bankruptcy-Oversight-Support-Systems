@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
@@ -9,8 +8,7 @@ import SearchResults from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
 import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
-import ComboBox from '@/lib/components/combobox/ComboBox';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 
 export type StaffAssignmentScreenViewProps = {
   viewModel: StaffAssignmentViewModel;
@@ -18,14 +16,7 @@ export type StaffAssignmentScreenViewProps = {
 
 export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
   const { viewModel } = props;
-  const globalAlert = useGlobalAlert();
   const showAssignments = viewModel.hasValidPermission && viewModel.hasAssignedOffices;
-
-  useEffect(() => {
-    if (viewModel.officeAssigneesError) {
-      globalAlert?.error('There was a problem getting the list of assignees.');
-    }
-  }, [viewModel.officeAssigneesError]);
 
   return (
     <MainContent className="staff-assignment case-list">
@@ -57,23 +48,10 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
             ></Stop>
           )}
           {viewModel.featureFlags[STAFF_ASSIGNMENT_FILTER_ENABLED] && (
-            <>
-              <h3>Filters</h3>
-              <section className="staff-assignment-filter-container">
-                {viewModel.officeAssignees.length > 0 &&
-                  viewModel.officeAssigneesError === false && (
-                    <ComboBox
-                      id="staff-assignees"
-                      options={viewModel.assigneesToComboOptions(viewModel.officeAssignees)}
-                      onUpdateSelection={viewModel.handleFilterAssignee}
-                      label="Assigned Attorney"
-                      ariaDescription=""
-                      aria-live="off"
-                      multiSelect={false}
-                    />
-                  )}
-              </section>
-            </>
+            <StaffAssignmentFilter
+              ref={viewModel.filterRef}
+              handleFilterAssignee={viewModel.handleFilterAssignee}
+            />
           )}
           {showAssignments && (
             <SearchResults
