@@ -128,10 +128,6 @@ export function SearchResults(props: SearchResultsProps) {
   }
 
   useEffect(() => {
-    // TODO: FRITZ 04/07: THIS COMPONENT IS BEING REFRESHED AFTER ASSIGNMENT UPDATE but since
-    // predicate hasn't changed, the rows are not refreshed.  This is what we want,
-    // but the screen is being rerendered and thus, overwriting our inline changes
-    // to the row assignments
     if (!deepEqual(searchPredicateProp, searchPredicate)) {
       setSearchPredicate(searchPredicateProp);
     }
