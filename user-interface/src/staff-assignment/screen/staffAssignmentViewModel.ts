@@ -8,12 +8,16 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import { RefObject, ReactNode } from 'react';
 import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { StaffAssignmentScreenFilter } from './staffAssignmentControls';
+import {
+  StaffAssignmentFilterRef,
+  StaffAssignmentScreenFilter,
+} from '../filters/StaffAssignmentFilter';
 
 interface StaffAssignmentViewModel {
   assignmentModalId: string;
   assignmentModalRef: React.Ref<AssignAttorneyModalRef> | undefined;
   featureFlags: FeatureFlagSet;
+  filterRef: React.Ref<StaffAssignmentFilterRef> | undefined;
   hasAssignedOffices: boolean;
   hasValidPermission: boolean;
   infoModalActionButtonGroup: SubmitCancelBtnProps;
@@ -22,10 +26,7 @@ interface StaffAssignmentViewModel {
   screenTitle: ReactNode;
   session: CamsSession | null;
   staffAssignmentFilter: StaffAssignmentScreenFilter | undefined;
-  officeAssignees: CamsUserReference[];
-  officeAssigneesError: boolean;
 
-  assigneesToComboOptions: (assignees: CamsUserReference[]) => ComboOption[];
   getPredicateByUserContextWithFilter(
     user: CamsUserReference,
     staffAssignmentFilter?: StaffAssignmentScreenFilter,

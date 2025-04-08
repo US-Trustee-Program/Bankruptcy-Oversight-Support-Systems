@@ -12,12 +12,11 @@ import { staffAssignmentUseCase } from './staffAssignmentUseCase';
 import { StaffAssignmentScreenView } from './StaffAssignmentScreenView';
 import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { useEffect } from 'react';
 
 const StaffAssignmentScreen = () => {
   const store: StaffAssignmentStore = useStaffAssignmentStoreReact();
   const controls: StaffAssignmentControls = useStaffAssignmentControlsReact();
-  const useCase = staffAssignmentUseCase(store);
+  const useCase = staffAssignmentUseCase(store, controls);
 
   const infoModalId = 'info-modal';
   const assignmentModalId = 'assign-attorney-modal';
@@ -49,27 +48,21 @@ const StaffAssignmentScreen = () => {
 
     assignmentModalId,
     assignmentModalRef: controls.assignmentModalRef,
+    filterRef: controls.filterRef,
     featureFlags,
     hasAssignedOffices,
     hasValidPermission,
     infoModalActionButtonGroup,
     infoModalId,
     infoModalRef: controls.infoModalRef,
-    officeAssignees: store.officeAssignees,
-    officeAssigneesError: store.officeAssigneesError,
     session,
     staffAssignmentFilter: store.staffAssignmentFilter,
 
-    assigneesToComboOptions: useCase.assigneesToComboOptions,
     getPredicateByUserContextWithFilter: useCase.getPredicateByUserContextWithFilter,
     handleAssignmentChange: useCase.handleAssignmentChange,
     handleFilterAssignee: useCase.handleFilterAssignee,
     StaffAssignmentRowClosure,
   };
-
-  useEffect(() => {
-    useCase.fetchAssignees();
-  }, []);
 
   return <StaffAssignmentScreenView viewModel={viewModel}></StaffAssignmentScreenView>;
 };

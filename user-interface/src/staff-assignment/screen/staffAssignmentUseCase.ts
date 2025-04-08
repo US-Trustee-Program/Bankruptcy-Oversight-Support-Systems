@@ -10,73 +10,23 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import LocalStorage from '@/lib/utils/local-storage';
-import useApi2 from '@/lib/hooks/UseApi2';
-import { ResponseBody } from '@common/api/response';
-import { UstpOfficeDetails } from '@common/cams/offices';
-import { StaffAssignmentScreenFilter } from './staffAssignmentControls';
+import { StaffAssignmentControls } from './staffAssignmentControls';
+import { StaffAssignmentScreenFilter } from '../filters/StaffAssignmentFilter';
 
 export interface StaffAssignmentUseCase {
-  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
-  fetchAssignees(): void;
   handleFilterAssignee(assignees: ComboOption[]): void;
   handleAssignmentChange(assignees: CamsUserReference[]): void;
   getChapters(): string[];
-  getOfficeAssignees(
-    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
-    offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]>;
   getPredicateByUserContextWithFilter(
     user: CamsUser,
     filter?: StaffAssignmentScreenFilter,
   ): CasesSearchPredicate;
 }
 
-const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUseCase => {
-  function assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[] {
-    const comboOptions: ComboOption[] = [];
-    officeAssignees.forEach((assignee) => {
-      comboOptions.push({
-        value: assignee.id,
-        label: assignee.name,
-      });
-    });
-    return comboOptions;
-  }
-
-  // TODO: FRITZ 04/07: THIS IS BEING CALLED BEFORE THE BACKEND QUEUE HAS COMPLETED.
-  // The user doesn't have any way of knowing when the backend queue has completed.
-  const fetchAssignees = async () => {
-    const api = useApi2();
-    const session = LocalStorage.getSession();
-    if (session?.user.offices) {
-      const { offices } = session.user;
-      try {
-        const assignees = await getOfficeAssignees(api.getOfficeAssignees, offices);
-        store.setOfficeAssignees(assignees);
-        store.setOfficeAssigneesError(false);
-      } catch (_e) {
-        store.setOfficeAssigneesError(true);
-      }
-    }
-  };
-
-  async function getOfficeAssignees(
-    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
-    offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]> {
-    const assigneeMap: Map<string, CamsUserReference> = new Map();
-    for (const office of offices) {
-      const assignees = await apiFunction(office.officeCode);
-      assignees.data.forEach((assignee) => {
-        if (!assigneeMap.has(assignee.id)) {
-          assigneeMap.set(assignee.id, assignee);
-        }
-      });
-    }
-    return Array.from(assigneeMap.values()).sort((a, b) => (a.name < b.name ? -1 : 1));
-  }
-
+const staffAssignmentUseCase = (
+  store: StaffAssignmentStore,
+  controls: StaffAssignmentControls,
+): StaffAssignmentUseCase => {
   function handleFilterAssignee(assignees: ComboOption[]) {
     if (assignees[0]) {
       const assignee: CamsUserReference = {
@@ -95,7 +45,7 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
 
   async function handleAssignmentChange(assignees: CamsUserReference[]) {
     if (assignees.length > 0) {
-      await fetchAssignees();
+      controls?.filterRef?.current?.refresh();
     }
   }
 
@@ -129,10 +79,7 @@ const staffAssignmentUseCase = (store: StaffAssignmentStore): StaffAssignmentUse
   }
 
   return {
-    assigneesToComboOptions,
-    fetchAssignees,
     getChapters,
-    getOfficeAssignees,
     getPredicateByUserContextWithFilter,
     handleAssignmentChange,
     handleFilterAssignee,
