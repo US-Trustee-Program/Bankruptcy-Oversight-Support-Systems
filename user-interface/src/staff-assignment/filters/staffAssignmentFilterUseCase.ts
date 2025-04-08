@@ -1,4 +1,4 @@
-import { StaffAssignmentFilterStore } from './staffAssignmentFilterStore';
+import { Store } from './staffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
@@ -15,9 +15,7 @@ export interface StaffAssignmentFilterUseCase {
   ): Promise<CamsUserReference[]>;
 }
 
-const staffAssignmentFilterUseCase = (
-  store: StaffAssignmentFilterStore,
-): StaffAssignmentFilterUseCase => {
+const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCase => {
   function assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[] {
     const comboOptions: ComboOption[] = [];
     officeAssignees.forEach((assignee) => {
