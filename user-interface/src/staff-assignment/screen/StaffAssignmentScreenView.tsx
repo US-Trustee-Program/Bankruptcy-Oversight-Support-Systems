@@ -7,11 +7,11 @@ import { STAFF_ASSIGNMENT_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import SearchResults from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
-import { StaffAssignmentViewModel } from './staffAssignmentViewModel';
 import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
+import { ViewModel } from './StaffAssignment.types';
 
 export type StaffAssignmentScreenViewProps = {
-  viewModel: StaffAssignmentViewModel;
+  viewModel: ViewModel;
 };
 
 export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
