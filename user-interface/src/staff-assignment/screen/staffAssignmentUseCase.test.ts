@@ -12,11 +12,11 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
+import { RefObject } from 'react';
 import {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter';
-import { RefObject } from 'react';
+} from '../filters/staffAssignmentFilter.types';
 
 function useStaffAssignmentControlsMock(): Controls {
   const infoModalRef = {
@@ -90,13 +90,13 @@ describe('staff assignment use case tests', () => {
     vi.restoreAllMocks();
   });
 
-  test('should call refresh on filterRef when assignees length is great than 0', async () => {
+  test('should call refresh on filterRef when assignees length is greater than 0', async () => {
     const refreshSpy = vi.spyOn(controls, 'refreshFilter');
     useCase.handleAssignmentChange(assignees);
     expect(refreshSpy).toHaveBeenCalledWith(controls.filterRef);
   });
 
-  test('should not call refresh on filterRef when assignees length is great than 0', async () => {
+  test('should not call refresh on filterRef when assignees length is 0', async () => {
     const refreshSpy = vi.spyOn(controls, 'refreshFilter');
     useCase.handleAssignmentChange([]);
     expect(refreshSpy).not.toHaveBeenCalled();

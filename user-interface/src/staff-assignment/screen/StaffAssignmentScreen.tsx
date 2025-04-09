@@ -11,7 +11,7 @@ import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter';
+} from '../filters/staffAssignmentFilter.types';
 import { useRef, useState } from 'react';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
