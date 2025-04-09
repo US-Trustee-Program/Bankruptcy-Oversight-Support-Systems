@@ -3,11 +3,8 @@ import QueryBuilder, {
   Conjunction,
   isCondition,
   isConjunction,
-  isPagination,
-  isSort,
-  Pagination,
-  Sort,
-  SortedAttribute,
+  isSortSpec,
+  SortSpec,
 } from './query-builder';
 
 describe('Query Builder', () => {
@@ -17,7 +14,7 @@ describe('Query Builder', () => {
     three: boolean;
   };
 
-  const { not, and, or, orderBy, using } = QueryBuilder;
+  const { not, and, or, using } = QueryBuilder;
   const q = using<Foo>();
 
   test('should build correct query tree', () => {
@@ -185,15 +182,6 @@ describe('Query Builder', () => {
     expect(query).toEqual(conjunctionQuery.result);
   });
 
-  test('should proxy a list of SortDirection when orderBy is called', () => {
-    const attributeFoo: SortedAttribute<Foo> = ['uno', 'ASCENDING'];
-    const attributeBar: SortedAttribute<Foo> = ['uno', 'DESCENDING'];
-    expect(orderBy<Foo>(attributeFoo)).toEqual({ attributes: [attributeFoo] });
-    expect(orderBy<Foo>(attributeFoo, attributeBar)).toEqual({
-      attributes: [attributeFoo, attributeBar],
-    });
-  });
-
   test('isCondition', () => {
     const condition: Condition<Foo> = {
       condition: 'REGEX',
@@ -213,24 +201,11 @@ describe('Query Builder', () => {
     expect(isConjunction({})).toBeFalsy();
   });
 
-  test('isSort', () => {
-    const sort: Sort<Foo> = {
-      attributes: [['uno', 'ASCENDING']],
+  test('isSortSpec', () => {
+    const sort: SortSpec<Foo> = {
+      fields: [{ field: { name: 'uno' }, direction: 'ASCENDING' }],
     };
-    expect(isSort(sort)).toBeTruthy();
-    expect(isSort({})).toBeFalsy();
-  });
-
-  test('isPagination', () => {
-    const pagination: Pagination = {
-      limit: 100,
-      skip: 0,
-      values: [],
-    };
-    expect(isPagination(pagination)).toBeTruthy();
-    const notPagination = {
-      foo: 'bar',
-    };
-    expect(isPagination(notPagination)).toBeFalsy();
+    expect(isSortSpec(sort)).toBeTruthy();
+    expect(isSortSpec({})).toBeFalsy();
   });
 });
