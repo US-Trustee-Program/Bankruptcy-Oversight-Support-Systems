@@ -1,5 +1,5 @@
 import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
-import { Store, Controls, StaffAssignmentUseCase } from './StaffAssignment.types';
+import { Store, Controls, StaffAssignmentUseCase } from './staffAssignment.types';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,

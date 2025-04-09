@@ -3,7 +3,7 @@ import {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
 } from '../filters/staffAssignmentFilter.types';
-import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
+import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';

@@ -5,10 +5,11 @@ import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import AssignAttorneyModal, {
-  AssignAttorneyModalRef,
+import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
+import {
   CallbackProps,
-} from '@/staff-assignment/modal/AssignAttorneyModal';
+  AssignAttorneyModalRef,
+} from '@/staff-assignment/modal/assignAttorneyModal.types';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
