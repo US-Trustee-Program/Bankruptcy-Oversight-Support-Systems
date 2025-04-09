@@ -1,5 +1,5 @@
 import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
-import { Store, Controls } from './StaffAssignment.types';
+import { Store, Controls, StaffAssignmentUseCase } from './StaffAssignment.types';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
@@ -10,17 +10,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { StaffAssignmentScreenFilter } from '../filters/StaffAssignmentFilter';
-
-export interface StaffAssignmentUseCase {
-  handleFilterAssignee(assignees: ComboOption[]): void;
-  handleAssignmentChange(assignees: CamsUserReference[]): void;
-  getChapters(): string[];
-  getPredicateByUserContextWithFilter(
-    user: CamsUser,
-    filter?: StaffAssignmentScreenFilter,
-  ): CasesSearchPredicate;
-}
+import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
 
 const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignmentUseCase => {
   function handleFilterAssignee(assignees: ComboOption[]) {
@@ -41,7 +31,7 @@ const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignme
 
   async function handleAssignmentChange(assignees: CamsUserReference[]) {
     if (assignees.length > 0) {
-      controls?.refreshFilter(controls?.filterRef);
+      controls.refreshFilter(controls.filterRef);
     }
   }
 
