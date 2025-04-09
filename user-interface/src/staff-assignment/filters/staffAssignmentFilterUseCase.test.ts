@@ -100,9 +100,9 @@ describe('staff assignment filter use case tests', () => {
     ];
 
     const offices: UstpOfficeDetails[] = [MockData.getOfficeWithStaff(mockStaff)];
-    async function callback(_officeCode: string): Promise<ResponseBody<CamsUserReference[]>> {
+    const callback = async (_officeCode: string): Promise<ResponseBody<CamsUserReference[]>> => {
       return Promise.resolve({ data: mockStaff });
-    }
+    };
 
     const actualAssignees = await useCase.getOfficeAssignees(callback, offices);
     expect(actualAssignees).toEqual(expectedAssignees);

@@ -7,7 +7,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCase => {
-  function assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[] {
+  const assigneesToComboOptions = (officeAssignees: CamsUserReference[]): ComboOption[] => {
     const comboOptions: ComboOption[] = [];
     officeAssignees.forEach((assignee) => {
       comboOptions.push({
@@ -16,7 +16,7 @@ const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCas
       });
     });
     return comboOptions;
-  }
+  };
 
   const fetchAssignees = async () => {
     const api = useApi2();
@@ -33,10 +33,10 @@ const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCas
     }
   };
 
-  async function getOfficeAssignees(
+  const getOfficeAssignees = async (
     apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
     offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]> {
+  ): Promise<CamsUserReference[]> => {
     const assigneeMap: Map<string, CamsUserReference> = new Map();
     for (const office of offices) {
       const assignees = await apiFunction(office.officeCode);
@@ -47,7 +47,7 @@ const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCas
       });
     }
     return Array.from(assigneeMap.values()).sort((a, b) => (a.name < b.name ? -1 : 1));
-  }
+  };
 
   return {
     assigneesToComboOptions,
