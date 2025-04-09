@@ -7,7 +7,7 @@ import {
 } from '../../../../../common/src/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import QueryBuilder, { ConditionOrConjunction, Sort } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import { CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -20,9 +20,20 @@ import { CaseAssignment } from '../../../../../common/src/cams/assignments';
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-const { and, or, using, paginate: qbPaginate } = QueryBuilder;
-const { pipeline, match, sort, ascending, exclude, join, addFields, additionalField, source } =
-  QueryPipeline;
+const { and, or, using } = QueryBuilder;
+const {
+  addFields,
+  additionalField,
+  ascending,
+  descending,
+  exclude,
+  join,
+  match,
+  paginate,
+  pipeline,
+  sort,
+  source,
+} = QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
@@ -311,13 +322,15 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCases(predicate: CasesSearchPredicate) {
-    const doc = using<SyncedCase>();
-
-    const conditions: ConditionOrConjunction<SyncedCase>[] = [];
-    conditions.push(doc('documentType').equals('SYNCED_CASE'));
-
     try {
+      const [documentType, dateFiled, caseNumber] = source<SyncedCase>().fields(
+        'documentType',
+        'dateFiled',
+        'caseNumber',
+      );
+
       const conditions = this.addConditions(predicate);
+      conditions.push(documentType.equals('SYNCED_CASE'));
 
       if (!hasRequiredSearchFields(predicate)) {
         throw new CamsError(MODULE_NAME, {
@@ -325,21 +338,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         });
       }
 
-      const sortSpec: Sort<SyncedCase> = {
-        attributes: [
-          ['dateFiled', 'DESCENDING'],
-          ['caseNumber', 'DESCENDING'],
-        ],
-      };
-
-      const query = qbPaginate<SyncedCase>(
-        predicate.offset,
-        predicate.limit,
-        [and(...conditions)],
-        sortSpec,
+      const spec = pipeline(
+        match(and(...conditions)),
+        sort(descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
       );
 
-      return await this.getAdapter<SyncedCase>().paginatedFind(query);
+      return await this.getAdapter<SyncedCase>().paginate(spec);
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {

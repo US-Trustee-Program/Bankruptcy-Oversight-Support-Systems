@@ -90,14 +90,15 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async createMany(orders: Order[]): Promise<Order[]> {
     try {
-      if (!orders.length) return [];
+      if (!orders.length) {
+        return [];
+      }
       const adapter = this.getAdapter<Order>();
 
       const ids = await adapter.insertMany(orders);
-      const ordersWithIds = orders.map((order, idx) => {
+      return orders.map((order, idx) => {
         return { ...order, id: ids[idx] };
       });
-      return ordersWithIds;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
