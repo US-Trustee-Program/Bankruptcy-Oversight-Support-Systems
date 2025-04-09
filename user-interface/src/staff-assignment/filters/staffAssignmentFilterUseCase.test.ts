@@ -61,43 +61,11 @@ describe('staff assignment filter use case tests', () => {
   });
 
   test('getOfficeAssignees should return a unique and sorted array of assignees', async () => {
-    const mockStaff = [
-      {
-        id: '2',
-        name: 'staff 2',
-      },
-      {
-        id: '0',
-        name: 'staff 0',
-      },
-      {
-        id: '1',
-        name: 'staff 1',
-      },
-      {
-        id: '1',
-        name: 'staff 1',
-      },
-      {
-        id: '0',
-        name: 'staff 0',
-      },
-    ];
-
-    const expectedAssignees = [
-      {
-        id: '0',
-        name: 'staff 0',
-      },
-      {
-        id: '1',
-        name: 'staff 1',
-      },
-      {
-        id: '2',
-        name: 'staff 2',
-      },
-    ];
+    const user1 = MockData.getCamsUserReference();
+    const user2 = MockData.getCamsUserReference();
+    const user3 = MockData.getCamsUserReference();
+    const mockStaff = [user3, user1, user2, user2, user1];
+    const expectedAssignees = [user1, user2, user3];
 
     const offices: UstpOfficeDetails[] = [MockData.getOfficeWithStaff(mockStaff)];
     const callback = async (_officeCode: string): Promise<ResponseBody<CamsUserReference[]>> => {
