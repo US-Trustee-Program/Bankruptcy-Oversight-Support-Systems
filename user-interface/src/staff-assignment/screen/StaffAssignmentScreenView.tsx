@@ -8,11 +8,7 @@ import SearchResults from '@/search-results/SearchResults';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
 import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
-import { ViewModel } from './StaffAssignment.types';
-
-export type StaffAssignmentScreenViewProps = {
-  viewModel: ViewModel;
-};
+import { StaffAssignmentScreenViewProps } from './StaffAssignment.types';
 
 export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
   const { viewModel } = props;

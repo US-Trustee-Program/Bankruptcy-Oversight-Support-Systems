@@ -12,9 +12,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 export function useConsolidationControlsMock(): ConsolidationControls {
   const approveButton = {
     current: {
-      disableButton: () => {
-        console.log('approve button mock ran');
-      },
+      disableButton: () => {},
     },
   };
   const caseTableRef = {
