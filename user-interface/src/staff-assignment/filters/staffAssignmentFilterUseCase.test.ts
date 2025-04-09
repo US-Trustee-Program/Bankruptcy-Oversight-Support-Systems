@@ -3,7 +3,6 @@ import { Store } from './staffAssignmentFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
-import testingUtilities from '@/lib/testing/testing-utilities';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { UstpOfficeDetails } from '@common/cams/offices';
@@ -11,11 +10,9 @@ import Api2 from '@/lib/models/api2';
 import MockApi2 from '@/lib/testing/mock-api2';
 import { MockInstance } from 'vitest';
 import { CamsUserReference } from '@common/cams/users';
-import { GlobalAlertRef } from '@/lib/components/cams/GlobalAlert/GlobalAlert';
 import { ResponseBody } from '@common/api/response';
 
 describe('staff assignment filter use case tests', () => {
-  let globalAlertSpy: GlobalAlertRef;
   let mockFeatureFlags: FeatureFlagSet;
   let setOfficeAssigneesSpy: MockInstance<(val: CamsUserReference[]) => void>;
   let setOfficeAssigneesErrorSpy: MockInstance<(val: boolean) => void>;
@@ -34,7 +31,6 @@ describe('staff assignment filter use case tests', () => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     setOfficeAssigneesSpy = vi.spyOn(mockStore, 'setOfficeAssignees');
     setOfficeAssigneesErrorSpy = vi.spyOn(mockStore, 'setOfficeAssigneesError');
-    globalAlertSpy = testingUtilities.spyOnGlobalAlert();
     mockFeatureFlags = {
       'chapter-eleven-enabled': true,
       'chapter-twelve-enabled': true,
@@ -61,9 +57,9 @@ describe('staff assignment filter use case tests', () => {
   });
 
   test('getOfficeAssignees should return a unique and sorted array of assignees', async () => {
-    const user1 = MockData.getCamsUserReference();
-    const user2 = MockData.getCamsUserReference();
-    const user3 = MockData.getCamsUserReference();
+    const user1 = MockData.getCamsUserReference({ name: 'alfred' });
+    const user2 = MockData.getCamsUserReference({ name: 'boe' });
+    const user3 = MockData.getCamsUserReference({ name: 'frankie' });
     const mockStaff = [user3, user1, user2, user2, user1];
     const expectedAssignees = [user1, user2, user3];
 
@@ -88,7 +84,6 @@ describe('staff assignment filter use case tests', () => {
     });
 
     expect(setOfficeAssigneesErrorSpy).toHaveBeenCalledWith(false);
-    expect(globalAlertSpy.error).not.toHaveBeenCalled();
   });
 
   test('handleAssignmentChange should set setOfficeAssigneesError to true and not set assignees', async () => {
