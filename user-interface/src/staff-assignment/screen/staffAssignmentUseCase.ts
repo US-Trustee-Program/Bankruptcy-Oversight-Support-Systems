@@ -13,7 +13,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
 
 const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignmentUseCase => {
-  function handleFilterAssignee(assignees: ComboOption[]) {
+  const handleFilterAssignee = (assignees: ComboOption[]) => {
     if (assignees[0]) {
       const assignee: CamsUserReference = {
         id: assignees[0].value,
@@ -27,15 +27,15 @@ const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignme
     } else {
       store.setStaffAssignmentFilter(undefined);
     }
-  }
+  };
 
-  async function handleAssignmentChange(assignees: CamsUserReference[]) {
+  const handleAssignmentChange = async (assignees: CamsUserReference[]) => {
     if (assignees.length > 0) {
       controls.refreshFilter(controls.filterRef);
     }
-  }
+  };
 
-  function getChapters(): string[] {
+  const getChapters = (): string[] => {
     const chapters = ['15'];
     const featureFlags = useFeatureFlags();
     if (featureFlags[CHAPTER_ELEVEN_ENABLED]) {
@@ -45,12 +45,12 @@ const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignme
       chapters.push('12');
     }
     return chapters;
-  }
+  };
 
-  function getPredicateByUserContextWithFilter(
+  const getPredicateByUserContextWithFilter = (
     user: CamsUser,
     filter?: StaffAssignmentScreenFilter,
-  ): CasesSearchPredicate {
+  ): CasesSearchPredicate => {
     const predicate: CasesSearchPredicate = {
       limit: DEFAULT_SEARCH_LIMIT,
       offset: DEFAULT_SEARCH_OFFSET,
@@ -62,7 +62,7 @@ const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignme
     };
 
     return predicate;
-  }
+  };
 
   return {
     getChapters,
