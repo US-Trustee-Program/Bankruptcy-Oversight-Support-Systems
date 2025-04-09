@@ -1,5 +1,5 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { Controls, Store } from './StaffAssignment.types';
+import { Controls, Store } from './staffAssignment.types';
 import staffAssignmentUseCase from './staffAssignmentUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
 import * as commonUsers from '@common/cams/users';

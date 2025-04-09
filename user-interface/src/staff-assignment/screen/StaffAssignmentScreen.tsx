@@ -4,7 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
 import { CamsRole } from '@common/cams/roles';
-import { Store, Controls, ViewModel } from './StaffAssignment.types';
+import { Store, Controls, ViewModel } from './staffAssignment.types';
 import { staffAssignmentUseCase } from './staffAssignmentUseCase';
 import { StaffAssignmentScreenView } from './StaffAssignmentScreenView';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
