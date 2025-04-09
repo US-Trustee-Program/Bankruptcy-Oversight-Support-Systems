@@ -1,8 +1,12 @@
-import { Store, ViewModel } from './staffAssignmentFilter.types';
+import {
+  StaffAssignmentFilterProps,
+  StaffAssignmentFilterRef,
+  Store,
+  ViewModel,
+} from './staffAssignmentFilter.types';
 import { CamsUserReference } from '../../../../common/dist/cams/users';
 import StaffAssignmentFilterView from './StaffAssignmentFilterView';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 
@@ -54,15 +58,3 @@ export function useStaffAssignmentFilterStoreReact() {
     setOfficeAssigneesError,
   };
 }
-
-export interface StaffAssignmentFilterRef {
-  refresh: () => void;
-}
-
-export type StaffAssignmentScreenFilter = {
-  assignee: CamsUserReference;
-};
-
-export type StaffAssignmentFilterProps = {
-  handleFilterAssignee(assignees: ComboOption[]): void;
-};

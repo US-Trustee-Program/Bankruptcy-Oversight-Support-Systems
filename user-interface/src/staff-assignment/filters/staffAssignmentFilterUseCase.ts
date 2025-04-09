@@ -1,19 +1,10 @@
-import { Store } from './staffAssignmentFilter.types';
+import { StaffAssignmentFilterUseCase, Store } from './staffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import useApi2 from '@/lib/hooks/UseApi2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-
-export interface StaffAssignmentFilterUseCase {
-  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
-  fetchAssignees(): void;
-  getOfficeAssignees(
-    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
-    offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]>;
-}
 
 const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCase => {
   function assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[] {
