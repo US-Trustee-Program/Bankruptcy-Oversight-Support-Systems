@@ -4,11 +4,9 @@ import {
   Conjunction,
   isCondition,
   isConjunction,
-  Sort,
-  Pagination,
-  isPagination,
   Query,
   isField,
+  SortSpec,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 import { CamsError } from '../../../../common-errors/cams-error';
@@ -65,39 +63,9 @@ function translateConjunction(query: Conjunction) {
   return { [mapConjunction[query.conjunction]]: renderQuery(query.values) };
 }
 
-function translatePagination(query: Pagination) {
-  const match = renderQuery(query.values)[0];
-  const result = [];
-
-  result.push({
-    $match: match,
-  });
-
-  if (Object.keys(query).includes('sort')) {
-    result.push({
-      $sort: toMongoSort(query.sort),
-    });
-  }
-
-  result.push({
-    $facet: {
-      data: [
-        { $skip: query.skip },
-        {
-          $limit: query.limit,
-        },
-      ],
-    },
-  });
-
-  return result;
-}
-
 function renderQuery<T = unknown>(query: Query<T>) {
   if (isArray(query)) {
     return query.map((q) => renderQuery(q));
-  } else if (isPagination(query)) {
-    return translatePagination(query);
   } else if (isConjunction(query)) {
     return translateConjunction(query);
   } else if (isCondition(query)) {
@@ -109,8 +77,8 @@ export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
   return renderQuery(query);
 }
 
-export function toMongoSort<T = unknown>(sort: Sort<T>): MongoSort {
-  return sort.attributes.reduce(
+export function toMongoSort<T = never>(sort: SortSpec<T>): MongoSort {
+  return sort.fields.reduce(
     (acc, direction) => {
       acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
       return acc;
