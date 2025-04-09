@@ -323,14 +323,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate) {
     try {
-      const [documentType, dateFiled, caseNumber] = source<SyncedCase>().fields(
-        'documentType',
-        'dateFiled',
-        'caseNumber',
-      );
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
       const conditions = this.addConditions(predicate);
-      conditions.push(documentType.equals('SYNCED_CASE'));
 
       if (!hasRequiredSearchFields(predicate)) {
         throw new CamsError(MODULE_NAME, {

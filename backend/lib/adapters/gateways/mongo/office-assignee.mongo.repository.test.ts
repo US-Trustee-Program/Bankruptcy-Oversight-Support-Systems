@@ -24,9 +24,7 @@ describe('case assignment repo tests', () => {
 
   test('search should call Mongo find', async () => {
     //TODO: Create MockData function for officeAssignees
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(/*return expected OfficeAssignee[]  */);
+    jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
   });
   test('deleteMany should call mongo deleteMmany', () => {
     jest.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(3);

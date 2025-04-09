@@ -333,8 +333,8 @@ describe('Cases repository', () => {
         {
           stage: 'SORT',
           fields: [
-            expect.objectContaining({ field: { name: 'dateFiled' }, direction: 'DESCENDING' }),
-            expect.objectContaining({ field: { name: 'caseNumber' }, direction: 'DESCENDING' }),
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
           ],
         },
         {
@@ -381,8 +381,8 @@ describe('Cases repository', () => {
         {
           stage: 'SORT',
           fields: [
-            expect.objectContaining({ field: { name: 'dateFiled' }, direction: 'DESCENDING' }),
-            expect.objectContaining({ field: { name: 'caseNumber' }, direction: 'DESCENDING' }),
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
           ],
         },
         {
@@ -423,7 +423,7 @@ describe('Cases repository', () => {
       stages: [
         {
           stage: 'MATCH',
-          q: and(
+          ...and(
             doc('documentType').equals('SYNCED_CASE'),
             doc('caseId').contains(predicate.caseIds),
             doc('chapter').contains(predicate.chapters),
@@ -433,12 +433,12 @@ describe('Cases repository', () => {
         {
           stage: 'SORT',
           fields: [
-            expect.objectContaining({ field: { name: 'dateFiled' }, direction: 'DESCENDING' }),
-            expect.objectContaining({ field: { name: 'caseNumber' }, direction: 'DESCENDING' }),
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
           ],
         },
         {
-          stage: 'PAGE',
+          stage: 'PAGINATE',
           skip: predicate.offset,
           limit: predicate.limit,
         },
