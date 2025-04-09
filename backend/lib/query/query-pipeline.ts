@@ -143,14 +143,14 @@ function sort(...fields: SortedField[]): Sort {
 
 function ascending(field: FieldReference<never>): SortedField {
   return {
-    field,
+    field: { name: field.name },
     direction: 'ASCENDING',
   };
 }
 
 function descending(field: FieldReference<never>): SortedField {
   return {
-    field,
+    field: { name: field.name },
     direction: 'DESCENDING',
   };
 }
