@@ -4,7 +4,6 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
 import { CamsRole } from '@common/cams/roles';
-import { Store, Controls, ViewModel } from './staffAssignment.types';
 import { staffAssignmentUseCase } from './staffAssignmentUseCase';
 import { StaffAssignmentScreenView } from './StaffAssignmentScreenView';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
@@ -14,7 +13,8 @@ import {
 } from '../filters/staffAssignmentFilter.types';
 import { useRef, useState } from 'react';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal';
+import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
+import { Controls, Store, ViewModel } from './staffAssignment.types';
 
 const StaffAssignmentScreen = () => {
   const store: Store = useStaffAssignmentStoreReact();
