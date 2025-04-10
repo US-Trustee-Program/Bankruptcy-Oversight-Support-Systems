@@ -9,7 +9,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { StaffAssignmentScreenFilter } from '../filters/StaffAssignmentFilter.types';
+import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
 import { Controls, StaffAssignmentUseCase, Store } from './StaffAssignment.types';
 
 const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignmentUseCase => {
