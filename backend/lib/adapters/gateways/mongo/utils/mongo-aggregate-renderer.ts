@@ -35,6 +35,7 @@ export function toMongoAggregateSort(sort: Sort) {
 function toMongoPaginatedFacet(paginate: Paginate) {
   return {
     $facet: {
+      metadata: [{ $count: 'total' }],
       data: [
         { $skip: paginate.skip },
         {
