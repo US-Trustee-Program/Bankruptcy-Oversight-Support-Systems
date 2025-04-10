@@ -121,12 +121,14 @@ describe('Mongo adapter', () => {
       metadata: { total: 3 },
       data: [{}, {}, {}],
     };
-    aggregate.mockResolvedValue([
-      {
-        data: [{}, {}, {}],
+    aggregate.mockResolvedValue({
+      next: () => {
+        return Promise.resolve({
+          metadata: [{ total: 3 }],
+          data: [{}, {}, {}],
+        });
       },
-    ]);
-    countDocuments.mockResolvedValue(3);
+    });
 
     const item = await adapter.paginate(
       QueryPipeline.pipeline(
