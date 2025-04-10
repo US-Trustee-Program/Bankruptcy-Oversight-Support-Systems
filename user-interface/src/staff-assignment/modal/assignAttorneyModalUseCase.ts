@@ -9,7 +9,7 @@ import {
   Controls,
   AssignAttorneyModalUseCase,
   ModalOpenProps,
-} from './assignAttorneyModal.types';
+} from './AssignAttorneyModal.types';
 
 const assignAttorneyModalUseCase = (
   store: Store,
