@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentRow, StaffAssignmentRowOptions } from './StaffAssignmentRow';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
-import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
+import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal.types';
 import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';

@@ -9,7 +9,7 @@ import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
 import {
   CallbackProps,
   AssignAttorneyModalRef,
-} from '@/staff-assignment/modal/assignAttorneyModal.types';
+} from '@/staff-assignment/modal/AssignAttorneyModal.types';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';

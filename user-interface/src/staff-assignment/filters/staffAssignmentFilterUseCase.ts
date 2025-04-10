@@ -1,4 +1,4 @@
-import { StaffAssignmentFilterUseCase, Store } from './staffAssignmentFilter.types';
+import { StaffAssignmentFilterUseCase, Store } from './StaffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
