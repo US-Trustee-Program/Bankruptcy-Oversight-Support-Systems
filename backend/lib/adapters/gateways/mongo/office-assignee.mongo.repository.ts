@@ -1,5 +1,4 @@
-import { OfficeAssignee } from '../../../use-cases/dataflows/migrate-office-assignees';
-import { OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
+import { OfficeAssignee, OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneePredicate } from '../../../../../common/src/api/search';
@@ -55,14 +54,6 @@ export class OfficeAssigneeMongoRepository
     return this.getAdapter<OfficeAssignee>().find(this.toQuery(predicate));
   }
 
-  /**
-   *  Target rendered query:
-   *    const query = [
-   *      { $match: { officeCode } },
-   *      { $group: { _id: '$userId', name: { $first: '$name' } } },
-   *      { $sort: { name: 1 } },
-   *    ];
-   */
   async getDistinctAssigneesByOffice(officeCode): Promise<CamsUserReference[]> {
     // DistinctAssignee is shaped after the $group stage in the aggregate pipeline
     type DistinctAssignee = {
@@ -70,13 +61,6 @@ export class OfficeAssigneeMongoRepository
       name: string;
     };
 
-    // TODO: Translate this using the query pipeline API.
-    // TODO: We need to add $group to the query pipeline and mongo renderer.
-    // const query = [
-    //   { $match: { officeCode } },
-    //   { $group: { _id: '$userId', name: { $first: '$name' } } },
-    //   { $sort: { name: 1 } },
-    // ];
     const doc = source<OfficeAssignee>('office-assignment').usingFields(
       'name',
       'officeCode',
@@ -87,7 +71,7 @@ export class OfficeAssigneeMongoRepository
       group([doc.userId], [first(doc.name, doc.name)]),
       sort(descending(doc.name)),
     );
-    const results = await this.getAdapter<DistinctAssignee>()._aggregate(query);
+    const results = await this.getAdapter<DistinctAssignee>().aggregate(query);
     return results.map((result) => {
       return {
         id: result._id,

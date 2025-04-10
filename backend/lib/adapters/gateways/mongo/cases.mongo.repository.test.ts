@@ -618,7 +618,7 @@ describe('Cases repository', () => {
     };
 
     jest
-      .spyOn(MongoCollectionAdapter.prototype, '_aggregate')
+      .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
       .mockImplementation((...params: unknown[]) => {
         const _q = toMongoAggregate(params[0] as Pipeline);
         return Promise.resolve([]);

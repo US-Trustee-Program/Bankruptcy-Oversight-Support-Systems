@@ -30,7 +30,6 @@ import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
-import { OfficeAssignee } from './dataflows/migrate-office-assignees';
 import { Pipeline } from '../query/query-pipeline';
 
 export type ReplaceResult = {
@@ -239,6 +238,13 @@ export interface DocumentCollectionAdapter<T> {
 export type CamsPaginationResponse<T> = {
   metadata?: { total: number };
   data: T[];
+};
+
+export type OfficeAssignee = {
+  caseId: string;
+  officeCode: string;
+  userId: string;
+  name: string;
 };
 
 export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';

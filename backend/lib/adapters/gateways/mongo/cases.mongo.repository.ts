@@ -396,7 +396,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       sort(ascending(caseDocs.field('caseId'))),
     );
 
-    return await this.getAdapter<SyncedCase>()._aggregate(pipelineQuery);
+    return await this.getAdapter<SyncedCase>().aggregate(pipelineQuery);
   }
 
   async getSyncedCase(caseId: string): Promise<SyncedCase> {
