@@ -63,15 +63,17 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       const mongoAggregate = toMongoAggregate(pipeline);
 
-      // TODO: Get this shape from the cursor.
       const cursor = await this.collectionHumble.aggregate(mongoAggregate);
-      // const aggregationItem: CamsPaginationResponse<T> = {
-      //   metadata: { total: 0 },
-      //   data: [],
-      // };
+      const result = await cursor.next();
 
-      // ????
-      return (await cursor) as unknown as CamsPaginationResponse<T>;
+      // NOTE: See the custom facet defined by `toMongoPaginatedFacet` in `mongo-aggregate-renderer.ts`.
+      // This stage is expected to be the final stage of any aggregate pipeline passed to `paginate`.
+      const paginationResult: CamsPaginationResponse<T> = {
+        metadata: result['metadata'] ? result['metadata'][0] : { total: 0 },
+        data: result['data'] ?? [],
+      };
+
+      return paginationResult;
     } catch (originalError) {
       throw this.handleError(
         originalError,
