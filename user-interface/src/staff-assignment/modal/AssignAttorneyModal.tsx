@@ -13,7 +13,7 @@ import {
   ViewModel,
   CallbackFunction,
   Controls,
-} from './AssignAttorneyModal.types';
+} from './assignAttorneyModal.types';
 
 function _AssignAttorneyModal(
   props: AssignAttorneyModalProps,

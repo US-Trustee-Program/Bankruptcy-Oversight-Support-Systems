@@ -1,5 +1,5 @@
 import ComboBox from '@/lib/components/combobox/ComboBox';
-import { StaffAssignmentFilterViewProps } from './StaffAssignmentFilter.types';
+import { StaffAssignmentFilterViewProps } from './staffAssignmentFilter.types';
 
 function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
   const { viewModel } = props;
