@@ -27,7 +27,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  async _aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
+  async aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
     const mongoQuery = toMongoAggregate(pipeline);
     try {
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
