@@ -3,7 +3,7 @@ import {
   StaffAssignmentFilterRef,
   Store,
   ViewModel,
-} from './staffAssignmentFilter.types';
+} from './StaffAssignmentFilter.types';
 import { CamsUserReference } from '../../../../common/dist/cams/users';
 import StaffAssignmentFilterView from './StaffAssignmentFilterView';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';

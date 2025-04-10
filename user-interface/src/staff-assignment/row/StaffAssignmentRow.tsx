@@ -6,7 +6,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
-import { AssignAttorneyModalRef, CallbackProps } from '../modal/assignAttorneyModal.types';
+import { AssignAttorneyModalRef, CallbackProps } from '../modal/AssignAttorneyModal.types';
 import Internal from './StaffAssignmentRow.internal';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseAssignment } from '@common/cams/assignments';

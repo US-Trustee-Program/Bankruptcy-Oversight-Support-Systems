@@ -1,5 +1,5 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { Store } from './staffAssignmentFilter.types';
+import { Store } from './StaffAssignmentFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
 import LocalStorage from '@/lib/utils/local-storage';

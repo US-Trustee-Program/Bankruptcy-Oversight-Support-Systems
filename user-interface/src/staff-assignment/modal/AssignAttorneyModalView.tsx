@@ -3,7 +3,7 @@ import Alert from '@/lib/components/uswds/Alert';
 import Checkbox from '@/lib/components/uswds/Checkbox';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { AttorneyUser } from '@common/cams/users';
-import { AssignAttorneyModalViewProps } from './assignAttorneyModal.types';
+import { AssignAttorneyModalViewProps } from './AssignAttorneyModal.types';
 
 export function AssignAttorneyModalView(props: AssignAttorneyModalViewProps) {
   const { viewModel } = props;
