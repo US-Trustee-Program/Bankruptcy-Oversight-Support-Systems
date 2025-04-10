@@ -1,5 +1,4 @@
 import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
-import { Store, Controls, StaffAssignmentUseCase } from './staffAssignment.types';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
@@ -11,6 +10,7 @@ import {
 } from '@common/api/search';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
+import { Controls, StaffAssignmentUseCase, Store } from './staffAssignment.types';
 
 const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignmentUseCase => {
   const handleFilterAssignee = (assignees: ComboOption[]) => {
