@@ -54,6 +54,7 @@ describe('aggregation query renderer tests', () => {
       },
       {
         $facet: {
+          metadata: [{ $count: 'total' }],
           data: [
             {
               $skip: 0,
