@@ -1,4 +1,3 @@
-import { Sort as MongoSort } from 'mongodb';
 export type Condition<T = unknown> = {
   condition:
     | 'EQUALS'
@@ -196,16 +195,6 @@ export type SortSpec<T = never> = {
 
 export function isSortSpec(obj: unknown): obj is SortSpec {
   return typeof obj === 'object' && 'fields' in obj;
-}
-
-export function toMongoSort(sort: SortSpec): MongoSort {
-  return sort.fields.reduce(
-    (acc, sortSpec) => {
-      acc[sortSpec.field.name] = sortSpec.direction === 'ASCENDING' ? 1 : -1;
-      return acc;
-    },
-    {} as Record<keyof never, 1 | -1>,
-  );
 }
 
 function orderBy<T = never>(...specs: [keyof T, 'ASCENDING' | 'DESCENDING'][]): SortSpec {
