@@ -1,5 +1,5 @@
 import QueryBuilder, { Field, Query } from '../../../../query/query-builder';
-import { toMongoQuery } from './mongo-query-renderer';
+import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
   uno: string;
@@ -175,6 +175,20 @@ describe('Mongo Query Renderer', () => {
     };
 
     const actual = toMongoQuery(params.fn({ name: 'two' }));
+    expect(actual).toEqual(expected);
+  });
+
+  test('should render a sort expression', () => {
+    const expected = {
+      foo: 1,
+      bar: -1,
+    };
+    const actual = toMongoSort({
+      fields: [
+        { direction: 'ASCENDING', field: { name: 'foo' } },
+        { direction: 'DESCENDING', field: { name: 'bar' } },
+      ],
+    });
     expect(actual).toEqual(expected);
   });
 });
