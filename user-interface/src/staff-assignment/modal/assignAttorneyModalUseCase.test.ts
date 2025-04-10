@@ -1,5 +1,5 @@
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { Controls, Store } from './assignAttorneyModal.types';
+import { Controls, Store } from './AssignAttorneyModal.types';
 import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
 import { ChangeEvent } from 'react';
 
