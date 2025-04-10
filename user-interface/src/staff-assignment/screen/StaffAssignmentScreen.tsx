@@ -10,10 +10,10 @@ import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter.types';
+} from '../filters/staffAssignmentFilter.types';
 import { useRef, useState } from 'react';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal.types';
+import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
 import { Controls, Store, ViewModel } from './StaffAssignment.types';
 
 const StaffAssignmentScreen = () => {

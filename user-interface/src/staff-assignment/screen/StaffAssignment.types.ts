@@ -2,8 +2,8 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter.types';
-import { AssignAttorneyModalRef } from '../modal/AssignAttorneyModal.types';
+} from '../filters/staffAssignmentFilter.types';
+import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';

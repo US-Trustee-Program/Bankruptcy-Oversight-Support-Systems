@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './AssignAttorneyModal.types';
+import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
 import React from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';

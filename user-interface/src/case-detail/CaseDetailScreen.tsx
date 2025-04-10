@@ -19,7 +19,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal.types';
+import { CallbackProps } from '@/staff-assignment/modal/assignAttorneyModal.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';

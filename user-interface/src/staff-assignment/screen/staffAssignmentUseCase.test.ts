@@ -16,7 +16,7 @@ import { RefObject } from 'react';
 import {
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
-} from '../filters/StaffAssignmentFilter.types';
+} from '../filters/staffAssignmentFilter.types';
 
 function useStaffAssignmentControlsMock(): Controls {
   const infoModalRef = {
