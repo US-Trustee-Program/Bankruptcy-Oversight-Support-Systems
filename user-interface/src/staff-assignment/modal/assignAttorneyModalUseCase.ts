@@ -123,7 +123,7 @@ const assignAttorneyModalUseCase = (
   const submitValues = async (assignmentChangeCallback: (val: CamsUserReference[]) => void) => {
     const api = useApi2();
     if (!store.bCase) {
-      return;
+      throw Error('No bankruptcy case was supplied. Can not set attorneys without a case.');
     }
     let finalAttorneyList: CamsUserReference[] = [];
 
@@ -181,7 +181,7 @@ const assignAttorneyModalUseCase = (
 
   const updateCheckList = (ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser) => {
     if (!store.bCase) {
-      return;
+      throw Error('No bankruptcy case was supplied. Can not update checklist without a case.');
     }
     let localCheckListValues = [...store.checkListValues];
     if (ev.target.checked && !attorneyIsInCheckList(attorney)) {
