@@ -36,9 +36,15 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   const [isDisabled, setIsDisabled] = useState<boolean>(!!otherProps.disabled);
   const classes = [BUTTON_BASE_CLASS];
 
-  if (uswdsStyle) classes.push(uswdsStyle);
-  if (buttonState) classes.push(buttonState);
-  if (className) classes.push(className);
+  if (uswdsStyle) {
+    classes.push(uswdsStyle);
+  }
+  if (buttonState) {
+    classes.push(buttonState);
+  }
+  if (className) {
+    classes.push(className);
+  }
 
   const tabIndex = props.tabIndex ?? 0;
 

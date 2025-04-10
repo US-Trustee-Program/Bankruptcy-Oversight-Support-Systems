@@ -27,6 +27,7 @@ const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignme
     } else {
       store.setStaffAssignmentFilter(undefined);
     }
+    controls.filterRef.current?.focus();
   };
 
   const handleAssignmentChange = async (assignees: CamsUserReference[]) => {

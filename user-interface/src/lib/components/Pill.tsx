@@ -1,3 +1,4 @@
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import './Pill.scss';
 import Icon from './uswds/Icon';
 
@@ -17,9 +18,10 @@ type PillProps = {
   disabled?: boolean;
 };
 
-export function Pill(props: PillProps) {
+function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
   const color = props.color ?? defaultColor;
   const backgroundColor = props.backgroundColor ?? defaultBackgroundColor;
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   function handleKeyDown(ev: React.KeyboardEvent) {
     if (ev.key === 'Enter' || ev.key === ' ') {
@@ -29,6 +31,16 @@ export function Pill(props: PillProps) {
   }
 
   const wrapTextClass = props.wrapText === true ? 'wrap-text' : '';
+
+  const focusButton = () => {
+    buttonRef.current?.focus();
+  };
+
+  useImperativeHandle(ref, () => {
+    return {
+      focus: focusButton,
+    };
+  });
 
   return (
     <button
@@ -43,9 +55,12 @@ export function Pill(props: PillProps) {
       disabled={props.disabled}
       data-value={props.value}
       title={`${props.label}`}
+      ref={buttonRef}
     >
       <div className="pill-text">{props.label}</div>
       <Icon name="close"></Icon>
     </button>
   );
 }
+
+export const Pill = forwardRef(_Pill);

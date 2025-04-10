@@ -17,6 +17,7 @@ function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
             ariaDescription=""
             aria-live="off"
             multiSelect={false}
+            ref={viewModel.assigneesFilterRef}
           />
         )}
       </section>
