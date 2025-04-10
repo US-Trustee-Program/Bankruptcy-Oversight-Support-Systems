@@ -9,9 +9,6 @@ import {
   SortSpec,
 } from '../../../../query/query-builder';
 import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
-import { CamsError } from '../../../../common-errors/cams-error';
-
-const MODULE_NAME = 'MONGO-QUERY-RENDERER';
 
 const { isArray } = Array;
 
@@ -28,8 +25,6 @@ const mapCondition: { [key: string]: string } = {
   REGEX: '$regex',
 };
 
-// TODO: create new aggregate renderer
-// https://www.mongodb.com/docs/manual/reference/operator/aggregation/#std-label-aggregation-expressions
 function translateCondition<T = unknown>(query: Condition<T>) {
   if (isField(query.rightOperand)) {
     return {
@@ -40,16 +35,8 @@ function translateCondition<T = unknown>(query: Condition<T>) {
         ],
       },
     };
-  }
-
-  // TODO: figure out how we know this is in need of special handling vis-a-vis aggregate pipeline filter
-  // or do it in the aggregate renderer
-  if (isField(query.leftOperand)) {
-    return { [query.leftOperand.name]: { [mapCondition[query.condition]]: query.rightOperand } };
   } else {
-    throw new CamsError(MODULE_NAME, {
-      message: 'The base renderer currently cannot handle nested Conditions.',
-    });
+    return { [query.leftOperand.name]: { [mapCondition[query.condition]]: query.rightOperand } };
   }
 }
 
@@ -79,8 +66,8 @@ export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
 
 export function toMongoSort<T = never>(sort: SortSpec<T>): MongoSort {
   return sort.fields.reduce(
-    (acc, direction) => {
-      acc[direction[0]] = direction[1] === 'ASCENDING' ? 1 : -1;
+    (acc, spec) => {
+      acc[spec.field.name] = spec.direction === 'ASCENDING' ? 1 : -1;
       return acc;
     },
     {} as Record<keyof T, 1 | -1>,
