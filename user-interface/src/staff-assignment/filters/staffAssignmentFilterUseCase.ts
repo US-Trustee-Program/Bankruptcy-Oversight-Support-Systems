@@ -1,4 +1,4 @@
-import { StaffAssignmentFilterUseCase, Store } from './staffAssignmentFilter.types';
+import { Controls, StaffAssignmentFilterUseCase, Store } from './staffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
@@ -6,7 +6,10 @@ import useApi2 from '@/lib/hooks/UseApi2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
-const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCase => {
+const staffAssignmentFilterUseCase = (
+  store: Store,
+  controls: Controls,
+): StaffAssignmentFilterUseCase => {
   const assigneesToComboOptions = (officeAssignees: CamsUserReference[]): ComboOption[] => {
     const comboOptions: ComboOption[] = [];
     officeAssignees.forEach((assignee) => {
@@ -33,6 +36,10 @@ const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCas
     }
   };
 
+  const focusOnAssigneesFilter = () => {
+    controls.assigneesFilterRef.current?.focusSingleSelectionPill();
+  };
+
   const getOfficeAssignees = async (
     apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
     offices: UstpOfficeDetails[],
@@ -49,10 +56,19 @@ const staffAssignmentFilterUseCase = (store: Store): StaffAssignmentFilterUseCas
     return Array.from(assigneeMap.values()).sort((a, b) => (a.name < b.name ? -1 : 1));
   };
 
+  const handleFilterAssignee = async (assignees: ComboOption[]) => {
+    store.setFocusOnRender(true);
+    if (store.filterAssigneeCallback) {
+      store.filterAssigneeCallback(assignees);
+    }
+  };
+
   return {
     assigneesToComboOptions,
     fetchAssignees,
+    focusOnAssigneesFilter,
     getOfficeAssignees,
+    handleFilterAssignee,
   };
 };
 
