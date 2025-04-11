@@ -1,4 +1,11 @@
-import { ConditionFunctions, ConditionOrConjunction, Field, using } from './query-builder';
+import {
+  ConditionFunctions,
+  ConditionOrConjunction,
+  Field,
+  SortedField,
+  SortSpec,
+  using,
+} from './query-builder';
 
 function source<T = unknown>(source?: string) {
   return {
@@ -59,20 +66,6 @@ export function isPaginate(obj: unknown): obj is Paginate {
   return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
 }
 
-export type SortedField = {
-  field: FieldReference<never>;
-  direction: 'ASCENDING' | 'DESCENDING';
-};
-
-export type Sort = {
-  stage: 'SORT';
-  fields: SortedField[];
-};
-
-export function isSort(obj: unknown): obj is Sort {
-  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
-}
-
 export type Pipeline = {
   stages: Stage[];
 };
@@ -112,6 +105,14 @@ export type AdditionalField<T = never> = {
   query: ConditionOrConjunction<T>;
 };
 
+export type Sort = SortSpec & {
+  stage: 'SORT';
+};
+
+export function isSort(obj: unknown): obj is Sort {
+  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
+}
+
 export type Stage<T = never> =
   | Paginate
   | Sort
@@ -142,14 +143,14 @@ function sort(...fields: SortedField[]): Sort {
 
 function ascending(field: FieldReference<never>): SortedField {
   return {
-    field,
+    field: { name: field.name },
     direction: 'ASCENDING',
   };
 }
 
 function descending(field: FieldReference<never>): SortedField {
   return {
-    field,
+    field: { name: field.name },
     direction: 'DESCENDING',
   };
 }

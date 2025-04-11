@@ -80,20 +80,14 @@ export class DocumentClient implements Closable {
 
 export type Filter = {
   [key: string]: unknown;
-  $where?: undefined;
-  $lookup?: undefined;
 };
 
-//TODO: Why is this boolean operation required to have this function?
-export type BooleanOperation = {
+export type DocumentQuery = {
+  [key: string]: Filter | Filter[];
   and?: Filter[];
   or?: Filter[];
   $where?: undefined;
   $lookup?: undefined;
-};
-
-export type DocumentQuery = BooleanOperation & {
-  [key: string]: Filter | Filter[] | BooleanOperation;
 };
 
 export type AggregateQuery = MongoDocument;

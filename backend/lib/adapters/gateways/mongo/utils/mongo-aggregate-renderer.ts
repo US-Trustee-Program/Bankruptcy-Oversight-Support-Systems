@@ -20,11 +20,11 @@ import { CamsError } from '../../../../common-errors/cams-error';
 
 const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
 
-export function toMongoSort(sort: Sort) {
+export function toMongoAggregateSort(sort: Sort) {
   return {
     $sort: sort.fields.reduce(
-      (acc, attribute) => {
-        acc[attribute.field.name] = attribute.direction === 'ASCENDING' ? 1 : -1;
+      (acc, sortSpec) => {
+        acc[sortSpec.field.name] = sortSpec.direction === 'ASCENDING' ? 1 : -1;
         return acc;
       },
       {} as Record<never, 1 | -1>,
@@ -35,6 +35,7 @@ export function toMongoSort(sort: Sort) {
 function toMongoPaginatedFacet(paginate: Paginate) {
   return {
     $facet: {
+      metadata: [{ $count: 'total' }],
       data: [
         { $skip: paginate.skip },
         {
@@ -146,7 +147,7 @@ const mapCondition: { [key: string]: string } = {
 export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
   return pipeline.stages.map((stage) => {
     if (stage.stage === 'SORT') {
-      return toMongoSort(stage);
+      return toMongoAggregateSort(stage);
     }
     if (stage.stage === 'PAGINATE') {
       return toMongoPaginatedFacet(stage);

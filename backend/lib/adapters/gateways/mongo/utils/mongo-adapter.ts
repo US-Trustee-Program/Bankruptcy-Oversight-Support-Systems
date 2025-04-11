@@ -1,10 +1,12 @@
+import { PaginationParameters } from '../../../../../../common/src/api/pagination';
+import { DEFAULT_SEARCH_LIMIT } from '../../../../../../common/src/api/search';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
-import { Pipeline } from '../../../../query/query-pipeline';
+import { ConditionOrConjunction, Query, SortSpec } from '../../../../query/query-builder';
+import QueryPipeline, { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
 import {
   CamsPaginationResponse,
   DocumentCollectionAdapter,
@@ -25,7 +27,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  async _aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
+  async aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
     const mongoQuery = toMongoAggregate(pipeline);
     try {
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
@@ -43,46 +45,52 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async paginatedFind(query: Pagination<T>): Promise<CamsPaginationResponse<T>> {
-    const mongoQuery = toMongoQuery<T>(query);
-    const countQuery = toMongoQuery<T>(query.values[0]);
+  public async paginate(
+    pipelineOrQuery: Pipeline | ConditionOrConjunction,
+    page: PaginationParameters = { offset: 0, limit: DEFAULT_SEARCH_LIMIT },
+  ): Promise<CamsPaginationResponse<T>> {
     try {
-      if (!isPagination(query)) {
-        throw new Error('Trying to paginate for a query that is not a pagination query');
-      }
+      const pipeline = isPipeline(pipelineOrQuery)
+        ? pipelineOrQuery
+        : QueryPipeline.pipeline(QueryPipeline.match(pipelineOrQuery));
 
-      const aggregationItem: CamsPaginationResponse<T> = {
-        metadata: { total: 0 },
-        data: [],
+      const includesPagination = pipeline.stages.reduce((acc, stage) => {
+        return acc || isPaginate(stage);
+      }, false);
+
+      if (!includesPagination) {
+        pipeline.stages.push(QueryPipeline.paginate(page.offset, page.limit));
+      }
+      const mongoAggregate = toMongoAggregate(pipeline);
+
+      const cursor = await this.collectionHumble.aggregate(mongoAggregate);
+      const result = await cursor.next();
+
+      // NOTE: See the custom facet defined by `toMongoPaginatedFacet` in `mongo-aggregate-renderer.ts`.
+      // This stage is expected to be the final stage of any aggregate pipeline passed to `paginate`.
+      const paginationResult: CamsPaginationResponse<T> = {
+        metadata: result['metadata'] ? result['metadata'][0] : { total: 0 },
+        data: result['data'] ?? [],
       };
 
-      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
-      aggregationItem.metadata.total = await this.collectionHumble.countDocuments(countQuery);
-
-      for await (const result of aggregationResult) {
-        for (const doc of result.data) {
-          aggregationItem.data.push(doc as CamsItem<T>);
-        }
-      }
-
-      return aggregationItem;
+      return paginationResult;
     } catch (originalError) {
       throw this.handleError(
         originalError,
-        `Failed while querying with: ${JSON.stringify(query)}`,
-        { query },
+        `Failed while querying with: ${JSON.stringify(pipelineOrQuery)}`,
+        pipelineOrQuery,
       );
     }
   }
 
-  public async find(query: Query<T>, sort?: Sort<T>): Promise<T[]> {
+  public async find(query: Query<T>, sort?: SortSpec): Promise<T[]> {
     const mongoQuery = toMongoQuery<T>(query);
-    const mongoSort = sort ? toMongoSort<T>(sort) : undefined;
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       const items: T[] = [];
 
-      const findPromise = this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+      const findResults = await this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? findResults.sort(mongoSort) : findResults;
       for await (const doc of results) {
         items.push(doc as CamsItem<T>);
       }
@@ -97,12 +105,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async getAll(sort?: Sort<T>): Promise<T[]> {
+  public async getAll(sort?: SortSpec): Promise<T[]> {
     const mongoQuery = {};
-    const mongoSort = sort ? toMongoSort<T>(sort) : undefined;
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
-      const findPromise = this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+      const findResult = await this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? findResult.sort(mongoSort) : findResult;
 
       const items: T[] = [];
       for await (const doc of results) {
@@ -162,11 +170,21 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         message: `Failed to update document. Query matched ${result.matchedCount} items.`,
       });
 
-      if (!result.acknowledged) throw upsert ? unknownError : unknownMatchError;
-      if (result.upsertedCount + result.modifiedCount > 1) throw unknownError;
-      if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) throw unknownError;
-      if (!upsert && result.matchedCount === 0) throw notFoundError;
-      if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
+      if (!result.acknowledged) {
+        throw upsert ? unknownError : unknownMatchError;
+      }
+      if (result.upsertedCount + result.modifiedCount > 1) {
+        throw unknownError;
+      }
+      if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) {
+        throw unknownError;
+      }
+      if (!upsert && result.matchedCount === 0) {
+        throw notFoundError;
+      }
+      if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) {
+        throw unknownMatchError;
+      }
       return {
         id: mongoItem.id,
         modifiedCount: result.modifiedCount,

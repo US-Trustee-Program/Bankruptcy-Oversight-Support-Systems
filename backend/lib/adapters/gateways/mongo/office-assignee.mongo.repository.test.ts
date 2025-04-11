@@ -1,11 +1,11 @@
 import { randomUUID } from 'crypto';
-// import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-// import { getCamsError } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneeMongoRepository } from './office-assignee.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { OfficeAssignee } from '../../../use-cases/gateways.types';
 
 describe('case assignment repo tests', () => {
   let context: ApplicationContext;
@@ -22,17 +22,108 @@ describe('case assignment repo tests', () => {
     repo.release();
   });
 
-  test('search should call Mongo find', async () => {
-    //TODO: Create MockData function for officeAssignees
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'find')
-      .mockResolvedValue(/*return expected OfficeAssignee[]  */);
+  test('should return a list of OfficeAssignee', async () => {
+    const assignees: OfficeAssignee[] = [
+      {
+        caseId: '',
+        officeCode: '',
+        userId: '',
+        name: '',
+      },
+    ];
+    const predicate = { caseId: '000-11-22222' };
+    const find = jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(assignees);
+
+    const actual = await repo.search(predicate);
+
+    expect(find).toHaveBeenCalled();
+    expect(actual).toEqual(assignees);
   });
-  test('deleteMany should call mongo deleteMmany', () => {
-    jest.spyOn(MongoCollectionAdapter.prototype, 'deleteMany').mockResolvedValue(3);
+
+  test('should return a unique list of CamsUserReference by officeCode', async () => {
+    const assignees = MockData.buildArray(MockData.getCamsUserReference, 3);
+    const aggregate = jest.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockResolvedValue(
+      assignees.map((u) => {
+        return { ...u, _id: u.id };
+      }),
+    );
+
+    const officeCode = 'TEST-OFFICE';
+    const actual = await repo.getDistinctAssigneesByOffice(officeCode);
+
+    expect(aggregate).toHaveBeenCalled();
+    expect(actual).toEqual(assignees);
   });
-  test('create should call mongo insertOne', () => {
+
+  test('should delete OfficeAssignee records', async () => {
+    const deleteMany = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+      .mockResolvedValue(3);
+    const predicate = { caseId: '000-11-22222' };
+
+    await repo.deleteMany(predicate);
+
+    expect(deleteMany).toHaveBeenCalled();
+  });
+
+  test('should insert an OfficeAssignee record', async () => {
     const mockId = randomUUID();
-    jest.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(mockId);
+    const insertOne = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+      .mockResolvedValue(mockId);
+
+    const assignee: OfficeAssignee = {
+      caseId: '',
+      officeCode: '',
+      userId: '',
+      name: '',
+    };
+
+    await repo.create(assignee);
+
+    expect(insertOne).toHaveBeenCalled();
+  });
+
+  test('should translate a predicate into a query', () => {
+    const officeCodeQuery = repo.toQuery({ officeCode: 'TEST' });
+    expect(officeCodeQuery).toEqual({
+      condition: 'EQUALS',
+      leftOperand: {
+        name: 'officeCode',
+      },
+      rightOperand: 'TEST',
+    });
+
+    const caseAndUserIdsQuery = repo.toQuery({ caseId: '000-11-22222', userId: 'testUserId' });
+    expect(caseAndUserIdsQuery).toEqual({
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: {
+            name: 'userId',
+          },
+          rightOperand: 'testUserId',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: {
+            name: 'caseId',
+          },
+          rightOperand: '000-11-22222',
+        },
+      ],
+    });
+
+    const caseIdQuery = repo.toQuery({ caseId: '000-11-22222' });
+    expect(caseIdQuery).toEqual({
+      condition: 'EQUALS',
+      leftOperand: {
+        name: 'caseId',
+      },
+      rightOperand: '000-11-22222',
+    });
+
+    expect(() => repo.toQuery({})).toThrow();
   });
 });
