@@ -69,18 +69,19 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   }, [props.selections]);
 
   return (
-    <div id={props.id} className={`pill-container ${props.className}`}>
+    <div id={props.id} className={`pill-container ${props.className}`} role="list">
       {selections?.map((selection, idx) => (
-        <Pill
-          id={`pill-${props.id}-${idx}`}
-          key={idx}
-          label={selection.label}
-          ariaLabelPrefix={ariaLabelPrefix}
-          value={selection.value}
-          onClick={onPillClick}
-          disabled={disabled}
-          wrapText={wrapPills}
-        ></Pill>
+        <span role="listitem" key={idx}>
+          <Pill
+            id={`pill-${props.id}-${idx}`}
+            label={selection.label}
+            ariaLabelPrefix={ariaLabelPrefix}
+            value={selection.value}
+            onClick={onPillClick}
+            disabled={disabled}
+            wrapText={wrapPills}
+          ></Pill>
+        </span>
       ))}
     </div>
   );

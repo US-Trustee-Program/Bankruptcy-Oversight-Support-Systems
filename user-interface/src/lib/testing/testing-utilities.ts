@@ -92,7 +92,9 @@ function selectCheckbox(id: string) {
   const checkbox = document.querySelector(`#checkbox-${id}`);
   if (checkbox) {
     const checkboxLabelButton = document.querySelector(`#checkbox-${id}-click-target`);
-    if (checkboxLabelButton) fireEvent.click(checkboxLabelButton);
+    if (checkboxLabelButton) {
+      fireEvent.click(checkboxLabelButton);
+    }
   }
   return checkbox;
 }
@@ -101,7 +103,9 @@ function selectRadio(id: string) {
   const radio = document.querySelector(`#radio-${id}`);
   if (radio) {
     const radioLabelButton = document.querySelector(`#radio-${id}-click-target`);
-    if (radioLabelButton) fireEvent.click(radioLabelButton);
+    if (radioLabelButton) {
+      fireEvent.click(radioLabelButton);
+    }
   }
   return radio;
 }
@@ -116,10 +120,7 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   const listItem = document.querySelector(`[data-testid=${id}-item-${itemIndex}]`);
   expect(listItem as HTMLElement).toBeVisible();
 
-  const listItemButton = document.querySelector(`[data-testid=${id}-option-item-${itemIndex}]`);
-  expect(listItemButton).toBeVisible();
-
-  fireEvent.click(listItemButton as Element);
+  fireEvent.click(listItem as Element);
   await vi.waitFor(() => {
     expect(listItem).toHaveClass('selected');
   });
