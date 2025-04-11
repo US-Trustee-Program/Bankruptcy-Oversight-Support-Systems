@@ -120,3 +120,10 @@ export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
 export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
   return !isCaseClosed(bCase);
 }
+
+export function getCaseIdParts(caseId: string) {
+  const parts = caseId.split('-');
+  const divisionCode = parts[0];
+  const caseNumber = `${parts[1]}-${parts[2]}`;
+  return { divisionCode, caseNumber };
+}
