@@ -88,6 +88,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(options);
+  const [currentListItem, setCurrentListItem] = useState<string | undefined>(undefined);
 
   // ========== REFS ==========
 
@@ -302,9 +303,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     switch (ev.key) {
       case 'Tab':
         closeDropdown(false);
+        setCurrentListItem(undefined);
         break;
       case 'Escape':
         closeDropdown();
+        setCurrentListItem(undefined);
         ev.preventDefault();
         break;
       case 'ArrowDown':
@@ -318,9 +321,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           }
         }
         if (index >= 0 && index < filteredOptions.length) {
-          const button = list?.children[index].querySelector('button');
+          const li = list?.children[index];
+          const button = li?.querySelector('button');
           if (list && button) {
             focusAndHandleScroll(ev, button);
+            setCurrentListItem(li?.id);
           }
         }
         break;
@@ -332,13 +337,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           }
         }
         if (index > 1 && index <= filteredOptions.length) {
-          const button = list?.children[index - 2].querySelector('button');
+          const li = list?.children[index - 2];
+          const button = li?.querySelector('button');
           if (list && button) {
             focusAndHandleScroll(ev, button);
+            setCurrentListItem(li?.id);
           }
         } else if (index === 1) {
           if (input) {
             focusAndHandleScroll(ev, input);
+            setCurrentListItem(undefined);
           }
           closeDropdown(true);
         }
@@ -346,6 +354,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Enter':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           handleDropdownItemSelection(option as ComboOption);
+          setCurrentListItem(undefined);
           ev.preventDefault();
         }
         break;
@@ -475,7 +484,15 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       )}
       <div className="usa-combo-box">
         <div className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}>
-          <div className="combo-box-input-container">
+          <div
+            className="combo-box-input-container"
+            role="combobox"
+            aria-haspopup="listbox"
+            aria-owns={`${comboBoxId}-item-list`}
+            aria-expanded={expanded}
+            aria-controls={`${comboBoxId}-item-list`}
+            aria-labelledby={comboBoxId + '-label'}
+          >
             {multiSelect !== true && selections.length > 0 && (
               <Pill
                 id={`pill-${comboBoxId}`}
@@ -501,10 +518,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
               aria-describedby={`${comboBoxId}-aria-description`}
               aria-live={props['aria-live'] ?? undefined}
-              aria-haspopup="listbox"
-              aria-expanded={expanded}
-              aria-controls={`${comboBoxId}-item-list`}
-              role="combobox"
+              aria-autocomplete="list"
+              aria-activedescendant={currentListItem ?? ''}
               ref={filterRef}
             />
           </div>
@@ -529,13 +544,20 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             tabIndex={-1}
             style={dropdownLocation ?? undefined}
           >
-            <ul id={`${comboBoxId}-item-list`} role="listbox">
+            <ul
+              id={`${comboBoxId}-item-list`}
+              role="listbox"
+              aria-multiselectable={multiSelect === true ? 'true' : 'false'}
+            >
               {filteredOptions.map((option, idx) => (
                 <li
+                  id={`option-${option.value}`}
                   className={setListItemClass(idx, option)}
                   aria-hidden={option.hidden ? 'true' : 'false'}
                   data-testid={`${comboBoxId}-item-${idx}`}
                   key={`${comboBoxId}-${idx}`}
+                  role="option"
+                  aria-selected={isSelected(option) ? 'true' : undefined}
                 >
                   <button
                     className="usa-button--unstyled"
