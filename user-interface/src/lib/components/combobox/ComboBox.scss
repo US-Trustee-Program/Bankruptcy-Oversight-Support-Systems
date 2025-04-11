@@ -99,23 +99,17 @@ $listItemSelectedBorderColor: #949494;
           border-bottom-color: $separatorColor;
           cursor: pointer;
 
-          button.usa-button--unstyled {
-            margin: 0 2px;
-            display: flex;
-            justify-content: space-between;
-            color: #1b1b1b;
-            text-decoration: none;
-            width: calc(100% - 4px);
-            padding: 0.5rem;
+          margin: 0 2px;
+          display: flex;
+          justify-content: space-between;
+          color: #1b1b1b;
+          text-decoration: none;
+          width: calc(100% - 4px);
+          padding: 0.5rem;
 
-            svg.usa-icon {
-              min-width: 1em;
-              min-height: 1em;
-            }
-          }
-          button:focus {
-            border-color: $listItemHoverBorderColor;
-            background: #b0b0b0;
+          svg.usa-icon {
+            min-width: 1em;
+            min-height: 1em;
           }
         }
         li:last-child {
@@ -126,6 +120,8 @@ $listItemSelectedBorderColor: #949494;
           border-color: $listItemSelectedBorderColor;
         }
         li:focus {
+          border-color: $listItemHoverBorderColor;
+          background: #b0b0b0;
           outline-offset: -4px;
         }
         li:hover {
