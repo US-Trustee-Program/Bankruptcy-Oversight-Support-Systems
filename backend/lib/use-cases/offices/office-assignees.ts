@@ -3,15 +3,9 @@ import { getOfficeAssigneesRepository, getOfficesGateway } from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
+import { OfficeAssignee } from '../gateways.types';
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-USE-CASE';
-
-export type OfficeAssignee = {
-  caseId: string;
-  officeCode: string;
-  userId: string;
-  name: string;
-};
 
 export type CaseClosedEvent = {
   caseId: string;

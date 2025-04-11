@@ -20,6 +20,8 @@ const {
   source,
   addFields,
   additionalField,
+  count,
+  first,
 } = QueryPipeline;
 
 describe('Query Pipeline', () => {
@@ -59,9 +61,6 @@ describe('Query Pipeline', () => {
       const collectionName = 'coll';
 
       const s = source<Foo>(collectionName);
-      // TODO: The fields function could return an array we deconstruct from rather than a record.
-      // That way we could more easily name the deconstructed variables. Think useState hook. Like:
-      //     const [ fooPrimaryKey, theOtherFooField ] = s.fields('uno', 'two');
       const [uno, _] = s.fields('uno', 'two');
 
       expect(uno.source).toEqual(collectionName);
@@ -281,5 +280,33 @@ describe('Query Pipeline', () => {
       foo: 'bar',
     };
     expect(isPaginate(notPagination)).toBeFalsy();
+  });
+
+  describe('accumulators', () => {
+    test('should create a count accumulator', () => {
+      const field = { name: 'total' };
+      const expected = {
+        accumulator: 'COUNT',
+        as: { name: 'total' },
+      };
+
+      const actual = count(field);
+
+      expect(actual).toEqual(expected);
+    });
+
+    test('should create a first accumulator', () => {
+      const field = { name: 'value' };
+      const as = { name: 'firstValue' };
+      const expected = {
+        accumulator: 'FIRST',
+        as: { name: 'firstValue' },
+        field: { name: 'value' },
+      };
+
+      const actual = first(field, as);
+
+      expect(actual).toEqual(expected);
+    });
   });
 });

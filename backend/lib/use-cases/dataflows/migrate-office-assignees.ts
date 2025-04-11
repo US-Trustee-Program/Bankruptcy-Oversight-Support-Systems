@@ -10,15 +10,9 @@ import { CamsError } from '../../common-errors/cams-error';
 import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { isCaseOpen } from '../../../../common/src/cams/cases';
+import { OfficeAssignee } from '../gateways.types';
 
 const MODULE_NAME = 'MIGRATE-OFFICE-ASSIGNEES-USE-CASE';
-
-export type OfficeAssignee = {
-  caseId: string;
-  officeCode: string;
-  userId: string;
-  name: string;
-};
 
 async function migrateAssignments(context: ApplicationContext) {
   const assignmentsRepo = getAssignmentRepository(context);
