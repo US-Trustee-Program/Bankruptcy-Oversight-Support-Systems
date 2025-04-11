@@ -15,6 +15,7 @@ type PillProps = {
   value: string;
   wrapText?: boolean;
   onClick: (value: string) => void;
+  onKeyDown?: (ev: React.KeyboardEvent<HTMLButtonElement>, num: number) => void;
   disabled?: boolean;
 };
 
@@ -23,10 +24,12 @@ function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
   const backgroundColor = props.backgroundColor ?? defaultBackgroundColor;
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  function handleKeyDown(ev: React.KeyboardEvent) {
+  function handleKeyDown(ev: React.KeyboardEvent<HTMLButtonElement>) {
     if (ev.key === 'Enter' || ev.key === ' ') {
       props.onClick(props.value);
       ev.preventDefault();
+    } else if (props.onKeyDown) {
+      props.onKeyDown(ev, 0);
     }
   }
 
