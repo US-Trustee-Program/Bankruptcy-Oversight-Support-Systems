@@ -1,4 +1,4 @@
-import { isCaseClosed, isCaseOpen } from './cases';
+import { getCaseIdParts, isCaseClosed, isCaseOpen } from './cases';
 
 describe('cases common functions tests', () => {
   test('should return true for re-closed case', () => {
@@ -26,5 +26,14 @@ describe('cases common functions tests', () => {
   test('should return false for never closed case', () => {
     expect(isCaseClosed({})).toBe(false);
     expect(isCaseOpen({})).toBe(true);
+  });
+
+  describe('getCaseIdParts', () => {
+    test('should deconstruct a case id into a division code and case number', () => {
+      const caseId = '000-11-22222';
+      const expected = { divisionCode: '000', caseNumber: '11-22222' };
+      const actual = getCaseIdParts(caseId);
+      expect(actual).toEqual(expected);
+    });
   });
 });

@@ -1,4 +1,4 @@
-import CasesDxtrGateway, { getCaseIdParts } from './cases.dxtr.gateway';
+import CasesDxtrGateway from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
@@ -12,15 +12,6 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
 
 const dxtrDatabaseName = 'some-database-name';
-
-describe('getCaseIdParts', () => {
-  test('should deconstruct a case id into a division code and case number', () => {
-    const caseId = '000-11-22222';
-    const expected = { divisionCode: '000', caseNumber: '11-22222' };
-    const actual = getCaseIdParts(caseId);
-    expect(actual).toEqual(expected);
-  });
-});
 
 describe('Test DXTR Gateway', () => {
   let applicationContext;

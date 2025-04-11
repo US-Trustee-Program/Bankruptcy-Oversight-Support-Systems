@@ -4,6 +4,7 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
 import { OfficeAssignee } from '../gateways.types';
+import { getCaseIdParts } from '../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-USE-CASE';
 
@@ -22,7 +23,7 @@ async function handleCaseAssignmentEvent(context: ApplicationContext, event: Cas
     const { caseId, userId, name } = event;
 
     const map = await getDivisionCodeMap(context);
-    const divisionCode = caseId.substring(0, 3);
+    const { divisionCode } = getCaseIdParts(caseId);
 
     const assignee: OfficeAssignee = {
       officeCode: map.get(divisionCode).officeCode,
