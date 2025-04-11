@@ -16,7 +16,12 @@ import { getPetitionInfo } from '../petition-gateway';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CamsError } from '../../../common-errors/cams-error';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '../../../../../common/src/api/search';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../../../common/src/cams/cases';
+import {
+  CaseBasics,
+  CaseDetail,
+  CaseSummary,
+  getCaseIdParts,
+} from '../../../../../common/src/cams/cases';
 import { Party, DebtorAttorney } from '../../../../../common/src/cams/parties';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
@@ -30,13 +35,6 @@ const NOT_FOUND = -1;
 
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 type CaseIdRecord = { caseId: string };
-
-export function getCaseIdParts(caseId: string) {
-  const parts = caseId.split('-');
-  const divisionCode = parts[0];
-  const caseNumber = `${parts[1]}-${parts[2]}`;
-  return { divisionCode, caseNumber };
-}
 
 export default class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
@@ -289,7 +287,9 @@ export default class CasesDxtrGateway implements CasesInterface {
 
       const answer = results['recordset'][0];
 
-      if (!answer) throw new Error('Found gap in the transaction IDs');
+      if (!answer) {
+        throw new Error('Found gap in the transaction IDs');
+      }
 
       const txDate = answer['TX_DATE'];
 
