@@ -44,4 +44,85 @@ describe('office-assignees use case tests', () => {
     expect(caseSpy).toHaveBeenCalledTimes(cases.length);
     expect(createSpy).toHaveBeenCalledTimes(cases.length - 1);
   });
+
+  test('should handle cases where case is not found', async () => {
+    const court = MOCKED_USTP_OFFICES_ARRAY[0];
+    const cases = MockData.buildArray(
+      () =>
+        MockData.getSyncedCase({
+          override: { courtDivisionCode: court.groups[0].divisions[0].divisionCode },
+        }),
+      2,
+    );
+
+    const assignments = cases.map((bCase) => {
+      return MockData.getAttorneyAssignment({ caseId: bCase.caseId });
+    });
+    // Add an assignment for a non-existent case
+    assignments.push(MockData.getAttorneyAssignment({ caseId: 'non-existent-case' }));
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments')
+      .mockResolvedValue(assignments);
+
+    jest
+      .spyOn(MockOfficesGateway.prototype, 'getOffices')
+      .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+
+    const caseSpy = jest
+      .spyOn(MockMongoRepository.prototype, 'getSyncedCase')
+      .mockImplementation((caseId: string) => {
+        const foundCase = cases.find((bCase) => bCase.caseId === caseId);
+        if (!foundCase) {
+          throw new Error('Case not found');
+        }
+        return Promise.resolve(foundCase);
+      });
+
+    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue({});
+
+    const context: ApplicationContext = await createMockApplicationContext();
+    await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
+
+    expect(caseSpy).toHaveBeenCalledTimes(assignments.length);
+    expect(createSpy).toHaveBeenCalledTimes(cases.length);
+  });
+
+  test('should handle errors when creating office assignees', async () => {
+    const court = MOCKED_USTP_OFFICES_ARRAY[0];
+    const cases = MockData.buildArray(
+      () =>
+        MockData.getSyncedCase({
+          override: { courtDivisionCode: court.groups[0].divisions[0].divisionCode },
+        }),
+      2,
+    );
+
+    const assignments = cases.map((bCase) => {
+      return MockData.getAttorneyAssignment({ caseId: bCase.caseId });
+    });
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getAllActiveAssignments')
+      .mockResolvedValue(assignments);
+
+    jest
+      .spyOn(MockOfficesGateway.prototype, 'getOffices')
+      .mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
+
+    jest
+      .spyOn(MockMongoRepository.prototype, 'getSyncedCase')
+      .mockImplementation((caseId: string) =>
+        Promise.resolve(cases.find((bCase) => bCase.caseId === caseId)),
+      );
+
+    const createSpy = jest.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(() => {
+      throw new Error('Failed to create office assignee');
+    });
+
+    const context: ApplicationContext = await createMockApplicationContext();
+    await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
+
+    expect(createSpy).toHaveBeenCalledTimes(cases.length);
+  });
 });
