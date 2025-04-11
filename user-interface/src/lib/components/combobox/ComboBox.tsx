@@ -175,6 +175,18 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setSelections([]);
   }
 
+  const focusInput = () => {
+    filterRef.current?.focus();
+  };
+
+  const focusSingleSelectionPill = () => {
+    if (selections.length > 0) {
+      singleSelectionPillRef.current?.focus();
+    } else {
+      focusInput();
+    }
+  };
+
   function isOutsideClick(ev: MouseEvent) {
     if (comboBoxRef.current && expanded) {
       const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
@@ -388,14 +400,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
     filterRef.current?.focus();
   }
-
-  const focusInput = () => {
-    filterRef.current?.focus();
-  };
-
-  const focusSingleSelectionPill = () => {
-    singleSelectionPillRef.current?.focus();
-  };
 
   // ========== USE EFFECTS ==========
 
