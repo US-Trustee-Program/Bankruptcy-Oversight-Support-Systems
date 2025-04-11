@@ -51,7 +51,7 @@ function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
       onClick={() => props.onClick(props.value)}
       onKeyDown={(ev) => handleKeyDown(ev)}
       tabIndex={0}
-      aria-label={`${props.ariaLabelPrefix} - ${props.label} selected. Click to deselect.`}
+      aria-label={`${props.ariaLabelPrefix ? props.ariaLabelPrefix + ' - ' : ''}${props.label} selected. Click to deselect.`}
       disabled={props.disabled}
       data-value={props.value}
       title={`${props.label}`}
