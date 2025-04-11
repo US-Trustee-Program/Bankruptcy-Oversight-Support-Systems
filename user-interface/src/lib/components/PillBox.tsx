@@ -34,12 +34,16 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
 
     if (newSelections.length > 0 && removedIndex > newSelections.length - 1) {
       const pill = document.querySelector(`#${props.id} button.pill:nth-child(${removedIndex})`);
-      if (pill) (pill as HTMLButtonElement).focus();
+      if (pill) {
+        (pill as HTMLButtonElement).focus();
+      }
     } else {
       const pill = document.querySelector(
         `#${props.id} button.pill:nth-child(${removedIndex + 1})`,
       );
-      if (pill) (pill as HTMLButtonElement).focus();
+      if (pill) {
+        (pill as HTMLButtonElement).focus();
+      }
     }
 
     onSelectionChange(newSelections);
@@ -49,7 +53,9 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   function contains(el: HTMLElement) {
     let isContained = false;
     const pillBox = document.querySelector(`#${props.id}.pill-container`);
-    if (pillBox?.contains(el)) isContained = true;
+    if (pillBox?.contains(el)) {
+      isContained = true;
+    }
 
     return isContained;
   }
