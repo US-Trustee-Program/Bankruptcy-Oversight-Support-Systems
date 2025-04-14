@@ -17,6 +17,7 @@ import GlobalAlert, { GlobalAlertRef } from './lib/components/cams/GlobalAlert/G
 import { UswdsAlertStyle } from './lib/components/uswds/Alert';
 import { AdminScreen } from './admin/AdminScreen';
 import { GoHome } from './lib/components/GoHome';
+import { PresenterWithUseState } from './_presenter/Presenter';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef> | null>(null);
@@ -45,6 +46,7 @@ function App() {
               <Route path="/case-detail/:caseId/*" element={<CaseDetailScreen />}></Route>
               <Route path="/data-verification" element={<DataVerificationScreen />}></Route>
               <Route path="/admin/*" element={<AdminScreen />}></Route>
+              <Route path="/experiment" element={<PresenterWithUseState startCount={10} />}></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>

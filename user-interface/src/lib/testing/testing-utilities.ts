@@ -130,7 +130,7 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   });
 }
 
-export const TestingUtilities = {
+const TestingUtilities = {
   waitFor,
   delay,
   setUser,
