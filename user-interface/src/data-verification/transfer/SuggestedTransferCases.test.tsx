@@ -17,6 +17,7 @@ import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import userEvent from '@testing-library/user-event';
 
 const testOffices: CourtDivisionDetails[] = [
   {
@@ -81,7 +82,9 @@ function findCaseNumberInput(id: string) {
 }
 
 function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
-  if (!caseIdInput) throw Error();
+  if (!caseIdInput) {
+    throw Error();
+  }
 
   fireEvent.change(caseIdInput!, { target: { value } });
   expect(caseIdInput).toHaveValue(value);
@@ -89,9 +92,9 @@ function enterCaseNumber(caseIdInput: Element | null | undefined, value: string)
   return caseIdInput;
 }
 
-function selectItemInCombobox(orderId: string, index: number) {
-  const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li button`);
-  fireEvent.click(courtComboboxItems[index]!);
+async function selectItemInCombobox(orderId: string, index: number) {
+  const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
+  await userEvent.click(courtComboboxItems[index]!);
 }
 
 async function fillCaseNotListedForm(
@@ -117,7 +120,7 @@ async function fillCaseNotListedForm(
   const newCaseCourtSelect = screen.getByTestId(`court-selection-usa-combo-box-${order.id}`);
   expect(newCaseCourtSelect).toBeVisible();
 
-  selectItemInCombobox(order.id, 0);
+  await selectItemInCombobox(order.id, 0);
 
   const caseNumber = getCaseNumber(suggestedCases[0].caseId);
   const input = findCaseNumberInput(order.id);
@@ -299,7 +302,7 @@ describe('SuggestedTransferCases component', () => {
       expect(alert).toHaveClass('visible');
     });
 
-    selectItemInCombobox(order.id, 0);
+    await selectItemInCombobox(order.id, 0);
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-container-validation-not-found');
