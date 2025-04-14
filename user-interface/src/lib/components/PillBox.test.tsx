@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react';
 import PillBox, { PillBoxRef } from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
 import React from 'react';
+import userEvent from '@testing-library/user-event';
 
 describe('Tests for Pill Box', () => {
   let testSelections: ComboOption[] = [];
@@ -116,7 +117,7 @@ describe('Tests for Pill Box', () => {
     expect(pill1).toBeInTheDocument();
     expect(pill2).toBeInTheDocument();
 
-    fireEvent.click(pill2 as HTMLElement);
+    await userEvent.click(pill2 as HTMLElement);
     expect(pill1).toHaveFocus();
     expect(selectionChange).toHaveBeenCalledWith(resultSelections);
   });
