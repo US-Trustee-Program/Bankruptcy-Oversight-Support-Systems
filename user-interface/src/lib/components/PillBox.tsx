@@ -16,10 +16,16 @@ type PillBoxProps = {
   onSelectionChange: (selections: ComboOption[]) => void;
 };
 
+type PillFocus = {
+  shouldFocus: boolean;
+  index: number;
+};
+
 function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   const { onSelectionChange, ariaLabelPrefix, disabled, wrapPills } = props;
 
   const [selections, setSelections] = useState<ComboOption[]>([]);
+  const [pillFocus, setPillFocus] = useState<PillFocus>({ shouldFocus: false, index: 0 });
 
   function onPillClick(value: string) {
     const newSelections: ComboOption[] = [];
@@ -33,17 +39,9 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
     });
 
     if (newSelections.length > 0 && removedIndex > newSelections.length - 1) {
-      const pill = document.querySelector(`#${props.id} button.pill:nth-child(${removedIndex})`);
-      if (pill) {
-        (pill as HTMLButtonElement).focus();
-      }
+      setPillFocus({ shouldFocus: true, index: removedIndex });
     } else {
-      const pill = document.querySelector(
-        `#${props.id} button.pill:nth-child(${removedIndex + 1})`,
-      );
-      if (pill) {
-        (pill as HTMLButtonElement).focus();
-      }
+      setPillFocus({ shouldFocus: true, index: removedIndex + 1 });
     }
 
     onSelectionChange(newSelections);
@@ -68,10 +66,23 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
     setSelections(props.selections);
   }, [props.selections]);
 
+  useEffect(() => {
+    if (pillFocus.shouldFocus) {
+      const pillSpan = document.querySelector(
+        `#${props.id} span.pill-span:nth-child(${pillFocus.index})`,
+      );
+      const pill = pillSpan?.querySelector('button.pill');
+
+      if (pill) {
+        (pill as HTMLButtonElement).focus();
+      }
+    }
+  }, [pillFocus]);
+
   return (
     <div id={props.id} className={`pill-container ${props.className}`} role="list">
       {selections?.map((selection, idx) => (
-        <span role="listitem" key={idx}>
+        <span role="listitem" className="pill-span" key={idx}>
           <Pill
             id={`pill-${props.id}-${idx}`}
             label={selection.label}

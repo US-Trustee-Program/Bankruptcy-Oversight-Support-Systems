@@ -8,6 +8,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
+import userEvent from '@testing-library/user-event';
 
 describe('search screen', () => {
   const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
@@ -70,14 +71,15 @@ describe('search screen', () => {
 
     // Make first search request...
     await testingUtilities.selectComboBoxItem('case-chapter-search', 2);
-    fireEvent.click(expandButton!);
-    fireEvent.click(searchButton);
+    await userEvent.click(expandButton!);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
+      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+
       defaultStateAlert = document.querySelector('#default-state-alert');
       expect(defaultStateAlert).not.toBeInTheDocument();
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
     });
 
     await waitFor(() => {
