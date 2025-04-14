@@ -30,11 +30,13 @@ export function usePresenter(state: Partial<State>): Presenter {
   const [offices, setOffices] = useState<UstpOfficeDetails[]>([]);
 
   const increment = () => {
+    console.log('INCREMENT', count);
     setCount((prevCount) => prevCount + 1);
     setDoBang(handleBang(count + 1));
   };
 
   const decrement = () => {
+    console.log('DECREMENT', count);
     setCount((prevCount) => prevCount - 1);
     setDoBang(handleBang(count - 1));
   };
@@ -61,6 +63,7 @@ export function PresenterWithUseState(props: ViewProps) {
   const { actions, state } = usePresenter({ count: props.startCount });
 
   useEffect(() => {
+    console.log('COUNT CHANGED', state.count);
     actions.getOffices();
   }, [state.count]);
 
