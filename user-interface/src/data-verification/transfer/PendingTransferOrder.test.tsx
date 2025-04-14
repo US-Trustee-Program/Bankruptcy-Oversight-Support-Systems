@@ -121,7 +121,9 @@ describe('PendingTransferOrder component', () => {
       const approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
       expect(approveButton).toBeDisabled();
 
-      if (!case0) throw Error();
+      if (!case0) {
+        throw Error();
+      }
 
       await userEvent.click(case0);
 
@@ -142,7 +144,9 @@ describe('PendingTransferOrder component', () => {
       let approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
       expect(approveButton).toBeDisabled();
 
-      if (!case0) throw Error();
+      if (!case0) {
+        throw Error();
+      }
 
       await userEvent.click(case0);
       const case0RadioBtn = screen.getByTestId('radio-suggested-cases-checkbox-0');
@@ -185,9 +189,9 @@ describe('PendingTransferOrder component', () => {
       };
     }
 
-    function selectItemInCombobox(orderId: string, index: number) {
-      const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li button`);
-      fireEvent.click(courtComboboxItems[index]!);
+    async function selectItemInCombobox(orderId: string, index: number) {
+      const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
+      await userEvent.click(courtComboboxItems[index]!);
     }
 
     function findCaseNumberInput(id: string) {
@@ -197,7 +201,9 @@ describe('PendingTransferOrder component', () => {
     }
 
     function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
-      if (!caseIdInput) throw Error();
+      if (!caseIdInput) {
+        throw Error();
+      }
 
       fireEvent.change(caseIdInput!, { target: { value } });
       expect(caseIdInput).toHaveValue(value);
@@ -246,7 +252,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitForAlert();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       const caseNumber = '24-12345';
       const input = findCaseNumberInput(order.id);
@@ -257,7 +263,7 @@ describe('PendingTransferOrder component', () => {
         approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
         expect(approveButton).toBeEnabled();
       });
-      fireEvent.click(approveButton!);
+      await userEvent.click(approveButton!);
 
       let confirmModal: HTMLElement;
       await waitFor(async () => {
@@ -267,7 +273,7 @@ describe('PendingTransferOrder component', () => {
         expect(confirmModal).toBeInTheDocument();
         expect(confirmModal).toBeVisible();
       });
-      fireEvent.click(confirmModal!);
+      await userEvent.click(confirmModal!);
 
       await waitFor(async () => {
         expect(onOrderUpdate).toHaveBeenCalled();
@@ -299,7 +305,7 @@ describe('PendingTransferOrder component', () => {
       const { onOrderUpdate } = renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -368,7 +374,7 @@ describe('PendingTransferOrder component', () => {
       renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -436,7 +442,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitForAlert();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -482,7 +488,7 @@ describe('PendingTransferOrder component', () => {
 
       await waitForAlert();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       const input = findCaseNumberInput(order.id);
       enterCaseNumber(input, '24-12345');
@@ -524,7 +530,7 @@ describe('PendingTransferOrder component', () => {
       renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       const newUserInput = '24-12345';
       const caseIdInput = findCaseNumberInput(order.id);
@@ -586,7 +592,7 @@ describe('PendingTransferOrder component', () => {
       fireEvent.click(radio);
       await waitForCaseEntryForm();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       let caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
       expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);
@@ -628,7 +634,7 @@ describe('PendingTransferOrder component', () => {
       renderWithProps();
       await waitForCaseEntryForm();
 
-      selectItemInCombobox(order.id, 1);
+      await selectItemInCombobox(order.id, 1);
 
       let caseIdInput = document.querySelector(`input#new-case-input-${order.id}`);
       expect(caseIdInput).toHaveValue(order.docketSuggestedCaseNumber);

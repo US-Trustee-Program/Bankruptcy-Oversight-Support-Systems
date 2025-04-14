@@ -62,6 +62,7 @@ function _PendingTransferOrder(
       ...orderTransfer,
     } as TransferOrder;
 
+    console.log('===============> ' + orderTransfer.newCase!.caseTitle);
     api
       .patchTransferOrderApproval(orderTransfer)
       .then(() => {

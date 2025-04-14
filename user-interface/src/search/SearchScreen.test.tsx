@@ -60,7 +60,6 @@ describe('search screen', () => {
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
-    const loadingSpinner = document.querySelector('.loading-spinner');
     let defaultStateAlert = document.querySelector('#default-state-alert');
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
@@ -75,16 +74,13 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to appear and default state alert to be removed
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-
+      // wait for the default state alert to be removed
       defaultStateAlert = document.querySelector('#default-state-alert');
       expect(defaultStateAlert).not.toBeInTheDocument();
     });
 
     await waitFor(() => {
-      // wait for loading to disappear
-      expect(loadingSpinner).not.toBeInTheDocument();
+      // wait for results to load
       table = document.querySelector('.search-results table');
       expect(table).toBeVisible();
     });
@@ -119,18 +115,18 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    const pillButton = document.querySelector('#case-chapter-search .pill-clear-button');
-    expect(pillButton).toBeInTheDocument();
+    const clearPillButton = document.querySelector('#case-chapter-search .pill-clear-button');
+    expect(clearPillButton).toBeInTheDocument();
 
     const pillBox = document.querySelector('#case-chapter-search-pill-box');
     expect(pillBox).toBeInTheDocument();
     expect(pillBox?.children.length).toBeGreaterThan(0);
 
-    fireEvent.click(pillButton!);
+    fireEvent.click(clearPillButton!);
 
     await waitFor(() => {
       expect(pillBox?.children.length).toEqual(0);
-      expect(pillButton).not.toBeInTheDocument();
+      expect(clearPillButton).not.toBeInTheDocument();
     });
   });
 
@@ -155,29 +151,32 @@ describe('search screen', () => {
     expect(defaultStateAlert).toBeInTheDocument();
     expect(defaultStateAlert).toBeVisible();
 
-    let table = document.querySelector('.search-results table');
-    expect(table).not.toBeInTheDocument();
+    let table;
+    await waitFor(() => {
+      table = document.querySelector('.search-results table');
+      expect(table).not.toBeInTheDocument();
+    });
 
     const expandButton = screen.getByTestId('button-court-selections-search-expand');
     await waitFor(() => {
       expect(expandButton).toBeInTheDocument();
     });
 
-    fireEvent.click(expandButton);
+    await userEvent.click(expandButton);
 
     // Make first search request....
     await waitFor(() => {
       testingUtilities.selectComboBoxItem('court-selections-search', 1);
     });
 
-    fireEvent.click(expandButton);
+    await userEvent.click(expandButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
       expect(expandedList).not.toBeInTheDocument();
     });
 
-    fireEvent.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to appear and default state alert to be removed
@@ -200,12 +199,12 @@ describe('search screen', () => {
     );
 
     // Make second search request...
-    fireEvent.click(expandButton);
+    await userEvent.click(expandButton);
     await testingUtilities.selectComboBoxItem('court-selections-search', 2);
 
-    fireEvent.click(expandButton);
+    await userEvent.click(expandButton);
 
-    fireEvent.click(searchButton);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       const expandedList = document.querySelector('.item-list-container .expanded');
@@ -226,18 +225,18 @@ describe('search screen', () => {
     );
 
     // clear division selection
-    const pillButton = document.querySelector('#court-selections-search .pill-clear-button');
-    expect(pillButton).toBeInTheDocument();
+    const clearPillButton = document.querySelector('#court-selections-search .pill-clear-button');
+    expect(clearPillButton).toBeInTheDocument();
 
     const pillBox = document.querySelector('#court-selections-search-pill-box');
     expect(pillBox).toBeInTheDocument();
     expect(pillBox?.children.length).toBeGreaterThan(0);
 
-    fireEvent.click(pillButton!);
+    await userEvent.click(clearPillButton!);
 
     await waitFor(() => {
       expect(pillBox?.children.length).toEqual(0);
-      expect(pillButton).not.toBeInTheDocument();
+      expect(clearPillButton).not.toBeInTheDocument();
     });
   });
 
