@@ -42,7 +42,9 @@ export function usePresenter(state: Partial<State>): Presenter {
   const getOffices = async () => {
     const response = await Api2.getOffices();
     if (count > 0) {
-      setOffices(response.data.splice(0, count));
+      setOffices(response.data.slice(0, count));
+    } else {
+      setOffices([]);
     }
   };
 

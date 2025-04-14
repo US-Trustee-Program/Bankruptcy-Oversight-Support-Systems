@@ -1,6 +1,15 @@
 import { describe, expect, vi } from 'vitest';
 import { renderHook, act, render, screen } from '@testing-library/react';
 import { PresenterWithUseState, usePresenter } from './Presenter';
+import { Api2 } from '@/lib/models/api2';
+import { UstpOfficeDetails } from '@common/cams/offices';
+
+// Mock Api2
+vi.mock('@/lib/models/api2', () => ({
+  Api2: {
+    getOffices: vi.fn(),
+  },
+}));
 
 // TODO: Move this to test utilities.
 function mockUseState() {
@@ -28,6 +37,38 @@ function mockUseState() {
 vi.mock('react', mockUseState());
 
 describe('usePresenter', () => {
+  const mockOffices: UstpOfficeDetails[] = [
+    {
+      officeCode: '1',
+      officeName: 'Office 1',
+      groups: [],
+      idpGroupName: 'group1',
+      regionId: '1',
+      regionName: 'Region 1',
+    },
+    {
+      officeCode: '2',
+      officeName: 'Office 2',
+      groups: [],
+      idpGroupName: 'group2',
+      regionId: '2',
+      regionName: 'Region 2',
+    },
+    {
+      officeCode: '3',
+      officeName: 'Office 3',
+      groups: [],
+      idpGroupName: 'group3',
+      regionId: '3',
+      regionName: 'Region 3',
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (Api2.getOffices as jest.Mock).mockResolvedValue({ data: mockOffices });
+  });
+
   test('render the component', async () => {
     render(<PresenterWithUseState></PresenterWithUseState>);
     const element = await screen.findByTestId('theCount');
@@ -75,5 +116,48 @@ describe('usePresenter', () => {
     });
 
     expect(result.current.state.count).toEqual(1);
+  });
+
+  test('should fetch offices when count is greater than 0', async () => {
+    const { result } = renderHook(() => usePresenter({ count: 1 }));
+
+    await act(async () => {
+      await result.current.actions.getOffices();
+    });
+
+    expect(Api2.getOffices).toHaveBeenCalled();
+    expect(result.current.state.offices).toEqual([mockOffices[0]]);
+  });
+
+  test('should not fetch offices when count is 0', async () => {
+    const { result } = renderHook(() => usePresenter({ count: 0 }));
+
+    await act(async () => {
+      await result.current.actions.getOffices();
+    });
+
+    expect(Api2.getOffices).toHaveBeenCalled();
+    expect(result.current.state.offices).toEqual([]);
+  });
+
+  test('should fetch correct number of offices based on count', async () => {
+    const { result } = renderHook(() => usePresenter({ count: 2 }));
+
+    await act(async () => {
+      await result.current.actions.getOffices();
+    });
+
+    expect(Api2.getOffices).toHaveBeenCalled();
+    expect(result.current.state.offices).toEqual(mockOffices.slice(0, 2));
+  });
+
+  test('should handle doBang state correctly', () => {
+    const { result } = renderHook(() => usePresenter({ count: 9 }));
+
+    act(() => {
+      result.current.actions.increment();
+    });
+
+    expect(result.current.state.doBang).toBe(true);
   });
 });
