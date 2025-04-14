@@ -1,13 +1,18 @@
 import Button from '@/lib/components/uswds/Button';
-import { useState } from 'react';
+import { Api2 } from '@/lib/models/api2';
+import { UstpOfficeDetails } from '@common/cams/offices';
+import { useEffect, useState } from 'react';
 
 type State = {
   count: number;
+  doBang: boolean;
+  offices: UstpOfficeDetails[];
 };
 
 type Actions = {
   increment: () => void;
   decrement: () => void;
+  getOffices: () => void;
 };
 
 type Presenter = {
@@ -17,16 +22,31 @@ type Presenter = {
 
 export function usePresenter(state: Partial<State>): Presenter {
   console.log('RENDER PresenterWithUseState usePresenter');
+  const handleBang = (value: number) => {
+    return value % 10 === 0;
+  };
   const [count, setCount] = useState<number>(state.count ?? 0);
+  const [doBang, setDoBang] = useState<boolean>(handleBang(state.count ?? 0));
+  const [offices, setOffices] = useState<UstpOfficeDetails[]>([]);
 
   const increment = () => {
     setCount((prevCount) => prevCount + 1);
-  };
-  const decrement = () => {
-    setCount((prevCount) => prevCount - 1);
+    setDoBang(handleBang(count + 1));
   };
 
-  return { state: { count }, actions: { increment, decrement } };
+  const decrement = () => {
+    setCount((prevCount) => prevCount - 1);
+    setDoBang(handleBang(count - 1));
+  };
+
+  const getOffices = async () => {
+    const response = await Api2.getOffices();
+    if (count > 0) {
+      setOffices(response.data.splice(0, count));
+    }
+  };
+
+  return { state: { count, doBang, offices }, actions: { increment, decrement, getOffices } };
 }
 
 type ViewProps = {
@@ -38,11 +58,21 @@ export function PresenterWithUseState(props: ViewProps) {
 
   const { actions, state } = usePresenter({ count: props.startCount });
 
+  useEffect(() => {
+    actions.getOffices();
+  }, [state.count]);
+
   return (
     <>
       <div data-testId="theCount">{`${state.count}`}</div>
+      <div data-testId="theBang">{state.doBang ? 'BANG!' : 'wimper'}</div>
       <Button onClick={actions.decrement}> - </Button>
       <Button onClick={actions.increment}> + </Button>
+      <ul>
+        {state.offices.map((office: UstpOfficeDetails) => (
+          <li key={office.officeCode}>{office.officeName}</li>
+        ))}
+      </ul>
     </>
   );
 }
