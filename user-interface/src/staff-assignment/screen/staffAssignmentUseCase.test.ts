@@ -46,6 +46,7 @@ function useStaffAssignmentControlsMock(): StaffAssignmentControls {
   const filterRef = {
     current: {
       refresh: () => {},
+      focus: () => {},
     },
   };
 
