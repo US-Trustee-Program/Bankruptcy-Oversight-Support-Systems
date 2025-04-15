@@ -22,7 +22,6 @@ interface StaffAssignmentControls {
   infoModalRef: React.RefObject<ModalRefType>;
   assignmentModalRef: RefObject<AssignAttorneyModalRef>;
   filterRef: RefObject<StaffAssignmentFilterRef>;
-  refreshFilter: (ref: RefObject<StaffAssignmentFilterRef>) => void;
 }
 
 interface StaffAssignmentViewModel {
@@ -56,6 +55,7 @@ interface StaffAssignmentUseCase {
     user: CamsUser,
     filter?: StaffAssignmentScreenFilter,
   ): CasesSearchPredicate;
+  refreshFilter: () => void;
 }
 
 type StaffAssignmentScreenViewProps = {

@@ -1,5 +1,5 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { Store } from './staffAssignmentFilter.types';
+import { Controls, Store } from './staffAssignmentFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -22,9 +22,33 @@ describe('staff assignment filter use case tests', () => {
     setOfficeAssignees: vi.fn(),
     officeAssigneesError: false,
     setOfficeAssigneesError: vi.fn(),
+    filterAssigneeCallback: null,
+    setFilterAssigneeCallback: vi.fn(),
+    focusOnRender: false,
+    setFocusOnRender: vi.fn(),
+  };
+  const comboBoxRef = {
+    current: {
+      setValue: (_options: ComboOption[]) => {},
+      getValue: () => [
+        {
+          value: '',
+          label: '',
+          selected: false,
+          hidden: false,
+        },
+      ],
+      clearValue: () => {},
+      disable: (_value: boolean) => {},
+      focusInput: () => {},
+      focusSingleSelectionPill: () => {},
+    },
+  };
+  const mockControls: Controls = {
+    assigneesFilterRef: comboBoxRef,
   };
 
-  const useCase = staffAssignmentFilterUseCase(mockStore);
+  const useCase = staffAssignmentFilterUseCase(mockStore, mockControls);
 
   beforeEach(() => {
     const session = MockData.getCamsSession();

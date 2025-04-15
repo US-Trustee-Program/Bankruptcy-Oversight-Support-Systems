@@ -91,14 +91,10 @@ export function useStaffAssignmentControlsReact(): StaffAssignmentControls {
   const infoModalRef = useRef<ModalRefType>(null);
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const filterRef = useRef<StaffAssignmentFilterRef>(null);
-  const refreshFilter = (ref: React.RefObject<StaffAssignmentFilterRef>) => {
-    ref.current?.refresh();
-  };
 
   return {
     assignmentModalRef,
     infoModalRef,
     filterRef,
-    refreshFilter,
   };
 }
