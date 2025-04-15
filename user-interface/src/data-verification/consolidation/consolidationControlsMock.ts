@@ -53,6 +53,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       ],
       clearValue: () => {},
       disable: (value: boolean) => {},
+      focusInput: () => {},
+      focusSingleSelectionPill: () => {},
     },
   };
   const leadCaseNumberRef = {

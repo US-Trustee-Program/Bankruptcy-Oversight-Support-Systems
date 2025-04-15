@@ -12,17 +12,15 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { RefObject } from 'react';
-import {
-  StaffAssignmentFilterRef,
-  StaffAssignmentScreenFilter,
-} from '../filters/staffAssignmentFilter.types';
+import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
+
+const refreshSpy = vi.fn();
 
 function useStaffAssignmentControlsMock(): StaffAssignmentControls {
   const infoModalRef = {
     current: {
-      show: () => {},
-      hide: () => {},
+      show: vi.fn(),
+      hide: vi.fn(),
       buttons: {
         current: {
           disableSubmitButton: (_state: boolean) => {},
@@ -33,8 +31,8 @@ function useStaffAssignmentControlsMock(): StaffAssignmentControls {
 
   const assignmentModalRef = {
     current: {
-      show: () => {},
-      hide: () => {},
+      show: vi.fn(),
+      hide: vi.fn(),
       buttons: {
         current: {
           disableSubmitButton: (_state: boolean) => {},
@@ -45,18 +43,15 @@ function useStaffAssignmentControlsMock(): StaffAssignmentControls {
 
   const filterRef = {
     current: {
-      refresh: () => {},
-      focus: () => {},
+      refresh: refreshSpy,
+      focus: vi.fn(),
     },
   };
-
-  const refreshFilter = (_ref: RefObject<StaffAssignmentFilterRef>) => {};
 
   return {
     assignmentModalRef,
     infoModalRef,
     filterRef,
-    refreshFilter,
   };
 }
 
@@ -72,9 +67,10 @@ describe('staff assignment use case tests', () => {
     staffAssignmentFilter: undefined,
     setStaffAssignmentFilter: vi.fn(),
   };
-  const controls = useStaffAssignmentControlsMock();
 
-  const useCase = staffAssignmentUseCase(mockStore, controls);
+  const mockControls = useStaffAssignmentControlsMock();
+
+  const useCase = staffAssignmentUseCase(mockStore, mockControls);
 
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
@@ -92,13 +88,11 @@ describe('staff assignment use case tests', () => {
   });
 
   test('should call refresh on filterRef when assignees length is greater than 0', async () => {
-    const refreshSpy = vi.spyOn(controls, 'refreshFilter');
     useCase.handleAssignmentChange(assignees);
-    expect(refreshSpy).toHaveBeenCalledWith(controls.filterRef);
+    expect(refreshSpy).toHaveBeenCalled();
   });
 
   test('should not call refresh on filterRef when assignees length is 0', async () => {
-    const refreshSpy = vi.spyOn(controls, 'refreshFilter');
     useCase.handleAssignmentChange([]);
     expect(refreshSpy).not.toHaveBeenCalled();
   });

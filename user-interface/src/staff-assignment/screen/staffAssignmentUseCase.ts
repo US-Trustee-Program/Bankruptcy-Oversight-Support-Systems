@@ -37,9 +37,13 @@ const staffAssignmentUseCase = (
     controls.filterRef.current?.focus();
   };
 
+  const refreshFilter = () => {
+    controls.filterRef.current?.refresh();
+  };
+
   const handleAssignmentChange = async (assignees: CamsUserReference[]) => {
     if (assignees.length > 0) {
-      controls.refreshFilter(controls.filterRef);
+      refreshFilter();
     }
   };
 
@@ -77,6 +81,7 @@ const staffAssignmentUseCase = (
     getPredicateByUserContextWithFilter,
     handleAssignmentChange,
     handleFilterAssignee,
+    refreshFilter,
   };
 };
 

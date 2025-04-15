@@ -78,6 +78,7 @@ const expectPillToHaveFocus = async (pillBox: Element | null, index: number) => 
 
 describe('test cams combobox', () => {
   let defaultOptions: ComboOption[] = [];
+  const updateFilterMock = vi.fn();
 
   const renderWithProps = (props?: Partial<ComboBoxProps>, ref?: LegacyRef<ComboBoxRef>) => {
     defaultOptions = getDefaultOptions();
@@ -88,6 +89,7 @@ describe('test cams combobox', () => {
       ariaLabelPrefix: 'test-combobox',
       options: defaultOptions,
       onUpdateSelection: (_options: ComboOption[]) => {},
+      onUpdateFilter: updateFilterMock,
       multiSelect: true,
     };
 
@@ -353,7 +355,7 @@ describe('test cams combobox', () => {
     expect(isDropdownClosed()).toBeFalsy();
   });
 
-  test('Up and down arrow cursor keys should traverse the list and return to the input field, in either direction, skipping list items with the hidden class', async () => {
+  test('Up and down arrow cursor keys should traverse the list. In multi-select mode, focus should return to the input field when using Up Arrow once the user reaches the top of the list. All list items with the hidden class should be skipped.', async () => {
     const options = [
       { label: 'option1', value: 'option1', selected: false },
       { label: 'option2', value: 'option2', selected: false, hidden: true },
@@ -390,6 +392,42 @@ describe('test cams combobox', () => {
 
     await userEvent.keyboard('{ArrowUp}');
     expect(inputField).toHaveFocus();
+  });
+
+  test('In single-select mode, focus should return to the pill when using Up Arrow once the user reaches the top of the list and there is a selection.', async () => {
+    const options = [
+      { label: 'option1', value: 'option1', selected: false },
+      { label: 'option2', value: 'option2', selected: false },
+    ];
+    renderWithProps({ options, multiSelect: false });
+
+    const inputField = await getFocusedComboInputField(comboboxId);
+    inputField!.focus();
+    await userEvent.keyboard('{ArrowDown}');
+
+    const listItems = document.querySelectorAll('li');
+    expect(listItems[0]).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowDown}');
+    expect(listItems[1]).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
+    expect(inputField).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.keyboard('{ArrowDown}');
+    expect(listItems[1]).toHaveFocus();
+
+    await userEvent.keyboard('{Enter}');
+    expect(listItems[1]).toHaveClass('selected');
+    const pill = screen.getByTestId(`pill-pill-${comboboxId}`);
+    expect(pill).toBeInTheDocument();
+
+    await userEvent.keyboard('{ArrowUp}');
+    await userEvent.keyboard('{ArrowUp}');
+
+    expect(pill).toHaveFocus();
   });
 
   test('Pressing Enter key while focused on an element in the dropdown list should select that option, and add a pill for that selected item.', async () => {
@@ -460,14 +498,21 @@ describe('test cams combobox', () => {
     expect(listItem).toHaveFocus();
     await userEvent.click(listItem);
 
+    const pill = screen.getByTestId(`pill-pill-${comboboxId}`);
+    await vi.waitFor(() => {
+      expect(isDropdownClosed()).toBeTruthy();
+      expect(pill).toHaveFocus();
+    });
+
     await userEvent.keyboard('{ArrowDown}');
     listItem = document.querySelectorAll('li')[0];
     expect(listItem).toHaveFocus();
 
     await userEvent.keyboard('{Escape}');
-    expect(isDropdownClosed()).toBeTruthy();
-    const pill = screen.getByTestId(`pill-pill-${comboboxId}`);
-    expect(pill).toHaveFocus();
+    await vi.waitFor(() => {
+      expect(isDropdownClosed()).toBeTruthy();
+      expect(pill).toHaveFocus();
+    });
   });
 
   test('Typing text into the input field should filter the dropdown items below the input field.', async () => {
@@ -960,5 +1005,12 @@ describe('test cams combobox', () => {
     await waitFor(() => {
       expect(onPillSelection).toHaveBeenCalled();
     });
+  });
+
+  test('onUpdateFilter should be called when input content is changed', async () => {
+    renderWithProps();
+    const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
+    await userEvent.type(inputField!, 'test');
+    expect(updateFilterMock).toHaveBeenCalledWith('test');
   });
 });

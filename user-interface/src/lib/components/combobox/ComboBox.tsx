@@ -89,6 +89,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(options);
   const [currentListItem, setCurrentListItem] = useState<string | undefined>(undefined);
+  const [shouldFocusSingleSelectPill, setShouldFocusSingleSelectPill] = useState<boolean>(false);
 
   // ========== REFS ==========
 
@@ -108,14 +109,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     filterDropdown('');
   }
 
-  function closeDropdown(shouldFocusOnInput: boolean = true) {
+  function closeDropdown(shouldFocusOnInput: boolean = true, freshSelections: ComboOption[] = []) {
     setExpandIcon('expand_more');
     setExpanded(false);
     setExpandedClass('closed');
     clearFilter();
     if (shouldFocusOnInput) {
-      if (!multiSelect && selections.length > 0) {
-        singleSelectionPillRef.current?.focus();
+      if (!multiSelect && (selections.length > 0 || freshSelections.length > 0)) {
+        setShouldFocusSingleSelectPill(true);
       } else {
         filterRef.current?.focus();
       }
@@ -291,7 +292,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
 
     if (multiSelect !== true) {
-      closeDropdown(true);
+      closeDropdown(true, newSelections);
     }
   }
 
@@ -318,7 +319,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         setCurrentListItem(undefined);
         break;
       case 'Escape':
-        closeDropdown();
+        closeDropdown(true);
         setCurrentListItem(undefined);
         ev.preventDefault();
         break;
@@ -445,6 +446,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       onEnable();
     }
   }, [comboboxDisabled]);
+
+  useEffect(() => {
+    if (shouldFocusSingleSelectPill && singleSelectionPillRef.current) {
+      singleSelectionPillRef.current.focus();
+      setShouldFocusSingleSelectPill(false);
+    }
+  }, [shouldFocusSingleSelectPill]);
 
   useImperativeHandle(ref, () => ({
     setValue,
