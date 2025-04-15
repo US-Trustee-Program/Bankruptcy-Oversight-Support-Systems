@@ -27,4 +27,25 @@ describe('Test pill', () => {
 
     expect(clickFn).toHaveBeenCalledWith('test-value');
   });
+
+  test('should call onKeyDown event when a key other than Enter or Space is typed', async () => {
+    const keyDownFn = vi.fn((_ev: unknown) => {});
+    const clickFn = vi.fn((_value: string) => {});
+
+    render(
+      <Pill
+        id="test"
+        label={'Test pill'}
+        value={'test-value'}
+        onKeyDown={keyDownFn}
+        onClick={clickFn}
+      ></Pill>,
+    );
+
+    const pill = screen.getByTestId('pill-test');
+    fireEvent.keyDown(pill, { key: 'A' });
+
+    expect(keyDownFn).toHaveBeenCalled();
+    expect(clickFn).not.toHaveBeenCalled();
+  });
 });
