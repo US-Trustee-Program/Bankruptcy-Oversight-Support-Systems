@@ -12,7 +12,9 @@ export function handleHighlight(
     const browserApi = _window as unknown as WindowExperimental;
 
     // API is not supported in this browser.
-    if (!browserApi.CSS.highlights) return;
+    if (!browserApi.CSS.highlights) {
+      return;
+    }
 
     // Clear all highlighting if we don't have a search string.
     if (searchString.length < minSearchStringLength) {
@@ -22,7 +24,9 @@ export function handleHighlight(
 
     // Apply highlighting to the dom nodes.
     const domNode = _document.getElementById(elementId);
-    if (!domNode) return;
+    if (!domNode) {
+      return;
+    }
 
     const treeWalker = _document.createTreeWalker(domNode, NodeFilter.SHOW_TEXT);
     const allTextNodes = [];
@@ -39,7 +43,9 @@ export function handleHighlight(
       let startPos = 0;
       while (startPos < text.length) {
         const index = text.indexOf(searchString, startPos);
-        if (index === -1) break;
+        if (index === -1) {
+          break;
+        }
         indices.push(index);
         startPos = index + searchString.length;
       }
@@ -50,7 +56,9 @@ export function handleHighlight(
         range.setEnd(el, index + searchString.length);
         return range;
       });
-      if (innerRanges.length) accumulator.push(...innerRanges);
+      if (innerRanges.length) {
+        accumulator.push(...innerRanges);
+      }
       return accumulator;
     }, [] as Range[]);
 
