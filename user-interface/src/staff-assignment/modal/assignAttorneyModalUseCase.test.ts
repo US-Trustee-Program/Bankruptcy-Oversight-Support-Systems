@@ -1,5 +1,5 @@
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { Controls, Store } from './assignAttorneyModal.types';
+import { AssignAttorneyModalControls, AssignAttorneyModalStore } from './assignAttorneyModal.types';
 import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
 import { ChangeEvent } from 'react';
 
@@ -34,7 +34,7 @@ const buildBoundingClientRect = (props: RectProps = {}): DOMRect => {
   };
 };
 
-function useAssignAttorneyModalControlsMock(): Controls {
+function useAssignAttorneyModalControlsMock(): AssignAttorneyModalControls {
   const modalRef: React.RefObject<ModalRefType> = {
     current: {
       show: () => {},
@@ -61,7 +61,7 @@ function useAssignAttorneyModalControlsMock(): Controls {
 }
 
 const mockControls = useAssignAttorneyModalControlsMock();
-const mockStore: Store = {
+const mockStore: AssignAttorneyModalStore = {
   bCase: null,
   setBCase: vi.fn(),
   initialDocumentBodyStyle: '',

@@ -5,15 +5,15 @@ import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
 import {
-  Store,
-  Controls,
+  AssignAttorneyModalStore,
+  AssignAttorneyModalControls,
   AssignAttorneyModalUseCase,
   AssignAttorneyModalOpenProps,
 } from './assignAttorneyModal.types';
 
 const assignAttorneyModalUseCase = (
-  store: Store,
-  controls: Controls,
+  store: AssignAttorneyModalStore,
+  controls: AssignAttorneyModalControls,
 ): AssignAttorneyModalUseCase => {
   const attorneyIsInCheckList = (attorney: AttorneyUser): boolean => {
     const result = store.checkListValues.find((theAttorney) => theAttorney.id === attorney.id);
