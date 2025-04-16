@@ -3,6 +3,20 @@ import { vi } from 'vitest';
 import { handleHighlight } from './highlight-api';
 
 describe('CSS Highlight API integration', () => {
+  const defaultTestDom = new JSDOM(`
+    <html>
+    <head></head>
+    <body>
+      <div id='searchable-docket'>
+        <div>
+          <div>This is some summary text.</div>
+          <div>This is docket entry full text.</div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+
   let highlightConstructorMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -20,23 +34,9 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should clear highlights if no search term is passed', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>This is some summary text.</div>
-            <div>This is docket entry full text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
     const setMock = vi.fn();
     const clearMock = vi.fn();
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
         set: setMock,
@@ -77,21 +77,7 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should not add highlights if browser does not support CSS.highlights', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>This is some summary text.</div>
-            <div>This is docket entry full text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: undefined,
     } as unknown as typeof window.CSS;
@@ -104,23 +90,9 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should clear highlights if search string is shorter than minSearchStringLength', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>This is some summary text.</div>
-            <div>This is docket entry full text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
     const setMock = vi.fn();
     const clearMock = vi.fn();
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
         set: setMock,
@@ -137,23 +109,9 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should handle multiple matches in text nodes', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>Docket Docket Docket</div>
-            <div>This is docket entry full text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
     const setMock = vi.fn();
     const clearMock = vi.fn();
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
         set: setMock,
@@ -169,21 +127,7 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should handle errors gracefully', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>This is some summary text.</div>
-            <div>This is docket entry full text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
         set: () => {
@@ -202,23 +146,9 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should handle null or undefined text node content', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>This is some summary text.</div>
-            <div>This is docket entry full text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
     const setMock = vi.fn();
     const clearMock = vi.fn();
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
         set: setMock,
@@ -246,23 +176,9 @@ describe('CSS Highlight API integration', () => {
   });
 
   test('should handle text nodes with no matches', () => {
-    const dom = new JSDOM(`
-      <html>
-      <head></head>
-      <body>
-        <div id='searchable-docket'>
-          <div>
-            <div>This is some summary text.</div>
-            <div>This is some other text.</div>
-          </div>
-        </div>
-      </body>
-      </html>
-      `);
-
     const setMock = vi.fn();
     const clearMock = vi.fn();
-    const { window } = dom;
+    const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
         set: setMock,
