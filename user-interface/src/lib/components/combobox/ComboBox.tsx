@@ -354,7 +354,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             focusAndHandleScroll(ev, li);
             setCurrentListItem(li?.id);
           }
-        } else if (index === 1) {
+        } else {
           let element;
           if (selections.length && !multiSelect) {
             element = singleSelectionPillRef.current;
