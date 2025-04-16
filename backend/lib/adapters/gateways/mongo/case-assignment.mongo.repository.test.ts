@@ -116,6 +116,7 @@ describe('case assignment repo tests', () => {
         ),
       );
     });
+
     test('should handle error on getAllActiveAssignments', async () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() => repo.getAllActiveAssignments()).rejects.toThrow(

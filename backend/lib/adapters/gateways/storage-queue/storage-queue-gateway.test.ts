@@ -2,7 +2,7 @@ import { InvocationContextExtraOutputs } from '@azure/functions';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import StorageQueueGateway from './storage-queue-gateway';
 
-describe('storage queue gatwway', () => {
+describe('storage queue gateway', () => {
   describe('using', () => {
     const { using } = StorageQueueGateway;
 
