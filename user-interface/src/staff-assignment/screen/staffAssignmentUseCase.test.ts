@@ -1,5 +1,5 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { Controls, Store } from './StaffAssignment.types';
+import { StaffAssignmentControls, StaffAssignmentStore } from './StaffAssignment.types';
 import staffAssignmentUseCase from './staffAssignmentUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
 import * as commonUsers from '@common/cams/users';
@@ -18,7 +18,7 @@ import {
   StaffAssignmentScreenFilter,
 } from '../filters/staffAssignmentFilter.types';
 
-function useStaffAssignmentControlsMock(): Controls {
+function useStaffAssignmentControlsMock(): StaffAssignmentControls {
   const infoModalRef = {
     current: {
       show: () => {},
@@ -67,7 +67,7 @@ describe('staff assignment use case tests', () => {
   let mockFeatureFlags: FeatureFlagSet;
 
   const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
-  const mockStore: Store = {
+  const mockStore: StaffAssignmentStore = {
     staffAssignmentFilter: undefined,
     setStaffAssignmentFilter: vi.fn(),
   };

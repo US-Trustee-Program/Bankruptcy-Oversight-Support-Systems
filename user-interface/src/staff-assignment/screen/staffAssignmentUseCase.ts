@@ -10,9 +10,16 @@ import {
 } from '@common/api/search';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
-import { Controls, StaffAssignmentUseCase, Store } from './StaffAssignment.types';
+import {
+  StaffAssignmentControls,
+  StaffAssignmentUseCase,
+  StaffAssignmentStore,
+} from './StaffAssignment.types';
 
-const staffAssignmentUseCase = (store: Store, controls: Controls): StaffAssignmentUseCase => {
+const staffAssignmentUseCase = (
+  store: StaffAssignmentStore,
+  controls: StaffAssignmentControls,
+): StaffAssignmentUseCase => {
   const handleFilterAssignee = (assignees: ComboOption[]) => {
     if (assignees[0]) {
       const assignee: CamsUserReference = {

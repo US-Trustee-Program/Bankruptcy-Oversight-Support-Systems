@@ -14,11 +14,15 @@ import {
 import { useRef, useState } from 'react';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
-import { Controls, Store, ViewModel } from './StaffAssignment.types';
+import {
+  StaffAssignmentControls,
+  StaffAssignmentStore,
+  StaffAssignmentViewModel,
+} from './StaffAssignment.types';
 
 const StaffAssignmentScreen = () => {
-  const store: Store = useStaffAssignmentStoreReact();
-  const controls: Controls = useStaffAssignmentControlsReact();
+  const store: StaffAssignmentStore = useStaffAssignmentStoreReact();
+  const controls: StaffAssignmentControls = useStaffAssignmentControlsReact();
   const useCase = staffAssignmentUseCase(store, controls);
 
   const infoModalId = 'info-modal';
@@ -46,7 +50,7 @@ const StaffAssignmentScreen = () => {
     },
   };
 
-  const viewModel: ViewModel = {
+  const viewModel: StaffAssignmentViewModel = {
     screenTitle: 'Staff Assignment',
 
     assignmentModalId,
@@ -83,7 +87,7 @@ export function useStaffAssignmentStoreReact() {
   };
 }
 
-export function useStaffAssignmentControlsReact(): Controls {
+export function useStaffAssignmentControlsReact(): StaffAssignmentControls {
   const infoModalRef = useRef<ModalRefType>(null);
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const filterRef = useRef<StaffAssignmentFilterRef>(null);
