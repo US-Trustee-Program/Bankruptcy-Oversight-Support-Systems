@@ -37,9 +37,8 @@ const StaffAssignmentScreen = () => {
 
   const featureFlags = useFeatureFlags();
   const session = LocalStorage.getSession();
-  const hasValidPermission =
-    session?.user?.roles?.includes(CamsRole.CaseAssignmentManager) ?? false;
-  const hasAssignedOffices = (session?.user?.offices && session?.user?.offices.length > 0) ?? false;
+  const hasValidPermission = !!session?.user?.roles?.includes(CamsRole.CaseAssignmentManager);
+  const hasAssignedOffices = !!(session?.user?.offices && session?.user?.offices.length > 0);
 
   const infoModalActionButtonGroup = {
     modalId: infoModalId,
