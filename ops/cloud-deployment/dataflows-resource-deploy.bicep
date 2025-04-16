@@ -108,7 +108,6 @@ resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
     name: 'EP1'
     tier: 'ElasticPremium'
     family: 'EP'
-    capacity: 10
   }
   kind: 'elastic'
   properties: {
@@ -126,7 +125,7 @@ resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 }
 
 //Storage Account Resources
-resource dataflowsFunctonStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+resource dataflowsFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: dataflowsFunctionStorageName
   location: location
   tags: {
@@ -147,6 +146,9 @@ module dataflowsQueues './lib/storage/storage-queues.bicep' = {
   params: {
     storageAccountName: dataflowsFunctionStorageName
   }
+  dependsOn: [
+    dataflowsFunctionStorageAccount
+  ]
 }
 
 //Function App Resources
@@ -336,7 +338,7 @@ var dataflowsApplicationSettings = concat(
   [
     {
       name: 'AzureWebJobsStorage'
-      value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctonStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctonStorageAccount.listKeys().keys[0].value}'
+      value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
     }
   ],
   baseApplicationSettings,
