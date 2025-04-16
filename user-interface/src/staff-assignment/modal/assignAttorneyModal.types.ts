@@ -9,7 +9,7 @@ import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { RefObject } from 'react';
 
-export interface Store {
+export interface AssignAttorneyModalStore {
   bCase: CaseBasics | null;
   setBCase(val: CaseBasics | null): void;
   initialDocumentBodyStyle: string;
@@ -28,12 +28,12 @@ export interface Store {
   setGlobalAlertError(val: string | undefined): void;
 }
 
-export interface Controls {
+export interface AssignAttorneyModalControls {
   modalRef: RefObject<ModalRefType>;
   tableContainerRef: RefObject<HTMLDivElement>;
 }
 
-export interface ViewModel {
+export interface AssignAttorneyModalViewModel {
   actionButtonGroup: SubmitCancelBtnProps;
   alertMessage: AlertDetails | undefined;
   attorneyIsInCheckList(val: AttorneyUser): boolean;
@@ -94,5 +94,5 @@ export interface AssignAttorneyModalProps {
 }
 
 export type AssignAttorneyModalViewProps = {
-  viewModel: ViewModel;
+  viewModel: AssignAttorneyModalViewModel;
 };
