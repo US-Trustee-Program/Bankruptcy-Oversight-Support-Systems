@@ -27,7 +27,7 @@ export function useStateAndActions() {
     },
   });
 
-  function handleRoleSelection(sub: string) {
+  const handleRoleSelection = (sub: string) => {
     const newState = { ...state };
     const role = MockUsers.find((role) => role.sub === sub);
     if (role) {
@@ -35,13 +35,15 @@ export function useStateAndActions() {
       newState.form.submitDisabled = false;
     }
     setState(newState);
-  }
+  };
 
-  async function handleLogin() {
+  const handleLogin = async () => {
     const newState = { ...state };
 
     const { protocol, server, port, basePath } = apiConfiguration;
-    if (!state.selectedRole) return;
+    if (!state.selectedRole) {
+      return;
+    }
 
     const portString = port ? ':' + port : '';
     const issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
@@ -56,7 +58,9 @@ export function useStateAndActions() {
       body: JSON.stringify({ sub: state.selectedRole.sub }),
     });
     const payload = await response.json();
-    if (!payload.data.value) return;
+    if (!payload.data.value) {
+      return;
+    }
 
     newState.session = {
       accessToken: payload.data.value,
@@ -67,7 +71,7 @@ export function useStateAndActions() {
     };
 
     setState(newState);
-  }
+  };
 
   return {
     state,

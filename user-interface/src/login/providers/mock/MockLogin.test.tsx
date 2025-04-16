@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { MockLogin } from './MockLogin';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { vi } from 'vitest';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
@@ -19,6 +20,22 @@ describe('MockLogin', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  test('should show modal when no session exists', async () => {
+    render(
+      <BrowserRouter>
+        <MockLogin user={null}>
+          <div>Hello World!!</div>
+        </MockLogin>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const modal = screen.getByTestId('modal-login-modal');
+      expect(modal).toBeInTheDocument();
+      expect(modal).toHaveAttribute('aria-labelledby', 'login-modal-heading');
+    });
   });
 
   test('should report a bad mock issuer to the console', async () => {
@@ -78,5 +95,54 @@ describe('MockLogin', () => {
       expect(childDiv).toBeInTheDocument();
       expect(childDiv).toHaveTextContent(childText);
     });
+  });
+
+  test('should handle failed login response', async () => {
+    const fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockImplementation(
+        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
+          return Promise.resolve({
+            ok: true,
+            json: vi.fn().mockResolvedValue({ data: { value: null } }),
+          } as unknown as Response);
+        },
+      );
+
+    render(
+      <BrowserRouter>
+        <MockLogin user={null}>
+          <div>Hello World!!</div>
+        </MockLogin>
+      </BrowserRouter>,
+    );
+
+    testingUtilities.selectRadio('role-0');
+
+    const loginButton = screen.queryByTestId('button-login-modal-submit-button');
+    expect(loginButton).toBeInTheDocument();
+    fireEvent.click(loginButton!);
+
+    expect(fetchSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.queryByTestId('child-div')).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not attempt login without selected role', async () => {
+    render(
+      <BrowserRouter>
+        <MockLogin user={null}>
+          <div>Hello World!!</div>
+        </MockLogin>
+      </BrowserRouter>,
+    );
+
+    const loginButton = screen.queryByTestId('button-login-modal-submit-button');
+    expect(loginButton).toBeInTheDocument();
+    expect(loginButton).toBeDisabled();
+
+    fireEvent.click(loginButton!);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
