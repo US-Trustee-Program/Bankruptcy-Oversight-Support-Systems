@@ -266,7 +266,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   function handleDropdownItemSelection(option: ComboOption, isSelected: boolean) {
     const newSelections: ComboOption[] = [];
     let removed = false;
-    if (isSelected === true || option.selected === true) {
+    if (isSelected || option.selected) {
       option.selected = false;
       removed = true;
     } else {
@@ -370,7 +370,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         break;
       case 'Enter':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          handleDropdownItemSelection(option as ComboOption, isSelected ?? false);
+          handleDropdownItemSelection(option as ComboOption, !!isSelected);
           setCurrentListItem(undefined);
           ev.preventDefault();
         }
