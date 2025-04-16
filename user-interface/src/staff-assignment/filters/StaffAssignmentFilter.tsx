@@ -1,9 +1,9 @@
 import {
-  Controls,
+  StaffAssignmentFilterControls,
   StaffAssignmentFilterProps,
   StaffAssignmentFilterRef,
-  Store,
-  ViewModel,
+  StaffAssignmentFilterStore,
+  StaffAssignmentFilterViewModel,
 } from './staffAssignmentFilter.types';
 import { CamsUserReference } from '../../../../common/dist/cams/users';
 import StaffAssignmentFilterView from './StaffAssignmentFilterView';
@@ -17,8 +17,8 @@ const _StaffAssignmentFilter = (
   props: StaffAssignmentFilterProps,
   ref: React.Ref<StaffAssignmentFilterRef>,
 ) => {
-  const store: Store = useStaffAssignmentFilterStoreReact();
-  const controls: Controls = useStaffAssignmentFilterControlsReact();
+  const store: StaffAssignmentFilterStore = useStaffAssignmentFilterStoreReact();
+  const controls: StaffAssignmentFilterControls = useStaffAssignmentFilterControlsReact();
   const useCase = staffAssignmentFilterUseCase(store, controls);
   const globalAlert = useGlobalAlert();
 
@@ -48,7 +48,7 @@ const _StaffAssignmentFilter = (
     }
   }, []);
 
-  const viewModel: ViewModel = {
+  const viewModel: StaffAssignmentFilterViewModel = {
     officeAssignees: store.officeAssignees,
     officeAssigneesError: store.officeAssigneesError,
     handleFilterAssignee: useCase.handleFilterAssignee,

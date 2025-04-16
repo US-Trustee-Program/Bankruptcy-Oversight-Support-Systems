@@ -4,7 +4,7 @@ import { ResponseBody } from '@common/api/response';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 
-interface Store {
+interface StaffAssignmentFilterStore {
   filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
   setFilterAssigneeCallback(val: ((assignees: ComboOption[]) => void) | null): void;
   focusOnRender: boolean;
@@ -15,15 +15,15 @@ interface Store {
   setOfficeAssigneesError(val: boolean): void;
 }
 
-interface Controls {
+interface StaffAssignmentFilterControls {
   assigneesFilterRef: React.RefObject<ComboBoxRef>;
 }
 
 type StaffAssignmentFilterViewProps = {
-  viewModel: ViewModel;
+  viewModel: StaffAssignmentFilterViewModel;
 };
 
-interface ViewModel {
+interface StaffAssignmentFilterViewModel {
   officeAssignees: CamsUserReference[];
   officeAssigneesError: boolean;
   assigneesFilterRef: React.RefObject<ComboBoxRef>;
@@ -57,9 +57,9 @@ interface StaffAssignmentFilterUseCase {
 }
 
 export type {
-  Store,
-  Controls,
-  ViewModel,
+  StaffAssignmentFilterStore,
+  StaffAssignmentFilterControls,
+  StaffAssignmentFilterViewModel,
   StaffAssignmentFilterViewProps,
   StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,

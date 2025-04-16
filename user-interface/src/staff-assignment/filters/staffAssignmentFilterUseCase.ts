@@ -1,4 +1,8 @@
-import { Controls, StaffAssignmentFilterUseCase, Store } from './staffAssignmentFilter.types';
+import {
+  StaffAssignmentFilterControls,
+  StaffAssignmentFilterUseCase,
+  StaffAssignmentFilterStore,
+} from './staffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
@@ -7,8 +11,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const staffAssignmentFilterUseCase = (
-  store: Store,
-  controls: Controls,
+  store: StaffAssignmentFilterStore,
+  controls: StaffAssignmentFilterControls,
 ): StaffAssignmentFilterUseCase => {
   const assigneesToComboOptions = (officeAssignees: CamsUserReference[]): ComboOption[] => {
     const comboOptions: ComboOption[] = [];
