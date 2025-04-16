@@ -1,5 +1,5 @@
 import Actions from '@common/cams/actions';
-import { CallbackProps } from '../modal/assignAttorneyModal.types';
+import { AssignAttorneyModalCallbackProps } from '../modal/assignAttorneyModal.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseBasics } from '@common/cams/cases';
@@ -15,7 +15,7 @@ type State = {
 };
 
 type Actions = {
-  updateAssignmentsCallback: (props: CallbackProps) => Promise<void>;
+  updateAssignmentsCallback: (props: AssignAttorneyModalCallbackProps) => Promise<void>;
 };
 
 function useStateActions(initialState: State): {
@@ -26,7 +26,7 @@ function useStateActions(initialState: State): {
 
   const [state, setState] = useState<State>(initialState);
 
-  async function updateAssignmentsCallback(props: CallbackProps) {
+  async function updateAssignmentsCallback(props: AssignAttorneyModalCallbackProps) {
     const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
 
     if (status === 'error') {
