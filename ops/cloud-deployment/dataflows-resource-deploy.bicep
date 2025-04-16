@@ -108,11 +108,6 @@ resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
     name: 'EP1'
     tier: 'ElasticPremium'
     family: 'EP'
-    skuCapacity: {
-      default: 0
-      maximum: 10
-      minimum: 0
-    }
   }
   kind: 'elastic'
   properties: {
