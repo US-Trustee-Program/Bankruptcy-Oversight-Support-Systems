@@ -146,6 +146,9 @@ module dataflowsQueues './lib/storage/storage-queues.bicep' = {
   params: {
     storageAccountName: dataflowsFunctionStorageName
   }
+  dependsOn: [
+    dataflowsFunctonStorageAccount
+  ]
 }
 
 //Function App Resources
