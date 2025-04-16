@@ -108,6 +108,26 @@ describe('SearchResults component tests', () => {
     });
   });
 
+  test('should show the no results alert when no results at all are received', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue();
+
+    renderWithProps();
+
+    let table = document.querySelector('#search-results > table');
+    expect(table).not.toBeInTheDocument();
+    let noResultsAlert = document.querySelector('#no-results-alert');
+    expect(noResultsAlert).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      table = document.querySelector('.search-results table');
+      expect(table).not.toBeInTheDocument();
+      noResultsAlert = document.querySelector('#no-results-alert');
+      expect(noResultsAlert).toBeInTheDocument();
+      expect(noResultsAlert).toBeVisible();
+    });
+  });
+
   test('should show the error alert when an error is encountered', async () => {
     vi.spyOn(Api2, 'searchCases').mockRejectedValue({
       error: { message: 'SomeError' },

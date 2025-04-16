@@ -49,15 +49,6 @@ describe('StaffAssignmentScreen', () => {
     vi.restoreAllMocks();
   });
 
-  // TODO: We were wanting the real ref to call a mock version of the refreshFilter function
-  // but so far have been unable to do so.
-  test('should call refresh on filter ref when refreshFilter is called', async () => {
-    //const controls = useStaffAssignmentControlsReact();
-    //const refreshSpy = vi.spyOn(controls, 'refreshFilter');
-    //controls.refreshFilter(filterRefMock);
-    //expect(filterRefMock.current.focus).toHaveBeenCalled();
-  });
-
   test('screen should contain staff assignment filters', async () => {
     const expectedAssignments = MockData.getStaffAssignee();
     vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({
