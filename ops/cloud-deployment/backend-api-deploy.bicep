@@ -103,7 +103,11 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
     name: 'EP1'
     tier: 'ElasticPremium'
     family: 'EP'
-    capacity: 10
+    skuCapacity: {
+      default: 1
+      maximum: 10
+      minimum: 1
+    }
   }
   kind: 'elastic'
   properties: {
