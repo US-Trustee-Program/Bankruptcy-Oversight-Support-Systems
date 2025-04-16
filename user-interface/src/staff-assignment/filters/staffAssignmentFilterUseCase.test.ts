@@ -1,5 +1,8 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { Controls, Store } from './staffAssignmentFilter.types';
+import {
+  StaffAssignmentFilterControls,
+  StaffAssignmentFilterStore,
+} from './staffAssignmentFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -17,7 +20,7 @@ describe('staff assignment filter use case tests', () => {
   let setOfficeAssigneesSpy: MockInstance<(val: CamsUserReference[]) => void>;
   let setOfficeAssigneesErrorSpy: MockInstance<(val: boolean) => void>;
   const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
-  const mockStore: Store = {
+  const mockStore: StaffAssignmentFilterStore = {
     officeAssignees: assignees,
     setOfficeAssignees: vi.fn(),
     officeAssigneesError: false,
@@ -44,7 +47,7 @@ describe('staff assignment filter use case tests', () => {
       focusSingleSelectionPill: () => {},
     },
   };
-  const mockControls: Controls = {
+  const mockControls: StaffAssignmentFilterControls = {
     assigneesFilterRef: comboBoxRef,
   };
 
