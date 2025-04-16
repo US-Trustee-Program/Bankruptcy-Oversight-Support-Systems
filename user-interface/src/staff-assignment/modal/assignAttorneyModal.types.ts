@@ -22,8 +22,8 @@ export interface Store {
   setIsUpdatingAssignment(val: boolean): void;
   attorneyList: AttorneyUser[];
   setAttorneyList(val: AttorneyUser[]): void;
-  submissionCallback: CallbackFunction | null;
-  setSubmissionCallback(val: CallbackFunction | null): void;
+  submissionCallback: AssignAttorneyModalCallbackFunction | null;
+  setSubmissionCallback(val: AssignAttorneyModalCallbackFunction | null): void;
   globalAlertError: string | undefined;
   setGlobalAlertError(val: string | undefined): void;
 }
@@ -59,13 +59,13 @@ export interface AssignAttorneyModalUseCase {
   handleTab(ev: React.KeyboardEvent, isVisible: boolean, modalId: string): void;
   hide(): void;
   onOpen(): void;
-  show(showProps: ModalOpenProps | undefined): void;
+  show(showProps: AssignAttorneyModalOpenProps | undefined): void;
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
   submitValues(callback: (val: CamsUserReference[]) => void): void;
   updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
 }
 
-export interface CallbackProps {
+export interface AssignAttorneyModalCallbackProps {
   bCase: CaseBasics;
   selectedAttorneyList: AttorneyUser[];
   previouslySelectedList: AttorneyUser[];
@@ -73,16 +73,16 @@ export interface CallbackProps {
   apiResult: object;
 }
 
-export type CallbackFunction = (props: CallbackProps) => void;
+export type AssignAttorneyModalCallbackFunction = (props: AssignAttorneyModalCallbackProps) => void;
 
-export interface ModalOpenProps {
+export interface AssignAttorneyModalOpenProps {
   bCase: CaseBasics;
-  callback: CallbackFunction;
+  callback: AssignAttorneyModalCallbackFunction;
   openModalButtonRef?: React.Ref<OpenModalButtonRef>;
 }
 
 export interface AssignAttorneyModalRef {
-  show: (showProps: ModalOpenProps | undefined) => void;
+  show: (showProps: AssignAttorneyModalOpenProps | undefined) => void;
   hide: () => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
 }

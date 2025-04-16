@@ -8,7 +8,7 @@ import {
   Store,
   Controls,
   AssignAttorneyModalUseCase,
-  ModalOpenProps,
+  AssignAttorneyModalOpenProps,
 } from './assignAttorneyModal.types';
 
 const assignAttorneyModalUseCase = (
@@ -87,7 +87,7 @@ const assignAttorneyModalUseCase = (
     freezeBackground();
   };
 
-  const show = (showProps: ModalOpenProps | undefined) => {
+  const show = (showProps: AssignAttorneyModalOpenProps | undefined) => {
     if (showProps && showProps.bCase) {
       store.setBCase(showProps.bCase);
       if (showProps.bCase.assignments) {

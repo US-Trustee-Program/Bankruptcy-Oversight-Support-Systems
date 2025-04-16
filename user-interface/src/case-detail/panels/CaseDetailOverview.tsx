@@ -7,7 +7,7 @@ import { consolidationTypeMap } from '@/lib/utils/labels';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
 import {
-  CallbackProps,
+  AssignAttorneyModalCallbackProps,
   AssignAttorneyModalRef,
 } from '@/staff-assignment/modal/assignAttorneyModal.types';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
@@ -25,7 +25,7 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 export interface CaseDetailOverviewProps {
   caseDetail: CaseDetail;
   showReopenDate: boolean;
-  onCaseAssignment: (props: CallbackProps) => void;
+  onCaseAssignment: (props: AssignAttorneyModalCallbackProps) => void;
 }
 
 export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
@@ -38,7 +38,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
     return sortByDateReverse(a.orderDate, b.orderDate);
   }
 
-  function handleCaseAssignment(props: CallbackProps) {
+  function handleCaseAssignment(props: AssignAttorneyModalCallbackProps) {
     onCaseAssignment(props);
     assignmentModalRef.current?.hide();
     openModalButtonRef.current?.focus();

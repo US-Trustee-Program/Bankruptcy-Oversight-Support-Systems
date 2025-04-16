@@ -6,7 +6,10 @@ import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Actions from '@common/cams/actions';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
-import { AssignAttorneyModalRef, CallbackProps } from '../modal/assignAttorneyModal.types';
+import {
+  AssignAttorneyModalRef,
+  AssignAttorneyModalCallbackProps,
+} from '../modal/assignAttorneyModal.types';
 import Internal from './StaffAssignmentRow.internal';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -34,7 +37,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   const openAssignmentsModalButtonRef = useRef<OpenModalButtonRef>(null);
   const { state, actions } = Internal.useStateActions(initialState);
 
-  function handleAssignmentModalCallback(props: CallbackProps) {
+  function handleAssignmentModalCallback(props: AssignAttorneyModalCallbackProps) {
     actions.updateAssignmentsCallback(props).then(() => {
       modalRef.current?.hide();
     });

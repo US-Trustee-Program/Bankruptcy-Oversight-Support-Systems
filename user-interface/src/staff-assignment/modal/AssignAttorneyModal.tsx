@@ -11,7 +11,7 @@ import {
   AssignAttorneyModalProps,
   AssignAttorneyModalRef,
   ViewModel,
-  CallbackFunction,
+  AssignAttorneyModalCallbackFunction,
   Controls,
 } from './assignAttorneyModal.types';
 
@@ -95,7 +95,8 @@ export function useAssignAttorneyModalStoreReact() {
   const [previouslySelectedList, setPreviouslySelectedList] = useState<AttorneyUser[]>([]);
   const [isUpdatingAssignment, setIsUpdatingAssignment] = useState<boolean>(false);
   const [attorneyList, setAttorneyList] = useState<AttorneyUser[]>([]);
-  const [submissionCallback, setSubmissionCallback] = useState<CallbackFunction | null>(null);
+  const [submissionCallback, setSubmissionCallback] =
+    useState<AssignAttorneyModalCallbackFunction | null>(null);
   const [globalAlertError, setGlobalAlertError] = useState<string | undefined>(undefined);
 
   return {
