@@ -11,21 +11,17 @@ async function toggleDropdown(id: string) {
   const toggleButton = document.querySelector(`#${id}-expand`);
   document.querySelector('ul');
 
-  if (!toggleButton) {
-    throw new Error('Toggle button could not be found');
-  }
+  expect(toggleButton).toBeInTheDocument();
 
-  await userEvent.click(toggleButton);
+  await userEvent.click(toggleButton!);
 }
 
 async function getFocusedComboInputField(id: string): Promise<HTMLInputElement> {
   const inputField = document.querySelector(`#${id}-combo-box-input`);
 
-  if (!inputField) {
-    throw new Error('ComboBox Input field could not be found');
-  }
+  expect(inputField).toBeInTheDocument();
 
-  await userEvent.click(inputField);
+  await userEvent.click(inputField!);
   return inputField as HTMLInputElement;
 }
 
@@ -50,8 +46,6 @@ async function selectComboItem(num: number) {
   const listItems = document.querySelectorAll('li');
   await waitFor(async () => {
     await userEvent.click(listItems![num]);
-    // eslint-disable-next-line testing-library/no-debugging-utils
-    screen.debug(listItems[num]);
     expect(listItems![num]).toHaveClass('selected');
   });
 }
