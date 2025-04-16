@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import * as factory from '../../factory';
 import OfficeAssigneesUseCase from './office-assignees';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OfficeAssigneesRepository } from '../gateways.types';
-import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 
 describe('OfficeAssigneesUseCase', () => {
   let mockContext: ApplicationContext;
@@ -50,138 +50,54 @@ describe('OfficeAssigneesUseCase', () => {
   });
 
   describe('handleCaseAssignmentEvent', () => {
-    it('should create a case assignment when unassignedOn is not provided', async () => {
+    test('should create a case assignment when unassignedOn is not provided', async () => {
       // Setup
-      const mockOffices: UstpOfficeDetails[] = [
-        {
-          officeCode: 'TEST',
-          officeName: 'Test Office',
-          groups: [
-            {
-              groupDesignator: 'TEST',
-              divisions: [
-                {
-                  divisionCode: '000',
-                  court: { courtId: 'TEST' },
-                  courtOffice: { courtOfficeCode: 'TEST', courtOfficeName: 'Test Office' },
-                },
-              ],
-            },
-          ],
-          idpGroupName: 'Test Group',
-          regionId: 'TEST',
-          regionName: 'Test Region',
-        },
-      ];
-      mockGateway.getOffices.mockResolvedValue(mockOffices);
+      mockGateway.getOffices.mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
 
-      const event: CaseAssignment = {
-        documentType: 'ASSIGNMENT',
-        caseId: '000-11-22222',
-        userId: 'user1',
-        name: 'Test User',
-        role: 'ATTORNEY',
-        assignedOn: '2024-03-20T00:00:00Z',
-        updatedOn: '2024-03-20T00:00:00Z',
-        updatedBy: { id: 'system', name: 'System' },
-      };
+      const event = MockData.getAttorneyAssignment({
+        unassignedOn: undefined,
+        caseId: '812-11-22222', // Using a valid division code from MOCKED_USTP_OFFICES_ARRAY
+      });
 
       // Execute
       await OfficeAssigneesUseCase.handleCaseAssignmentEvent(mockContext, event);
 
       // Verify
       expect(mockRepo.create).toHaveBeenCalledWith({
-        officeCode: 'TEST',
-        caseId: '000-11-22222',
-        userId: 'user1',
-        name: 'Test User',
+        officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+        caseId: event.caseId,
+        userId: event.userId,
+        name: event.name,
       });
       expect(mockRepo.deleteMany).not.toHaveBeenCalled();
     });
 
-    it('should delete a case assignment when unassignedOn is provided', async () => {
+    test('should delete a case assignment when unassignedOn is provided', async () => {
       // Setup
-      const mockOffices: UstpOfficeDetails[] = [
-        {
-          officeCode: 'TEST',
-          officeName: 'Test Office',
-          groups: [
-            {
-              groupDesignator: 'TEST',
-              divisions: [
-                {
-                  divisionCode: '000',
-                  court: { courtId: 'TEST' },
-                  courtOffice: { courtOfficeCode: 'TEST', courtOfficeName: 'Test Office' },
-                },
-              ],
-            },
-          ],
-          idpGroupName: 'Test Group',
-          regionId: 'TEST',
-          regionName: 'Test Region',
-        },
-      ];
-      mockGateway.getOffices.mockResolvedValue(mockOffices);
+      mockGateway.getOffices.mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
 
-      const event: CaseAssignment = {
-        documentType: 'ASSIGNMENT',
-        caseId: '000-11-22222',
-        userId: 'user1',
-        name: 'Test User',
-        role: 'ATTORNEY',
-        assignedOn: '2024-03-20T00:00:00Z',
-        unassignedOn: '2024-03-20T00:00:00Z',
-        updatedOn: '2024-03-20T00:00:00Z',
-        updatedBy: { id: 'system', name: 'System' },
-      };
+      const event = MockData.getAttorneyAssignment({
+        caseId: '812-11-22222', // Using a valid division code from MOCKED_USTP_OFFICES_ARRAY
+      });
 
       // Execute
       await OfficeAssigneesUseCase.handleCaseAssignmentEvent(mockContext, event);
 
       // Verify
       expect(mockRepo.deleteMany).toHaveBeenCalledWith({
-        caseId: '000-11-22222',
-        userId: 'user1',
+        caseId: event.caseId,
+        userId: event.userId,
       });
       expect(mockRepo.create).not.toHaveBeenCalled();
     });
 
-    it('should throw an error when office mapping fails', async () => {
+    test('should throw an error when office mapping fails', async () => {
       // Setup
-      const mockOffices: UstpOfficeDetails[] = [
-        {
-          officeCode: 'TEST',
-          officeName: 'Test Office',
-          groups: [
-            {
-              groupDesignator: 'TEST',
-              divisions: [
-                {
-                  divisionCode: '999',
-                  court: { courtId: 'TEST' },
-                  courtOffice: { courtOfficeCode: 'TEST', courtOfficeName: 'Test Office' },
-                },
-              ],
-            },
-          ],
-          idpGroupName: 'Test Group',
-          regionId: 'TEST',
-          regionName: 'Test Region',
-        },
-      ];
-      mockGateway.getOffices.mockResolvedValue(mockOffices);
+      mockGateway.getOffices.mockResolvedValue(MOCKED_USTP_OFFICES_ARRAY);
 
-      const event: CaseAssignment = {
-        documentType: 'ASSIGNMENT',
-        caseId: '000-11-22222',
-        userId: 'user1',
-        name: 'Test User',
-        role: 'ATTORNEY',
-        assignedOn: '2024-03-20T00:00:00Z',
-        updatedOn: '2024-03-20T00:00:00Z',
-        updatedBy: { id: 'system', name: 'System' },
-      };
+      const event = MockData.getAttorneyAssignment({
+        caseId: '999-11-22222', // Using a case ID that won't match any office
+      });
 
       // Execute and Verify
       await expect(
@@ -191,10 +107,10 @@ describe('OfficeAssigneesUseCase', () => {
   });
 
   describe('handleCaseClosedEvent', () => {
-    it('should delete all assignments for a closed case', async () => {
+    test('should delete all assignments for a closed case', async () => {
       // Setup
       const event = {
-        caseId: '000-11-22222',
+        caseId: MockData.randomCaseId(),
       };
 
       // Execute
@@ -202,14 +118,14 @@ describe('OfficeAssigneesUseCase', () => {
 
       // Verify
       expect(mockRepo.deleteMany).toHaveBeenCalledWith({
-        caseId: '000-11-22222',
+        caseId: event.caseId,
       });
     });
 
-    it('should throw an error when deletion fails', async () => {
+    test('should throw an error when deletion fails', async () => {
       // Setup
       const event = {
-        caseId: '000-11-22222',
+        caseId: MockData.randomCaseId(),
       };
       (mockRepo.deleteMany as jest.Mock).mockRejectedValue(new Error('Deletion failed'));
 
