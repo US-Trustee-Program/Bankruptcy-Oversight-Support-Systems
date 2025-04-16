@@ -10,9 +10,9 @@ import { AssignAttorneyModalView } from './AssignAttorneyModalView';
 import {
   AssignAttorneyModalProps,
   AssignAttorneyModalRef,
-  ViewModel,
+  AssignAttorneyModalViewModel,
   AssignAttorneyModalCallbackFunction,
-  Controls,
+  AssignAttorneyModalControls,
 } from './assignAttorneyModal.types';
 
 function _AssignAttorneyModal(
@@ -63,7 +63,7 @@ function _AssignAttorneyModal(
     }
   }, [store.globalAlertError]);
 
-  const viewModel: ViewModel = {
+  const viewModel: AssignAttorneyModalViewModel = {
     actionButtonGroup,
     alertMessage: props.alertMessage,
     attorneyIsInCheckList: useCase.attorneyIsInCheckList,
@@ -119,7 +119,7 @@ export function useAssignAttorneyModalStoreReact() {
   };
 }
 
-export function useAssignAttorneyModalControlsReact(): Controls {
+export function useAssignAttorneyModalControlsReact(): AssignAttorneyModalControls {
   const modalRef = useRef<ModalRefType>(null);
   const tableContainerRef = useRef<HTMLTableSectionElement | null>(null);
 
