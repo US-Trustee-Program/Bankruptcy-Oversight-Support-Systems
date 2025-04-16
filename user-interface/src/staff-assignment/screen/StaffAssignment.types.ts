@@ -13,19 +13,19 @@ import { CamsUser, CamsUserReference } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import { RefObject, ReactNode } from 'react';
 
-interface Store {
+interface StaffAssignmentStore {
   staffAssignmentFilter: StaffAssignmentScreenFilter | undefined;
   setStaffAssignmentFilter(val: StaffAssignmentScreenFilter | undefined): void;
 }
 
-interface Controls {
+interface StaffAssignmentControls {
   infoModalRef: React.RefObject<ModalRefType>;
   assignmentModalRef: RefObject<AssignAttorneyModalRef>;
   filterRef: RefObject<StaffAssignmentFilterRef>;
   refreshFilter: (ref: RefObject<StaffAssignmentFilterRef>) => void;
 }
 
-interface ViewModel {
+interface StaffAssignmentViewModel {
   assignmentModalId: string;
   assignmentModalRef: React.Ref<AssignAttorneyModalRef> | undefined;
   featureFlags: FeatureFlagSet;
@@ -59,7 +59,13 @@ interface StaffAssignmentUseCase {
 }
 
 type StaffAssignmentScreenViewProps = {
-  viewModel: ViewModel;
+  viewModel: StaffAssignmentViewModel;
 };
 
-export type { Store, Controls, ViewModel, StaffAssignmentUseCase, StaffAssignmentScreenViewProps };
+export type {
+  StaffAssignmentStore,
+  StaffAssignmentControls,
+  StaffAssignmentViewModel,
+  StaffAssignmentUseCase,
+  StaffAssignmentScreenViewProps,
+};
