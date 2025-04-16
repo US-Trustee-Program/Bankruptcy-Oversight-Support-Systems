@@ -1,5 +1,5 @@
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { FlexibleTransferOrderAction, TransferOrder } from '@common/cams/orders';
+import { TransferOrder } from '@common/cams/orders';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe } from 'vitest';
 import {
@@ -310,8 +310,6 @@ describe('PendingTransferOrder component', () => {
         status: 'approved',
       };
 
-      const foo = patchSpy.mock.calls[0][0];
-      console.log((foo as FlexibleTransferOrderAction).newCase?.caseTitle);
       expect(patchSpy).toHaveBeenCalledWith(expectedInput);
     });
 
