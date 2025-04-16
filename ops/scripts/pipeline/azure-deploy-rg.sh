@@ -13,7 +13,7 @@
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 requiredParams=("databaseResourceGroupName" "networkResourceGroupName" "webappResourceGroupName" "isBranchDeployment")
-requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropiate Azure resource tagging, these should be required when isBranchDeployment == true
+requiredBranchDeployParams=("branchName" "branchHashId") # To setup the appropriate Azure resource tagging, these should be required when isBranchDeployment == true
 
 function validation_func() {
     local location=$1
