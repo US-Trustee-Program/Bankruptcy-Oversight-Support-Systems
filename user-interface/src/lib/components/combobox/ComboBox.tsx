@@ -94,6 +94,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== REFS ==========
 
   const comboBoxRef = useRef(null);
+  const comboBoxListRef = useRef<HTMLUListElement>(null);
   const pillBoxRef = useRef(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const singleSelectionPillRef = useRef<HTMLButtonElement>(null);
@@ -152,21 +153,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       }
     });
     setFilteredOptions(newOptions);
-  }
-
-  function focusAndHandleScroll(ev: React.KeyboardEvent, el: Element) {
-    const listContainer = document.querySelector(`#${comboBoxId} .item-list-container`);
-
-    if (listContainer) {
-      const list = listContainer.querySelector('ul');
-      if (list) {
-        (el as HTMLElement).focus({
-          preventScroll: !elementIsVerticallyScrollable(listContainer, list),
-        });
-        ev.preventDefault();
-        ev.stopPropagation();
-      }
-    }
   }
 
   function setValue(values: ComboOption[]) {
@@ -245,6 +231,36 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return classNames.join(' ');
   }
 
+  const navigateList = (
+    direction: 'up' | 'down',
+    currentIndex: number,
+    listRef: React.RefObject<HTMLUListElement>,
+  ) => {
+    const list = listRef.current;
+    const listContainer = list?.parentElement;
+    if (!(list && listContainer)) {
+      return;
+    }
+
+    let targetIndex = currentIndex;
+    const total = list.children.length;
+    do {
+      targetIndex =
+        direction === 'down' ? Math.min(targetIndex + 1, total - 1) : Math.max(targetIndex - 1, 0);
+    } while (
+      targetIndex >= 0 &&
+      targetIndex < total &&
+      list.children[targetIndex].classList.contains('hidden')
+    );
+
+    const target = list.children[targetIndex] as HTMLElement;
+    if (target) {
+      const preventScroll = !elementIsVerticallyScrollable(listContainer, list);
+      target.focus({ preventScroll });
+      return target.id;
+    }
+  };
+
   // ========== HANDLERS ==========
 
   function handleClearAllClick() {
@@ -310,9 +326,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     option?: ComboOption,
     isSelected?: boolean,
   ) {
-    const list = document.querySelector(`#${comboBoxId} .item-list-container ul`);
-    const input = filterRef.current;
-
     switch (ev.key) {
       case 'Tab':
         closeDropdown(false);
@@ -323,51 +336,37 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         setCurrentListItem(undefined);
         ev.preventDefault();
         break;
-      case 'ArrowDown':
+      case 'ArrowDown': {
+        ev.preventDefault();
+        ev.stopPropagation();
         openDropdown();
-        if (list && index < filteredOptions.length) {
-          while (
-            list.children[index].classList.contains('hidden') &&
-            index < filteredOptions.length
-          ) {
-            ++index;
-          }
-        }
-        if (index >= 0 && index < filteredOptions.length) {
-          const li = list?.children[index];
-          if (list && li) {
-            focusAndHandleScroll(ev, li);
-            setCurrentListItem(li?.id);
-          }
+        const newId = navigateList('down', index - 1, comboBoxListRef);
+        if (newId) {
+          setCurrentListItem(newId);
         }
         break;
-      case 'ArrowUp':
+      }
+      case 'ArrowUp': {
+        ev.preventDefault();
+        ev.stopPropagation();
         openDropdown();
-        if (list && index > 0) {
-          while (index > 1 && list.children[index - 2].classList.contains('hidden')) {
-            --index;
-          }
-        }
-        if (index > 1 && index <= filteredOptions.length) {
-          const li = list?.children[index - 2];
-          if (list && li) {
-            focusAndHandleScroll(ev, li);
-            setCurrentListItem(li?.id);
-          }
-        } else {
-          let element;
-          if (selections.length && !multiSelect) {
-            element = singleSelectionPillRef.current;
-          } else if (input) {
-            element = input;
-          }
+        if (index <= 1) {
+          // Depending on context, move focus to input or single select pill
+          const element =
+            selections.length && !multiSelect ? singleSelectionPillRef.current : filterRef.current;
           if (element) {
-            focusAndHandleScroll(ev, element);
-            setCurrentListItem(undefined);
+            element.focus();
           }
+          setCurrentListItem(undefined);
           closeDropdown(true);
+        } else {
+          const newId = navigateList('up', index - 1, comboBoxListRef);
+          if (newId) {
+            setCurrentListItem(newId);
+          }
         }
         break;
+      }
       case 'Enter':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           handleDropdownItemSelection(option as ComboOption, !!isSelected);
@@ -574,6 +573,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               id={`${comboBoxId}-item-list`}
               role="listbox"
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
+              ref={comboBoxListRef}
             >
               {filteredOptions.map((option, idx) => (
                 <li
