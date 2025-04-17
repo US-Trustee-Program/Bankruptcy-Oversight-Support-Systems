@@ -67,7 +67,10 @@ async function migrateAssignments(context: ApplicationContext) {
   context.logger.info(MODULE_NAME, 'Office assignees migration results', summary);
 }
 
-async function createOfficeAssignee(context: ApplicationContext, assignee: OfficeAssignee) {
+async function createOfficeAssignee(
+  context: ApplicationContext,
+  assignee: OfficeAssignee,
+): Promise<boolean> {
   const officeAssigneesRepo = getOfficeAssigneesRepository(context);
   let error: CamsError;
   try {
