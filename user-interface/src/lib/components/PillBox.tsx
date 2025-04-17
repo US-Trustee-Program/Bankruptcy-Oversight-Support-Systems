@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ComboOption } from './combobox/ComboBox';
 import { Pill } from './Pill';
 
@@ -23,6 +23,7 @@ type PillFocus = {
 
 function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   const { onSelectionChange, ariaLabelPrefix, disabled, wrapPills } = props;
+  const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const [selections, setSelections] = useState<ComboOption[]>([]);
   const [pillFocus, setPillFocus] = useState<PillFocus>({ shouldFocus: false, index: 0 });
@@ -68,13 +69,11 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
 
   useEffect(() => {
     if (pillFocus.shouldFocus) {
-      const pillSpan = document.querySelector(
-        `#${props.id} span.pill-span:nth-child(${pillFocus.index})`,
-      );
-      const pill = pillSpan?.querySelector('button.pill');
+      const targetIndex = pillFocus.index - 1;
+      const pill = pillRefs.current[targetIndex];
 
       if (pill) {
-        (pill as HTMLButtonElement).focus();
+        pill.focus();
       }
     }
   }, [pillFocus]);
@@ -91,6 +90,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
             onClick={onPillClick}
             disabled={disabled}
             wrapText={wrapPills}
+            ref={(el: HTMLButtonElement | null) => (pillRefs.current[idx] = el)}
           ></Pill>
         </span>
       ))}
