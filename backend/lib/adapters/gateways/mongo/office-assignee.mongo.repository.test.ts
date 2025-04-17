@@ -36,7 +36,13 @@ describe('case assignment repo tests', () => {
 
     const actual = await repo.search(predicate);
 
-    expect(find).toHaveBeenCalled();
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        condition: 'EQUALS',
+        leftOperand: { name: 'caseId' },
+        rightOperand: '000-11-22222',
+      }),
+    );
     expect(actual).toEqual(assignees);
   });
 
@@ -51,7 +57,41 @@ describe('case assignment repo tests', () => {
     const officeCode = 'TEST-OFFICE';
     const actual = await repo.getDistinctAssigneesByOffice(officeCode);
 
-    expect(aggregate).toHaveBeenCalled();
+    expect(aggregate).toHaveBeenCalledWith({
+      stages: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'officeCode' },
+          rightOperand: 'TEST-OFFICE',
+          stage: 'MATCH',
+        },
+        {
+          accumulators: [
+            {
+              accumulator: 'FIRST',
+              as: { name: 'name' },
+              field: { name: 'name' },
+            },
+          ],
+          groupBy: [
+            expect.objectContaining({
+              name: 'userId',
+              source: 'office-assignment',
+            }),
+          ],
+          stage: 'GROUP',
+        },
+        {
+          fields: [
+            {
+              direction: 'DESCENDING',
+              field: { name: 'name' },
+            },
+          ],
+          stage: 'SORT',
+        },
+      ],
+    });
     expect(actual).toEqual(assignees);
   });
 
@@ -63,7 +103,13 @@ describe('case assignment repo tests', () => {
 
     await repo.deleteMany(predicate);
 
-    expect(deleteMany).toHaveBeenCalled();
+    expect(deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        condition: 'EQUALS',
+        leftOperand: { name: 'caseId' },
+        rightOperand: '000-11-22222',
+      }),
+    );
   });
 
   test('should insert an OfficeAssignee record', async () => {
@@ -81,7 +127,7 @@ describe('case assignment repo tests', () => {
 
     await repo.create(assignee);
 
-    expect(insertOne).toHaveBeenCalled();
+    expect(insertOne).toHaveBeenCalledWith(assignee);
   });
 
   test('should translate a predicate into a query', () => {
