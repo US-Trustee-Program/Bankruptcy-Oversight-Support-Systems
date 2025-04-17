@@ -170,6 +170,6 @@ describe('case assignment repo tests', () => {
       rightOperand: '000-11-22222',
     });
 
-    expect(() => repo.toQuery({})).toThrow();
+    expect(() => repo.toQuery({})).toThrow('Invalid predicate');
   });
 });
