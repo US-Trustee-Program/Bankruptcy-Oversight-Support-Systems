@@ -1,0 +1,6 @@
+---
+description:
+globs: user-interface/**/*.test.tsx,user-interface/**/*.test.tsx,backend/**/*.test.ts
+alwaysApply: false
+---
+Use MockData functions from [mock-data.ts](mdc:common/src/cams/test-utilities/mock-data.ts) to generate any instance of a type instead of generating a static literal object.

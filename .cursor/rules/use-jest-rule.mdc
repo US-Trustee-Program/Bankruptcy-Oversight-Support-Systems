@@ -1,0 +1,7 @@
+---
+description:
+globs: backend/**/*.test.ts
+alwaysApply: false
+---
+Use `jest` for unit tests.
+Run the tests and fix any issues.
