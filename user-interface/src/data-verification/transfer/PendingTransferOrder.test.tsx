@@ -273,14 +273,6 @@ describe('PendingTransferOrder component', () => {
 
       await selectItemInCombobox(order.id, 1);
 
-      // TODO: Both selecting a court and entering something in the input causes
-      // setOrderTransfer to be called twice.  This means, that the expected data
-      // sent to the patch isn't what we think.  Revisit this test.
-      // commenting this out does not seem to affect coverage at all.
-      //const caseNumber = '24-12345';
-      //const input = findCaseNumberInput(order.id);
-      //enterCaseNumber(input, caseNumber);
-
       let approveButton;
       await waitFor(() => {
         approveButton = screen.getByTestId(`button-accordion-approve-button-${order.id}`);
