@@ -58,7 +58,7 @@
     "pack:dataflows": "cd function-apps/dataflows && npm run pack && cd ../..",
     "start": "npm run start:api",
     "start:api": "cd function-apps/api && npm run start && cd ../..",
-    "start:dataflows": "cd function-apps/dataflows && npm run start -- --port 7072 && cd ../..",
+    "start:dataflows": "cd function-apps/dataflows && npm run start cd ../..",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' jest -c jest.config.js",
     "test:open-handles": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' jest -c jest.config.js --detectOpenHandles",
     "lint": "eslint .",

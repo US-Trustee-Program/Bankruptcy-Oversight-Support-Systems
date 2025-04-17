@@ -209,6 +209,7 @@ The contents of these files must be:
   },
   "ConnectionStrings": {},
   "Host": {
+    "LocalHttpPort": 7071,
     "CORS": "*"
   }
 }
