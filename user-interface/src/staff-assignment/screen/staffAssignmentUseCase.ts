@@ -16,7 +16,7 @@ import {
   StaffAssignmentStore,
 } from './StaffAssignment.types';
 
-const staffAssignmentUseCase = (
+const useStaffAssignmentUseCase = (
   store: StaffAssignmentStore,
   controls: StaffAssignmentControls,
 ): StaffAssignmentUseCase => {
@@ -85,6 +85,6 @@ const staffAssignmentUseCase = (
   };
 };
 
-export { staffAssignmentUseCase };
+export { useStaffAssignmentUseCase };
 
-export default staffAssignmentUseCase;
+export default useStaffAssignmentUseCase;

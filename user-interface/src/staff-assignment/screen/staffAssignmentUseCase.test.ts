@@ -1,6 +1,6 @@
 import MockData from '@common/cams/test-utilities/mock-data';
 import { StaffAssignmentControls, StaffAssignmentStore } from './StaffAssignment.types';
-import staffAssignmentUseCase from './staffAssignmentUseCase';
+import useStaffAssignmentUseCase from './staffAssignmentUseCase';
 import LocalStorage from '@/lib/utils/local-storage';
 import * as commonUsers from '@common/cams/users';
 import { MockInstance } from 'vitest';
@@ -70,7 +70,7 @@ describe('staff assignment use case tests', () => {
 
   const mockControls = useStaffAssignmentControlsMock();
 
-  const useCase = staffAssignmentUseCase(mockStore, mockControls);
+  const useCase = useStaffAssignmentUseCase(mockStore, mockControls);
 
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);

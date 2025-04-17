@@ -4,7 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 import { StaffAssignmentRow } from '../row/StaffAssignmentRow';
 import { CamsRole } from '@common/cams/roles';
-import { staffAssignmentUseCase } from './staffAssignmentUseCase';
+import { useStaffAssignmentUseCase } from './staffAssignmentUseCase';
 import { StaffAssignmentScreenView } from './StaffAssignmentScreenView';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import {
@@ -23,7 +23,7 @@ import {
 const StaffAssignmentScreen = () => {
   const store: StaffAssignmentStore = useStaffAssignmentStoreReact();
   const controls: StaffAssignmentControls = useStaffAssignmentControlsReact();
-  const useCase = staffAssignmentUseCase(store, controls);
+  const useCase = useStaffAssignmentUseCase(store, controls);
 
   const infoModalId = 'info-modal';
   const assignmentModalId = 'assign-attorney-modal';
