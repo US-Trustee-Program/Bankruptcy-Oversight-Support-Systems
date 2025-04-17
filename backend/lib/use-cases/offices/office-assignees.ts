@@ -18,7 +18,10 @@ async function getDivisionCodeMap(context: ApplicationContext) {
   return mapDivisionCodeToUstpOffice(offices);
 }
 
-async function handleCaseAssignmentEvent(context: ApplicationContext, event: CaseAssignment) {
+async function handleCaseAssignmentEvent(
+  context: ApplicationContext,
+  event: CaseAssignment,
+): Promise<void> {
   try {
     const { caseId, userId, name } = event;
 
@@ -48,18 +51,27 @@ async function handleCaseAssignmentEvent(context: ApplicationContext, event: Cas
   }
 }
 
-async function createCaseAssignment(context: ApplicationContext, assignee: OfficeAssignee) {
+async function createCaseAssignment(
+  context: ApplicationContext,
+  assignee: OfficeAssignee,
+): Promise<void> {
   const repo = getOfficeAssigneesRepository(context);
   await repo.create(assignee);
 }
 
-async function deleteCaseAssignment(context: ApplicationContext, assignee: OfficeAssignee) {
+async function deleteCaseAssignment(
+  context: ApplicationContext,
+  assignee: OfficeAssignee,
+): Promise<void> {
   const repo = getOfficeAssigneesRepository(context);
   const { caseId, userId } = assignee;
   await repo.deleteMany({ caseId, userId });
 }
 
-async function handleCaseClosedEvent(context: ApplicationContext, event: CaseClosedEvent) {
+async function handleCaseClosedEvent(
+  context: ApplicationContext,
+  event: CaseClosedEvent,
+): Promise<void> {
   try {
     const repo = getOfficeAssigneesRepository(context);
     await repo.deleteMany({ caseId: event.caseId });
