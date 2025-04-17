@@ -77,7 +77,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     } catch (originalError) {
       throw this.handleError(
         originalError,
-        `Failed while querying with: ${JSON.stringify(pipelineOrQuery)}`,
+        `Query failed. ${originalError.message}`,
         pipelineOrQuery,
       );
     }
@@ -97,11 +97,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return items;
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while querying with: ${JSON.stringify(query)}`,
-        { query },
-      );
+      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
     }
   }
 
@@ -118,11 +114,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed to retrieve all with sort: ${JSON.stringify(sort)}`,
-        { sort },
-      );
+      throw this.handleError(originalError, `Failed to retrieve all. ${originalError.message}`, {
+        sort,
+      });
     }
   }
 
@@ -135,11 +129,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return result;
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while querying with: ${JSON.stringify(query)}`,
-        { query },
-      );
+      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
     }
   }
 
@@ -191,11 +181,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         upsertedCount: result.upsertedCount,
       };
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
-        { query, item },
-      );
+      throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
+        query,
+        item,
+      });
     }
   }
 
@@ -224,11 +213,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         modifiedCount: result.modifiedCount,
       };
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(itemProperties)}`,
-        { query, item: itemProperties },
-      );
+      throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
+        query,
+        item: itemProperties,
+      });
     }
   }
 
@@ -245,7 +233,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return mongoItem.id;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(item)}`, {
+      throw this.handleError(originalError, `Failed to insert item. ${originalError.message}`, {
         item,
       });
     }
@@ -267,7 +255,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return insertedIds;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(items)}`, {
+      throw this.handleError(originalError, `Failed to insert items. ${originalError.message}`, {
         items,
       });
     }
@@ -285,7 +273,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`, {
+      throw this.handleError(originalError, `Failed to delete item. ${originalError.message}`, {
         query,
       });
     }
@@ -301,7 +289,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`, {
+      throw this.handleError(originalError, `Failed to delete items. ${originalError.message}`, {
         query,
       });
     }
@@ -312,7 +300,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while counting: ${JSON.stringify(query)}`, {
+      throw this.handleError(originalError, `Failed to count documents. ${originalError.message}`, {
         query,
       });
     }
