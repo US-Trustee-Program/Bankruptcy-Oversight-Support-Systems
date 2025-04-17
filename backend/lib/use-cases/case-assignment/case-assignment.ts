@@ -91,7 +91,6 @@ export class CaseAssignmentUseCase {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
-    // TODO: Collect the additions and deletions and add them to the assignment change queue.
     const addedAssignments = [];
     const removedAssignments = [];
 
