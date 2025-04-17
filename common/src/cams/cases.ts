@@ -123,6 +123,14 @@ export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
 
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
+  if (
+    parts.length !== 3 ||
+    parts[0].length !== 3 ||
+    parts[1].length !== 2 ||
+    parts[2].length !== 5
+  ) {
+    throw new Error(`Invalid case ID: ${caseId}`);
+  }
   const divisionCode = parts[0];
   const caseNumber = `${parts[1]}-${parts[2]}`;
   return { divisionCode, caseNumber };

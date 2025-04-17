@@ -35,5 +35,12 @@ describe('cases common functions tests', () => {
       const actual = getCaseIdParts(caseId);
       expect(actual).toEqual(expected);
     });
+
+    test.each(['00-11-22222', '000-1-22222', '000-11-2222', '0001122222'])(
+      'should throw an error for an invalid case id: %s',
+      (caseId) => {
+        expect(() => getCaseIdParts(caseId)).toThrow(`Invalid case ID: ${caseId}`);
+      },
+    );
   });
 });
