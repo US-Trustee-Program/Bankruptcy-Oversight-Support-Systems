@@ -6,8 +6,8 @@ import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 
 const MODULE_NAME = 'MIGRATE-ASSIGNEES';
 
-const START = buildFunctionName(MODULE_NAME, 'start');
-const QUEUE = output.storageQueue({
+const START_FUNCTION = buildFunctionName(MODULE_NAME, 'start');
+const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
   connection: STORAGE_QUEUE_CONNECTION,
 });
@@ -18,9 +18,9 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
 }
 
 function setup() {
-  app.storageQueue(START, {
-    connection: QUEUE.connection,
-    queueName: QUEUE.queueName,
+  app.storageQueue(START_FUNCTION, {
+    connection: START.connection,
+    queueName: START.queueName,
     handler: start,
   });
 }
