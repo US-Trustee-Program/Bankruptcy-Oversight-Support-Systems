@@ -194,7 +194,7 @@ export type SortSpec<T = never> = {
 };
 
 export function isSortSpec(obj: unknown): obj is SortSpec {
-  return typeof obj === 'object' && 'fields' in obj;
+  return typeof obj === 'object' && 'fields' in obj && !('stage' in obj);
 }
 
 function orderBy<T = never>(...specs: [keyof T, 'ASCENDING' | 'DESCENDING'][]): SortSpec {
