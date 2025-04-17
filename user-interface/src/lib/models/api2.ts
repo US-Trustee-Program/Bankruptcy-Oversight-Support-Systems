@@ -122,7 +122,9 @@ export function extractPathFromUri(uriOrPath: string, api: ApiClient) {
 export function addAuthHeaderToApi(): ApiClient {
   const api = Api;
   const session = LocalStorage.getSession();
-  api.headers['Authorization'] = `Bearer ${session?.accessToken}`;
+  if (session?.accessToken) {
+    api.headers['Authorization'] = `Bearer ${session.accessToken}`;
+  }
   return api;
 }
 

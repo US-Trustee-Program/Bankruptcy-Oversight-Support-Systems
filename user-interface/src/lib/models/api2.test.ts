@@ -11,6 +11,7 @@ import {
   TransferOrderAction,
   TransferOrderActionRejection,
 } from '@common/cams/orders';
+import LocalStorage from '@/lib/utils/local-storage';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -319,6 +320,31 @@ describe('_Api2 functions', async () => {
         leadCase: MockData.getCaseSummary(),
       }),
     ).rejects.toThrow(error);
+  });
+});
+
+describe('addAuthHeaderToApi', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    import.meta.env.CAMS_PA11Y = false;
+    Api.headers = {};
+  });
+
+  test('should add Authorization header when session exists', () => {
+    const mockSession = MockData.getCamsSession();
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(mockSession);
+
+    const result = addAuthHeaderToApi();
+
+    expect(result.headers['Authorization']).toBe(`Bearer ${mockSession.accessToken}`);
+  });
+
+  test('should not add Authorization header when session does not exist', () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+    const result = addAuthHeaderToApi();
+
+    expect(result.headers['Authorization']).toBeUndefined();
   });
 });
 
