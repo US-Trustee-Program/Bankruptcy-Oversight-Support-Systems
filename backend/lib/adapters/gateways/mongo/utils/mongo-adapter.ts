@@ -16,7 +16,7 @@ import {
 import { toMongoAggregate } from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
-import { MongoServerError } from 'mongodb';
+import { Document as MongoDocument, MongoServerError } from 'mongodb';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -66,14 +66,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       const cursor = await this.collectionHumble.aggregate(mongoAggregate);
       const result = await cursor.next();
 
-      // NOTE: See the custom facet defined by `toMongoPaginatedFacet` in `mongo-aggregate-renderer.ts`.
-      // This stage is expected to be the final stage of any aggregate pipeline passed to `paginate`.
-      const paginationResult: CamsPaginationResponse<T> = {
-        metadata: result['metadata'] ? result['metadata'][0] : { total: 0 },
-        data: result['data'] ?? [],
-      };
-
-      return paginationResult;
+      return this.getPage<T>(result);
     } catch (originalError) {
       throw this.handleError(
         originalError,
@@ -81,6 +74,13 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         pipelineOrQuery,
       );
     }
+  }
+
+  getPage<T>(result: MongoDocument): CamsPaginationResponse<T> {
+    return {
+      metadata: result['metadata'] ? result['metadata'][0] : { total: 0 },
+      data: result['data'] ?? [],
+    };
   }
 
   public async find(query: Query<T>, sort?: SortSpec): Promise<T[]> {
