@@ -108,7 +108,7 @@ describe('test cams combobox', () => {
   };
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Should properly render selections when value prop is set', async () => {
