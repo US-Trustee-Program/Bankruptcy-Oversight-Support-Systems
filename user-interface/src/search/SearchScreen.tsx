@@ -86,13 +86,17 @@ export default function SearchScreen() {
   }
 
   function handleFilterFormElementFocus(ev: React.FocusEvent<HTMLElement>) {
-    if (activeElement !== ev.target) setActiveElement(ev.target);
+    if (activeElement !== ev.target) {
+      setActiveElement(ev.target);
+    }
   }
 
   function handleCaseNumberChange(caseNumber?: string): void {
     if (temporarySearchPredicate.caseNumber != caseNumber) {
       const newPredicate = { ...temporarySearchPredicate, caseNumber };
-      if (!caseNumber) delete newPredicate.caseNumber;
+      if (!caseNumber) {
+        delete newPredicate.caseNumber;
+      }
       setTemporarySearchPredicate(newPredicate);
     }
   }

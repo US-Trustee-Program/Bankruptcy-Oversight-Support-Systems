@@ -1,4 +1,4 @@
-import QueryBuilder, { Field, Query, Sort } from '../../../../query/query-builder';
+import QueryBuilder, { Field, Query } from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
@@ -8,7 +8,7 @@ type Foo = {
 };
 
 describe('Mongo Query Renderer', () => {
-  const { and, or, not, orderBy, paginate, using } = QueryBuilder;
+  const { and, or, not, using } = QueryBuilder;
   const doc = using<Foo>();
 
   test('should render a mongo query JSON', () => {
@@ -178,72 +178,17 @@ describe('Mongo Query Renderer', () => {
     expect(actual).toEqual(expected);
   });
 
-  test('sort renders ascending and descending', () => {
-    expect(toMongoSort(orderBy(['foo', 'ASCENDING']))).toEqual({ foo: 1 });
-    expect(toMongoSort(orderBy(['foo', 'DESCENDING']))).toEqual({ foo: -1 });
-  });
-
-  test('sort renders multiple sort expressions', () => {
-    expect(toMongoSort(orderBy(['foo', 'ASCENDING'], ['bar', 'DESCENDING']))).toEqual({
+  test('should render a sort expression', () => {
+    const expected = {
       foo: 1,
       bar: -1,
-    });
-  });
-
-  test('should render a paginated aggregate mongo query JSON', () => {
-    const expected = [
-      {
-        $match: {
-          $or: [
-            { uno: { $eq: 'theValue' } },
-            {
-              $and: [
-                { two: { $eq: 45 } },
-                { three: { $eq: true } },
-                { $or: [{ uno: { $eq: 'hello' } }, { uno: { $eq: 'something' } }] },
-              ],
-            },
-          ],
-        },
-      },
-      {
-        $sort: {
-          uno: -1,
-          two: -1,
-        },
-      },
-      {
-        $facet: {
-          data: [
-            {
-              $skip: 0,
-            },
-            {
-              $limit: 25,
-            },
-          ],
-        },
-      },
-    ];
-
-    const baseQuery = or(
-      doc('uno').equals('theValue'),
-      and(
-        doc('two').equals(45),
-        doc('three').equals(true),
-        or(doc('uno').equals('hello'), doc('uno').equals('something')),
-      ),
-    );
-
-    const sort: Sort<Foo> = {
-      attributes: [
-        ['uno', 'DESCENDING'],
-        ['two', 'DESCENDING'],
-      ],
     };
-
-    const actual = toMongoQuery(paginate(0, 25, [baseQuery], sort));
-
+    const actual = toMongoSort({
+      fields: [
+        { direction: 'ASCENDING', field: { name: 'foo' } },
+        { direction: 'DESCENDING', field: { name: 'bar' } },
+      ],
+    });
     expect(actual).toEqual(expected);
   });
 });

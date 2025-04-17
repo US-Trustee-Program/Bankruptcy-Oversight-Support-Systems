@@ -2,11 +2,10 @@ import * as dotenv from 'dotenv';
 import ContextCreator from '../../../backend/function-apps/azure/application-context-creator';
 import { createMockAzureFunctionContext } from '../../../backend/function-apps/azure/testing-helpers';
 import { ApplicationContext } from '../../../backend/lib/adapters/types/basic';
-import { CaseBasics, CaseSummary } from '../../../common/src/cams/cases';
+import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../common/src/cams/cases';
 import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../backend/lib/use-cases/orders/orders';
 import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orders';
-import { getCaseIdParts } from '../../../backend/lib/adapters/gateways/dxtr/cases.dxtr.gateway';
 import { extractAndPrepareSqlData } from './dxtr-utils';
 import { insertConsolidationOrders, insertTransferOrders, syncCases } from './cosmos-utils';
 

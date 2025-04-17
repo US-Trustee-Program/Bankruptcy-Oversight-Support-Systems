@@ -55,15 +55,17 @@ function _PendingTransferOrder(
   const api = useApi2();
 
   function confirmOrderApproval(): void {
-    orderTransfer.status = 'approved';
-
+    const approvedTransferOrder: FlexibleTransferOrderAction = {
+      ...orderTransfer,
+      status: 'approved',
+    };
     const updatedOrder: TransferOrder = {
       ...order,
-      ...orderTransfer,
+      ...approvedTransferOrder,
     } as TransferOrder;
 
     api
-      .patchTransferOrderApproval(orderTransfer)
+      .patchTransferOrderApproval(approvedTransferOrder)
       .then(() => {
         props.onOrderUpdate(
           {

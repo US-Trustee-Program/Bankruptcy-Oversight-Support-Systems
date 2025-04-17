@@ -8,7 +8,6 @@ import {
   buildStartQueueHttpTrigger,
   RangeMessage,
   StartMessage,
-  STORAGE_QUEUE_CONNECTION,
 } from '../dataflows-common';
 import MigrateCases from '../../../lib/use-cases/dataflows/migrate-cases';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
@@ -18,6 +17,7 @@ import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { getTodaysIsoDate } from '../../../../common/src/date-helper';
+import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;

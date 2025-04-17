@@ -1,9 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import AssignAttorneyModal, {
-  AssignAttorneyModalProps,
-  AssignAttorneyModalRef,
-} from './AssignAttorneyModal';
+import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
 import React from 'react';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseBasics } from '@common/cams/cases';
@@ -13,6 +10,7 @@ import { ResponseBody } from '@common/api/response';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import AssignAttorneyModal from './AssignAttorneyModal';
 
 const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -132,22 +130,25 @@ describe('Test Assign Attorney Modal Component', () => {
     });
   });
 
-  test('Should call POST with list of attorneys when assign button is clicked.', async () => {
+  test('Should call POST with list of attorneys when assign button is clicked and call callback with expected data.', async () => {
+    const assignmentChangeCallback = vi.fn();
     const postSpy = vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({
       data: undefined,
     });
+    const mockCase = MockData.getCaseBasics({
+      override: {
+        caseId: '123',
+        caseTitle: 'Test Case',
+        dateFiled: '2024-01-01',
+      },
+    });
+
     const modalRef = React.createRef<AssignAttorneyModalRef>();
-    renderWithProps(modalRef);
+    renderWithProps(modalRef, { assignmentChangeCallback });
 
     modalRef.current?.show({
       callback,
-      bCase: MockData.getCaseBasics({
-        override: {
-          caseId: '123',
-          caseTitle: 'Test Case',
-          dateFiled: '2024-01-01',
-        },
-      }),
+      bCase: mockCase,
     });
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -166,8 +167,12 @@ describe('Test Assign Attorney Modal Component', () => {
 
     const expectedAttorneys = attorneyList
       .sort((a, b) => {
-        if (a.name < b.name) return -1;
-        if (a.name > b.name) return 1;
+        if (a.name < b.name) {
+          return -1;
+        }
+        if (a.name > b.name) {
+          return 1;
+        }
         return 0;
       })
       .slice(1, 4)
@@ -183,6 +188,22 @@ describe('Test Assign Attorney Modal Component', () => {
           role: 'TrialAttorney',
         }),
       );
+    });
+
+    await waitFor(() => {
+      expect(callback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          bCase: mockCase,
+          selectedAttorneyList: expectedAttorneys,
+          previouslySelectedList: [],
+          status: 'success',
+          apiResult: {},
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(assignmentChangeCallback).toHaveBeenCalledWith(expectedAttorneys);
     });
   });
 

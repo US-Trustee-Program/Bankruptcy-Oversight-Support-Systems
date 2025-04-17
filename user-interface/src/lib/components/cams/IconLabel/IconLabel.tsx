@@ -10,10 +10,12 @@ export type IconLabelProps = {
 
 export function IconLabel(props: IconLabelProps) {
   let location = 'left';
-  if (props.location) location = props.location;
+  if (props.location) {
+    location = props.location;
+  }
 
   return (
-    <span className={`cams-icon-label ${props.className}`}>
+    <span className={`cams-icon-label ${props.className ?? ''}`}>
       {location === 'left' && (
         <>
           <Icon name={props.icon} />

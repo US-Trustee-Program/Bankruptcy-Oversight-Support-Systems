@@ -1,6 +1,6 @@
-import Factory, { getAssignmentRepository } from '../../factory';
+import Factory, { getAssignmentRepository, getQueueGateway } from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentRepository } from '../gateways.types';
+import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
 import CaseManagement from '../cases/case-management';
@@ -8,16 +8,19 @@ import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import OfficeAssigneesUseCase from '../offices/office-assignees';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
   private context: ApplicationContext;
   private assignmentRepository: CaseAssignmentRepository;
+  private queueGateway: QueueGateway;
 
   constructor(applicationContext: ApplicationContext) {
     this.context = applicationContext;
     this.assignmentRepository = getAssignmentRepository(applicationContext);
+    this.queueGateway = getQueueGateway(applicationContext);
   }
 
   public async createTrialAttorneyAssignments(
@@ -88,6 +91,9 @@ export class CaseAssignmentUseCase {
     });
     const listOfAssignmentIdsCreated: string[] = [];
 
+    const addedAssignments = [];
+    const removedAssignments = [];
+
     const existingAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([caseId]);
     const existingAssignmentRecords = existingAssignmentRecordsMap.get(caseId) ?? [];
     for (const existingAssignment of existingAssignmentRecords) {
@@ -98,10 +104,12 @@ export class CaseAssignmentUseCase {
         );
       });
       if (!stillAssigned) {
-        await assignmentRepo.update({
+        const updatedAssignment = {
           ...existingAssignment,
           unassignedOn: new Date().toISOString(),
-        });
+        };
+        await assignmentRepo.update(updatedAssignment);
+        removedAssignments.push(updatedAssignment);
       }
     }
 
@@ -110,9 +118,11 @@ export class CaseAssignmentUseCase {
         return ea.name === assignment.name && ea.role === assignment.role;
       });
       if (!existingAssignment) {
+        addedAssignments.push(assignment);
         const assignmentId = await assignmentRepo.create(assignment);
-        if (!listOfAssignmentIdsCreated.includes(assignmentId))
+        if (!listOfAssignmentIdsCreated.includes(assignmentId)) {
           listOfAssignmentIdsCreated.push(assignmentId);
+        }
       }
     }
 
@@ -129,6 +139,10 @@ export class CaseAssignmentUseCase {
     );
     history.updatedOn = currentDate;
     await casesRepo.createCaseHistory(history);
+
+    for (const assignment of [...addedAssignments, ...removedAssignments]) {
+      await OfficeAssigneesUseCase.handleCaseAssignmentEvent(context, assignment);
+    }
 
     context.logger.info(
       MODULE_NAME,

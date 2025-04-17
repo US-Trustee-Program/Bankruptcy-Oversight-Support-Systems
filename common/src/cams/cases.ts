@@ -98,14 +98,40 @@ export type CaseNoteInput = {
   createdOn?: string;
 };
 
-export type DxtrCase = CaseSummary & {
+type ClosedDismissedReopened = {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
 };
+
+export type DxtrCase = CaseSummary & ClosedDismissedReopened;
 
 export type SyncedCase = DxtrCase &
   Auditable & {
     documentType: 'SYNCED_CASE';
     id?: string;
   };
+
+export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
+  const { closedDate, reopenedDate } = bCase;
+  return closedDate ? (reopenedDate ? closedDate >= reopenedDate : true) : false;
+}
+
+export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
+  return !isCaseClosed(bCase);
+}
+
+export function getCaseIdParts(caseId: string) {
+  const parts = caseId.split('-');
+  if (
+    parts.length !== 3 ||
+    parts[0].length !== 3 ||
+    parts[1].length !== 2 ||
+    parts[2].length !== 5
+  ) {
+    throw new Error(`Invalid case ID: ${caseId}`);
+  }
+  const divisionCode = parts[0];
+  const caseNumber = `${parts[1]}-${parts[2]}`;
+  return { divisionCode, caseNumber };
+}

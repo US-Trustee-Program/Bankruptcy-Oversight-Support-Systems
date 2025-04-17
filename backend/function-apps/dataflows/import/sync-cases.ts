@@ -54,7 +54,9 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       startMessage['lastSyncDate'],
     );
 
-    if (!events.length) return;
+    if (!events.length) {
+      return;
+    }
 
     let start = 0;
     let end = 0;
@@ -92,14 +94,14 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
 
 function setup() {
   app.storageQueue(HANDLE_START, {
-    connection: 'AzureWebJobsStorage',
+    connection: START.connection,
     queueName: START.queueName,
     extraOutputs: [DLQ, PAGE],
     handler: handleStart,
   });
 
   app.storageQueue(HANDLE_PAGE, {
-    connection: 'AzureWebJobsStorage',
+    connection: PAGE.connection,
     queueName: PAGE.queueName,
     extraOutputs: [DLQ],
     handler: handlePage,

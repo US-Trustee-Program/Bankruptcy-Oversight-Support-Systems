@@ -11,8 +11,6 @@ import { CamsRole } from '../../../../common/src/cams/roles';
 import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import UsersHelpers from '../users/users.helpers';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
 
 const MANHATTAN_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
   (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
@@ -110,39 +108,16 @@ describe('offices use case tests', () => {
 
   test('should return assigned attorneys for office', async () => {
     const useCase = new OfficesUseCase();
-    const attorneys = MockData.buildArray(MockData.getAttorneyUser, 5);
-    const assignments = [];
-    attorneys.forEach((attorney) => {
-      assignments.push(
-        ...MockData.buildArray(
-          () => MockData.getAttorneyAssignment({ name: attorney.name, userId: attorney.id }),
-          5,
-        ),
-      );
-    });
-    const cases = MockData.buildArray(MockData.getCaseSummary, 25);
-    for (let i = 0; i < cases.length; i++) {
-      cases[i].assignments = [assignments[i]];
-    }
-    const expected = attorneys.map((attorney) => {
-      return getCamsUserReference(attorney);
-    });
+    const attorneys = MockData.buildArray(MockData.getCamsUserReference, 5);
     const repoSpy = jest
-      .spyOn(MockMongoRepository.prototype, 'searchCasesForOfficeAssignees')
-      .mockResolvedValue(cases);
+      .spyOn(MockMongoRepository.prototype, 'getDistinctAssigneesByOffice')
+      .mockResolvedValue(attorneys);
 
     const { officeCode } = MANHATTAN_OFFICE;
 
-    const expectedPredicate = {
-      divisionCodes: ustpOfficeToCourtDivision(MANHATTAN_OFFICE).map(
-        (div) => div.courtDivisionCode,
-      ),
-      excludeClosedCases: true,
-    };
-
     const actual = await useCase.getOfficeAssignees(applicationContext, officeCode);
-    expect(actual).toEqual(expect.arrayContaining(expected));
-    expect(repoSpy).toHaveBeenCalledWith(expectedPredicate);
+    expect(actual).toEqual(attorneys);
+    expect(repoSpy).toHaveBeenCalledWith(officeCode);
   });
 
   test('should persist offices and continue trying after error', async () => {

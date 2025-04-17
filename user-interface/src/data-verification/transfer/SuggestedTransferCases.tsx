@@ -57,7 +57,9 @@ function _SuggestedTransferCases(
 
   async function validateCaseNumber(caseId: string) {
     const currentElement = document.activeElement;
-    if (loadingCaseSummary) return false;
+    if (loadingCaseSummary) {
+      return false;
+    }
     setLoadingCaseSummary(true);
     disableEntryForm(true);
     await api
@@ -147,7 +149,9 @@ function _SuggestedTransferCases(
   function cancel() {
     setNewCaseSummary(null);
     setValidationState(ValidationStates.notValidated);
-    if (suggestedCasesRef.current) suggestedCasesRef.current.clearAllCheckboxes();
+    if (suggestedCasesRef.current) {
+      suggestedCasesRef.current.clearAllCheckboxes();
+    }
     setLoadingCaseSummary(false);
     // TODO: Make sure the following only happens when we click the 'Clear' button, not the 'go back' button on the modal
     setNewCaseNumber(order.docketSuggestedCaseNumber || null);

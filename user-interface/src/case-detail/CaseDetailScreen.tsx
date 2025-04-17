@@ -19,7 +19,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
 import './CaseDetailScreen.scss';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { CallbackProps } from '@/staff-assignment/modal/AssignAttorneyModal';
+import { AssignAttorneyModalCallbackProps } from '@/staff-assignment/modal/assignAttorneyModal.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
@@ -409,7 +409,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setSelectedDateRange({ ...selectedDateRange, end: ev.target.value });
   }
 
-  function handleCaseAssignment(assignment: CallbackProps) {
+  function handleCaseAssignment(assignment: AssignAttorneyModalCallbackProps) {
     const assignments: CaseAssignment[] = [];
 
     assignment.selectedAttorneyList.forEach((attorney) => {

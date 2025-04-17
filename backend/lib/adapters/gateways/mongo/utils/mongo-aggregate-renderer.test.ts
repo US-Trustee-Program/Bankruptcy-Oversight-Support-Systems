@@ -54,6 +54,7 @@ describe('aggregation query renderer tests', () => {
       },
       {
         $facet: {
+          metadata: [{ $count: 'total' }],
           data: [
             {
               $skip: 0,
@@ -120,6 +121,41 @@ describe('aggregation query renderer tests', () => {
       expect(actual).toEqual(expected);
     },
   );
+
+  test('should render a grouped query', () => {
+    const expected = [
+      {
+        $match: {
+          two: {
+            $eq: 'hello',
+          },
+        },
+      },
+      { $group: { _id: '$userId', name: { $first: '$name' }, total: { $count: {} } } },
+    ];
+
+    const simpleMatch: Stage = {
+      stage: 'MATCH',
+      condition: 'EQUALS',
+      leftOperand: { name: 'two' },
+      rightOperand: 'hello',
+    };
+
+    const group: Stage = {
+      stage: 'GROUP',
+      groupBy: [{ name: 'userId' }],
+      accumulators: [
+        { accumulator: 'FIRST', as: { name: 'name' }, field: { name: 'name' } },
+        { accumulator: 'COUNT', as: { name: 'total' } },
+      ],
+    };
+
+    const query = pipeline(simpleMatch, group);
+
+    const actual = toMongoAggregate(query);
+
+    expect(actual).toEqual(expected);
+  });
 });
 
 const queryMatch: Stage = {
