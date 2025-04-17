@@ -1,12 +1,12 @@
 import { app, InvocationContext } from '@azure/functions';
-import { CASE_ASSIGNMENT_EVENT } from '../module-names';
+import ModuleNames from '../module-names';
 import { CASE_ASSIGNMENT_EVENT_DLQ, CASE_ASSIGNMENT_EVENT_QUEUE } from '../storage-queues';
 import { buildFunctionName } from '../dataflows-common';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import ContextCreator from '../../azure/application-context-creator';
 import OfficeAssigneesUseCase from '../../../lib/use-cases/offices/office-assignees';
 
-const MODULE_NAME = CASE_ASSIGNMENT_EVENT;
+const MODULE_NAME = ModuleNames.CASE_ASSIGNMENT_EVENT;
 const HANDLER = buildFunctionName(MODULE_NAME, 'handler');
 
 async function handler(event: CaseAssignment, invocationContext: InvocationContext) {
