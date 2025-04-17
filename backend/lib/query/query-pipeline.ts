@@ -1,4 +1,11 @@
-import { ConditionFunctions, ConditionOrConjunction, Field, using } from './query-builder';
+import {
+  ConditionFunctions,
+  ConditionOrConjunction,
+  Field,
+  SortedField,
+  SortSpec,
+  using,
+} from './query-builder';
 
 function source<T = unknown>(source?: string) {
   return {
@@ -32,6 +39,19 @@ function source<T = unknown>(source?: string) {
   };
 }
 
+export type First = {
+  accumulator: 'FIRST';
+  as: Field;
+  field: Field;
+};
+
+export type Count = {
+  accumulator: 'COUNT';
+  as: Field;
+};
+
+export type Accumulator = Count | First;
+
 export type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
 };
@@ -46,20 +66,6 @@ export function isPaginate(obj: unknown): obj is Paginate {
   return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
 }
 
-export type SortedField = {
-  field: FieldReference<never>;
-  direction: 'ASCENDING' | 'DESCENDING';
-};
-
-export type Sort = {
-  stage: 'SORT';
-  fields: SortedField[];
-};
-
-export function isSort(obj: unknown): obj is Sort {
-  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
-}
-
 export type Pipeline = {
   stages: Stage[];
 };
@@ -72,6 +78,12 @@ export type AddFields<T = never> = {
 export type ExcludeFields = {
   stage: 'EXCLUDE';
   fields: FieldReference<never>[];
+};
+
+export type Group = {
+  stage: 'GROUP';
+  groupBy: Field[];
+  accumulators?: Accumulator[];
 };
 
 export type FieldReference<T> = Field<T> & {
@@ -93,7 +105,22 @@ export type AdditionalField<T = never> = {
   query: ConditionOrConjunction<T>;
 };
 
-export type Stage<T = never> = Paginate | Sort | Match | Join | AddFields<T> | ExcludeFields;
+export type Sort = SortSpec & {
+  stage: 'SORT';
+};
+
+export function isSort(obj: unknown): obj is Sort {
+  return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
+}
+
+export type Stage<T = never> =
+  | Paginate
+  | Sort
+  | Match
+  | Join
+  | AddFields<T>
+  | ExcludeFields
+  | Group;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -116,14 +143,14 @@ function sort(...fields: SortedField[]): Sort {
 
 function ascending(field: FieldReference<never>): SortedField {
   return {
-    field,
+    field: { name: field.name },
     direction: 'ASCENDING',
   };
 }
 
 function descending(field: FieldReference<never>): SortedField {
   return {
-    field,
+    field: { name: field.name },
     direction: 'DESCENDING',
   };
 }
@@ -176,12 +203,27 @@ function pipeline(...stages: Stage[]): Pipeline {
   return { stages };
 }
 
+function group(groupBy: Field[], accumulators: Accumulator[]): Group {
+  return { stage: 'GROUP', groupBy, accumulators };
+}
+
+function count(as: Field): Count {
+  return { accumulator: 'COUNT', as: { name: as.name } };
+}
+
+function first(field: Field, as: Field): First {
+  return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
+}
+
 const QueryPipeline = {
   addFields,
   additionalField,
   ascending,
+  count,
   descending,
   exclude,
+  first,
+  group,
   join,
   match,
   paginate,

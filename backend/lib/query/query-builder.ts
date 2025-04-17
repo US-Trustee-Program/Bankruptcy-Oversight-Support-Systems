@@ -18,7 +18,7 @@ export function isCondition(obj: unknown): obj is Condition {
   return typeof obj === 'object' && 'condition' in obj;
 }
 
-export type Field<T = unknown> = {
+export type Field<T = never> = {
   name: keyof T;
 };
 
@@ -36,21 +36,7 @@ export function isConjunction(obj: unknown): obj is Conjunction {
   return typeof obj === 'object' && 'conjunction' in obj;
 }
 
-export type Pagination<T = unknown> = {
-  limit: number;
-  skip: number;
-  values: ConditionOrConjunction<T>[];
-  sort?: Sort<T>;
-};
-
-export function isPagination(obj: unknown): obj is Pagination {
-  return typeof obj === 'object' && 'limit' in obj && 'skip' in obj;
-}
-
-export type Query<T = unknown> =
-  | Pagination<T>
-  | ConditionOrConjunction<T>
-  | ConditionOrConjunction<T>[];
+export type Query<T = unknown> = ConditionOrConjunction<T> | ConditionOrConjunction<T>[];
 
 export type ConditionOrConjunction<T = unknown> = Condition<T> | Conjunction<T>;
 
@@ -73,34 +59,6 @@ function not<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T
     conjunction: 'NOT',
     values,
   };
-}
-
-function paginate<T = unknown>(
-  skip: number,
-  limit: number,
-  values: ConditionOrConjunction<T>[],
-  sort?: Sort<T>,
-): Pagination<T> {
-  return {
-    skip,
-    limit,
-    values,
-    sort,
-  };
-}
-
-export type SortedAttribute<T = unknown> = [field: keyof T, direction: 'ASCENDING' | 'DESCENDING'];
-
-export type Sort<T = unknown> = {
-  attributes: SortedAttribute<T>[];
-};
-
-export function isSort(obj: unknown): obj is Sort {
-  return typeof obj === 'object' && 'attributes' in obj;
-}
-
-function orderBy<T = unknown>(...attributes: SortedAttribute<T>[]): Sort<T> {
-  return { attributes };
 }
 
 export interface ConditionFunctions<T = unknown, R = T[keyof T]> {
@@ -226,13 +184,33 @@ export function using<T = unknown>() {
   };
 }
 
+export type SortedField<T = never> = {
+  field: Field<T>;
+  direction: 'ASCENDING' | 'DESCENDING';
+};
+
+export type SortSpec<T = never> = {
+  fields: SortedField<T>[];
+};
+
+export function isSortSpec(obj: unknown): obj is SortSpec {
+  return typeof obj === 'object' && 'fields' in obj && !('stage' in obj);
+}
+
+function orderBy<T = never>(...specs: [keyof T, 'ASCENDING' | 'DESCENDING'][]): SortSpec {
+  return {
+    fields: specs.map((spec) => {
+      return { field: { name: spec[0] }, direction: spec[1] };
+    }),
+  };
+}
+
 const QueryBuilder = {
   not,
   and,
   or,
-  orderBy,
-  paginate,
   using,
+  orderBy,
 };
 
 export default QueryBuilder;

@@ -1,7 +1,8 @@
 import { CamsError } from '../../../../common-errors/cams-error';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import QueryBuilder, { ConditionOrConjunction, Pagination } from '../../../../query/query-builder';
+import QueryBuilder from '../../../../query/query-builder';
+import QueryPipeline from '../../../../query/query-pipeline';
 import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 
 const { and, orderBy } = QueryBuilder;
@@ -10,7 +11,7 @@ const MODULE_NAME = 'TEST-MODULE';
 
 const find = jest.fn();
 const findOne = jest.fn();
-const paginatedFind = jest.fn();
+const paginate = jest.fn();
 const replaceOne = jest.fn();
 const updateOne = jest.fn();
 const insertOne = jest.fn();
@@ -23,7 +24,7 @@ const aggregate = jest.fn();
 const spies = {
   find,
   findOne,
-  paginatedFind,
+  paginate,
   replaceOne,
   updateOne,
   insertOne,
@@ -115,43 +116,28 @@ describe('Mongo adapter', () => {
     expect(sort).toHaveBeenCalled();
   });
 
-  test('should return a sorted list of items from a paginatedFind', async () => {
+  test('should return a sorted list of items from paginate', async () => {
     const expectedValue = {
       metadata: { total: 3 },
       data: [{}, {}, {}],
     };
-    aggregate.mockResolvedValue([
-      {
-        data: [{}, {}, {}],
+    aggregate.mockResolvedValue({
+      next: () => {
+        return Promise.resolve({
+          metadata: [{ total: 3 }],
+          data: [{}, {}, {}],
+        });
       },
-    ]);
-    countDocuments.mockResolvedValue(3);
-
-    const item = await adapter.paginatedFind({
-      limit: 25,
-      skip: 0,
-      values: [testQuery as ConditionOrConjunction],
-      sort: orderBy(['foo', 'ASCENDING']),
     });
-    expect(item).toEqual(expectedValue);
-  });
 
-  test('should throw error if calling paginatedFind without pagination query', async () => {
-    aggregate.mockResolvedValue([
-      {
-        metadata: [{ total: 3 }],
-        data: [{}, {}, {}],
-      },
-    ]);
-
-    await expect(
-      adapter.paginatedFind({
-        values: [testQuery as ConditionOrConjunction],
-        sort: orderBy(['foo', 'ASCENDING']),
-      } as Pagination<TestType>),
-    ).rejects.toThrow(
-      'Failed while querying with: {"values":[{"conjunction":"AND","values":[]}],"sort":{"attributes":[["foo","ASCENDING"]]}}',
+    const item = await adapter.paginate(
+      QueryPipeline.pipeline(
+        QueryPipeline.match(testQuery),
+        QueryPipeline.sort({ field: { name: 'foo' }, direction: 'ASCENDING' }),
+        QueryPipeline.paginate(0, 25),
+      ),
     );
+    expect(item).toEqual(expectedValue);
   });
 
   test('should return an empty list of items if find returns nothing', async () => {
@@ -411,9 +397,7 @@ describe('Mongo adapter', () => {
     await expect(adapter.deleteOne(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.deleteMany(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.find(testQuery)).rejects.toThrow(expectedError);
-    await expect(
-      adapter.paginatedFind({ limit: 25, skip: 0, values: [testQuery as ConditionOrConjunction] }),
-    ).rejects.toThrow(expectedError);
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.countDocuments(testQuery)).rejects.toThrow(expectedError);
     await expect(adapter.countAllDocuments()).rejects.toThrow(expectedError);
     await expect(adapter.findOne(testQuery)).rejects.toThrow(expectedError);

@@ -1,6 +1,9 @@
 $separatorColor: #c6cace;
 $listItemHoverBorderColor: #333;
 $listItemSelectedBorderColor: #949494;
+$listItemTextColor: #1b1b1b;
+$listItemSelectedBackground: #d0d0d0;
+$listItemHoverBackground: #b0b0b0;
 @use 'uswds-core';
 @use '../../../styles/abstracts/colors';
 
@@ -99,38 +102,34 @@ $listItemSelectedBorderColor: #949494;
           border-bottom-color: $separatorColor;
           cursor: pointer;
 
-          button.usa-button--unstyled {
-            margin: 0 2px;
-            display: flex;
-            justify-content: space-between;
-            color: #1b1b1b;
-            text-decoration: none;
-            width: calc(100% - 4px);
-            padding: 0.5rem;
+          margin: 0 2px;
+          display: flex;
+          justify-content: space-between;
+          color: $listItemTextColor;
+          text-decoration: none;
+          width: calc(100% - 4px);
+          padding: 0.5rem;
 
-            svg.usa-icon {
-              min-width: 1em;
-              min-height: 1em;
-            }
-          }
-          button:focus {
-            border-color: $listItemHoverBorderColor;
-            background: #b0b0b0;
+          svg.usa-icon {
+            min-width: 1em;
+            min-height: 1em;
           }
         }
         li:last-child {
           border-bottom-color: transparent;
         }
         li.selected {
-          background: #d0d0d0;
+          background: $listItemSelectedBackground;
           border-color: $listItemSelectedBorderColor;
         }
         li:focus {
+          border-color: $listItemHoverBorderColor;
+          background: $listItemHoverBackground;
           outline-offset: -4px;
         }
         li:hover {
           border-color: $listItemHoverBorderColor;
-          background: #b0b0b0;
+          background: $listItemHoverBackground;
         }
         li.hidden {
           display: none;

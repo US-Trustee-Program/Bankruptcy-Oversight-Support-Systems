@@ -38,6 +38,19 @@ export type CourtOffice = {
   courtOfficeName: string; // DXTR AO_OFFICE.OFFICE_DISPLAY_NAME
 };
 
+export function mapDivisionCodeToUstpOffice(
+  offices: UstpOfficeDetails[],
+): Map<string, UstpOfficeDetails> {
+  return offices.reduce((acc, office) => {
+    office.groups.forEach((group) => {
+      group.divisions.forEach((division) => {
+        acc.set(division.divisionCode, office);
+      });
+    });
+    return acc;
+  }, new Map<string, UstpOfficeDetails>());
+}
+
 export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   {
     officeCode: 'USTP_CAMS_Region_18_Office_Seattle',

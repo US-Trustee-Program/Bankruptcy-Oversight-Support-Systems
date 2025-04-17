@@ -1,10 +1,12 @@
+import { PaginationParameters } from '../../../../../../common/src/api/pagination';
+import { DEFAULT_SEARCH_LIMIT } from '../../../../../../common/src/api/search';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
-import { isPagination, Pagination, Query, Sort } from '../../../../query/query-builder';
-import { Pipeline } from '../../../../query/query-pipeline';
+import { ConditionOrConjunction, Query, SortSpec } from '../../../../query/query-builder';
+import QueryPipeline, { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
 import {
   CamsPaginationResponse,
   DocumentCollectionAdapter,
@@ -14,7 +16,7 @@ import {
 import { toMongoAggregate } from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 import { randomUUID } from 'crypto';
-import { MongoServerError } from 'mongodb';
+import { Document as MongoDocument, MongoServerError } from 'mongodb';
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -25,7 +27,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     this.moduleName = moduleName + '_ADAPTER';
   }
 
-  async _aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
+  async aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
     const mongoQuery = toMongoAggregate(pipeline);
     try {
       const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
@@ -43,66 +45,68 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
-  public async paginatedFind(query: Pagination<T>): Promise<CamsPaginationResponse<T>> {
-    const mongoQuery = toMongoQuery<T>(query);
-    const countQuery = toMongoQuery<T>(query.values[0]);
+  public async paginate(
+    pipelineOrQuery: Pipeline | ConditionOrConjunction,
+    page: PaginationParameters = { offset: 0, limit: DEFAULT_SEARCH_LIMIT },
+  ): Promise<CamsPaginationResponse<T>> {
     try {
-      if (!isPagination(query)) {
-        throw new Error('Trying to paginate for a query that is not a pagination query');
+      const pipeline = isPipeline(pipelineOrQuery)
+        ? pipelineOrQuery
+        : QueryPipeline.pipeline(QueryPipeline.match(pipelineOrQuery));
+
+      const includesPagination = pipeline.stages.reduce((acc, stage) => {
+        return acc || isPaginate(stage);
+      }, false);
+
+      if (!includesPagination) {
+        pipeline.stages.push(QueryPipeline.paginate(page.offset, page.limit));
       }
+      const mongoAggregate = toMongoAggregate(pipeline);
 
-      const aggregationItem: CamsPaginationResponse<T> = {
-        metadata: { total: 0 },
-        data: [],
-      };
+      const cursor = await this.collectionHumble.aggregate(mongoAggregate);
+      const result = await cursor.next();
 
-      const aggregationResult = await this.collectionHumble.aggregate(mongoQuery);
-      aggregationItem.metadata.total = await this.collectionHumble.countDocuments(countQuery);
-
-      for await (const result of aggregationResult) {
-        for (const doc of result.data) {
-          aggregationItem.data.push(doc as CamsItem<T>);
-        }
-      }
-
-      return aggregationItem;
+      return this.getPage<T>(result);
     } catch (originalError) {
       throw this.handleError(
         originalError,
-        `Failed while querying with: ${JSON.stringify(query)}`,
-        { query },
+        `Query failed. ${originalError.message}`,
+        pipelineOrQuery,
       );
     }
   }
 
-  public async find(query: Query<T>, sort?: Sort<T>): Promise<T[]> {
+  getPage<T>(result: MongoDocument): CamsPaginationResponse<T> {
+    return {
+      metadata: result['metadata'] ? result['metadata'][0] : { total: 0 },
+      data: result['data'] ?? [],
+    };
+  }
+
+  public async find(query: Query<T>, sort?: SortSpec): Promise<T[]> {
     const mongoQuery = toMongoQuery<T>(query);
-    const mongoSort = sort ? toMongoSort<T>(sort) : undefined;
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       const items: T[] = [];
 
-      const findPromise = this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+      const findResults = await this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? findResults.sort(mongoSort) : findResults;
       for await (const doc of results) {
         items.push(doc as CamsItem<T>);
       }
 
       return items;
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while querying with: ${JSON.stringify(query)}`,
-        { query },
-      );
+      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
     }
   }
 
-  public async getAll(sort?: Sort<T>): Promise<T[]> {
+  public async getAll(sort?: SortSpec): Promise<T[]> {
     const mongoQuery = {};
-    const mongoSort = sort ? toMongoSort<T>(sort) : undefined;
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
-      const findPromise = this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? (await findPromise).sort(mongoSort) : await findPromise;
+      const findResult = await this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? findResult.sort(mongoSort) : findResult;
 
       const items: T[] = [];
       for await (const doc of results) {
@@ -110,11 +114,9 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return items;
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed to retrieve all with sort: ${JSON.stringify(sort)}`,
-        { sort },
-      );
+      throw this.handleError(originalError, `Failed to retrieve all. ${originalError.message}`, {
+        sort,
+      });
     }
   }
 
@@ -127,11 +129,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return result;
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while querying with: ${JSON.stringify(query)}`,
-        { query },
-      );
+      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
     }
   }
 
@@ -162,22 +160,31 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         message: `Failed to update document. Query matched ${result.matchedCount} items.`,
       });
 
-      if (!result.acknowledged) throw upsert ? unknownError : unknownMatchError;
-      if (result.upsertedCount + result.modifiedCount > 1) throw unknownError;
-      if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) throw unknownError;
-      if (!upsert && result.matchedCount === 0) throw notFoundError;
-      if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) throw unknownMatchError;
+      if (!result.acknowledged) {
+        throw upsert ? unknownError : unknownMatchError;
+      }
+      if (result.upsertedCount + result.modifiedCount > 1) {
+        throw unknownError;
+      }
+      if (upsert && result.upsertedCount < 1 && result.modifiedCount < 1) {
+        throw unknownError;
+      }
+      if (!upsert && result.matchedCount === 0) {
+        throw notFoundError;
+      }
+      if (!upsert && result.matchedCount > 0 && result.modifiedCount === 0) {
+        throw unknownMatchError;
+      }
       return {
         id: mongoItem.id,
         modifiedCount: result.modifiedCount,
         upsertedCount: result.upsertedCount,
       };
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(item)}`,
-        { query, item },
-      );
+      throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
+        query,
+        item,
+      });
     }
   }
 
@@ -206,11 +213,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         modifiedCount: result.modifiedCount,
       };
     } catch (originalError) {
-      throw this.handleError(
-        originalError,
-        `Failed while replacing: query:${JSON.stringify(query)} item: ${JSON.stringify(itemProperties)}`,
-        { query, item: itemProperties },
-      );
+      throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
+        query,
+        item: itemProperties,
+      });
     }
   }
 
@@ -227,7 +233,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return mongoItem.id;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(item)}`, {
+      throw this.handleError(originalError, `Failed to insert item. ${originalError.message}`, {
         item,
       });
     }
@@ -249,7 +255,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       }
       return insertedIds;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while inserting: ${JSON.stringify(items)}`, {
+      throw this.handleError(originalError, `Failed to insert items. ${originalError.message}`, {
         items,
       });
     }
@@ -267,7 +273,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`, {
+      throw this.handleError(originalError, `Failed to delete item. ${originalError.message}`, {
         query,
       });
     }
@@ -283,7 +289,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
       return result.deletedCount;
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while deleting: ${JSON.stringify(query)}`, {
+      throw this.handleError(originalError, `Failed to delete items. ${originalError.message}`, {
         query,
       });
     }
@@ -294,7 +300,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     try {
       return await this.collectionHumble.countDocuments(mongoQuery);
     } catch (originalError) {
-      throw this.handleError(originalError, `Failed while counting: ${JSON.stringify(query)}`, {
+      throw this.handleError(originalError, `Failed to count documents. ${originalError.message}`, {
         query,
       });
     }

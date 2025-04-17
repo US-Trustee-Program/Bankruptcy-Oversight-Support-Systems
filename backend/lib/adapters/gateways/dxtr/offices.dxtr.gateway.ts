@@ -1,7 +1,7 @@
 import * as mssql from 'mssql';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
-import { DbTableFieldSpec, QueryResults } from '../../types/database';
+import { QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
 import { OfficesGateway } from '../../../use-cases/offices/offices.types';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
@@ -95,7 +95,6 @@ export default class OfficesDxtrGateway implements OfficesGateway {
   }
 
   async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
-    const input: DbTableFieldSpec[] = [];
     const query = `
     SELECT a.[CS_DIV_ACMS] AS courtDivisionCode
       ,a.[GRP_DES] AS groupDesignator
@@ -118,7 +117,6 @@ export default class OfficesDxtrGateway implements OfficesGateway {
       context,
       context.config.dxtrDbConfig,
       query,
-      input,
     );
 
     if (queryResult.success) {

@@ -43,7 +43,7 @@ describe('Cases repository', () => {
     orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
   };
-  const { and, paginate } = QueryBuilder;
+  const { and } = QueryBuilder;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -304,7 +304,7 @@ describe('Cases repository', () => {
     );
   });
 
-  test('should call paginatedFind without caseIds array in query', async () => {
+  test('should call paginate without caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: true,
@@ -316,27 +316,41 @@ describe('Cases repository', () => {
       data: [MockData.getSyncedCase({ override: { caseId: caseId1 } })],
     };
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValueOnce(expectedSyncedCaseArray);
     const result = await repo.searchCases(predicate);
     const doc = using<SyncedCase>();
-    const expectedQuery = paginate<SyncedCase>(
-      predicate.offset,
-      predicate.limit,
-      [and(doc('documentType').equals('SYNCED_CASE'), doc('chapter').contains(predicate.chapters))],
-      {
-        attributes: [
-          ['dateFiled', 'DESCENDING'],
-          ['caseNumber', 'DESCENDING'],
-        ],
-      },
-    );
+
+    const expectedQuery = {
+      stages: [
+        {
+          stage: 'MATCH',
+          ...and(
+            doc('documentType').equals('SYNCED_CASE'),
+            doc('chapter').contains(predicate.chapters),
+          ),
+        },
+        {
+          stage: 'SORT',
+          fields: [
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+          ],
+        },
+        {
+          stage: 'PAGINATE',
+          skip: predicate.offset,
+          limit: predicate.limit,
+        },
+      ],
+    };
+
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
     expect(result).toEqual(expectedSyncedCaseArray);
   });
 
-  test('should call paginatedFind with caseIds array in query', async () => {
+  test('should call paginate with caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: true,
@@ -350,33 +364,40 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     const doc = using<SyncedCase>();
-    const expectedQuery = paginate<SyncedCase>(
-      predicate.offset,
-      predicate.limit,
-      [
-        and(
-          doc('documentType').equals('SYNCED_CASE'),
-          doc('caseId').contains(predicate.caseIds),
-          doc('chapter').contains(predicate.chapters),
-        ),
+    const expectedQuery = {
+      stages: [
+        {
+          stage: 'MATCH',
+          ...and(
+            doc('documentType').equals('SYNCED_CASE'),
+            doc('caseId').contains(predicate.caseIds),
+            doc('chapter').contains(predicate.chapters),
+          ),
+        },
+        {
+          stage: 'SORT',
+          fields: [
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+          ],
+        },
+        {
+          stage: 'PAGINATE',
+          skip: predicate.offset,
+          limit: predicate.limit,
+        },
       ],
-      {
-        attributes: [
-          ['dateFiled', 'DESCENDING'],
-          ['caseNumber', 'DESCENDING'],
-        ],
-      },
-    );
+    };
     expect(findSpy).toHaveBeenCalledWith(expectedQuery);
 
     expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
 
-  test('should call paginatedFind with caseIds array and excludedCaseIds in query', async () => {
+  test('should call paginate with caseIds array and excludedCaseIds in query', async () => {
     const excludedCaseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
@@ -392,35 +413,44 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
     const findSpy = jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     const result = await repo.searchCases(predicate);
     // TODO: can we find a way to not rely on the exact order here?
     const doc = using<SyncedCase>();
-    const expectedQuery = paginate<SyncedCase>(
-      predicate.offset,
-      predicate.limit,
-      [
-        and(
-          doc('documentType').equals('SYNCED_CASE'),
-          doc('caseId').contains(predicate.caseIds),
-          doc('chapter').contains(predicate.chapters),
-          doc('caseId').notContains(predicate.excludedCaseIds),
-        ),
+
+    const expectedQuery = {
+      stages: [
+        {
+          stage: 'MATCH',
+          ...and(
+            doc('documentType').equals('SYNCED_CASE'),
+            doc('caseId').contains(predicate.caseIds),
+            doc('chapter').contains(predicate.chapters),
+            doc('caseId').notContains(predicate.excludedCaseIds),
+          ),
+        },
+        {
+          stage: 'SORT',
+          fields: [
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+          ],
+        },
+        {
+          stage: 'PAGINATE',
+          skip: predicate.offset,
+          limit: predicate.limit,
+        },
       ],
-      {
-        attributes: [
-          ['dateFiled', 'DESCENDING'],
-          ['caseNumber', 'DESCENDING'],
-        ],
-      },
-    );
+    };
+
     expect(findSpy).toHaveBeenCalledWith(expect.objectContaining(expectedQuery));
 
     expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
 
-  test('should throw error when paginatedFind throws error', async () => {
+  test('should throw error when paginate throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: false,
@@ -429,14 +459,14 @@ describe('Cases repository', () => {
     };
 
     jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockRejectedValue(new CamsError('CASES_MONGO_REPOSITORY'));
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
   });
 
-  test('should throw error when paginatedFind has invalid limit and offset', async () => {
+  test('should throw error when paginate has invalid limit and offset', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
       excludeChildConsolidations: false,
@@ -449,7 +479,7 @@ describe('Cases repository', () => {
       MockData.getSyncedCase({ override: { caseId: caseId2 } }),
     ];
     jest
-      .spyOn(MongoCollectionAdapter.prototype, 'paginatedFind')
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue({ data: expectedSyncedCaseArray });
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Case Search requires a pagination predicate with a valid limit and offset',
@@ -588,7 +618,7 @@ describe('Cases repository', () => {
     };
 
     jest
-      .spyOn(MongoCollectionAdapter.prototype, '_aggregate')
+      .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
       .mockImplementation((...params: unknown[]) => {
         const _q = toMongoAggregate(params[0] as Pipeline);
         return Promise.resolve([]);
@@ -597,5 +627,32 @@ describe('Cases repository', () => {
     const actual = await repo.searchCasesForOfficeAssignees(predicate);
 
     expect(actual).toEqual(expected);
+  });
+
+  test('should get synced case by caseId', async () => {
+    const bCase = MockData.getSyncedCase();
+    const findSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockResolvedValue(bCase);
+
+    const actual = await repo.getSyncedCase(bCase.caseId);
+
+    expect(actual).toEqual(bCase);
+    expect(findSpy).toHaveBeenCalledWith({
+      conjunction: 'AND',
+      values: [
+        { condition: 'EQUALS', leftOperand: { name: 'caseId' }, rightOperand: bCase.caseId },
+        { condition: 'EQUALS', leftOperand: { name: 'documentType' }, rightOperand: 'SYNCED_CASE' },
+      ],
+    });
+  });
+
+  test('should handle error getting synced case', async () => {
+    const bCase = MockData.getSyncedCase();
+    jest
+      .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+      .mockRejectedValue(new Error('some error'));
+
+    await expect(repo.getSyncedCase(bCase.caseId)).rejects.toThrow(UnknownError);
   });
 });

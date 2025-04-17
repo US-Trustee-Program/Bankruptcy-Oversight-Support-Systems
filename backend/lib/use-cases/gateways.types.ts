@@ -13,7 +13,11 @@ import {
 } from '../../../common/src/cams/events';
 import { CaseAssignmentHistory, CaseHistory } from '../../../common/src/cams/history';
 import { CaseDocket, CaseNote, SyncedCase } from '../../../common/src/cams/cases';
-import { CasesSearchPredicate, OrdersSearchPredicate } from '../../../common/src/api/search';
+import {
+  CasesSearchPredicate,
+  OfficeAssigneePredicate,
+  OrdersSearchPredicate,
+} from '../../../common/src/api/search';
 import {
   AttorneyUser,
   PrivilegedIdentityUser,
@@ -24,8 +28,9 @@ import {
 import { UstpOfficeDetails } from '../../../common/src/cams/offices';
 import { CaseAssignment } from '../../../common/src/cams/assignments';
 import { CamsSession } from '../../../common/src/cams/session';
-import { ConditionOrConjunction, Pagination, Sort } from '../query/query-builder';
+import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
+import { Pipeline } from '../query/query-pipeline';
 
 export type ReplaceResult = {
   id: string;
@@ -68,6 +73,10 @@ interface Deletes {
   delete(id: string): Promise<void>;
 }
 
+interface DeletesMany<T> {
+  deleteMany(predicate: T): Promise<void>;
+}
+
 interface Searches<P, R> {
   search(predicate?: P): Promise<R[]>;
 }
@@ -90,6 +99,7 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
     Updates<CaseAssignment, string> {
   getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>>;
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
+  getAllActiveAssignments(): Promise<CaseAssignment[]>;
 }
 
 export interface CaseNotesRepository<T = CaseNote>
@@ -152,6 +162,7 @@ export interface CasesRepository extends Releasable {
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   deleteSyncedCases(): Promise<void>;
   searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]>;
+  getSyncedCase(caseId: string): Promise<SyncedCase>;
 }
 
 export interface OfficesRepository extends Releasable {
@@ -168,6 +179,14 @@ export interface UsersRepository extends Releasable {
     updatedBy: CamsUserReference,
   ): Promise<ReplaceResult>;
   deletePrivilegedIdentityUser(id: string): Promise<void>;
+}
+
+export interface OfficeAssigneesRepository
+  extends Creates<OfficeAssignee>,
+    DeletesMany<OfficeAssigneePredicate>,
+    Searches<OfficeAssigneePredicate, OfficeAssignee>,
+    Releasable {
+  getDistinctAssigneesByOffice: (officeCode) => Promise<CamsUserReference[]>;
 }
 
 export type RuntimeStateDocumentType =
@@ -198,10 +217,10 @@ export type OfficeStaffSyncState = RuntimeState & {
 };
 
 export interface DocumentCollectionAdapter<T> {
-  find: (query: ConditionOrConjunction<T>, sort?: Sort) => Promise<T[]>;
-  paginatedFind: (query: Pagination<T>) => Promise<CamsPaginationResponse<T>>;
+  find: (query: ConditionOrConjunction<T>, sort?: SortSpec) => Promise<T[]>;
+  paginate: (pipelineOrQuery: Pipeline | Query) => Promise<CamsPaginationResponse<T>>;
   findOne: (query: ConditionOrConjunction<T>) => Promise<T>;
-  getAll: (sort?: Sort<T>) => Promise<T[]>;
+  getAll: (sort?: SortSpec) => Promise<T[]>;
   replaceOne: (
     query: ConditionOrConjunction<T>,
     item: unknown,
@@ -220,3 +239,19 @@ export type CamsPaginationResponse<T> = {
   metadata?: { total: number };
   data: T[];
 };
+
+export type OfficeAssignee = {
+  caseId: string;
+  officeCode: string;
+  userId: string;
+  name: string;
+};
+
+export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
+
+export interface QueueGateway {
+  using<T = unknown>(
+    context: ApplicationContext,
+    queueName: LogicalQueueNames,
+  ): { enqueue: (...messages: T[]) => void };
+}

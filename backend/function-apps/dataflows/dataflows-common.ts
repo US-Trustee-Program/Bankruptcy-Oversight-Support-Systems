@@ -9,8 +9,6 @@ import { toAzureError, toAzureSuccess } from '../azure/functions';
 import ContextCreator from '../azure/application-context-creator';
 import { ForbiddenError } from '../../lib/common-errors/forbidden-error';
 
-export const STORAGE_QUEUE_CONNECTION = 'AzureWebJobsStorage';
-
 export type StartMessage = object;
 
 export type RangeMessage = {

@@ -15,11 +15,13 @@ import {
   CasesRepository,
   CasesSyncState,
   ConsolidationOrdersRepository,
+  OfficeAssigneesRepository,
   OfficesRepository,
   OfficeStaffSyncState,
   OrdersGateway,
   OrdersRepository,
   OrderSyncState,
+  QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
   UserSessionCacheRepository,
@@ -54,6 +56,8 @@ import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repo
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
+import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
+import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -87,14 +91,18 @@ export const getCasesGateway = (context: ApplicationContext): CasesInterface => 
 };
 
 export const getAssignmentRepository = (context: ApplicationContext): CaseAssignmentRepository => {
-  if (context.config.get('dbMock')) return new MockMongoRepository();
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
   const repo = CaseAssignmentMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
 
 export const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRepository => {
-  if (context.config.get('dbMock')) return new MockMongoRepository();
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
   const repo = CaseNotesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
@@ -185,7 +193,9 @@ export const getCasesRepository = (context: ApplicationContext): CasesRepository
 export const getRuntimeStateRepository = <T extends RuntimeState>(
   context: ApplicationContext,
 ): RuntimeStateRepository<T> => {
-  if (context.config.get('dbMock')) return new MockMongoRepository();
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
   return new RuntimeStateMongoRepository<T>(context);
 };
 
@@ -231,8 +241,12 @@ export const getUsersRepository = (context: ApplicationContext): UsersRepository
 };
 
 export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
-  if (context.config.authConfig.provider === 'okta') return OktaGateway;
-  if (context.config.authConfig.provider === 'mock') return MockOpenIdConnectGateway;
+  if (context.config.authConfig.provider === 'okta') {
+    return OktaGateway;
+  }
+  if (context.config.authConfig.provider === 'mock') {
+    return MockOpenIdConnectGateway;
+  }
   return null;
 };
 
@@ -298,6 +312,21 @@ const getAcmsGateway = (context: ApplicationContext): AcmsGateway => {
   return acmsGateway;
 };
 
+export const getOfficeAssigneesRepository = (
+  context: ApplicationContext,
+): OfficeAssigneesRepository => {
+  if (context.config.dbMock === true) {
+    return MockMongoRepository.getInstance(context);
+  }
+  const repo = OfficeAssigneeMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
+  return StorageQueueGateway;
+};
+
 export const Factory = {
   getAcmsGateway,
   getAttorneyGateway,
@@ -307,6 +336,7 @@ export const Factory = {
   getCaseDocketUseCase,
   getSqlConnection,
   getOrdersGateway,
+  getOfficeAssigneesRepository,
   getOfficesGateway,
   getOfficesRepository,
   getOrdersRepository,
@@ -322,6 +352,7 @@ export const Factory = {
   getStorageGateway,
   getUserGroupGateway,
   getUsersRepository,
+  getQueueGateway,
 };
 
 export default Factory;
