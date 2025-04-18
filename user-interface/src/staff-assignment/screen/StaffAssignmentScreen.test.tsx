@@ -99,7 +99,7 @@ describe('StaffAssignmentScreen', () => {
 
     let assigneeItem;
     await waitFor(() => {
-      assigneeItem = screen.getByTestId('staff-assignees-option-item-0');
+      assigneeItem = screen.getByTestId('staff-assignees-option-item-1');
       expect(assigneeItem).toBeInTheDocument();
     });
 

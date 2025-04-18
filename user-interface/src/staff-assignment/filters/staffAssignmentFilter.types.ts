@@ -4,6 +4,11 @@ import { ResponseBody } from '@common/api/response';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 
+export const UNASSIGNED_OPTION = {
+  value: 'UNASSIGNED',
+  label: '(unassigned)',
+};
+
 interface StaffAssignmentFilterStore {
   filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
   setFilterAssigneeCallback(val: ((assignees: ComboOption[]) => void) | null): void;
@@ -38,7 +43,8 @@ interface StaffAssignmentFilterRef {
 }
 
 type StaffAssignmentScreenFilter = {
-  assignee: CamsUserReference;
+  assignee?: CamsUserReference;
+  includeOnlyUnassigned?: boolean;
 };
 
 type StaffAssignmentFilterProps = {

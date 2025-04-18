@@ -32,14 +32,12 @@ const notesSubmissionErrorMessage = 'There was a problem submitting the case not
 
 const modalOpenButtonRef = React.createRef<OpenModalButtonRef>();
 let session: CamsSession;
-let renderCount = 0;
 
 function renderWithProps(
   modalRef: React.RefObject<CaseNoteFormModalRef>,
   modalProps?: Partial<CaseNoteFormModalProps>,
   openProps?: Partial<CaseNoteFormModalOpenProps>,
 ) {
-  renderCount++;
   const defaultModalProps = {
     modalId,
     ref: modalOpenButtonRef,
@@ -69,7 +67,6 @@ function renderWithProps(
       </BrowserRouter>
     </React.StrictMode>,
   );
-  console.log(`Rendered the stuff ${renderCount} times!!!!!!!!!!!!!!!!`);
 }
 
 async function openWithExpectedContent(data: CaseNoteInput) {
