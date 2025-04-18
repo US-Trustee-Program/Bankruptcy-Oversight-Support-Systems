@@ -300,6 +300,24 @@ describe('Case management tests', () => {
     };
     const caseNumber = '00-00000';
 
+    test('should filter for unassigned cases when includeOnlyUnassigned is true', async () => {
+      const predicate: CasesSearchPredicate = {
+        ...basePredicate,
+        includeOnlyUnassigned: true,
+      };
+
+      const searchCases = jest
+        .spyOn(useCase.casesRepository, 'searchCases')
+        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+
+      await useCase.searchCases(applicationContext, predicate, false);
+
+      expect(searchCases).toHaveBeenCalledWith({
+        ...predicate,
+        includeOnlyUnassigned: true,
+      });
+    });
+
     test('should return an empty array for no matches', async () => {
       jest
         .spyOn(useCase.casesRepository, 'searchCases')

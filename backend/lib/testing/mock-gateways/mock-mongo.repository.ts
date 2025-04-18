@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { SyncedCase } from '../../../../common/src/cams/cases';
 import {
   TransferFrom,
   TransferTo,
@@ -9,6 +10,7 @@ import { CaseHistory } from '../../../../common/src/cams/history';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
+  CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
   ConsolidationOrdersRepository,
@@ -130,7 +132,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  searchCases(..._ignore): Promise<any[]> {
+  searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
     throw new Error('Method not implemented.');
   }
 
@@ -175,10 +177,6 @@ export class MockMongoRepository
   }
 
   getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  searchCasesForOfficeAssignees(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 
