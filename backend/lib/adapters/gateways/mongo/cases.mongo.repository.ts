@@ -8,7 +8,7 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '../../../../../common/src/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CasesRepository } from '../../../use-cases/gateways.types';
+import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
@@ -321,8 +321,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     return conditions;
   }
 
-  async searchCases(predicate: CasesSearchPredicate) {
+  async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
+      if (predicate.includeOnlyUnassigned) {
+        return await this.searchForUnassignedCases(predicate);
+      }
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
       const conditions = this.addConditions(predicate);
@@ -351,7 +354,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]> {
+  private async searchForUnassignedCases(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
     type TempFields = {
       allAssignments: CaseAssignment[];
       matchingAssignments: CaseAssignment[];
@@ -360,11 +365,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     const { assignments: assignmentsPredicate, ...initialPredicate } = predicate;
     const initialMatch = and(...this.addConditions(initialPredicate));
 
-    // Field references from the assignments collection.
+    // Field references from the `assignments` collection.
     const assignmentDocs = source<CaseAssignment>('assignments');
     const [assignmentName, assignmentUnassignedOn] = assignmentDocs.fields('name', 'unassignedOn');
 
-    // Field references from the cases collection.
+    // Field references from the `cases` collection.
     const caseDocs = source<SyncedCase>('cases');
     const assignmentsField = caseDocs.field('assignments');
 
@@ -391,12 +396,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         .onto<SyncedCase>(caseDocs.field('caseId'))
         .as<TempFields>(allAssignmentsTempField),
       addFields(matchingAssignments, assignments),
-      match(assignmentsField.notEqual([])),
+      match(assignmentsField.equals([])),
       exclude(allAssignmentsTempField, matchingAssignmentsTempField),
       sort(ascending(caseDocs.field('caseId'))),
+      paginate(predicate.offset, predicate.limit),
     );
 
-    return await this.getAdapter<SyncedCase>().aggregate(pipelineQuery);
+    return await this.getAdapter<SyncedCase>().paginate(pipelineQuery);
   }
 
   async getSyncedCase(caseId: string): Promise<SyncedCase> {

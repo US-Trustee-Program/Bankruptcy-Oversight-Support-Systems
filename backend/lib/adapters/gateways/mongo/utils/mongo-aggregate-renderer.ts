@@ -138,7 +138,7 @@ const mapCondition: { [key: string]: string } = {
   CONTAINS: '$in',
   LESS_THAN: '$lt',
   LESS_THAN_OR_EQUAL: '$lte',
-  NOT_EQUAL: '$ne',
+  NOT_EQUALS: '$ne',
   NOT_CONTAINS: '$nin',
   REGEX: '$regex',
   IF_NULL: '$ifNull',

@@ -21,8 +21,6 @@ import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { CaseHistory } from '../../../../../common/src/cams/history';
-import { toMongoAggregate } from './utils/mongo-aggregate-renderer';
-import { Pipeline } from '../../../query/query-pipeline';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -450,6 +448,49 @@ describe('Cases repository', () => {
     expect(result).toEqual({ data: expectedSyncedCaseArray });
   });
 
+  test('should call paginate with includeOnlyUnassigned in query', async () => {
+    const predicate: CasesSearchPredicate = {
+      chapters: ['15'],
+      includeOnlyUnassigned: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+      MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+    ];
+
+    const expectedPaginationResponse: CamsPaginationResponse<SyncedCase> = {
+      metadata: { total: expectedSyncedCaseArray.length },
+      data: expectedSyncedCaseArray,
+    };
+
+    const aggregateSpy = jest
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+      .mockResolvedValue(expectedPaginationResponse);
+
+    const result = await repo.searchCases(predicate);
+
+    const expectedQuery = {
+      stages: [
+        expect.objectContaining({ conjunction: 'AND', stage: 'MATCH' }),
+        expect.objectContaining({ stage: 'JOIN' }),
+        expect.objectContaining({ stage: 'ADD_FIELDS' }),
+        expect.objectContaining({ condition: 'EQUALS', stage: 'MATCH' }),
+        expect.objectContaining({ stage: 'EXCLUDE' }),
+        expect.objectContaining({ stage: 'SORT' }),
+        expect.objectContaining({
+          stage: 'PAGINATE',
+          skip: predicate.offset,
+          limit: predicate.limit,
+        }),
+      ],
+    };
+
+    expect(result).toEqual(expectedPaginationResponse);
+    expect(aggregateSpy).toHaveBeenCalledWith(expectedQuery);
+  });
+
   test('should throw error when paginate throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
@@ -606,27 +647,6 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('some error'));
 
     await expect(repo.syncDxtrCase(bCase)).rejects.toThrow(UnknownError);
-  });
-
-  test('searchCasesForOfficeAssignees', async () => {
-    const expected = [];
-    const predicate: CasesSearchPredicate = {
-      divisionCodes: ['081'],
-      excludeClosedCases: true,
-      offset: 0,
-      limit: 25,
-    };
-
-    jest
-      .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
-      .mockImplementation((...params: unknown[]) => {
-        const _q = toMongoAggregate(params[0] as Pipeline);
-        return Promise.resolve([]);
-      });
-
-    const actual = await repo.searchCasesForOfficeAssignees(predicate);
-
-    expect(actual).toEqual(expected);
   });
 
   test('should get synced case by caseId', async () => {

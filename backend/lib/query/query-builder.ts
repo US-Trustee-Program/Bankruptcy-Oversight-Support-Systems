@@ -6,7 +6,7 @@ export type Condition<T = unknown> = {
     | 'CONTAINS'
     | 'LESS_THAN'
     | 'LESS_THAN_OR_EQUAL'
-    | 'NOT_EQUAL'
+    | 'NOT_EQUALS'
     | 'NOT_CONTAINS'
     | 'EXISTS'
     | 'REGEX';
@@ -122,7 +122,7 @@ export function using<T = unknown>() {
 
     const notEqual = (rightOperand: Field<T> | R): Condition<T> => {
       return {
-        condition: 'NOT_EQUAL',
+        condition: 'NOT_EQUALS',
         leftOperand,
         rightOperand,
       };
