@@ -471,7 +471,6 @@ describe('Cases repository', () => {
 
     const result = await repo.searchCases(predicate);
 
-    // This test will fail until the repository is updated to handle includeOnlyUnassigned
     const expectedQuery = {
       stages: [
         expect.objectContaining({ conjunction: 'AND', stage: 'MATCH' }),
