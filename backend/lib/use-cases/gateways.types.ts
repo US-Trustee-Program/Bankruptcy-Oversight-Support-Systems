@@ -158,10 +158,9 @@ export interface CasesRepository extends Releasable {
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
-  searchCases(predicate: CasesSearchPredicate);
+  searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>>;
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   deleteSyncedCases(): Promise<void>;
-  searchCasesForOfficeAssignees(predicate: CasesSearchPredicate): Promise<SyncedCase[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
 }
 

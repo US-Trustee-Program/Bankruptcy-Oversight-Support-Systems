@@ -129,10 +129,10 @@ describe('Query Builder', () => {
       },
     },
     {
-      condition: 'NOT_EQUAL',
+      condition: 'NOT_EQUALS',
       query: () => q('two').notEqual(45),
       result: {
-        condition: 'NOT_EQUAL',
+        condition: 'NOT_EQUALS',
         leftOperand: { name: 'two' },
         rightOperand: 45,
       },
