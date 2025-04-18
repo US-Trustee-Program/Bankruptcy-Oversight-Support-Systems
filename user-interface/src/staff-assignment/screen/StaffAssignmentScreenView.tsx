@@ -9,10 +9,28 @@ import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
 import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 import { StaffAssignmentScreenViewProps } from './StaffAssignment.types';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
   const { viewModel } = props;
   const showAssignments = viewModel.hasValidPermission && viewModel.hasAssignedOffices;
+
+  const searchPredicate = viewModel.getPredicateByUserContextWithFilter(
+    viewModel.session!.user,
+    viewModel.staffAssignmentFilter,
+  );
+
+  const noResultsAlertProps = searchPredicate.includeOnlyUnassigned
+    ? {
+        message: 'There are no more cases to be assigned.',
+        title: 'All Cases Assigned',
+        type: UswdsAlertStyle.Info,
+      }
+    : {
+        message: 'There are no cases currently assigned.',
+        title: 'No Cases Assigned',
+        type: UswdsAlertStyle.Warning,
+      };
 
   return (
     <MainContent className="staff-assignment case-list">
@@ -52,11 +70,8 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
           {showAssignments && (
             <SearchResults
               id="search-results"
-              searchPredicate={viewModel.getPredicateByUserContextWithFilter(
-                viewModel.session!.user,
-                viewModel.staffAssignmentFilter,
-              )}
-              noResultsMessage="No cases currently assigned."
+              searchPredicate={searchPredicate}
+              noResultsAlertProps={noResultsAlertProps}
               header={StaffAssignmentHeader}
               row={viewModel.StaffAssignmentRowClosure}
             ></SearchResults>
