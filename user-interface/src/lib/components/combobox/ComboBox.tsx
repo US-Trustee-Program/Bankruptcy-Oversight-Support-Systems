@@ -20,6 +20,7 @@ export type ComboOption = {
   label: string;
   selected?: boolean;
   hidden?: boolean;
+  divider?: boolean;
 };
 
 export type ComboOptionList = ComboOption | Array<ComboOption>;
@@ -227,6 +228,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       classNames.push('hidden');
     } else if (isSelected(option)) {
       classNames.push('selected');
+    }
+    if (option.divider) {
+      classNames.push('divider');
     }
     return classNames.join(' ');
   }
