@@ -29,6 +29,7 @@ export default defineConfig({
         '**/staff-assignment/screen/StaffAssignmentScreenView.tsx',
         '**/staff-assignment/filters/StaffAssignmentFilterView.tsx',
         '**/*.d.ts',
+        '**/*.types.ts',
         '**/**humble.ts',
         '*.config.*js',
         ...coverageConfigDefaults.exclude,

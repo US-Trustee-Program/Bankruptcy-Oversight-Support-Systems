@@ -31,6 +31,7 @@ import { CamsSession } from '../../../common/src/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
 import { Pipeline } from '../query/query-pipeline';
+import { ResourceActions } from '../../../common/src/cams/actions';
 
 export type ReplaceResult = {
   id: string;
@@ -158,7 +159,9 @@ export interface CasesRepository extends Releasable {
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
-  searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>>;
+  searchCases(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
   getConsolidationChildCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   deleteSyncedCases(): Promise<void>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
