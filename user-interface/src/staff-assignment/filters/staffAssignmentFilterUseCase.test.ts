@@ -70,8 +70,13 @@ describe('staff assignment filter use case tests', () => {
     vi.restoreAllMocks();
   });
 
-  test('assigneesToComboOptions should return valid comboOptions for supplied assignees', async () => {
-    const expectedComboOptions: ComboOption[] = [];
+  test('assigneesToComboOptions should return valid comboOptions for supplied assignees and unassigned option', async () => {
+    const expectedComboOptions: ComboOption[] = [
+      {
+        label: '(unassigned)',
+        value: 'UNASSIGNED',
+      },
+    ];
     assignees.forEach((assignee) => {
       expectedComboOptions.push({
         label: assignee.name,

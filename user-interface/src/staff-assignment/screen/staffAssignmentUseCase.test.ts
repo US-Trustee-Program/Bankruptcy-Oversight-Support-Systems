@@ -110,6 +110,19 @@ describe('staff assignment use case tests', () => {
     expect(setStaffAssignmentFilterSpy).toHaveBeenCalledWith(expectedFilter);
   });
 
+  test('handleFilterAssignee should set valid staffAssignmentFilter when array of assignees supplied', async () => {
+    const comboOptions = [
+      {
+        label: '(unassigned)',
+        value: 'UNASSIGNED',
+      },
+    ];
+    const expectedFilter = { includeOnlyUnassigned: true };
+
+    useCase.handleFilterAssignee(comboOptions);
+    expect(setStaffAssignmentFilterSpy).toHaveBeenCalledWith(expectedFilter);
+  });
+
   test('handleFilterAssignee should set staffAssignmentFilter to undefined when array of assignees is empty', async () => {
     const comboOptions: ComboOption[] = [];
 
@@ -117,7 +130,7 @@ describe('staff assignment use case tests', () => {
     expect(setStaffAssignmentFilterSpy).toHaveBeenCalledWith(undefined);
   });
 
-  test('getPredicateByUserContextWithFilter should return a valid predicate when a valid filter is passed', async () => {
+  test('getPredicateByUserContextWithFilter should return a valid predicate when a valid filter is passed that is not UNASSIGNED', async () => {
     const expectedDivisionCodes = ['081', '087'];
     const filter = { assignee: assignees[0] };
     const expectedPredicate: CasesSearchPredicate = {
@@ -126,6 +139,23 @@ describe('staff assignment use case tests', () => {
       divisionCodes: expectedDivisionCodes,
       chapters: ['15', '11', '12'],
       assignments: [assignees[0]],
+      excludeChildConsolidations: true,
+      excludeClosedCases: true,
+    };
+    vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
+    const newPredicate = useCase.getPredicateByUserContextWithFilter(session.user, filter);
+    expect(newPredicate).toEqual(expectedPredicate);
+  });
+
+  test('getPredicateByUserContextWithFilter should return a valid predicate when UNASSIGNED is passed as the filter', async () => {
+    const expectedDivisionCodes = ['081', '087'];
+    const filter = { includeOnlyUnassigned: true };
+    const expectedPredicate: CasesSearchPredicate = {
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
+      divisionCodes: expectedDivisionCodes,
+      chapters: ['15', '11', '12'],
+      includeOnlyUnassigned: true,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
     };

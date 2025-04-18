@@ -21,13 +21,17 @@ const useStaffAssignmentUseCase = (
   controls: StaffAssignmentControls,
 ): StaffAssignmentUseCase => {
   const handleFilterAssignee = (assignees: ComboOption[]) => {
-    if (assignees[0]) {
+    if (assignees[0] && assignees[0].value === 'UNASSIGNED') {
+      const newFilter = {
+        includeOnlyUnassigned: true,
+      };
+      store.setStaffAssignmentFilter(newFilter);
+    } else if (assignees[0]) {
       const assignee: CamsUserReference = {
         id: assignees[0].value,
         name: assignees[0].label,
       };
       const newFilter = {
-        ...store.staffAssignmentFilter,
         assignee,
       };
       store.setStaffAssignmentFilter(newFilter);
@@ -71,6 +75,7 @@ const useStaffAssignmentUseCase = (
       assignments: filter?.assignee ? [filter.assignee] : undefined,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      includeOnlyUnassigned: filter?.includeOnlyUnassigned ?? undefined,
     };
 
     return predicate;
