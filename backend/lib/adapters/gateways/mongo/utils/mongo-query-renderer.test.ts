@@ -76,7 +76,7 @@ describe('Mongo Query Renderer', () => {
       expected: { two: { $lte: 45 } },
     },
     {
-      caseName: 'NOT_EQUAL',
+      caseName: 'NOT_EQUALS',
       func: () => doc('two').notEqual(45),
       expected: { two: { $ne: 45 } },
     },

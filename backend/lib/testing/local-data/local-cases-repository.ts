@@ -85,7 +85,7 @@ export class LocalCasesRepository implements CasesRepository {
     throw new Error('Not implemented.');
   }
 
-  searchCasesForOfficeAssignees(_ignore: CasesSearchPredicate): Promise<SyncedCase[]> {
+  searchForUnassignedCases(_ignore: CasesSearchPredicate): Promise<SyncedCase[]> {
     throw new Error('Method not implemented.');
   }
 
