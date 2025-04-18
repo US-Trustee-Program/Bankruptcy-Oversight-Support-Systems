@@ -2,6 +2,7 @@ import {
   StaffAssignmentFilterControls,
   StaffAssignmentFilterUseCase,
   StaffAssignmentFilterStore,
+  UNASSIGNED_OPTION,
 } from './staffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
 import { CamsUserReference } from '@common/cams/users';
@@ -22,6 +23,7 @@ const staffAssignmentFilterUseCase = (
         label: assignee.name,
       });
     });
+    comboOptions.unshift(UNASSIGNED_OPTION);
     return comboOptions;
   };
 
