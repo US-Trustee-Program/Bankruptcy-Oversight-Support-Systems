@@ -35,7 +35,6 @@ Note the following assumptions:
 | CAMS_LOGIN_PROVIDER                        | Variable               | ---              | Login Provider var (mock, okta, none)                                 |
 | CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING | Secret                 | ---              | Optional for log ingestion to Azure Log Analytics.                    |
 | CAMS_FEATURE_FLAG_CLIENT_ID                | Secret                 | ---              | Optional client id to enable LaunchDarkly. (LD_DEVELOPMENT_CLIENT_ID) |
-| ---                                        | ---                    | ---              | ---                                                                   |
 | OKTA_URL                                   | Variable               | ---              | Url for Okta, used within bicep deployment for nginx conf             |
 
 ### Azure
@@ -49,22 +48,17 @@ Note the following assumptions:
 | AZURE_RG                     | Secret                 | ---              | Resource group for miscellanous Azure resources                                                   |
 | AZ_PLAN_TYPE                 | Variable               | ---              | Determine plan type for Azure App Service plans.                                                  |
 | AZ_ACTION_GROUP_NAME         | Secret                 | ---              | Action Group Name for Azure Alerts                                                                |
-| ---                          | ---                    | ---              | ---                                                                                               |
 | AZ_PRIVATE_DNS_ZONE          | Variable               | ---              | Private DNS Zone name                                                                             |
 | AZ_PRIVATE_DNS_ZONE_RG       | Secrets                | ---              | Private DNS Zone Azure resource group name                                                        |
 | AZ_PRIVATE_DNS_ZONE_ID       | Secrets                | ---              | Private DNS Zone Azure Fully qualified ID                                                         |
 | AZ_NETWORK_RG                | Secrets                | ---              | Resource Group for networking components                                                          |
 | AZ_NETWORK_VNET_NAME         | Variables              | ---              | Virtual Network Name                                                                              |
-| ---                          | ---                    | ---              | ---                                                                                               |
 | AZ_SQL_SERVER_NAME           | Secret                 | ---              | ---                                                                                               |
 | AZ_SQL_IDENTITY_NAME         | Secret                 | ---              | Name of Azure managed identity with access to SQL Server database. Required if not using SQL Auth |
-| ---                          | ---                    | ---              | ---                                                                                               |
 | AZ_COSMOS_DATABASE_NAME      | Secret                 | ---              | ---                                                                                               |
 | AZ_COSMOS_MONGO_ACCOUNT_NAME | Secret                 | ---              | ---                                                                                               |
 | AZ_COSMOS_ID_NAME            | Secret                 | ---              | Name of Managed Identity accessing cosmos                                                         |
-| ---                          | ---                    | ---              | ---                                                                                               |
 | AZ_ANALYTICS_WORKSPACE_ID    | Secrets                | ---              | Azure resource id of Log Analytics.                                                               |
-| ---                          | ---                    | ---              | ---                                                                                               |
 | AZ_ACTION_GROUP_NAME         | Secrets                | Yes              | Action Group Name for alert rules                                                                 |
 
 ### Veracode
@@ -94,6 +88,12 @@ Note the following assumptions:
 | USTP_ISSUE_COLLECTOR_HASH  | Secrets                | ---              | USTP Only parameter used for CSP policy.               |
 | CSP_CAMS_REACT_SELECT_HASH | Secrets                | ---              | Allow react-select to pass CSP policy.                 |
 | SLOT_NAME                  | Variable               | ---              | Deployment slot name for slot deployments              |
+
+### Dataflows Function App
+
+| Name                       | Type (Secret/Variable) | Is Flexion Only? | Description                                            |
+| -------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
+| CAMS_ENABLED_DATAFLOWS     | Variable               | ---              | Sets up which dataflows are active on deployment |
 
 ### Key Vault
 
