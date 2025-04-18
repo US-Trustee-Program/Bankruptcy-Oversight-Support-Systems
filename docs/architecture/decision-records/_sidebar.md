@@ -12,5 +12,6 @@
 - [Frontend Build Tooling](/architecture/decision-records/FrontendBuildTooling.md)
 - [Frontend Design System](/architecture/decision-records/FrontendDesignSystem.md)
 - [GitHub Actions](/architecture/decision-records/GithubActionWorkflow.md)
+- [Office Assignees Collection Management](/architecture/decision-records/OfficeAssigneesCollectionManagement.md)
 - [Storage Queue](/architecture/decision-records/StorageQueue.md)
 - [Zero Downtime](/architecture/decision-records/ZeroDowntimeDeployment.md)
