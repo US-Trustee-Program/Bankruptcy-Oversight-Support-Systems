@@ -75,6 +75,7 @@ describe('staff assignment filter use case tests', () => {
       {
         label: '(unassigned)',
         value: 'UNASSIGNED',
+        divider: true,
       },
     ];
     assignees.forEach((assignee) => {

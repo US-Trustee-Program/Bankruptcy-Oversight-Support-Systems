@@ -1007,4 +1007,22 @@ describe('test cams combobox', () => {
     await userEvent.type(inputField!, 'test');
     expect(updateFilterMock).toHaveBeenCalledWith('test');
   });
+
+  test('should add divider style when divider prop is set to true', async () => {
+    const options: ComboOption[] = [
+      { label: 'option 0', value: 'o0', divider: true },
+      { label: 'option 1', value: 'o1', divider: false },
+      { label: 'option 2', value: 'o2', divider: true },
+      { label: 'option 3', value: 'o3' },
+    ];
+
+    renderWithProps({ options });
+
+    const listItems = document.querySelectorAll('li');
+
+    expect(listItems[0]).toHaveClass('divider');
+    expect(listItems[1]).not.toHaveClass('divider');
+    expect(listItems[2]).toHaveClass('divider');
+    expect(listItems[3]).not.toHaveClass('divider');
+  });
 });

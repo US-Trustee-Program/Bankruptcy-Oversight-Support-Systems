@@ -7,6 +7,7 @@ import { CamsUserReference } from '@common/cams/users';
 export const UNASSIGNED_OPTION = {
   value: 'UNASSIGNED',
   label: '(unassigned)',
+  divider: true,
 };
 
 interface StaffAssignmentFilterStore {

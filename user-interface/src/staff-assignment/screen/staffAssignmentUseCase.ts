@@ -72,11 +72,15 @@ const useStaffAssignmentUseCase = (
       offset: DEFAULT_SEARCH_OFFSET,
       divisionCodes: getCourtDivisionCodes(user),
       chapters: getChapters(),
-      assignments: filter?.assignee ? [filter.assignee] : undefined,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
-      includeOnlyUnassigned: filter?.includeOnlyUnassigned ?? undefined,
     };
+
+    if (filter?.includeOnlyUnassigned) {
+      predicate.includeOnlyUnassigned = true;
+    } else if (filter?.assignee) {
+      predicate.assignments = [filter.assignee];
+    }
 
     return predicate;
   };

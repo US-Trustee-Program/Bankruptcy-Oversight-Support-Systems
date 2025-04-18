@@ -3,7 +3,7 @@ import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { CaseBasics, SyncedCase } from '@common/cams/cases';
 import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
-import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
@@ -44,6 +44,7 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   noResultsMessage?: string;
+  noResultsAlertProps?: AlertProps;
   header: (props: SearchResultsHeaderProps) => JSX.Element;
   row: (props: SearchResultsRowProps) => JSX.Element;
 };
@@ -55,6 +56,7 @@ export function SearchResults(props: SearchResultsProps) {
     onStartSearching,
     onEndSearching,
     noResultsMessage: noResultsMessageProp,
+    noResultsAlertProps,
     header: Header,
     row: Row,
     ...otherProps
@@ -155,7 +157,7 @@ export function SearchResults(props: SearchResultsProps) {
           ></Alert>
         </div>
       )}
-      {!isSearching && emptyResponse && !alertInfo && (
+      {!isSearching && emptyResponse && !alertInfo && !noResultsAlertProps && (
         <div className="search-alert">
           <Alert
             id="no-results-alert"
@@ -168,6 +170,11 @@ export function SearchResults(props: SearchResultsProps) {
             inline={true}
             role="alert"
           ></Alert>
+        </div>
+      )}
+      {!isSearching && emptyResponse && noResultsAlertProps && (
+        <div className="search-alert">
+          <Alert {...noResultsAlertProps} id="no-results-alert" className="measure-6"></Alert>
         </div>
       )}
       {isSearching && (
