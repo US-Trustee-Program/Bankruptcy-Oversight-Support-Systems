@@ -17,6 +17,7 @@ import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import userEvent from '@testing-library/user-event';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -109,7 +110,11 @@ describe('StaffAssignmentScreen', () => {
     expect(SearchResults).toHaveBeenCalledWith(
       {
         id: 'search-results',
-        noResultsMessage: 'No cases currently assigned.',
+        noResultsAlertProps: {
+          message: 'There are no cases currently assigned.',
+          title: 'No Cases Assigned',
+          type: UswdsAlertStyle.Warning,
+        },
         searchPredicate: expectedPredicate,
         header: expect.anything(),
         row: expect.anything(),
@@ -149,13 +154,74 @@ describe('StaffAssignmentScreen', () => {
     expect(SearchResults).toHaveBeenCalledWith(
       {
         id: 'search-results',
-        noResultsMessage: 'No cases currently assigned.',
+        noResultsAlertProps: {
+          message: 'There are no cases currently assigned.',
+          title: 'No Cases Assigned',
+          type: UswdsAlertStyle.Warning,
+        },
         searchPredicate: expectedPredicate,
         header: expect.anything(),
         row: expect.anything(),
       },
       {},
     );
+  });
+
+  test('should show an appropriate message when no cases are unassigned', async () => {
+    const expectedAssignments = MockData.buildArray(MockData.getStaffAssignee, 5);
+    vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({
+      data: expectedAssignments,
+    });
+    vi.spyOn(Api2, 'searchCases')
+      .mockResolvedValueOnce({
+        data: MockData.buildArray(MockData.getSyncedCase, 3),
+      })
+      .mockResolvedValueOnce({
+        data: [],
+      });
+
+    const SearchResults = vi
+      .spyOn(searchResultsModule, 'default')
+      .mockImplementation((_props: SearchResultsProps) => {
+        return <></>;
+      });
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const filterContainer = document.querySelector('.staff-assignment-filter-container');
+      expect(filterContainer).toBeInTheDocument();
+    });
+
+    const unassignedFilter = document.querySelector('#option-UNASSIGNED');
+    expect(unassignedFilter).toBeInTheDocument();
+    await userEvent.click(unassignedFilter!);
+
+    const expectedPredicate: CasesSearchPredicate = {
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
+      divisionCodes: getCourtDivisionCodes(user),
+      includeOnlyUnassigned: true,
+      excludeChildConsolidations: true,
+      excludeClosedCases: true,
+      chapters: ['15'],
+    };
+
+    await waitFor(() => {
+      expect(SearchResults.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    expect(SearchResults.mock.calls[1][0]).toEqual({
+      id: 'search-results',
+      noResultsAlertProps: {
+        message: 'There are no more cases to be assigned.',
+        title: 'All Cases Assigned',
+        type: UswdsAlertStyle.Info,
+      },
+      searchPredicate: expectedPredicate,
+      header: expect.anything(),
+      row: expect.anything(),
+    });
   });
 
   describe('StaffAssignmentScreen - other errors', () => {

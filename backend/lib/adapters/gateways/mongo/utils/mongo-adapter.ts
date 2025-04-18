@@ -78,7 +78,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
   getPage<T>(result: MongoDocument): CamsPaginationResponse<T> {
     return {
-      metadata: result['metadata'] ? result['metadata'][0] : { total: 0 },
+      metadata: result['metadata'] && result['metadata'][0] ? result['metadata'][0] : { total: 0 },
       data: result['data'] ?? [],
     };
   }
