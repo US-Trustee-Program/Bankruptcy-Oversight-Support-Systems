@@ -1,4 +1,5 @@
 $separatorColor: #c6cace;
+$sectionSeparatorColor: #565c65;
 $listItemHoverBorderColor: #333;
 $listItemSelectedBorderColor: #949494;
 $listItemTextColor: #1b1b1b;
@@ -133,6 +134,10 @@ $listItemHoverBackground: #b0b0b0;
         }
         li.hidden {
           display: none;
+        }
+        li.divider {
+          border-bottom-color: $sectionSeparatorColor;
+          border-bottom: 1px solid;
         }
       }
     }
