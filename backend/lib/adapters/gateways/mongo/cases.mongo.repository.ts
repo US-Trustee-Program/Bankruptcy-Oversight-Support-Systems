@@ -24,7 +24,6 @@ const { and, or, using } = QueryBuilder;
 const {
   addFields,
   additionalField,
-  ascending,
   descending,
   exclude,
   join,
@@ -390,6 +389,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       assignmentUnassignedOn.notExists(),
     );
 
+    const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
+
     const pipelineQuery = pipeline(
       match(initialMatch),
       join<CaseAssignment>(assignmentDocs.field('caseId'))
@@ -398,7 +399,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       addFields(matchingAssignments, assignments),
       match(assignmentsField.equals([])),
       exclude(allAssignmentsTempField, matchingAssignmentsTempField),
-      sort(ascending(caseDocs.field('caseId'))),
+      sort(descending(dateFiled), descending(caseNumber)),
       paginate(predicate.offset, predicate.limit),
     );
 

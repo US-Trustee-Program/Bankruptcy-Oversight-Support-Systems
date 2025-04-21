@@ -478,7 +478,13 @@ describe('Cases repository', () => {
         expect.objectContaining({ stage: 'ADD_FIELDS' }),
         expect.objectContaining({ condition: 'EQUALS', stage: 'MATCH' }),
         expect.objectContaining({ stage: 'EXCLUDE' }),
-        expect.objectContaining({ stage: 'SORT' }),
+        expect.objectContaining({
+          stage: 'SORT',
+          fields: [
+            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
+            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+          ],
+        }),
         expect.objectContaining({
           stage: 'PAGINATE',
           skip: predicate.offset,
