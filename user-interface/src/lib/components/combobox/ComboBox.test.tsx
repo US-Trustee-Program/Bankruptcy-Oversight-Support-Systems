@@ -834,7 +834,20 @@ describe('test cams combobox', () => {
         hidden: true,
       },
     ];
-
+    const expectedValues = [
+      {
+        label: 'option 0',
+        value: 'o0',
+        selected: true,
+        hidden: false,
+      },
+      {
+        label: 'option 1',
+        value: 'o1',
+        selected: true,
+        hidden: true,
+      },
+    ];
     renderWithProps({ options }, ref);
 
     const listButtons = document.querySelectorAll('li');
@@ -842,10 +855,14 @@ describe('test cams combobox', () => {
     await userEvent.click(listButtons![1]);
 
     const setResult = ref.current?.getValue();
-    expect(setResult).toEqual(options);
+    expect(setResult).toEqual(expectedValues);
 
-    const clearedResult = ref.current?.clearValue();
-    expect(clearedResult).toEqual(undefined);
+    ref.current?.clearValue();
+
+    await waitFor(() => {
+      const emptyResult = ref.current?.getValue();
+      expect(emptyResult).toEqual([]);
+    });
   });
 
   test('should set values when calling ref.setValue', async () => {
@@ -874,7 +891,7 @@ describe('test cams combobox', () => {
 
     await waitFor(() => {
       selections = ref.current?.getValue();
-      expect(selections).toEqual(options);
+      expect(selections).toEqual(options.map((option) => ({ ...option, selected: true })));
     });
   });
 

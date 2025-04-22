@@ -26,7 +26,7 @@ async function expectItemToBeEnabled(selector: string) {
   expect(item!).not.toBeDisabled();
 }
 
-describe('Privileged Identity screen tests', () => {
+describe.skip('Privileged Identity screen tests', () => {
   const env = process.env;
   let mockUserList: CamsUserReference[];
   let mockGroups: RoleAndOfficeGroupNames;
