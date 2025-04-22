@@ -423,13 +423,21 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (props.onUpdateSelection) {
       props.onUpdateSelection(selections);
     }
-  }, [options]);
+  }, [selections]);
 
   useEffect(() => {
-    if (props.value) {
-      const value = options.find((option) => option.value === props.value);
-      if (value) {
-        setValue([value]);
+    if (!props.value) {
+      setValue([]);
+      return;
+    }
+
+    if (props.value instanceof Array) {
+      const values = props.value as string[];
+      setValue(options.filter((option) => values.includes(option.value)));
+    } else {
+      const option = options.find((option) => option.value === props.value);
+      if (option) {
+        setValue([option]);
       }
     }
   }, [props.value]);
