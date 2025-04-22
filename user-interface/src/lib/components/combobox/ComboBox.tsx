@@ -279,13 +279,15 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleDropdownItemSelection(option: ComboOption) {
-    let newSelections = [];
+    let newSelections: ComboOption[] = [];
     if (multiSelect) {
       const startingLength = selections.length;
       newSelections = selections.filter((item) => item.value !== option.value);
       if (startingLength === newSelections.length) {
         newSelections.push(option);
       }
+    } else if (selections.length === 1 && selections[0].value === option.value) {
+      newSelections = [];
     } else {
       newSelections = [option];
     }
