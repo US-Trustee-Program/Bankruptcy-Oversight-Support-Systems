@@ -372,6 +372,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         break;
       }
       case 'Enter':
+      case ' ':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           handleDropdownItemSelection(option as ComboOption, !!isSelected);
           setCurrentListItem(undefined);
