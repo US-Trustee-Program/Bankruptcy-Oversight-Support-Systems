@@ -424,36 +424,39 @@ describe('test cams combobox', () => {
     expect(pill).toHaveFocus();
   });
 
-  test('Pressing Enter key while focused on an element in the dropdown list should select that option, and add a pill for that selected item.', async () => {
-    const options = [
-      { label: 'option1', value: 'option1', selected: false },
-      { label: 'option2', value: 'option2', selected: false },
-    ];
-    renderWithProps({ options });
+  test.each([' ', '{Enter}'])(
+    'Pressing "%s" key while focused on an element in the dropdown list should select that option, and add a pill for that selected item.',
+    async (keypress: string) => {
+      const options = [
+        { label: 'option1', value: 'option1', selected: false },
+        { label: 'option2', value: 'option2', selected: false },
+      ];
+      renderWithProps({ options });
 
-    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-    expect(pillBox!.children.length).toEqual(0);
+      const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
+      expect(pillBox!.children.length).toEqual(0);
 
-    const inputField = await getFocusedComboInputField(comboboxId);
-    inputField.focus();
-    await userEvent.keyboard('{ArrowDown}');
+      const inputField = await getFocusedComboInputField(comboboxId);
+      inputField.focus();
+      await userEvent.keyboard('{ArrowDown}');
 
-    const listItems = document.querySelectorAll('li');
-    const listItem0Button = listItems![0];
-    expect(listItem0Button).toHaveFocus();
+      const listItems = document.querySelectorAll('li');
+      const listItem0Button = listItems![0];
+      expect(listItem0Button).toHaveFocus();
 
-    await userEvent.keyboard('{Enter}');
+      await userEvent.keyboard(keypress);
 
-    await waitFor(() => {
-      expect(listItems![0]).toHaveClass('selected');
-    });
+      await waitFor(() => {
+        expect(listItems![0]).toHaveClass('selected');
+      });
 
-    expect(pillBox!.children.length).toEqual(1);
+      expect(pillBox!.children.length).toEqual(1);
 
-    const listItemValue = listItem0Button.attributes.getNamedItem('data-value');
-    const pillValue = await getPillValue(pillBox, 0);
-    expect(pillValue!.nodeValue).toEqual(listItemValue!.nodeValue);
-  });
+      const listItemValue = listItem0Button.attributes.getNamedItem('data-value');
+      const pillValue = await getPillValue(pillBox, 0);
+      expect(pillValue!.nodeValue).toEqual(listItemValue!.nodeValue);
+    },
+  );
 
   test('For MultiSelect, Pressing Escape key while focused on an element in the dropdown list should close the dropdown list and focus on the input field.', async () => {
     const options = [
