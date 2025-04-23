@@ -415,10 +415,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    if (multiSelect) {
-      setOptions(copyOptions(props.options));
-      setFilteredOptions(copyOptions(props.options));
-    }
+    setFilteredOptions(copyOptions(props.options));
+    setOptions(copyOptions(props.options));
   }, [props.options]);
 
   useEffect(() => {
@@ -594,7 +592,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                   tabIndex={expanded ? 0 : -1}
                   aria-selected={isSelected(option) ? 'true' : undefined}
-                  aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
+                  aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option) ? 'selected' : 'unselected'}`}
                 >
                   {
                     <>

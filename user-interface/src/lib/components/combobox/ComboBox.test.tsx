@@ -157,7 +157,7 @@ describe('test cams combobox', () => {
     await userEvent.click(firstListItemButton!);
 
     let selectedListItem = document.querySelectorAll('li.selected');
-    expect(selectedListItem!.length).toBe(1);
+    expect(selectedListItem!.length).toEqual(1);
 
     await userEvent.click(firstListItemButton!);
 
@@ -182,7 +182,7 @@ describe('test cams combobox', () => {
     });
 
     let selectedListItem = document.querySelectorAll('li.selected');
-    expect(selectedListItem!.length).toBe(1);
+    expect(selectedListItem!.length).toEqual(1);
 
     await clickPill(pillBox, 0);
 
