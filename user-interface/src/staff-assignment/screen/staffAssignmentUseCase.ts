@@ -45,10 +45,8 @@ const useStaffAssignmentUseCase = (
     controls.filterRef.current?.refresh();
   };
 
-  const handleAssignmentChange = async (assignees: CamsUserReference[]) => {
-    if (assignees.length > 0) {
-      refreshFilter();
-    }
+  const handleAssignmentChange = async () => {
+    refreshFilter();
   };
 
   const getChapters = (): string[] => {
