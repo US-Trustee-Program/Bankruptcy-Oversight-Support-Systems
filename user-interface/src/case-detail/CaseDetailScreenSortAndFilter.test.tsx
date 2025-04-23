@@ -10,6 +10,7 @@ import { vi } from 'vitest';
 import ReactRouter from 'react-router';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { CaseDocket, CaseNote } from '@common/cams/cases';
+import userEvent from '@testing-library/user-event';
 
 const testCaseDocketEntries: CaseDocket = [
   {
@@ -90,7 +91,8 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
 
       const docketEntryLink = screen.getByTestId('court-docket-link');
-      fireEvent.click(docketEntryLink as Element);
+      expect(docketEntryLink).toBeInTheDocument();
+      await userEvent.click(docketEntryLink);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).toBeInTheDocument();
@@ -99,14 +101,14 @@ describe('Case Detail sort, search, and filter tests', () => {
       });
 
       const basicInfoLink = screen.getByTestId('case-overview-link');
-      fireEvent.click(basicInfoLink as Element);
+      await userEvent.click(basicInfoLink as Element);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);
         expect(sortButton).not.toBeInTheDocument();
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).not.toBeInTheDocument();
       });
-    }, 5000);
+    });
 
     test('should not display sort and filter panel when navigated to basic info', async () => {
       vi.spyOn(ReactRouter, 'useParams').mockReturnValue({ caseId: testCaseId });

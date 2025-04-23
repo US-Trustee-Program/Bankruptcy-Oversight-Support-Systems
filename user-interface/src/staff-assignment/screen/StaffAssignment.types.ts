@@ -42,14 +42,14 @@ interface StaffAssignmentViewModel {
     user: CamsUserReference,
     staffAssignmentFilter?: StaffAssignmentScreenFilter,
   ): CasesSearchPredicate;
-  handleAssignmentChange: (assignees: CamsUserReference[]) => void;
+  handleAssignmentChange: () => void;
   handleFilterAssignee: (assignees: ComboOption[]) => void;
   StaffAssignmentRowClosure: (props: SearchResultsRowProps) => JSX.Element;
 }
 
 interface StaffAssignmentUseCase {
   handleFilterAssignee(assignees: ComboOption[]): void;
-  handleAssignmentChange(assignees: CamsUserReference[]): void;
+  handleAssignmentChange(): void;
   getChapters(): string[];
   getPredicateByUserContextWithFilter(
     user: CamsUser,
