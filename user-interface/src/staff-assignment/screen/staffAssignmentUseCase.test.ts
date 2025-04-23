@@ -87,14 +87,9 @@ describe('staff assignment use case tests', () => {
     vi.restoreAllMocks();
   });
 
-  test('should call refresh on filterRef when assignees length is greater than 0', async () => {
-    useCase.handleAssignmentChange(assignees);
+  test('should call refresh on filterRef', async () => {
+    useCase.handleAssignmentChange();
     expect(refreshSpy).toHaveBeenCalled();
-  });
-
-  test('should not call refresh on filterRef when assignees length is 0', async () => {
-    useCase.handleAssignmentChange([]);
-    expect(refreshSpy).not.toHaveBeenCalled();
   });
 
   test('handleFilterAssignee should set valid staffAssignmentFilter when array of assignees supplied', async () => {

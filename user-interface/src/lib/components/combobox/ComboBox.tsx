@@ -48,6 +48,10 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> 
   wrapPills?: boolean;
 }
 
+function copyOptions(optionsInput: ComboOption[]) {
+  return optionsInput.map((option) => ({ ...option }));
+}
+
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const {
     id: comboBoxId,
@@ -63,8 +67,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     wrapPills,
     ariaLabelPrefix,
     ariaDescription,
-    value: _value,
-    options,
+    value,
+    options: _options,
     ...otherProps
   } = props;
 
@@ -73,24 +77,18 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(
     disabled !== undefined ? !!disabled : false,
   );
-  const [selections, setSelections] = useState<ComboOption[]>(() => {
-    if (props.value) {
-      const selection = options.find((option) => option.value === props.value);
-      if (selection) {
-        selection.selected = true;
-        return [selection];
-      }
-    }
-    return [];
-  });
 
   const [expandIcon, setExpandIcon] = useState<string>('expand_more');
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
-  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(options);
+  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(copyOptions(props.options));
   const [currentListItem, setCurrentListItem] = useState<string | undefined>(undefined);
   const [shouldFocusSingleSelectPill, setShouldFocusSingleSelectPill] = useState<boolean>(false);
+  const [options, setOptions] = useState<ComboOption[]>(copyOptions(props.options));
+  const [selections, setSelections] = useState<ComboOption[]>(
+    copyOptions(props.options.filter((option) => option.selected)),
+  );
 
   // ========== REFS ==========
 
@@ -157,14 +155,20 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function setValue(values: ComboOption[]) {
-    setSelections(values);
-  }
-
-  function getValue() {
-    return selections;
+    const newOptions = options.map((option) => {
+      return {
+        ...option,
+        selected: !!values.find(
+          (value) => value.value.toLowerCase() === option.value.toLowerCase(),
+        ),
+      };
+    });
+    setOptions(newOptions);
+    setSelections(newOptions.filter((option) => option.selected));
   }
 
   function clearValue() {
+    setOptions(options.map((option) => ({ ...option, selected: false })));
     setSelections([]);
   }
 
@@ -194,7 +198,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         targetX > containerRight ||
         targetY < boundingRect.y ||
         targetY > containerBottom ||
-        selections?.length === 0
+        selections.length === 0
       ) {
         closeDropdown(false);
       }
@@ -202,16 +206,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function isSelected(option: ComboOption) {
-    let result = false;
-    if (selections) {
-      for (const item of selections) {
-        if (item.value === option.value && item.label === option.label) {
-          result = true;
-          break;
-        }
-      }
-    }
-    return result;
+    return !!selections.find((item) => item.value === option.value && item.label === option.label);
   }
 
   function getInputClassName(): string {
@@ -268,7 +263,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== HANDLERS ==========
 
   function handleClearAllClick() {
-    setSelections([]);
+    clearValue();
     clearFilter();
     filterRef.current?.focus();
 
@@ -283,35 +278,27 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function handleDropdownItemSelection(option: ComboOption, isSelected: boolean) {
-    const newSelections: ComboOption[] = [];
-    let removed = false;
-    if (isSelected || option.selected) {
-      option.selected = false;
-      removed = true;
-    } else {
-      option.selected = true;
-    }
-
-    if (multiSelect === true) {
-      for (const item of selections) {
-        if (item.value === option.value) {
-          removed = true;
-        } else {
-          newSelections.push(item);
-        }
+  function handleDropdownItemSelection(option: ComboOption) {
+    let newSelections: ComboOption[] = [];
+    if (multiSelect) {
+      const startingLength = selections.length;
+      newSelections = selections.filter((item) => item.value !== option.value);
+      if (startingLength === newSelections.length) {
+        newSelections.push(option);
       }
-    }
-    if (!removed) {
-      newSelections.push(option);
+    } else if (selections.length === 1 && selections[0].value === option.value) {
+      newSelections = [];
+    } else {
+      newSelections = [option];
     }
 
-    setSelections(newSelections);
-    if (onUpdateSelection && newSelections) {
+    setValue(newSelections);
+
+    if (onUpdateSelection) {
       onUpdateSelection(newSelections);
     }
 
-    if (multiSelect !== true) {
+    if (!multiSelect) {
       closeDropdown(true, newSelections);
     }
   }
@@ -324,12 +311,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function handleKeyDown(
-    ev: React.KeyboardEvent,
-    index: number,
-    option?: ComboOption,
-    isSelected?: boolean,
-  ) {
+  function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
     switch (ev.key) {
       case 'Tab':
         closeDropdown(false);
@@ -374,7 +356,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Enter':
       case ' ':
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          handleDropdownItemSelection(option as ComboOption, !!isSelected);
+          handleDropdownItemSelection(option as ComboOption);
           setCurrentListItem(undefined);
           ev.preventDefault();
         }
@@ -389,11 +371,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handlePillSelection(selections: ComboOption[]) {
-    setSelections(selections);
-    if (onUpdateSelection && selections) {
+    setValue(selections);
+    if (onUpdateSelection) {
       onUpdateSelection(selections);
     }
-    if (onPillSelection && selections) {
+    if (onPillSelection) {
       onPillSelection(selections);
     }
     filterRef.current?.focus();
@@ -434,14 +416,32 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    setFilteredOptions(options);
-  }, [options]);
+    setFilteredOptions(copyOptions(props.options));
+    setOptions(copyOptions(props.options));
+  }, [props.options]);
 
   useEffect(() => {
     if (props.onUpdateSelection) {
       props.onUpdateSelection(selections);
     }
   }, [selections]);
+
+  useEffect(() => {
+    if (!props.value) {
+      setValue([]);
+      return;
+    }
+
+    if (props.value instanceof Array) {
+      const values = props.value as string[];
+      setValue(options.filter((option) => values.includes(option.value)));
+    } else {
+      const option = options.find((option) => option.value === props.value);
+      if (option) {
+        setValue([option]);
+      }
+    }
+  }, [props.value]);
 
   useEffect(() => {
     if (comboboxDisabled && onDisable) {
@@ -460,7 +460,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   useImperativeHandle(ref, () => ({
     setValue,
-    getValue,
+    getValue: () => selections,
     clearValue,
     disable,
     focusInput,
@@ -490,12 +490,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             className="pill-box"
             wrapPills={wrapPills}
             ariaLabelPrefix={ariaLabelPrefix ?? undefined}
-            selections={selections ?? []}
+            selections={selections}
             onSelectionChange={handlePillSelection}
             disabled={comboboxDisabled}
             ref={pillBoxRef}
           ></PillBox>
-          {selections && selections.length > 0 && (
+          {selections.length > 0 && (
             <Button
               id={`${comboBoxId}-clear-all-pills-button`}
               className="pill-clear-button"
@@ -521,7 +521,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           aria-labelledby={comboBoxId + '-label'}
         >
           <div className="combo-box-input-container" role="presentation">
-            {multiSelect !== true && selections.length > 0 && (
+            {multiSelect === false && selections.length === 1 && (
               <Pill
                 id={`pill-${comboBoxId}`}
                 label={selections[0].label}
@@ -589,11 +589,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   data-value={option.value}
                   data-testid={`${comboBoxId}-option-item-${idx}`}
                   key={`${comboBoxId}-${idx}`}
-                  onClick={() => handleDropdownItemSelection(option, isSelected(option))}
-                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option, isSelected(option))}
+                  onClick={() => handleDropdownItemSelection(option)}
+                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                   tabIndex={expanded ? 0 : -1}
                   aria-selected={isSelected(option) ? 'true' : undefined}
-                  aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option)! ? 'selected' : 'unselected'}`}
+                  aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option) ? 'selected' : 'unselected'}`}
                 >
                   {
                     <>
