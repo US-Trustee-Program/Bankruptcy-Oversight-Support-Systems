@@ -48,10 +48,6 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> 
   wrapPills?: boolean;
 }
 
-function copyOptions(optionsInput: ComboOption[]) {
-  return optionsInput.map((option) => ({ ...option }));
-}
-
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const {
     id: comboBoxId,
@@ -82,12 +78,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
-  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(copyOptions(props.options));
+  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(props.options);
   const [currentListItem, setCurrentListItem] = useState<string | undefined>(undefined);
   const [shouldFocusSingleSelectPill, setShouldFocusSingleSelectPill] = useState<boolean>(false);
-  const [options, setOptions] = useState<ComboOption[]>(copyOptions(props.options));
+  const [options, setOptions] = useState<ComboOption[]>(props.options);
   const [selections, setSelections] = useState<ComboOption[]>(
-    copyOptions(props.options.filter((option) => option.selected)),
+    props.options.filter((option) => option.selected),
   );
 
   // ========== REFS ==========
@@ -416,8 +412,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    setFilteredOptions(copyOptions(props.options));
-    setOptions(copyOptions(props.options));
+    setFilteredOptions(props.options);
+    setOptions(props.options);
   }, [props.options]);
 
   useEffect(() => {
