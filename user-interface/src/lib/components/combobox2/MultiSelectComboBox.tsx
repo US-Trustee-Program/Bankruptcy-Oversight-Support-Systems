@@ -1,43 +1,41 @@
 import '../uswds/forms.scss';
 import './ComboBox.scss';
-import React, {forwardRef, PropsWithChildren, useState,} from 'react';
+import React, {forwardRef, PropsWithChildren, useImperativeHandle, useState,} from 'react';
 import {ComboBoxRef} from '@/lib/type-declarations/input-fields';
 
 export type ComboOption = {
   value: string;
   label: string;
-  selected?: boolean;
-  hidden?: boolean;
   divider?: boolean;
 };
 
-type StateNames = 'INITIAL' | 'NO_SELECTION' | 'HAS_SELECTION'
+type StateNames = 'DISABLED' | 'ENABLED'
 
 type Event = {
-  name: 'ENABLE' | 'DISABLE' | 'CLEAR_SELECTED';
+  _name: 'ENABLE' | 'DISABLE' | 'CLEAR_SELECTED';
 } | {
-  name: 'SET_SELECTED';
+  _name: 'SET_SELECTED';
   selected: string[];
 } | {
-  name: 'SET_OPTIONS';
+  _name: 'SET_OPTIONS';
   options: ComboOption[];
 } | {
-  name: 'SELECT_OPTION';
+  _name: 'SELECT_OPTION';
   option: ComboOption;
 }
 
 type State = {
-  name: StateNames;
+  _name: StateNames;
   disabled: boolean;
   options: ComboOption[];
   selected: string[];
-  transition: (state: State, event: Event) => State;
 }
 
 const disable = (state: State): State => {
   return {
     ...state,
     disabled: true,
+    _name: 'DISABLED',
   }
 }
 
@@ -45,22 +43,22 @@ const enable = (state: State): State => {
   return {
     ...state,
     disabled: false,
+    _name: 'ENABLED',
   }
 }
 
 const clearSelectedOptions = (state: State): State => {
   return {
     ...state,
-    name: 'NO_SELECTION',
     selected: [],
   }
 }
 
+// This really supports the single select use case. Multi select can just use setOptions.
 const selectOption = (state: State, option: ComboOption): State => {
   const selected = state.selected.includes(option.value) ? state.selected.filter((item) => item !== option.value) : [...state.selected, option.value]
   return {
     ...state,
-    name: selected.length === 0 ? 'NO_SELECTION' : 'HAS_SELECTION',
     selected,
   }
 }
@@ -68,7 +66,6 @@ const selectOption = (state: State, option: ComboOption): State => {
 const setOptions = (state: State, options: ComboOption[]): State => {
   return {
     ...state,
-    name: 'NO_SELECTION',
     options,
     selected: [],
   }
@@ -77,9 +74,51 @@ const setOptions = (state: State, options: ComboOption[]): State => {
 const setSelected = (state: State, selected: string[]): State => {
   return {
     ...state,
-    name: selected.length === 0 ? 'NO_SELECTION' : 'HAS_SELECTION',
     selected,
   }
+}
+
+function transition(state: State, event: Event): State {
+  switch (state._name) {
+    case 'DISABLED':
+      switch (event._name) {
+        case 'ENABLE':
+          return enable(state);
+        case "SET_OPTIONS":
+          return setOptions(state, event.options);
+        case "SET_SELECTED":
+          return setSelected(state, event.selected);
+        case "CLEAR_SELECTED":
+          return clearSelectedOptions(state);
+        default:
+          return state;
+      }
+
+    case 'ENABLED':
+      switch (event._name) {
+        case 'DISABLE':
+          return disable(state);
+        case "SET_OPTIONS":
+          return setOptions(state, event.options);
+        case "SET_SELECTED":
+          return setSelected(state, event.selected);
+        case "CLEAR_SELECTED":
+          return clearSelectedOptions(state);
+        case "SELECT_OPTION":
+          return selectOption(state, event.option);
+        default:
+          return state;
+      }
+  }
+}
+
+export type {
+  State,
+  Event
+}
+
+export const StateMachine = {
+  transition
 }
 
 type InputProps = JSX.IntrinsicElements['input'] &
@@ -104,40 +143,27 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus'> 
   wrapPills?: boolean;
 }
 
-function initializeState(props: ComboBoxProps): State {
-  const initialState: State = {
-    name: 'INITIAL',
-    disabled: false,
-    options: [],
-    selected: [],
-    transition: (state: State, event: Event): State => {
-      switch (event.name) {
-        case 'DISABLE':
-          return disable(state);
-        case "ENABLE":
-          return enable(state);
-        case "SET_OPTIONS":
-          return setOptions(state, event.options);
-        case "SELECT_OPTION":
-          return selectOption(state, event.option);
-        case "SET_SELECTED":
-          return setSelected(state, event.selected);
-        case "CLEAR_SELECTED":
-          return clearSelectedOptions(state);
-        default:
-          return state;
-      }
-    },
-  }
-  return initialState.transition(initialState, {name: 'SET_OPTIONS', options: props.options});
-}
-
 function _MultiSelectComboBox(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
-  const [state, setState] = useState<State>(initializeState(props));
+
+  const [state, setState] = useState<State>({
+    _name: props.disabled ? 'DISABLED' : 'ENABLED',
+    disabled: !!props.disabled,
+    options: props.options,
+    selected: [] // props.value ?? [],
+  });
 
   const handleSelectedOption = (option: ComboOption) => {
-    setState(state.transition(state, {name: 'SELECT_OPTION', option}))
+    setState(transition(state, {_name: 'SELECT_OPTION', option}))
   }
+
+  useImperativeHandle(ref, () => ({
+    setValue: (selected: string[]) => transition(state, {_name: "SET_SELECTED", selected}),
+    getValue: () => state.selected,
+    clearValue: () => transition(state, {_name: "CLEAR_SELECTED"}),
+    disable: () => transition(state, {_name: "DISABLE"}),
+    focusInput: () => {},
+    focusSingleSelectionPill: () => {},
+  }));
 
   return <></>;
 }
