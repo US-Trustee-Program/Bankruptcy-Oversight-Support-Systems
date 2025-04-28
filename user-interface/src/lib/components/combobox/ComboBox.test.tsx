@@ -525,20 +525,20 @@ describe('test cams combobox', () => {
     const inputField = await getFocusedComboInputField(comboboxId);
     await userEvent.type(inputField, 'blue');
 
-    const listItems = document.querySelectorAll('li');
-    expect(listItems[0]).toHaveClass('hidden');
-    expect(listItems[1]).toHaveClass('hidden');
-    for (let i = 2; i < listItems.length; i++) {
-      expect(listItems[i]).not.toHaveClass('hidden');
-    }
+    const blueItems = document.querySelectorAll('li');
+    expect(blueItems.length).toEqual(3);
+    blueItems.forEach((listItem) => {
+      expect(listItem).toHaveTextContent(/blue/g);
+      expect(listItem).not.toHaveTextContent(/red/g);
+    });
 
     await userEvent.clear(inputField);
     await userEvent.type(inputField, 'everything');
-    for (let i = 0; i < listItems.length - 1; i++) {
-      expect(listItems[i]).toHaveClass('hidden');
-    }
-    await waitFor(() => {
-      expect(listItems[4]).not.toHaveClass('hidden');
+    const everythingItems = document.querySelectorAll('li');
+
+    expect(everythingItems.length).toEqual(1);
+    everythingItems.forEach((listItem) => {
+      expect(listItem).toHaveTextContent(/everything/g);
     });
   });
 
