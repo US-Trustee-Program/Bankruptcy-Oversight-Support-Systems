@@ -78,13 +78,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [expandedClass, setExpandedClass] = useState<string>('closed');
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
-  const [filteredOptions, setFilteredOptions] = useState<ComboOption[]>(props.options);
   const [currentListItem, setCurrentListItem] = useState<string | undefined>(undefined);
   const [shouldFocusSingleSelectPill, setShouldFocusSingleSelectPill] = useState<boolean>(false);
   const [options, setOptions] = useState<ComboOption[]>(props.options);
   const [selections, setSelections] = useState<ComboOption[]>(
     props.options.filter((option) => option.selected),
   );
+  const [filter, setFilter] = useState<string | null>(null);
 
   // ========== REFS ==========
 
@@ -99,10 +99,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== MISC FUNCTIONS ==========
 
   function clearFilter() {
+    setFilter(null);
     if (filterRef.current) {
       filterRef.current.value = '';
     }
-    filterDropdown('');
   }
 
   function closeDropdown(shouldFocusOnInput: boolean = true, freshSelections: ComboOption[] = []) {
@@ -136,18 +136,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     const parentHeight = parent.getBoundingClientRect().height ?? 0;
     const childHeight = child.getBoundingClientRect().height ?? 0;
     return childHeight > parentHeight;
-  }
-
-  function filterDropdown(filter: string) {
-    const newOptions = [...filteredOptions];
-    newOptions?.forEach((option) => {
-      if (!filter || option.label.toLowerCase().includes(filter.toLowerCase())) {
-        option.hidden = false;
-      } else {
-        option.hidden = true;
-      }
-    });
-    setFilteredOptions(newOptions);
   }
 
   function setValue(values: ComboOption[]) {
@@ -301,7 +289,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleInputFilter(ev: React.ChangeEvent<HTMLInputElement>) {
     openDropdown();
-    filterDropdown(ev.target.value);
+    setFilter(ev.target.value);
+    // TODO: Do we need to call a callback when the filter is updated?
     if (onUpdateFilter) {
       onUpdateFilter(ev.target.value);
     }
@@ -412,7 +401,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    setFilteredOptions(props.options);
     setOptions(props.options);
   }, [props.options]);
 
@@ -576,29 +564,33 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
               ref={comboBoxListRef}
             >
-              {filteredOptions.map((option, idx) => (
-                <li
-                  id={`option-${option.value}`}
-                  className={setListItemClass(idx, option)}
-                  role="option"
-                  aria-hidden={option.hidden ? 'true' : 'false'}
-                  data-value={option.value}
-                  data-testid={`${comboBoxId}-option-item-${idx}`}
-                  key={`${comboBoxId}-${idx}`}
-                  onClick={() => handleDropdownItemSelection(option)}
-                  onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
-                  tabIndex={expanded ? 0 : -1}
-                  aria-selected={isSelected(option) ? 'true' : undefined}
-                  aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option) ? 'selected' : 'unselected'}`}
-                >
-                  {
-                    <>
-                      {option.label}
-                      {isSelected(option) && <Icon name="check"></Icon>}
-                    </>
-                  }
-                </li>
-              ))}
+              {options
+                .filter(
+                  (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
+                )
+                .map((option, idx) => (
+                  <li
+                    id={`option-${option.value}`}
+                    className={setListItemClass(idx, option)}
+                    role="option"
+                    aria-hidden={option.hidden ? 'true' : 'false'}
+                    data-value={option.value}
+                    data-testid={`${comboBoxId}-option-item-${idx}`}
+                    key={`${comboBoxId}-${idx}`}
+                    onClick={() => handleDropdownItemSelection(option)}
+                    onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                    tabIndex={expanded ? 0 : -1}
+                    aria-selected={isSelected(option) ? 'true' : undefined}
+                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${isSelected(option) ? 'selected' : 'unselected'}`}
+                  >
+                    {
+                      <>
+                        {option.label}
+                        {isSelected(option) && <Icon name="check"></Icon>}
+                      </>
+                    }
+                  </li>
+                ))}
             </ul>
           </div>
         )}
