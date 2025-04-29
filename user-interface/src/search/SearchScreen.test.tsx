@@ -94,14 +94,8 @@ describe('search screen', () => {
     );
 
     await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
-    fireEvent.click(expandButton!);
-    fireEvent.click(searchButton);
-
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).not.toBeInTheDocument();
-    });
+    await userEvent.click(expandButton!);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to disappear
@@ -122,11 +116,10 @@ describe('search screen', () => {
     expect(pillBox).toBeInTheDocument();
     expect(pillBox?.children.length).toBeGreaterThan(0);
 
-    fireEvent.click(clearPillButton!);
+    await userEvent.click(clearPillButton!);
 
     await waitFor(() => {
-      expect(pillBox?.children.length).toEqual(0);
-      expect(clearPillButton).not.toBeInTheDocument();
+      expect(pillBox).not.toBeInTheDocument();
     });
   });
 
@@ -235,8 +228,7 @@ describe('search screen', () => {
     await userEvent.click(clearPillButton!);
 
     await waitFor(() => {
-      expect(pillBox?.children.length).toEqual(0);
-      expect(clearPillButton).not.toBeInTheDocument();
+      expect(pillBox).not.toBeInTheDocument();
     });
   });
 

@@ -6,7 +6,7 @@ import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
 import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
 import * as UseStateModule from '@/lib/hooks/UseState';
-import { fireEvent } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
@@ -118,13 +118,15 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
     await userEvent.click(expandButton!);
   }
 
-  let listItem: Element | null;
+  const testId = `${id}-option-item-${itemIndex}`;
+
   await vi.waitFor(() => {
-    listItem = document.querySelector(`[data-testid=${id}-option-item-${itemIndex}]`);
-    expect(listItem as HTMLElement).toBeVisible();
+    expect(screen.getByTestId(testId)).toBeVisible();
   });
 
-  await userEvent.click(listItem! as Element);
+  const listItem = screen.getByTestId(testId);
+
+  await userEvent.click(listItem);
   await vi.waitFor(() => {
     expect(listItem).toHaveClass('selected');
   });
