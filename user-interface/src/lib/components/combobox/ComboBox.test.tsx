@@ -152,7 +152,6 @@ describe('test cams combobox', () => {
     const firstListItemButton = document.querySelector('li');
     await userEvent.click(firstListItemButton!);
 
-    // TODO: for Some reason, though we are setting this class, the item never shows up in the dom with this class.
     let selectedListItem;
     await waitFor(() => {
       selectedListItem = document.querySelectorAll('li.selected');
