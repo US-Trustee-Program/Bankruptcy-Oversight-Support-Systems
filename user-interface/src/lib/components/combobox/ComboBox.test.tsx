@@ -109,20 +109,6 @@ describe('test cams combobox', () => {
     vi.restoreAllMocks();
   });
 
-  test('Should properly render selections when value prop is set', async () => {
-    const ref = React.createRef<ComboBoxRef>();
-    const expectedSelections = [
-      {
-        label: 'option 2',
-        value: 'o2',
-      },
-    ];
-    renderWithProps({ value: 'o2' }, ref);
-
-    const selections = ref.current?.getValue();
-    expect(selections).toEqual(expectedSelections);
-  });
-
   test('Clicking on the toggle button should open or close the dropdown list and put the focus on the input field.  When closed it should call onClose()', async () => {
     const onClose = vi.fn();
 
@@ -331,7 +317,7 @@ describe('test cams combobox', () => {
 
     await userEvent.type(comboboxInputField, 'this is gibberish');
     comboboxInputField.focus();
-    const result = ref.current?.getValue();
+    const result = ref.current?.getSelections();
     expect(result).toEqual([]);
 
     await userEvent.tab();
@@ -666,7 +652,7 @@ describe('test cams combobox', () => {
     await userEvent.click(listButtons![2]);
 
     await waitFor(() => {
-      const selections = ref.current?.getValue();
+      const selections = ref.current?.getSelections();
       expect(selections!.length).toEqual(1);
 
       const listItems = document.querySelectorAll('li');
@@ -689,7 +675,7 @@ describe('test cams combobox', () => {
       expect(listItems[1]!).not.toHaveClass('selected');
       expect(listItems[2]!).not.toHaveClass('selected');
 
-      const selections = ref.current?.getValue();
+      const selections = ref.current?.getSelections();
       expect(selections!.length).toEqual(0);
     });
   });
@@ -814,13 +800,13 @@ describe('test cams combobox', () => {
     await userEvent.click(listButtons![0]);
     await userEvent.click(listButtons![2]);
 
-    const setResult = ref.current?.getValue();
+    const setResult = ref.current?.getSelections();
     expect(setResult).toEqual(expectedValues);
 
     ref.current?.clearValue();
 
     await waitFor(() => {
-      const emptyResult = ref.current?.getValue();
+      const emptyResult = ref.current?.getSelections();
       expect(emptyResult).toEqual([]);
     });
   });
@@ -840,13 +826,13 @@ describe('test cams combobox', () => {
 
     renderWithProps({ options }, ref);
 
-    let selections = ref.current?.getValue();
+    let selections = ref.current?.getSelections();
     expect(selections).toEqual([]);
 
-    ref.current?.setValue(options);
+    ref.current?.setSelections(options);
 
     await waitFor(() => {
-      selections = ref.current?.getValue();
+      selections = ref.current?.getSelections();
       expect(selections).toEqual(options.map((option) => ({ ...option })));
     });
   });

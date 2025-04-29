@@ -17,8 +17,8 @@ export interface TextAreaRef {
 }
 
 export interface ComboBoxRef {
-  setValue: (options: ComboOption[]) => void;
-  getValue: () => ComboOption[];
+  setSelections: (options: ComboOption[]) => void;
+  getSelections: () => ComboOption[];
   clearValue: () => void;
   disable: (value: boolean) => void;
   focusInput: () => void;
