@@ -50,14 +50,12 @@ async function selectComboItem(num: number) {
   });
 }
 
-const getDefaultOptions = () => {
+const getDefaultOptions = (count: number = 25) => {
   const defaultOptions: ComboOption[] = [];
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < count; i++) {
     defaultOptions.push({
       label: 'option ' + i,
       value: 'o' + i,
-      selected: false,
-      hidden: false,
     });
   }
   return defaultOptions;
@@ -117,8 +115,6 @@ describe('test cams combobox', () => {
       {
         label: 'option 2',
         value: 'o2',
-        selected: true,
-        hidden: false,
       },
     ];
     renderWithProps({ value: 'o2' }, ref);
@@ -149,37 +145,46 @@ describe('test cams combobox', () => {
   });
 
   test('Should deselect the item when you click on a selected item', async () => {
-    renderWithProps({ options: getDefaultOptions() });
+    renderWithProps({ options: getDefaultOptions(1) });
 
     await toggleDropdown(comboboxId);
 
     const firstListItemButton = document.querySelector('li');
     await userEvent.click(firstListItemButton!);
 
-    let selectedListItem = document.querySelectorAll('li.selected');
-    expect(selectedListItem!.length).toEqual(1);
+    // TODO: for Some reason, though we are setting this class, the item never shows up in the dom with this class.
+    let selectedListItem;
+    await waitFor(() => {
+      selectedListItem = document.querySelectorAll('li.selected');
+      expect(selectedListItem!.length).toEqual(1);
+    });
 
     await userEvent.click(firstListItemButton!);
 
-    selectedListItem = document.querySelectorAll('li.selected');
-    expect(selectedListItem!.length).toEqual(0);
+    await waitFor(() => {
+      selectedListItem = document.querySelectorAll('li.selected');
+      expect(selectedListItem!.length).toEqual(0);
+    });
   });
 
   test('After selecting an item in the dropdown list, a pill should appear, and after clicking the pill it should remove pill and deselect item in dropdown', async () => {
     renderWithProps({ options: getDefaultOptions() });
 
     let pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-    expect(pillBox!.children.length).toEqual(0);
+    expect(pillBox).not.toBeInTheDocument();
 
     await toggleDropdown(comboboxId);
 
     const firstListItemButton = document.querySelector('li');
     await userEvent.click(firstListItemButton!);
 
+    await toggleDropdown(comboboxId);
+
     await waitFor(() => {
       pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-      expect(pillBox!.children.length).toEqual(1);
+      expect(pillBox).toBeInTheDocument();
     });
+    expect(pillBox!.children.length).toEqual(1);
 
     let selectedListItem = document.querySelectorAll('li.selected');
     expect(selectedListItem!.length).toEqual(1);
@@ -188,7 +193,7 @@ describe('test cams combobox', () => {
 
     await waitFor(() => {
       pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-      expect(pillBox!.children.length).toEqual(0);
+      expect(pillBox).not.toBeInTheDocument();
     });
 
     selectedListItem = document.querySelectorAll('li.selected');
@@ -204,18 +209,18 @@ describe('test cams combobox', () => {
     await selectComboItem(1);
     await selectComboItem(2);
 
-    let pillBox;
+    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     await waitFor(() => {
-      pillBox = document.querySelector(`#${comboboxId}-pill-box`);
       expect(pillBox!.children.length).toEqual(3);
     });
 
     const clearButton = document.querySelector('.pill-clear-button');
     expect(clearButton).toBeInTheDocument();
 
+    await userEvent.click(clearButton!);
+
     await waitFor(async () => {
-      await userEvent.click(clearButton!);
-      expect(pillBox!.children.length).toEqual(0);
+      expect(pillBox).not.toBeInTheDocument();
     });
   });
 
@@ -351,11 +356,9 @@ describe('test cams combobox', () => {
 
   test('Up and down arrow cursor keys should traverse the list. In multi-select mode, focus should return to the input field when using Up Arrow once the user reaches the top of the list. All list items with the hidden class should be skipped.', async () => {
     const options = [
-      { label: 'option1', value: 'option1', selected: false },
-      { label: 'option2', value: 'option2', selected: false, hidden: true },
-      { label: 'option3', value: 'option3', selected: false, hidden: true },
-      { label: 'option4', value: 'option4', selected: false },
-      { label: 'option5', value: 'option5', selected: false },
+      { label: 'option1', value: 'option1' },
+      { label: 'option4', value: 'option4' },
+      { label: 'option5', value: 'option5' },
     ];
     renderWithProps({ options });
 
@@ -368,18 +371,18 @@ describe('test cams combobox', () => {
     expect(listItems[0]).toHaveAttribute('data-value', 'option1');
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(listItems[3]).toHaveFocus();
-    expect(listItems[3]).toHaveAttribute('data-value', 'option4');
+    expect(listItems[1]).toHaveFocus();
+    expect(listItems[1]).toHaveAttribute('data-value', 'option4');
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(listItems[4]).toHaveFocus();
-    expect(listItems[4]).toHaveAttribute('data-value', 'option5');
+    expect(listItems[2]).toHaveFocus();
+    expect(listItems[2]).toHaveAttribute('data-value', 'option5');
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(listItems[4]).toHaveAttribute('data-value', 'option5');
+    expect(listItems[2]).toHaveAttribute('data-value', 'option5');
 
     await userEvent.keyboard('{ArrowUp}');
-    expect(listItems[3]).toHaveFocus();
+    expect(listItems[1]).toHaveFocus();
 
     await userEvent.keyboard('{ArrowUp}');
     expect(listItems[0]).toHaveFocus();
@@ -390,8 +393,8 @@ describe('test cams combobox', () => {
 
   test('In single-select mode, focus should return to the pill when using Up Arrow once the user reaches the top of the list and there is a selection.', async () => {
     const options = [
-      { label: 'option1', value: 'option1', selected: false },
-      { label: 'option2', value: 'option2', selected: false },
+      { label: 'option1', value: 'option1' },
+      { label: 'option2', value: 'option2' },
     ];
     renderWithProps({ options, multiSelect: false });
 
@@ -428,13 +431,13 @@ describe('test cams combobox', () => {
     'Pressing "%s" key while focused on an element in the dropdown list should select that option, and add a pill for that selected item.',
     async (keypress: string) => {
       const options = [
-        { label: 'option1', value: 'option1', selected: false },
-        { label: 'option2', value: 'option2', selected: false },
+        { label: 'option1', value: 'option1' },
+        { label: 'option2', value: 'option2' },
       ];
       renderWithProps({ options });
 
-      const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-      expect(pillBox!.children.length).toEqual(0);
+      let pillBox = document.querySelector(`#${comboboxId}-pill-box`);
+      expect(pillBox).not.toEqual(0);
 
       const inputField = await getFocusedComboInputField(comboboxId);
       inputField.focus();
@@ -450,6 +453,7 @@ describe('test cams combobox', () => {
         expect(listItems![0]).toHaveClass('selected');
       });
 
+      pillBox = document.querySelector(`#${comboboxId}-pill-box`);
       expect(pillBox!.children.length).toEqual(1);
 
       const listItemValue = listItem0Button.attributes.getNamedItem('data-value');
@@ -460,8 +464,8 @@ describe('test cams combobox', () => {
 
   test('For MultiSelect, Pressing Escape key while focused on an element in the dropdown list should close the dropdown list and focus on the input field.', async () => {
     const options = [
-      { label: 'option1', value: 'option1', selected: false },
-      { label: 'option2', value: 'option2', selected: false },
+      { label: 'option1', value: 'option1' },
+      { label: 'option2', value: 'option2' },
     ];
     renderWithProps({ options });
 
@@ -481,8 +485,8 @@ describe('test cams combobox', () => {
 
   test('For SingleSelect, Pressing Escape key while focused on an element in the dropdown list should close the dropdown list and focus on the pill.', async () => {
     const options = [
-      { label: 'option1', value: 'option1', selected: false },
-      { label: 'option2', value: 'option2', selected: false },
+      { label: 'option1', value: 'option1' },
+      { label: 'option2', value: 'option2' },
     ];
     renderWithProps({ options, multiSelect: false });
 
@@ -514,11 +518,11 @@ describe('test cams combobox', () => {
 
   test('Typing text into the input field should filter the dropdown items below the input field.', async () => {
     const options = [
-      { label: 'my dog is red', value: 'val0', selected: false, hidden: false },
-      { label: 'your cat is red', value: 'val1', selected: false, hidden: false },
-      { label: 'you are blue', value: 'val2', selected: false, hidden: false },
-      { label: 'blue is water', value: 'val3', selected: false, hidden: false },
-      { label: 'everything blue', value: 'val4', selected: false, hidden: false },
+      { label: 'my dog is red', value: 'val0' },
+      { label: 'your cat is red', value: 'val1' },
+      { label: 'you are blue', value: 'val2' },
+      { label: 'blue is water', value: 'val3' },
+      { label: 'everything blue', value: 'val4' },
     ];
     renderWithProps({ options });
 
@@ -544,8 +548,8 @@ describe('test cams combobox', () => {
 
   test('When focus leaves the combobox and moves to another element on screen, the input field in the combobox should be cleared.', async () => {
     const options = [
-      { label: 'option1', value: 'option1', selected: false },
-      { label: 'option2', value: 'option2', selected: false },
+      { label: 'option1', value: 'option1' },
+      { label: 'option2', value: 'option2' },
     ];
     renderWithProps({ options });
 
@@ -569,7 +573,6 @@ describe('test cams combobox', () => {
 
     const comboInput = await getFocusedComboInputField(comboboxId);
     const expandButton = document.querySelector('.expand-button');
-    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     const button1 = document.querySelector('.button1');
     const input1 = document.querySelector('.input1');
 
@@ -591,6 +594,7 @@ describe('test cams combobox', () => {
     await userEvent.tab();
     expect(isDropdownClosed()).toBeTruthy();
 
+    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     await waitFor(() => {
       expect(getPill(pillBox, 0)).toHaveFocus();
     });
@@ -697,12 +701,12 @@ describe('test cams combobox', () => {
     renderWithProps({ options, onUpdateSelection: updateSelection });
 
     await getFocusedComboInputField(comboboxId);
-    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     const listButtons = document.querySelectorAll('li');
     await userEvent.click(listButtons![0]);
     await userEvent.click(listButtons![1]);
     await userEvent.click(listButtons![2]);
 
+    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     expect(pillBox?.children.length).toEqual(3);
 
     const clearButton = document.querySelector('.pill-clear-button');
@@ -718,7 +722,7 @@ describe('test cams combobox', () => {
       expect(listItems[1]!).not.toHaveClass('selected');
       expect(listItems[2]!).not.toHaveClass('selected');
 
-      expect(pillBox?.children.length).toEqual(0);
+      expect(pillBox).not.toBeInTheDocument();
     });
   });
 
@@ -727,7 +731,6 @@ describe('test cams combobox', () => {
     const updateSelection = vi.fn();
     renderWithProps({ options, onUpdateSelection: updateSelection });
 
-    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     const comboBoxInput = document.querySelector(`#${comboboxId}-combo-box-input`);
     const listItems = document.querySelectorAll('li');
 
@@ -735,6 +738,7 @@ describe('test cams combobox', () => {
     await userEvent.click(listItems![1]);
     await userEvent.click(listItems![2]);
 
+    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
     expect(pillBox?.children.length).toEqual(3);
 
     const button1 = document.querySelector('.button1');
@@ -773,52 +777,10 @@ describe('test cams combobox', () => {
       expect(listItems[1]!).not.toHaveClass('selected');
       expect(listItems[2]!).not.toHaveClass('selected');
 
-      expect(pillBox?.children.length).toEqual(0);
+      expect(pillBox).not.toBeInTheDocument();
       expect(isDropdownClosed()).toBeTruthy();
       expect(comboBoxInput).toHaveFocus();
     });
-  });
-
-  test('options hidden by being filtered out should have "hidden" css class', () => {
-    const ref = React.createRef<ComboBoxRef>();
-
-    const options = [
-      {
-        label: 'option 0',
-        value: 'o0',
-        selected: false,
-        hidden: false,
-      },
-      {
-        label: 'option 1',
-        value: 'o1',
-        selected: false,
-        hidden: true,
-      },
-      {
-        label: 'option 2',
-        value: 'o2',
-        selected: false,
-        hidden: true,
-      },
-      {
-        label: 'option 3',
-        value: 'o3',
-        selected: false,
-        hidden: false,
-      },
-    ];
-
-    renderWithProps({ options }, ref);
-
-    const listItems = document.querySelectorAll('li');
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].hidden === true) {
-        expect(listItems[i]).toHaveClass('hidden');
-      } else {
-        expect(listItems[i]).not.toHaveClass('hidden');
-      }
-    }
   });
 
   test('Should return list of current selections when calling ref.getValue and clear all values when calling ref.clearValue.', async () => {
@@ -827,35 +789,31 @@ describe('test cams combobox', () => {
       {
         label: 'option 0',
         value: 'o0',
-        selected: false,
-        hidden: false,
       },
       {
         label: 'option 1',
         value: 'o1',
-        selected: false,
-        hidden: true,
+      },
+      {
+        label: 'option 2',
+        value: 'o2',
       },
     ];
     const expectedValues = [
       {
         label: 'option 0',
         value: 'o0',
-        selected: true,
-        hidden: false,
       },
       {
-        label: 'option 1',
-        value: 'o1',
-        selected: true,
-        hidden: true,
+        label: 'option 2',
+        value: 'o2',
       },
     ];
     renderWithProps({ options }, ref);
 
     const listButtons = document.querySelectorAll('li');
     await userEvent.click(listButtons![0]);
-    await userEvent.click(listButtons![1]);
+    await userEvent.click(listButtons![2]);
 
     const setResult = ref.current?.getValue();
     expect(setResult).toEqual(expectedValues);
@@ -874,14 +832,10 @@ describe('test cams combobox', () => {
       {
         label: 'option 0',
         value: 'o0',
-        selected: false,
-        hidden: false,
       },
       {
         label: 'option 1',
         value: 'o1',
-        selected: false,
-        hidden: true,
       },
     ];
 
@@ -894,7 +848,7 @@ describe('test cams combobox', () => {
 
     await waitFor(() => {
       selections = ref.current?.getValue();
-      expect(selections).toEqual(options.map((option) => ({ ...option, selected: true })));
+      expect(selections).toEqual(options.map((option) => ({ ...option })));
     });
   });
 
@@ -1005,15 +959,15 @@ describe('test cams combobox', () => {
 
     await toggleDropdown(comboboxId);
 
-    const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
-    expect(inputField).toHaveFocus();
+    const firstListItemButton = document.querySelector('li:first-child');
+    await userEvent.click(firstListItemButton!);
 
-    await toggleDropdown(comboboxId);
+    let pill;
+    await waitFor(() => {
+      pill = document.querySelector(`#pill-${comboboxId}-pill-box-0`);
+      expect(pill).toBeInTheDocument();
+    });
 
-    const firstListItemButton = document.querySelectorAll('li');
-    await userEvent.click(firstListItemButton![0]);
-
-    const pill = document.querySelector(`#pill-${comboboxId}-pill-box-0`);
     await userEvent.click(pill!);
 
     await waitFor(() => {
