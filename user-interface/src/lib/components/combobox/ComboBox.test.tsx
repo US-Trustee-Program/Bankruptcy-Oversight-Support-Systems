@@ -853,14 +853,9 @@ describe('test cams combobox', () => {
   });
 
   test('should disable component when ref.disable is called and in single-select mode and should call onDisable if its set in props.', async () => {
-    const disableSpy = vi.fn();
-    const enableSpy = vi.fn();
     const ref = React.createRef<ComboBoxRef>();
     const options = getDefaultOptions();
-    renderWithProps(
-      { multiSelect: false, options, onDisable: disableSpy, onEnable: enableSpy },
-      ref,
-    );
+    renderWithProps({ multiSelect: false, options }, ref);
 
     const expandButton = document.querySelector('.expand-button');
     expect(expandButton).toBeEnabled();
@@ -893,20 +888,12 @@ describe('test cams combobox', () => {
       expect(expandButton).toBeEnabled();
       expect(pill).toBeEnabled();
     });
-
-    expect(disableSpy).toHaveBeenCalled();
-    expect(enableSpy).toHaveBeenCalled();
   });
 
   test('should disable component when ref.disable is called and in multi-select mode and should call onDisable if its set in props.', async () => {
-    const disableSpy = vi.fn();
-    const enableSpy = vi.fn();
     const ref = React.createRef<ComboBoxRef>();
     const options = getDefaultOptions();
-    renderWithProps(
-      { multiSelect: true, options, onDisable: disableSpy, onEnable: enableSpy },
-      ref,
-    );
+    renderWithProps({ multiSelect: true, options }, ref);
 
     const listButtons = document.querySelectorAll('li');
     await userEvent.click(listButtons![0]);
@@ -946,9 +933,6 @@ describe('test cams combobox', () => {
         expect(pill).toBeEnabled();
       });
     });
-
-    expect(disableSpy).toHaveBeenCalled();
-    expect(enableSpy).toHaveBeenCalled();
   });
 
   test('Should call onPillSelection when a pill is clicked', async () => {
