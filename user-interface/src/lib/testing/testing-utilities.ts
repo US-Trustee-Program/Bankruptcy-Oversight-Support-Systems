@@ -125,7 +125,6 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
   });
 
   const listItem = screen.getByTestId(testId);
-  screen.debug(listItem);
 
   await userEvent.click(listItem);
   await vi.waitFor(() => {
