@@ -1,10 +1,6 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ComboOption } from './combobox/ComboBox';
 import { Pill } from './Pill';
-
-export type PillBoxRef = {
-  contains: (el: HTMLElement) => boolean;
-};
 
 type PillBoxProps = {
   id: string;
@@ -21,50 +17,35 @@ type PillFocus = {
   index: number;
 };
 
-function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
+function PillBox(props: PillBoxProps) {
   const { onSelectionChange, ariaLabelPrefix, disabled, wrapPills } = props;
   const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const [selections, setSelections] = useState<ComboOption[]>([]);
+  const [selections, setSelections] = useState<Map<string, ComboOption>>(
+    new Map(props.selections.map((value) => [value.value, value])),
+  );
   const [pillFocus, setPillFocus] = useState<PillFocus>({ shouldFocus: false, index: 0 });
 
   function onPillClick(value: string) {
-    const newSelections: ComboOption[] = [];
-    let removedIndex = 0;
-    selections.forEach((selection, index) => {
-      if (selection.value !== value) {
-        newSelections.push(selection);
-      } else {
-        removedIndex = index;
-      }
-    });
+    const removedIndex = Array.from(selections.entries()).findIndex(([key, _]) => key === value);
 
-    if (newSelections.length > 0 && removedIndex > newSelections.length - 1) {
+    const newSelections = new Map(selections);
+    if (newSelections.has(value)) {
+      newSelections.delete(value);
+    }
+
+    if (newSelections.size > 0 && removedIndex > newSelections.size - 1) {
       setPillFocus({ shouldFocus: true, index: removedIndex });
     } else {
       setPillFocus({ shouldFocus: true, index: removedIndex + 1 });
     }
 
-    onSelectionChange(newSelections);
+    onSelectionChange([...newSelections.values()]);
     setSelections(newSelections);
   }
 
-  function contains(el: HTMLElement) {
-    let isContained = false;
-    const pillBox = document.querySelector(`#${props.id}.pill-container`);
-    if (pillBox?.contains(el)) {
-      isContained = true;
-    }
-
-    return isContained;
-  }
-
-  useImperativeHandle(ref, () => ({
-    contains,
-  }));
-
   useEffect(() => {
-    setSelections(props.selections);
+    setSelections(new Map(props.selections.map((value) => [value.value, value])));
   }, [props.selections]);
 
   useEffect(() => {
@@ -80,7 +61,7 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
 
   return (
     <div id={props.id} className={`pill-container ${props.className}`} role="list">
-      {selections?.map((selection, idx) => (
+      {[...selections.values()].map((selection, idx) => (
         <span role="listitem" className="pill-span" key={idx}>
           <Pill
             id={`pill-${props.id}-${idx}`}
@@ -98,5 +79,4 @@ function _PillBox(props: PillBoxProps, ref: React.Ref<PillBoxRef>) {
   );
 }
 
-const PillBox = forwardRef(_PillBox);
 export default PillBox;

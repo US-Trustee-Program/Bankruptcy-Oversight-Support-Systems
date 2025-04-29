@@ -1,7 +1,6 @@
 import { fireEvent, render } from '@testing-library/react';
-import PillBox, { PillBoxRef } from './PillBox';
+import PillBox from './PillBox';
 import { ComboOption } from './combobox/ComboBox';
-import React from 'react';
 import userEvent from '@testing-library/user-event';
 
 describe('Tests for Pill Box', () => {
@@ -11,44 +10,16 @@ describe('Tests for Pill Box', () => {
       {
         label: 'pill 0',
         value: 'p0',
-        selected: false,
-        hidden: false,
       },
       {
         label: 'pill 1',
         value: 'p1',
-        selected: false,
-        hidden: false,
       },
       {
         label: 'pill 2',
         value: 'p2',
-        selected: false,
-        hidden: false,
       },
     ];
-  });
-
-  test('Should return true if using ref.contains() and Pill Box contains the given DOM element', async () => {
-    const selectionChange = vi.fn((_foo: ComboOption[]) => {});
-    const pillBoxRef = React.createRef<PillBoxRef>();
-
-    render(
-      <PillBox
-        id={'test-pillbox'}
-        selections={testSelections}
-        onSelectionChange={selectionChange}
-        ref={pillBoxRef}
-      ></PillBox>,
-    );
-
-    const pill = document.querySelector('#pill-test-pillbox-1 svg');
-
-    expect(pill).toBeInTheDocument();
-
-    const isContained = pillBoxRef.current?.contains(pill as HTMLElement);
-
-    expect(isContained).toBe(true);
   });
 
   test('Should disable pills when disabled property is set', async () => {
@@ -92,14 +63,10 @@ describe('Tests for Pill Box', () => {
       {
         label: 'pill 0',
         value: 'p0',
-        selected: false,
-        hidden: false,
       },
       {
         label: 'pill 1',
         value: 'p1',
-        selected: false,
-        hidden: false,
       },
     ];
 
@@ -151,14 +118,10 @@ describe('Tests for Pill Box', () => {
         {
           label: 'pill 1',
           value: 'p1',
-          selected: false,
-          hidden: false,
         },
         {
           label: 'pill 2',
           value: 'p2',
-          selected: false,
-          hidden: false,
         },
       ]);
 
@@ -184,11 +147,31 @@ describe('Tests for Pill Box', () => {
         {
           label: 'pill 2',
           value: 'p2',
-          selected: false,
-          hidden: false,
         },
       ]);
       expect(pill2).toHaveTextContent('pill 2');
+    });
+  });
+
+  test('Should call onSelectionChange with the correct selections', async () => {
+    const selectionChange = vi.fn();
+
+    render(
+      <PillBox
+        id={'test-pillbox'}
+        selections={testSelections}
+        onSelectionChange={selectionChange}
+      ></PillBox>,
+    );
+
+    const pill0 = document.querySelector('#pill-test-pillbox-0');
+    await userEvent.click(pill0!);
+
+    await vi.waitFor(() => {
+      expect(selectionChange).toHaveBeenCalledWith([
+        { label: 'pill 1', value: 'p1' },
+        { label: 'pill 2', value: 'p2' },
+      ]);
     });
   });
 });

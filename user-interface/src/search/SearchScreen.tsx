@@ -54,7 +54,7 @@ export default function SearchScreen() {
     const chapterArray: ComboOption[] = [];
 
     for (const item of ['7', '9', '11', '12', '13', '15']) {
-      chapterArray.push({ label: item, value: item, selected: false });
+      chapterArray.push({ label: item, value: item });
     }
 
     setChapterList(chapterArray);
