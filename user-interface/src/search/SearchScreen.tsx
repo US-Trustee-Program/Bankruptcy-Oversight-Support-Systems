@@ -10,7 +10,6 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getOfficeList } from '@/data-verification/dataVerificationHelper';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -22,17 +21,25 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { getCourtDivisionCodes } from '@common/cams/users';
+import LocalStorage from '@/lib/utils/local-storage';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export default function SearchScreen() {
+  const session = LocalStorage.getSession();
+  const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
+  const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    divisionCodes: defaultDivisionCodes,
   });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    divisionCodes: defaultDivisionCodes,
   });
 
   const infoModalRef = useRef(null);
@@ -64,7 +71,12 @@ export default function SearchScreen() {
     api
       .getCourts()
       .then((response) => {
-        setOfficesList(response.data.sort(courtSorter));
+        const newOfficesList = response.data.sort(courtSorter);
+        setOfficesList(newOfficesList);
+        const filteredDivisionCodes = newOfficesList.filter((office) =>
+          defaultDivisionCodes?.includes(office.courtDivisionCode),
+        );
+        courtSelectionRef.current?.setSelections(getOfficeList(filteredDivisionCodes));
       })
       .catch(() => {
         globalAlert?.error('Cannot load office list');
@@ -97,14 +109,6 @@ export default function SearchScreen() {
       if (!caseNumber) {
         delete newPredicate.caseNumber;
       }
-      setTemporarySearchPredicate(newPredicate);
-    }
-  }
-
-  function handleCourtClear(options: ComboOption[]) {
-    if (options.length === 0 && temporarySearchPredicate.divisionCodes) {
-      const newPredicate = { ...temporarySearchPredicate };
-      delete newPredicate.divisionCodes;
       setTemporarySearchPredicate(newPredicate);
     }
   }
@@ -223,7 +227,7 @@ export default function SearchScreen() {
                   aria-live="off"
                   onClose={handleCourtSelection}
                   onPillSelection={handleCourtSelection}
-                  onUpdateSelection={handleCourtClear}
+                  onUpdateSelection={handleCourtSelection}
                   onFocus={handleFilterFormElementFocus}
                   options={getOfficeList(officesList)}
                   required={false}
@@ -260,6 +264,7 @@ export default function SearchScreen() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
                 onClick={performSearch}
+                disabled={!isValidSearchPredicate(temporarySearchPredicate)}
               >
                 Search
               </Button>

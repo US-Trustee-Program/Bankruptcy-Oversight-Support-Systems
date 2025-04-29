@@ -102,8 +102,8 @@ export function PrivilegedIdentity() {
 
   function handleGroupNameUpdate() {
     const formGroupNameSet = new Set<string>([
-      ...(officeListRef.current?.getValue() ?? []).map((option) => option.value),
-      ...(roleListRef.current?.getValue() ?? []).map((option) => option.value),
+      ...(officeListRef.current?.getSelections() ?? []).map((option) => option.value),
+      ...(roleListRef.current?.getSelections() ?? []).map((option) => option.value),
     ]);
     setUpdatedGroupNameSet(formGroupNameSet);
   }
@@ -126,12 +126,12 @@ export function PrivilegedIdentity() {
           setExistingExpiration(expires);
           setNewExpiration(expires);
 
-          officeListRef.current?.setValue(
+          officeListRef.current?.setSelections(
             groupNames.offices
               .filter((groupName) => groups.includes(groupName))
               .map((groupName) => toComboOption(groupName)),
           );
-          roleListRef.current?.setValue(
+          roleListRef.current?.setSelections(
             groupNames.roles
               .filter((groupName) => groups.includes(groupName))
               .map((groupName) => toComboOption(groupName)),
@@ -155,11 +155,11 @@ export function PrivilegedIdentity() {
   }
 
   async function handleSave() {
-    const userId = userListRef.current?.getValue()[0].value;
+    const userId = userListRef.current?.getSelections()[0].value;
     const permissions: ElevatePrivilegedUserAction = {
       groups: [
-        ...(roleListRef.current?.getValue().map((option) => option.value) || []),
-        ...(officeListRef.current?.getValue().map((option) => option.value) || []),
+        ...(roleListRef.current?.getSelections().map((option) => option.value) || []),
+        ...(officeListRef.current?.getSelections().map((option) => option.value) || []),
       ],
       expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
     };
@@ -178,7 +178,7 @@ export function PrivilegedIdentity() {
   }
 
   async function handleDelete() {
-    const userId = userListRef.current?.getValue()[0].value;
+    const userId = userListRef.current?.getSelections()[0].value;
     api
       .deletePrivilegedIdentityUser(userId)
       .then(() => {
