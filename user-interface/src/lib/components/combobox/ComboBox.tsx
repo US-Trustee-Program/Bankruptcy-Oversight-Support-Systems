@@ -78,7 +78,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   const comboBoxRef = useRef(null);
   const comboBoxListRef = useRef<HTMLUListElement>(null);
-  const pillBoxRef = useRef(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const singleSelectionPillRef = useRef<HTMLButtonElement>(null);
 
@@ -432,7 +431,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             selections={[...selections.values()]}
             onSelectionChange={handlePillSelection}
             disabled={comboboxDisabled}
-            ref={pillBoxRef}
           ></PillBox>
           {selections.size > 0 && (
             <Button
