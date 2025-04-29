@@ -70,7 +70,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
   const [shouldFocusSingleSelectPill, setShouldFocusSingleSelectPill] = useState<boolean>(false);
 
-  const [options, setOptions] = useState<ComboOption[]>(props.options);
   const [selections, setSelections] = useState<Map<string, ComboOption>>(new Map());
   const [filter, setFilter] = useState<string | null>(null);
 
@@ -363,10 +362,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== USE EFFECTS ==========
 
   useEffect(() => {
-    setOptions(props.options);
-  }, [props.options]);
-
-  useEffect(() => {
     if (props.onUpdateSelection) {
       props.onUpdateSelection([...selections.values()]);
     }
@@ -380,9 +375,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
     if (props.value instanceof Array) {
       const values = props.value as string[];
-      setValue(options.filter((option) => values.includes(option.value)));
+      setValue(props.options.filter((option) => values.includes(option.value)));
     } else {
-      const option = options.find((option) => option.value === props.value);
+      const option = props.options.find((option) => option.value === props.value);
       if (option) {
         setValue([option]);
       }
@@ -517,7 +512,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
               ref={comboBoxListRef}
             >
-              {options
+              {props.options
                 .filter(
                   (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
                 )
