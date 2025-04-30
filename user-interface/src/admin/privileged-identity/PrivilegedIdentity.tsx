@@ -15,7 +15,7 @@ import {
 import { CamsUserReference } from '@common/cams/users';
 import { symmetricDifference } from '@common/cams/utilities';
 import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export function toComboOption(groupName: string) {
   return {
@@ -40,7 +40,7 @@ export function PrivilegedIdentity() {
     offices: [],
   });
   const [userList, setUserList] = useState<CamsUserReference[]>([]);
-  const [selectedUser, setSelectedUser] = useState<CamsUserReference | null>(null);
+  // const [selectedUser, setSelectedUser] = useState<CamsUserReference | null>(null);
   const [existingGroupNameSet, setExistingGroupNameSet] = useState<Set<string>>(new Set());
   const [existingExpiration, setExistingExpiration] = useState<string | null>(null);
   const [updatedGroupNameSet, setUpdatedGroupNameSet] = useState<Set<string>>(new Set());
@@ -113,9 +113,9 @@ export function PrivilegedIdentity() {
   }
 
   function handleSelectUser(options: ComboOption[]) {
-    if (options?.length === 1) {
+    if (options.length === 1) {
       const userId = options[0].value;
-      setSelectedUser(userList.find((user) => user.id === options[0].value)!);
+      // setSelectedUser(userList.find((user) => user.id === options[0].value)!);
       api
         .getPrivilegedIdentityUser(userId)
         .then((response) => {
@@ -150,7 +150,7 @@ export function PrivilegedIdentity() {
           deleteButtonRef.current?.disableButton(true);
         });
     } else {
-      disableForm();
+      clearForm();
     }
   }
 
@@ -193,8 +193,12 @@ export function PrivilegedIdentity() {
       });
   }
 
-  function clearForm() {
+  function discard() {
+    clearForm();
     userListRef.current?.clearValue();
+  }
+
+  function clearForm() {
     officeListRef.current?.clearValue();
     roleListRef.current?.clearValue();
     datePickerRef.current?.clearValue();
@@ -261,7 +265,6 @@ export function PrivilegedIdentity() {
                 })}
                 onUpdateSelection={handleSelectUser}
                 multiSelect={false}
-                value={selectedUser?.id}
                 ref={userListRef}
               ></ComboBox>
             </div>
@@ -341,7 +344,7 @@ export function PrivilegedIdentity() {
                     id="cancel-button"
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     disabled={true}
-                    onClick={clearForm}
+                    onClick={discard}
                     ref={cancelButtonRef}
                   >
                     Discard

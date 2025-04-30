@@ -142,7 +142,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-4');
@@ -165,7 +165,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-4');
@@ -188,7 +188,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-4');
@@ -219,8 +219,8 @@ describe('Privileged Identity screen tests', () => {
     await expectItemToBeDisabled(`#save-button`);
 
     const dateInput = document.querySelector(`#${dateInputId}`);
-    // NOTE For some reason (known issue) a date input element can not be changed by typing a date
-    // in the format that the UI expects. The date may only be changed using a change event and
+    // NOTE For some reason (known issue) a date input element cannot be changed by typing a date
+    // in the format that the UI expects. The date may only be changed using a change event, and
     // the format must be in YYYY-DD-MM format.
     await user.type(dateInput!, mockDate1);
 
@@ -235,7 +235,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     await expectItemToBeDisabled(`#cancel-button`);
@@ -271,7 +271,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     await expectFormToBeDisabled();
@@ -298,7 +298,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
@@ -326,7 +326,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
@@ -354,7 +354,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
@@ -376,7 +376,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
