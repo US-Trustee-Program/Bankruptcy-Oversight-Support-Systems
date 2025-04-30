@@ -10,8 +10,10 @@ import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import userEvent from '@testing-library/user-event';
 import LocalStorage from '@/lib/utils/local-storage';
+import { UstpOfficeDetails } from '@common/cams/offices';
 
 describe('search screen', () => {
+  const session = MockData.getCamsSession();
   const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
   const searchResponseBody: ResponseBody<SyncedCase[]> = {
     meta: { self: 'self-url' },
@@ -37,7 +39,7 @@ describe('search screen', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession());
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
   });
 
   afterEach(() => {
@@ -117,6 +119,32 @@ describe('search screen', () => {
     await waitFor(() => {
       expect(pillBox).not.toBeInTheDocument();
     });
+  });
+
+  test('should place default court divisions at the top of the combobox list', async () => {
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      meta: {
+        self: '',
+      },
+      data: MockData.getCourts(),
+    });
+
+    const courts = session.user.offices;
+    const allDivisions = courts!.map((court: UstpOfficeDetails) => court.groups![0].divisions);
+    const divisions = allDivisions.flat();
+    const officeNames = divisions.map((division) => division.courtOffice.courtOfficeName).sort();
+
+    renderWithoutProps();
+
+    let comboBox;
+    await waitFor(() => {
+      comboBox = document.querySelector('#court-selections-search-item-list');
+      expect(comboBox).toBeInTheDocument();
+    });
+
+    const options = comboBox!.querySelectorAll('li');
+    expect(options![0]).toHaveTextContent(officeNames[0]);
+    expect(options![1]).toHaveTextContent(officeNames[1]);
   });
 
   test('should render a list of cases by court division', async () => {

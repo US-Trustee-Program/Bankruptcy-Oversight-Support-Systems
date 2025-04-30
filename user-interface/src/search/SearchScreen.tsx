@@ -5,7 +5,6 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { CourtDivisionDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
@@ -46,7 +45,7 @@ export default function SearchScreen() {
   const infoModalId = 'info-modal';
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
-  const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
+  const [officesList, setOfficesList] = useState<ComboOption[]>([]);
   const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
@@ -72,11 +71,19 @@ export default function SearchScreen() {
       .getCourts()
       .then((response) => {
         const newOfficesList = response.data.sort(courtSorter);
-        setOfficesList(newOfficesList);
-        const filteredDivisionCodes = newOfficesList.filter((office) =>
-          defaultDivisionCodes?.includes(office.courtDivisionCode),
+        const officeComboOptions = getOfficeList(newOfficesList);
+        const filteredDivisionCodes = getOfficeList(
+          newOfficesList.filter((office) =>
+            defaultDivisionCodes?.includes(office.courtDivisionCode),
+          ),
         );
-        courtSelectionRef.current?.setSelections(getOfficeList(filteredDivisionCodes));
+        filteredDivisionCodes[filteredDivisionCodes.length - 1].divider = true;
+        const filteredOfficeComboOptions = officeComboOptions.filter(
+          (officeComboOption) => !filteredDivisionCodes.includes(officeComboOption),
+        );
+        const finalOfficeComboOptions = [...filteredDivisionCodes, ...filteredOfficeComboOptions];
+        setOfficesList(finalOfficeComboOptions);
+        courtSelectionRef.current?.setSelections(filteredDivisionCodes);
       })
       .catch(() => {
         globalAlert?.error('Cannot load office list');
@@ -229,11 +236,12 @@ export default function SearchScreen() {
                   onPillSelection={handleCourtSelection}
                   onUpdateSelection={handleCourtSelection}
                   onFocus={handleFilterFormElementFocus}
-                  options={getOfficeList(officesList)}
+                  options={officesList}
                   required={false}
                   multiSelect={true}
                   wrapPills={true}
                   ref={courtSelectionRef}
+                  selectedLabel={'division'}
                 />
               </div>
             </div>
@@ -254,6 +262,7 @@ export default function SearchScreen() {
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
+                  selectedLabel={'chapter'}
                 />
               </div>
             </div>
