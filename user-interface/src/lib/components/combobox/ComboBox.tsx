@@ -10,13 +10,13 @@ import {
 } from 'react';
 import Icon from '../uswds/Icon';
 import Button, { UswdsButtonStyle } from '../uswds/Button';
-import PillBox from '../PillBox';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
 export type ComboOption = {
   value: string;
   label: string;
+  selectedLabel?: string;
   divider?: boolean;
 };
 
@@ -41,7 +41,8 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
   multiSelect?: boolean;
   wrapPills?: boolean;
-  selectedLabel: string;
+  pluralLabel?: string;
+  overflowStrategy?: 'ellipsis';
 }
 
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -58,7 +59,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ariaLabelPrefix,
     ariaDescription,
     options: _options,
-    selectedLabel,
+    pluralLabel,
+    overflowStrategy,
     ...otherProps
   } = props;
 
@@ -79,6 +81,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const comboBoxListRef = useRef<HTMLUListElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const singleSelectionPillRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useOutsideClick([comboBoxRef], isOutsideClick);
 
@@ -120,6 +123,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     return childHeight > parentHeight;
   }
 
+  function getSelections() {
+    return Array.from(selectedMap.values());
+  }
+
   function setSelections(values: ComboOption[]) {
     setSelectedMap(new Map(values.map((value) => [value.value, value])));
   }
@@ -142,6 +149,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   };
 
+  function getSelectedLabel() {
+    if (selectedMap.size === 0) {
+      return '';
+    } else if (selectedMap.size === 1) {
+      return [...selectedMap.values()][0].selectedLabel ?? [...selectedMap.values()][0].label;
+    } else {
+      return `${selectedMap.size} ${pluralLabel} selected`;
+    }
+  }
+
   function isOutsideClick(ev: MouseEvent) {
     if (comboBoxRef.current && expanded) {
       const boundingRect = (comboBoxRef.current as HTMLDivElement).getBoundingClientRect();
@@ -159,6 +176,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         closeDropdown(false);
       }
     }
+  }
+
+  function getSelectedClasses(): string {
+    const classNames = ['selection-label'];
+    if (overflowStrategy === 'ellipsis') {
+      classNames.push(overflowStrategy);
+    }
+    return classNames.join(' ');
   }
 
   function getInputClassName(): string {
@@ -271,7 +296,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'ArrowDown': {
         ev.preventDefault();
         ev.stopPropagation();
-        openDropdown();
         const newId = navigateList('down', index - 1, comboBoxListRef);
         if (newId) {
           setCurrentListItem(newId);
@@ -282,15 +306,12 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         ev.preventDefault();
         ev.stopPropagation();
         openDropdown();
-        if (index <= 1) {
-          // Depending on context, move focus to input or single select pill
-          const element =
-            selectedMap.size && !multiSelect ? singleSelectionPillRef.current : filterRef.current;
-          if (element) {
-            element.focus();
-          }
+        if (document.activeElement === filterRef.current) {
           setCurrentListItem(null);
-          closeDropdown(true);
+          closeDropdown();
+        } else if (index <= 1) {
+          filterRef.current?.focus();
+          setCurrentListItem(null);
         } else {
           const newId = navigateList('up', index - 1, comboBoxListRef);
           if (newId) {
@@ -316,18 +337,19 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function handlePillSelection(selections: ComboOption[]) {
-    setSelectedMap(new Map(selections.map((value) => [value.value, value])));
-    if (onUpdateSelection) {
-      onUpdateSelection(selections);
-    }
-    if (onPillSelection) {
-      onPillSelection(selections);
-    }
-    filterRef.current?.focus();
+  function handleOnInputClick(ev: React.MouseEvent<HTMLInputElement>) {
+    ev.currentTarget.focus();
+    ev.preventDefault();
+    ev.stopPropagation();
   }
 
-  function handleToggleDropdown(_ev: React.MouseEvent<HTMLButtonElement>) {
+  function handleToggleKeyDown(ev: React.KeyboardEvent) {
+    if (ev.key === 'ArrowDown') {
+      handleToggleDropdown();
+    }
+  }
+
+  function handleToggleDropdown() {
     const inputContainer = document.querySelector(`#${comboBoxId} .input-container`);
     const topYPos = inputContainer?.getBoundingClientRect().top;
     const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
@@ -348,7 +370,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     } else {
       openDropdown();
     }
-    filterRef.current?.focus();
   }
 
   // ========== USE EFFECTS ==========
@@ -366,9 +387,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }, [shouldFocusSingleSelectPill]);
 
-  function getSelections() {
-    return Array.from(selectedMap.values());
-  }
+  useEffect(() => {
+    if (expanded) {
+      filterRef.current?.focus();
+    } else {
+      containerRef.current?.focus();
+    }
+  }, [expanded]);
 
   useImperativeHandle(ref, () => ({
     setSelections,
@@ -380,10 +405,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }));
 
   // ========== JSX ==========
-
-  function getSelectedLabel() {
-    return `${selectedMap.size} ${selectedMap.size === 1 ? `${selectedLabel}` : `${selectedLabel}s`} selected`;
-  }
 
   return (
     <div id={comboBoxId} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
@@ -398,33 +419,17 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         <span id={`${comboBoxId}-aria-description`} hidden>
           {ariaDescription ?? ''}
         </span>
+        {selectedMap.size > 0 && (
+          <Button
+            className="clear-all-button"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={handleClearAllClick}
+            onKeyDown={handleClearAllKeyDown}
+          >
+            clear
+          </Button>
+        )}
       </div>
-      {multiSelect && selectedMap.size > 0 && (
-        <div className="pills-and-clear-all">
-          <PillBox
-            id={`${comboBoxId}-pill-box`}
-            className="pill-box"
-            wrapPills={wrapPills}
-            ariaLabelPrefix={ariaLabelPrefix ?? undefined}
-            selections={[...selectedMap.values()]}
-            onSelectionChange={handlePillSelection}
-            disabled={comboboxDisabled}
-          ></PillBox>
-          {selectedMap.size > 0 && (
-            <Button
-              id={`${comboBoxId}-clear-all-pills-button`}
-              className="pill-clear-button"
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={handleClearAllClick}
-              onKeyDown={handleClearAllKeyDown}
-              aria-label={`clear all selections ${label ? `for ${label}` : ''}`}
-              disabled={comboboxDisabled}
-            >
-              clear
-            </Button>
-          )}
-        </div>
-      )}
       <div className="usa-combo-box">
         <div
           className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}
@@ -434,29 +439,45 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           aria-expanded={expanded}
           aria-controls={`${comboBoxId}-item-list`}
           aria-labelledby={comboBoxId + '-label'}
+          tabIndex={0}
+          onClick={() => handleToggleDropdown()}
+          onKeyDown={handleToggleKeyDown}
+          ref={containerRef}
         >
           <div className="combo-box-input-container" role="presentation">
-            {/*{multiSelect === false && selectedMap.size === 1 && (*/}
-            {/*  <Pill*/}
-            {/*    id={`pill-${comboBoxId}`}*/}
-            {/*    label={[...selectedMap.values()][0].label}*/}
-            {/*    ariaLabelPrefix={ariaLabelPrefix ?? undefined}*/}
-            {/*    value={[...selectedMap.values()][0].value}*/}
-            {/*    wrapText={wrapPills}*/}
-            {/*    onKeyDown={(ev) => handleKeyDown(ev, 0)}*/}
-            {/*    onClick={handleSingleSelectPillClick}*/}
-            {/*    disabled={comboboxDisabled}*/}
-            {/*    ref={singleSelectionPillRef}*/}
-            {/*  ></Pill>*/}
-            {/*)}*/}
-            {/* label */}
-            <span>{getSelectedLabel()}</span>
+            {expanded ? (
+              <>
+                <Icon name="search"></Icon>
+                <input
+                  {...otherProps}
+                  id={`${comboBoxId}-combo-box-input`}
+                  data-testid="combo-box-input"
+                  className={getInputClassName()}
+                  onChange={handleInputFilter}
+                  onKeyDown={(ev) => handleKeyDown(ev, 0)}
+                  onFocus={handleOnInputFocus}
+                  onClick={handleOnInputClick}
+                  disabled={comboboxDisabled}
+                  autoComplete={'off'}
+                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+                  aria-describedby={`${comboBoxId}-aria-description`}
+                  aria-live={props['aria-live'] ?? undefined}
+                  aria-autocomplete="list"
+                  aria-activedescendant={currentListItem ?? ''}
+                  ref={filterRef}
+                />
+              </>
+            ) : (
+              <span title={getSelectedLabel()} className={getSelectedClasses()}>
+                {getSelectedLabel()}
+              </span>
+            )}
           </div>
           <Button
             id={`${comboBoxId}-expand`}
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
-            onClick={handleToggleDropdown}
+            onClick={() => handleToggleDropdown()}
             onKeyDown={(ev) => handleKeyDown(ev, 0)}
             disabled={comboboxDisabled}
             tabIndex={-1}
@@ -480,29 +501,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
               ref={comboBoxListRef}
             >
-              <li
-                id={'combo-box-input-container'}
-                className={'something?'}
-                data-testid={'combo-box-input-container'}
-              >
-                <input
-                  {...otherProps}
-                  id={`${comboBoxId}-combo-box-input`}
-                  data-testid="combo-box-input"
-                  className={getInputClassName()}
-                  onChange={handleInputFilter}
-                  onKeyDown={(ev) => handleKeyDown(ev, 0)}
-                  onClick={openDropdown}
-                  onFocus={handleOnInputFocus}
-                  disabled={comboboxDisabled}
-                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
-                  aria-describedby={`${comboBoxId}-aria-description`}
-                  aria-live={props['aria-live'] ?? undefined}
-                  aria-autocomplete="list"
-                  aria-activedescendant={currentListItem ?? ''}
-                  ref={filterRef}
-                />
-              </li>
               {props.options
                 .filter(
                   (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),

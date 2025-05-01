@@ -23,7 +23,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
 
   const { includeClearButton, ariaDescription, errorMessage, ...otherProps } = props;
 
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   function emitChange(value: string) {
     if (props.onChange) {
@@ -72,11 +72,15 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     }
   }
 
+  function focus() {
+    inputRef?.current?.focus();
+  }
+
   useEffect(() => {
     setInputValue(props.value || '');
   }, [props.value]);
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
 
   return (
     <>

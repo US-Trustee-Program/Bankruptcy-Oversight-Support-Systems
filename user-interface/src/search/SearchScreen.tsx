@@ -77,10 +77,12 @@ export default function SearchScreen() {
             defaultDivisionCodes?.includes(office.courtDivisionCode),
           ),
         );
-        filteredDivisionCodes[filteredDivisionCodes.length - 1].divider = true;
-        const filteredOfficeComboOptions = officeComboOptions.filter(
-          (officeComboOption) => !filteredDivisionCodes.includes(officeComboOption),
-        );
+        if (filteredDivisionCodes.length) {
+          filteredDivisionCodes[filteredDivisionCodes.length - 1].divider = true;
+        }
+        const filteredOfficeComboOptions = officeComboOptions.filter((officeComboOption) => {
+          return !defaultDivisionCodes?.includes(officeComboOption.value);
+        });
         const finalOfficeComboOptions = [...filteredDivisionCodes, ...filteredOfficeComboOptions];
         setOfficesList(finalOfficeComboOptions);
         courtSelectionRef.current?.setSelections(filteredDivisionCodes);
@@ -241,7 +243,8 @@ export default function SearchScreen() {
                   multiSelect={true}
                   wrapPills={true}
                   ref={courtSelectionRef}
-                  selectedLabel={'division'}
+                  pluralLabel={'divisions'}
+                  overflowStrategy="ellipsis"
                 />
               </div>
             </div>
@@ -262,7 +265,7 @@ export default function SearchScreen() {
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
-                  selectedLabel={'chapter'}
+                  pluralLabel={'chapters'}
                 />
               </div>
             </div>
