@@ -164,5 +164,5 @@ jobs:
     name: Send Slack Notification
     uses: ./.github/workflows/slack-notification.yml
     with:
-      message: 'Continuous Deployment workflow finished.'
+      message: '🚨 Continuous Deployment workflow failed.'
     secrets: inherit # pragma: allowlist secret
