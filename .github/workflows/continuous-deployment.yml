@@ -33,12 +33,6 @@ on:
           - 'true'
 
 jobs:
-  force-failure:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Force failure
-        run: exit 1
-
   setup:
     name: Setup
     uses: ./.github/workflows/reusable-build-info.yml
