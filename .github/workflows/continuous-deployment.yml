@@ -161,8 +161,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
 
   notify-on-failure:
-    name: Send Slack Notification on Failure
-    if: failure()
+    name: Send Slack Notification
     uses: ./.github/workflows/slack-notification.yml
     with:
-      message: '🚨 Continuous Deployment workflow failed.'
+      message: 'Continuous Deployment workflow finished.'
