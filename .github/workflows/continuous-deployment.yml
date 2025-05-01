@@ -165,23 +165,3 @@ jobs:
       e2eCosmosDbExists: ${{ needs.deploy.outputs.e2eCosmosDbExists }}
       initialDeployment: ${{ needs.setup.outputs.initialDeployment }}
     secrets: inherit # pragma: allowlist secret
-
-  notify-on-failure:
-    name: Send Slack Notification on Failure
-    needs:
-      [
-        setup,
-        accessibility-test,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-        security-scan,
-        build,
-        deploy,
-        deploy-code-slot,
-      ]
-    if: always() && failure()
-    uses: ./.github/workflows/slack-notification.yml
-    with:
-      message: '🚨 Continuous Deployment workflow failed.'
-    secrets: inherit # pragma: allowlist secret
