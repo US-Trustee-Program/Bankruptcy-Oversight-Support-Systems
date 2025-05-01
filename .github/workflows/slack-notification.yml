@@ -14,13 +14,14 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           short_hash="${GITHUB_SHA::7}"
-          full_message=$(cat <<EOF
-              ${{ inputs.message }}
-              • *Branch:* ${{ github.ref_name }}
-              • *Commit:* <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|$short_hash>
-              • *Run:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Workflow>
-              EOF
-            )
+          full_message=$(printf "%s\n• *Branch:* %s\n• *Commit:* <%s|%s>\n• *Run:* <%s|View Workflow>" \
+            "${{ inputs.message }}" \
+            "${{ github.ref_name }}" \
+            "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}" \
+            "$short_hash" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          )
+
           curl -X POST -H 'Content-type: application/json' \
             --data "$(jq -n --arg text "$full_message" '{text: $text}')" \
             "$SLACK_WEBHOOK_URL"
