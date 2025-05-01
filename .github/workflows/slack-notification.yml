@@ -1,0 +1,30 @@
+on:
+  workflow_run:
+    workflows:
+      - Continuous Deployment
+    types:
+      - completed
+
+jobs:
+  notify:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          head_sha="${{ github.event.workflow_run.head_sha }}"
+          short_hash=$(echo "$head_sha" | cut -c1-7)
+          message="🚨 *Continuous Deployment* workflow failed."
+          full_message=$(printf "%s\n• *Branch:* %s\n• *Commit:* <%s|%s>\n• *Run:* <%s|View Workflow>" \
+            "$message" \
+            "${{ github.event.workflow_run.head_branch }}" \
+            "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }}" \
+            "$short_hash" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}"
+          )
+
+          curl -X POST -H 'Content-type: application/json' \
+            --data "$(jq -n --arg text "$full_message" '{text: $text}')" \
+            "$SLACK_WEBHOOK_URL"

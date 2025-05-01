@@ -80,7 +80,7 @@ jobs:
       isDeployment: true
 
   deploy-db:
-    name: ComosDb
+    name: CosmosDb
     uses: ./.github/workflows/reusable-database-deploy.yml
     needs: [deploy-infra]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
