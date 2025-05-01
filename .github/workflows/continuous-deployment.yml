@@ -165,3 +165,4 @@ jobs:
     uses: ./.github/workflows/slack-notification.yml
     with:
       message: 'Continuous Deployment workflow finished.'
+    secrets: inherit # pragma: allowlist secret
