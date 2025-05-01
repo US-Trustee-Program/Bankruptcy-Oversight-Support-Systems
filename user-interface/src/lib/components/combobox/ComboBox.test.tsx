@@ -9,11 +9,18 @@ const comboboxId = 'test-combobox';
 
 async function toggleDropdown(id: string) {
   const toggleButton = document.querySelector(`#${id}-expand`);
-  document.querySelector('ul');
 
   expect(toggleButton).toBeInTheDocument();
 
   await userEvent.click(toggleButton!);
+}
+
+async function getComboInputContainer(): Promise<Element | null> {
+  const container = document.querySelector(`.input-container`);
+
+  expect(container).toBeInTheDocument();
+
+  return container;
 }
 
 async function getFocusedComboInputField(id: string): Promise<HTMLInputElement> {
@@ -28,18 +35,6 @@ async function getFocusedComboInputField(id: string): Promise<HTMLInputElement> 
 function isDropdownClosed() {
   const itemListContainer = document.querySelector('.item-list-container');
   return itemListContainer && itemListContainer.classList.contains('closed');
-}
-
-function getPill(pillBox: Element | null, num: number) {
-  return pillBox!.children[num].children[0];
-}
-
-async function clickPill(pillBox: Element | null, num: number) {
-  await userEvent.click(pillBox!.children[num].children[0]);
-}
-
-async function getPillValue(pillBox: Element | null, num: number) {
-  return pillBox!.children[num].children[0].attributes.getNamedItem('data-value');
 }
 
 async function selectComboItem(num: number) {
@@ -125,7 +120,7 @@ describe('test cams combobox', () => {
 
     expect(isDropdownClosed()).toBeTruthy();
 
-    expect(inputField).toHaveFocus();
+    expect(await getComboInputContainer()).toHaveFocus();
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -152,11 +147,24 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('After selecting an item in the dropdown list, a pill should appear, and after clicking the pill it should remove pill and deselect item in dropdown', async () => {
-    renderWithProps({ options: getDefaultOptions() });
+  test('After selecting a single item in the dropdown list, item name as defined by selected label, should appear in selection-label and clear button should appear. After selecting a second item in the list, the selection-label should say 2 things selected. After clicking the clear button it should remove label and deselect item in dropdown and clear button should go away.', async () => {
+    const optionToSelect1 = {
+      label: 'Test Option 1',
+      selectedLabel: 'Test Selection Label 1',
+      value: 'testValue1',
+    };
+    const optionToSelect2 = {
+      label: 'Test Option 2',
+      selectedLabel: 'Test Selection Label 2',
+      value: 'testValue2',
+    };
+    const options = [optionToSelect1, optionToSelect2, ...getDefaultOptions()];
+    renderWithProps({ options, pluralLabel: 'things' });
 
-    let pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-    expect(pillBox).not.toBeInTheDocument();
+    expect(document.querySelector('.clear-all-button')).not.toBeInTheDocument();
+    expect(document.querySelector('.selection-label')?.textContent).toEqual('');
+    let selectedListItem = document.querySelectorAll('li.selected');
+    expect(selectedListItem!.length).toEqual(0);
 
     await toggleDropdown(comboboxId);
 
@@ -166,51 +174,50 @@ describe('test cams combobox', () => {
     await toggleDropdown(comboboxId);
 
     await waitFor(() => {
-      pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-      expect(pillBox).toBeInTheDocument();
+      expect(document.querySelector('.clear-all-button')).toBeInTheDocument();
     });
-    expect(pillBox!.children.length).toEqual(1);
 
-    let selectedListItem = document.querySelectorAll('li.selected');
+    expect(document.querySelector('.selection-label')?.textContent).toEqual(
+      optionToSelect1.selectedLabel,
+    );
+
+    selectedListItem = document.querySelectorAll('li.selected');
     expect(selectedListItem!.length).toEqual(1);
 
-    await clickPill(pillBox, 0);
+    await toggleDropdown(comboboxId);
+
+    const secondListItemButton = document.querySelectorAll('li')[1];
+    await userEvent.click(secondListItemButton!);
+
+    await toggleDropdown(comboboxId);
 
     await waitFor(() => {
-      pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-      expect(pillBox).not.toBeInTheDocument();
+      expect(document.querySelector('.item-list-container')).toHaveClass('closed');
     });
+
+    expect(document.querySelector('.selection-label')?.textContent).toEqual('2 things selected');
+
+    selectedListItem = document.querySelectorAll('li.selected');
+    expect(selectedListItem!.length).toEqual(2);
+
+    const clearBtn = document.querySelector('.clear-all-button');
+    await userEvent.click(clearBtn!);
+
+    await waitFor(() => {
+      expect(document.querySelector('.clear-all-button')).not.toBeInTheDocument();
+    });
+
+    expect(document.querySelector('.selection-label')?.textContent).toEqual('');
 
     selectedListItem = document.querySelectorAll('li.selected');
     expect(selectedListItem!.length).toEqual(0);
   });
 
-  test('Should contain a clear button when pills are present and clicking button should remove all selections and close dropdown list', async () => {
-    renderWithProps({ multiSelect: true });
+  test('should close dropdown list, clear input field, and focus on combobox container when escape key is pressed inside the input field', async () => {
+    renderWithProps({ options: getDefaultOptions() });
 
     await toggleDropdown(comboboxId);
-
-    await selectComboItem(0);
-    await selectComboItem(1);
-    await selectComboItem(2);
-
-    const pillBox = document.querySelector(`#${comboboxId}-pill-box`);
-    await waitFor(() => {
-      expect(pillBox!.children.length).toEqual(3);
-    });
-
-    const clearButton = document.querySelector('.pill-clear-button');
-    expect(clearButton).toBeInTheDocument();
-
-    await userEvent.click(clearButton!);
-
-    await waitFor(async () => {
-      expect(pillBox).not.toBeInTheDocument();
-    });
-  });
-
-  test('should close dropdown list, clear input field, and focus on input field when escape key is pressed inside the input field', async () => {
-    renderWithProps();
+    expect(isDropdownClosed()).toBeFalsy();
 
     const inputField = await getFocusedComboInputField(comboboxId);
 
@@ -221,7 +228,7 @@ describe('test cams combobox', () => {
     await userEvent.keyboard('{Escape}');
     expect(inputField.value).toEqual('');
     expect(isDropdownClosed()).toBeTruthy();
-    expect(inputField).toHaveFocus();
+    expect(await getComboInputContainer()).toHaveFocus();
   });
 
   test('should close dropdown list, clear input field, but NOT focus on input field when clicking outside of combobox', async () => {

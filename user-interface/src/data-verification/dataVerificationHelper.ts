@@ -10,6 +10,7 @@ export function getOfficeList(officesList: CourtDivisionDetails[]): ComboOption[
     return {
       value: court.courtDivisionCode,
       label,
+      selectedLabel: `${court.courtDivisionName}, ${court.state}`,
     };
   });
 }

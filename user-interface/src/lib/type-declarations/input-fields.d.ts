@@ -6,6 +6,7 @@ export interface InputRef {
   clearValue: () => void;
   resetValue: () => void;
   getValue: () => string;
+  focus: () => void;
 }
 
 export interface TextAreaRef {
