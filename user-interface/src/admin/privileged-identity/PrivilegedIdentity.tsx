@@ -114,7 +114,6 @@ export function PrivilegedIdentity() {
   function handleSelectUser(options: ComboOption[]) {
     if (options.length === 1) {
       const userId = options[0].value;
-      // setSelectedUser(userList.find((user) => user.id === options[0].value)!);
       api
         .getPrivilegedIdentityUser(userId)
         .then((response) => {

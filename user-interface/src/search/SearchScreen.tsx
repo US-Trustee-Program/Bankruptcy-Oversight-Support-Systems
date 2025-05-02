@@ -8,7 +8,7 @@ import {
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
-import { courtSorter, getOfficeList } from '@/data-verification/dataVerificationHelper';
+import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -71,8 +71,8 @@ export default function SearchScreen() {
       .getCourts()
       .then((response) => {
         const newOfficesList = response.data.sort(courtSorter);
-        const officeComboOptions = getOfficeList(newOfficesList);
-        const filteredDivisionCodes = getOfficeList(
+        const officeComboOptions = getDivisionComboOptions(newOfficesList);
+        const filteredDivisionCodes = getDivisionComboOptions(
           newOfficesList.filter((office) =>
             defaultDivisionCodes?.includes(office.courtDivisionCode),
           ),
@@ -235,7 +235,8 @@ export default function SearchScreen() {
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
-                  pluralLabel={'chapters'}
+                  singularLabel="chapter"
+                  pluralLabel="chapters"
                 />
               </div>
             </div>

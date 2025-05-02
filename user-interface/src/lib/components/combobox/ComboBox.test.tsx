@@ -432,7 +432,6 @@ describe('test cams combobox', () => {
 
   test('should not open when combobox is disabled', async () => {
     renderWithProps({ disabled: true });
-    // await toggleDropdown();
 
     const inputContainer = document.querySelector('.input-container');
     await userEvent.click(inputContainer!);
@@ -804,7 +803,6 @@ describe('test cams combobox', () => {
 
     ref.current?.disable(true);
 
-    // const expandButton = document.querySelector('.expand-button');
     await waitFor(() => {
       const disabledExpandButton = document.querySelector('.expand-button');
       expect(disabledExpandButton).not.toBeEnabled();

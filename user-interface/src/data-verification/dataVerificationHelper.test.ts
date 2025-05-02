@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { courtSorter, getOfficeList } from './dataVerificationHelper';
+import { courtSorter, getDivisionComboOptions } from './dataVerificationHelper';
 
 describe('data verification helper tests', () => {
   test('should properly map court information for selection', () => {
@@ -42,7 +42,7 @@ describe('data verification helper tests', () => {
         selectedLabel: 'Los Angeles, CA',
       },
     ];
-    const actual = getOfficeList(offices);
+    const actual = getDivisionComboOptions(offices);
     expect(actual).toEqual(expected);
   });
 
@@ -96,7 +96,7 @@ describe('data verification helper tests', () => {
       a.courtDivisionCode < b.courtDivisionCode ? -1 : 1,
     );
 
-    const actualOptions = getOfficeList(sortedTestOffices);
+    const actualOptions = getDivisionComboOptions(sortedTestOffices);
     expect(actualOptions).toStrictEqual(expectedOptions);
   });
 
@@ -121,7 +121,7 @@ describe('data verification helper tests', () => {
       { value: '002', label: 'B (New York 1) Legacy', selectedLabel: 'New York 1, NY' },
     ];
 
-    const actualOptions = getOfficeList(testOffices);
+    const actualOptions = getDivisionComboOptions(testOffices);
     expect(actualOptions).toStrictEqual(expectedOptions);
   });
 
