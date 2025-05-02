@@ -156,7 +156,7 @@ function _SuggestedTransferCases(
     // TODO: Make sure the following only happens when we click the 'Clear' button, not the 'go back' button on the modal
     setNewCaseNumber(order.docketSuggestedCaseNumber || null);
     setNewCaseDivision(null);
-    courtSelectionRef.current?.clearValue();
+    courtSelectionRef.current?.clearSelections();
     caseNumberRef.current?.resetValue();
   }
 

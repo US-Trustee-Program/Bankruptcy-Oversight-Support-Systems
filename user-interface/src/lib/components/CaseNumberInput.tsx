@@ -89,7 +89,11 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
     if (onFocus) onFocus(ev);
   }
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
+  function focus() {
+    forwardedRef?.current?.focus();
+  }
+
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
 
   useEffect(() => {
     if (isDisabled && onDisable) {

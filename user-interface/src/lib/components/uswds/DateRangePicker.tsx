@@ -93,6 +93,10 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
     endDateRef.current?.disable(value);
   }
 
+  function focus() {
+    startDateRef?.current?.focus();
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
@@ -100,6 +104,7 @@ function DateRangePickerComponent(props: DateRangePickerProps, ref: React.Ref<Da
       setValue,
       disable,
       getValue,
+      focus,
     };
   });
 
