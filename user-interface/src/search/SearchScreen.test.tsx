@@ -11,9 +11,14 @@ import Api2 from '@/lib/models/api2';
 import userEvent from '@testing-library/user-event';
 import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import { getCourtDivisionCodes } from '@common/cams/users';
 
 describe('search screen', () => {
-  const session = MockData.getCamsSession();
+  const userOffices = [REGION_02_GROUP_NY];
+  const user = MockData.getCamsUser({ offices: userOffices });
+  const userDivisions = getCourtDivisionCodes(user);
+  const session = MockData.getCamsSession({ user });
   const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
   const searchResponseBody: ResponseBody<SyncedCase[]> = {
     meta: { self: 'self-url' },
@@ -147,13 +152,7 @@ describe('search screen', () => {
     expect(options![1]).toHaveTextContent(officeNames[1]);
   });
 
-  test('should render a list of cases by court division', async () => {
-    const divisionSearchPredicate = {
-      limit: 25,
-      offset: 0,
-      divisionCodes: expect.any(Array<string>),
-    };
-
+  test('should render a list of cases by court division and clear selections', async () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
       meta: {
         self: '',
@@ -177,9 +176,8 @@ describe('search screen', () => {
     await userEvent.click(expandButton);
 
     // Make first search request....
-    await waitFor(() => {
-      testingUtilities.selectComboBoxItem('court-selections-search', 1);
-    });
+    let itemToSelect = userDivisions.length + 1;
+    await testingUtilities.selectComboBoxItem('court-selections-search', itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -199,14 +197,23 @@ describe('search screen', () => {
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
+    const divisionSearchPredicate = {
+      limit: 25,
+      offset: 0,
+      divisionCodes: [...userDivisions],
+    };
+
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining(divisionSearchPredicate),
+      expect.objectContaining({
+        ...divisionSearchPredicate,
+        divisionCodes: [...userDivisions, expect.any(String)],
+      }),
       includeAssignments,
     );
 
     // Make second search request...
     await userEvent.click(expandButton);
-    await testingUtilities.selectComboBoxItem('court-selections-search', 2);
+    await testingUtilities.selectComboBoxItem('court-selections-search', ++itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -225,7 +232,10 @@ describe('search screen', () => {
     });
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining(divisionSearchPredicate),
+      expect.objectContaining({
+        ...divisionSearchPredicate,
+        divisionCodes: [...userDivisions, expect.any(String), expect.any(String)],
+      }),
       includeAssignments,
     );
 
