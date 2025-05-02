@@ -76,7 +76,7 @@ describe('search screen', () => {
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
     // Make first search request...
-    await testingUtilities.selectComboBoxItem('case-chapter-search', 2);
+    await testingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton!);
     await userEvent.click(searchButton);
 
@@ -97,7 +97,7 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
+    await testingUtilities.toggleComboBoxItemSelection('case-chapter-search', 3);
     await userEvent.click(expandButton!);
 
     expect(document.querySelectorAll('#case-chapter-search-item-list li.selected')).toHaveLength(2);
@@ -177,7 +177,7 @@ describe('search screen', () => {
 
     // Make first search request....
     let itemToSelect = userDivisions.length + 1;
-    await testingUtilities.selectComboBoxItem('court-selections-search', itemToSelect);
+    await testingUtilities.toggleComboBoxItemSelection('court-selections-search', itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -213,7 +213,7 @@ describe('search screen', () => {
 
     // Make second search request...
     await userEvent.click(expandButton);
-    await testingUtilities.selectComboBoxItem('court-selections-search', ++itemToSelect);
+    await testingUtilities.toggleComboBoxItemSelection('court-selections-search', ++itemToSelect);
 
     await userEvent.click(expandButton);
 

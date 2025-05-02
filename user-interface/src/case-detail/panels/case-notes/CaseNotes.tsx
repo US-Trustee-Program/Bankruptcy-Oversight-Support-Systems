@@ -172,8 +172,15 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     setFocusId(noteId);
   }
 
+  function focus() {
+    if (caseNotes && caseNotes[0].id) {
+      setFocusId(caseNotes[0].id);
+    }
+  }
+
   useImperativeHandle(ref, () => {
     return {
+      focus,
       focusEditButton,
     };
   });

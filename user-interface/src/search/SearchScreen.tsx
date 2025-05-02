@@ -79,6 +79,9 @@ export default function SearchScreen() {
         );
         if (filteredDivisionCodes.length) {
           filteredDivisionCodes[filteredDivisionCodes.length - 1].divider = true;
+          filteredDivisionCodes.forEach((option: ComboOption) => {
+            option.isAriaDefault = true;
+          });
         }
         const filteredOfficeComboOptions = officeComboOptions.filter((officeComboOption) => {
           return !defaultDivisionCodes?.includes(officeComboOption.value);
@@ -144,6 +147,7 @@ export default function SearchScreen() {
   function handleChapterSelection(selections: ComboOption[]) {
     let performSearch = false;
 
+    // TODO:   Why in none of the tests is temporarySearchPredicate.chapters ever set?
     if (
       temporarySearchPredicate.chapters &&
       temporarySearchPredicate.chapters.length == selections.length
@@ -235,7 +239,6 @@ export default function SearchScreen() {
                   ariaDescription="multi-select"
                   aria-live="off"
                   onClose={handleCourtSelection}
-                  onPillSelection={handleCourtSelection}
                   onUpdateSelection={handleCourtSelection}
                   onFocus={handleFilterFormElementFocus}
                   options={officesList}
@@ -243,7 +246,8 @@ export default function SearchScreen() {
                   multiSelect={true}
                   wrapPills={true}
                   ref={courtSelectionRef}
-                  pluralLabel={'divisions'}
+                  singularLabel="division"
+                  pluralLabel="divisions"
                   overflowStrategy="ellipsis"
                 />
               </div>
@@ -258,7 +262,6 @@ export default function SearchScreen() {
                   ariaDescription="multi-select"
                   aria-live="off"
                   onClose={handleChapterSelection}
-                  onPillSelection={handleChapterSelection}
                   onUpdateSelection={handleChapterClear}
                   onFocus={handleFilterFormElementFocus}
                   options={chapterList}

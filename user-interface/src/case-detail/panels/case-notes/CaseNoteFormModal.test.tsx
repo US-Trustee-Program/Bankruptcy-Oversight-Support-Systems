@@ -292,7 +292,6 @@ describe('case note tests', () => {
 
     const titleInput = screen.getByTestId(titleInputId);
 
-    screen.debug(modal);
     await waitFor(() => {
       expect(titleInput).toHaveValue('');
     });

@@ -592,12 +592,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         id="facet-multi-select"
                         options={getSummaryFacetList(caseDocketSummaryFacets)}
                         onClose={handleSelectedFacet}
-                        onPillSelection={handleSelectedFacet}
                         onUpdateSelection={handleFacetClear}
                         label="Filter by Summary"
                         ariaDescription="Select multiple options. Results will update when the dropdown is closed."
                         aria-live="off"
                         multiSelect={true}
+                        singularLabel="summary"
                         pluralLabel="summaries"
                         ref={facetPickerRef}
                       />

@@ -18,6 +18,7 @@ export type ComboOption = {
   label: string;
   selectedLabel?: string;
   divider?: boolean;
+  isAriaDefault?: boolean;
 };
 
 export type ComboOptionList = ComboOption | Array<ComboOption>;
@@ -35,12 +36,12 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   icon?: string;
   options: ComboOption[];
   onUpdateSelection?: (options: ComboOption[]) => void;
-  onPillSelection?: (options: ComboOption[]) => void;
   onUpdateFilter?: (value: string) => void;
   onClose?: (options: ComboOption[]) => void;
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
   multiSelect?: boolean;
   wrapPills?: boolean;
+  singularLabel?: string;
   pluralLabel?: string;
   overflowStrategy?: 'ellipsis';
 }
@@ -51,7 +52,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     label,
     disabled,
     onUpdateSelection,
-    onPillSelection,
     onUpdateFilter,
     onClose,
     multiSelect,
@@ -59,6 +59,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ariaLabelPrefix,
     ariaDescription,
     options: _options,
+    singularLabel,
     pluralLabel,
     overflowStrategy,
     ...otherProps
@@ -70,7 +71,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
   const [currentListItem, setCurrentListItem] = useState<string | null>(null);
-  const [shouldFocusSingleSelectPill, setShouldFocusSingleSelectPill] = useState<boolean>(false);
 
   const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(new Map());
   const [filter, setFilter] = useState<string | null>(null);
@@ -80,12 +80,18 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const comboBoxRef = useRef(null);
   const comboBoxListRef = useRef<HTMLUListElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
-  const singleSelectionPillRef = useRef<HTMLButtonElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useOutsideClick([comboBoxRef], isOutsideClick);
 
   // ========== MISC FUNCTIONS ==========
+
+  function buildAriaLabel(option: ComboOption) {
+    const typeLabel = multiSelect === true ? 'multi-select' : 'single-select';
+    const selectionLabel = selectedMap.has(option.value) ? 'selected' : 'unselected';
+    const labelPrefix = option.isAriaDefault ? `Default ${singularLabel} ` : '';
+    return `${labelPrefix}${typeLabel} option: ${ariaLabelPrefix ? ariaLabelPrefix + ' ' : ''}${option.label} ${selectionLabel}`;
+  }
 
   function clearFilter() {
     setFilter(null);
@@ -94,15 +100,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function closeDropdown(shouldFocusOnInput: boolean = true, freshSelections: ComboOption[] = []) {
+  function closeDropdown(shouldFocusOnInput: boolean = true) {
     setExpanded(false);
     clearFilter();
     if (shouldFocusOnInput) {
-      if (!multiSelect && (selectedMap.size > 0 || freshSelections.length > 0)) {
-        setShouldFocusSingleSelectPill(true);
-      } else {
-        filterRef.current?.focus();
-      }
+      filterRef.current?.focus();
     }
     if (onClose) {
       onClose([...selectedMap.values()]);
@@ -137,16 +139,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   const focusInput = () => {
     filterRef.current?.focus();
-  };
-
-  const focusSingleSelectionPill = () => {
-    if (!multiSelect) {
-      if (selectedMap.size > 0) {
-        singleSelectionPillRef.current?.focus();
-      } else {
-        focusInput();
-      }
-    }
   };
 
   function getSelectedLabel() {
@@ -206,11 +198,8 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     currentIndex: number,
     listRef: React.RefObject<HTMLUListElement>,
   ) => {
-    const list = listRef.current;
-    const listContainer = list?.parentElement;
-    if (!(list && listContainer)) {
-      return;
-    }
+    const list = listRef.current!;
+    const listContainer = list.parentElement!;
 
     let targetIndex = currentIndex;
     const total = list.children.length;
@@ -266,7 +255,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
 
     if (!multiSelect) {
-      closeDropdown(true, [...selectedMap.values()]);
+      closeDropdown(true);
     }
   }
 
@@ -381,13 +370,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }, [selectedMap]);
 
   useEffect(() => {
-    if (shouldFocusSingleSelectPill && singleSelectionPillRef.current) {
-      singleSelectionPillRef.current.focus();
-      setShouldFocusSingleSelectPill(false);
-    }
-  }, [shouldFocusSingleSelectPill]);
-
-  useEffect(() => {
     if (expanded) {
       filterRef.current?.focus();
     } else {
@@ -401,7 +383,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     clearSelections,
     disable,
     focusInput,
-    focusSingleSelectionPill,
   }));
 
   // ========== JSX ==========
@@ -518,7 +499,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
                     aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
-                    aria-label={`${multiSelect === true ? 'multi-select' : 'single-select'} option: ${ariaLabelPrefix ?? ''} ${option.label} ${selectedMap.has(option.value) ? 'selected' : 'unselected'}`}
+                    aria-label={buildAriaLabel(option)}
                   >
                     {
                       <>
