@@ -15,6 +15,7 @@ describe('data verification helper tests', () => {
         groupDesignator: '',
         regionId: '',
         regionName: '',
+        state: 'NY',
       },
       {
         officeName: '',
@@ -26,16 +27,19 @@ describe('data verification helper tests', () => {
         groupDesignator: '',
         regionId: '',
         regionName: '',
+        state: 'CA',
       },
     ];
     const expected = [
       {
         value: '111',
         label: 'Test Court 1 (Manhattan)',
+        selectedLabel: 'Manhattan, NY',
       },
       {
         value: '222',
         label: 'Test Court 2 (Los Angeles)',
+        selectedLabel: 'Los Angeles, CA',
       },
     ];
     const actual = getOfficeList(offices);
@@ -83,9 +87,9 @@ describe('data verification helper tests', () => {
     ];
 
     const expectedOptions: Array<Record<string, string>> = [
-      { value: '001', label: 'A (New York 1)' },
-      { value: '002', label: 'B (New York 1)' },
-      { value: '003', label: 'C (New York 1)' },
+      { value: '001', label: 'A (New York 1)', selectedLabel: 'New York 1, NY' },
+      { value: '002', label: 'B (New York 1)', selectedLabel: 'New York 1, NY' },
+      { value: '003', label: 'C (New York 1)', selectedLabel: 'New York 1, NY' },
     ];
 
     const sortedTestOffices = [...testOffices].sort((a, b) =>
@@ -114,7 +118,7 @@ describe('data verification helper tests', () => {
     ];
 
     const expectedOptions: Array<Record<string, string>> = [
-      { value: '002', label: 'B (New York 1) Legacy' },
+      { value: '002', label: 'B (New York 1) Legacy', selectedLabel: 'New York 1, NY' },
     ];
 
     const actualOptions = getOfficeList(testOffices);

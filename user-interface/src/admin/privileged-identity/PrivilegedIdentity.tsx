@@ -40,7 +40,6 @@ export function PrivilegedIdentity() {
     offices: [],
   });
   const [userList, setUserList] = useState<CamsUserReference[]>([]);
-  // const [selectedUser, setSelectedUser] = useState<CamsUserReference | null>(null);
   const [existingGroupNameSet, setExistingGroupNameSet] = useState<Set<string>>(new Set());
   const [existingExpiration, setExistingExpiration] = useState<string | null>(null);
   const [updatedGroupNameSet, setUpdatedGroupNameSet] = useState<Set<string>>(new Set());
@@ -143,8 +142,8 @@ export function PrivilegedIdentity() {
           setExistingGroupNameSet(new Set<string>(new Set<string>()));
           setExistingExpiration(null);
 
-          officeListRef.current?.clearValue();
-          roleListRef.current?.clearValue();
+          officeListRef.current?.clearSelections();
+          roleListRef.current?.clearSelections();
           datePickerRef.current?.clearValue();
           enableForm();
           deleteButtonRef.current?.disableButton(true);
@@ -195,12 +194,12 @@ export function PrivilegedIdentity() {
 
   function discard() {
     clearForm();
-    userListRef.current?.clearValue();
+    userListRef.current?.clearSelections();
   }
 
   function clearForm() {
-    officeListRef.current?.clearValue();
-    roleListRef.current?.clearValue();
+    officeListRef.current?.clearSelections();
+    roleListRef.current?.clearSelections();
     datePickerRef.current?.clearValue();
     disableForm();
   }
@@ -279,6 +278,7 @@ export function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                pluralLabel="offices"
                 onUpdateSelection={handleGroupNameUpdate}
                 ref={officeListRef}
               ></ComboBox>
@@ -294,6 +294,7 @@ export function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                pluralLabel="roles"
                 onUpdateSelection={handleGroupNameUpdate}
                 ref={roleListRef}
               ></ComboBox>

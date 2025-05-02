@@ -94,6 +94,8 @@ describe('search screen', () => {
 
     await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
     await userEvent.click(expandButton!);
+
+    expect(document.querySelectorAll('#case-chapter-search-item-list li.selected')).toHaveLength(2);
     await userEvent.click(searchButton);
 
     await waitFor(() => {
@@ -107,17 +109,15 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    const clearPillButton = document.querySelector('#case-chapter-search .pill-clear-button');
-    expect(clearPillButton).toBeInTheDocument();
+    const clearButton = document.querySelector('#case-chapter-search .clear-all-button');
+    expect(clearButton).toBeInTheDocument();
 
-    const pillBox = document.querySelector('#case-chapter-search-pill-box');
-    expect(pillBox).toBeInTheDocument();
-    expect(pillBox?.children.length).toBeGreaterThan(0);
-
-    await userEvent.click(clearPillButton!);
+    await userEvent.click(clearButton!);
 
     await waitFor(() => {
-      expect(pillBox).not.toBeInTheDocument();
+      expect(
+        document.querySelector('#case-chapter-search-item-list li.selected'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -230,17 +230,15 @@ describe('search screen', () => {
     );
 
     // clear division selection
-    const clearPillButton = document.querySelector('#court-selections-search .pill-clear-button');
-    expect(clearPillButton).toBeInTheDocument();
+    const clearButton = document.querySelector('#court-selections-search .clear-all-button');
+    expect(clearButton).toBeInTheDocument();
 
-    const pillBox = document.querySelector('#court-selections-search-pill-box');
-    expect(pillBox).toBeInTheDocument();
-    expect(pillBox?.children.length).toBeGreaterThan(0);
-
-    await userEvent.click(clearPillButton!);
+    await userEvent.click(clearButton!);
 
     await waitFor(() => {
-      expect(pillBox).not.toBeInTheDocument();
+      expect(
+        document.querySelector('#case-chapter-search-item-list li.selected'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -248,8 +246,8 @@ describe('search screen', () => {
     const caseNumber = '00-11111';
     const casesSearchPredicate: CasesSearchPredicate = {
       caseNumber,
-      divisionCodes: expect.anything(),
       limit: 25,
+      divisionCodes: expect.anything(),
       offset: 0,
       excludeChildConsolidations: false,
     };

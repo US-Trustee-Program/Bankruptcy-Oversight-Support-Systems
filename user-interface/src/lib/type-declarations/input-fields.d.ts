@@ -9,18 +9,12 @@ export interface InputRef {
   focus: () => void;
 }
 
-export interface TextAreaRef {
-  setValue: (value: string) => void;
-  disable: (value: boolean) => void;
-  clearValue: () => void;
-  resetValue: () => void;
-  getValue: () => string;
-}
+export type TextAreaRef = InputRef;
 
 export interface ComboBoxRef {
   setSelections: (options: ComboOption[]) => void;
   getSelections: () => ComboOption[];
-  clearValue: () => void;
+  clearSelections: () => void;
   disable: (value: boolean) => void;
   focusInput: () => void;
   focusSingleSelectionPill: () => void;

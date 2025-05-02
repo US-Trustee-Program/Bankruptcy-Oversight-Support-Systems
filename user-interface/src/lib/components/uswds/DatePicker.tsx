@@ -1,7 +1,7 @@
 import './forms.scss';
 import './DatePicker.scss';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { getIsoDate, isInvalidDate } from '@common/date-helper';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
@@ -19,6 +19,8 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
 function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const { id, label, minDate, maxDate } = props;
   const defaultErrorMessage = 'Date is not within allowed range. Enter a valid date.';
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isDisabled, setIsDisabled] = useState<boolean>(!!props.disabled);
@@ -116,6 +118,10 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
     }
   }
 
+  function focus() {
+    inputRef?.current?.focus();
+  }
+
   useImperativeHandle(ref, () => {
     return {
       clearValue,
@@ -123,6 +129,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
       getValue,
       setValue,
       disable,
+      focus,
     };
   });
 
@@ -147,6 +154,7 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
           value={dateValue ?? undefined}
           disabled={isDisabled}
           required={props.required}
+          ref={inputRef}
         />
       </div>
       <div className="date-error">{errorMessage}</div>

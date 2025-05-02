@@ -131,7 +131,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setSelectedMap(new Map(values.map((value) => [value.value, value])));
   }
 
-  function clearValue() {
+  function clearSelections() {
     setSelectedMap(new Map());
   }
 
@@ -187,11 +187,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function getInputClassName(): string {
-    let className = 'usa-tooltip combo-box-input';
-    if (multiSelect !== true && selectedMap.size === 1) {
-      className += ' hide-input';
-    }
-    return className;
+    return 'usa-tooltip combo-box-input';
   }
 
   function setListItemClass(_index: number, option: ComboOption) {
@@ -238,7 +234,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   // ========== HANDLERS ==========
 
   function handleClearAllClick() {
-    clearValue();
+    clearSelections();
     clearFilter();
     filterRef.current?.focus();
 
@@ -344,12 +340,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function handleToggleKeyDown(ev: React.KeyboardEvent) {
-    if (ev.key === 'ArrowDown') {
+    if (!comboboxDisabled && ev.key === 'ArrowDown') {
       handleToggleDropdown();
     }
   }
 
   function handleToggleDropdown() {
+    if (comboboxDisabled) {
+      return;
+    }
+
     const inputContainer = document.querySelector(`#${comboBoxId} .input-container`);
     const topYPos = inputContainer?.getBoundingClientRect().top;
     const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
@@ -398,7 +398,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   useImperativeHandle(ref, () => ({
     setSelections,
     getSelections,
-    clearValue,
+    clearSelections,
     disable,
     focusInput,
     focusSingleSelectionPill,

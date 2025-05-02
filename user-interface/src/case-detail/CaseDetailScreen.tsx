@@ -377,7 +377,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     setSelectedDateRange({ ...selectedDateRange, start: undefined, end: undefined });
     dateRangeRef.current?.clearValue();
     setSelectedFacets([]);
-    facetPickerRef.current?.clearValue();
+    facetPickerRef.current?.clearSelections();
     return;
   }
 
@@ -598,6 +598,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                         ariaDescription="Select multiple options. Results will update when the dropdown is closed."
                         aria-live="off"
                         multiSelect={true}
+                        pluralLabel="summaries"
                         ref={facetPickerRef}
                       />
                     </div>

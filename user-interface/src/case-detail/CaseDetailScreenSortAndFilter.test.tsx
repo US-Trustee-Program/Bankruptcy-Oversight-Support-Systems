@@ -685,8 +685,6 @@ describe('Case Detail sort, search, and filter tests', () => {
 
       const docketFacetContainer = screen.getByTestId('facet-multi-select-container-test-id');
       expect(docketFacetContainer).toBeInTheDocument();
-      let docketFacetInput = screen.getByTestId('combo-box-input');
-      expect(docketFacetInput).toBeInTheDocument();
 
       const clearFiltersButton = screen.getByTestId('clear-filters');
       expect(clearFiltersButton).toBeInTheDocument();
@@ -698,9 +696,9 @@ describe('Case Detail sort, search, and filter tests', () => {
       fireEvent.change(startDateText, { target: { value: '2023-07-01' } });
       fireEvent.change(endDateText, { target: { value: '2023-011-01' } });
       fireEvent.change(docNumberSearchInput, { target: { value: '1' } });
-      fireEvent.change(docketFacetInput, {
-        target: { value: testCaseDocketEntries[0].summaryText },
-      });
+      await userEvent.click(docketFacetContainer);
+      const item0 = docketFacetContainer.querySelector('li');
+      await userEvent.click(item0!);
 
       const docketListAfterInput = screen.getByTestId('searchable-docket');
       expect(docketListAfterInput.children.length).toEqual(1);
@@ -713,8 +711,10 @@ describe('Case Detail sort, search, and filter tests', () => {
       searchInput = screen.getByTestId('document-number-search-field');
       expect(searchInput.textContent).toBe('');
 
-      docketFacetInput = screen.getByTestId('combo-box-input');
-      expect(docketFacetInput.textContent).toBe('');
+      const selectedFacets = document.querySelector(
+        '#facet-multi-select-item-list-container li.selected',
+      );
+      expect(selectedFacets).not.toBeInTheDocument();
 
       startDateText = screen.getByTestId('docket-date-range-date-start');
       expect(startDateText.textContent).toBe('');

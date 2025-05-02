@@ -15,6 +15,7 @@ import { ConsolidationViewModel } from '@/data-verification/consolidation/consol
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import ComboBox from '@/lib/components/combobox/ComboBox';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
+import { useEffect } from 'react';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -28,6 +29,18 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
       viewModel.expandedAccordionId === `order-list-${viewModel.order.id}` ? 'Collapse' : 'Expand';
     return `Click to ${action}.`;
   }
+
+  useEffect(() => {
+    if (viewModel.showLeadCaseForm) {
+      const selectedOption = viewModel.filteredOfficeRecords?.find(
+        (office) => office.value === viewModel.divisionCode,
+      );
+
+      if (selectedOption && viewModel.leadCaseDivisionInput) {
+        viewModel.leadCaseDivisionInput.current?.setSelections([selectedOption]);
+      }
+    }
+  }, [viewModel.showLeadCaseForm]);
 
   return (
     <Accordion
@@ -175,7 +188,6 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         aria-describedby="lead-case-form-instructions"
                         onUpdateSelection={viewModel.handleSelectLeadCaseCourt}
                         options={viewModel.filteredOfficeRecords!}
-                        value={viewModel.divisionCode}
                         required={true}
                         multiSelect={false}
                         ref={viewModel.leadCaseDivisionInput}

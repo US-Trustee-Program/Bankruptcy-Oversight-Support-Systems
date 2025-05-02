@@ -80,6 +80,7 @@ $listItemHoverBackground: #b0b0b0;
     }
     .input-container.disabled {
       background-color: colors.$disabledInputBackground;
+      cursor: not-allowed;
     }
     .input-container:has(.combo-box-input:focus) {
       outline-width: 4px;
