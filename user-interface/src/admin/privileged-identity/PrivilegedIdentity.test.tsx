@@ -27,21 +27,29 @@ async function expectItemToBeEnabled(selector: string) {
 }
 
 describe('Privileged Identity screen tests', () => {
-  const env = process.env;
+  const { env } = process;
   let mockUserList: CamsUserReference[];
   let mockGroups: RoleAndOfficeGroupNames;
   let officeListItemId: string;
   let roleListItemId: string;
   let mockUserRecord: PrivilegedIdentityUser;
 
-  const officeListComboBoxInput = `office-list-combo-box-input`;
-  const roleListComboBoxInput = `role-list-combo-box-input`;
+  const officeListComboBoxContainer = `#office-list .input-container`;
+  const roleListComboBoxContainer = `#role-list .input-container`;
   const dateInputId = 'privileged-expiration-date';
   const mockDate1 = `${new Date().getFullYear() + 1}-01-01`;
 
+  async function expectComboBoxToBeDisabled(selector: string) {
+    expect(document.querySelector(selector)).toHaveClass('disabled');
+  }
+
+  async function expectComboBoxToBeEnabled(selector: string) {
+    expect(document.querySelector(selector)).not.toHaveClass('disabled');
+  }
+
   async function expectFormToBeDisabled() {
-    await expectItemToBeDisabled(`#${officeListComboBoxInput}`);
-    await expectItemToBeDisabled(`#${roleListComboBoxInput}`);
+    expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
+    expectComboBoxToBeDisabled(`${roleListComboBoxContainer}`);
     await expectItemToBeDisabled(`#${dateInputId}`);
     await expectItemToBeDisabled(`#delete-button`);
     await expectItemToBeDisabled(`#save-button`);
@@ -49,8 +57,8 @@ describe('Privileged Identity screen tests', () => {
   }
 
   async function expectFormToBeEnabled() {
-    await expectItemToBeEnabled(`#${officeListComboBoxInput}`);
-    await expectItemToBeEnabled(`#${roleListComboBoxInput}`);
+    expectComboBoxToBeEnabled(`${officeListComboBoxContainer}`);
+    expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
     await expectItemToBeEnabled(`#${dateInputId}`);
     await expectItemToBeEnabled(`#cancel-button`);
   }
@@ -142,16 +150,16 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
-
-    const userItem = screen.getByTestId('user-list-option-item-4');
-    expect(userItem).toBeInTheDocument();
 
     await expectFormToBeDisabled();
 
     expect(screen.queryByTestId(officeListItemId)).not.toBeInTheDocument();
     expect(screen.queryByTestId(roleListItemId)).not.toBeInTheDocument();
+
+    const userItem = screen.getByTestId('user-list-option-item-4');
+    expect(userItem).toBeInTheDocument();
 
     await user.click(userItem);
 
@@ -165,17 +173,19 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
+
+    expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
 
     const userItem = screen.getByTestId('user-list-option-item-4');
     expect(userItem).toBeInTheDocument();
 
-    await expectItemToBeDisabled(`#${officeListComboBoxInput}`);
-
     await user.click(userItem);
 
-    await expectItemToBeEnabled(`#${officeListComboBoxInput}`);
+    await waitFor(() => {
+      expectComboBoxToBeEnabled(`${officeListComboBoxContainer}`);
+    });
 
     expect(screen.getByTestId(officeListItemId)).toBeInTheDocument();
 
@@ -188,7 +198,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-4');
@@ -219,8 +229,8 @@ describe('Privileged Identity screen tests', () => {
     await expectItemToBeDisabled(`#save-button`);
 
     const dateInput = document.querySelector(`#${dateInputId}`);
-    // NOTE For some reason (known issue) a date input element can not be changed by typing a date
-    // in the format that the UI expects. The date may only be changed using a change event and
+    // NOTE For some reason (known issue) a date input element cannot be changed by typing a date
+    // in the format that the UI expects. The date may only be changed using a change event, and
     // the format must be in YYYY-DD-MM format.
     await user.type(dateInput!, mockDate1);
 
@@ -235,7 +245,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     await expectItemToBeDisabled(`#cancel-button`);
@@ -271,23 +281,23 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     await expectFormToBeDisabled();
-    expect(document.querySelector('#pill-user-list')).not.toBeInTheDocument();
 
     const userItem = screen.getByTestId('user-list-option-item-0');
+    expect(userItem).not.toHaveClass('selected');
     await user.click(userItem);
+    expect(userItem).toHaveClass('selected');
 
     await expectFormToBeEnabled();
-    expect(document.querySelector('#pill-user-list')).toBeInTheDocument();
 
     const cancelButton = document.querySelector('#cancel-button');
     await user.click(cancelButton!);
 
     await expectFormToBeDisabled();
-    expect(document.querySelector('#pill-user-list')).not.toBeInTheDocument();
+    expect(userItem).not.toHaveClass('selected');
   });
 
   test('should save record when clicking save.', async () => {
@@ -298,13 +308,13 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
     await user.click(userItem);
 
-    await expectItemToBeEnabled(`#${roleListComboBoxInput}`);
+    expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
 
     const roleListItem = screen.getByTestId(roleListItemId);
     await user.click(roleListItem);
@@ -326,13 +336,13 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
     await user.click(userItem);
 
-    await expectItemToBeEnabled(`#${roleListComboBoxInput}`);
+    expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
 
     const roleListItem = screen.getByTestId(roleListItemId);
     await user.click(roleListItem);
@@ -354,7 +364,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');
@@ -376,7 +386,7 @@ describe('Privileged Identity screen tests', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('loading-spinner-caption')).not.toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
 
     const userItem = screen.getByTestId('user-list-option-item-0');

@@ -81,15 +81,16 @@ describe('CaseTable component', () => {
   describe('with onSelect', () => {
     const onSelect = vi.fn();
 
-    beforeEach(() => {
+    const renderWithoutProps = () => {
       render(
         <BrowserRouter>
           <CaseTable id="test-case-table" cases={cases} onSelect={onSelect}></CaseTable>
         </BrowserRouter>,
       );
-    });
+    };
 
     test('should render radio buttons to select cases when onSelect is provided', () => {
+      renderWithoutProps();
       const table = screen.getByTestId('test-case-table');
       expect(table).toBeInTheDocument();
 
@@ -101,6 +102,7 @@ describe('CaseTable component', () => {
     });
 
     test('should call onSelect when a case is selected', () => {
+      renderWithoutProps();
       const radio0 = screen.queryByTestId('button-radio-test-case-table-checkbox-0-click-target');
       expect(radio0).toBeInTheDocument();
 

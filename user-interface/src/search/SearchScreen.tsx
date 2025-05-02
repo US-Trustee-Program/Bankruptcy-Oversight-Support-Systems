@@ -5,12 +5,10 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { CourtDivisionDetails } from '@common/cams/courts';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
-import { courtSorter, getOfficeList } from '@/data-verification/dataVerificationHelper';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -22,24 +20,32 @@ import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Butt
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { getCourtDivisionCodes } from '@common/cams/users';
+import LocalStorage from '@/lib/utils/local-storage';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export default function SearchScreen() {
+  const session = LocalStorage.getSession();
+  const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
+  const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    divisionCodes: defaultDivisionCodes,
   });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    divisionCodes: defaultDivisionCodes,
   });
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
 
   const [chapterList, setChapterList] = useState<ComboOption[]>([]);
-  const [officesList, setOfficesList] = useState<Array<CourtDivisionDetails>>([]);
+  const [officesList, setOfficesList] = useState<ComboOption[]>([]);
   const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
@@ -64,7 +70,25 @@ export default function SearchScreen() {
     api
       .getCourts()
       .then((response) => {
-        setOfficesList(response.data.sort(courtSorter));
+        const newOfficesList = response.data.sort(courtSorter);
+        const officeComboOptions = getDivisionComboOptions(newOfficesList);
+        const filteredDivisionCodes = getDivisionComboOptions(
+          newOfficesList.filter((office) =>
+            defaultDivisionCodes?.includes(office.courtDivisionCode),
+          ),
+        );
+        if (filteredDivisionCodes.length) {
+          filteredDivisionCodes[filteredDivisionCodes.length - 1].divider = true;
+          filteredDivisionCodes.forEach((option: ComboOption) => {
+            option.isAriaDefault = true;
+          });
+        }
+        const filteredOfficeComboOptions = officeComboOptions.filter((officeComboOption) => {
+          return !defaultDivisionCodes?.includes(officeComboOption.value);
+        });
+        const finalOfficeComboOptions = [...filteredDivisionCodes, ...filteredOfficeComboOptions];
+        setOfficesList(finalOfficeComboOptions);
+        courtSelectionRef.current?.setSelections(filteredDivisionCodes);
       })
       .catch(() => {
         globalAlert?.error('Cannot load office list');
@@ -101,14 +125,6 @@ export default function SearchScreen() {
     }
   }
 
-  function handleCourtClear(options: ComboOption[]) {
-    if (options.length === 0 && temporarySearchPredicate.divisionCodes) {
-      const newPredicate = { ...temporarySearchPredicate };
-      delete newPredicate.divisionCodes;
-      setTemporarySearchPredicate(newPredicate);
-    }
-  }
-
   function handleCourtSelection(selection: ComboOption[]) {
     const newPredicate = {
       ...temporarySearchPredicate,
@@ -120,45 +136,15 @@ export default function SearchScreen() {
     setTemporarySearchPredicate(newPredicate);
   }
 
-  function handleChapterClear(options: ComboOption[]) {
-    if (options.length === 0 && temporarySearchPredicate.chapters) {
-      const newPredicate = { ...temporarySearchPredicate };
-      delete newPredicate.chapters;
-      setTemporarySearchPredicate(newPredicate);
-    }
-  }
-
   function handleChapterSelection(selections: ComboOption[]) {
-    let performSearch = false;
-
-    if (
-      temporarySearchPredicate.chapters &&
-      temporarySearchPredicate.chapters.length == selections.length
-    ) {
-      selections.forEach((chapter) => {
-        if (
-          temporarySearchPredicate.chapters &&
-          !temporarySearchPredicate.chapters.includes(chapter.value)
-        ) {
-          performSearch = true;
-        }
-      });
-    } else {
-      performSearch = true;
+    const newPredicate = {
+      ...temporarySearchPredicate,
+    };
+    delete newPredicate.chapters;
+    if (selections.length) {
+      newPredicate.chapters = selections.map((option: ComboOption) => option.value);
     }
-
-    if (performSearch) {
-      const newPredicate = {
-        ...temporarySearchPredicate,
-      };
-      delete newPredicate.chapters;
-
-      if (selections.length) {
-        newPredicate.chapters = selections.map((option: ComboOption) => option.value);
-      }
-
-      setTemporarySearchPredicate(newPredicate);
-    }
+    setTemporarySearchPredicate(newPredicate);
   }
 
   function performSearch() {
@@ -221,15 +207,16 @@ export default function SearchScreen() {
                   ariaLabelPrefix="District (Division)"
                   ariaDescription="multi-select"
                   aria-live="off"
-                  onClose={handleCourtSelection}
-                  onPillSelection={handleCourtSelection}
-                  onUpdateSelection={handleCourtClear}
+                  onUpdateSelection={handleCourtSelection}
                   onFocus={handleFilterFormElementFocus}
-                  options={getOfficeList(officesList)}
+                  options={officesList}
                   required={false}
                   multiSelect={true}
                   wrapPills={true}
                   ref={courtSelectionRef}
+                  singularLabel="division"
+                  pluralLabel="divisions"
+                  overflowStrategy="ellipsis"
                 />
               </div>
             </div>
@@ -242,14 +229,14 @@ export default function SearchScreen() {
                   ariaLabelPrefix="Chapter"
                   ariaDescription="multi-select"
                   aria-live="off"
-                  onClose={handleChapterSelection}
-                  onPillSelection={handleChapterSelection}
-                  onUpdateSelection={handleChapterClear}
+                  onUpdateSelection={handleChapterSelection}
                   onFocus={handleFilterFormElementFocus}
                   options={chapterList}
                   required={false}
                   multiSelect={true}
                   ref={chapterSelectionRef}
+                  singularLabel="chapter"
+                  pluralLabel="chapters"
                 />
               </div>
             </div>
@@ -260,6 +247,7 @@ export default function SearchScreen() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
                 onClick={performSearch}
+                disabled={!isValidSearchPredicate(temporarySearchPredicate)}
               >
                 Search
               </Button>

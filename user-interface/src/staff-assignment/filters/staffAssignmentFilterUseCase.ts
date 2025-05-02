@@ -43,7 +43,7 @@ const staffAssignmentFilterUseCase = (
   };
 
   const focusOnAssigneesFilter = () => {
-    controls.assigneesFilterRef.current?.focusSingleSelectionPill();
+    controls.assigneesFilterRef.current?.focusInput();
   };
 
   const getOfficeAssignees = async (
