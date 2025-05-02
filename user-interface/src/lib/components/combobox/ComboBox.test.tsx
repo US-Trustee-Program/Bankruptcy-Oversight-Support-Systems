@@ -1,9 +1,9 @@
-import { LegacyRef } from 'react';
+import React, { LegacyRef } from 'react';
 import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import { render, waitFor, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import React from 'react';
+import testingUtilities from '@/lib/testing/testing-utilities';
 
 const comboboxId = 'test-combobox';
 
@@ -13,6 +13,14 @@ async function toggleDropdown(id: string = comboboxId) {
   expect(toggleButton).toBeInTheDocument();
 
   await userEvent.click(toggleButton!);
+}
+
+async function toggleDropdownByKeystroke() {
+  const button1 = document.querySelector(`.button1`) as HTMLButtonElement;
+  expect(button1).toBeInTheDocument();
+  button1!.focus();
+  await userEvent.keyboard('{Tab}');
+  await userEvent.keyboard('{ArrowDown}');
 }
 
 async function getComboInputContainer(): Promise<Element | null> {
@@ -36,15 +44,7 @@ async function getFocusedComboInputField(id: string): Promise<HTMLInputElement> 
 
 function isDropdownClosed() {
   const itemListContainer = document.querySelector('.item-list-container');
-  return itemListContainer && itemListContainer.classList.contains('closed');
-}
-
-async function selectComboItem(num: number) {
-  const listItems = document.querySelectorAll('li');
-  await waitFor(async () => {
-    await userEvent.click(listItems![num]);
-    expect(listItems![num]).toHaveClass('selected');
-  });
+  return !!itemListContainer && itemListContainer.classList.contains('closed');
 }
 
 function getClearAllButton() {
@@ -78,6 +78,8 @@ describe('test cams combobox', () => {
       onUpdateSelection: (_options: ComboOption[]) => {},
       onUpdateFilter: updateFilterMock,
       multiSelect: true,
+      singularLabel: 'thing',
+      pluralLabel: 'things',
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -124,6 +126,89 @@ describe('test cams combobox', () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  const ariaLabelTestCases = [
+    {
+      testName: 'single select nominal',
+      multiSelect: false,
+      ariaLabelPrefix: '',
+      option: { label: 'theThing', value: '0', isAriaDefault: false },
+      expected: 'single-select option: theThing',
+    },
+    {
+      testName: 'single select with default',
+      multiSelect: false,
+      ariaLabelPrefix: '',
+      option: { label: 'theThing', value: '0', isAriaDefault: true },
+      expected: 'Default thing single-select option: theThing',
+    },
+    {
+      testName: 'single select with default and aria label prefix',
+      multiSelect: false,
+      ariaLabelPrefix: 'prefix',
+      option: { label: 'theThing', value: '0', isAriaDefault: true },
+      expected: 'Default thing single-select option: prefix theThing',
+    },
+    {
+      testName: 'single select without default and aria label prefix',
+      multiSelect: false,
+      ariaLabelPrefix: 'prefix',
+      option: { label: 'theThing', value: '0', isAriaDefault: false },
+      expected: 'single-select option: prefix theThing',
+    },
+    {
+      testName: 'multi select nominal',
+      multiSelect: true,
+      ariaLabelPrefix: '',
+      option: { label: 'theThing', value: '0', isAriaDefault: false },
+      expected: 'multi-select option: theThing',
+    },
+    {
+      testName: 'multi select with default',
+      multiSelect: true,
+      ariaLabelPrefix: '',
+      option: { label: 'theThing', value: '0', isAriaDefault: true },
+      expected: 'Default thing multi-select option: theThing',
+    },
+    {
+      testName: 'multi select with default and aria label prefix',
+      multiSelect: true,
+      ariaLabelPrefix: 'prefix',
+      option: { label: 'theThing', value: '0', isAriaDefault: true },
+      expected: 'Default thing multi-select option: prefix theThing',
+    },
+    {
+      testName: 'multi select without default and aria label prefix',
+      multiSelect: true,
+      ariaLabelPrefix: 'prefix',
+      option: { label: 'theThing', value: '0', isAriaDefault: false },
+      expected: 'multi-select option: prefix theThing',
+    },
+  ];
+
+  test.each(ariaLabelTestCases)(
+    'Should render the aria-label for an $testName option and for the input correctly',
+    async (params) => {
+      const { multiSelect, option, expected, ariaLabelPrefix } = params;
+      const singularLabel = 'thing';
+      renderWithProps({ multiSelect, singularLabel, ariaLabelPrefix, options: [option] });
+
+      await toggleDropdown();
+
+      const input = await getFocusedComboInputField(comboboxId);
+      expect(input).toHaveAttribute(
+        'aria-label',
+        `${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`,
+      );
+
+      const firstItem = document.querySelector('li');
+      expect(firstItem).toHaveAttribute('aria-label', expected + ' unselected');
+
+      await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
+
+      expect(firstItem).toHaveAttribute('aria-label', expected + ' selected');
+    },
+  );
 
   test('Should deselect the item when you click on a selected item', async () => {
     renderWithProps({ options: getDefaultOptions(1) });
@@ -345,14 +430,28 @@ describe('test cams combobox', () => {
     // });
   });
 
+  test('should not open when combobox is disabled', async () => {
+    renderWithProps({ disabled: true });
+    // await toggleDropdown();
+
+    const inputContainer = document.querySelector('.input-container');
+    await userEvent.click(inputContainer!);
+    const itemListContainer = document.querySelector('.item-list-container');
+    expect(inputContainer).toHaveClass('disabled');
+    expect(itemListContainer).not.toBeInTheDocument();
+  });
+
   test('Up and down arrow cursor keys should traverse the list. In multi-select mode, focus should return to the input field when using Up Arrow once the user reaches the top of the list. All list items with the hidden class should be skipped.', async () => {
     const options = [
       { label: 'option1', value: 'option1' },
       { label: 'option4', value: 'option4' },
       { label: 'option5', value: 'option5' },
     ];
+
     renderWithProps({ options });
-    await toggleDropdown();
+
+    await toggleDropdownByKeystroke();
+    expect(isDropdownClosed()).toBeFalsy();
 
     const inputField = await getFocusedComboInputField(comboboxId);
     inputField!.focus();
@@ -381,6 +480,9 @@ describe('test cams combobox', () => {
 
     await userEvent.keyboard('{ArrowUp}');
     expect(inputField).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowUp}');
+    expect(isDropdownClosed()).toBeTruthy();
   });
 
   test('In single-select mode, focus should return to the input when using Up Arrow once the user reaches the top of the list and there is a selection.', async () => {
@@ -525,9 +627,9 @@ describe('test cams combobox', () => {
     const expandButton = document.querySelector('.expand-button');
     const button1 = document.querySelector('.button1');
 
-    await selectComboItem(0);
-    await selectComboItem(1);
-    await selectComboItem(2);
+    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
+    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
+    await testingUtilities.toggleComboBoxItemSelection(comboboxId, 2);
 
     // this shouldn't be necessary as we've tested this elsewhere, but the dropdown isn't closing when clicking on button1
     // so we're forcing closed.

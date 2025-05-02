@@ -111,7 +111,9 @@ function selectRadio(id: string) {
   return radio;
 }
 
-async function selectComboBoxItem(id: string, itemIndex: number = 0) {
+// TODO: either turn this into a toggle or create an unselect function
+async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, selected = true) {
+  const selectedClass = selected ? 'selected' : 'unselected';
   const itemListContainer = document.querySelector(`#${id}-item-list-container`);
   if (!itemListContainer!.classList.contains('expanded')) {
     const expandButton = document.querySelector(`#${id}-expand`);
@@ -128,7 +130,7 @@ async function selectComboBoxItem(id: string, itemIndex: number = 0) {
 
   await userEvent.click(listItem);
   await vi.waitFor(() => {
-    expect(listItem).toHaveClass('selected');
+    expect(listItem).toHaveClass(selectedClass);
   });
 }
 
@@ -141,7 +143,7 @@ export const TestingUtilities = {
   spyOnUseState,
   selectCheckbox,
   selectRadio,
-  selectComboBoxItem,
+  toggleComboBoxItemSelection,
 };
 
 export default TestingUtilities;

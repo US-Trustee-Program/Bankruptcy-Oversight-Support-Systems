@@ -332,7 +332,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(markAsLeadButton).toHaveClass('usa-button--outline');
     });
 
-    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.toggleComboBoxItemSelection(`lead-case-court`, 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 
@@ -358,7 +358,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(rejectButton).toBeEnabled();
     });
 
-    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.toggleComboBoxItemSelection(`lead-case-court`, 0);
     await enterCaseNumber(caseNumberInput, validCaseNumber);
 
     await waitFor(() => {
@@ -385,7 +385,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.toggleComboBoxItemSelection(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     await enterCaseNumber(caseNumberInput, '11111111');
@@ -404,7 +404,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(findValidCaseNumberTable(order.id!)).not.toBeInTheDocument();
     });
 
-    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.toggleComboBoxItemSelection(`lead-case-court`, 0);
     await enterCaseNumber(
       caseNumberInput,
       getCaseNumber(order.childCases[0].caseId).replace('-', ''),
@@ -429,7 +429,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    await testingUtilities.selectComboBoxItem(`lead-case-court`, 0);
+    await testingUtilities.toggleComboBoxItemSelection(`lead-case-court`, 0);
     const caseNumberInput = findCaseNumberInput(order.id!);
 
     await enterCaseNumber(caseNumberInput, '00000000');
@@ -450,7 +450,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     await toggleEnableCaseListForm(order.id!);
 
-    await testingUtilities.selectComboBoxItem('lead-case-court', 0);
+    await testingUtilities.toggleComboBoxItemSelection('lead-case-court', 0);
 
     const caseNumberInput = findCaseNumberInput(order.id!);
 

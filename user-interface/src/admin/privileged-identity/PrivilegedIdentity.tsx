@@ -278,6 +278,7 @@ export function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                singularLabel="office"
                 pluralLabel="offices"
                 onUpdateSelection={handleGroupNameUpdate}
                 ref={officeListRef}
@@ -294,6 +295,7 @@ export function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                singularLabel="role"
                 pluralLabel="roles"
                 onUpdateSelection={handleGroupNameUpdate}
                 ref={roleListRef}

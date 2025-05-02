@@ -1,7 +1,8 @@
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { OpenModalButton } from './OpenModalButton';
 import React from 'react';
 import { OpenModalButtonRef } from './modal-refs';
+import userEvent from '@testing-library/user-event';
 
 describe('Toggle Modal Button tests', () => {
   const modalId = 'test-modal';
@@ -20,7 +21,7 @@ describe('Toggle Modal Button tests', () => {
   };
   let openButtonRef: React.RefObject<OpenModalButtonRef>;
 
-  beforeEach(() => {
+  const renderWithoutProps = () => {
     openButtonRef = React.createRef<OpenModalButtonRef>();
     render(
       <OpenModalButton
@@ -34,9 +35,10 @@ describe('Toggle Modal Button tests', () => {
       </OpenModalButton>,
     );
     button = document.querySelector('.usa-button');
-  });
+  };
 
   test('calling ref.disable should disable button', async () => {
+    renderWithoutProps();
     expect(button).not.toHaveAttribute('disabled');
 
     openButtonRef?.current?.disableButton(true);
@@ -47,6 +49,7 @@ describe('Toggle Modal Button tests', () => {
   });
 
   test('should focus on button when ref.focus is called', async () => {
+    renderWithoutProps();
     expect(document.activeElement).toBe(document.body);
 
     openButtonRef?.current?.focus();
@@ -57,7 +60,8 @@ describe('Toggle Modal Button tests', () => {
   });
 
   test('should call onClick callback when button is clicked', async () => {
-    fireEvent.click(button!);
+    renderWithoutProps();
+    await userEvent.click(button!);
 
     await waitFor(() => expect(buttonClick).toHaveBeenCalled());
   });
