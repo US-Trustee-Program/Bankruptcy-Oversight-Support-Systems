@@ -136,46 +136,15 @@ export default function SearchScreen() {
     setTemporarySearchPredicate(newPredicate);
   }
 
-  function handleChapterClear(options: ComboOption[]) {
-    if (options.length === 0 && temporarySearchPredicate.chapters) {
-      const newPredicate = { ...temporarySearchPredicate };
-      delete newPredicate.chapters;
-      setTemporarySearchPredicate(newPredicate);
-    }
-  }
-
   function handleChapterSelection(selections: ComboOption[]) {
-    let performSearch = false;
-
-    // TODO:   Why in none of the tests is temporarySearchPredicate.chapters ever set?
-    if (
-      temporarySearchPredicate.chapters &&
-      temporarySearchPredicate.chapters.length == selections.length
-    ) {
-      selections.forEach((chapter) => {
-        if (
-          temporarySearchPredicate.chapters &&
-          !temporarySearchPredicate.chapters.includes(chapter.value)
-        ) {
-          performSearch = true;
-        }
-      });
-    } else {
-      performSearch = true;
+    const newPredicate = {
+      ...temporarySearchPredicate,
+    };
+    delete newPredicate.chapters;
+    if (selections.length) {
+      newPredicate.chapters = selections.map((option: ComboOption) => option.value);
     }
-
-    if (performSearch) {
-      const newPredicate = {
-        ...temporarySearchPredicate,
-      };
-      delete newPredicate.chapters;
-
-      if (selections.length) {
-        newPredicate.chapters = selections.map((option: ComboOption) => option.value);
-      }
-
-      setTemporarySearchPredicate(newPredicate);
-    }
+    setTemporarySearchPredicate(newPredicate);
   }
 
   function performSearch() {
@@ -238,7 +207,6 @@ export default function SearchScreen() {
                   ariaLabelPrefix="District (Division)"
                   ariaDescription="multi-select"
                   aria-live="off"
-                  onClose={handleCourtSelection}
                   onUpdateSelection={handleCourtSelection}
                   onFocus={handleFilterFormElementFocus}
                   options={officesList}
@@ -261,8 +229,7 @@ export default function SearchScreen() {
                   ariaLabelPrefix="Chapter"
                   ariaDescription="multi-select"
                   aria-live="off"
-                  onClose={handleChapterSelection}
-                  onUpdateSelection={handleChapterClear}
+                  onUpdateSelection={handleChapterSelection}
                   onFocus={handleFilterFormElementFocus}
                   options={chapterList}
                   required={false}
