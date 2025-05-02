@@ -425,6 +425,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={handleClearAllClick}
             onKeyDown={handleClearAllKeyDown}
+            id={`${comboBoxId}-clear-all`}
           >
             clear
           </Button>

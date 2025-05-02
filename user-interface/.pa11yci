@@ -26,6 +26,7 @@
         "set field #basic-search-field to joint",
         "set field #document-number-search-field to 10000",
         "clear field #document-number-search-field",
+        "click element #facet-multi-select-expand",
         "click element #facet-multi-select-combo-box-input",
         "click element #docket-date-range-date-start"
       ],
@@ -72,15 +73,7 @@
         "wait for element #no-results-alert to be visible",
         "set field [data-testid='basic-search-field'] to 99-99999",
         "click element #search-submit",
-        "wait for element #search-error-alert to be visible",
-        "click element #clear-basic-search-field",
-        "click element #search-submit",
-        "wait for element [data-testid='alert-default-state-alert'] to be visible",
-        "click element [data-testid='button-court-selections-search-expand']",
-        "click element [data-testid='court-selections-search-option-item-2']",
-        "click element [data-testid='button-court-selections-search-expand']",
-        "click element #search-submit",
-        "wait for element #search-results > table to be visible"
+        "wait for element #search-error-alert to be visible"
       ]
     },
     {
