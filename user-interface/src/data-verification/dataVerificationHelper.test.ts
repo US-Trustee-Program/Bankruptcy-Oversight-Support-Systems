@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { courtSorter, getOfficeList } from './dataVerificationHelper';
+import { courtSorter, getDivisionComboOptions } from './dataVerificationHelper';
 
 describe('data verification helper tests', () => {
   test('should properly map court information for selection', () => {
@@ -15,6 +15,7 @@ describe('data verification helper tests', () => {
         groupDesignator: '',
         regionId: '',
         regionName: '',
+        state: 'NY',
       },
       {
         officeName: '',
@@ -26,19 +27,22 @@ describe('data verification helper tests', () => {
         groupDesignator: '',
         regionId: '',
         regionName: '',
+        state: 'CA',
       },
     ];
     const expected = [
       {
         value: '111',
         label: 'Test Court 1 (Manhattan)',
+        selectedLabel: 'Manhattan, NY',
       },
       {
         value: '222',
         label: 'Test Court 2 (Los Angeles)',
+        selectedLabel: 'Los Angeles, CA',
       },
     ];
-    const actual = getOfficeList(offices);
+    const actual = getDivisionComboOptions(offices);
     expect(actual).toEqual(expected);
   });
 
@@ -83,16 +87,16 @@ describe('data verification helper tests', () => {
     ];
 
     const expectedOptions: Array<Record<string, string>> = [
-      { value: '001', label: 'A (New York 1)' },
-      { value: '002', label: 'B (New York 1)' },
-      { value: '003', label: 'C (New York 1)' },
+      { value: '001', label: 'A (New York 1)', selectedLabel: 'New York 1, NY' },
+      { value: '002', label: 'B (New York 1)', selectedLabel: 'New York 1, NY' },
+      { value: '003', label: 'C (New York 1)', selectedLabel: 'New York 1, NY' },
     ];
 
     const sortedTestOffices = [...testOffices].sort((a, b) =>
       a.courtDivisionCode < b.courtDivisionCode ? -1 : 1,
     );
 
-    const actualOptions = getOfficeList(sortedTestOffices);
+    const actualOptions = getDivisionComboOptions(sortedTestOffices);
     expect(actualOptions).toStrictEqual(expectedOptions);
   });
 
@@ -114,10 +118,10 @@ describe('data verification helper tests', () => {
     ];
 
     const expectedOptions: Array<Record<string, string>> = [
-      { value: '002', label: 'B (New York 1) Legacy' },
+      { value: '002', label: 'B (New York 1) Legacy', selectedLabel: 'New York 1, NY' },
     ];
 
-    const actualOptions = getOfficeList(testOffices);
+    const actualOptions = getDivisionComboOptions(testOffices);
     expect(actualOptions).toStrictEqual(expectedOptions);
   });
 

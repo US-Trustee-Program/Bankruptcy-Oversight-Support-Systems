@@ -42,8 +42,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const leadCaseDivisionRef = {
     current: {
-      setValue: (options: ComboOption[]) => {},
-      getValue: () => [
+      setSelections: (options: ComboOption[]) => {},
+      getSelections: () => [
         {
           value: '',
           label: '',
@@ -51,10 +51,9 @@ export function useConsolidationControlsMock(): ConsolidationControls {
           hidden: false,
         },
       ],
-      clearValue: () => {},
+      clearSelections: () => {},
       disable: (value: boolean) => {},
       focusInput: () => {},
-      focusSingleSelectionPill: () => {},
     },
   };
   const leadCaseNumberRef = {
@@ -64,6 +63,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       clearValue: () => {},
       resetValue: () => {},
       getValue: () => '',
+      focus: () => {},
     },
   };
   const rejectButton = {

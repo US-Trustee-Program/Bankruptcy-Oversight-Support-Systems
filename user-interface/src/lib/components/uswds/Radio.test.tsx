@@ -18,11 +18,12 @@ describe('Tests for USWDS Input component.', () => {
 
   const radioTestId = `radio-${defaultProps.id}`;
 
-  beforeEach(() => {
+  const renderWithoutProps = () => {
     render(<Radio {...defaultProps} ref={ref}></Radio>);
-  });
+  };
 
   test('should call onChange callback when checked or unchecked', async () => {
+    renderWithoutProps();
     const radioButton = testingUtilities.selectRadio('1');
     await waitFor(() => {
       expect(onChangeHandlerSpy).toHaveBeenCalled();
@@ -32,11 +33,13 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('should render the radio button label', () => {
+    renderWithoutProps();
     const radioButtonLabel = document.querySelector('.usa-radio__label');
     expect(radioButtonLabel).toHaveTextContent(defaultProps.label);
   });
 
   test('should be able to check/uncheck programmatically', async () => {
+    renderWithoutProps();
     const radioButton = screen.getByTestId(radioTestId);
     expect(radioButton).not.toBeChecked();
 
@@ -55,6 +58,7 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('should be able to disable/enable programmatically', async () => {
+    renderWithoutProps();
     const radioButton = screen.getByTestId(radioTestId);
     expect(radioButton).not.toBeDisabled();
 

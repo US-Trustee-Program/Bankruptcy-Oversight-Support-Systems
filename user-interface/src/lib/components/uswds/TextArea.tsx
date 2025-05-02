@@ -1,7 +1,7 @@
 import './TextArea.scss';
 import './forms.scss';
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   id: string;
@@ -14,6 +14,8 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
   const { id, label, ariaDescription, ...otherProps } = props;
   const labelId = `textarea-label-${id}`;
   const textAreaId = `textarea-${id}`;
+
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
@@ -61,7 +63,11 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
     setInputValue(props.value || '');
   }, [props.value]);
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable }));
+  function focus() {
+    inputRef?.current?.focus();
+  }
+
+  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
 
   return (
     <div className="usa-form-group textarea-container">
@@ -89,6 +95,7 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
           disabled={inputDisabled}
           value={inputValue}
           aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+          ref={inputRef}
         ></textarea>
       </div>
     </div>

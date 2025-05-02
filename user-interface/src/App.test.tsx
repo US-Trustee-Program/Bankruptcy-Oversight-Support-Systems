@@ -12,20 +12,21 @@ describe('App', () => {
     });
   }
 
+  function renderWithoutProps() {
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
+    scrollTo(0);
+  }
+
   beforeEach(() => {
     window.scrollTo = vi.fn(({ top }) => {
       if (typeof top === 'number') {
         scrollTo(top);
       }
     });
-
-    render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>,
-    );
-
-    scrollTo(0);
   });
 
   afterEach(() => {
@@ -37,17 +38,14 @@ describe('App', () => {
       throw Error('mock error');
     });
 
-    render(
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>,
-    );
+    renderWithoutProps();
 
     const alert = await screen.findByTestId('error-boundary-message');
     expect(alert).toBeInTheDocument();
   });
 
   test('should add className of header-scrolled-out to App when screen is scrolled down beyond 100px', async () => {
+    renderWithoutProps();
     const app = document.querySelector('.App');
     expect(app).not.toHaveClass('header-scrolled-out');
 
@@ -63,6 +61,7 @@ describe('App', () => {
   });
 
   test('should display scroll button when screen is scrolled beyond 100px', async () => {
+    renderWithoutProps();
     const scrollToTopBtn = document.querySelector('.scroll-to-top-button');
 
     expect(scrollToTopBtn).not.toHaveClass('show');
@@ -79,6 +78,7 @@ describe('App', () => {
   });
 
   test('should scroll to top when scroll-to-top button is clicked', async () => {
+    renderWithoutProps();
     const scrollToTopBtn = document.querySelector('.scroll-to-top-button');
 
     await waitFor(() => {

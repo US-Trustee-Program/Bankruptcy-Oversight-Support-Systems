@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { ConsolidationOrder } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import './ConsolidationOrderAccordion.scss';
-import { getOfficeList } from '@/data-verification/dataVerificationHelper';
+import { getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
 import { getUniqueDivisionCodeOrUndefined } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
 import type { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { useConsolidationStoreReact } from '@/data-verification/consolidation/consolidationStoreReact';
@@ -63,7 +63,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     confirmationModal: consolidationControls.confirmationModal,
     divisionCode: getUniqueDivisionCodeOrUndefined(consolidationStore.order.childCases),
     expandedAccordionId: expandedId!,
-    filteredOfficeRecords: getOfficeList(consolidationStore.filteredOfficesList ?? props.courts),
+    filteredOfficeRecords: getDivisionComboOptions(
+      consolidationStore.filteredOfficesList ?? props.courts,
+    ),
     formattedOrderFiledDate: formatDate(consolidationStore.order.orderDate),
     foundValidCaseNumber: consolidationStore.foundValidCaseNumber,
     hidden: hidden ?? false,

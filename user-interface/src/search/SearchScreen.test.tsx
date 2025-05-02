@@ -1,6 +1,6 @@
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { SyncedCase } from '@common/cams/cases';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import SearchScreen from '@/search/SearchScreen';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
@@ -9,8 +9,16 @@ import { MockInstance } from 'vitest';
 import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import userEvent from '@testing-library/user-event';
+import LocalStorage from '@/lib/utils/local-storage';
+import { UstpOfficeDetails } from '@common/cams/offices';
+import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import { getCourtDivisionCodes } from '@common/cams/users';
 
 describe('search screen', () => {
+  const userOffices = [REGION_02_GROUP_NY];
+  const user = MockData.getCamsUser({ offices: userOffices });
+  const userDivisions = getCourtDivisionCodes(user);
+  const session = MockData.getCamsSession({ user });
   const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
   const searchResponseBody: ResponseBody<SyncedCase[]> = {
     meta: { self: 'self-url' },
@@ -36,6 +44,7 @@ describe('search screen', () => {
   beforeEach(async () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
   });
 
   afterEach(() => {
@@ -60,29 +69,24 @@ describe('search screen', () => {
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
-    let defaultStateAlert = document.querySelector('#default-state-alert');
-    expect(defaultStateAlert).toBeInTheDocument();
-    expect(defaultStateAlert).toBeVisible();
 
-    let table = document.querySelector('.search-results table');
-    expect(table).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
+    });
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
     // Make first search request...
-    await testingUtilities.selectComboBoxItem('case-chapter-search', 2);
+    await testingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton!);
     await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for the default state alert to be removed
-      defaultStateAlert = document.querySelector('#default-state-alert');
-      expect(defaultStateAlert).not.toBeInTheDocument();
+      expect(document.querySelector('#default-state-alert')).not.toBeInTheDocument();
     });
 
     await waitFor(() => {
-      // wait for results to load
-      table = document.querySelector('.search-results table');
-      expect(table).toBeVisible();
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
     });
 
     const rows = document.querySelectorAll('#search-results-table-body > tr');
@@ -93,43 +97,62 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    await testingUtilities.selectComboBoxItem('case-chapter-search', 3);
+    await testingUtilities.toggleComboBoxItemSelection('case-chapter-search', 3);
     await userEvent.click(expandButton!);
+
+    expect(document.querySelectorAll('#case-chapter-search-item-list li.selected')).toHaveLength(2);
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to disappear
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).toBeVisible();
     });
+    const table = document.querySelector('.search-results table');
+    expect(table).toBeVisible();
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining(divisionSearchPredicate),
       includeAssignments,
     );
 
-    const clearPillButton = document.querySelector('#case-chapter-search .pill-clear-button');
-    expect(clearPillButton).toBeInTheDocument();
+    const clearButton = document.querySelector('#case-chapter-search .clear-all-button');
+    expect(clearButton).toBeInTheDocument();
 
-    const pillBox = document.querySelector('#case-chapter-search-pill-box');
-    expect(pillBox).toBeInTheDocument();
-    expect(pillBox?.children.length).toBeGreaterThan(0);
-
-    await userEvent.click(clearPillButton!);
+    await userEvent.click(clearButton!);
 
     await waitFor(() => {
-      expect(pillBox).not.toBeInTheDocument();
+      expect(
+        document.querySelector('#case-chapter-search-item-list li.selected'),
+      ).not.toBeInTheDocument();
     });
   });
 
-  test('should render a list of cases by court division', async () => {
-    const divisionSearchPredicate = {
-      limit: 25,
-      offset: 0,
-      divisionCodes: expect.any(Array<string>),
-    };
+  test('should place default court divisions at the top of the combobox list', async () => {
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      meta: {
+        self: '',
+      },
+      data: MockData.getCourts(),
+    });
 
+    const courts = session.user.offices;
+    const allDivisions = courts!.map((court: UstpOfficeDetails) => court.groups![0].divisions);
+    const divisions = allDivisions.flat();
+    const officeNames = divisions.map((division) => division.courtOffice.courtOfficeName).sort();
+
+    renderWithoutProps();
+
+    let comboBox;
+    await waitFor(() => {
+      comboBox = document.querySelector('#court-selections-search-item-list');
+      expect(comboBox).toBeInTheDocument();
+    });
+
+    const options = comboBox!.querySelectorAll('li');
+    expect(options![0]).toHaveTextContent(officeNames[0]);
+    expect(options![1]).toHaveTextContent(officeNames[1]);
+  });
+
+  test('should render a list of cases by court division and clear selections', async () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
       meta: {
         self: '',
@@ -140,14 +163,9 @@ describe('search screen', () => {
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
-    const defaultStateAlert = document.querySelector('#default-state-alert');
-    expect(defaultStateAlert).toBeInTheDocument();
-    expect(defaultStateAlert).toBeVisible();
 
-    let table;
     await waitFor(() => {
-      table = document.querySelector('.search-results table');
-      expect(table).not.toBeInTheDocument();
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
     });
 
     const expandButton = screen.getByTestId('button-court-selections-search-expand');
@@ -158,9 +176,8 @@ describe('search screen', () => {
     await userEvent.click(expandButton);
 
     // Make first search request....
-    await waitFor(() => {
-      testingUtilities.selectComboBoxItem('court-selections-search', 1);
-    });
+    let itemToSelect = userDivisions.length + 1;
+    await testingUtilities.toggleComboBoxItemSelection('court-selections-search', itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -172,28 +189,31 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to appear and default state alert to be removed
-      expect(defaultStateAlert).not.toBeVisible();
-    });
-
-    await waitFor(() => {
       // wait for loading to disappear
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).toBeVisible();
+      expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
+    const divisionSearchPredicate = {
+      limit: 25,
+      offset: 0,
+      divisionCodes: [...userDivisions],
+    };
+
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining(divisionSearchPredicate),
+      expect.objectContaining({
+        ...divisionSearchPredicate,
+        divisionCodes: [...userDivisions, expect.any(String)],
+      }),
       includeAssignments,
     );
 
     // Make second search request...
     await userEvent.click(expandButton);
-    await testingUtilities.selectComboBoxItem('court-selections-search', 2);
+    await testingUtilities.toggleComboBoxItemSelection('court-selections-search', ++itemToSelect);
 
     await userEvent.click(expandButton);
 
@@ -208,27 +228,27 @@ describe('search screen', () => {
     await waitFor(() => {
       // wait for loading to disappear
       expect(loadingSpinner).not.toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).toBeVisible();
+      expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining(divisionSearchPredicate),
+      expect.objectContaining({
+        ...divisionSearchPredicate,
+        divisionCodes: [...userDivisions, expect.any(String), expect.any(String)],
+      }),
       includeAssignments,
     );
 
     // clear division selection
-    const clearPillButton = document.querySelector('#court-selections-search .pill-clear-button');
-    expect(clearPillButton).toBeInTheDocument();
+    const clearButton = document.querySelector('#court-selections-search .clear-all-button');
+    expect(clearButton).toBeInTheDocument();
 
-    const pillBox = document.querySelector('#court-selections-search-pill-box');
-    expect(pillBox).toBeInTheDocument();
-    expect(pillBox?.children.length).toBeGreaterThan(0);
-
-    await userEvent.click(clearPillButton!);
+    await userEvent.click(clearButton!);
 
     await waitFor(() => {
-      expect(pillBox).not.toBeInTheDocument();
+      expect(
+        document.querySelector('#case-chapter-search-item-list li.selected'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -237,125 +257,87 @@ describe('search screen', () => {
     const casesSearchPredicate: CasesSearchPredicate = {
       caseNumber,
       limit: 25,
+      divisionCodes: expect.anything(),
       offset: 0,
       excludeChildConsolidations: false,
     };
 
     renderWithoutProps();
 
-    let defaultStateAlert = document.querySelector('#default-state-alert');
-    expect(defaultStateAlert).toBeInTheDocument();
-    expect(defaultStateAlert).toBeVisible();
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
     expect(caseNumberInput).toBeInTheDocument();
-    expect(caseNumberInput).toBeEnabled();
-
-    let table = document.querySelector('.search-results table');
-    expect(table).not.toBeInTheDocument();
-
-    fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
-    const searchButton = screen.getByTestId('button-search-submit');
-    fireEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to appear and default state alert to be removed
-      defaultStateAlert = document.querySelector('#default-state-alert');
-      expect(defaultStateAlert).not.toBeInTheDocument();
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+      expect(caseNumberInput).toBeEnabled();
     });
+
+    await userEvent.type(caseNumberInput, caseNumber);
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       // wait for loading to disappear
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).toBeVisible();
+      expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    fireEvent.change(caseNumberInput, { target: { value: caseNumber } });
-    fireEvent.click(searchButton);
+    await userEvent.type(caseNumberInput, caseNumber);
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).not.toBeInTheDocument();
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(casesSearchPredicate, includeAssignments);
   });
 
   test('should only search for full case number', async () => {
-    const caseNumber = '';
+    const incompleteCaseNumber = '12123';
     renderWithoutProps();
 
-    let defaultStateAlert = document.querySelector('#default-state-alert');
-    expect(defaultStateAlert).toBeInTheDocument();
-    expect(defaultStateAlert).toBeVisible();
+    // Clear the default search on initial render.
+    searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
     expect(caseNumberInput).toBeInTheDocument();
-    expect(caseNumberInput).toBeEnabled();
-
-    let table = document.querySelector('.search-results table');
-    expect(table).not.toBeInTheDocument();
-
-    fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
-    const searchButton = screen.getByTestId('button-search-submit');
-    fireEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to appear and default state alert to be removed
-      defaultStateAlert = document.querySelector('#default-state-alert');
-      expect(defaultStateAlert).not.toBeInTheDocument();
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
+      expect(caseNumberInput).toBeEnabled();
     });
 
+    await userEvent.type(caseNumberInput, '00-00000');
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
     await waitFor(() => {
-      // wait for loading to disappear
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).toBeVisible();
+      expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    fireEvent.change(caseNumberInput, { target: { value: caseNumber } });
-    fireEvent.click(searchButton);
+    await userEvent.type(caseNumberInput, incompleteCaseNumber);
+    const numberOfCallsBefore = searchCasesSpy.mock.calls.length;
+    await userEvent.click(searchButton);
 
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      table = document.querySelector('.search-results table');
-      expect(table).not.toBeInTheDocument();
-      expect(screen.getByTestId('alert-message-default-state-alert')).toBeInTheDocument();
-    });
-
-    expect(searchCasesSpy.mock.calls).toHaveLength(1);
+    expect(searchCasesSpy.mock.calls).toHaveLength(numberOfCallsBefore);
   });
 
   test('should show the no results alert when no results are available', async () => {
-    renderWithoutProps();
-
     vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(emptySearchResponseBody);
-
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    renderWithoutProps();
 
     let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
 
     let noResultsAlert = document.querySelector('#no-results-alert');
-    expect(noResultsAlert).not.toBeInTheDocument();
-
-    fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
-    const searchButton = screen.getByTestId('button-search-submit');
-    fireEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-
       table = document.querySelector('.search-results table');
       expect(table).not.toBeInTheDocument();
 
@@ -364,36 +346,51 @@ describe('search screen', () => {
       expect(noResultsAlert).toBeVisible();
     });
 
-    fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
-    fireEvent.click(searchButton);
+    const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
+    await userEvent.type(caseNumberInput, '00-11111');
+    await waitFor(() => {
+      expect(caseNumberInput['value']).toEqual('00-11111');
+    });
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).toBeInTheDocument();
-
       noResultsAlert = document.querySelector('#no-results-alert');
       expect(noResultsAlert).not.toBeInTheDocument();
     });
   });
 
   test('should show the error alert when an error is encountered', async () => {
+    const caseNumber = '00-00000';
+    vi.spyOn(Api2, 'searchCases').mockImplementation(
+      (predicate: CasesSearchPredicate, _options?: unknown) => {
+        if (predicate.caseNumber === caseNumber) {
+          return Promise.reject({
+            message: 'some error',
+          });
+        }
+        return Promise.resolve(searchResponseBody);
+      },
+    );
+
     renderWithoutProps();
 
-    vi.spyOn(Api2, 'searchCases')
-      .mockRejectedValueOnce({
-        message: 'some error',
-      })
-      .mockResolvedValue(searchResponseBody);
-
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
     const searchButton = screen.getByTestId('button-search-submit');
     expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
 
-    fireEvent.change(caseNumberInput, { target: { value: '00-00000' } });
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
 
-    fireEvent.click(searchButton);
+    await userEvent.type(caseNumberInput, caseNumber);
+    await waitFor(() => {
+      expect(caseNumberInput['value']).toEqual(caseNumber);
+    });
+
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
       expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
 
       const searchErrorAlert = document.querySelector('#search-error-alert');
@@ -402,15 +399,18 @@ describe('search screen', () => {
     });
 
     // TODO: We need to make sure the SearchResults.tsx can use the mock api to look this up.
-    fireEvent.change(caseNumberInput, { target: { value: '00-11111' } });
-    fireEvent.click(searchButton);
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      expect(caseNumberInput).toBeEnabled();
+    });
 
+    await userEvent.clear(caseNumberInput);
+    await userEvent.type(caseNumberInput, '00-11111');
+    await userEvent.click(searchButton);
+    await waitFor(() => {
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).not.toBeInTheDocument();
-      expect(document.querySelector('.search-results table')).toBeInTheDocument();
     });
+    expect(document.querySelector('.search-results table')).toBeInTheDocument();
   });
 
   test('should show an error alert if offices cannot be retrieved from API', async () => {
@@ -425,6 +425,37 @@ describe('search screen', () => {
 
     await waitFor(() => {
       expect(globalAlertSpy.error).toHaveBeenCalledWith('Cannot load office list');
+    });
+  });
+
+  test('search button should be disabled until search criteria is entered', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
+    );
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('.pills-and-clear-all')).toBeNull();
+    });
+
+    const searchButton = screen.getByTestId('button-search-submit');
+    expect(searchButton).toBeDisabled();
+  });
+
+  test('should show an alert if the user does not have an assigned office', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+      MockData.getCamsSession({ user: MockData.getCamsUser({ offices: [] }) }),
+    );
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('.pills-and-clear-all')).toBeNull();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alert-default-state-alert')).toBeInTheDocument();
     });
   });
 });

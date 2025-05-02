@@ -15,7 +15,7 @@ describe('Tests for USWDS TextArea component', () => {
   const newValue = 'new value';
   const testClassName = 'test-class-name';
 
-  beforeEach(() => {
+  const renderWithoutProps = () => {
     render(
       <div>
         <TextArea
@@ -28,9 +28,10 @@ describe('Tests for USWDS TextArea component', () => {
         />
       </div>,
     );
-  });
+  };
 
   test('Should include label if provided', async () => {
+    renderWithoutProps();
     const labelEl = screen.getByTestId(labelId);
     expect(labelEl).toBeInTheDocument();
     expect(labelEl).toHaveClass('usa-label ' + testClassName + '-label');
@@ -39,6 +40,7 @@ describe('Tests for USWDS TextArea component', () => {
   });
 
   test('TextArea should include correct class and id', async () => {
+    renderWithoutProps();
     const textAreaEl = screen.getByTestId(textAreaId);
     expect(textAreaEl).toBeInTheDocument();
     expect(textAreaEl).toHaveClass('usa-textarea ' + testClassName);
@@ -46,11 +48,13 @@ describe('Tests for USWDS TextArea component', () => {
   });
 
   test('Should not include aria description if none is supplied', async () => {
+    renderWithoutProps();
     const usaHintEl = document.querySelector('.usa-hint');
     expect(usaHintEl).not.toBeInTheDocument();
   });
 
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
     expect(inputEl).toHaveValue(value);
 
@@ -66,6 +70,7 @@ describe('Tests for USWDS TextArea component', () => {
   });
 
   test('Should clear value when ref.clearValue is called.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
     ref.current?.setValue(newValue);
 
@@ -80,6 +85,7 @@ describe('Tests for USWDS TextArea component', () => {
   });
 
   test('clearValue should skip focus if inputRef is null', async () => {
+    renderWithoutProps();
     const mockInnerRef = { current: { focus: vi.fn(), value: '' } };
     const useRefMock = vi.spyOn(React, 'useRef').mockReturnValueOnce(mockInnerRef);
 
@@ -94,6 +100,7 @@ describe('Tests for USWDS TextArea component', () => {
   });
 
   test('Should return value when ref.getValue is called.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
     ref.current?.setValue(newValue);
 
@@ -105,6 +112,7 @@ describe('Tests for USWDS TextArea component', () => {
   });
 
   test('Should call props.onChange when a change is made to textarea by keypress or by ref.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId(textAreaId);
 
     ref.current?.setValue(newValue);
@@ -152,7 +160,7 @@ describe('Test in odd cases', () => {
   const newValue = 'new value';
   const testClassName = 'test-class-name';
 
-  beforeEach(() => {
+  const renderWithoutProp = () => {
     render(
       <div>
         <TextArea
@@ -164,9 +172,10 @@ describe('Test in odd cases', () => {
         />
       </div>,
     );
-  });
+  };
 
   test('test null on reset if no value provided to props', async () => {
+    renderWithoutProp();
     const inputEl = screen.getByTestId(textAreaId);
 
     ref.current?.setValue(newValue);

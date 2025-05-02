@@ -15,7 +15,7 @@ import {
 import { CamsUserReference } from '@common/cams/users';
 import { symmetricDifference } from '@common/cams/utilities';
 import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 export function toComboOption(groupName: string) {
   return {
@@ -40,7 +40,6 @@ export function PrivilegedIdentity() {
     offices: [],
   });
   const [userList, setUserList] = useState<CamsUserReference[]>([]);
-  const [selectedUser, setSelectedUser] = useState<CamsUserReference | null>(null);
   const [existingGroupNameSet, setExistingGroupNameSet] = useState<Set<string>>(new Set());
   const [existingExpiration, setExistingExpiration] = useState<string | null>(null);
   const [updatedGroupNameSet, setUpdatedGroupNameSet] = useState<Set<string>>(new Set());
@@ -102,8 +101,8 @@ export function PrivilegedIdentity() {
 
   function handleGroupNameUpdate() {
     const formGroupNameSet = new Set<string>([
-      ...(officeListRef.current?.getValue() ?? []).map((option) => option.value),
-      ...(roleListRef.current?.getValue() ?? []).map((option) => option.value),
+      ...(officeListRef.current?.getSelections() ?? []).map((option) => option.value),
+      ...(roleListRef.current?.getSelections() ?? []).map((option) => option.value),
     ]);
     setUpdatedGroupNameSet(formGroupNameSet);
   }
@@ -113,9 +112,8 @@ export function PrivilegedIdentity() {
   }
 
   function handleSelectUser(options: ComboOption[]) {
-    if (options?.length === 1) {
+    if (options.length === 1) {
       const userId = options[0].value;
-      setSelectedUser(userList.find((user) => user.id === options[0].value)!);
       api
         .getPrivilegedIdentityUser(userId)
         .then((response) => {
@@ -126,12 +124,12 @@ export function PrivilegedIdentity() {
           setExistingExpiration(expires);
           setNewExpiration(expires);
 
-          officeListRef.current?.setValue(
+          officeListRef.current?.setSelections(
             groupNames.offices
               .filter((groupName) => groups.includes(groupName))
               .map((groupName) => toComboOption(groupName)),
           );
-          roleListRef.current?.setValue(
+          roleListRef.current?.setSelections(
             groupNames.roles
               .filter((groupName) => groups.includes(groupName))
               .map((groupName) => toComboOption(groupName)),
@@ -143,23 +141,23 @@ export function PrivilegedIdentity() {
           setExistingGroupNameSet(new Set<string>(new Set<string>()));
           setExistingExpiration(null);
 
-          officeListRef.current?.clearValue();
-          roleListRef.current?.clearValue();
+          officeListRef.current?.clearSelections();
+          roleListRef.current?.clearSelections();
           datePickerRef.current?.clearValue();
           enableForm();
           deleteButtonRef.current?.disableButton(true);
         });
     } else {
-      disableForm();
+      clearForm();
     }
   }
 
   async function handleSave() {
-    const userId = userListRef.current?.getValue()[0].value;
+    const userId = userListRef.current?.getSelections()[0].value;
     const permissions: ElevatePrivilegedUserAction = {
       groups: [
-        ...(roleListRef.current?.getValue().map((option) => option.value) || []),
-        ...(officeListRef.current?.getValue().map((option) => option.value) || []),
+        ...(roleListRef.current?.getSelections().map((option) => option.value) || []),
+        ...(officeListRef.current?.getSelections().map((option) => option.value) || []),
       ],
       expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
     };
@@ -178,7 +176,7 @@ export function PrivilegedIdentity() {
   }
 
   async function handleDelete() {
-    const userId = userListRef.current?.getValue()[0].value;
+    const userId = userListRef.current?.getSelections()[0].value;
     api
       .deletePrivilegedIdentityUser(userId)
       .then(() => {
@@ -193,10 +191,14 @@ export function PrivilegedIdentity() {
       });
   }
 
+  function discard() {
+    clearForm();
+    userListRef.current?.clearSelections();
+  }
+
   function clearForm() {
-    userListRef.current?.clearValue();
-    officeListRef.current?.clearValue();
-    roleListRef.current?.clearValue();
+    officeListRef.current?.clearSelections();
+    roleListRef.current?.clearSelections();
     datePickerRef.current?.clearValue();
     disableForm();
   }
@@ -261,7 +263,6 @@ export function PrivilegedIdentity() {
                 })}
                 onUpdateSelection={handleSelectUser}
                 multiSelect={false}
-                value={selectedUser?.id}
                 ref={userListRef}
               ></ComboBox>
             </div>
@@ -276,6 +277,8 @@ export function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                singularLabel="office"
+                pluralLabel="offices"
                 onUpdateSelection={handleGroupNameUpdate}
                 ref={officeListRef}
               ></ComboBox>
@@ -291,6 +294,8 @@ export function PrivilegedIdentity() {
                 })}
                 disabled={true}
                 multiSelect={true}
+                singularLabel="role"
+                pluralLabel="roles"
                 onUpdateSelection={handleGroupNameUpdate}
                 ref={roleListRef}
               ></ComboBox>
@@ -341,7 +346,7 @@ export function PrivilegedIdentity() {
                     id="cancel-button"
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     disabled={true}
-                    onClick={clearForm}
+                    onClick={discard}
                     ref={cancelButtonRef}
                   >
                     Discard

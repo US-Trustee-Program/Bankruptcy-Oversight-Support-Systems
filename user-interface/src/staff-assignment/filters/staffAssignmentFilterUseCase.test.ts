@@ -32,8 +32,8 @@ describe('staff assignment filter use case tests', () => {
   };
   const comboBoxRef = {
     current: {
-      setValue: (_options: ComboOption[]) => {},
-      getValue: () => [
+      setSelections: (_options: ComboOption[]) => {},
+      getSelections: () => [
         {
           value: '',
           label: '',
@@ -41,10 +41,9 @@ describe('staff assignment filter use case tests', () => {
           hidden: false,
         },
       ],
-      clearValue: () => {},
+      clearSelections: () => {},
       disable: (_value: boolean) => {},
       focusInput: () => {},
-      focusSingleSelectionPill: () => {},
     },
   };
   const mockControls: StaffAssignmentFilterControls = {

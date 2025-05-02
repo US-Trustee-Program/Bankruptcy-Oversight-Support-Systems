@@ -8,15 +8,16 @@ describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<InputRef>();
   const youChangedMe = vi.fn();
 
-  beforeEach(() => {
+  const renderWithoutProps = () => {
     render(
       <div>
         <Input ref={ref} id="input-1" inputMode="numeric" value="1" onChange={youChangedMe}></Input>
       </div>,
     );
-  });
+  };
 
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
     expect(inputEl).toHaveValue('1');
 
@@ -32,6 +33,7 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('Should clear value when ref.clearValue is called.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
     ref.current?.setValue('2');
 
@@ -46,6 +48,7 @@ describe('Tests for USWDS Input component.', () => {
   });
 
   test('Should call props.onChange when a change is made to input by keypress or by ref.', async () => {
+    renderWithoutProps();
     const inputEl = screen.getByTestId('input-1');
 
     ref.current?.setValue('2');

@@ -1,6 +1,7 @@
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
-export function getOfficeList(officesList: CourtDivisionDetails[]) {
+export function getDivisionComboOptions(officesList: CourtDivisionDetails[]): ComboOption[] {
   return officesList.map((court) => {
     let label = `${court.courtName} (${court.courtDivisionName})`;
     if (court.isLegacy) {
@@ -9,6 +10,7 @@ export function getOfficeList(officesList: CourtDivisionDetails[]) {
     return {
       value: court.courtDivisionCode,
       label,
+      selectedLabel: `${court.courtDivisionName}, ${court.state}`,
     };
   });
 }

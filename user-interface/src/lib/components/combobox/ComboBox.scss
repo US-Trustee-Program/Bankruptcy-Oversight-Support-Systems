@@ -10,20 +10,9 @@ $listItemHoverBackground: #b0b0b0;
 
 .combo-box-form-group {
   max-width: 100%;
-  .combo-box-label.multi-select {
+  .combo-box-label {
     display: flex;
     justify-content: space-between;
-  }
-
-  .pills-and-clear-all {
-    display: flex;
-    justify-content: space-between;
-    .pill-box {
-      max-width: calc(100% - 3rem);
-    }
-    .pill-clear-button {
-      height: 1.5rem;
-    }
   }
 
   .usa-combo-box {
@@ -54,11 +43,25 @@ $listItemHoverBackground: #b0b0b0;
         position: relative;
         width: 100%;
 
+        .selection-label {
+          min-height: 1.3rem;
+        }
+
+        .selection-label.ellipsis {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        svg {
+          margin-top: 0.2rem;
+        }
+
         .combo-box-input {
           border: none;
           background: none;
-          width: 100%;
-          margin: 0 5px;
+          width: calc(100% - 25px);
+          margin: 0;
         }
         .combo-box-input:disabled, .combo-box-input[aria-disabled=true] {
           color: colors.$disabledInputText;
@@ -77,6 +80,7 @@ $listItemHoverBackground: #b0b0b0;
     }
     .input-container.disabled {
       background-color: colors.$disabledInputBackground;
+      cursor: not-allowed;
     }
     .input-container:has(.combo-box-input:focus) {
       outline-width: 4px;

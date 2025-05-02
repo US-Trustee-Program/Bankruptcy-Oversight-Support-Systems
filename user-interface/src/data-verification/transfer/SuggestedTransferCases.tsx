@@ -5,7 +5,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
-import { getOfficeList } from '../dataVerificationHelper';
+import { getDivisionComboOptions } from '../dataVerificationHelper';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import { TransferOrder } from '@common/cams/orders';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
@@ -156,7 +156,7 @@ function _SuggestedTransferCases(
     // TODO: Make sure the following only happens when we click the 'Clear' button, not the 'go back' button on the modal
     setNewCaseNumber(order.docketSuggestedCaseNumber || null);
     setNewCaseDivision(null);
-    courtSelectionRef.current?.clearValue();
+    courtSelectionRef.current?.clearSelections();
     caseNumberRef.current?.resetValue();
   }
 
@@ -254,7 +254,7 @@ function _SuggestedTransferCases(
                         wrapPills={true}
                         ref={courtSelectionRef}
                         onUpdateSelection={handleCourtSelection}
-                        options={getOfficeList(officesList)}
+                        options={getDivisionComboOptions(officesList)}
                         ariaLabelPrefix="Select a Court and Division"
                         required={true}
                       />

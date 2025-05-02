@@ -19,14 +19,16 @@ describe('App Router Tests', () => {
     );
   });
 
-  test('should route /staff-assignment to CaseAssignment', async () => {
+  test('should route /search to SearchScreen', async () => {
     render(<App />, { wrapper: BrowserRouter });
 
-    await expect(screen.getByTestId('header-search-link')).toBeVisible();
+    expect(screen.getByTestId('header-search-link')).toBeVisible();
 
     await userEvent.click(screen.getByTestId('header-search-link'));
 
-    expect(screen.getByTestId('alert-container-default-state-alert')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('main.search-screen')).toBeInTheDocument();
+    });
   });
 
   test('should render My Cases page when an invalid URL is supplied', async () => {
