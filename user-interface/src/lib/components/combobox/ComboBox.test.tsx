@@ -198,7 +198,7 @@ describe('test cams combobox', () => {
       const input = await getFocusedComboInputField(comboboxId);
       expect(input).toHaveAttribute(
         'aria-label',
-        `${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`,
+        `${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to select an item from the list.`,
       );
 
       const firstItem = document.querySelector('li');
