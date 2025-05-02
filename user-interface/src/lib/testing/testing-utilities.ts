@@ -111,7 +111,6 @@ function selectRadio(id: string) {
   return radio;
 }
 
-// TODO: either turn this into a toggle or create an unselect function
 async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, selected = true) {
   const selectedClass = selected ? 'selected' : 'unselected';
   const itemListContainer = document.querySelector(`#${id}-item-list-container`);
