@@ -104,7 +104,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setExpanded(false);
     clearFilter();
     if (shouldFocusOnInput) {
-      filterRef.current?.focus();
+      focusCombobox();
     }
     if (onClose) {
       onClose([...selectedMap.values()]);
@@ -135,6 +135,18 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function clearSelections() {
     setSelectedMap(new Map());
+  }
+
+  function getSelectedItemsDescription() {
+    const items = Array.from(selectedMap.values());
+    let message = '';
+    if (items.length > 0) {
+      const itemLabels: string[] = [];
+      message = `${items.length} items currently selected. `;
+      items.forEach((item) => itemLabels.push(item.label));
+      message += itemLabels.join(', ') + '.';
+    }
+    return message;
   }
 
   const focusInput = () => {
@@ -220,12 +232,16 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   };
 
+  function focusCombobox() {
+    containerRef.current?.focus();
+  }
+
   // ========== HANDLERS ==========
 
   function handleClearAllClick() {
     clearSelections();
     clearFilter();
-    filterRef.current?.focus();
+    focusCombobox();
 
     if (props.onUpdateSelection) {
       props.onUpdateSelection([]);
@@ -383,6 +399,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     clearSelections,
     disable,
     focusInput,
+    focus: focusCombobox,
   }));
 
   // ========== JSX ==========
@@ -399,6 +416,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </label>
         <span id={`${comboBoxId}-aria-description`} hidden>
           {ariaDescription ?? ''}
+          {getSelectedItemsDescription()}
         </span>
         {selectedMap.size > 0 && (
           <Button
@@ -407,6 +425,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             onClick={handleClearAllClick}
             onKeyDown={handleClearAllKeyDown}
             id={`${comboBoxId}-clear-all`}
+            aria-label={`Clear all ${label ?? ''} items selected.`}
           >
             clear
           </Button>
@@ -421,6 +440,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           aria-expanded={expanded}
           aria-controls={`${comboBoxId}-item-list`}
           aria-labelledby={comboBoxId + '-label'}
+          aria-describedby={`${comboBoxId}-aria-description`}
           tabIndex={0}
           onClick={() => handleToggleDropdown()}
           onKeyDown={handleToggleKeyDown}
@@ -441,11 +461,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   onClick={handleOnInputClick}
                   disabled={comboboxDisabled}
                   autoComplete={'off'}
-                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
-                  aria-describedby={`${comboBoxId}-aria-description`}
                   aria-live={props['aria-live'] ?? undefined}
                   aria-autocomplete="list"
                   aria-activedescendant={currentListItem ?? ''}
+                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to select an item from the list.`}
                   ref={filterRef}
                 />
               </>
@@ -464,7 +483,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             disabled={comboboxDisabled}
             tabIndex={-1}
             type="button"
-            aria-label="expand dropdown of combo box"
+            aria-label="Press down arrow key to expand dropdown."
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
           </Button>
@@ -473,7 +492,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           <div
             className={`item-list-container ${expanded ? 'expanded' : 'closed'}`}
             id={`${comboBoxId}-item-list-container`}
-            aria-hidden={expanded}
+            aria-hidden={!expanded}
             tabIndex={-1}
             style={dropdownLocation ?? undefined}
           >
