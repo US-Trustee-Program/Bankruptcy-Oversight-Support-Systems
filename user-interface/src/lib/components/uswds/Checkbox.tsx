@@ -1,30 +1,31 @@
-import Button, { UswdsButtonStyle } from './Button';
-import './forms.scss';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
+import './forms.scss';
+import Button, { UswdsButtonStyle } from './Button';
+
 export enum CheckboxState {
-  UNCHECKED = -1,
-  INDETERMINATE = 0,
   CHECKED = 1,
+  INDETERMINATE = 0,
+  UNCHECKED = -1,
 }
 
 export interface CheckboxProps {
+  checked?: boolean;
+  className?: string;
+  disabled?: boolean;
   id: string;
   label?: string;
   name?: string;
-  value: string | number;
-  title?: string;
-  checked?: boolean;
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: React.FocusEvent<HTMLElement>) => void;
-  className?: string;
   required?: boolean;
-  disabled?: boolean;
+  title?: string;
+  value: number | string;
 }
 
 export interface CheckboxRef {
-  setChecked: (value: boolean | CheckboxState) => void;
   getLabel: () => string;
+  setChecked: (value: boolean | CheckboxState) => void;
 }
 
 const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) => {
@@ -35,8 +36,8 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   const checkHandler = (_ev: React.MouseEvent<HTMLButtonElement>) => {
     if (props.onChange) {
       const syntheticEvent = {
-        target: realCheckboxRef.current,
         currentTarget: realCheckboxRef.current,
+        target: realCheckboxRef.current,
       } as React.ChangeEvent<HTMLInputElement>;
 
       syntheticEvent.target.checked = !isChecked;
@@ -82,8 +83,8 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   useImperativeHandle(
     ref,
     () => ({
-      setChecked,
       getLabel,
+      setChecked,
     }),
     [],
   );
@@ -92,27 +93,27 @@ const CheckboxComponent = (props: CheckboxProps, ref: React.Ref<CheckboxRef>) =>
   return (
     <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`}>
       <input
-        type="checkbox"
-        data-testid={checkboxTestId}
-        id={checkboxTestId}
-        className="usa-checkbox__input"
-        ref={realCheckboxRef}
-        name={props.name ?? ''}
-        value={props.value}
         aria-label={props.label ?? `check ${props.value}`}
         checked={isChecked}
+        className="usa-checkbox__input"
+        data-indeterminate={indeterminateState || null}
+        data-testid={checkboxTestId}
+        disabled={props.disabled}
+        id={checkboxTestId}
+        name={props.name ?? ''}
         onChange={() => {}}
         onFocus={focusHandler}
-        data-indeterminate={indeterminateState || null}
-        title={props.title}
+        ref={realCheckboxRef}
         required={props.required}
-        disabled={props.disabled}
         tabIndex={-1}
+        title={props.title}
+        type="checkbox"
+        value={props.value}
       />
       <label htmlFor={checkboxTestId}>
         <Button
-          id={labelTestId}
           className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
+          id={labelTestId}
           onClick={checkHandler}
           title={props.title}
         >

@@ -1,11 +1,11 @@
-import * as dotenv from 'dotenv';
 import { CosmosClient } from '@azure/cosmos';
 import { DefaultAzureCredential } from '@azure/identity';
+import * as dotenv from 'dotenv';
 
 interface DocumentWithId {
-  id: string;
   caseId?: string;
   consolidationId?: string;
+  id: string;
 }
 
 export function deleteDocuments(
@@ -18,8 +18,8 @@ export function deleteDocuments(
   const COSMOS_ENDPOINT = process.env.COSMOS_ENDPOINT || '';
   const COSMOS_DATABASE_NAME = process.env.COSMOS_DATABASE_NAME || '';
   const options = {
-    endpoint: COSMOS_ENDPOINT,
     aadCredentials: new DefaultAzureCredential(),
+    endpoint: COSMOS_ENDPOINT,
   };
 
   const client = new CosmosClient(options);

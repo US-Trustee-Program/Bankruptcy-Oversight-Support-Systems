@@ -1,3 +1,4 @@
+import { isConsolidationHistory } from './history';
 import {
   ConsolidationOrderActionApproval,
   ConsolidationOrderActionRejection,
@@ -9,7 +10,6 @@ import {
   isTransferOrder,
 } from './orders';
 import { MockData } from './test-utilities/mock-data';
-import { isConsolidationHistory } from './history';
 
 describe('orders model tests', () => {
   test('should properly identify transfers', () => {

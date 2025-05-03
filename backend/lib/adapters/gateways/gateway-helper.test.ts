@@ -1,8 +1,8 @@
-import { QueryResults } from '../types/database';
-import { handleQueryResult } from './gateway-helper';
 import { CamsError } from '../../common-errors/cams-error';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../types/basic';
+import { QueryResults } from '../types/database';
+import { handleQueryResult } from './gateway-helper';
 
 const moduleName = 'gateway-helper-test';
 describe('Gateway helper test', () => {
@@ -17,11 +17,11 @@ describe('Gateway helper test', () => {
 
   test('should execute callback if query result is successful', () => {
     const queryResult: QueryResults = {
-      success: true,
+      message: 'Some message',
       results: {
         recordset: [],
       },
-      message: 'Some message',
+      success: true,
     };
 
     handleQueryResult(context, queryResult, moduleName, callback);
@@ -30,11 +30,11 @@ describe('Gateway helper test', () => {
 
   test('should throw CamsError if query result is not successful', async () => {
     const queryResult: QueryResults = {
-      success: false,
+      message: 'Some message',
       results: {
         recordset: [],
       },
-      message: 'Some message',
+      success: false,
     };
 
     expect(() => {

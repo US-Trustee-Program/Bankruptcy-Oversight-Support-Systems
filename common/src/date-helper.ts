@@ -1,3 +1,25 @@
+export function getIsoDate(date: Date) {
+  return date.toISOString().split('T')[0];
+}
+
+export function getTodaysIsoDate() {
+  return getIsoDate(new Date());
+}
+
+export function isInvalidDate(dateValue: Date) {
+  return dateValue instanceof Date && isNaN(dateValue.getTime());
+}
+
+export function isValidDateString(dateString: null | string | undefined) {
+  if (!dateString) return false;
+  const evaluation = dateString.match(/[\d]{4}-[\d]{2}-[\d]{2}/);
+  return !!evaluation && evaluation.length === 1;
+}
+
+export function nowInSeconds() {
+  return Math.floor(Date.now() / 1000);
+}
+
 export function sortDates(dateA: Date | string, dateB: Date | string): number {
   //Sort DESC
   if (dateA > dateB) {
@@ -12,28 +34,6 @@ export function sortDates(dateA: Date | string, dateB: Date | string): number {
 export function sortDatesReverse(dateA: Date | string, dateB: Date | string): number {
   //Sort ASC
   return sortDates(dateA, dateB) * -1;
-}
-
-export function isValidDateString(dateString: string | null | undefined) {
-  if (!dateString) return false;
-  const evaluation = dateString.match(/[\d]{4}-[\d]{2}-[\d]{2}/);
-  return !!evaluation && evaluation.length === 1;
-}
-
-export function isInvalidDate(dateValue: Date) {
-  return dateValue instanceof Date && isNaN(dateValue.getTime());
-}
-
-export function getIsoDate(date: Date) {
-  return date.toISOString().split('T')[0];
-}
-
-export function getTodaysIsoDate() {
-  return getIsoDate(new Date());
-}
-
-export function nowInSeconds() {
-  return Math.floor(Date.now() / 1000);
 }
 
 export const DateHelper = {

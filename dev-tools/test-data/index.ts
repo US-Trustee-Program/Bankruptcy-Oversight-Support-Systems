@@ -1,3 +1,19 @@
+import { CaseDetail } from './cases';
+import {
+  BCase,
+  BCaseTransactionTypeOrder,
+  DebtorAttorney,
+  Judge,
+  toDbRecords,
+} from './domain/bcase';
+// import { createChapter15Cases } from './fixtures/chapter15Cases';
+import {
+  buildArray,
+  createAttorney,
+  CreateCaseOptions,
+  createCases,
+  createJudge,
+} from './fixtures/lib/common';
 // Import fixtures to generate.
 import { AO_AT_Record, toAoAtInsertStatements } from './tables/AO_AT';
 import { AO_CS_Record, toAoCsInsertStatements } from './tables/AO_CS';
@@ -6,25 +22,8 @@ import { AO_GRP_DES_Record, toAoGrpDesInsertStatements } from './tables/AO_GRP_D
 import { AO_PY_Record, toAoPyInsertStatements } from './tables/AO_PY';
 import { AO_REGION_Record, toAoRegionInsertStatements } from './tables/AO_REGION';
 import { AO_TX_Record, toAoTxInsertStatements } from './tables/AO_TX';
-import {
-  BCase,
-  BCaseTransactionTypeOrder,
-  DebtorAttorney,
-  Judge,
-  toDbRecords,
-} from './domain/bcase';
-import { CaseDetail } from './cases';
-import { concatenateCityStateZipCountry, concatenateName } from './utility';
 import { TxCode } from './types';
-
-// import { createChapter15Cases } from './fixtures/chapter15Cases';
-import {
-  CreateCaseOptions,
-  buildArray,
-  createAttorney,
-  createCases,
-  createJudge,
-} from './fixtures/lib/common';
+import { concatenateCityStateZipCountry, concatenateName } from './utility';
 
 const validFormats = ['json', 'sql'];
 const format = process.argv[2];
@@ -40,9 +39,9 @@ const numberOfCasesToCreate = process.argv[3] ? parseInt(process.argv[3]) : 20;
 const judges: Array<Judge> = buildArray(createJudge, 10);
 const attorneys: Array<DebtorAttorney> = buildArray(createAttorney, 50);
 const commonOptions: CreateCaseOptions = {
-  judges,
   attorneys,
   chapters: ['11', '11', '12', '12', '11', '11', '12', '12', '15'],
+  judges,
 };
 
 // Create a set of cases using the fixtures.
@@ -63,32 +62,32 @@ if (format === 'json') {
 
     const mappedCase: CaseDetail = {
       caseId: bCase.div + '-' + bCase.caseId,
-      chapter: bCase.chapter,
       caseTitle: bCase.shortTitle,
+      chapter: bCase.chapter,
       closedDate: closedDate?.date,
-      reopenedDate: reopenedDate?.date,
-      dismissedDate: dismissedDate?.date,
       dateFiled: bCase.dateFiled,
+      dismissedDate: dismissedDate?.date,
       judgeName: concatenateName(bCase.judge),
+      reopenedDate: reopenedDate?.date,
     };
     const debtor = bCase.debtor;
     mappedCase.debtor = {
-      name: concatenateName(debtor) || '',
       address1: debtor.address1,
       address2: debtor.address2,
       address3: debtor.address3,
       cityStateZipCountry: concatenateCityStateZipCountry(debtor),
+      name: concatenateName(debtor) || '',
       ssn: debtor.ssn,
       taxId: debtor.taxId,
     };
 
     const attorney = bCase.debtorAttorney;
     mappedCase.debtorAttorney = {
-      name: concatenateName(attorney) || '',
       address1: attorney.address1,
       address2: attorney.address2,
       address3: attorney.address3,
       cityStateZipCountry: concatenateCityStateZipCountry(attorney),
+      name: concatenateName(attorney) || '',
       phone: attorney.phone,
     };
 
@@ -116,14 +115,14 @@ if (format === 'json') {
   generateSql<AO_TX_Record>('AO_TX Transactions', toAoTxInsertStatements, dbRecordBundle.AO_TX);
 }
 
-function pickTop(list: Array<BCaseTransactionTypeOrder>, code: TxCode) {
-  return list.filter((i) => i.code === code).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
-}
-
 function generateSql<T>(label: string, mapper: (n: Array<T>) => Array<string>, data: Array<T>) {
   console.log('\n-- ' + label);
   if (!data.length) console.log('-- No records.');
   mapper(data).forEach((statement) => {
     console.log(statement.trim());
   });
+}
+
+function pickTop(list: Array<BCaseTransactionTypeOrder>, code: TxCode) {
+  return list.filter((i) => i.code === code).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
 }

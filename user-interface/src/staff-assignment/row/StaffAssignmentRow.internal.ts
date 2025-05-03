@@ -1,33 +1,34 @@
-import Actions from '@common/cams/actions';
-import { AssignAttorneyModalCallbackProps } from '../modal/assignAttorneyModal.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { CaseBasics } from '@common/cams/cases';
 import { useState } from '@/lib/hooks/UseState';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import Actions from '@common/cams/actions';
 import { CaseAssignment } from '@common/cams/assignments';
+import { CaseBasics } from '@common/cams/cases';
 import { CamsRole } from '@common/cams/roles';
 
-type State = {
-  // TODO: Make assignments a partial of CaseAssignment?? Include on the fields the UI needs to render and the modal needs to make assignments.
-  assignments: CaseAssignment[];
-  isLoading: boolean;
-  bCase: CaseBasics;
-};
+import { AssignAttorneyModalCallbackProps } from '../modal/assignAttorneyModal.types';
 
 type Actions = {
   updateAssignmentsCallback: (props: AssignAttorneyModalCallbackProps) => Promise<void>;
 };
 
+type State = {
+  // TODO: Make assignments a partial of CaseAssignment?? Include on the fields the UI needs to render and the modal needs to make assignments.
+  assignments: CaseAssignment[];
+  bCase: CaseBasics;
+  isLoading: boolean;
+};
+
 function useStateActions(initialState: State): {
-  state: State;
   actions: Actions;
+  state: State;
 } {
   const globalAlert = useGlobalAlert();
 
   const [state, setState] = useState<State>(initialState);
 
   async function updateAssignmentsCallback(props: AssignAttorneyModalCallbackProps) {
-    const { bCase, selectedAttorneyList, previouslySelectedList, status, apiResult } = props;
+    const { apiResult, bCase, previouslySelectedList, selectedAttorneyList, status } = props;
 
     if (status === 'error') {
       globalAlert?.error((apiResult as Error).message);
@@ -55,11 +56,11 @@ function useStateActions(initialState: State): {
 
       const assignments: CaseAssignment[] = selectedAttorneyList.map((attorney) => {
         return {
-          userId: attorney.id,
-          name: attorney.name,
-          documentType: 'ASSIGNMENT',
           caseId: bCase.caseId,
+          documentType: 'ASSIGNMENT',
+          name: attorney.name,
           role: CamsRole.TrialAttorney,
+          userId: attorney.id,
         } as CaseAssignment;
       });
       setState({ ...state, assignments });
@@ -69,7 +70,7 @@ function useStateActions(initialState: State): {
 
   const actions = { updateAssignmentsCallback };
 
-  return { state, actions };
+  return { actions, state };
 }
 
 export const StaffAssignmentRowInternal = {

@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import CaseDetailNavigation, { NavState, mapNavState, setCurrentNav } from './CaseDetailNavigation';
-import { BrowserRouter } from 'react-router-dom';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import CaseDetailNavigation, { mapNavState, NavState, setCurrentNav } from './CaseDetailNavigation';
 
 describe('Navigation tests', () => {
   const activeNavClass = 'usa-current current';

@@ -1,14 +1,15 @@
+import * as libraryModule from '@/login/login-library';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { render, screen, waitFor } from '@testing-library/react';
 import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+
+import * as badConfigurationModule from './BadConfiguration';
+import { LoginContinue } from './LoginContinue';
 import * as oktaProviderModule from './providers/okta/OktaProvider';
 import * as oktaSessionModule from './providers/okta/OktaSession';
-import * as badConfigurationModule from './BadConfiguration';
-import * as libraryModule from '@/login/login-library';
-import { LoginContinue } from './LoginContinue';
 import { Session } from './Session';
-import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('LoginContinue', () => {
   const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
@@ -23,10 +24,10 @@ describe('LoginContinue', () => {
       return (
         <Session
           accessToken={MockData.getJwt()}
-          provider="okta"
-          user={{ id: 'mockId', name: 'Mock User' }}
           expires={Number.MAX_SAFE_INTEGER}
           issuer="http://issuer/"
+          provider="okta"
+          user={{ id: 'mockId', name: 'Mock User' }}
         >
           {props.children}
         </Session>

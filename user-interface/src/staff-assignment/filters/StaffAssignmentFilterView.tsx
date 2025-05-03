@@ -1,4 +1,5 @@
 import ComboBox from '@/lib/components/combobox/ComboBox';
+
 import { StaffAssignmentFilterViewProps } from './staffAssignmentFilter.types';
 
 function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
@@ -10,13 +11,13 @@ function StaffAssignmentFilterView(props: StaffAssignmentFilterViewProps) {
       <section className="staff-assignment-filter-container">
         {viewModel.officeAssignees.length > 0 && viewModel.officeAssigneesError === false && (
           <ComboBox
-            id="staff-assignees"
-            options={viewModel.assigneesToComboOptions(viewModel.officeAssignees)}
-            onUpdateSelection={viewModel.handleFilterAssignee}
-            label="Assigned Attorney"
-            ariaDescription="Filter the results by Attorney Name."
             aria-live="off"
+            ariaDescription="Filter the results by Attorney Name."
+            id="staff-assignees"
+            label="Assigned Attorney"
             multiSelect={false}
+            onUpdateSelection={viewModel.handleFilterAssignee}
+            options={viewModel.assigneesToComboOptions(viewModel.officeAssignees)}
             ref={viewModel.assigneesFilterRef}
           />
         )}

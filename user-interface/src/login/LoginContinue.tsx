@@ -1,8 +1,9 @@
-import { getLoginProviderFromEnv } from './login-library';
+import { PropsWithChildren } from 'react';
+
 import { BadConfiguration } from './BadConfiguration';
+import { getLoginProviderFromEnv } from './login-library';
 import { OktaProvider } from './providers/okta/OktaProvider';
 import { OktaSession } from './providers/okta/OktaSession';
-import { PropsWithChildren } from 'react';
 
 export function LoginContinue(props: PropsWithChildren) {
   const provider = getLoginProviderFromEnv();

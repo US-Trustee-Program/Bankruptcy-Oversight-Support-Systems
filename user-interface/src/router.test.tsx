@@ -1,11 +1,12 @@
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import App from './App';
 import { vi } from 'vitest';
+
+import App from './App';
 import LocalStorage from './lib/utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { CamsRole } from '@common/cams/roles';
 
 describe('App Router Tests', () => {
   beforeAll(async () => {

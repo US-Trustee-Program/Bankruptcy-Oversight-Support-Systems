@@ -12,8 +12,8 @@ export default function useComponent() {
   };
 
   return {
-    isVisible,
     hide,
+    isVisible,
     show,
   };
 }

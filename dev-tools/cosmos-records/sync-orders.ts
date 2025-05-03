@@ -8,11 +8,11 @@ export function syncOrders() {
     return;
   }
   fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       txIdOverride: 0,
     }),
+    headers: { 'Content-Type': 'application/json' },
+    method: 'POST',
   })
     .then((response) => {
       response

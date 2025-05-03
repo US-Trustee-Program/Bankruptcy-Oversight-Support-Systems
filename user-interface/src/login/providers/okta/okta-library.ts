@@ -1,17 +1,13 @@
-import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
-import LocalStorage from '@/lib/utils/local-storage';
 import { addApiBeforeHook } from '@/lib/models/api';
-import { nowInSeconds } from '@common/date-helper';
 import Api2 from '@/lib/models/api2';
+import LocalStorage from '@/lib/utils/local-storage';
 import { initializeSessionEndLogout } from '@/login/session-end-logout';
+import { nowInSeconds } from '@common/date-helper';
+import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
 
 const SAFE_LIMIT = 300;
 
-export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
-  addApiBeforeHook(async () => refreshOktaToken(oktaAuth));
-}
-
-export function getCamsUser(oktaUser: UserClaims | null) {
+export function getCamsUser(oktaUser: null | UserClaims) {
   return { id: oktaUser?.sub ?? 'UNKNOWN', name: oktaUser?.name ?? oktaUser?.email ?? 'UNKNOWN' };
 }
 
@@ -38,6 +34,10 @@ export async function refreshOktaToken(oktaAuth: OktaAuth) {
   }
 }
 
+export function registerRefreshOktaToken(oktaAuth: OktaAuth) {
+  addApiBeforeHook(async () => refreshOktaToken(oktaAuth));
+}
+
 async function refreshTheToken(oktaAuth: OktaAuth) {
   const isTokenBeingRefreshed = LocalStorage.isTokenBeingRefreshed();
   if (isTokenBeingRefreshed === undefined || isTokenBeingRefreshed) {
@@ -51,11 +51,11 @@ async function refreshTheToken(oktaAuth: OktaAuth) {
       const jwt = oktaAuth.token.decode(accessToken);
       // Set the skeleton of a CamsSession object in local storage for the API.
       LocalStorage.setSession({
-        provider: 'okta',
         accessToken,
-        user: getCamsUser(oktaUser),
         expires: jwt.payload.exp ?? 0,
         issuer: jwt.payload.iss ?? '',
+        provider: 'okta',
+        user: getCamsUser(oktaUser),
       });
 
       // Then call the /me endpoint to cache the Okta session on the API side and

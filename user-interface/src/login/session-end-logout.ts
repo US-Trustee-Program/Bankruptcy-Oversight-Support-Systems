@@ -1,8 +1,9 @@
-import LocalStorage from '@/lib/utils/local-storage';
-import { LOGOUT_PATH } from './login-library';
 import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
+import LocalStorage from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
 import { nowInSeconds } from '@common/date-helper';
+
+import { LOGOUT_PATH } from './login-library';
 
 export function checkForSessionEnd() {
   const session = LocalStorage.getSession();

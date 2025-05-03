@@ -1,49 +1,32 @@
 import { fakerEN_US as faker } from '@faker-js/faker';
 import readline from 'node:readline';
-import { randomTruth, randomInt, someDateAfterThisDate } from '../utility';
+
+import { AO_DC_Record, toAoDcInsertStatements } from '../tables/AO_DC';
 import {
   AO_DE_Record,
   AO_DE_RecordProps,
   AO_DE_Types,
   toAoDeInsertStatements,
 } from '../tables/AO_DE';
-import { AO_DC_Record, toAoDcInsertStatements } from '../tables/AO_DC';
+import { randomInt, randomTruth, someDateAfterThisDate } from '../utility';
 
 const SIZE_MB_5 = 5 * 1024 * 1024;
 
-function randomSummaryText(type: string): string {
-  const choicesMap = new Map([
-    ['order', ['Order Re: Motion for Joint Administration']],
-    ['motion', ['Motion for Joint Administration']],
-    [
-      'misc',
-      [
-        'Add Judge',
-        'Case Association - Joint Administration',
-        'Petition for Recognition of Foreign Proceeding',
-      ],
-    ],
-    ['crditcrd', ['Auto- docket of credit card']],
-  ]);
-  const choices = choicesMap.get(type) || ['unknown'];
-  return choices[randomInt(choices.length)];
-}
-
 interface docketEntryGeneratorProps {
-  csCaseId: string;
   courtId: string;
+  csCaseId: string;
   entryDate: string;
-  sequenceNumber: number;
   lastDocumentNumber: number;
+  sequenceNumber: number;
 }
 
 function docketEntryGenerator(props: docketEntryGeneratorProps): AO_DE_RecordProps {
   const {
-    csCaseId: CS_CASEID,
     courtId: COURT_ID,
+    csCaseId: CS_CASEID,
     entryDate,
-    sequenceNumber: DE_SEQNO,
     lastDocumentNumber,
+    sequenceNumber: DE_SEQNO,
   } = props;
   let DE_TYPE = AO_DE_Types[randomInt(AO_DE_Types.length)];
 
@@ -54,16 +37,16 @@ function docketEntryGenerator(props: docketEntryGeneratorProps): AO_DE_RecordPro
   const DE_DATE_FILED = someDateAfterThisDate(entryDate, randomInt(3));
   const DE_DATE_ENTER = someDateAfterThisDate(DE_DATE_FILED, randomInt(2));
   return {
-    CS_CASEID,
     COURT_ID,
-    DE_SEQNO,
-    DE_DOCUMENT_NUM: randomTruth() && DE_TYPE !== 'crditcrd' ? lastDocumentNumber + 1 : undefined,
+    CS_CASEID,
     DE_DATE_ENTER,
     DE_DATE_FILED,
+    DE_DOCUMENT_NUM: randomTruth() && DE_TYPE !== 'crditcrd' ? lastDocumentNumber + 1 : undefined,
+    DE_SEQNO,
     DE_TYPE,
-    DO_SUMMARY_TEXT,
-    DO_SUB_TYPE: DE_TYPE === 'crditcrd' ? 'receipt' : undefined,
     DO_SELECT_TEXT: DO_SUMMARY_TEXT,
+    DO_SUB_TYPE: DE_TYPE === 'crditcrd' ? 'receipt' : undefined,
+    DO_SUMMARY_TEXT,
     DP_FEE: DE_TYPE === 'crditcrd' ? randomInt(100000) / 100 : undefined,
     DT_TEXT: faker.lorem.text().substring(0, 8000),
   };
@@ -85,11 +68,11 @@ async function main() {
     let lastDocumentNumber = 1;
     for (let sequenceNumber = 0; sequenceNumber < randomInt(50); sequenceNumber++) {
       const docketEntry = docketEntryGenerator({
-        csCaseId,
         courtId,
+        csCaseId,
         entryDate,
-        sequenceNumber,
         lastDocumentNumber,
+        sequenceNumber,
       });
       entryDate = docketEntry.DE_DATE_ENTER!;
       docketEntries.push(new AO_DE_Record(docketEntry));
@@ -100,12 +83,12 @@ async function main() {
         for (let docIndex = 0; docIndex < documentCount; docIndex++) {
           const FILE_NAME = `${courtId}-${csCaseId}-${sequenceNumber}-${lastDocumentNumber}-${docIndex}.pdf`;
           const documentEntry = new AO_DC_Record({
-            FILE_NAME,
             COURT_ID: docketEntry.COURT_ID,
+            COURT_STATUS: 'pdf',
             CS_CASEID: docketEntry.CS_CASEID,
             DE_SEQNO: docketEntry.DE_SEQNO,
+            FILE_NAME,
             PDF_SIZE: randomInt(SIZE_MB_5),
-            COURT_STATUS: 'pdf',
           });
           docketDocuments.push(documentEntry);
         }
@@ -120,6 +103,24 @@ async function main() {
   toAoDcInsertStatements(docketDocuments).forEach((statement) => {
     console.log(statement.trim());
   });
+}
+
+function randomSummaryText(type: string): string {
+  const choicesMap = new Map([
+    ['crditcrd', ['Auto- docket of credit card']],
+    [
+      'misc',
+      [
+        'Add Judge',
+        'Case Association - Joint Administration',
+        'Petition for Recognition of Foreign Proceeding',
+      ],
+    ],
+    ['motion', ['Motion for Joint Administration']],
+    ['order', ['Order Re: Motion for Joint Administration']],
+  ]);
+  const choices = choicesMap.get(type) || ['unknown'];
+  return choices[randomInt(choices.length)];
 }
 
 (async () => {

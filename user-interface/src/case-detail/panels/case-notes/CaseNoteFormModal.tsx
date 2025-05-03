@@ -1,19 +1,20 @@
 import './CaseNoteFormModal.scss';
+
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
-import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
+import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import TextArea from '@/lib/components/uswds/TextArea';
 import Api2 from '@/lib/models/api2';
+import { TextAreaRef } from '@/lib/type-declarations/input-fields';
+import LocalFormCache from '@/lib/utils/local-form-cache';
+import LocalStorage from '@/lib/utils/local-storage';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { ResponseBody } from '@common/api/response';
 import { CaseNoteInput } from '@common/cams/cases';
 import { getCamsUserReference } from '@common/cams/session';
-import LocalStorage from '@/lib/utils/local-storage';
-import LocalFormCache from '@/lib/utils/local-form-cache';
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
 
 const useThrottleCallback = (callback: () => void, delay: number) => {
   const isThrottled = useRef(false);
@@ -35,7 +36,28 @@ const useThrottleCallback = (callback: () => void, delay: number) => {
   }, [delay]);
 };
 
-export function getCaseNotesInputValue(ref: TextAreaRef | null) {
+export type CaseNoteFormModalOpenProps = {
+  callback: CallbackFunction;
+  caseId: string;
+  content?: string;
+  id?: string;
+  openModalButtonRef: OpenModalButtonRef;
+  title?: string;
+};
+
+export type CaseNoteFormModalProps = {
+  alertMessage?: AlertDetails;
+  modalId: string;
+};
+
+export interface CaseNoteFormModalRef extends ModalRefType {
+  hide: () => void;
+  show: (showProps: CaseNoteFormModalOpenProps) => void;
+}
+
+type CallbackFunction = (noteId?: string) => void;
+
+export function getCaseNotesInputValue(ref: null | TextAreaRef) {
   return ref?.getValue() ?? '';
 }
 
@@ -43,33 +65,12 @@ function buildCaseNoteFormKey(caseId: string) {
   return `case-notes-${caseId}`;
 }
 
-type CallbackFunction = (noteId?: string) => void;
-
-export type CaseNoteFormModalOpenProps = {
-  id?: string;
-  title?: string;
-  content?: string;
-  caseId: string;
-  callback: CallbackFunction;
-  openModalButtonRef: OpenModalButtonRef;
-};
-
-export interface CaseNoteFormModalRef extends ModalRefType {
-  show: (showProps: CaseNoteFormModalOpenProps) => void;
-  hide: () => void;
-}
-
-export type CaseNoteFormModalProps = {
-  modalId: string;
-  alertMessage?: AlertDetails;
-};
-
 const defaultModalOpenOptions: CaseNoteFormModalOpenProps = {
-  caseId: '',
   callback: () => {},
+  caseId: '',
   openModalButtonRef: {
-    focus: () => {},
     disableButton: (_state: boolean) => {},
+    focus: () => {},
   },
 };
 
@@ -124,16 +125,16 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
-      title: event?.target.value,
       content: getCaseNotesInputValue(contentInputRef.current),
+      title: event?.target.value,
     });
   }
 
   function handleContentChange(event: React.ChangeEvent<HTMLTextAreaElement>) {
     saveFormData({
       caseId: modalOpenOptions.caseId,
-      title: getCaseNotesInputValue(titleInputRef.current),
       content: event.target.value,
+      title: getCaseNotesInputValue(titleInputRef.current),
     });
   }
 
@@ -216,8 +217,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     if (!modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
         caseId: modalOpenOptions.caseId,
-        title,
         content,
+        title,
         updatedBy: getCamsUserReference(session?.user),
       };
       return validFields(title, content)
@@ -225,10 +226,10 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
         : alertRef.current?.show();
     } else if (modalOpenOptions.id && session?.user) {
       const caseNoteInput: CaseNoteInput = {
-        id: modalOpenOptions.id,
         caseId: modalOpenOptions.caseId,
-        title,
         content,
+        id: modalOpenOptions.id,
+        title,
         updatedBy: getCamsUserReference(session?.user),
       };
       return validFields(title, content)
@@ -238,17 +239,17 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }, 300);
 
   const caseNoteFormButtonGroup: SubmitCancelBtnProps = {
-    modalId: props.modalId,
-    modalRef,
-    submitButton: {
-      label: 'Save',
-      onClick: sendCaseNoteToApi,
-      disabled: false,
-      closeOnClick: false,
-    },
     cancelButton: {
       label: cancelButtonLabel,
       onClick: clearCaseNoteForm,
+    },
+    modalId: props.modalId,
+    modalRef,
+    submitButton: {
+      closeOnClick: false,
+      disabled: false,
+      label: 'Save',
+      onClick: sendCaseNoteToApi,
     },
   };
 
@@ -261,8 +262,8 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
       setModalOpenOptions(showProps);
       setFormValuesFromShowOptions({
         caseId: showProps.caseId,
-        title: showProps.title ?? '',
         content: showProps.content ?? '',
+        title: showProps.title ?? '',
       });
 
       titleInputRef.current?.setValue(showProps.title ?? '');
@@ -298,49 +299,49 @@ function _CaseNoteFormModal(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   useImperativeHandle(ref, () => {
     return {
-      show,
       hide,
+      show,
     };
   });
 
   return (
     <Modal
-      ref={modalRef}
-      modalId={noteModalId}
-      className="note-modal"
-      heading={noteModalTitle}
       actionButtonGroup={caseNoteFormButtonGroup}
-      forceAction={true}
+      className="note-modal"
       content={
         <div className="case-note-form-container">
           <Alert
             id="case-note-form-error"
-            message={caseNoteFormError}
-            type={UswdsAlertStyle.Error}
-            role={'alert'}
-            ref={alertRef}
-            timeout={0}
-            slim={true}
             inline={true}
+            message={caseNoteFormError}
+            ref={alertRef}
+            role={'alert'}
+            slim={true}
+            timeout={0}
+            type={UswdsAlertStyle.Error}
           />
           <Input
-            id="case-note-title-input"
-            label="Note Title"
-            required={true}
-            includeClearButton={true}
-            onChange={handleTitleChange}
             autoComplete="off"
+            id="case-note-title-input"
+            includeClearButton={true}
+            label="Note Title"
+            onChange={handleTitleChange}
             ref={titleInputRef}
+            required={true}
           />
           <TextArea
             id="note-content"
             label="Note Text"
-            required={true}
             onChange={handleContentChange}
             ref={contentInputRef}
+            required={true}
           />
         </div>
       }
+      forceAction={true}
+      heading={noteModalTitle}
+      modalId={noteModalId}
+      ref={modalRef}
     ></Modal>
   );
 }

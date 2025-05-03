@@ -7,9 +7,9 @@ export const commonHeaders: Record<string, string> = {
 };
 
 export type CamsHttpResponseInit<T extends object = undefined> = {
+  body?: ResponseBody<T>;
   headers?: Record<string, string>;
   statusCode?: number;
-  body?: ResponseBody<T>;
 };
 
 export function httpSuccess<T extends object = undefined>(

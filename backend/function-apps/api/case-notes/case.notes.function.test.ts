@@ -1,24 +1,25 @@
-import handler from './case.notes.function';
-import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
-import ContextCreator from '../../azure/application-context-creator';
+import { InvocationContext } from '@azure/functions';
+
+import { CaseNote } from '../../../../common/src/cams/cases';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
-import { InvocationContext } from '@azure/functions';
+import * as featureFlags from '../../../lib/adapters/utils/feature-flag';
+import { UnknownError } from '../../../lib/common-errors/unknown-error';
+import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
+import ContextCreator from '../../azure/application-context-creator';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import { CaseNote } from '../../../../common/src/cams/cases';
-import * as featureFlags from '../../../lib/adapters/utils/feature-flag';
+import handler from './case.notes.function';
 
 const defaultRequestProps: Partial<CamsHttpRequest> = {
-  method: 'POST',
   body: {
     caseId: '081-67-89123',
     note: 'Sample note text',
   },
+  method: 'POST',
 };
 
 describe('Case Notes Function Tests', () => {
@@ -29,8 +30,8 @@ describe('Case Notes Function Tests', () => {
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
     context = new InvocationContext({
-      logHandler: () => {},
       invocationId: 'id',
+      logHandler: () => {},
     });
   });
 
@@ -41,10 +42,10 @@ describe('Case Notes Function Tests', () => {
   test('should handle successful response', async () => {
     const req = createMockAzureFunctionRequest();
     const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess({
+      data: undefined,
       meta: {
         self: req.url,
       },
-      data: undefined,
     });
     jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
@@ -84,11 +85,11 @@ describe('Case Notes Function Tests', () => {
   test('Should return a list of notes when valid caseId is supplied for GET request', async () => {
     const caseId = '001-67-89012';
     const requestOverride: Partial<CamsHttpRequest> = {
+      body: undefined,
       method: 'GET',
       params: {
         id: caseId,
       },
-      body: undefined,
     };
 
     const request = createMockAzureFunctionRequest({
@@ -98,10 +99,10 @@ describe('Case Notes Function Tests', () => {
 
     const expectedNoteList = MockData.buildArray(MockData.getCaseNote, 3);
     const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseNote[]>({
+      data: expectedNoteList,
       meta: {
         self: request.url,
       },
-      data: expectedNoteList,
     });
     jest.spyOn(CaseNotesController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
@@ -118,8 +119,8 @@ describe('Case Notes Feature Flag Tests', () => {
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
     context = new InvocationContext({
-      logHandler: () => {},
       invocationId: 'id',
+      logHandler: () => {},
     });
   });
 
@@ -148,10 +149,10 @@ describe('Case Notes Feature Flag Tests', () => {
     });
 
     const { camsHttpResponse } = buildTestResponseSuccess<CaseNote[]>({
+      data: [],
       meta: {
         self: request.url,
       },
-      data: [],
     });
 
     jest.spyOn(featureFlags, 'getFeatureFlags').mockResolvedValue({

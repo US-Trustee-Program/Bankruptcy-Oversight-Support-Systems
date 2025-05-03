@@ -7,13 +7,13 @@ export function mockCamsHttpRequest<B = unknown>(
   override: Partial<CamsHttpRequest<B>> = {},
 ): CamsHttpRequest<B> {
   const defaults: CamsHttpRequest<B> = {
-    query: {},
-    method: 'GET',
-    url: mockRequestUrl,
     headers: {
       authorization: 'Bearer ' + MockData.getJwt(),
     },
+    method: 'GET',
     params: {},
+    query: {},
+    url: mockRequestUrl,
   };
   return {
     ...defaults,

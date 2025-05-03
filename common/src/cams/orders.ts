@@ -1,39 +1,74 @@
 import { CaseAssignment } from './assignments';
 import { CaseDocketEntry, CaseSummary } from './cases';
-import { Consolidation } from './events';
 import { CamsDocument } from './document';
+import { Consolidation } from './events';
 
-export type OrderStatus = 'pending' | 'approved' | 'rejected';
-export type OrderType = 'transfer' | 'consolidation';
-export type ConsolidationType = 'administrative' | 'substantive';
-
-export type ConsolidationOrderActionRejection = ConsolidationOrder & {
-  rejectedCases: Array<string>;
+export type ConsolidationOrder = CamsDocument & {
+  childCases: Array<ConsolidationOrderCase>;
+  consolidationId: string;
+  consolidationType: ConsolidationType;
+  courtDivisionCode: string;
+  courtName: string;
+  deleted?: true;
+  jobId: number;
+  leadCase?: CaseSummary;
+  leadCaseIdHint?: string;
+  orderDate: string;
+  orderType: 'consolidation';
+  reason?: string;
+  status: OrderStatus;
 };
-
-export function isConsolidationOrderRejection(
-  body: unknown,
-): body is ConsolidationOrderActionRejection {
-  return (
-    typeof body === 'object' &&
-    body !== null &&
-    'rejectedCases' in body &&
-    'consolidationId' in body &&
-    'consolidationType' in body &&
-    'orderType' in body &&
-    'orderDate' in body &&
-    'status' in body &&
-    'courtName' in body &&
-    'courtDivisionCode' in body &&
-    'jobId' in body &&
-    'childCases' in body
-  );
-}
-
 export type ConsolidationOrderActionApproval = ConsolidationOrder & {
   approvedCases: Array<string>;
   leadCase: CaseSummary;
 };
+export type ConsolidationOrderActionRejection = ConsolidationOrder & {
+  rejectedCases: Array<string>;
+};
+
+export type ConsolidationType = 'administrative' | 'substantive';
+
+export type OrderStatus = 'approved' | 'pending' | 'rejected';
+
+export type OrderType = 'consolidation' | 'transfer';
+
+// TODO: TransferOrder needs to NOT extend CaseSummary!! However this is currently mapped from a flat SQL query response from DXTR.
+export type TransferOrder = CaseSummary & {
+  docketEntries: CaseDocketEntry[];
+  docketSuggestedCaseNumber?: string;
+  id: string;
+  newCase?: CaseSummary;
+  orderDate: string;
+  orderType: 'transfer';
+  reason?: string;
+  status: OrderStatus;
+};
+
+// TODO: Helper function while we are in transition to remodel "has a".
+export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
+  return {
+    caseId: order.caseId,
+    caseTitle: order.caseTitle,
+    chapter: order.chapter,
+    courtDivisionCode: order.courtDivisionCode,
+    courtDivisionName: order.courtDivisionName,
+    courtId: order.courtId,
+    courtName: order.courtName,
+    dateFiled: order.dateFiled,
+    debtor: order.debtor,
+    debtorTypeCode: order.debtorTypeCode,
+    debtorTypeLabel: order.debtorTypeLabel,
+    dxtrId: order.dxtrId,
+    groupDesignator: order.groupDesignator,
+    officeCode: order.officeCode,
+    officeName: order.officeName,
+    petitionCode: order.petitionCode,
+    petitionLabel: order.petitionLabel,
+    regionId: order.regionId,
+    regionName: order.regionName,
+    state: order.state,
+  };
+}
 
 export function isConsolidationOrderApproval(
   body: unknown,
@@ -55,59 +90,24 @@ export function isConsolidationOrderApproval(
   );
 }
 
-// TODO: TransferOrder needs to NOT extend CaseSummary!! However this is currently mapped from a flat SQL query response from DXTR.
-export type TransferOrder = CaseSummary & {
-  id: string;
-  orderType: 'transfer';
-  orderDate: string;
-  status: OrderStatus;
-  docketEntries: CaseDocketEntry[];
-  docketSuggestedCaseNumber?: string;
-  newCase?: CaseSummary;
-  reason?: string;
-};
-
-// TODO: Helper function while we are in transition to remodel "has a".
-export function getCaseSummaryFromTransferOrder(order: TransferOrder) {
-  return {
-    caseId: order.caseId,
-    caseTitle: order.caseTitle,
-    courtId: order.courtId,
-    courtDivisionCode: order.courtDivisionCode,
-    courtDivisionName: order.courtDivisionName,
-    courtName: order.courtName,
-    chapter: order.chapter,
-    dateFiled: order.dateFiled,
-    debtor: order.debtor,
-    dxtrId: order.dxtrId,
-    debtorTypeCode: order.debtorTypeCode,
-    debtorTypeLabel: order.debtorTypeLabel,
-    petitionCode: order.petitionCode,
-    petitionLabel: order.petitionLabel,
-    state: order.state,
-    regionId: order.regionId,
-    regionName: order.regionName,
-    groupDesignator: order.groupDesignator,
-    officeCode: order.officeCode,
-    officeName: order.officeName,
-  };
+export function isConsolidationOrderRejection(
+  body: unknown,
+): body is ConsolidationOrderActionRejection {
+  return (
+    typeof body === 'object' &&
+    body !== null &&
+    'rejectedCases' in body &&
+    'consolidationId' in body &&
+    'consolidationType' in body &&
+    'orderType' in body &&
+    'orderDate' in body &&
+    'status' in body &&
+    'courtName' in body &&
+    'courtDivisionCode' in body &&
+    'jobId' in body &&
+    'childCases' in body
+  );
 }
-
-export type ConsolidationOrder = CamsDocument & {
-  deleted?: true;
-  consolidationId: string;
-  consolidationType: ConsolidationType;
-  orderType: 'consolidation';
-  orderDate: string;
-  status: OrderStatus;
-  courtName: string;
-  courtDivisionCode: string;
-  jobId: number;
-  leadCaseIdHint?: string;
-  leadCase?: CaseSummary;
-  childCases: Array<ConsolidationOrderCase>;
-  reason?: string;
-};
 
 const consolidationOrderCaseKeys = [
   'docketEntries',
@@ -117,14 +117,14 @@ const consolidationOrderCaseKeys = [
 ];
 
 export type ConsolidationOrderCase = CaseSummary & {
+  associations?: Consolidation[];
+  attorneyAssignments?: CaseAssignment[];
   docketEntries: CaseDocketEntry[];
   orderDate: string;
-  attorneyAssignments?: CaseAssignment[];
-  associations?: Consolidation[];
 };
 
 export function getCaseSummaryFromConsolidationOrderCase(
-  order: RawConsolidationOrder | ConsolidationOrderCase,
+  order: ConsolidationOrderCase | RawConsolidationOrder,
 ): CaseSummary {
   const excludedKeys = [...consolidationOrderCaseKeys, ...rawConsolidationOrderKeys];
 
@@ -136,66 +136,66 @@ export function getCaseSummaryFromConsolidationOrderCase(
 
 const rawConsolidationOrderKeys = ['jobId', 'leadCaseIdHint'];
 
+export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
+  newCase?: Partial<CaseSummary>;
+};
+
+export type Order = ConsolidationOrder | TransferOrder;
+
+export type OrderAction<T> = OrderActionApproval<T> | OrderActionRejection<T>;
+
+export type OrderActionApproval<T = TransferOrder> = {
+  id: string;
+  order: T;
+  status: 'approved';
+};
+
+export type OrderActionRejection<T = TransferOrder> = {
+  id: string;
+  order: T;
+  reason?: string;
+  status: 'rejected';
+};
+
+export type OrderSync = {
+  consolidations: ConsolidationOrder[];
+  maxTxId: string;
+  transfers: TransferOrder[];
+};
+
 export type RawConsolidationOrder = ConsolidationOrderCase & {
   jobId: number;
   leadCaseIdHint?: string;
 };
 
-export type Order = TransferOrder | ConsolidationOrder;
+export type RawOrderSync = {
+  consolidations: RawConsolidationOrder[];
+  maxTxId: string;
+  transfers: TransferOrder[];
+};
 
-export function isTransferOrder(order: Order): order is TransferOrder {
-  return order.orderType === 'transfer';
-}
+export type TransferOrderAction = TransferOrderActionApproval | TransferOrderActionRejection;
+
+export type TransferOrderActionApproval = {
+  caseId: string;
+  id: string;
+  newCase: Partial<CaseSummary>;
+  orderType: 'transfer';
+  status: 'approved';
+};
+
+export type TransferOrderActionRejection = {
+  caseId: string;
+  id: string;
+  orderType: 'transfer';
+  reason?: string;
+  status: 'rejected';
+};
 
 export function isConsolidationOrder(order: Order): order is ConsolidationOrder {
   return order.orderType === 'consolidation';
 }
 
-export type TransferOrderActionRejection = {
-  id: string;
-  caseId: string;
-  orderType: 'transfer';
-  status: 'rejected';
-  reason?: string;
-};
-
-export type TransferOrderActionApproval = {
-  id: string;
-  caseId: string;
-  orderType: 'transfer';
-  newCase: Partial<CaseSummary>;
-  status: 'approved';
-};
-
-export type TransferOrderAction = TransferOrderActionRejection | TransferOrderActionApproval;
-
-export type OrderActionRejection<T = TransferOrder> = {
-  id: string;
-  status: 'rejected';
-  reason?: string;
-  order: T;
-};
-
-export type OrderActionApproval<T = TransferOrder> = {
-  id: string;
-  status: 'approved';
-  order: T;
-};
-
-export type OrderAction<T> = OrderActionRejection<T> | OrderActionApproval<T>;
-
-export type OrderSync = {
-  consolidations: ConsolidationOrder[];
-  transfers: TransferOrder[];
-  maxTxId: string;
-};
-
-export type RawOrderSync = {
-  consolidations: RawConsolidationOrder[];
-  transfers: TransferOrder[];
-  maxTxId: string;
-};
-
-export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: Partial<CaseSummary>;
-};
+export function isTransferOrder(order: Order): order is TransferOrder {
+  return order.orderType === 'transfer';
+}

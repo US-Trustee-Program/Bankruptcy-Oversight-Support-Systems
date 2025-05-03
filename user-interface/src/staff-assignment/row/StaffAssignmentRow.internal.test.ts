@@ -1,18 +1,18 @@
-import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
-import Internal from './StaffAssignmentRow.internal';
-
-// TODO: Find an alternative waitFor so we can stop using react testing library for non-React code.
-import { waitFor } from '@testing-library/react';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
+// TODO: Find an alternative waitFor so we can stop using react testing library for non-React code.
+import { waitFor } from '@testing-library/react';
+
+import Internal from './StaffAssignmentRow.internal';
 
 describe('StaffAssignmentRowInternal', () => {
   const caseId = 'testCaseId';
   const caseAssignments = [
-    MockData.getAttorneyAssignment({ id: 'testAssignmentId', caseId, unassignedOn: undefined }),
+    MockData.getAttorneyAssignment({ caseId, id: 'testAssignmentId', unassignedOn: undefined }),
   ];
-  const bCase = MockData.getCaseBasics({ override: { caseId, assignments: caseAssignments } });
+  const bCase = MockData.getCaseBasics({ override: { assignments: caseAssignments, caseId } });
 
   const mappedCaseAssignments = caseAssignments.map((assignment) => {
     return { id: assignment.userId, name: assignment.name };
@@ -20,12 +20,12 @@ describe('StaffAssignmentRowInternal', () => {
 
   const initialState = {
     assignments: [],
-    isLoading: true,
     bCase,
+    isLoading: true,
     modalRef: {
       current: {
-        show: vi.fn(),
         hide: vi.fn(),
+        show: vi.fn(),
       },
     },
   };
@@ -38,29 +38,29 @@ describe('StaffAssignmentRowInternal', () => {
   });
 
   test('should handle successful assignment update', async () => {
-    const { state, actions } = Internal.useStateActions(initialState);
+    const { actions, state } = Internal.useStateActions(initialState);
 
     const attorney = MockData.getAttorneyUser();
 
     // This is a Partial<CaseAssignment> because in the implementation we
     // `as CaseAssignment` a partial object literal for the dirty buffer.
     const endingAssignment: Partial<CaseAssignment> = {
-      userId: attorney.id,
-      name: attorney.name,
-      documentType: 'ASSIGNMENT',
       caseId,
+      documentType: 'ASSIGNMENT',
+      name: attorney.name,
       role: CamsRole.TrialAttorney,
+      userId: attorney.id,
     };
     const endingAssignments = [endingAssignment];
 
     actions.updateAssignmentsCallback({
-      status: 'success',
       apiResult: {},
       bCase,
       previouslySelectedList: mappedCaseAssignments,
       selectedAttorneyList: endingAssignments.map((assignment) => {
         return { id: assignment.userId!, name: assignment.name! };
       }),
+      status: 'success',
     });
 
     await waitFor(() => {
@@ -73,17 +73,17 @@ describe('StaffAssignmentRowInternal', () => {
   test('should handle failed assignment update', async () => {
     const errorMessage = 'failed';
 
-    const { state, actions } = Internal.useStateActions(initialState);
+    const { actions, state } = Internal.useStateActions(initialState);
     const startingAssignments = [...state.assignments];
 
     actions.updateAssignmentsCallback({
-      status: 'error',
       apiResult: {
         message: errorMessage,
       },
       bCase,
       previouslySelectedList: mappedCaseAssignments,
       selectedAttorneyList: mappedCaseAssignments,
+      status: 'error',
     });
 
     await waitFor(() => {

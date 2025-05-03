@@ -1,15 +1,16 @@
-import {
-  StaffAssignmentFilterControls,
-  StaffAssignmentFilterUseCase,
-  StaffAssignmentFilterStore,
-  UNASSIGNED_OPTION,
-} from './staffAssignmentFilter.types';
-import { ResponseBody } from '@common/api/response';
-import { CamsUserReference } from '@common/cams/users';
-import { UstpOfficeDetails } from '@common/cams/offices';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useApi2 from '@/lib/hooks/UseApi2';
 import LocalStorage from '@/lib/utils/local-storage';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ResponseBody } from '@common/api/response';
+import { UstpOfficeDetails } from '@common/cams/offices';
+import { CamsUserReference } from '@common/cams/users';
+
+import {
+  StaffAssignmentFilterControls,
+  StaffAssignmentFilterStore,
+  StaffAssignmentFilterUseCase,
+  UNASSIGNED_OPTION,
+} from './staffAssignmentFilter.types';
 
 const staffAssignmentFilterUseCase = (
   store: StaffAssignmentFilterStore,
@@ -19,8 +20,8 @@ const staffAssignmentFilterUseCase = (
     const comboOptions: ComboOption[] = [];
     officeAssignees.forEach((assignee) => {
       comboOptions.push({
-        value: assignee.id,
         label: assignee.name,
+        value: assignee.id,
       });
     });
     comboOptions.unshift(UNASSIGNED_OPTION);

@@ -1,3 +1,11 @@
+import { CamsError } from '../../../../common-errors/cams-error';
+import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
+import {
+  Condition,
+  ConditionOrConjunction,
+  isCondition,
+  isField,
+} from '../../../../query/query-builder';
 import {
   Accumulator,
   AddFields,
@@ -9,68 +17,8 @@ import {
   Sort,
 } from '../../../../query/query-pipeline';
 import { toMongoQuery } from './mongo-query-renderer';
-import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
-import {
-  Condition,
-  ConditionOrConjunction,
-  isCondition,
-  isField,
-} from '../../../../query/query-builder';
-import { CamsError } from '../../../../common-errors/cams-error';
 
 const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
-
-export function toMongoAggregateSort(sort: Sort) {
-  return {
-    $sort: sort.fields.reduce(
-      (acc, sortSpec) => {
-        acc[sortSpec.field.name] = sortSpec.direction === 'ASCENDING' ? 1 : -1;
-        return acc;
-      },
-      {} as Record<never, 1 | -1>,
-    ),
-  };
-}
-
-function toMongoPaginatedFacet(paginate: Paginate) {
-  return {
-    $facet: {
-      metadata: [{ $count: 'total' }],
-      data: [
-        { $skip: paginate.skip },
-        {
-          $limit: paginate.limit,
-        },
-      ],
-    },
-  };
-}
-
-export function toMongoLookup(join: Join) {
-  return {
-    $lookup: {
-      from: join.foreign.source,
-      foreignField: join.foreign.name,
-      localField: join.local.name,
-      as: join.alias.name,
-    },
-  };
-}
-
-export function toMongoAddFields(stage: AddFields) {
-  const fields = stage.fields.reduce((acc, additional) => {
-    acc[additional.fieldToAdd.name] = {
-      $filter: {
-        input: { $ifNull: [`$${additional.querySource.name.toString()}`, []] },
-        cond: toMongoFilterCondition(additional.query) ?? {},
-      },
-    };
-    return acc;
-  }, {});
-  return {
-    $addFields: fields,
-  };
-}
 
 export function toMongoAccumulatorOperator(spec: Accumulator) {
   if (spec.accumulator === 'FIRST') {
@@ -81,6 +29,39 @@ export function toMongoAccumulatorOperator(spec: Accumulator) {
     return {
       $count: {},
     };
+  }
+}
+
+export function toMongoAddFields(stage: AddFields) {
+  const fields = stage.fields.reduce((acc, additional) => {
+    acc[additional.fieldToAdd.name] = {
+      $filter: {
+        cond: toMongoFilterCondition(additional.query) ?? {},
+        input: { $ifNull: [`$${additional.querySource.name.toString()}`, []] },
+      },
+    };
+    return acc;
+  }, {});
+  return {
+    $addFields: fields,
+  };
+}
+
+export function toMongoAggregateSort(sort: Sort) {
+  return {
+    $sort: sort.fields.reduce(
+      (acc, sortSpec) => {
+        acc[sortSpec.field.name] = sortSpec.direction === 'ASCENDING' ? 1 : -1;
+        return acc;
+      },
+      {} as Record<never, -1 | 1>,
+    ),
+  };
+}
+
+export function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
+  if (isCondition(query)) {
+    return translateCondition(query);
   }
 }
 
@@ -97,6 +78,17 @@ export function toMongoGroup(stage: Group) {
   }, group);
 }
 
+export function toMongoLookup(join: Join) {
+  return {
+    $lookup: {
+      as: join.alias.name,
+      foreignField: join.foreign.name,
+      from: join.foreign.source,
+      localField: join.local.name,
+    },
+  };
+}
+
 export function toMongoProject(stage: ExcludeFields) {
   // Note that we could extend this by letting stage be another type.
   // https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
@@ -105,12 +97,6 @@ export function toMongoProject(stage: ExcludeFields) {
     return acc;
   }, {});
   return { $project: fields };
-}
-
-export function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
-  if (isCondition(query)) {
-    return translateCondition(query);
-  }
 }
 
 export function translateCondition<T = unknown>(query: Condition<T>) {
@@ -131,17 +117,31 @@ export function translateCondition<T = unknown>(query: Condition<T>) {
   };
 }
 
+function toMongoPaginatedFacet(paginate: Paginate) {
+  return {
+    $facet: {
+      data: [
+        { $skip: paginate.skip },
+        {
+          $limit: paginate.limit,
+        },
+      ],
+      metadata: [{ $count: 'total' }],
+    },
+  };
+}
+
 const mapCondition: { [key: string]: string } = {
+  CONTAINS: '$in',
   EQUALS: '$eq',
   GREATER_THAN: '$gt',
   GREATER_THAN_OR_EQUAL: '$gte',
-  CONTAINS: '$in',
+  IF_NULL: '$ifNull',
   LESS_THAN: '$lt',
   LESS_THAN_OR_EQUAL: '$lte',
-  NOT_EQUALS: '$ne',
   NOT_CONTAINS: '$nin',
+  NOT_EQUALS: '$ne',
   REGEX: '$regex',
-  IF_NULL: '$ifNull',
 };
 
 export function toMongoAggregate(pipeline: Pipeline): AggregateQuery {

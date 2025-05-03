@@ -1,5 +1,5 @@
-import { setPaginationDefaults } from './search';
 import { PaginationParameters } from './pagination';
+import { setPaginationDefaults } from './search';
 
 describe('setPaginationDefaults tests', () => {
   test('should handle strings', () => {

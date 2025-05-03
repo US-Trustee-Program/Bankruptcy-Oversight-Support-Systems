@@ -1,14 +1,14 @@
 import { ConsolidationOrderAccordionProps } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
-import { filterCourtByDivision, CourtDivisionDetails } from '@common/cams/courts';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
+import { CourtDivisionDetails, filterCourtByDivision } from '@common/cams/courts';
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
 
 export class ConsolidationStoreMock implements ConsolidationStore {
   consolidationType: ConsolidationType | null = null;
   filteredOfficesList: CourtDivisionDetails[] | null;
   foundValidCaseNumber: boolean = false;
-  isProcessing: boolean = false;
   isDataEnhanced: boolean = false;
+  isProcessing: boolean = false;
   isValidatingLeadCaseNumber: boolean = false;
   leadCase: ConsolidationOrderCase | null = null;
   leadCaseCourt: string = '';
@@ -36,12 +36,12 @@ export class ConsolidationStoreMock implements ConsolidationStore {
     this.foundValidCaseNumber = val;
   };
 
-  setIsProcessing = (val: boolean): void => {
-    this.isProcessing = val;
-  };
-
   setIsDataEnhanced = (val: boolean): void => {
     this.isDataEnhanced = val;
+  };
+
+  setIsProcessing = (val: boolean): void => {
+    this.isProcessing = val;
   };
 
   setIsValidatingLeadCaseNumber = (val: boolean): void => {

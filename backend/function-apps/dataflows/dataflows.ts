@@ -1,16 +1,15 @@
 import * as dotenv from 'dotenv';
-import { initializeApplicationInsights } from '../azure/app-insights';
 
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
-
-import SyncCases from './import/sync-cases';
-import SyncOrders from './import/sync-orders';
-import SyncOfficeStaff from './import/sync-office-staff';
-import MigrateCases from './migrations/migrate-cases';
-import MigrateConsolidations from './migrations/migrate-consolidations';
-import MigrateAssignees from './migrations/migrate-assignees';
+import { initializeApplicationInsights } from '../azure/app-insights';
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
+import SyncCases from './import/sync-cases';
+import SyncOfficeStaff from './import/sync-office-staff';
+import SyncOrders from './import/sync-orders';
+import MigrateAssignees from './migrations/migrate-assignees';
+import MigrateCases from './migrations/migrate-cases';
+import MigrateConsolidations from './migrations/migrate-consolidations';
 
 /*
 
@@ -44,25 +43,17 @@ type DataflowSetup = {
 
 const logger = new LoggerImpl('bootstrap');
 
-function envVarToNames(envVar: string) {
-  return envVar
-    .toUpperCase()
-    .replace(/_/g, '-')
-    .split(',')
-    .map((name) => name.trim());
-}
-
 class DataflowSetupMap {
   private map = new Map<string, () => void>();
+
+  list() {
+    return [...this.map.keys()];
+  }
 
   register(...dataflows: DataflowSetup[]) {
     for (const dataflow of dataflows) {
       this.map.set(dataflow.MODULE_NAME, dataflow.setup);
     }
-  }
-
-  list() {
-    return [...this.map.keys()];
   }
 
   setup(...names: string[]) {
@@ -87,6 +78,14 @@ class DataflowSetupMap {
 
     return status;
   }
+}
+
+function envVarToNames(envVar: string) {
+  return envVar
+    .toUpperCase()
+    .replace(/_/g, '-')
+    .split(',')
+    .map((name) => name.trim());
 }
 const dataflows = new DataflowSetupMap();
 

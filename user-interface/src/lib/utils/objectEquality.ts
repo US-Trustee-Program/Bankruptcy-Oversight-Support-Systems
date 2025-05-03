@@ -1,7 +1,3 @@
-function isObject(ob: object) {
-  return ob != null && typeof ob === 'object';
-}
-
 export function deepEqual(object1: object, object2: object) {
   const keys1: string[] = Object.keys(object1);
   const keys2: string[] = Object.keys(object2);
@@ -21,4 +17,8 @@ export function deepEqual(object1: object, object2: object) {
   }
 
   return true;
+}
+
+function isObject(ob: object) {
+  return ob != null && typeof ob === 'object';
 }

@@ -1,13 +1,14 @@
-import { QueryResults, IDbConfig } from '../types/database';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { AbstractMssqlClient } from './abstract-mssql-client';
-import { ApplicationContext } from '../types/basic';
 import { IResult } from 'mssql';
 
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { ApplicationContext } from '../types/basic';
+import { IDbConfig, QueryResults } from '../types/database';
+import { AbstractMssqlClient } from './abstract-mssql-client';
+
 type sqlConnect = {
-  request: () => void;
   close: () => void;
   query: () => void;
+  request: () => void;
 };
 
 jest.mock('mssql', () => {
@@ -17,6 +18,13 @@ jest.mock('mssql', () => {
         connect: jest.fn().mockImplementation(
           (): Promise<sqlConnect> =>
             Promise.resolve({
+              close: jest.fn(),
+              query: jest
+                .fn()
+                .mockImplementation(
+                  (): Promise<string> =>
+                    Promise.resolve("this is not the string you're looking for"),
+                ),
               request: jest.fn().mockImplementation(() => ({
                 input: jest.fn(),
                 query: jest
@@ -26,13 +34,6 @@ jest.mock('mssql', () => {
                       Promise.resolve({ recordset: 'test string' } as unknown as IResult<string>),
                   ),
               })),
-              close: jest.fn(),
-              query: jest
-                .fn()
-                .mockImplementation(
-                  (): Promise<string> =>
-                    Promise.resolve("this is not the string you're looking for"),
-                ),
             }),
         ),
         request: jest.fn().mockImplementation(() => ({
@@ -79,6 +80,6 @@ describe('Abstract MS-SQL client', () => {
     const queryResult: QueryResults = await client.executeQuery<string>(context, query, input);
 
     // assert
-    expect(queryResult).toEqual({ results: 'test string', message: '', success: true });
+    expect(queryResult).toEqual({ message: '', results: 'test string', success: true });
   });
 });

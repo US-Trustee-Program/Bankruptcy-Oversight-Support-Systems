@@ -1,11 +1,11 @@
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import * as factory from '../../factory';
-import OfficeAssigneesUseCase from './office-assignees';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import OfficeAssigneesUseCase from './office-assignees';
 
 describe('OfficeAssigneesUseCase', () => {
   let mockContext: ApplicationContext;
@@ -25,8 +25,8 @@ describe('OfficeAssigneesUseCase', () => {
       .mockResolvedValue(undefined);
 
     jest.spyOn(factory, 'getOfficesGateway').mockReturnValue({
-      getOffices: jest.fn().mockReturnValue(MOCKED_USTP_OFFICES_ARRAY),
       getOfficeName: jest.fn(),
+      getOffices: jest.fn().mockReturnValue(MOCKED_USTP_OFFICES_ARRAY),
     });
   });
 
@@ -43,10 +43,10 @@ describe('OfficeAssigneesUseCase', () => {
 
       // Verify
       expect(createSpy).toHaveBeenCalledWith({
-        officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
         caseId: event.caseId,
-        userId: event.userId,
         name: event.name,
+        officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+        userId: event.userId,
       });
       expect(deleteManySpy).not.toHaveBeenCalled();
     });
@@ -78,14 +78,14 @@ describe('OfficeAssigneesUseCase', () => {
         OfficeAssigneesUseCase.handleCaseAssignmentEvent(mockContext, event),
       ).rejects.toThrow(
         expect.objectContaining({
-          isCamsError: true,
-          module: 'OFFICE-ASSIGNEES-USE-CASE',
           camsStack: expect.arrayContaining([
             {
               message: 'Failed to handle case assignment event.',
               module: 'OFFICE-ASSIGNEES-USE-CASE',
             },
           ]),
+          isCamsError: true,
+          module: 'OFFICE-ASSIGNEES-USE-CASE',
         }),
       );
     });
@@ -119,14 +119,14 @@ describe('OfficeAssigneesUseCase', () => {
         OfficeAssigneesUseCase.handleCaseClosedEvent(mockContext, event),
       ).rejects.toThrow(
         expect.objectContaining({
-          isCamsError: true,
-          module: 'OFFICE-ASSIGNEES-USE-CASE',
           camsStack: expect.arrayContaining([
             {
               message: 'Failed to handle case closed event.',
               module: 'OFFICE-ASSIGNEES-USE-CASE',
             },
           ]),
+          isCamsError: true,
+          module: 'OFFICE-ASSIGNEES-USE-CASE',
         }),
       );
     });

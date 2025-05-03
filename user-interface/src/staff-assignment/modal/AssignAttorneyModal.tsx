@@ -1,19 +1,21 @@
 import './AssignAttorneyModal.scss';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
-import { AssignAttorneyModalView } from './AssignAttorneyModalView';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
 import {
+  AssignAttorneyModalCallbackFunction,
+  AssignAttorneyModalControls,
   AssignAttorneyModalProps,
   AssignAttorneyModalRef,
   AssignAttorneyModalViewModel,
-  AssignAttorneyModalCallbackFunction,
-  AssignAttorneyModalControls,
 } from './assignAttorneyModal.types';
+import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
+import { AssignAttorneyModalView } from './AssignAttorneyModalView';
 
 function _AssignAttorneyModal(
   props: AssignAttorneyModalProps,
@@ -33,23 +35,23 @@ function _AssignAttorneyModal(
   const globalAlert = useGlobalAlert();
 
   const actionButtonGroup = {
+    cancelButton: {
+      label: 'Go back',
+    },
     modalId: props.modalId,
     modalRef: ref as React.RefObject<ModalRefType>,
     submitButton: {
+      closeOnClick: false,
+      disabled: true,
       label: 'Assign',
       onClick: () => useCase.submitValues(props.assignmentChangeCallback),
-      disabled: true,
-      closeOnClick: false,
-    },
-    cancelButton: {
-      label: 'Go back',
     },
   };
 
   useImperativeHandle(ref, () => {
     return {
-      show: useCase.show,
       hide: useCase.hide,
+      show: useCase.show,
     };
   });
 
@@ -88,6 +90,16 @@ const AssignAttorneyModal = forwardRef(_AssignAttorneyModal);
 
 export default AssignAttorneyModal;
 
+export function useAssignAttorneyModalControlsReact(): AssignAttorneyModalControls {
+  const modalRef = useRef<ModalRefType>(null);
+  const tableContainerRef = useRef<HTMLTableSectionElement | null>(null);
+
+  return {
+    modalRef,
+    tableContainerRef,
+  };
+}
+
 export function useAssignAttorneyModalStoreReact() {
   const [bCase, setBCase] = useState<CaseBasics | null>(null);
   const [initialDocumentBodyStyle, setInitialDocumentBodyStyle] = useState<string>('');
@@ -100,31 +112,21 @@ export function useAssignAttorneyModalStoreReact() {
   const [globalAlertError, setGlobalAlertError] = useState<string | undefined>(undefined);
 
   return {
-    bCase,
-    setBCase,
-    initialDocumentBodyStyle,
-    setInitialDocumentBodyStyle,
-    checkListValues,
-    setCheckListValues,
-    previouslySelectedList,
-    setPreviouslySelectedList,
-    isUpdatingAssignment,
-    setIsUpdatingAssignment,
     attorneyList,
-    setAttorneyList,
-    submissionCallback,
-    setSubmissionCallback,
+    bCase,
+    checkListValues,
     globalAlertError,
+    initialDocumentBodyStyle,
+    isUpdatingAssignment,
+    previouslySelectedList,
+    setAttorneyList,
+    setBCase,
+    setCheckListValues,
     setGlobalAlertError,
-  };
-}
-
-export function useAssignAttorneyModalControlsReact(): AssignAttorneyModalControls {
-  const modalRef = useRef<ModalRefType>(null);
-  const tableContainerRef = useRef<HTMLTableSectionElement | null>(null);
-
-  return {
-    modalRef,
-    tableContainerRef,
+    setInitialDocumentBodyStyle,
+    setIsUpdatingAssignment,
+    setPreviouslySelectedList,
+    setSubmissionCallback,
+    submissionCallback,
   };
 }

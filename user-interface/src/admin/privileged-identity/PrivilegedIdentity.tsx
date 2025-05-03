@@ -17,33 +17,20 @@ import { symmetricDifference } from '@common/cams/utilities';
 import { getIsoDate, getTodaysIsoDate } from '@common/date-helper';
 import React, { useEffect, useRef, useState } from 'react';
 
-export function toComboOption(groupName: string) {
-  return {
-    value: groupName,
-    label: groupName.replace('USTP CAMS ', ''),
-  };
-}
-
-export function sortUserList(a: CamsUserReference, b: CamsUserReference) {
-  if (a.name > b.name) return 1;
-  if (a.name < b.name) return -1;
-  return 0;
-}
-
 export function PrivilegedIdentity() {
   const flags = useFeatureFlags();
   const api = useApi2();
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [groupNames, setGroupNames] = useState<RoleAndOfficeGroupNames>({
-    roles: [],
     offices: [],
+    roles: [],
   });
   const [userList, setUserList] = useState<CamsUserReference[]>([]);
   const [existingGroupNameSet, setExistingGroupNameSet] = useState<Set<string>>(new Set());
-  const [existingExpiration, setExistingExpiration] = useState<string | null>(null);
+  const [existingExpiration, setExistingExpiration] = useState<null | string>(null);
   const [updatedGroupNameSet, setUpdatedGroupNameSet] = useState<Set<string>>(new Set());
-  const [newExpiration, setNewExpiration] = useState<string | null>(null);
+  const [newExpiration, setNewExpiration] = useState<null | string>(null);
 
   const userListRef = useRef<ComboBoxRef>(null);
   const officeListRef = useRef<ComboBoxRef>(null);
@@ -61,10 +48,10 @@ export function PrivilegedIdentity() {
       <div className="privileged-identity-admin-panel">
         <Alert
           id="privileged-identity-disabled-alert"
-          type={UswdsAlertStyle.Info}
           inline={true}
           show={true}
           title="Disabled"
+          type={UswdsAlertStyle.Info}
         >
           Privileged Identity Management is disabled in this environment.
         </Alert>
@@ -155,11 +142,11 @@ export function PrivilegedIdentity() {
   async function handleSave() {
     const userId = userListRef.current?.getSelections()[0].value;
     const permissions: ElevatePrivilegedUserAction = {
+      expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
       groups: [
         ...(roleListRef.current?.getSelections().map((option) => option.value) || []),
         ...(officeListRef.current?.getSelections().map((option) => option.value) || []),
       ],
-      expires: datePickerRef.current?.getValue() ?? getTodaysIsoDate(),
     };
     try {
       await api.putPrivilegedIdentityUser(userId, permissions).then(() => {
@@ -232,8 +219,8 @@ export function PrivilegedIdentity() {
         .sort();
 
       setGroupNames({
-        roles,
         offices,
+        roles,
       });
 
       // Get the eligible users.
@@ -255,14 +242,14 @@ export function PrivilegedIdentity() {
               <ComboBox
                 id="user-list"
                 label="User"
+                multiSelect={false}
+                onUpdateSelection={handleSelectUser}
                 options={userList.map((user) => {
                   return {
-                    value: user.id,
                     label: user.name,
+                    value: user.id,
                   };
                 })}
-                onUpdateSelection={handleSelectUser}
-                multiSelect={false}
                 ref={userListRef}
               ></ComboBox>
             </div>
@@ -270,45 +257,45 @@ export function PrivilegedIdentity() {
           <div className="grid-row">
             <div className="office-list-container grid-col-5">
               <ComboBox
+                disabled={true}
                 id="office-list"
                 label="Offices"
+                multiSelect={true}
+                onUpdateSelection={handleGroupNameUpdate}
                 options={groupNames.offices.map((office) => {
                   return toComboOption(office);
                 })}
-                disabled={true}
-                multiSelect={true}
-                singularLabel="office"
                 pluralLabel="offices"
-                onUpdateSelection={handleGroupNameUpdate}
                 ref={officeListRef}
+                singularLabel="office"
               ></ComboBox>
             </div>
           </div>
           <div className="grid-row">
             <div className="role-list-container grid-col-5">
               <ComboBox
+                disabled={true}
                 id="role-list"
                 label="Roles"
+                multiSelect={true}
+                onUpdateSelection={handleGroupNameUpdate}
                 options={groupNames.roles.map((role) => {
                   return toComboOption(role);
                 })}
-                disabled={true}
-                multiSelect={true}
-                singularLabel="role"
                 pluralLabel="roles"
-                onUpdateSelection={handleGroupNameUpdate}
                 ref={roleListRef}
+                singularLabel="role"
               ></ComboBox>
             </div>
           </div>
           <div className="grid-row">
             <div className="expiration-container grid-col-5">
               <DatePicker
+                disabled={true}
                 id="privileged-expiration-date"
                 label="Expires on"
-                disabled={true}
-                minDate={getTodaysIsoDate()}
                 maxDate={getMaxDate()}
+                minDate={getTodaysIsoDate()}
                 onChange={handleExpirationUpdate}
                 ref={datePickerRef}
               ></DatePicker>
@@ -319,11 +306,11 @@ export function PrivilegedIdentity() {
               <div className="button-bar-left-side">
                 <div className="delete-button button-container">
                   <Button
-                    id="delete-button"
-                    uswdsStyle={UswdsButtonStyle.Secondary}
-                    onClick={handleDelete}
                     disabled={!isDeletable()}
+                    id="delete-button"
+                    onClick={handleDelete}
                     ref={deleteButtonRef}
+                    uswdsStyle={UswdsButtonStyle.Secondary}
                   >
                     Delete Privilege
                   </Button>
@@ -332,22 +319,22 @@ export function PrivilegedIdentity() {
               <div className="button-bar-right-side">
                 <div className="save-button button-container">
                   <Button
-                    id="save-button"
-                    uswdsStyle={UswdsButtonStyle.Default}
-                    onClick={handleSave}
                     disabled={!isSavable()}
+                    id="save-button"
+                    onClick={handleSave}
                     ref={saveButtonRef}
+                    uswdsStyle={UswdsButtonStyle.Default}
                   >
                     Save
                   </Button>
                 </div>
                 <div className="cancel-button button-container">
                   <Button
-                    id="cancel-button"
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
                     disabled={true}
+                    id="cancel-button"
                     onClick={discard}
                     ref={cancelButtonRef}
+                    uswdsStyle={UswdsButtonStyle.Unstyled}
                   >
                     Discard
                   </Button>
@@ -359,4 +346,17 @@ export function PrivilegedIdentity() {
       )}
     </div>
   );
+}
+
+export function sortUserList(a: CamsUserReference, b: CamsUserReference) {
+  if (a.name > b.name) return 1;
+  if (a.name < b.name) return -1;
+  return 0;
+}
+
+export function toComboOption(groupName: string) {
+  return {
+    label: groupName.replace('USTP CAMS ', ''),
+    value: groupName,
+  };
 }

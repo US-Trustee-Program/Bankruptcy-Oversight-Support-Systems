@@ -1,15 +1,16 @@
+import { InvocationContext } from '@azure/functions';
+
+import { EventCaseReference } from '../../../../common/src/cams/events';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { NotFoundError } from '../../../lib/common-errors/not-found-error';
 import { CaseAssociatedController } from '../../../lib/controllers/case-associated/case-associated.controller';
-import handler from './case-associated.function';
 import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { InvocationContext } from '@azure/functions';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { EventCaseReference } from '../../../../common/src/cams/events';
+import handler from './case-associated.function';
 
 describe('Case summary function', () => {
   jest
@@ -23,12 +24,12 @@ describe('Case summary function', () => {
   });
 
   const context = new InvocationContext({
-    logHandler: () => {},
     invocationId: 'id',
+    logHandler: () => {},
   });
 
   test('Should return associated cases response.', async () => {
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<EventCaseReference[]>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<EventCaseReference[]>({
       data: [],
     });
     jest

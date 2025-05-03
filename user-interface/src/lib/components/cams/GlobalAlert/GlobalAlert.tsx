@@ -1,11 +1,12 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '../../uswds/Alert';
 import React from 'react';
 
+import Alert, { AlertProps, AlertRefType, UswdsAlertStyle } from '../../uswds/Alert';
+
 export type GlobalAlertRef = {
-  show: (props: AlertProps) => void;
   error: (message: string) => void;
   info: (message: string) => void;
+  show: (props: AlertProps) => void;
   success: (message: string) => void;
   warning: (message: string) => void;
 };
@@ -22,25 +23,25 @@ export function _GlobalAlert(props: AlertProps, ref: React.Ref<GlobalAlertRef>) 
   }
 
   function error(message: string) {
-    show({ message, type: UswdsAlertStyle.Error, timeout });
+    show({ message, timeout, type: UswdsAlertStyle.Error });
   }
 
   function info(message: string) {
-    show({ message, type: UswdsAlertStyle.Info, timeout });
+    show({ message, timeout, type: UswdsAlertStyle.Info });
   }
 
   function success(message: string) {
-    show({ message, type: UswdsAlertStyle.Success, timeout });
+    show({ message, timeout, type: UswdsAlertStyle.Success });
   }
 
   function warning(message: string) {
-    show({ message, type: UswdsAlertStyle.Warning, timeout: 8 });
+    show({ message, timeout: 8, type: UswdsAlertStyle.Warning });
   }
 
   useImperativeHandle(ref, () => ({
-    show,
     error,
     info,
+    show,
     success,
     warning,
   }));

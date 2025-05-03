@@ -1,17 +1,18 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../types/basic';
+
+import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
+import { nowInSeconds } from '../../../../../common/src/date-helper';
+import { NotFoundError } from '../../../common-errors/not-found-error';
+import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder from '../../../query/query-builder';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
 import {
   CachedCamsSession,
   UserSessionCacheMongoRepository,
 } from './user-session-cache.mongo.repository';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
-import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { closeDeferred } from '../../../deferrable/defer-close';
-import QueryBuilder from '../../../query/query-builder';
-import { NotFoundError } from '../../../common-errors/not-found-error';
-import { nowInSeconds } from '../../../../../common/src/date-helper';
 
 describe('User session cache Cosmos repository tests', () => {
   let context: ApplicationContext;

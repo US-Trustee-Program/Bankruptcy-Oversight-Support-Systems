@@ -122,110 +122,106 @@ export const AO_CS_InsertableColumnNames: ColumnNames = [
 export const AO_CS_ColumnNames: ColumnNames = [...AO_CS_InsertableColumnNames];
 
 export interface AO_CS_RecordProps {
-  CS_CASEID: string;
-  COURT_ID: string;
-  CS_CASE_NUMBER: string;
-  CS_DIV: string;
-  GRP_DES: string;
-  CASE_ID: string;
-  CS_SHORT_TITLE: string;
-  CS_CLOSED?: string;
-  CS_CHAPTER: string;
-  CS_JOINT: string;
-  CS_TYPE: string;
-  CS_FEE_STATUS: string;
-  CS_PREV_CHAPTER?: string;
-  CS_VOL_INVOL: string;
-  CS_DATE_FILED: string;
-  CS_DATE_CONVERT?: string;
-  CS_REOPEN_CODE: string;
-  CS_DATE_REOPEN?: string;
-  CS_DATE_TERM?: string;
-  CS_DATE_DISCHARGE?: string;
-  CS_DATE_DISMISS?: string;
-  BK_ASSET_NOTICE?: string;
-  CS_COUNTY: string;
-  CF_VALUE?: string;
-  CS_DISP_METHOD: string;
-  JD_LAST_NAME?: string;
-  JD_MIDDLE_NAME?: string;
-  JD_FIRST_NAME?: string;
-  LAST_DATE_ENTER?: string;
-  JD_EVENT?: string;
-  CASE_NUMBER_EVENT?: string;
-  DATE_FILED_EVENT?: string;
-  CS_DISP_JT_METHOD?: string;
-  BK_NATURE_business_event?: string;
-  BK_SMALL_BUS_EVENT?: string;
   BK_AGR_LIQ_DEBT_TWO_MIL_EVENT?: string;
+  BK_ASSET_NOTICE?: string;
+  BK_NATURE_business_event?: string;
   BK_PREPACKAGED_EVENT?: string;
   BK_PRIOR_FILING_EVENT?: string;
-  PP_EVENT?: string;
-  sfi_event?: string;
-  sfc_event?: string;
-  ST6_event?: string;
-  ST6_WD_event?: string;
+  BK_SMALL_BUS_EVENT?: string;
+  CASE_ID: string;
+  CASE_NUMBER_EVENT?: string;
+  CF_VALUE?: string;
+  COURT_ID: string;
+  CS_CASE_NUMBER: string;
+  CS_CASEID: string;
+  CS_CHAPTER: string;
+  CS_CLOSED?: string;
+  CS_COUNTY: string;
+  CS_DATE_CONVERT?: string;
+  CS_DATE_DISCHARGE?: string;
+  CS_DATE_DISMISS?: string;
+  CS_DATE_FILED: string;
+  CS_DATE_REOPEN?: string;
+  CS_DATE_TERM?: string;
+  CS_DISP_JT_METHOD?: string;
+  CS_DISP_METHOD: string;
+  CS_DIV: string;
+  CS_FEE_STATUS: string;
+  CS_JOINT: string;
+  CS_PREV_CHAPTER?: string;
+  CS_REOPEN_CODE: string;
+  CS_SHORT_TITLE: string;
   cs_subchapter?: string;
   cs_subchapter_event?: string;
-  SPV_event?: string;
+  CS_TYPE: string;
+  CS_VOL_INVOL: string;
+  DATE_FILED_EVENT?: string;
+  GRP_DES: string;
+  JD_EVENT?: string;
+  JD_FIRST_NAME?: string;
+  JD_LAST_NAME?: string;
+  JD_MIDDLE_NAME?: string;
+  LAST_DATE_ENTER?: string;
+  PP_EVENT?: string;
+  sfc_event?: string;
+  sfi_event?: string;
   SPN_event?: string;
+  SPV_event?: string;
+  ST6_event?: string;
+  ST6_WD_event?: string;
 }
 
 export class AO_CS_Record implements TableRecordHelper {
-  CS_CASEID: string = '';
-  COURT_ID: string = '';
-  CS_CASE_NUMBER: string = '';
-  CS_DIV: string = '';
-  GRP_DES: string = '';
-  CASE_ID: string = '';
-  CS_SHORT_TITLE: string = '';
-  CS_CLOSED?: string;
-  CS_CHAPTER: string = '';
-  CS_JOINT: string = '';
-  CS_TYPE: string = 'bk';
-  CS_FEE_STATUS: string = '';
-  CS_PREV_CHAPTER?: string;
-  CS_VOL_INVOL: string = '';
-  CS_DATE_FILED: string = '';
-  CS_DATE_CONVERT?: string;
-  CS_REOPEN_CODE: string = '';
-  CS_DATE_REOPEN?: string;
-  CS_DATE_TERM?: string;
-  CS_DATE_DISCHARGE?: string;
-  CS_DATE_DISMISS?: string;
-  BK_ASSET_NOTICE?: string;
-  CS_COUNTY: string = '';
-  CF_VALUE?: string = '';
-  CS_DISP_METHOD: string = '';
-  JD_LAST_NAME?: string;
-  JD_MIDDLE_NAME?: string;
-  JD_FIRST_NAME?: string;
-  LAST_DATE_ENTER?: string;
-  JD_EVENT?: string;
-  CASE_NUMBER_EVENT?: string;
-  DATE_FILED_EVENT?: string;
-  CS_DISP_JT_METHOD?: string;
-  BK_NATURE_business_event?: string;
-  BK_SMALL_BUS_EVENT?: string;
   BK_AGR_LIQ_DEBT_TWO_MIL_EVENT?: string;
+  BK_ASSET_NOTICE?: string;
+  BK_NATURE_business_event?: string;
   BK_PREPACKAGED_EVENT?: string;
   BK_PRIOR_FILING_EVENT?: string;
-  PP_EVENT?: string;
-  sfi_event?: string;
-  sfc_event?: string;
-  ST6_event?: string;
-  ST6_WD_event?: string;
+  BK_SMALL_BUS_EVENT?: string;
+  CASE_ID: string = '';
+  CASE_NUMBER_EVENT?: string;
+  CF_VALUE?: string = '';
+  COURT_ID: string = '';
+  CS_CASE_NUMBER: string = '';
+  CS_CASEID: string = '';
+  CS_CHAPTER: string = '';
+  CS_CLOSED?: string;
+  CS_COUNTY: string = '';
+  CS_DATE_CONVERT?: string;
+  CS_DATE_DISCHARGE?: string;
+  CS_DATE_DISMISS?: string;
+  CS_DATE_FILED: string = '';
+  CS_DATE_REOPEN?: string;
+  CS_DATE_TERM?: string;
+  CS_DISP_JT_METHOD?: string;
+  CS_DISP_METHOD: string = '';
+  CS_DIV: string = '';
+  CS_FEE_STATUS: string = '';
+  CS_JOINT: string = '';
+  CS_PREV_CHAPTER?: string;
+  CS_REOPEN_CODE: string = '';
+  CS_SHORT_TITLE: string = '';
   cs_subchapter?: string;
   cs_subchapter_event?: string;
-  SPV_event?: string;
+  CS_TYPE: string = 'bk';
+  CS_VOL_INVOL: string = '';
+  DATE_FILED_EVENT?: string;
+  GRP_DES: string = '';
+  JD_EVENT?: string;
+  JD_FIRST_NAME?: string;
+  JD_LAST_NAME?: string;
+  JD_MIDDLE_NAME?: string;
+  LAST_DATE_ENTER?: string;
+  PP_EVENT?: string;
+  sfc_event?: string;
+  sfi_event?: string;
   SPN_event?: string;
+  SPV_event?: string;
+  ST6_event?: string;
+  ST6_WD_event?: string;
 
   constructor(props: AO_CS_RecordProps) {
     Object.assign(this, props);
-  }
-
-  validate() {
-    // TODO: Implement this schema validation.
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -279,6 +275,10 @@ export class AO_CS_Record implements TableRecordHelper {
       this.SPV_event,
       this.SPN_event,
     ];
+  }
+
+  validate() {
+    // TODO: Implement this schema validation.
   }
 }
 

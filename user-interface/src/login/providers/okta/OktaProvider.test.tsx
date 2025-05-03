@@ -1,15 +1,16 @@
-import { describe } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import * as oktaReactModule from '@okta/okta-react';
-import { OktaProvider } from './OktaProvider';
-import { PropsWithChildren } from 'react';
 import * as libraryModule from '@/login/login-library';
 import { EnvLoginConfig } from '@common/cams/login';
+import * as oktaReactModule from '@okta/okta-react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { PropsWithChildren } from 'react';
+import { describe } from 'vitest';
+
+import { OktaProvider } from './OktaProvider';
 
 describe('OktaProvider', () => {
   const mockConfiguration: EnvLoginConfig = {
-    issuer: 'https://dev-00000000.okta.com/oauth2/default',
     clientId: '00000000000000000000',
+    issuer: 'https://dev-00000000.okta.com/oauth2/default',
     redirectUri: 'http://localhost:3000/login-continue',
   };
 

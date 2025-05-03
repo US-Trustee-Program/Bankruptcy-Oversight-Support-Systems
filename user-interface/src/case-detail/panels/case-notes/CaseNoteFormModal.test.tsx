@@ -1,22 +1,23 @@
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import Api2 from '@/lib/models/api2';
+import LocalFormCache from '@/lib/utils/local-form-cache';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CaseNoteInput } from '@common/cams/cases';
+import { CamsSession, getCamsUserReference } from '@common/cams/session';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { randomUUID } from 'crypto';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
 import CaseNoteFormModal, {
   CaseNoteFormModalOpenProps,
   CaseNoteFormModalProps,
   CaseNoteFormModalRef,
   getCaseNotesInputValue,
 } from './CaseNoteFormModal';
-import { render, screen, waitFor } from '@testing-library/react';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
-import { BrowserRouter } from 'react-router-dom';
-import React from 'react';
-import userEvent from '@testing-library/user-event';
-import Api2 from '@/lib/models/api2';
-import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import MockData from '@common/cams/test-utilities/mock-data';
-import LocalStorage from '@/lib/utils/local-storage';
-import { randomUUID } from 'crypto';
-import LocalFormCache from '@/lib/utils/local-form-cache';
-import { CamsSession, getCamsUserReference } from '@common/cams/session';
-import { CaseNoteInput } from '@common/cams/cases';
 
 const title = 'Test Case Note Title';
 const content = 'Test Case Note Content';
@@ -33,49 +34,13 @@ const notesSubmissionErrorMessage = 'There was a problem submitting the case not
 const modalOpenButtonRef = React.createRef<OpenModalButtonRef>();
 let session: CamsSession;
 
-function renderWithProps(
-  modalRef: React.RefObject<CaseNoteFormModalRef>,
-  modalProps?: Partial<CaseNoteFormModalProps>,
-  openProps?: Partial<CaseNoteFormModalOpenProps>,
-) {
-  const defaultModalProps = {
-    modalId,
-    ref: modalOpenButtonRef,
-  };
-
-  const defaultOpenProps = {
-    caseId: testCaseId,
-    callback: vi.fn(),
-  };
-
-  const modalRenderProps = { ...defaultModalProps, ...modalProps };
-  const openRenderProps = { ...defaultOpenProps, ...openProps };
-  render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <>
-          <OpenModalButton
-            modalId={modalId}
-            modalRef={modalRef}
-            openProps={openRenderProps}
-            ref={modalOpenButtonRef}
-          >
-            Open Modal
-          </OpenModalButton>
-          <CaseNoteFormModal {...modalRenderProps} ref={modalRef} modalId={modalId} />
-        </>
-      </BrowserRouter>
-    </React.StrictMode>,
-  );
-}
-
 async function openWithExpectedContent(data: CaseNoteInput) {
   const modalRef = React.createRef<CaseNoteFormModalRef>();
   const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
-    id: data.id ?? undefined,
     caseId: data.caseId,
-    title: data.title,
     content: data.content,
+    id: data.id ?? undefined,
+    title: data.title,
   };
 
   renderWithProps(modalRef, {}, noteOpenProps);
@@ -97,22 +62,58 @@ async function openWithExpectedContent(data: CaseNoteInput) {
   return modal;
 }
 
+function renderWithProps(
+  modalRef: React.RefObject<CaseNoteFormModalRef>,
+  modalProps?: Partial<CaseNoteFormModalProps>,
+  openProps?: Partial<CaseNoteFormModalOpenProps>,
+) {
+  const defaultModalProps = {
+    modalId,
+    ref: modalOpenButtonRef,
+  };
+
+  const defaultOpenProps = {
+    callback: vi.fn(),
+    caseId: testCaseId,
+  };
+
+  const modalRenderProps = { ...defaultModalProps, ...modalProps };
+  const openRenderProps = { ...defaultOpenProps, ...openProps };
+  render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <>
+          <OpenModalButton
+            modalId={modalId}
+            modalRef={modalRef}
+            openProps={openRenderProps}
+            ref={modalOpenButtonRef}
+          >
+            Open Modal
+          </OpenModalButton>
+          <CaseNoteFormModal {...modalRenderProps} modalId={modalId} ref={modalRef} />
+        </>
+      </BrowserRouter>
+    </React.StrictMode>,
+  );
+}
+
 async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string) {
   const note = MockData.getCaseNote();
   const modalRef = React.createRef<CaseNoteFormModalRef>();
   vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
     caseId: note.caseId,
-    title: cachedTitle,
     content: cachedContent,
+    title: cachedTitle,
   });
   const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
   const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
   const noteId = randomUUID();
   const noteOpenProps: Partial<CaseNoteFormModalOpenProps> = {
-    id: noteId,
     caseId: note.caseId,
-    title: '',
     content: '',
+    id: noteId,
+    title: '',
   };
 
   renderWithProps(modalRef, {}, noteOpenProps);
@@ -143,8 +144,8 @@ async function setUpAndLoadFromCache(cachedTitle: string, cachedContent: string)
 
   const expectedSaveContent = {
     caseId: note.caseId,
-    title: newTitle,
     content: newContent,
+    title: newTitle,
   };
 
   expect(saveFormSpy).toHaveBeenCalled();
@@ -171,8 +172,8 @@ describe('case note tests', () => {
 
     const modal = await openWithExpectedContent({
       caseId: testCaseId,
-      title: '',
       content: '',
+      title: '',
     });
 
     const titleInput = screen.getByTestId(titleInputId);
@@ -188,9 +189,9 @@ describe('case note tests', () => {
       expect(modal).not.toHaveClass('is-visible');
     });
     expect(postNoteSpy).toHaveBeenCalledWith({
-      title: editedNoteTitleText,
-      content: editedNoteContentText,
       caseId: testCaseId,
+      content: editedNoteContentText,
+      title: editedNoteTitleText,
       updatedBy: getCamsUserReference(session.user),
     });
   });
@@ -204,10 +205,10 @@ describe('case note tests', () => {
     putNoteSpy.mockResolvedValue(note.id);
 
     const modal = await openWithExpectedContent({
-      id: note.id,
       caseId: testCaseId,
-      title: note.title,
       content: note.content,
+      id: note.id,
+      title: note.title,
     });
 
     const titleInput = screen.getByTestId(titleInputId);
@@ -321,10 +322,10 @@ describe('case note tests', () => {
       modalRef,
       {},
       {
-        id: randomUUID(),
-        content: editedNoteContentText,
-        title: editedNoteTitleText,
         caseId: '111-22-33333',
+        content: editedNoteContentText,
+        id: randomUUID(),
+        title: editedNoteTitleText,
       },
     );
 
@@ -359,10 +360,10 @@ describe('case note tests', () => {
       modalRef,
       {},
       {
-        id: randomUUID(),
-        content: editedNoteContentText,
-        title: editedNoteTitleText,
         caseId: '111-22-33333',
+        content: editedNoteContentText,
+        id: randomUUID(),
+        title: editedNoteTitleText,
       },
     );
 

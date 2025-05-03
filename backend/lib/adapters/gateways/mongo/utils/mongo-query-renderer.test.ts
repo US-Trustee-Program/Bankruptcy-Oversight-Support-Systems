@@ -2,13 +2,13 @@ import QueryBuilder, { Field, Query } from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
 type Foo = {
-  uno: string;
-  two: number;
   three: boolean;
+  two: number;
+  uno: string;
 };
 
 describe('Mongo Query Renderer', () => {
-  const { and, or, not, using } = QueryBuilder;
+  const { and, not, or, using } = QueryBuilder;
   const doc = using<Foo>();
 
   test('should render a mongo query JSON', () => {
@@ -42,58 +42,58 @@ describe('Mongo Query Renderer', () => {
   const queries = [
     {
       caseName: 'EXISTS',
-      func: () => doc('two').exists(),
       expected: { two: { $exists: true } },
+      func: () => doc('two').exists(),
     },
     {
       caseName: 'EQUALS',
-      func: () => doc('two').equals(45),
       expected: { two: { $eq: 45 } },
+      func: () => doc('two').equals(45),
     },
     {
       caseName: 'GREATER_THAN',
-      func: () => doc('two').greaterThan(45),
       expected: { two: { $gt: 45 } },
+      func: () => doc('two').greaterThan(45),
     },
     {
       caseName: 'GREATER_THAN_OR_EQUAL',
-      func: () => doc('two').greaterThanOrEqual(45),
       expected: { two: { $gte: 45 } },
+      func: () => doc('two').greaterThanOrEqual(45),
     },
     {
       caseName: 'CONTAINS',
-      func: () => doc('two').contains([45]),
       expected: { two: { $in: [45] } },
+      func: () => doc('two').contains([45]),
     },
     {
       caseName: 'LESS_THAN',
-      func: () => doc('two').lessThan(45),
       expected: { two: { $lt: 45 } },
+      func: () => doc('two').lessThan(45),
     },
     {
       caseName: 'LESS_THAN_OR_EQUAL',
-      func: () => doc('two').lessThanOrEqual(45),
       expected: { two: { $lte: 45 } },
+      func: () => doc('two').lessThanOrEqual(45),
     },
     {
       caseName: 'NOT_EQUALS',
-      func: () => doc('two').notEqual(45),
       expected: { two: { $ne: 45 } },
+      func: () => doc('two').notEqual(45),
     },
     {
       caseName: 'NOT_CONTAINS',
-      func: () => doc('two').notContains([45]),
       expected: { two: { $nin: [45] } },
+      func: () => doc('two').notContains([45]),
     },
     {
       caseName: 'REGEX w/ regex',
-      func: () => doc('two').regex(/45/),
       expected: { two: { $regex: /45/ } },
+      func: () => doc('two').regex(/45/),
     },
     {
       caseName: 'REGEX w/ string',
-      func: () => doc('two').regex('45'),
       expected: { two: { $regex: '45' } },
+      func: () => doc('two').regex('45'),
     },
   ];
 
@@ -105,18 +105,18 @@ describe('Mongo Query Renderer', () => {
   const conjunctions = [
     {
       caseName: 'AND',
-      func: () => and(doc('two').equals(45)),
       expected: { $and: [{ two: { $eq: 45 } }] },
+      func: () => and(doc('two').equals(45)),
     },
     {
       caseName: 'OR',
-      func: () => or(doc('two').equals(45)),
       expected: { $or: [{ two: { $eq: 45 } }] },
+      func: () => or(doc('two').equals(45)),
     },
     {
       caseName: 'NOT',
-      func: () => not(doc('two').equals(45)),
       expected: { $not: [{ two: { $eq: 45 } }] },
+      func: () => not(doc('two').equals(45)),
     },
   ];
 
@@ -127,7 +127,7 @@ describe('Mongo Query Renderer', () => {
 
   type ExprTest = {
     condition: string;
-    fn: (rightOperand: string | Field<Foo>) => Query<Foo>;
+    fn: (rightOperand: Field<Foo> | string) => Query<Foo>;
     mongoOperation: string;
   };
   const exprTests: ExprTest[] = [
@@ -180,8 +180,8 @@ describe('Mongo Query Renderer', () => {
 
   test('should render a sort expression', () => {
     const expected = {
-      foo: 1,
       bar: -1,
+      foo: 1,
     };
     const actual = toMongoSort({
       fields: [

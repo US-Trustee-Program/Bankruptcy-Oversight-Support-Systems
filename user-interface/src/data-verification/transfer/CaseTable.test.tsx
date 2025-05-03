@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { CaseTable } from './CaseTable';
 import { CaseSummary } from '@common/cams/cases';
 import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import { CaseTable } from './CaseTable';
 
 const cases: Array<CaseSummary> = [
   MockData.getCaseSummary(),
@@ -23,7 +24,7 @@ describe('CaseTable component', () => {
       const bCase = MockData.getCaseSummary({ override: { debtor } });
       render(
         <BrowserRouter>
-          <CaseTable id="test-case-table" cases={[bCase]}></CaseTable>
+          <CaseTable cases={[bCase]} id="test-case-table"></CaseTable>
         </BrowserRouter>,
       );
 
@@ -39,7 +40,7 @@ describe('CaseTable component', () => {
       const onSelect = vi.fn();
       render(
         <BrowserRouter>
-          <CaseTable id="test-case-table" cases={[...cases, null]} onSelect={onSelect}></CaseTable>
+          <CaseTable cases={[...cases, null]} id="test-case-table" onSelect={onSelect}></CaseTable>
         </BrowserRouter>,
       );
 
@@ -50,7 +51,7 @@ describe('CaseTable component', () => {
     test('should render an empty row if onSelect is provided', () => {
       render(
         <BrowserRouter>
-          <CaseTable id="test-case-table" cases={[...cases, null]}></CaseTable>
+          <CaseTable cases={[...cases, null]} id="test-case-table"></CaseTable>
         </BrowserRouter>,
       );
 
@@ -63,7 +64,7 @@ describe('CaseTable component', () => {
     test('should render a table of cases', () => {
       render(
         <BrowserRouter>
-          <CaseTable id="test-case-table" cases={cases}></CaseTable>
+          <CaseTable cases={cases} id="test-case-table"></CaseTable>
         </BrowserRouter>,
       );
 
@@ -84,7 +85,7 @@ describe('CaseTable component', () => {
     const renderWithoutProps = () => {
       render(
         <BrowserRouter>
-          <CaseTable id="test-case-table" cases={cases} onSelect={onSelect}></CaseTable>
+          <CaseTable cases={cases} id="test-case-table" onSelect={onSelect}></CaseTable>
         </BrowserRouter>,
       );
     };

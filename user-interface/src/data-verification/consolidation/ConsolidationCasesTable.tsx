@@ -1,6 +1,12 @@
 import './ConsolidationCasesTable.scss';
+
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
+import { formatDate } from '@/lib/utils/datetime';
 import { ConsolidationOrderCase } from '@common/cams/orders';
 import {
   forwardRef,
@@ -11,33 +17,28 @@ import {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { formatDate } from '@/lib/utils/datetime';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Checkbox, { CheckboxRef, CheckboxState } from '@/lib/components/uswds/Checkbox';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+
+export interface ConsolidationCaseTableProps {
+  cases: Array<ConsolidationOrderCase>;
+  displayDocket?: boolean;
+  id: string;
+  isDataEnhanced: boolean;
+  leadCaseId?: string;
+  onMarkLead?: (bCase: ConsolidationOrderCase) => void;
+  onSelect?: (bCase: ConsolidationOrderCase) => void;
+  updateAllSelections?: (caseList: ConsolidationOrderCase[]) => void;
+}
 
 export type OrderTableImperative = {
   clearAllCheckboxes: () => void;
   selectAllCheckboxes: () => void;
 };
 
-export interface ConsolidationCaseTableProps {
-  id: string;
-  cases: Array<ConsolidationOrderCase>;
-  leadCaseId?: string;
-  onSelect?: (bCase: ConsolidationOrderCase) => void;
-  updateAllSelections?: (caseList: ConsolidationOrderCase[]) => void;
-  isDataEnhanced: boolean;
-  displayDocket?: boolean;
-  onMarkLead?: (bCase: ConsolidationOrderCase) => void;
-}
-
 function _ConsolidationCaseTable(
   props: ConsolidationCaseTableProps,
   OrderTableRef: React.Ref<OrderTableImperative>,
 ) {
-  const { id, cases, leadCaseId, onSelect, updateAllSelections, onMarkLead } = props;
+  const { cases, id, leadCaseId, onMarkLead, onSelect, updateAllSelections } = props;
 
   const toggleCheckboxRef = useRef<CheckboxRef>(null);
   const [included, setIncluded] = useState<Array<number>>([]);
@@ -130,20 +131,20 @@ function _ConsolidationCaseTable(
       <h3>Cases to Consolidate</h3>
       <table
         className="usa-table usa-table--borderless consolidation-cases-table"
-        id={`id-${id}`}
         data-testid={id}
+        id={`id-${id}`}
       >
         <thead>
           <tr>
             {onSelect && (
               <th scope="col">
                 <Checkbox
-                  id={`${id}-checkbox-toggle`}
                   className="checkbox-toggle"
+                  id={`${id}-checkbox-toggle`}
                   onChange={toggleAllCheckBoxes}
-                  value={checkboxGroupState}
-                  title="select all cases"
                   ref={toggleCheckboxRef}
+                  title="select all cases"
+                  value={checkboxGroupState}
                 ></Checkbox>
               </th>
             )}
@@ -159,16 +160,16 @@ function _ConsolidationCaseTable(
             ?.reduce((accumulator: ReactNode[], bCase, idx) => {
               const key = `${id}-row-${idx}`;
               accumulator.push(
-                <tr key={`${key}-case-info`} data-testid={`${key}-case-info`} className="case-info">
+                <tr className="case-info" data-testid={`${key}-case-info`} key={`${key}-case-info`}>
                   {onSelect && (
                     <td>
                       <Checkbox
-                        id={`case-selection-${id}-${idx}`}
-                        onChange={handleCaseSelection}
-                        name="case-selection"
-                        value={idx}
-                        title={`select ${bCase.caseTitle}`}
                         checked={included.includes(idx)}
+                        id={`case-selection-${id}-${idx}`}
+                        name="case-selection"
+                        onChange={handleCaseSelection}
+                        title={`select ${bCase.caseTitle}`}
+                        value={idx}
                       ></Checkbox>
                     </td>
                   )}
@@ -185,9 +186,9 @@ function _ConsolidationCaseTable(
                   <td className="text-no-wrap">
                     {!props.isDataEnhanced && (
                       <LoadingSpinner
-                        id={`loading-spinner-case-assignment-${bCase.caseId}`}
-                        height="1rem"
                         caption="Loading..."
+                        height="1rem"
+                        id={`loading-spinner-case-assignment-${bCase.caseId}`}
                       />
                     )}
                     {props.isDataEnhanced &&
@@ -208,20 +209,20 @@ function _ConsolidationCaseTable(
               );
               accumulator.push(
                 <tr
-                  key={`${key}-docket-entry`}
-                  data-testid={`${key}-docket-entry`}
                   className="docket-entry"
+                  data-testid={`${key}-docket-entry`}
+                  key={`${key}-docket-entry`}
                 >
                   {onSelect && <td></td>}
-                  <td colSpan={5} className="measure-6">
+                  <td className="measure-6" colSpan={5}>
                     <div>
                       <Button
-                        id={`assign-lead-${id}-${idx}`}
-                        uswdsStyle={setLeadCaseStyle(bCase.caseId)}
-                        className="mark-as-lead-button"
-                        role="switch"
                         aria-checked={bCase.caseId === leadCaseId}
+                        className="mark-as-lead-button"
+                        id={`assign-lead-${id}-${idx}`}
                         onClick={() => handleLeadCaseButton(bCase)}
+                        role="switch"
+                        uswdsStyle={setLeadCaseStyle(bCase.caseId)}
                       >
                         {setLeadCaseButtonLabels(bCase.caseId)}
                       </Button>
@@ -232,9 +233,9 @@ function _ConsolidationCaseTable(
                         return (
                           <div key={`${key}-docket-entry-${idx}`}>
                             <Link
-                              to={`/case-detail/${bCase.caseId}/court-docket?document=${docketEntry.documentNumber}`}
                               target="_blank"
                               title={`Open case ${bCase.caseId} docket in new window`}
+                              to={`/case-detail/${bCase.caseId}/court-docket?document=${docketEntry.documentNumber}`}
                             >
                               {docketEntry.documentNumber && (
                                 <span className="document-number">
@@ -253,10 +254,10 @@ function _ConsolidationCaseTable(
                     {(bCase.associations?.length ?? 0) > 0 && (
                       <Alert
                         inline={true}
-                        show={true}
                         message={
                           'This case is already part of a consolidation. Uncheck it to consolidate the other cases.'
                         }
+                        show={true}
                         type={UswdsAlertStyle.Warning}
                       ></Alert>
                     )}

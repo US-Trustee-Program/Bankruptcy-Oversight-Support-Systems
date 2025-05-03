@@ -1,28 +1,29 @@
-import handler from './case.assignment.function';
-import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
-import ContextCreator from '../../azure/application-context-creator';
+import { InvocationContext } from '@azure/functions';
+
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
-import { InvocationContext } from '@azure/functions';
+import { CamsError } from '../../../lib/common-errors/cams-error';
+import { UnknownError } from '../../../lib/common-errors/unknown-error';
+import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import ContextCreator from '../../azure/application-context-creator';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import handler from './case.assignment.function';
 
 describe('Case Assignment Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
-    method: 'POST',
     body: {
-      caseId: '081-67-89123',
       attorneyList: ['Bob Bob'],
+      caseId: '081-67-89123',
       role: 'TrialAttorney',
     },
+    method: 'POST',
   };
 
   let context;
@@ -32,8 +33,8 @@ describe('Case Assignment Function Tests', () => {
       .spyOn(ContextCreator, 'getApplicationContextSession')
       .mockResolvedValue(MockData.getManhattanAssignmentManagerSession());
     context = new InvocationContext({
-      logHandler: () => {},
       invocationId: 'id',
+      logHandler: () => {},
     });
   });
 
@@ -42,7 +43,7 @@ describe('Case Assignment Function Tests', () => {
   });
 
   test('Return the function response with the assignment Id created for the new case assignment', async () => {
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess(undefined, {
       statusCode: HttpStatusCodes.CREATED,
     });
     jest
@@ -75,8 +76,8 @@ describe('Case Assignment Function Tests', () => {
     async (_caseName: string, caseId: string, role: string, message: string) => {
       const requestOverride = {
         body: {
-          caseId,
           attorneyList: ['Bob', 'Denise'],
+          caseId,
           role,
         },
       };
@@ -100,8 +101,8 @@ describe('Case Assignment Function Tests', () => {
 
     const requestOverride = {
       body: {
-        caseId: '001-67-89123',
         attorneyList: ['John Doe'],
+        caseId: '001-67-89123',
         role: 'TrialAttorney',
       },
     };
@@ -118,11 +119,11 @@ describe('Case Assignment Function Tests', () => {
   test('Should return a list of assignments when valid caseId is supplied for GET request', async () => {
     const caseId = '001-67-89012';
     const requestOverride: Partial<CamsHttpRequest> = {
+      body: undefined,
       method: 'GET',
       params: {
         id: caseId,
       },
-      body: undefined,
     };
 
     const request = createMockAzureFunctionRequest({

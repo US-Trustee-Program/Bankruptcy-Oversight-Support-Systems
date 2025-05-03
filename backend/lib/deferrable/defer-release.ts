@@ -4,14 +4,6 @@ export interface DeferReleaseAccumulator {
   releasables: Releasable[];
 }
 
-function isReleasable(obj: unknown): obj is Releasable {
-  return typeof obj === 'object' && 'release' in obj;
-}
-
-function isDeferReleaseAccumulator(obj: unknown): obj is DeferReleaseAccumulator {
-  return typeof obj === 'object' && 'releasables' in obj;
-}
-
 export function deferRelease(accumulator: unknown, releasable: unknown): boolean {
   if (isDeferReleaseAccumulator(accumulator)) {
     if (isReleasable(releasable)) {
@@ -34,4 +26,12 @@ export async function releaseDeferred(accumulator: unknown): Promise<boolean> {
     return success;
   }
   return false;
+}
+
+function isDeferReleaseAccumulator(obj: unknown): obj is DeferReleaseAccumulator {
+  return typeof obj === 'object' && 'releasables' in obj;
+}
+
+function isReleasable(obj: unknown): obj is Releasable {
+  return typeof obj === 'object' && 'release' in obj;
 }

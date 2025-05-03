@@ -1,6 +1,8 @@
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import { AttorneyUser, Staff } from '../../../../common/src/cams/users';
+import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
   getOfficeAssigneesRepository,
   getOfficesGateway,
@@ -10,14 +12,28 @@ import {
   getUserGroupGateway,
 } from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
-import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
-import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
 
 export class OfficesUseCase {
+  public async getOfficeAssignees(
+    context: ApplicationContext,
+    officeCode: string,
+  ): Promise<Staff[]> {
+    const repository = getOfficeAssigneesRepository(context);
+    return await repository.getDistinctAssigneesByOffice(officeCode);
+  }
+
+  public async getOfficeAttorneys(
+    context: ApplicationContext,
+    officeCode: string,
+  ): Promise<AttorneyUser[]> {
+    const repository = getOfficesRepository(context);
+    return await repository.getOfficeAttorneys(officeCode);
+  }
+
   public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
     const officesGateway = getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
@@ -36,22 +52,6 @@ export class OfficesUseCase {
     });
 
     return offices;
-  }
-
-  public async getOfficeAttorneys(
-    context: ApplicationContext,
-    officeCode: string,
-  ): Promise<AttorneyUser[]> {
-    const repository = getOfficesRepository(context);
-    return await repository.getOfficeAttorneys(officeCode);
-  }
-
-  public async getOfficeAssignees(
-    context: ApplicationContext,
-    officeCode: string,
-  ): Promise<Staff[]> {
-    const repository = getOfficeAssigneesRepository(context);
-    return await repository.getDistinctAssigneesByOffice(officeCode);
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
@@ -132,11 +132,11 @@ export class OfficesUseCase {
     }
 
     const result: OfficeStaffSyncState = {
-      id: 'OFFICE_STAFF_SYNC_STATE',
       documentType: 'OFFICE_STAFF_SYNC_STATE',
+      id: 'OFFICE_STAFF_SYNC_STATE',
+      officesWithUsers,
       userGroups,
       users: [...userMap.values()],
-      officesWithUsers,
     };
 
     const runtimeStateRepo = getOfficeStaffSyncStateRepo(context);

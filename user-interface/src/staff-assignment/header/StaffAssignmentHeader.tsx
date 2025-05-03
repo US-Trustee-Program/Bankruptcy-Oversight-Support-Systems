@@ -4,7 +4,7 @@ import { SearchResultsHeaderProps } from '@/search-results/SearchResults';
 export function StaffAssignmentHeader(props: SearchResultsHeaderProps) {
   const { id } = props;
   return (
-    <TableHeader id={id} className="case-headings">
+    <TableHeader className="case-headings" id={id}>
       <TableHeaderData className="grid-col-3">Case Number (Division)</TableHeaderData>
       <TableHeaderData className="grid-col-3">Case Title</TableHeaderData>
       <TableHeaderData className="grid-col-1">Chapter</TableHeaderData>

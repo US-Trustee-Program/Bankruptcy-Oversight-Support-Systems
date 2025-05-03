@@ -10,8 +10,8 @@ export class MockOfficesGateway implements OfficesGateway {
   getOfficeName(id: string): string {
     if (USTP_OFFICE_NAME_MAP.has(id)) return USTP_OFFICE_NAME_MAP.get(id);
     throw new CamsError(MODULE_NAME, {
-      message: 'Cannot find office by ID',
       data: { id },
+      message: 'Cannot find office by ID',
     });
   }
 

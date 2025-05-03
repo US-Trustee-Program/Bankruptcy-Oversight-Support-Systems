@@ -1,13 +1,13 @@
-import OfficesDxtrGateway from './offices.dxtr.gateway';
-import { ApplicationContext } from '../../types/basic';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import * as database from '../../utils/database';
-import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';
-import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
 import {
   MOCKED_USTP_OFFICES_ARRAY,
   UstpOfficeDetails,
 } from '../../../../../common/src/cams/offices';
+import { COURT_DIVISIONS } from '../../../../../common/src/cams/test-utilities/courts.mock';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
+import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';
+import * as database from '../../utils/database';
+import OfficesDxtrGateway from './offices.dxtr.gateway';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {
@@ -48,11 +48,11 @@ describe('offices gateway tests', () => {
 
     test('Should get Offices', async () => {
       const mockResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: COURT_DIVISIONS,
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValue(mockResults);
 
@@ -72,9 +72,9 @@ describe('offices gateway tests', () => {
 
     test('should throw error when success is false calling getOffices', async () => {
       const mockResults: QueryResults = {
-        success: false,
-        results: {},
         message: 'Some expected SQL error.',
+        results: {},
+        success: false,
       };
       querySpy.mockResolvedValue(mockResults);
 

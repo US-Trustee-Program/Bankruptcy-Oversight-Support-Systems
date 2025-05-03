@@ -1,6 +1,16 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import Input, { InputProps } from './uswds/Input';
+
 import { InputRef } from '../type-declarations/input-fields';
+import Input, { InputProps } from './uswds/Input';
+
+type CaseNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
+  allowEnterKey?: boolean;
+  allowPartialCaseNumber?: boolean;
+  onChange: (caseNumber?: string) => void;
+  onDisable?: () => void;
+  onEnable?: () => void;
+  onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
+};
 
 export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>) {
   const allowedCharsPattern = /[0-9]/g;
@@ -17,23 +27,14 @@ export function validateCaseNumberInput(ev: React.ChangeEvent<HTMLInputElement>)
   return { caseNumber, joinedInput };
 }
 
-type CaseNumberInputProps = Omit<InputProps, 'onChange' | 'onFocus'> & {
-  onChange: (caseNumber?: string) => void;
-  onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
-  onDisable?: () => void;
-  onEnable?: () => void;
-  allowEnterKey?: boolean;
-  allowPartialCaseNumber?: boolean;
-};
-
 function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<InputRef>) {
   const {
-    onChange,
-    onEnable,
-    onDisable,
-    onFocus,
     allowEnterKey,
     allowPartialCaseNumber,
+    onChange,
+    onDisable,
+    onEnable,
+    onFocus,
     ...otherProps
   } = props;
   const [isDisabled, setIsDisabled] = useState<boolean>(false);
@@ -93,7 +94,7 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
     forwardedRef?.current?.focus();
   }
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
+  useImperativeHandle(ref, () => ({ clearValue, disable, focus, getValue, resetValue, setValue }));
 
   useEffect(() => {
     if (isDisabled && onDisable) {
@@ -106,14 +107,14 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   return (
     <Input
       {...otherProps}
-      ref={forwardedRef}
-      onChange={handleOnChange}
-      onKeyDown={handleEnter}
-      onFocus={handleOnFocus}
-      includeClearButton={true}
-      ariaDescription="For example, 12-34567"
-      placeholder="__-_____"
       aria-placeholder=""
+      ariaDescription="For example, 12-34567"
+      includeClearButton={true}
+      onChange={handleOnChange}
+      onFocus={handleOnFocus}
+      onKeyDown={handleEnter}
+      placeholder="__-_____"
+      ref={forwardedRef}
     ></Input>
   );
 }

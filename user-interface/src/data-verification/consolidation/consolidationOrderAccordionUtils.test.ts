@@ -2,12 +2,12 @@ import {
   fetchLeadCaseAttorneys,
   getCurrentLeadCaseId,
 } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
-import { CaseAssignment } from '@common/cams/assignments';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { ConsolidationOrder } from '@common/cams/orders';
-import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
+import { CaseAssignment } from '@common/cams/assignments';
+import { ConsolidationOrder } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 describe('consolidationOrderAccordion presenter tests', () => {
   let mockFeatureFlags: FeatureFlagSet;

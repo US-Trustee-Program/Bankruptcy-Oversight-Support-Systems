@@ -1,24 +1,25 @@
-import { azureToCamsHttpRequest, toAzureSuccess } from './functions';
 import { HttpRequest, HttpResponseInit } from '@azure/functions';
+
 import { CamsHttpRequest } from '../../lib/adapters/types/http';
 import { CamsHttpResponseInit } from '../../lib/adapters/utils/http-response';
+import { azureToCamsHttpRequest, toAzureSuccess } from './functions';
 
 describe('function-apps test', () => {
   test('should return properly formatted CamsHttpRequest from malformed headers and query', async () => {
     const request = {
       method: 'GET',
-      url: '/test',
-      query: 'bar',
       params: { arg1: 'hello' },
+      query: 'bar',
+      url: '/test',
     } as unknown as HttpRequest;
 
     const expected: CamsHttpRequest = {
-      method: 'GET',
-      url: '/test',
-      headers: {},
-      query: {},
-      params: { arg1: 'hello' },
       body: undefined,
+      headers: {},
+      method: 'GET',
+      params: { arg1: 'hello' },
+      query: {},
+      url: '/test',
     };
 
     const response = await azureToCamsHttpRequest(request);
@@ -32,14 +33,14 @@ describe('function-apps test', () => {
 
   test('should return Azure response init', () => {
     const camsResponseInit: CamsHttpResponseInit<{ prop1: boolean }> = {
+      body: { data: { prop1: true } },
       headers: { foo: 'bar' },
       statusCode: 200,
-      body: { data: { prop1: true } },
     };
     const expected: HttpResponseInit = {
       headers: { foo: 'bar' },
-      status: 200,
       jsonBody: { data: { prop1: true } },
+      status: 200,
     };
     const responseInit = toAzureSuccess(camsResponseInit);
     expect(responseInit).toEqual(expected);

@@ -1,11 +1,12 @@
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { TransferOrder } from '@common/cams/orders';
-import { FromCaseSummary } from './FromCaseSummary';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
+import { TransferOrder } from '@common/cams/orders';
+
+import { FromCaseSummary } from './FromCaseSummary';
 
 type ApprovedTransferOrderProps = {
-  order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
+  order: TransferOrder;
 };
 
 export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
@@ -50,7 +51,7 @@ export function ApprovedTransferOrder(props: ApprovedTransferOrderProps) {
         </div>
         <div className="grid-col-1"></div>
       </div>
-      <FromCaseSummary order={order} onOrderUpdate={props.onOrderUpdate} />
+      <FromCaseSummary onOrderUpdate={props.onOrderUpdate} order={order} />
     </>
   );
 }

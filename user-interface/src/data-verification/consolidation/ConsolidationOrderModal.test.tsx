@@ -1,19 +1,19 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import {
-  ConsolidationOrderModal,
   ConfirmationModalImperative,
+  ConsolidationOrderModal,
   ConsolidationOrderModalProps,
   formatListForDisplay,
 } from '@/data-verification/consolidation/ConsolidationOrderModal';
-import { BrowserRouter } from 'react-router-dom';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseAssignment } from '@common/cams/assignments';
+import Api2 from '@/lib/models/api2';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { ResponseBody } from '@common/api/response';
+import { CaseAssignment } from '@common/cams/assignments';
 import { CaseSummary } from '@common/cams/cases';
 import { Consolidation } from '@common/cams/events';
-import Api2 from '@/lib/models/api2';
-import { ResponseBody } from '@common/api/response';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('ConsolidationOrderModalComponent', () => {
   const onCancelSpy = vitest.fn();
@@ -22,10 +22,10 @@ describe('ConsolidationOrderModalComponent', () => {
   function renderModalWithProps(props: Partial<ConsolidationOrderModalProps> = {}) {
     const modalRef = React.createRef<ConfirmationModalImperative>();
     const defaultProps: ConsolidationOrderModalProps = {
+      courts: [],
       id: 'mock-modal-id',
       onCancel: onCancelSpy,
       onConfirm: onConfirmSpy,
-      courts: [],
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -50,9 +50,9 @@ describe('ConsolidationOrderModalComponent', () => {
     const onCancelSpy = vitest.fn();
 
     // Render and activate the modal.
-    const view = renderModalWithProps({ id, onConfirm: onConfirmSpy, onCancel: onCancelSpy });
+    const view = renderModalWithProps({ id, onCancel: onCancelSpy, onConfirm: onConfirmSpy });
     await waitFor(() => {
-      view.current?.show({ status: 'rejected', cases });
+      view.current?.show({ cases, status: 'rejected' });
     });
 
     // Check heading
@@ -76,12 +76,12 @@ describe('ConsolidationOrderModalComponent', () => {
     expect(rejectButton).not.toBeDisabled();
     fireEvent.click(rejectButton!);
     expect(onConfirmSpy).toHaveBeenCalledWith({
-      status: 'rejected',
       rejectionReason: rejectionTextValue,
+      status: 'rejected',
     });
 
     await waitFor(() => {
-      view.current?.show({ status: 'rejected', cases });
+      view.current?.show({ cases, status: 'rejected' });
     });
     const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
     expect(cancelButton).toBeVisible();
@@ -113,9 +113,9 @@ describe('ConsolidationOrderModalComponent', () => {
     vi.spyOn(Api2, 'getCaseAssignments').mockResolvedValue(assignmentResponse);
 
     // Render and activate the modal.
-    const view = renderModalWithProps({ id, courts });
+    const view = renderModalWithProps({ courts, id });
     await waitFor(() => {
-      view.current?.show({ status: 'approved', cases: childCases, leadCase, consolidationType });
+      view.current?.show({ cases: childCases, consolidationType, leadCase, status: 'approved' });
     });
 
     const modal = screen.getByTestId('modal-test');
@@ -148,12 +148,12 @@ describe('ConsolidationOrderModalComponent', () => {
     });
 
     expect(onConfirmSpy).toHaveBeenCalledWith({
-      status: 'approved',
       rejectionReason: undefined,
+      status: 'approved',
     });
 
     await waitFor(() => {
-      view.current?.show({ status: 'approved', cases: childCases });
+      view.current?.show({ cases: childCases, status: 'approved' });
     });
     const cancelButton = screen.getByTestId(`button-${id}-cancel-button`);
     expect(cancelButton).toBeVisible();
@@ -169,7 +169,7 @@ describe('ConsolidationOrderModalComponent', () => {
     const view = renderModalWithProps({ id });
 
     await waitFor(() => {
-      view.current?.show({ status: 'rejected', cases });
+      view.current?.show({ cases, status: 'rejected' });
     });
 
     const button = screen.queryByTestId(`button-${id}-cancel-button`);

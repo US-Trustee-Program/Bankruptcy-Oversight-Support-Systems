@@ -1,7 +1,8 @@
+import * as configModule from '@/configuration/apiConfiguration';
 import { describe, expect } from 'vitest';
+
 import { http401Hook } from './http401-logout';
 import { LOGOUT_PATH } from './login-library';
-import * as configModule from '@/configuration/apiConfiguration';
 
 describe('Login HTTP 401 handler', () => {
   describe('http401Hook', () => {
@@ -13,24 +14,24 @@ describe('Login HTTP 401 handler', () => {
     const assign = vi.fn();
 
     const mockLocation: Location = {
+      ancestorOrigins: {
+        contains: vi.fn(),
+        item: vi.fn(),
+        length: 0,
+        [Symbol.iterator]: vi.fn(),
+      },
       assign,
-      host,
-      protocol,
       hash: '',
+      host,
       hostname: '',
       href: '',
       origin: '',
       pathname: '',
       port: '',
-      search: '',
+      protocol,
       reload: vi.fn(),
       replace: vi.fn(),
-      ancestorOrigins: {
-        length: 0,
-        item: vi.fn(),
-        contains: vi.fn(),
-        [Symbol.iterator]: vi.fn(),
-      },
+      search: '',
     } as const;
 
     beforeEach(() => {

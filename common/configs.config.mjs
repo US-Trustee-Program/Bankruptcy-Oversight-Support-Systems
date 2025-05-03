@@ -1,5 +1,4 @@
 import { createRequire } from 'module';
-import perfectionist from 'eslint-plugin-perfectionist';
 
 const require = createRequire(import.meta.url);
 
@@ -11,12 +10,11 @@ const eslintPluginPrettierRecommended = require('eslint-plugin-prettier/recommen
  * eslintJsConfig
  *
  * This ConfigArray is intended to be the base eslint configuration for all JavaScript
- * family files (e.g. `.[j|t]s`, `.[j|t]sx`).
+ * family files (e.g. `.config.[c|m]js`).
  */
-const eslintJsConfig = tsEslint.config(
+const eslintConfigsConfig = tsEslint.config(
   eslint.configs.recommended,
   eslintPluginPrettierRecommended,
-  perfectionist.configs['recommended-natural'],
 );
 
-export default eslintJsConfig;
+export default eslintConfigsConfig;

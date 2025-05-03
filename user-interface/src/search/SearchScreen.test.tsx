@@ -1,18 +1,18 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { SyncedCase } from '@common/cams/cases';
-import { render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import SearchScreen from '@/search/SearchScreen';
-import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import { MockInstance } from 'vitest';
-import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
-import userEvent from '@testing-library/user-event';
+import testingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
+import SearchScreen from '@/search/SearchScreen';
+import { ResponseBody } from '@common/api/response';
+import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
+import { SyncedCase } from '@common/cams/cases';
 import { UstpOfficeDetails } from '@common/cams/offices';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import { MockInstance } from 'vitest';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -21,22 +21,22 @@ describe('search screen', () => {
   const session = MockData.getCamsSession({ user });
   const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
   const searchResponseBody: ResponseBody<SyncedCase[]> = {
+    data: caseList,
     meta: { self: 'self-url' },
     pagination: {
       count: caseList.length,
       currentPage: 1,
       limit: DEFAULT_SEARCH_LIMIT,
     },
-    data: caseList,
   };
   const emptySearchResponseBody: ResponseBody<SyncedCase[]> = {
+    data: [],
     meta: { self: 'self-url' },
     pagination: {
       count: 0,
       currentPage: 0,
       limit: DEFAULT_SEARCH_LIMIT,
     },
-    data: [],
   };
   const includeAssignments = { includeAssignments: true };
   let searchCasesSpy: MockInstance;
@@ -61,9 +61,9 @@ describe('search screen', () => {
 
   test('should render a list of cases by chapter number', async () => {
     const divisionSearchPredicate = {
+      chapters: expect.any(Array<string>),
       limit: 25,
       offset: 0,
-      chapters: expect.any(Array<string>),
     };
 
     renderWithoutProps();
@@ -128,10 +128,10 @@ describe('search screen', () => {
 
   test('should place default court divisions at the top of the combobox list', async () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      data: MockData.getCourts(),
       meta: {
         self: '',
       },
-      data: MockData.getCourts(),
     });
 
     const courts = session.user.offices;
@@ -154,10 +154,10 @@ describe('search screen', () => {
 
   test('should render a list of cases by court division and clear selections', async () => {
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      data: MockData.getCourts(),
       meta: {
         self: '',
       },
-      data: MockData.getCourts(),
     });
 
     renderWithoutProps();
@@ -198,9 +198,9 @@ describe('search screen', () => {
     expect(rows).toHaveLength(caseList.length);
 
     const divisionSearchPredicate = {
+      divisionCodes: [...userDivisions],
       limit: 25,
       offset: 0,
-      divisionCodes: [...userDivisions],
     };
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -256,10 +256,10 @@ describe('search screen', () => {
     const caseNumber = '00-11111';
     const casesSearchPredicate: CasesSearchPredicate = {
       caseNumber,
-      limit: 25,
       divisionCodes: expect.anything(),
-      offset: 0,
       excludeChildConsolidations: false,
+      limit: 25,
+      offset: 0,
     };
 
     renderWithoutProps();

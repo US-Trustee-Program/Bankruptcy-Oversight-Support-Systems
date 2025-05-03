@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
-import { filterCourtByDivision, CourtDivisionDetails } from '@common/cams/courts';
 import { ConsolidationOrderAccordionProps } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
+import { CourtDivisionDetails, filterCourtByDivision } from '@common/cams/courts';
+import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
+import { useState } from 'react';
 
 export function useConsolidationStoreReact(
   props: ConsolidationOrderAccordionProps,
@@ -27,32 +27,32 @@ export function useConsolidationStoreReact(
 
   return {
     consolidationType,
-    setConsolidationType,
     filteredOfficesList,
-    setFilteredOfficesList,
     foundValidCaseNumber,
-    setFoundValidCaseNumber,
-    isProcessing: isConsolidationProcessing,
-    setIsProcessing: setIsConsolidationProcessing,
     isDataEnhanced,
-    setIsDataEnhanced,
+    isProcessing: isConsolidationProcessing,
     isValidatingLeadCaseNumber,
-    setIsValidatingLeadCaseNumber,
     leadCase,
-    setLeadCase,
     leadCaseCourt,
-    setLeadCaseCourt,
     leadCaseId,
-    setLeadCaseId,
     leadCaseNumber,
-    setLeadCaseNumber,
     leadCaseNumberError,
-    setLeadCaseNumberError,
     order,
-    setOrder,
     selectedCases,
+    setConsolidationType,
+    setFilteredOfficesList,
+    setFoundValidCaseNumber,
+    setIsDataEnhanced,
+    setIsProcessing: setIsConsolidationProcessing,
+    setIsValidatingLeadCaseNumber,
+    setLeadCase,
+    setLeadCaseCourt,
+    setLeadCaseId,
+    setLeadCaseNumber,
+    setLeadCaseNumberError,
+    setOrder,
     setSelectedCases,
-    showLeadCaseForm,
     setShowLeadCaseForm,
+    showLeadCaseForm,
   };
 }

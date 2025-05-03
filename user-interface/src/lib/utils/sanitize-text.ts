@@ -1,6 +1,7 @@
-import DOMPurify, { Config } from 'dompurify';
-import { useAppInsights } from '../hooks/UseApplicationInsights';
 import { IEventTelemetry } from '@microsoft/applicationinsights-web';
+import DOMPurify, { Config } from 'dompurify';
+
+import { useAppInsights } from '../hooks/UseApplicationInsights';
 import LocalStorage from './local-storage';
 
 // TODO: This is going to have to be a JSON string retrieved from the environment.

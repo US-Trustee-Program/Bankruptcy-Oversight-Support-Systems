@@ -1,12 +1,13 @@
 import { randomUUID } from 'crypto';
+
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
+import MockUsers from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import MockUsers from '../../../../common/src/cams/test-utilities/mock-user';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
 
 const MODULE_NAME = 'MOCK-USER-GROUP-GATEWAY';
 
@@ -41,18 +42,12 @@ MOCKED_USTP_OFFICES_ARRAY.forEach((office) => {
 });
 
 export class MockUserGroupGateway implements UserGroupGateway {
-  init(_config: UserGroupGatewayConfig): Promise<void> {
-    return;
-  }
-  async getUserGroupWithUsers(
-    _context: ApplicationContext,
-    groupName: string,
-  ): Promise<CamsUserGroup> {
-    if (!camsUserGroups.has(groupName)) {
+  async getUserById(_context: ApplicationContext, userId: string): Promise<CamsUser> {
+    const userMeta = MockUsers.find((userMeta) => userMeta.user.id === userId);
+    if (!userMeta) {
       throw new NotFoundError(MODULE_NAME);
     }
-    const camsUserGroup = camsUserGroups.get(groupName);
-    return camsUserGroup;
+    return userMeta.user;
   }
   async getUserGroups(_context: ApplicationContext): Promise<CamsUserGroup[]> {
     return Array.from(camsUserGroups.values()).map((group) => {
@@ -65,12 +60,18 @@ export class MockUserGroupGateway implements UserGroupGateway {
   ): Promise<CamsUserReference[]> {
     return camsUserGroups.get(group.name).users;
   }
-  async getUserById(_context: ApplicationContext, userId: string): Promise<CamsUser> {
-    const userMeta = MockUsers.find((userMeta) => userMeta.user.id === userId);
-    if (!userMeta) {
+  async getUserGroupWithUsers(
+    _context: ApplicationContext,
+    groupName: string,
+  ): Promise<CamsUserGroup> {
+    if (!camsUserGroups.has(groupName)) {
       throw new NotFoundError(MODULE_NAME);
     }
-    return userMeta.user;
+    const camsUserGroup = camsUserGroups.get(groupName);
+    return camsUserGroup;
+  }
+  init(_config: UserGroupGatewayConfig): Promise<void> {
+    return;
   }
 }
 

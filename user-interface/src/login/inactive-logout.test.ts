@@ -1,11 +1,12 @@
 import { describe } from 'vitest';
+
 import LocalStorage from '../lib/utils/local-storage';
-import { LOGOUT_PATH } from './login-library';
 import {
   checkForInactivity,
   initializeInactiveLogout,
   resetLastInteraction,
 } from './inactive-logout';
+import { LOGOUT_PATH } from './login-library';
 
 describe('Login Inactive Logout', () => {
   describe('inactiveLogoutHook', () => {
@@ -19,24 +20,24 @@ describe('Login Inactive Logout', () => {
     const assign = vi.fn();
 
     const mockLocation: Location = {
+      ancestorOrigins: {
+        contains: vi.fn(),
+        item: vi.fn(),
+        length: 0,
+        [Symbol.iterator]: vi.fn(),
+      },
       assign,
-      host,
-      protocol,
       hash: '',
+      host,
       hostname: '',
       href: '',
       origin: '',
       pathname: '',
       port: '',
-      search: '',
+      protocol,
       reload: vi.fn(),
       replace: vi.fn(),
-      ancestorOrigins: {
-        length: 0,
-        item: vi.fn(),
-        contains: vi.fn(),
-        [Symbol.iterator]: vi.fn(),
-      },
+      search: '',
     } as const;
 
     const logoutUri = protocol + '//' + host + LOGOUT_PATH;

@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { SubmitCancelButtonGroup } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import React from 'react';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BUTTON_BASE_CLASS, UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { SubmitCancelButtonGroup } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('Submit cancel button group tests', () => {
   test('should apply provided button style', () => {
@@ -19,10 +19,10 @@ describe('Submit cancel button group tests', () => {
     render(
       <BrowserRouter>
         <SubmitCancelButtonGroup
+          cancelButton={cancelButton}
           modalId={'fake-modal'}
           modalRef={modalRef}
           submitButton={submitButton}
-          cancelButton={cancelButton}
         ></SubmitCancelButtonGroup>
       </BrowserRouter>,
     );
@@ -43,10 +43,10 @@ describe('Submit cancel button group tests', () => {
     render(
       <BrowserRouter>
         <SubmitCancelButtonGroup
+          cancelButton={cancelButton}
           modalId={'fake-modal'}
           modalRef={modalRef}
           submitButton={submitButton}
-          cancelButton={cancelButton}
         ></SubmitCancelButtonGroup>
       </BrowserRouter>,
     );
@@ -78,15 +78,15 @@ describe('Submit cancel button group tests', () => {
 
   test('should apply provided classes instead of defaults', () => {
     const modalRef = React.createRef<ModalRefType>();
-    const submitButton = { label: 'Hello', className: 'test-class-one' };
-    const cancelButton = { label: 'World', className: 'test-class-two' };
+    const submitButton = { className: 'test-class-one', label: 'Hello' };
+    const cancelButton = { className: 'test-class-two', label: 'World' };
     render(
       <BrowserRouter>
         <SubmitCancelButtonGroup
+          cancelButton={cancelButton}
           modalId={'fake-modal'}
           modalRef={modalRef}
           submitButton={submitButton}
-          cancelButton={cancelButton}
         ></SubmitCancelButtonGroup>
       </BrowserRouter>,
     );
@@ -104,7 +104,7 @@ describe('Submit cancel button group tests', () => {
 
   test('should disable submit button', () => {
     const modalRef = React.createRef<ModalRefType>();
-    const submitButton = { label: 'Hello', disabled: true };
+    const submitButton = { disabled: true, label: 'Hello' };
     render(
       <BrowserRouter>
         <SubmitCancelButtonGroup
@@ -121,7 +121,7 @@ describe('Submit cancel button group tests', () => {
 
   test('should not disable submit button with explicit false', () => {
     const modalRef = React.createRef<ModalRefType>();
-    const submitButton = { label: 'Hello', disabled: false };
+    const submitButton = { disabled: false, label: 'Hello' };
     render(
       <BrowserRouter>
         <SubmitCancelButtonGroup

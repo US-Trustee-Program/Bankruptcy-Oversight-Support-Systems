@@ -1,5 +1,20 @@
 import { Collection, Db, MongoClient, Document as MongoDocument } from 'mongodb';
+
 import { Closable } from '../deferrable/defer-close';
+
+export type AggregateQuery = MongoDocument;
+
+export type DocumentQuery = {
+  $lookup?: undefined;
+  $where?: undefined;
+  [key: string]: Filter | Filter[];
+  and?: Filter[];
+  or?: Filter[];
+};
+
+export type Filter = {
+  [key: string]: unknown;
+};
 
 export class CollectionHumble<T> {
   private collection: Collection<T>;
@@ -8,20 +23,37 @@ export class CollectionHumble<T> {
     this.collection = database.collection<T>(collectionName);
   }
 
+  public async aggregate(query: AggregateQuery) {
+    const queryArray = Array.isArray(query) ? query : [query];
+    return this.collection.aggregate(queryArray);
+  }
+
+  public async countDocuments(query: DocumentQuery) {
+    return this.collection.countDocuments(query);
+  }
+
+  public async deleteMany(query: DocumentQuery) {
+    return this.collection.deleteMany(query);
+  }
+
+  public async deleteOne(query: DocumentQuery) {
+    return this.collection.deleteOne(query);
+  }
+
   public async find(query: DocumentQuery) {
     return this.collection.find(query);
   }
 
-  public async findOne<T>(query: DocumentQuery): Promise<T | null> {
+  public async findOne<T>(query: DocumentQuery): Promise<null | T> {
     return this.collection.findOne<T>(query);
-  }
-
-  public async insertOne(item) {
-    return this.collection.insertOne(item);
   }
 
   public async insertMany(items) {
     return this.collection.insertMany(items);
+  }
+
+  public async insertOne(item) {
+    return this.collection.insertOne(item);
   }
 
   public async replaceOne(query: DocumentQuery, item, upsert: boolean = false) {
@@ -30,23 +62,6 @@ export class CollectionHumble<T> {
 
   public async updateOne(query: DocumentQuery, item) {
     return this.collection.updateOne(query, { $set: item });
-  }
-
-  public async deleteOne(query: DocumentQuery) {
-    return this.collection.deleteOne(query);
-  }
-
-  public async deleteMany(query: DocumentQuery) {
-    return this.collection.deleteMany(query);
-  }
-
-  public async countDocuments(query: DocumentQuery) {
-    return this.collection.countDocuments(query);
-  }
-
-  public async aggregate(query: AggregateQuery) {
-    const queryArray = Array.isArray(query) ? query : [query];
-    return this.collection.aggregate(queryArray);
   }
 }
 
@@ -69,28 +84,14 @@ export class DocumentClient implements Closable {
     this.client = new MongoClient(connectionString);
   }
 
-  public database(databaseName: string): DatabaseHumble {
-    return new DatabaseHumble(this.client, databaseName);
-  }
-
   public async close() {
     await this.client.close();
   }
+
+  public database(databaseName: string): DatabaseHumble {
+    return new DatabaseHumble(this.client, databaseName);
+  }
 }
-
-export type Filter = {
-  [key: string]: unknown;
-};
-
-export type DocumentQuery = {
-  [key: string]: Filter | Filter[];
-  and?: Filter[];
-  or?: Filter[];
-  $where?: undefined;
-  $lookup?: undefined;
-};
-
-export type AggregateQuery = MongoDocument;
 
 export function isMongoDocumentArray(arr: unknown): arr is MongoDocument[] {
   return (

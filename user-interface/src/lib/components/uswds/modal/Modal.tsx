@@ -1,19 +1,20 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
-import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+import { ModalRefType, OpenModalButtonRef, SubmitCancelButtonGroupRef } from './modal-refs';
+import { SubmitCancelBtnProps, SubmitCancelButtonGroup } from './SubmitCancelButtonGroup';
 
 export interface ModalProps {
-  modalId: string;
+  actionButtonGroup: SubmitCancelBtnProps;
   className?: string;
-  heading: React.ReactNode;
-  headingTooltip?: string;
   content: React.ReactNode;
   forceAction?: boolean;
-  actionButtonGroup: SubmitCancelBtnProps;
-  onOpen?: () => void;
+  heading: React.ReactNode;
+  headingTooltip?: string;
+  modalId: string;
   onClose?: () => void;
+  onOpen?: () => void;
   onTabKey?: (ev: React.KeyboardEvent, isVisible: boolean) => void;
 }
 
@@ -21,10 +22,10 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   const modalClassNames = `usa-modal ${props.className}`;
   const closeIcon = `/assets/styles/img/sprite.svg#close`;
   const data = { 'data-force-action': false };
-  const { isVisible, show, hide } = useComponent();
+  const { hide, isVisible, show } = useComponent();
   const headingTooltip = props.headingTooltip ?? undefined;
   const [openModalButtonRef, setOpenModalButtonRef] =
-    useState<React.RefObject<OpenModalButtonRef> | null>(null);
+    useState<null | React.RefObject<OpenModalButtonRef>>(null);
   const [firstElement, setFirstElement] = useState<HTMLElement | null>(null);
 
   const modalShellRef = useRef<HTMLInputElement | null>(null);
@@ -34,7 +35,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     data['data-force-action'] = true;
   }
 
-  const handleKeyDown = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
+  const handleKeyDown = (ev: KeyboardEvent | React.KeyboardEvent<HTMLElement>) => {
     if (!props.forceAction) {
       if (ev.key === 'Escape') {
         close(ev);
@@ -43,7 +44,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   };
 
   const handleTab = (
-    ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent,
+    ev: KeyboardEvent | React.KeyboardEvent<HTMLElement>,
     firstEl: HTMLElement | null,
   ) => {
     if (!firstEl) return;
@@ -75,7 +76,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton?.onClick) {
-      const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
+      const { closeOnClick, onClick } = props.actionButtonGroup.submitButton;
       if (onClick) onClick(e);
       if (closeOnClick !== false) close(e);
     }
@@ -108,7 +109,7 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     show();
   }
 
-  const close = (ev: MouseEvent | React.MouseEvent | KeyboardEvent | React.KeyboardEvent) => {
+  const close = (ev: KeyboardEvent | MouseEvent | React.KeyboardEvent | React.MouseEvent) => {
     closeModal();
     ev.preventDefault();
   };
@@ -124,9 +125,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }
 
   useImperativeHandle(ref, () => ({
+    buttons: submitCancelButtonGroupRef,
     hide: closeModal,
     show: showModal,
-    buttons: submitCancelButtonGroupRef,
   }));
 
   useEffect(() => {
@@ -192,19 +193,19 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
   return (
     <div
-      className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
-      role="dialog"
-      id={props.modalId + '-wrapper'}
-      data-testid={`modal-${props.modalId}`}
-      aria-labelledby={props.modalId + '-heading'}
       aria-describedby={props.modalId + '-description'}
+      aria-labelledby={props.modalId + '-heading'}
+      className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
+      data-testid={`modal-${props.modalId}`}
+      id={props.modalId + '-wrapper'}
+      role="dialog"
     >
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
-        className="usa-modal-overlay"
         aria-controls={props.modalId}
-        id={props.modalId + '-overlay'}
+        className="usa-modal-overlay"
         data-testid={`modal-overlay-${props.modalId}`}
+        id={props.modalId + '-overlay'}
         onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
           outsideClick(e, props.modalId + '-overlay')
         }
@@ -213,10 +214,10 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           className={modalClassNames}
           id={props.modalId}
           {...data}
-          ref={modalShellRef}
-          data-testid={`modal-content-${props.modalId}`}
-          role="dialog"
           aria-modal="true"
+          data-testid={`modal-content-${props.modalId}`}
+          ref={modalShellRef}
+          role="dialog"
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
@@ -234,33 +235,33 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
               </div>
               <div className="usa-modal__footer">
                 <SubmitCancelButtonGroup
-                  ref={submitCancelButtonGroupRef}
-                  modalId={props.modalId}
-                  modalRef={ref as React.RefObject<ModalRefType>}
-                  submitButton={
-                    props.actionButtonGroup.submitButton
-                      ? {
-                          label: props.actionButtonGroup.submitButton.label,
-                          onClick: submitBtnClick,
-                          onKeyDown: (ev) => handleTab(ev, firstElement),
-                          className: props.actionButtonGroup.submitButton.className ?? '',
-                          disabled: props.actionButtonGroup.submitButton.disabled ?? false,
-                          uswdsStyle:
-                            props.actionButtonGroup.submitButton.uswdsStyle ??
-                            UswdsButtonStyle.Default,
-                        }
-                      : undefined
-                  }
                   cancelButton={
                     props.actionButtonGroup.cancelButton
                       ? {
+                          className: props.actionButtonGroup.cancelButton?.className ?? '',
                           label: props.actionButtonGroup.cancelButton.label,
                           onClick: cancelBtnClick,
                           onKeyDown: (ev) => handleTab(ev, firstElement),
-                          className: props.actionButtonGroup.cancelButton?.className ?? '',
                           uswdsStyle:
                             props.actionButtonGroup.cancelButton?.uswdsStyle ??
                             UswdsButtonStyle.Unstyled,
+                        }
+                      : undefined
+                  }
+                  modalId={props.modalId}
+                  modalRef={ref as React.RefObject<ModalRefType>}
+                  ref={submitCancelButtonGroupRef}
+                  submitButton={
+                    props.actionButtonGroup.submitButton
+                      ? {
+                          className: props.actionButtonGroup.submitButton.className ?? '',
+                          disabled: props.actionButtonGroup.submitButton.disabled ?? false,
+                          label: props.actionButtonGroup.submitButton.label,
+                          onClick: submitBtnClick,
+                          onKeyDown: (ev) => handleTab(ev, firstElement),
+                          uswdsStyle:
+                            props.actionButtonGroup.submitButton.uswdsStyle ??
+                            UswdsButtonStyle.Default,
                         }
                       : undefined
                   }
@@ -269,15 +270,15 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
             </div>
             {props.forceAction || (
               <button
-                type="button"
-                className="usa-button usa-modal__close"
                 aria-label="Close this window"
+                className="usa-button usa-modal__close"
                 data-close-modal
-                onClick={close}
                 data-testid={`modal-x-button-${props.modalId}`}
+                onClick={close}
                 onKeyDown={(ev) => handleTab(ev, firstElement)}
+                type="button"
               >
-                <svg className="usa-icon" aria-hidden="true" focusable="false" role="img">
+                <svg aria-hidden="true" className="usa-icon" focusable="false" role="img">
                   <use xlinkHref={closeIcon}></use>
                 </svg>
               </button>

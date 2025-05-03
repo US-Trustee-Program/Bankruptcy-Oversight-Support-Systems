@@ -1,8 +1,8 @@
-import { CaseHistoryController } from './case-history.controller';
-import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { CASE_HISTORY } from '../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { NotFoundError } from '../../common-errors/not-found-error';
+import { CaseHistoryUseCase } from '../../use-cases/case-history/case-history';
+import { CaseHistoryController } from './case-history.controller';
 
 describe('Test case-history controller', () => {
   let applicationContext;

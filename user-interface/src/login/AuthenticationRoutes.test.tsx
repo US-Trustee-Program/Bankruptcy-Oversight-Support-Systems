@@ -1,11 +1,12 @@
-import { describe } from 'vitest';
 import { render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe } from 'vitest';
+
+import { AuthenticationRoutes } from './AuthenticationRoutes';
 import * as loginModule from './Login';
 import * as loginContinueModule from './LoginContinue';
 import * as logoutModule from './Logout';
 import * as sessionEndModule from './SessionEnd';
-import { MemoryRouter } from 'react-router-dom';
-import { AuthenticationRoutes } from './AuthenticationRoutes';
 
 describe('AuthenticationRoutes', () => {
   const noOp = () => {

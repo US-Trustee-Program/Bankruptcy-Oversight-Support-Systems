@@ -5,8 +5,8 @@ import { ApplicationConfiguration } from '../../lib/configs/application-configur
 import { MockUserSessionUseCase } from '../../lib/testing/mock-gateways/mock-user-session-use-case';
 import { createMockApplicationContext } from '../../lib/testing/testing-utilities';
 import ContextCreator from './application-context-creator';
-import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 import { azureToCamsHttpRequest } from './functions';
+import { createMockAzureFunctionContext, createMockAzureFunctionRequest } from './testing-helpers';
 
 describe('Application Context Creator', () => {
   describe('applicationContextCreator', () => {

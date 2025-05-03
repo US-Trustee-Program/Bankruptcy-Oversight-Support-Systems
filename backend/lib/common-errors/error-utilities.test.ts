@@ -1,7 +1,7 @@
-import { UnauthorizedError } from './unauthorized-error';
-import { getCamsError } from './error-utilities';
-import { isCamsError } from './cams-error';
 import HttpStatusCodes from '../../../common/src/api/http-status-codes';
+import { isCamsError } from './cams-error';
+import { getCamsError } from './error-utilities';
+import { UnauthorizedError } from './unauthorized-error';
 
 const MODULE_NAME = 'test-module';
 describe('error utilities tests', () => {

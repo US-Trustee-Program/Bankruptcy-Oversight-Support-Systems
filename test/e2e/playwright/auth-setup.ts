@@ -1,10 +1,11 @@
-import { Page, expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+
 import { test } from './fixture/urlQueryString';
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config();
 
 const authFile = 'playwright/.auth/user.json';
-const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
+const { OKTA_PASSWORD, OKTA_USER_NAME, TARGET_HOST } = process.env;
 const LOGIN_PATH = '/login';
 const timeoutOption = { timeout: 30000 };
 
@@ -12,8 +13,6 @@ test('authenticate', async ({ page }) => {
   const { login } = usingAuthenticationProvider();
   await login(page);
 });
-
-async function noOp() {}
 
 async function mockLogin(page: Page) {
   const mockAuthResponsePromise = page.waitForResponse(
@@ -32,6 +31,8 @@ async function mockLogin(page: Page) {
   await page.context().storageState({ path: authFile });
   await expect(page.context().storageState({ path: authFile })).toBeDefined();
 }
+
+async function noOp() {}
 
 async function oktaLogin(page: Page) {
   await page.goto(TARGET_HOST + LOGIN_PATH);
@@ -66,14 +67,14 @@ function usingAuthenticationProvider() {
   const provider = process.env.CAMS_LOGIN_PROVIDER ?? 'mock';
   // TODO: Add new login functions as we add new providers.
   switch (provider.toLowerCase()) {
+    case 'mock':
+      loginFunction = mockLogin;
+      break;
     case 'none':
       loginFunction = noOp;
       break;
     case 'okta':
       loginFunction = oktaLogin;
-      break;
-    case 'mock':
-      loginFunction = mockLogin;
       break;
   }
   return {

@@ -1,6 +1,6 @@
-import { useFlags } from 'launchdarkly-react-client-sdk';
-import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import { getFeatureFlagConfiguration } from '@/configuration/featureFlagConfiguration';
+import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
+import { useFlags } from 'launchdarkly-react-client-sdk';
 
 export const CASE_NOTES_ENABLED = 'case-notes-enabled';
 export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';

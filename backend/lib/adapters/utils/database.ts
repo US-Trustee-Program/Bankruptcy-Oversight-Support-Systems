@@ -1,11 +1,16 @@
 import { ConnectionError, ConnectionPool, MSSQLError } from 'mssql';
+
+import { deferClose } from '../../deferrable/defer-close';
+import { getSqlConnection } from '../../factory';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
-import { getSqlConnection } from '../../factory';
-import { deferClose } from '../../deferrable/defer-close';
 
 const MODULE_NAME = 'DATABASE-UTILITY';
 let sqlConnectionPool: ConnectionPool;
+
+type AggregateError = Error & {
+  errors?: Error[];
+};
 
 export async function executeQuery(
   applicationContext: ApplicationContext,
@@ -31,8 +36,8 @@ export async function executeQuery(
     const results = await sqlRequest.query(query);
 
     const queryResult: QueryResults = {
-      results,
       message: '',
+      results,
       success: true,
     };
 
@@ -58,42 +63,38 @@ export async function executeQuery(
     } else if (isMssqlError(error)) {
       applicationContext.logger.error(MODULE_NAME, 'MssqlError', {
         error: {
-          name: error.name, // RequestError
           description: error.message, // Timeout: Request failed to complete in 15000ms
+          name: error.name, // RequestError
         },
+        input,
         originalError: {
-          name: error.originalError.name,
           description: error.originalError.name,
+          name: error.originalError.name,
         },
         query,
-        input,
       });
     } else {
-      applicationContext.logger.error(MODULE_NAME, error.message, { error, query, input });
+      applicationContext.logger.error(MODULE_NAME, error.message, { error, input, query });
     }
 
     // TODO May want to refactor to throw CamsError and remove returning QueryResults
     const queryResult: QueryResults = {
-      results: {},
       message: (error as Error).message,
+      results: {},
       success: false,
     };
     return queryResult;
   }
 }
 
-function isMssqlError(e): e is MSSQLError {
-  return e instanceof MSSQLError;
+function isAggregateError(e: unknown): e is AggregateError {
+  return e && 'errors' in (e as object);
 }
 
 function isConnectionError(e): e is ConnectionError {
   return e instanceof ConnectionError;
 }
 
-type AggregateError = Error & {
-  errors?: Error[];
-};
-
-function isAggregateError(e: unknown): e is AggregateError {
-  return e && 'errors' in (e as object);
+function isMssqlError(e): e is MSSQLError {
+  return e instanceof MSSQLError;
 }

@@ -23,9 +23,9 @@ describe('Broadcast Logout', () => {
     Object.defineProperty(global, 'window', Object.create(window));
     // @ts-expect-error `location` is a readonly property. As this is just a test, we do not care.
     global.window.location = {
+      assign: function (_url: string | URL): void {},
       host: 'some-host',
       protocol: 'http:',
-      assign: function (_url: string | URL): void {},
     } as unknown as Location;
     const assignSpy = vi.spyOn(global.window.location, 'assign');
     const expectedUrl =

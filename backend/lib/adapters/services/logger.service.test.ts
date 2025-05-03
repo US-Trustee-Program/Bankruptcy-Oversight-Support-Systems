@@ -1,6 +1,7 @@
-import { LoggerImpl } from './logger.service';
 import { randomUUID } from 'crypto';
+
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { LoggerImpl } from './logger.service';
 
 describe('Basic logger service tests', () => {
   let mockLog;
@@ -71,20 +72,20 @@ describe('Basic logger service tests', () => {
       'FOO-MODULE_NAME',
       `test message 123456789 ${MockData.randomEin()} ${MockData.randomSsn()}`,
       {
-        sSN: MockData.randomSsn(),
-        tAxid: MockData.randomEin(),
         prop1: 'foo',
         prop2: 'bar',
         prop3: {
-          ssn: MockData.randomSsn(),
+          ein: MockData.randomEin(),
+          itin: MockData.randomSsn(),
           prop3a: 'foo-a',
           prop3b: {
-            taxID: MockData.randomEin(),
             prop3aa: 'test',
+            taxID: MockData.randomEin(),
           },
-          itin: MockData.randomSsn(),
-          ein: MockData.randomEin(),
+          ssn: MockData.randomSsn(),
         },
+        sSN: MockData.randomSsn(),
+        tAxid: MockData.randomEin(),
       },
     );
     expect(mockLog).toHaveBeenCalledWith(

@@ -1,8 +1,9 @@
 import { render } from '@testing-library/react';
-import { DropdownMenu, MenuItem } from './DropdownMenu';
-import { BrowserRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+
 import LinkUtils from '../linkUtils';
+import { DropdownMenu, MenuItem } from './DropdownMenu';
 
 describe('DropdownMenu component tests', () => {
   const menuId = 'test-menu';
@@ -16,20 +17,20 @@ describe('DropdownMenu component tests', () => {
   const clickFn = vi.fn();
   const menuItems: MenuItem[] = [
     {
-      label: 'A Item 0',
       address: '/test-address-0',
+      label: 'A Item 0',
     },
     {
-      label: 'b Item 1',
       address: '/test-address-1',
+      label: 'b Item 1',
     },
     {
-      label: 'c Item 2',
       address: '/test-address-2',
+      label: 'c Item 2',
     },
     {
-      label: '3 Item 3',
       address: '/test-address-3',
+      label: '3 Item 3',
     },
   ];
 
@@ -38,10 +39,10 @@ describe('DropdownMenu component tests', () => {
       <BrowserRouter>
         <button id="test-button-0">Test Button 0</button>
         <DropdownMenu
+          ariaLabel={'Test Aria Label'}
           id={menuId}
           menuItems={menuItems}
           onClick={clickFn}
-          ariaLabel={'Test Aria Label'}
         >
           Test Menu
         </DropdownMenu>

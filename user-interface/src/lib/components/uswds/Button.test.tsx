@@ -1,6 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+
 import Button, { ButtonRef, UswdsButtonState, UswdsButtonStyle } from './Button';
 
 describe('Test button component', () => {
@@ -23,7 +24,7 @@ describe('Test button component', () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
-          <Button id="test" buttonState={UswdsButtonState.Focus}>
+          <Button buttonState={UswdsButtonState.Focus} id="test">
             Button text
           </Button>
         </BrowserRouter>
@@ -38,7 +39,7 @@ describe('Test button component', () => {
     render(
       <React.StrictMode>
         <BrowserRouter>
-          <Button id="test" disabled={true}>
+          <Button disabled={true} id="test">
             Button text
           </Button>
         </BrowserRouter>

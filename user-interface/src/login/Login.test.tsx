@@ -1,19 +1,20 @@
+import localStorage, { LocalStorage } from '@/lib/utils/local-storage';
+import * as libraryModule from '@/login/login-library';
+import { CamsSession } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { randomUUID } from 'node:crypto';
 import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, MockInstance } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import * as oktaProviderModule from './providers/okta/OktaProvider';
-import * as oktaLoginModule from './providers/okta/OktaLogin';
-import * as badConfigurationModule from './BadConfiguration';
-import * as libraryModule from '@/login/login-library';
-import * as mockLoginModule from './providers/mock/MockLogin';
-import * as sessionModule from './Session';
-import { Login } from './Login';
-import localStorage, { LocalStorage } from '@/lib/utils/local-storage';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { randomUUID } from 'node:crypto';
-import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';
+import { describe, MockInstance } from 'vitest';
+
+import * as badConfigurationModule from './BadConfiguration';
+import { Login } from './Login';
+import * as mockLoginModule from './providers/mock/MockLogin';
+import * as oktaLoginModule from './providers/okta/OktaLogin';
+import * as oktaProviderModule from './providers/okta/OktaProvider';
+import * as sessionModule from './Session';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -65,8 +66,8 @@ describe('Login', () => {
     removeSession.mockImplementation(vi.fn());
     vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(true);
     vi.spyOn(libraryModule, 'getLoginConfigurationFromEnv').mockReturnValue({
-      issuer,
       clientId: randomUUID(),
+      issuer,
     });
   });
 
@@ -119,13 +120,13 @@ describe('Login', () => {
 
     const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
       accessToken: MockData.getJwt(),
-      provider: 'mock',
+      expires: Number.MAX_SAFE_INTEGER,
       issuer,
+      provider: 'mock',
       user: {
         id: 'mockId',
         name: 'Mock User',
       },
-      expires: Number.MAX_SAFE_INTEGER,
     });
     const sessionComponent = vi.spyOn(sessionModule, 'Session');
 
@@ -145,13 +146,13 @@ describe('Login', () => {
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
-      provider: 'okta',
+      expires: Number.MAX_SAFE_INTEGER,
       issuer,
+      provider: 'okta',
       user: {
         id: 'mockId',
         name: 'Mock User',
       },
-      expires: Number.MAX_SAFE_INTEGER,
     });
     render(
       <BrowserRouter>
@@ -169,13 +170,13 @@ describe('Login', () => {
     getLoginProviderFromEnv.mockReturnValue('okta');
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
-      provider: 'mock',
+      expires: Number.MAX_SAFE_INTEGER,
       issuer,
+      provider: 'mock',
       user: {
         id: 'mockId',
         name: 'Mock User',
       },
-      expires: Number.MAX_SAFE_INTEGER,
     });
     render(
       <BrowserRouter>
@@ -193,13 +194,13 @@ describe('Login', () => {
 
     getSession.mockReturnValue({
       accessToken: MockData.getJwt(),
-      provider: 'okta',
+      expires: Number.MAX_SAFE_INTEGER,
       issuer: 'http://different.issuer.com/oauth/default',
+      provider: 'okta',
       user: {
         id: 'mockId',
         name: 'Mock User',
       },
-      expires: Number.MAX_SAFE_INTEGER,
     });
     render(
       <BrowserRouter>

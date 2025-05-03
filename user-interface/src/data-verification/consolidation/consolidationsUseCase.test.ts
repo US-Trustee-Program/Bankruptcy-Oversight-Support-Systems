@@ -1,20 +1,21 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { ConsolidationStoreMock } from './consolidationStoreMock';
-import { ConsolidationsUseCase, consolidationUseCase } from './consolidationsUseCase';
-import { orderStatusType, orderType } from '@/lib/utils/labels';
 import { useConsolidationControlsMock } from '@/data-verification/consolidation/consolidationControlsMock';
-import { ConsolidationControls } from './consolidationControls';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
-import { ConsolidationOrderCase } from '@common/cams/orders';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api2 from '@/lib/models/api2';
+import TestingUtilities from '@/lib/testing/testing-utilities';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { orderStatusType, orderType } from '@/lib/utils/labels';
 import { ResponseBody } from '@common/api/response';
-import { Consolidation } from '@common/cams/events';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CaseSummary } from '@common/cams/cases';
+import { Consolidation } from '@common/cams/events';
+import { ConsolidationOrderCase } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+
+import { ConsolidationControls } from './consolidationControls';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import { ConsolidationStoreMock } from './consolidationStoreMock';
+import { ConsolidationsUseCase, consolidationUseCase } from './consolidationsUseCase';
 
 describe('Consolidation UseCase tests', () => {
   let store: ConsolidationStore;
@@ -53,14 +54,14 @@ describe('Consolidation UseCase tests', () => {
 
   function initUseCase() {
     const props = {
-      order: mockOrder,
-      statusType: orderStatusType,
-      orderType: orderType,
       courts: MockData.getCourts(),
-      regionsMap: new Map(),
       fieldHeaders: accordionFieldHeaders,
-      onOrderUpdate: onOrderUpdateSpy,
       onExpand,
+      onOrderUpdate: onOrderUpdateSpy,
+      order: mockOrder,
+      orderType: orderType,
+      regionsMap: new Map(),
+      statusType: orderStatusType,
     };
 
     store = new ConsolidationStoreMock(props, []);
@@ -119,8 +120,8 @@ describe('Consolidation UseCase tests', () => {
       .spyOn(Api2, 'putConsolidationOrderRejection')
       .mockRejectedValue('some put error');
     const action: ConfirmActionResults = {
-      status: 'rejected',
       rejectionReason: 'some rejection reason',
+      status: 'rejected',
     };
     store.order = MockData.getConsolidationOrder();
     store.selectedCases = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
@@ -135,8 +136,8 @@ describe('Consolidation UseCase tests', () => {
     expect(putSpy).toHaveBeenCalled();
     expect(onOrderUpdateSpy).toHaveBeenCalledWith({
       message: 'An unknown error has occurred and has been logged.  Please try again later.',
-      type: UswdsAlertStyle.Error,
       timeOut: 8,
+      type: UswdsAlertStyle.Error,
     });
   });
 
@@ -372,8 +373,8 @@ describe('Consolidation UseCase tests', () => {
   });
 
   const params = [
-    { message: '404 Not Found', expected: `We couldn't find a case with that number.` },
-    { message: '', expected: 'Cannot verify lead case number.' },
+    { expected: `We couldn't find a case with that number.`, message: '404 Not Found' },
+    { expected: 'Cannot verify lead case number.', message: '' },
   ];
 
   test.each(params)(
@@ -482,13 +483,13 @@ describe('Consolidation UseCase tests', () => {
       message: `Consolidation to lead case ${getCaseNumber(leadCase.caseId)} in ${
         leadCase.courtName
       } (${leadCase.courtDivisionName}) was successful.`,
-      type: UswdsAlertStyle.Success,
       timeOut: 8,
+      type: UswdsAlertStyle.Success,
     };
     const expectedFailureAlert = {
       message: 'An unknown error has occurred and has been logged.  Please try again later.',
-      type: UswdsAlertStyle.Error,
       timeOut: 8,
+      type: UswdsAlertStyle.Error,
     };
 
     const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;
@@ -529,13 +530,13 @@ describe('Consolidation UseCase tests', () => {
     }
     const expectedSuccessfulAlert = {
       message: `Rejection of consolidation order was successful.`,
-      type: UswdsAlertStyle.Success,
       timeOut: 8,
+      type: UswdsAlertStyle.Success,
     };
     const expectedFailureAlert = {
       message: 'An unknown error has occurred and has been logged.  Please try again later.',
-      type: UswdsAlertStyle.Error,
       timeOut: 8,
+      type: UswdsAlertStyle.Error,
     };
 
     const expectedAlert = success ? expectedSuccessfulAlert : expectedFailureAlert;

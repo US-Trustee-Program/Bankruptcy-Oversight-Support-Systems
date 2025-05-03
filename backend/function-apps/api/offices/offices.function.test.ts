@@ -1,15 +1,15 @@
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import ContextCreator from '../../azure/application-context-creator';
+import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import handler from './offices.function';
+import { CamsError } from '../../../lib/common-errors/cams-error';
+import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
+import ContextCreator from '../../azure/application-context-creator';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import handler from './offices.function';
 
 describe('offices Function tests', () => {
   let request;
@@ -31,7 +31,7 @@ describe('offices Function tests', () => {
   test('should set successful response', async () => {
     const bodySuccess: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
 
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<UstpOfficeDetails[]>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<UstpOfficeDetails[]>({
       data: bodySuccess,
     });
 

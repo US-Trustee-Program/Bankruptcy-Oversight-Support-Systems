@@ -1,43 +1,44 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import CaseDetailAssociatedCases from './CaseDetailAssociatedCases';
-import { ConsolidationFrom, ConsolidationTo, EventCaseReference } from '@common/cams/events';
-import { ConsolidationType } from '@common/cams/orders';
-import { BrowserRouter } from 'react-router-dom';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
+import { ConsolidationFrom, ConsolidationTo, EventCaseReference } from '@common/cams/events';
+import { ConsolidationType } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import CaseDetailAssociatedCases from './CaseDetailAssociatedCases';
 
 function getAssociatedCasesMock(caseId: string, consolidationType: ConsolidationType) {
   return [
     {
       caseId: '081-93-87181',
+      consolidationType,
+      documentType: 'CONSOLIDATION_TO',
+      orderDate: '2016-09-28',
       otherCase: MockData.getCaseSummary({
         override: { caseId, caseTitle: 'Mr Joe', courtDivisionCode: '001' },
       }),
-      orderDate: '2016-09-28',
-      documentType: 'CONSOLIDATION_TO',
-      consolidationType,
     } as ConsolidationTo,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
-      orderDate: '2016-09-28',
-      documentType: 'CONSOLIDATION_FROM',
       consolidationType,
+      documentType: 'CONSOLIDATION_FROM',
+      orderDate: '2016-09-28',
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
-      orderDate: '2016-09-28',
-      documentType: 'CONSOLIDATION_FROM',
       consolidationType,
+      documentType: 'CONSOLIDATION_FROM',
+      orderDate: '2016-09-28',
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
-      orderDate: '2016-09-28',
-      documentType: 'CONSOLIDATION_FROM',
       consolidationType,
+      documentType: 'CONSOLIDATION_FROM',
+      orderDate: '2016-09-28',
+      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
     } as ConsolidationFrom,
   ];
 }

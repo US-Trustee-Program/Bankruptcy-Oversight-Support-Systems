@@ -1,12 +1,12 @@
-import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { UsersMongoRepository } from './user.repository';
-import { ApplicationContext } from '../../types/basic';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { getTodaysIsoDate } from '../../../../../common/src/date-helper';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { UnknownError } from '../../../common-errors/unknown-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
-import { getTodaysIsoDate } from '../../../../../common/src/date-helper';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
+import { UsersMongoRepository } from './user.repository';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
 
 describe('User repository tests', () => {
   let context: ApplicationContext;

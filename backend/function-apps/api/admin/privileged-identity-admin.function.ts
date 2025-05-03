@@ -1,7 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+
+import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
 
 const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-FUNCTION';
 
@@ -24,8 +25,8 @@ export default async function handler(
 }
 
 app.http('privileged-identity-admin', {
-  methods: ['DELETE', 'GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
+  methods: ['DELETE', 'GET', 'PUT'],
   route: 'dev-tools/privileged-identity/{resourceId?}',
 });

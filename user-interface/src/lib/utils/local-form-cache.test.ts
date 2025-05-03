@@ -1,6 +1,7 @@
-import { describe, expect, vi, beforeEach } from 'vitest';
-import LocalFormCache from './local-form-cache';
+import { beforeEach, describe, expect, vi } from 'vitest';
+
 import { mockLocalStorage } from '../testing/mock-local-storage';
+import LocalFormCache from './local-form-cache';
 
 describe('LocalFormCache', () => {
   beforeAll(() => {

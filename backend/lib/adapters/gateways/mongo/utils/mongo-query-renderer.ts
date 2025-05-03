@@ -1,27 +1,28 @@
 import { Sort as MongoSort } from 'mongodb';
+
+import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 import {
   Condition,
   Conjunction,
   isCondition,
   isConjunction,
-  Query,
   isField,
+  Query,
   SortSpec,
 } from '../../../../query/query-builder';
-import { DocumentQuery } from '../../../../humble-objects/mongo-humble';
 
 const { isArray } = Array;
 
 const mapCondition: { [key: string]: string } = {
-  EXISTS: '$exists',
+  CONTAINS: '$in',
   EQUALS: '$eq',
+  EXISTS: '$exists',
   GREATER_THAN: '$gt',
   GREATER_THAN_OR_EQUAL: '$gte',
-  CONTAINS: '$in',
   LESS_THAN: '$lt',
   LESS_THAN_OR_EQUAL: '$lte',
-  NOT_EQUALS: '$ne',
   NOT_CONTAINS: '$nin',
+  NOT_EQUALS: '$ne',
   REGEX: '$regex',
 };
 
@@ -42,12 +43,22 @@ function translateCondition<T = unknown>(query: Condition<T>) {
 
 const mapConjunction: { [key: string]: string } = {
   AND: '$and',
-  OR: '$or',
   NOT: '$not',
+  OR: '$or',
 };
 
-function translateConjunction(query: Conjunction) {
-  return { [mapConjunction[query.conjunction]]: renderQuery(query.values) };
+export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
+  return renderQuery(query);
+}
+
+export function toMongoSort<T = never>(sort: SortSpec<T>): MongoSort {
+  return sort.fields.reduce(
+    (acc, spec) => {
+      acc[spec.field.name] = spec.direction === 'ASCENDING' ? 1 : -1;
+      return acc;
+    },
+    {} as Record<keyof T, -1 | 1>,
+  );
 }
 
 function renderQuery<T = unknown>(query: Query<T>) {
@@ -60,16 +71,6 @@ function renderQuery<T = unknown>(query: Query<T>) {
   }
 }
 
-export function toMongoQuery<T = unknown>(query: Query<T>): DocumentQuery {
-  return renderQuery(query);
-}
-
-export function toMongoSort<T = never>(sort: SortSpec<T>): MongoSort {
-  return sort.fields.reduce(
-    (acc, spec) => {
-      acc[spec.field.name] = spec.direction === 'ASCENDING' ? 1 : -1;
-      return acc;
-    },
-    {} as Record<keyof T, 1 | -1>,
-  );
+function translateConjunction(query: Conjunction) {
+  return { [mapConjunction[query.conjunction]]: renderQuery(query.values) };
 }

@@ -1,34 +1,34 @@
-import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { CamsJwt } from '../../../../common/src/cams/jwt';
+import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../common/src/cams/users';
 import { ApplicationContext } from './basic';
 
 export type AuthorizationConfig = {
-  provider: string | null;
-  issuer: string | null;
-  audience: string | null;
-  userInfoUri: string | null;
+  audience: null | string;
+  issuer: null | string;
+  provider: null | string;
+  userInfoUri: null | string;
 };
 
 export interface OpenIdConnectGateway {
-  getUser: (accessToken: string) => Promise<{ user: CamsUserReference; jwt: CamsJwt }>;
+  getUser: (accessToken: string) => Promise<{ jwt: CamsJwt; user: CamsUserReference }>;
 }
 
 export interface UserGroupGateway {
-  init(config: UserGroupGatewayConfig): Promise<void>;
-  getUserGroupWithUsers: (context: ApplicationContext, groupName: string) => Promise<CamsUserGroup>;
+  getUserById(context: ApplicationContext, userId: string): Promise<CamsUser>;
   getUserGroups: (context: ApplicationContext) => Promise<CamsUserGroup[]>;
   getUserGroupUsers(
     context: ApplicationContext,
     group: CamsUserGroup,
   ): Promise<CamsUserReference[]>;
-  getUserById(context: ApplicationContext, userId: string): Promise<CamsUser>;
+  getUserGroupWithUsers: (context: ApplicationContext, groupName: string) => Promise<CamsUserGroup>;
+  init(config: UserGroupGatewayConfig): Promise<void>;
 }
 
 export type UserGroupGatewayConfig = {
-  provider: string | null;
-  url: string | null;
-  token?: string | null;
-  clientId?: string | null;
-  privateKey?: string | null;
-  keyId?: string | null;
+  clientId?: null | string;
+  keyId?: null | string;
+  privateKey?: null | string;
+  provider: null | string;
+  token?: null | string;
+  url: null | string;
 };

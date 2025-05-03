@@ -5,52 +5,34 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsUserReference } from '@common/cams/users';
 
 export const UNASSIGNED_OPTION = {
-  value: 'UNASSIGNED',
-  label: '(unassigned)',
   divider: true,
+  label: '(unassigned)',
+  value: 'UNASSIGNED',
 };
-
-interface StaffAssignmentFilterStore {
-  filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
-  setFilterAssigneeCallback(val: ((assignees: ComboOption[]) => void) | null): void;
-  focusOnRender: boolean;
-  setFocusOnRender(val: boolean): void;
-  officeAssignees: CamsUserReference[];
-  setOfficeAssignees(val: CamsUserReference[]): void;
-  officeAssigneesError: boolean;
-  setOfficeAssigneesError(val: boolean): void;
-}
 
 interface StaffAssignmentFilterControls {
   assigneesFilterRef: React.RefObject<ComboBoxRef>;
 }
 
-type StaffAssignmentFilterViewProps = {
-  viewModel: StaffAssignmentFilterViewModel;
-};
-
-interface StaffAssignmentFilterViewModel {
-  officeAssignees: CamsUserReference[];
-  officeAssigneesError: boolean;
-  assigneesFilterRef: React.RefObject<ComboBoxRef>;
-
-  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
-  handleFilterAssignee(assignees: ComboOption[]): void;
-}
-
-interface StaffAssignmentFilterRef {
-  refresh: () => void;
-  focus: () => void;
-}
-
-type StaffAssignmentScreenFilter = {
-  assignee?: CamsUserReference;
-  includeOnlyUnassigned?: boolean;
-};
-
 type StaffAssignmentFilterProps = {
   handleFilterAssignee(assignees: ComboOption[]): void;
 };
+
+interface StaffAssignmentFilterRef {
+  focus: () => void;
+  refresh: () => void;
+}
+
+interface StaffAssignmentFilterStore {
+  filterAssigneeCallback: ((assignees: ComboOption[]) => void) | null;
+  focusOnRender: boolean;
+  officeAssignees: CamsUserReference[];
+  officeAssigneesError: boolean;
+  setFilterAssigneeCallback(val: ((assignees: ComboOption[]) => void) | null): void;
+  setFocusOnRender(val: boolean): void;
+  setOfficeAssignees(val: CamsUserReference[]): void;
+  setOfficeAssigneesError(val: boolean): void;
+}
 
 interface StaffAssignmentFilterUseCase {
   assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
@@ -63,13 +45,31 @@ interface StaffAssignmentFilterUseCase {
   handleFilterAssignee(val: ComboOption[]): void;
 }
 
+interface StaffAssignmentFilterViewModel {
+  assigneesFilterRef: React.RefObject<ComboBoxRef>;
+  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
+  handleFilterAssignee(assignees: ComboOption[]): void;
+
+  officeAssignees: CamsUserReference[];
+  officeAssigneesError: boolean;
+}
+
+type StaffAssignmentFilterViewProps = {
+  viewModel: StaffAssignmentFilterViewModel;
+};
+
+type StaffAssignmentScreenFilter = {
+  assignee?: CamsUserReference;
+  includeOnlyUnassigned?: boolean;
+};
+
 export type {
-  StaffAssignmentFilterStore,
   StaffAssignmentFilterControls,
+  StaffAssignmentFilterProps,
+  StaffAssignmentFilterRef,
+  StaffAssignmentFilterStore,
+  StaffAssignmentFilterUseCase,
   StaffAssignmentFilterViewModel,
   StaffAssignmentFilterViewProps,
-  StaffAssignmentFilterRef,
   StaffAssignmentScreenFilter,
-  StaffAssignmentFilterProps,
-  StaffAssignmentFilterUseCase,
 };

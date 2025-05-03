@@ -1,16 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import CaseDetailHeader from './CaseDetailHeader';
-import CaseDetailScreen from '../CaseDetailScreen';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import * as caseNumber from '@/lib/utils/caseNumber';
 import { ResourceActions } from '@common/cams/actions';
 import { CaseDetail } from '@common/cams/cases';
-import * as caseNumber from '@/lib/utils/caseNumber';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import CaseDetailScreen from '../CaseDetailScreen';
+import CaseDetailHeader from './CaseDetailHeader';
 
 function basicRender(caseDetail: ResourceActions<CaseDetail>, isLoading: boolean) {
   render(
     <BrowserRouter>
-      <CaseDetailHeader caseDetail={caseDetail} isLoading={isLoading} caseId={caseDetail.caseId} />
+      <CaseDetailHeader caseDetail={caseDetail} caseId={caseDetail.caseId} isLoading={isLoading} />
     </BrowserRouter>,
   );
 }
@@ -50,11 +51,11 @@ describe('Case Detail Header tests', () => {
         <div className="App" data-testid="app-component-test-id">
           <header
             className="cams-header usa-header-usa-header--basic"
-            style={{ minHeight: '100px', height: '100px' }}
             data-testid="cams-header-test-id"
+            style={{ height: '100px', minHeight: '100px' }}
           ></header>
           <CaseDetailScreen caseDetail={testCaseDetail} caseNotes={[]} />
-          <div style={{ minHeight: '2000px', height: '2000px' }}></div>
+          <div style={{ height: '2000px', minHeight: '2000px' }}></div>
         </div>
       </BrowserRouter>,
     );

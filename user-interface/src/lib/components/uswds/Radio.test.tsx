@@ -1,8 +1,9 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { RadioRef } from '@/lib/type-declarations/input-fields';
-import Radio, { RadioProps } from './Radio';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { RadioRef } from '@/lib/type-declarations/input-fields';
+import { render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+
+import Radio, { RadioProps } from './Radio';
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<RadioRef>();
@@ -12,8 +13,8 @@ describe('Tests for USWDS Input component.', () => {
     id: '1',
     label: 'RadioLabelText',
     name: 'KeyName',
-    value: '1',
     onChange: onChangeHandlerSpy,
+    value: '1',
   };
 
   const radioTestId = `radio-${defaultProps.id}`;

@@ -1,14 +1,14 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './migrate-consolidations';
-import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
+import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { CaseSummary } from '../../../../common/src/cams/cases';
+import { ConsolidationFrom } from '../../../../common/src/cams/events';
+import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
+import { ConsolidationType } from '../../../../common/src/cams/orders';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import CasesDxtrGateway from '../../adapters/gateways/dxtr/cases.dxtr.gateway';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { ConsolidationType } from '../../../../common/src/cams/orders';
-import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
-import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
-import { ConsolidationFrom } from '../../../../common/src/cams/events';
+import { CasesMongoRepository } from '../../adapters/gateways/mongo/cases.mongo.repository';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import AcmsOrders, { AcmsConsolidation, AcmsPredicate } from './migrate-consolidations';
 
 describe('ACMS Orders', () => {
   let context;
@@ -37,8 +37,8 @@ describe('ACMS Orders', () => {
       .mockResolvedValue(expected);
 
     const predicateAndPage: AcmsPredicate = {
-      divisionCode: '000',
       chapter: '00',
+      divisionCode: '000',
     };
 
     const useCase = new AcmsOrders();
@@ -65,7 +65,6 @@ describe('ACMS Orders', () => {
     const leadCase = MockData.getCaseSummary();
     const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
     const details: AcmsConsolidation = {
-      leadCaseId: leadCase.caseId,
       childCases: [
         {
           caseId: childCases[0].caseId,
@@ -78,12 +77,13 @@ describe('ACMS Orders', () => {
           consolidationType: 'administrative',
         },
       ],
+      leadCaseId: leadCase.caseId,
     };
 
     const caseSummaryMap = new Map<string, CaseSummary>([
-      [leadCase.caseId, leadCase],
       [childCases[0].caseId, childCases[0]],
       [childCases[1].caseId, childCases[1]],
+      [leadCase.caseId, leadCase],
     ]);
 
     const expectedFromLinks = details.childCases.map((bCase) => {
@@ -106,16 +106,16 @@ describe('ACMS Orders', () => {
     const allCaseIds = Array.from(caseSummaryMap.keys());
     allCaseIds.forEach((caseId) => {
       expectedHistory.push({
-        documentType: 'AUDIT_CONSOLIDATION',
-        before: null,
         after: {
-          status: 'approved',
-          leadCase,
           childCases,
+          leadCase,
+          status: 'approved',
         },
+        before: null,
+        caseId,
+        documentType: 'AUDIT_CONSOLIDATION',
         updatedBy: ACMS_SYSTEM_USER_REFERENCE,
         updatedOn: '2024-01-01',
-        caseId,
       });
     });
 
@@ -175,7 +175,6 @@ describe('ACMS Orders', () => {
     const leadCase = MockData.getCaseSummary();
     const childCases = MockData.buildArray(MockData.getCaseSummary, 4);
     const details: AcmsConsolidation = {
-      leadCaseId: leadCase.caseId,
       childCases: [
         {
           caseId: childCases[0].caseId,
@@ -198,111 +197,112 @@ describe('ACMS Orders', () => {
           consolidationType: 'substantive',
         },
       ],
+      leadCaseId: leadCase.caseId,
     };
 
     const caseSummaryMap = new Map<string, CaseSummary>([
-      [leadCase.caseId, leadCase],
       [childCases[0].caseId, childCases[0]],
       [childCases[1].caseId, childCases[1]],
       [childCases[2].caseId, childCases[2]],
       [childCases[3].caseId, childCases[3]],
+      [leadCase.caseId, leadCase],
     ]);
 
     // History for lead case and 2 child cases on '2024-01-01'
     const allHistories: CaseConsolidationHistory[] = [];
     allHistories.push({
+      after: {
+        childCases: [childCases[0], childCases[1]],
+        leadCase,
+        status: 'approved',
+      },
+      before: null,
       caseId: childCases[0].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01',
     });
     allHistories.push({
+      after: {
+        childCases: [childCases[0], childCases[1]],
+        leadCase,
+        status: 'approved',
+      },
+      before: null,
       caseId: childCases[1].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01',
     });
     allHistories.push({
+      after: {
+        childCases: [childCases[0], childCases[1]],
+        leadCase,
+        status: 'approved',
+      },
+      before: null,
       caseId: leadCase.caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-01-01',
     });
 
     // History for lead case and next child case on '2024-02-01'
     allHistories.push({
+      after: {
+        childCases: [childCases[2]],
+        leadCase,
+        status: 'approved',
+      },
+      before: null,
       caseId: childCases[2].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[2]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
     });
     allHistories.push({
+      after: {
+        childCases: [childCases[0], childCases[1], childCases[2]],
+        leadCase,
+        status: 'approved',
+      },
+      before: {
+        childCases: [childCases[0], childCases[1]],
+        leadCase,
+        status: 'approved',
+      },
       caseId: leadCase.caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1]],
-      },
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1], childCases[2]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
     });
 
     // History for lead case and next child case on '2024-03-01'
     allHistories.push({
+      after: {
+        childCases: [childCases[3]],
+        leadCase,
+        status: 'approved',
+      },
+      before: null,
       caseId: childCases[3].caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[3]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-03-01',
     });
     allHistories.push({
+      after: {
+        childCases: [childCases[0], childCases[1], childCases[2], childCases[3]],
+        leadCase,
+        status: 'approved',
+      },
+      before: {
+        childCases: [childCases[0], childCases[1], childCases[2]],
+        leadCase,
+        status: 'approved',
+      },
       caseId: leadCase.caseId,
       documentType: 'AUDIT_CONSOLIDATION',
-      before: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1], childCases[2]],
-      },
-      after: {
-        status: 'approved',
-        leadCase,
-        childCases: [childCases[0], childCases[1], childCases[2], childCases[3]],
-      },
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-03-01',
     });
@@ -356,7 +356,6 @@ describe('ACMS Orders', () => {
       MockData.getCaseSummary(),
     ];
     const details: AcmsConsolidation = {
-      leadCaseId: leadCase.caseId,
       childCases: [
         {
           caseId: childCases[0].caseId,
@@ -369,12 +368,13 @@ describe('ACMS Orders', () => {
           consolidationType: 'substantive',
         },
       ],
+      leadCaseId: leadCase.caseId,
     };
 
     // Create a single existing link for the first record coming back from ACMS
     const existingFromLink: ConsolidationFrom = {
-      consolidationType: 'substantive',
       caseId: leadCase.caseId,
+      consolidationType: 'substantive',
       documentType: 'CONSOLIDATION_FROM',
       orderDate: '2024-01-01',
       otherCase: childCases[0],
@@ -387,9 +387,9 @@ describe('ACMS Orders', () => {
       .mockResolvedValue([existingFromLink]);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
-      [leadCase.caseId, leadCase],
       [childCases[0].caseId, childCases[0]],
       [childCases[1].caseId, childCases[1]],
+      [leadCase.caseId, leadCase],
     ]);
 
     const filterExistingCase = (bCase) => bCase.caseId !== existingChildCaseId;
@@ -412,28 +412,28 @@ describe('ACMS Orders', () => {
 
     const expectedHistory: CaseConsolidationHistory[] = [];
     expectedHistory.push({
-      documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
       after: {
-        status: 'approved',
-        leadCase,
         childCases: childCases.filter(filterExistingCase),
+        leadCase,
+        status: 'approved',
       },
+      before: null,
+      caseId: childCases[1].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
-      caseId: childCases[1].caseId,
     });
     expectedHistory.push({
-      documentType: 'AUDIT_CONSOLIDATION',
-      before: null,
       after: {
-        status: 'approved',
-        leadCase,
         childCases: childCases.filter(filterExistingCase),
+        leadCase,
+        status: 'approved',
       },
+      before: null,
+      caseId: leadCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
       updatedBy: ACMS_SYSTEM_USER_REFERENCE,
       updatedOn: '2024-02-01',
-      caseId: leadCase.caseId,
     });
 
     const expectedToLinks = details.childCases.filter(filterExistingCase).map((bCase) => {
@@ -490,7 +490,6 @@ describe('ACMS Orders', () => {
     const leadCase = MockData.getCaseSummary();
     const childCases = [MockData.getCaseSummary(), MockData.getCaseSummary()];
     const details: AcmsConsolidation = {
-      leadCaseId: leadCase.caseId,
       childCases: [
         {
           caseId: childCases[0].caseId,
@@ -503,13 +502,14 @@ describe('ACMS Orders', () => {
           consolidationType: 'substantive',
         },
       ],
+      leadCaseId: leadCase.caseId,
     };
 
     // Create a single existing link for the first record coming back from ACMS
     const existingToLinks: ConsolidationFrom[] = [
       {
-        consolidationType: 'substantive',
         caseId: leadCase.caseId,
+        consolidationType: 'substantive',
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
         otherCase: childCases[0],
@@ -517,8 +517,8 @@ describe('ACMS Orders', () => {
         updatedOn: new Date().toISOString(),
       },
       {
-        consolidationType: 'substantive',
         caseId: leadCase.caseId,
+        consolidationType: 'substantive',
         documentType: 'CONSOLIDATION_FROM',
         orderDate: '2024-01-01',
         otherCase: childCases[1],
@@ -531,9 +531,9 @@ describe('ACMS Orders', () => {
       .mockResolvedValue(existingToLinks);
 
     const caseSummaryMap = new Map<string, CaseSummary>([
-      [leadCase.caseId, leadCase],
       [childCases[0].caseId, childCases[0]],
       [childCases[1].caseId, childCases[1]],
+      [leadCase.caseId, leadCase],
     ]);
 
     jest.spyOn(AcmsGatewayImpl.prototype, 'getConsolidationDetails').mockResolvedValue(details);
@@ -554,8 +554,8 @@ describe('ACMS Orders', () => {
     const useCase = new AcmsOrders();
 
     const predicate: AcmsPredicate = {
-      divisionCode: '000',
       chapter: '00',
+      divisionCode: '000',
     };
 
     const predicateAndPage: AcmsPredicate = {

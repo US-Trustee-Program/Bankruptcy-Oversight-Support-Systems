@@ -1,10 +1,10 @@
+import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsController } from '../controller';
-import { CourtsUseCase } from '../../use-cases/courts/courts';
-import { CourtDivisionDetails } from '../../../../common/src/cams/courts';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import { CourtsUseCase } from '../../use-cases/courts/courts';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'COURTS-CONTROLLER';
 
@@ -22,10 +22,10 @@ export class CourtsController implements CamsController {
       const data = await this.useCase.getCourts(context);
       return httpSuccess({
         body: {
+          data,
           meta: {
             self: context.request.url,
           },
-          data,
         },
       });
     } catch (originalError) {

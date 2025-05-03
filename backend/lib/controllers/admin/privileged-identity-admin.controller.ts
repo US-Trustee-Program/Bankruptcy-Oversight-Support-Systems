@@ -1,12 +1,12 @@
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { getCamsUserReference } from '../../../../common/src/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
-import { CamsController } from '../controller';
-import { AdminUseCase } from '../../use-cases/admin/admin';
-import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsRole } from '../../../../common/src/cams/roles';
+import { getCamsError } from '../../common-errors/error-utilities';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
-import { getCamsUserReference } from '../../../../common/src/cams/session';
+import { AdminUseCase } from '../../use-cases/admin/admin';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'PRIVILEGED-IDENTITY-ADMIN-CONTROLLER';
 
@@ -57,7 +57,7 @@ export class PrivilegedIdentityAdminController implements CamsController {
           context,
           userId,
           getCamsUserReference(context.session.user),
-          { groups, expires },
+          { expires, groups },
         );
         return httpSuccess({ statusCode: 201 });
       } else {

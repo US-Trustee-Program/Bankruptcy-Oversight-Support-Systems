@@ -1,12 +1,13 @@
 import * as mssql from 'mssql';
+
+import { UstpDivision, UstpGroup, UstpOfficeDetails } from '../../../../../common/src/cams/offices';
+import { CamsUserReference } from '../../../../../common/src/cams/users';
 import { CamsError } from '../../../common-errors/cams-error';
+import { buildOfficeCode, getOfficeName } from '../../../use-cases/offices/offices';
+import { OfficesGateway } from '../../../use-cases/offices/offices.types';
 import { ApplicationContext } from '../../types/basic';
 import { QueryResults } from '../../types/database';
 import { executeQuery } from '../../utils/database';
-import { OfficesGateway } from '../../../use-cases/offices/offices.types';
-import { CamsUserReference } from '../../../../../common/src/cams/users';
-import { UstpDivision, UstpGroup, UstpOfficeDetails } from '../../../../../common/src/cams/offices';
-import { buildOfficeCode, getOfficeName } from '../../../use-cases/offices/offices';
 
 const MODULE_NAME = 'OFFICES-GATEWAY';
 
@@ -27,67 +28,18 @@ const INVALID_DIVISION_CODES = [
 const INVALID_DIVISION_CODES_SQL = INVALID_DIVISION_CODES.map((code) => "'" + code + "'").join(',');
 
 type DxtrFlatOfficeDetails = {
-  officeName: string;
-  officeCode: string;
-  courtId: string;
-  courtName: string;
   courtDivisionCode: string;
   courtDivisionName: string;
+  courtId: string;
+  courtName: string;
   groupDesignator: string;
+  officeCode: string;
+  officeName: string;
   regionId: string;
   regionName: string;
-  state?: string;
   staff?: CamsUserReference[];
+  state?: string;
 };
-
-// TODO: Maybe we need to add configuration options here for the Seattle => SE+AK mapping edge case.
-function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOfficeDetails[] {
-  const ustpOfficeDetailsMap = new Map<string, UstpOfficeDetails>();
-  flatOfficeDetails.forEach((flatOffice) => {
-    let current: UstpOfficeDetails;
-    const ustpOfficeCode = buildOfficeCode(flatOffice.regionId, flatOffice.courtDivisionCode);
-    if (ustpOfficeDetailsMap.has(ustpOfficeCode)) {
-      current = ustpOfficeDetailsMap.get(ustpOfficeCode);
-    } else {
-      current = {
-        officeCode: ustpOfficeCode,
-        officeName: getOfficeName(flatOffice.courtDivisionCode),
-        idpGroupName: ustpOfficeCode.replace(/_/g, ' '),
-        groups: [],
-        regionId: parseInt(flatOffice.regionId).toString(),
-        regionName: flatOffice.regionName,
-      };
-      ustpOfficeDetailsMap.set(ustpOfficeCode, current);
-    }
-
-    let group: UstpGroup | undefined = current.groups.find(
-      (g) => g.groupDesignator === flatOffice.groupDesignator,
-    );
-    if (!group) {
-      group = {
-        groupDesignator: flatOffice.groupDesignator,
-        divisions: [],
-      };
-      current.groups.push(group);
-    }
-
-    const division: UstpDivision = {
-      divisionCode: flatOffice.courtDivisionCode,
-      court: {
-        courtId: flatOffice.courtId,
-        courtName: flatOffice.courtName,
-        state: flatOffice.state,
-      },
-      courtOffice: {
-        courtOfficeCode: flatOffice.officeCode,
-        courtOfficeName: flatOffice.courtDivisionName,
-      },
-    };
-    group.divisions.push(division);
-  });
-
-  return [...ustpOfficeDetailsMap.values()];
-}
 
 export default class OfficesDxtrGateway implements OfficesGateway {
   getOfficeName(id: string): string {
@@ -127,4 +79,53 @@ export default class OfficesDxtrGateway implements OfficesGateway {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
   }
+}
+
+// TODO: Maybe we need to add configuration options here for the Seattle => SE+AK mapping edge case.
+function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOfficeDetails[] {
+  const ustpOfficeDetailsMap = new Map<string, UstpOfficeDetails>();
+  flatOfficeDetails.forEach((flatOffice) => {
+    let current: UstpOfficeDetails;
+    const ustpOfficeCode = buildOfficeCode(flatOffice.regionId, flatOffice.courtDivisionCode);
+    if (ustpOfficeDetailsMap.has(ustpOfficeCode)) {
+      current = ustpOfficeDetailsMap.get(ustpOfficeCode);
+    } else {
+      current = {
+        groups: [],
+        idpGroupName: ustpOfficeCode.replace(/_/g, ' '),
+        officeCode: ustpOfficeCode,
+        officeName: getOfficeName(flatOffice.courtDivisionCode),
+        regionId: parseInt(flatOffice.regionId).toString(),
+        regionName: flatOffice.regionName,
+      };
+      ustpOfficeDetailsMap.set(ustpOfficeCode, current);
+    }
+
+    let group: undefined | UstpGroup = current.groups.find(
+      (g) => g.groupDesignator === flatOffice.groupDesignator,
+    );
+    if (!group) {
+      group = {
+        divisions: [],
+        groupDesignator: flatOffice.groupDesignator,
+      };
+      current.groups.push(group);
+    }
+
+    const division: UstpDivision = {
+      court: {
+        courtId: flatOffice.courtId,
+        courtName: flatOffice.courtName,
+        state: flatOffice.state,
+      },
+      courtOffice: {
+        courtOfficeCode: flatOffice.officeCode,
+        courtOfficeName: flatOffice.courtDivisionName,
+      },
+      divisionCode: flatOffice.courtDivisionCode,
+    };
+    group.divisions.push(division);
+  });
+
+  return [...ustpOfficeDetailsMap.values()];
 }

@@ -1,3 +1,3 @@
 export type ObjectKeyVal = {
-  [key: string]: string | number | boolean | Array<string> | Array<number> | Array<object>;
+  [key: string]: Array<number> | Array<object> | Array<string> | boolean | number | string;
 };

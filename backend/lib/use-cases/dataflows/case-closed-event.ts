@@ -1,12 +1,17 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { getOfficeAssigneesRepository } from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { getOfficeAssigneesRepository } from '../../factory';
 
 const MODULE_NAME = 'CASE-CLOSED-EVENT-USE-CASE';
 
 export type CaseClosedEvent = {
   caseId: string;
 };
+
+async function deleteCaseAssignment(context: ApplicationContext, caseId: string) {
+  const repo = getOfficeAssigneesRepository(context);
+  await repo.deleteMany({ caseId });
+}
 
 async function handleCaseClosedEvent(context: ApplicationContext, event: CaseClosedEvent) {
   try {
@@ -20,11 +25,6 @@ async function handleCaseClosedEvent(context: ApplicationContext, event: CaseClo
       data: event,
     });
   }
-}
-
-async function deleteCaseAssignment(context: ApplicationContext, caseId: string) {
-  const repo = getOfficeAssigneesRepository(context);
-  await repo.deleteMany({ caseId });
 }
 
 const CaseClosedEventUseCase = {

@@ -1,12 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { BrowserRouter } from 'react-router-dom';
-import DataVerificationScreen from './DataVerificationScreen';
-import { MockData } from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import DataVerificationScreen from './DataVerificationScreen';
+import * as transferOrderAccordionModule from './TransferOrderAccordion';
 
 describe('Review Orders screen - Alert', () => {
   const user = testingUtilities.setUserWithRoles([CamsRole.DataVerifier]);
@@ -29,8 +30,8 @@ describe('Review Orders screen - Alert', () => {
         props.onOrderUpdate(
           {
             message: mockAlertMessage,
-            type: UswdsAlertStyle.Success,
             timeOut: 8,
+            type: UswdsAlertStyle.Success,
           },
           mockOrder,
         );

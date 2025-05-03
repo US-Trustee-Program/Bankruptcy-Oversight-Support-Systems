@@ -1,7 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+
+import { MeController } from '../../../lib/controllers/me/me.controller';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { MeController } from '../../../lib/controllers/me/me.controller';
 
 const MODULE_NAME = 'ME-FUNCTION';
 
@@ -23,9 +24,9 @@ export async function handler(
 }
 
 app.http('me', {
-  methods: ['GET'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET'],
   route: 'me',
 });
 

@@ -1,6 +1,7 @@
-import { describe } from 'vitest';
 import * as oktaReactModule from '@okta/okta-react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { describe } from 'vitest';
+
 import { OktaLogin } from './OktaLogin';
 
 describe('OktaLogin', () => {
@@ -10,10 +11,10 @@ describe('OktaLogin', () => {
   const signInWithRedirect = vi.fn();
   const useOktaAuth = vi.fn().mockImplementation(() => {
     return {
+      authState,
       oktaAuth: {
         signInWithRedirect,
       },
-      authState,
     };
   });
   vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);

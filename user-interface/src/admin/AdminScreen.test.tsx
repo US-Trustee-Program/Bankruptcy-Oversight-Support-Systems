@@ -1,9 +1,10 @@
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+
 import { AdminScreen } from './AdminScreen';
-import LocalStorage from '@/lib/utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { CamsRole } from '@common/cams/roles';
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => {
   return {

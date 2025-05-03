@@ -1,8 +1,8 @@
-import { ApplicationContext } from '../../adapters/types/basic';
 import {
   CourtDivisionDetails,
   ustpOfficeToCourtDivision,
 } from '../../../../common/src/cams/courts';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { OfficesUseCase } from '../offices/offices';
 
 export class CourtsUseCase {

@@ -1,16 +1,17 @@
-import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
-import { describe } from 'vitest';
-import { render, waitFor, screen, queryByTestId } from '@testing-library/react';
-import CaseDetailScreen from './CaseDetailScreen';
+import MockApi2 from '@/lib/testing/mock-api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail, CaseNote } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
-import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import MockApi2 from '@/lib/testing/mock-api2';
+import { queryByTestId, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
+import { describe } from 'vitest';
+
+import CaseDetailScreen from './CaseDetailScreen';
+import * as detailHeader from './panels/CaseDetailHeader';
 
 const caseId = '101-23-12345';
 
@@ -26,17 +27,17 @@ const trialAttorneyLabel = 'Trial Attorney';
 const informationUnavailable = 'Information is not available.';
 const taxIdUnavailable = 'Tax ID information is not available.';
 const debtorAttorney: DebtorAttorney = {
-  name: 'Jane Doe',
   address1: '123 Rabbithole Lane',
   cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+  name: 'Jane Doe',
   phone: '234-123-1234',
 };
 
 const defaultTestCaseDetail = MockData.getCaseDetail({
   override: {
+    assignments: [brianAssignment, carlAssignment],
     caseId,
     judgeName: rickBHartName,
-    assignments: [brianAssignment, carlAssignment],
   },
 });
 
@@ -78,7 +79,7 @@ describe('Case Detail screen tests', () => {
     render(
       <MemoryRouter initialEntries={[basicInfoPath]}>
         <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
+          <Route element={<CaseDetailScreen caseNotes={[]} />} path="case-detail/:caseId/*" />
         </Routes>
       </MemoryRouter>,
     );
@@ -105,7 +106,7 @@ describe('Case Detail screen tests', () => {
     render(
       <MemoryRouter initialEntries={[basicInfoPath]}>
         <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
+          <Route element={<CaseDetailScreen caseNotes={[]} />} path="case-detail/:caseId/*" />
         </Routes>
       </MemoryRouter>,
     );
@@ -122,7 +123,7 @@ describe('Case Detail screen tests', () => {
     render(
       <MemoryRouter initialEntries={[basicInfoPath]}>
         <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen caseNotes={[]} />} />
+          <Route element={<CaseDetailScreen caseNotes={[]} />} path="case-detail/:caseId/*" />
         </Routes>
       </MemoryRouter>,
     );
@@ -140,8 +141,8 @@ describe('Case Detail screen tests', () => {
     const mockReopenedDate = '01-15-1962';
 
     renderWithProps({
-      dateFiled: mockDateFiled,
       closedDate: mockClosedDate,
+      dateFiled: mockDateFiled,
       dismissedDate: mockDismissedDate,
       reopenedDate: mockReopenedDate,
     });
@@ -236,12 +237,12 @@ describe('Case Detail screen tests', () => {
     async (regionId: string, officeName: string, expectedRegionId: string) => {
       const testCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        regionId,
-        officeName,
         debtor: {
           name: 'Roger Rabbit',
         },
         debtorAttorney,
+        officeName,
+        regionId,
       };
 
       renderWithProps({ ...testCaseDetail });
@@ -278,11 +279,11 @@ describe('Case Detail screen tests', () => {
       const testCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
         debtor: {
-          name: 'Roger Rabbit',
           address1,
           address2,
           address3,
           cityStateZipCountry,
+          name: 'Roger Rabbit',
         },
         debtorAttorney,
       };
@@ -404,11 +405,11 @@ describe('Case Detail screen tests', () => {
   test('should not display case dismissed date if not supplied in api response', async () => {
     const testCaseDetail: CaseDetail = {
       ...defaultTestCaseDetail,
-      dismissedDate: undefined,
       debtor: {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      dismissedDate: undefined,
     };
 
     renderWithProps({ ...testCaseDetail });
@@ -425,12 +426,12 @@ describe('Case Detail screen tests', () => {
   test('should not display closed by court date if reopened date is supplied and is later than CBC date', async () => {
     const testCaseDetail: CaseDetail = {
       ...defaultTestCaseDetail,
-      reopenedDate: '01-01-2025',
       closedDate: '12-15-2024',
       debtor: {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      reopenedDate: '01-01-2025',
     };
     renderWithProps({ ...testCaseDetail });
 
@@ -452,12 +453,12 @@ describe('Case Detail screen tests', () => {
   test('should not display reopened date if closed by court date is later than reopened date', async () => {
     const testCaseDetail: CaseDetail = {
       ...defaultTestCaseDetail,
-      reopenedDate: '04-15-1969',
       closedDate: '08-08-1970',
       debtor: {
         name: 'Roger Rabbit',
       },
       debtorAttorney,
+      reopenedDate: '04-15-1969',
     };
 
     renderWithProps({ ...testCaseDetail });
@@ -531,13 +532,13 @@ describe('Case Detail screen tests', () => {
       email: MaybeString,
     ) => {
       const expectedAttorney: DebtorAttorney = {
-        name: rickBHartName,
         address1,
         address2,
         address3,
         cityStateZipCountry,
-        phone,
         email,
+        name: rickBHartName,
+        phone,
       };
 
       const testCaseDetail: CaseDetail = {
@@ -604,15 +605,15 @@ describe('Case Detail screen tests', () => {
     async (routePath: string, expectedLink: string) => {
       const testCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        caseId: '080-01-12345',
         assignments: [],
+        caseId: '080-01-12345',
         debtor: {
           name: 'Roger Rabbit',
         },
         debtorAttorney: {
-          name: 'Jane Doe',
           address1: '123 Rabbithole Lane',
           cityStateZipCountry: 'Ciudad Obregón GR 25443, MX',
+          name: 'Jane Doe',
           phone: '234-123-1234',
         },
       };

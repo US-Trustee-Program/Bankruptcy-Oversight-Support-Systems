@@ -1,56 +1,46 @@
-import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
-import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
-import Icon from '@/lib/components/uswds/Icon';
-import Input from '@/lib/components/uswds/Input';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import DateRangePicker from '@/lib/components/uswds/DateRangePicker';
+import Icon from '@/lib/components/uswds/Icon';
+import Input from '@/lib/components/uswds/Input';
+import { useApi2 } from '@/lib/hooks/UseApi2';
+import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import {
   ComboBoxRef,
   DateRange,
   DateRangePickerRef,
   InputRef,
 } from '@/lib/type-declarations/input-fields';
-import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
-import { CaseDetail, CaseDocket, CaseDocketEntry, CaseNote } from '@common/cams/cases';
-import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { EventCaseReference } from '@common/cams/events';
-import './CaseDetailScreen.scss';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { AssignAttorneyModalCallbackProps } from '@/staff-assignment/modal/assignAttorneyModal.types';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
-import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+
+import './CaseDetailScreen.scss';
+
 import { CaseAssignment } from '@common/cams/assignments';
+import { CaseDetail, CaseDocket, CaseDocketEntry, CaseNote } from '@common/cams/cases';
+import { EventCaseReference } from '@common/cams/events';
 import { CamsRole } from '@common/cams/roles';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
+
 import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
-import useFeatureFlags, { CASE_NOTES_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
+import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
+import CaseDetailNavigation, { mapNavState, NavState } from './panels/CaseDetailNavigation';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
 const CaseDetailCourtDocket = lazy(() => import('./panels/CaseDetailCourtDocket'));
 
-type SortDirection = 'Oldest' | 'Newest';
-
-interface DocketLimits {
-  dateRange: DateRange;
-  documentRange: DocumentRange;
-}
-
-interface DocumentRange {
-  first: number;
-  last: number;
-}
-
-interface docketSortAndFilterOptions {
-  searchInDocketText: string;
-  selectedFacets: string[];
-  sortDirection: SortDirection;
-  documentNumber: number | null;
-  selectedDateRange: DateRange;
+export interface CaseDetailProps {
+  associatedCases?: EventCaseReference[];
+  caseDetail?: CaseDetail;
+  caseDocketEntries?: CaseDocketEntry[];
+  caseNotes?: CaseNote[];
 }
 
 interface caseNoteSortAndFilterOptions {
@@ -58,74 +48,25 @@ interface caseNoteSortAndFilterOptions {
   sortDirection: SortDirection;
 }
 
-export function findDocketLimits(docket: CaseDocket): DocketLimits {
-  const dateRange: DateRange = { start: undefined, end: undefined };
-  const documentRange: DocumentRange = { first: 0, last: 0 };
-
-  if (!docket.length) return { dateRange, documentRange };
-
-  const firstEntryWithDocument = docket.find((entry) => {
-    return !!entry.documentNumber;
-  });
-  let lastEntryWithDocument = undefined;
-  for (let i = docket.length - 1; i >= 0; i--) {
-    if (docket[i].documentNumber) {
-      lastEntryWithDocument = docket[i];
-      break;
-    }
-  }
-
-  documentRange.first = firstEntryWithDocument?.documentNumber || 0;
-  documentRange.last = lastEntryWithDocument?.documentNumber || 0;
-
-  dateRange.start = docket[0].dateFiled;
-  dateRange.end = docket[docket.length - 1].dateFiled;
-
-  return { dateRange, documentRange };
+interface DocketLimits {
+  dateRange: DateRange;
+  documentRange: DocumentRange;
 }
 
-export function docketSorterClosure(sortDirection: SortDirection) {
-  return (left: CaseDocketEntry, right: CaseDocketEntry) => {
-    const direction = sortDirection === 'Newest' ? 1 : -1;
-    return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
-  };
+interface docketSortAndFilterOptions {
+  documentNumber: null | number;
+  searchInDocketText: string;
+  selectedDateRange: DateRange;
+  selectedFacets: string[];
+  sortDirection: SortDirection;
 }
 
-export function notesSorterClosure(sortDirection: SortDirection) {
-  return (left: CaseNote, right: CaseNote) => {
-    const direction = sortDirection === 'Newest' ? 1 : -1;
-    return left.updatedOn < right.updatedOn ? direction : direction * -1;
-  };
+interface DocumentRange {
+  first: number;
+  last: number;
 }
 
-function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
-  if (dateRange.start && docketEntry.dateFiled < dateRange.start) return false;
-  if (dateRange.end && docketEntry.dateFiled > dateRange.end) return false;
-  return true;
-}
-
-function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) {
-  return (
-    docketEntry.summaryText.toLowerCase().includes(searchString) ||
-    docketEntry.fullText.toLowerCase().includes(searchString)
-  );
-}
-
-function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: number) {
-  if (docketEntry.documentNumber === documentNumber) return docketEntry;
-}
-
-function notesSearchFilter(note: CaseNote, searchString: string) {
-  return (
-    note.title.toLowerCase().includes(searchString) ||
-    note.content.toLowerCase().includes(searchString)
-  );
-}
-
-function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
-  if (selectedFacets.length === 0) return docketEntry;
-  return selectedFacets.includes(docketEntry.summaryText);
-}
+type SortDirection = 'Newest' | 'Oldest';
 
 export function applyCaseNoteSortAndFilters(
   caseNotes: CaseNote[],
@@ -157,7 +98,7 @@ export function applyDocketEntrySortAndFilters(
   options: docketSortAndFilterOptions,
 ) {
   if (docketEntries === undefined) {
-    return { filteredDocketEntries: docketEntries, alertOptions: undefined };
+    return { alertOptions: undefined, filteredDocketEntries: docketEntries };
   }
   if (options.documentNumber) {
     const filteredDocketEntries = docketEntries.filter((docketEntry) =>
@@ -171,7 +112,7 @@ export function applyDocketEntrySortAndFilters(
             type: UswdsAlertStyle.Warning,
           }
         : undefined;
-    return { filteredDocketEntries, docketAlertOptions };
+    return { docketAlertOptions, filteredDocketEntries };
   } else {
     let dateFilteredDocketEntries = [...docketEntries];
     if (options.selectedDateRange) {
@@ -192,47 +133,8 @@ export function applyDocketEntrySortAndFilters(
       .filter((docketEntry) => docketSearchFilter(docketEntry, options.searchInDocketText))
       .filter((docketEntry) => facetFilter(docketEntry, options.selectedFacets))
       .sort(docketSorterClosure(options.sortDirection));
-    return { filteredDocketEntries, docketAlertOptions: undefined };
+    return { docketAlertOptions: undefined, filteredDocketEntries };
   }
-}
-
-function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEntry) {
-  if (acc.has(de.summaryText)) {
-    const facet = acc.get(de.summaryText)!;
-    facet.count = facet.count + 1;
-    acc.set(de.summaryText, facet);
-  } else {
-    acc.set(de.summaryText, { text: de.summaryText, count: 1 });
-  }
-  return acc;
-}
-
-function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
-  if (reOpenDate && closedDate) {
-    const parsedReOpenDate = Date.parse(reOpenDate);
-    const parsedClosedDate = Date.parse(closedDate);
-    if (closedDate && parsedReOpenDate > parsedClosedDate) {
-      return true;
-    }
-  }
-  return false;
-}
-
-export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
-  const facetOptions = [...facets.entries()].map<ComboOption>(([key, facet]) => {
-    return { value: key, label: `${key} (${facet.count})` };
-  });
-  return facetOptions.sort((a, b) => {
-    if (a.label === b.label) return 0;
-    return a.label < b.label ? -1 : 1;
-  });
-}
-
-export interface CaseDetailProps {
-  caseDetail?: CaseDetail;
-  caseDocketEntries?: CaseDocketEntry[];
-  associatedCases?: EventCaseReference[];
-  caseNotes?: CaseNote[];
 }
 
 export default function CaseDetailScreen(props: CaseDetailProps) {
@@ -254,7 +156,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
   const [caseNoteSearchText, setCaseNoteSearchText] = useState('');
-  const [documentNumber, setDocumentNumber] = useState<number | null>(null);
+  const [documentNumber, setDocumentNumber] = useState<null | number>(null);
   const [docketSortDirection, setDocketSortDirection] = useState<SortDirection>('Newest');
   const [notesSortDirection, setNotesSortDirection] = useState<SortDirection>('Newest');
   const location = useLocation();
@@ -374,7 +276,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     findInDocketRef.current?.clearValue();
     setDocumentNumber(null);
     findByDocketNumberRef.current?.clearValue();
-    setSelectedDateRange({ ...selectedDateRange, start: undefined, end: undefined });
+    setSelectedDateRange({ ...selectedDateRange, end: undefined, start: undefined });
     dateRangeRef.current?.clearValue();
     setSelectedFacets([]);
     facetPickerRef.current?.clearSelections();
@@ -414,9 +316,9 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
 
     assignment.selectedAttorneyList.forEach((attorney) => {
       assignments.push({
-        userId: attorney.id,
         name: attorney.name,
         role: CamsRole.TrialAttorney,
+        userId: attorney.id,
       } as CaseAssignment);
     });
 
@@ -475,14 +377,14 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
     }
   }, [location]);
 
-  const { filteredDocketEntries, docketAlertOptions } = applyDocketEntrySortAndFilters(
+  const { docketAlertOptions, filteredDocketEntries } = applyDocketEntrySortAndFilters(
     caseDocketEntries,
     {
+      documentNumber,
       searchInDocketText,
+      selectedDateRange,
       selectedFacets,
       sortDirection: docketSortDirection,
-      documentNumber,
-      selectedDateRange,
     },
   );
 
@@ -496,7 +398,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       <DocumentTitle name="Case Detail" />
       {isLoading && (
         <>
-          <CaseDetailHeader isLoading={isLoading} caseId={caseId} />
+          <CaseDetailHeader caseId={caseId} isLoading={isLoading} />
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-1"></div>
             <div className="grid-col-2">
@@ -507,7 +409,7 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
               />
             </div>
             <div className="grid-col-8">
-              <LoadingSpinner id="case-detail-loading-spinner" caption="Loading case details..." />
+              <LoadingSpinner caption="Loading case details..." id="case-detail-loading-spinner" />
             </div>
             <div className="grid-col-1"></div>
           </div>
@@ -516,12 +418,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
       {!isLoading && caseBasicInfo && (
         <>
           <CaseDetailHeader
-            isLoading={false}
-            caseId={caseBasicInfo.caseId}
             caseDetail={caseBasicInfo}
+            caseId={caseBasicInfo.caseId}
+            isLoading={false}
           />
           <div className="grid-row grid-gap-lg">
-            <div id="left-gutter" className="grid-col-1"></div>
+            <div className="grid-col-1" id="left-gutter"></div>
             <div className="grid-col-2">
               <div className={'left-navigation-pane-container'}>
                 <CaseDetailNavigation
@@ -534,11 +436,11 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 />
                 {hasDocketEntries && navState === NavState.COURT_DOCKET && (
                   <div
+                    aria-live="polite"
                     className={`filter-and-search padding-y-4`}
                     data-testid="filter-and-search-panel"
-                    aria-live="polite"
                   >
-                    <h3 className="filter-header" aria-label="Court Docket Filters">
+                    <h3 aria-label="Court Docket Filters" className="filter-header">
                       Filters
                     </h3>
                     <div className="filter-info-text">
@@ -548,12 +450,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="sort form-field">
                       <div className="usa-sort usa-sort--small">
                         <button
+                          aria-label={'Sort ' + docketSortDirection + ' First'}
                           className="usa-button usa-button--outline sort-button"
+                          data-testid="docket-entry-sort"
                           id="basic-sort-button"
                           name="basic-sort"
                           onClick={toggleDocketSort}
-                          data-testid="docket-entry-sort"
-                          aria-label={'Sort ' + docketSortDirection + ' First'}
                         >
                           <div aria-hidden="true">
                             <span aria-hidden="true">Sort ({docketSortDirection})</span>
@@ -570,16 +472,16 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="in-docket-search form-field" data-testid="docket-entry-search">
                       <div className="usa-search usa-search--small">
                         <Input
-                          className="search-icon"
-                          id="basic-search-field"
-                          name="basic-search"
-                          label="Find text in Docket"
                           aria-label="Find text in Docket entries. Results will be updated while you type."
                           aria-live="polite"
-                          icon="search"
-                          position="right"
                           autoComplete="off"
+                          className="search-icon"
+                          icon="search"
+                          id="basic-search-field"
+                          label="Find text in Docket"
+                          name="basic-search"
                           onChange={searchDocketText}
+                          position="right"
                           ref={findInDocketRef}
                         />
                       </div>
@@ -589,63 +491,63 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                       data-testid="facet-multi-select-container-test-id"
                     >
                       <ComboBox
+                        aria-live="off"
+                        ariaDescription="Select multiple options. Results will update when the dropdown is closed."
                         id="facet-multi-select"
-                        options={getSummaryFacetList(caseDocketSummaryFacets)}
+                        label="Filter by Summary"
+                        multiSelect={true}
                         onClose={handleSelectedFacet}
                         onUpdateSelection={handleFacetClear}
-                        label="Filter by Summary"
-                        ariaDescription="Select multiple options. Results will update when the dropdown is closed."
-                        aria-live="off"
-                        multiSelect={true}
-                        singularLabel="summary"
+                        options={getSummaryFacetList(caseDocketSummaryFacets)}
                         pluralLabel="summaries"
                         ref={facetPickerRef}
+                        singularLabel="summary"
                       />
                     </div>
                     <div className="in-docket-search form-field" data-testid="docket-date-range">
                       <DateRangePicker
-                        id="docket-date-range"
-                        ariaDescription="Find Docket entries that fall within date range. Results will be updated as your selection is made."
                         aria-live="polite"
-                        startDateLabel="Docket Date Range Start"
+                        ariaDescription="Find Docket entries that fall within date range. Results will be updated as your selection is made."
                         endDateLabel="Docket Date Range End"
-                        onStartDateChange={handleStartDateChange}
+                        id="docket-date-range"
                         onEndDateChange={handleEndDateChange}
+                        onStartDateChange={handleStartDateChange}
                         ref={dateRangeRef}
+                        startDateLabel="Docket Date Range Start"
                       ></DateRangePicker>
                     </div>
                     <div className="in-docket-search form-field" data-testid="docket-number-search">
                       <div className="usa-search usa-search--small">
                         <Input
-                          id="document-number-search-field"
-                          title="Enter numbers only"
+                          aria-label="Go to specific Document Number.  Results will be updated while you type."
+                          aria-live="polite"
+                          autoComplete="off"
                           className="search-icon"
-                          type="text"
                           errorMessage={
                             documentNumberError === true ? 'Please enter a number.' : undefined
                           }
-                          name="search-by-document-number"
-                          label="Go to Document Number"
-                          aria-label="Go to specific Document Number.  Results will be updated while you type."
-                          aria-live="polite"
                           icon="search"
-                          position="right"
-                          autoComplete="off"
-                          onChange={searchDocumentNumber}
-                          min={documentRange.first}
+                          id="document-number-search-field"
+                          label="Go to Document Number"
                           max={documentRange.last}
+                          min={documentRange.first}
+                          name="search-by-document-number"
+                          onChange={searchDocumentNumber}
+                          position="right"
                           ref={findByDocketNumberRef}
+                          title="Enter numbers only"
+                          type="text"
                         />
                       </div>
                     </div>
                     <div className="form-field">
                       <button
+                        aria-label="Clear All Filters"
                         className="usa-button usa-button--outline clear-filters-button"
+                        data-testid="clear-filters"
                         id="clear-filters-button"
                         name="clear-filters"
                         onClick={clearDocketFilters}
-                        data-testid="clear-filters"
-                        aria-label="Clear All Filters"
                       >
                         <span aria-hidden="true">Clear All Filters</span>
                       </button>
@@ -654,11 +556,11 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
                 {hasCaseNotes && navState === NavState.CASE_NOTES && (
                   <div
+                    aria-live="polite"
                     className={`filter-and-search padding-y-4`}
                     data-testid="case-notes-filter-and-search-panel"
-                    aria-live="polite"
                   >
-                    <h3 className="filter-header" aria-label="Case Note Filters">
+                    <h3 aria-label="Case Note Filters" className="filter-header">
                       Filters
                     </h3>
                     <div className="filter-info-text">
@@ -667,12 +569,12 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="sort form-field">
                       <div className="usa-sort usa-sort--small">
                         <button
+                          aria-label={'Sort ' + notesSortDirection + ' First'}
                           className="usa-button usa-button--outline sort-button"
+                          data-testid="case-notes-sort"
                           id="basic-sort-button"
                           name="basic-sort"
                           onClick={toggleNotesSort}
-                          data-testid="case-notes-sort"
-                          aria-label={'Sort ' + notesSortDirection + ' First'}
                         >
                           <div aria-hidden="true">
                             <span aria-hidden="true">Sort ({notesSortDirection})</span>
@@ -689,28 +591,28 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                     <div className="case-note-search form-field" data-testid="case-note-search">
                       <div className="usa-search usa-search--small">
                         <Input
-                          className="search-icon"
-                          id="case-note-search-input"
-                          name="case-note-search-input"
-                          label="Find case note by title or content"
                           aria-label="Find case notes by title or content. Results will be updated while you type."
                           aria-live="polite"
-                          icon="search"
-                          position="right"
                           autoComplete="off"
+                          className="search-icon"
+                          icon="search"
+                          id="case-note-search-input"
+                          label="Find case note by title or content"
+                          name="case-note-search-input"
                           onChange={searchCaseNotesByTitle}
+                          position="right"
                           ref={caseNoteTitleSearchRef}
                         />
                       </div>
                     </div>
                     <div className="form-field">
                       <button
+                        aria-label="Clear All Filters"
                         className="usa-button usa-button--outline clear-filters-button"
+                        data-testid="clear-filters"
                         id="clear-filters-button"
                         name="clear-filters"
                         onClick={clearNotesFilters}
-                        data-testid="clear-filters"
-                        aria-label="Clear All Filters"
                       >
                         <span aria-hidden="true">Clear All Filters</span>
                       </button>
@@ -719,73 +621,174 @@ export default function CaseDetailScreen(props: CaseDetailProps) {
                 )}
               </div>
             </div>
-            <div className="grid-col-8" aria-live="polite">
+            <div aria-live="polite" className="grid-col-8">
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   <Route
-                    index
                     element={
                       <CaseDetailOverview
                         caseDetail={caseBasicInfo}
+                        onCaseAssignment={handleCaseAssignment}
                         showReopenDate={showReopenDate(
                           caseBasicInfo?.reopenedDate,
                           caseBasicInfo?.closedDate,
                         )}
-                        onCaseAssignment={handleCaseAssignment}
                       />
                     }
+                    index
                   />
                   <Route
-                    path="court-docket"
                     element={
                       <CaseDetailCourtDocket
+                        alertOptions={docketAlertOptions}
                         caseId={caseBasicInfo.caseId}
                         docketEntries={filteredDocketEntries}
-                        alertOptions={docketAlertOptions}
-                        searchString={searchInDocketText}
                         hasDocketEntries={!!caseDocketEntries && caseDocketEntries?.length > 1}
                         isDocketLoading={isDocketLoading}
+                        searchString={searchInDocketText}
                       />
                     }
+                    path="court-docket"
                   />
                   <Route
-                    path="audit-history"
                     element={<CaseDetailAuditHistory caseId={caseId ?? ''} />}
+                    path="audit-history"
                   />
                   <Route
-                    path="associated-cases"
                     element={
                       <CaseDetailAssociatedCases
                         associatedCases={associatedCases}
                         isAssociatedCasesLoading={isAssociatedCasesLoading}
                       />
                     }
+                    path="associated-cases"
                   />
                   {caseNotesEnabledFlag && (
                     <Route
-                      path="notes"
                       element={
                         <CaseNotes
-                          caseId={caseId ?? ''}
-                          hasCaseNotes={hasCaseNotes}
-                          caseNotes={filteredCaseNotes}
-                          searchString={caseNoteSearchText}
-                          areCaseNotesLoading={areCaseNotesLoading}
                           alertOptions={notesAlertOptions}
+                          areCaseNotesLoading={areCaseNotesLoading}
+                          caseId={caseId ?? ''}
+                          caseNotes={filteredCaseNotes}
+                          hasCaseNotes={hasCaseNotes}
                           onUpdateNoteRequest={handleNotesCallback}
                           ref={caseNotesRef}
+                          searchString={caseNoteSearchText}
                         />
                       }
+                      path="notes"
                     />
                   )}
                 </Routes>
               </Suspense>
               <Outlet />
             </div>
-            <div id="right-gutter" className="grid-col-1"></div>
+            <div className="grid-col-1" id="right-gutter"></div>
           </div>
         </>
       )}
     </MainContent>
   );
+}
+
+export function docketSorterClosure(sortDirection: SortDirection) {
+  return (left: CaseDocketEntry, right: CaseDocketEntry) => {
+    const direction = sortDirection === 'Newest' ? 1 : -1;
+    return left.sequenceNumber < right.sequenceNumber ? direction : direction * -1;
+  };
+}
+
+export function findDocketLimits(docket: CaseDocket): DocketLimits {
+  const dateRange: DateRange = { end: undefined, start: undefined };
+  const documentRange: DocumentRange = { first: 0, last: 0 };
+
+  if (!docket.length) return { dateRange, documentRange };
+
+  const firstEntryWithDocument = docket.find((entry) => {
+    return !!entry.documentNumber;
+  });
+  let lastEntryWithDocument = undefined;
+  for (let i = docket.length - 1; i >= 0; i--) {
+    if (docket[i].documentNumber) {
+      lastEntryWithDocument = docket[i];
+      break;
+    }
+  }
+
+  documentRange.first = firstEntryWithDocument?.documentNumber || 0;
+  documentRange.last = lastEntryWithDocument?.documentNumber || 0;
+
+  dateRange.start = docket[0].dateFiled;
+  dateRange.end = docket[docket.length - 1].dateFiled;
+
+  return { dateRange, documentRange };
+}
+
+export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
+  const facetOptions = [...facets.entries()].map<ComboOption>(([key, facet]) => {
+    return { label: `${key} (${facet.count})`, value: key };
+  });
+  return facetOptions.sort((a, b) => {
+    if (a.label === b.label) return 0;
+    return a.label < b.label ? -1 : 1;
+  });
+}
+
+export function notesSorterClosure(sortDirection: SortDirection) {
+  return (left: CaseNote, right: CaseNote) => {
+    const direction = sortDirection === 'Newest' ? 1 : -1;
+    return left.updatedOn < right.updatedOn ? direction : direction * -1;
+  };
+}
+
+function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
+  if (dateRange.start && docketEntry.dateFiled < dateRange.start) return false;
+  if (dateRange.end && docketEntry.dateFiled > dateRange.end) return false;
+  return true;
+}
+
+function docketSearchFilter(docketEntry: CaseDocketEntry, searchString: string) {
+  return (
+    docketEntry.summaryText.toLowerCase().includes(searchString) ||
+    docketEntry.fullText.toLowerCase().includes(searchString)
+  );
+}
+
+function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: number) {
+  if (docketEntry.documentNumber === documentNumber) return docketEntry;
+}
+
+function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
+  if (selectedFacets.length === 0) return docketEntry;
+  return selectedFacets.includes(docketEntry.summaryText);
+}
+
+function notesSearchFilter(note: CaseNote, searchString: string) {
+  return (
+    note.title.toLowerCase().includes(searchString) ||
+    note.content.toLowerCase().includes(searchString)
+  );
+}
+
+function showReopenDate(reOpenDate: string | undefined, closedDate: string | undefined) {
+  if (reOpenDate && closedDate) {
+    const parsedReOpenDate = Date.parse(reOpenDate);
+    const parsedClosedDate = Date.parse(closedDate);
+    if (closedDate && parsedReOpenDate > parsedClosedDate) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function summaryTextFacetReducer(acc: CaseDocketSummaryFacets, de: CaseDocketEntry) {
+  if (acc.has(de.summaryText)) {
+    const facet = acc.get(de.summaryText)!;
+    facet.count = facet.count + 1;
+    acc.set(de.summaryText, facet);
+  } else {
+    acc.set(de.summaryText, { count: 1, text: de.summaryText });
+  }
+  return acc;
 }

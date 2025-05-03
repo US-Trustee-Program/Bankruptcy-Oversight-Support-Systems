@@ -1,11 +1,11 @@
-import { CamsUserReference } from './users';
 import { getCamsUserReference } from './session';
+import { CamsUserReference } from './users';
 
 export type Auditable = {
-  updatedOn: string;
-  updatedBy: CamsUserReference;
-  createdOn?: string;
   createdBy?: CamsUserReference;
+  createdOn?: string;
+  updatedBy: CamsUserReference;
+  updatedOn: string;
 };
 
 export const SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'SYSTEM', name: 'SYSTEM' };
@@ -22,12 +22,12 @@ export const ACMS_SYSTEM_USER_REFERENCE: CamsUserReference = { id: 'ACMS', name:
  * @returns {T}
  */
 export function createAuditRecord<T extends Auditable>(
-  record: Omit<T, 'updatedOn' | 'updatedBy'>,
+  record: Omit<T, 'updatedBy' | 'updatedOn'>,
   camsUser: CamsUserReference = SYSTEM_USER_REFERENCE,
 ): T {
   return {
     ...record,
-    updatedOn: new Date().toISOString(),
     updatedBy: getCamsUserReference(camsUser),
+    updatedOn: new Date().toISOString(),
   } as T;
 }

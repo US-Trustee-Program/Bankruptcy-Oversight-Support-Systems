@@ -1,32 +1,5 @@
 import { Staff } from './users';
 
-//TODO: Some of these probably do not belong here
-export type UstpOfficeDetails = {
-  officeCode: string; // Active Directory Group name (for now) e.g. USTP_CAMS_My_Group_Name
-  officeName: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices and dxtr.constants.ts
-  groups: UstpGroup[];
-  idpGroupName: string; // Okta group name e.g. USTP CAMS My Group Name
-  regionId: string; // DXTR AO_REGION
-  regionName: string; // DXTR AO_REGION
-  state?: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices
-  staff?: Staff[];
-};
-
-export type UstpGroup = {
-  groupDesignator: string; // ACMS Group Office_Regions_and_Divisions.pdf
-  divisions: UstpDivision[];
-};
-
-export type UstpDivisionMeta = {
-  isLegacy?: true;
-};
-
-export type UstpDivision = UstpDivisionMeta & {
-  divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
-  court: Court;
-  courtOffice: CourtOffice;
-};
-
 export type Court = {
   courtId: string; // DXTR AO_CS_DIV.COURT_ID
   courtName?: string; // DXTR AO_COURT.COURT_NAME
@@ -36,6 +9,33 @@ export type Court = {
 export type CourtOffice = {
   courtOfficeCode: string; // DXTR AO_OFFICE.OFFICE_CODE
   courtOfficeName: string; // DXTR AO_OFFICE.OFFICE_DISPLAY_NAME
+};
+
+export type UstpDivision = UstpDivisionMeta & {
+  court: Court;
+  courtOffice: CourtOffice;
+  divisionCode: string; // ACMS Div Code Office_Regions_and_Divisions.pdf
+};
+
+export type UstpDivisionMeta = {
+  isLegacy?: true;
+};
+
+export type UstpGroup = {
+  divisions: UstpDivision[];
+  groupDesignator: string; // ACMS Group Office_Regions_and_Divisions.pdf
+};
+
+//TODO: Some of these probably do not belong here
+export type UstpOfficeDetails = {
+  groups: UstpGroup[];
+  idpGroupName: string; // Okta group name e.g. USTP CAMS My Group Name
+  officeCode: string; // Active Directory Group name (for now) e.g. USTP_CAMS_My_Group_Name
+  officeName: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices and dxtr.constants.ts
+  regionId: string; // DXTR AO_REGION
+  regionName: string; // DXTR AO_REGION
+  staff?: Staff[];
+  state?: string; // https://www.justice.gov/ust/us-trustee-regions-and-offices
 };
 
 export function mapDivisionCodeToUstpOffice(
@@ -53,151 +53,151 @@ export function mapDivisionCodeToUstpOffice(
 
 export const MOCKED_USTP_OFFICES_ARRAY: UstpOfficeDetails[] = [
   {
-    officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
-    idpGroupName: 'USTP CAMS Region 18 Office Seattle',
-    officeName: 'Seattle',
     groups: [
       {
-        groupDesignator: 'SE',
         divisions: [
           {
-            divisionCode: '812',
             court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
             courtOffice: {
               courtOfficeCode: '2',
               courtOfficeName: 'Seattle',
             },
+            divisionCode: '812',
           },
           {
-            divisionCode: '813',
             court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
             courtOffice: {
               courtOfficeCode: '3',
               courtOfficeName: 'Tacoma',
             },
+            divisionCode: '813',
           },
         ],
+        groupDesignator: 'SE',
       },
       {
-        groupDesignator: 'AK',
         divisions: [
           {
-            divisionCode: '710',
             court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Juneau',
             },
+            divisionCode: '710',
           },
           {
-            divisionCode: '720',
             court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '2',
               courtOfficeName: 'Nome',
             },
+            divisionCode: '720',
           },
           {
-            divisionCode: '730',
             court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '3',
               courtOfficeName: 'Anchorage',
             },
+            divisionCode: '730',
           },
           {
-            divisionCode: '740',
             court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '4',
               courtOfficeName: 'Fairbanks',
             },
+            divisionCode: '740',
           },
           {
-            divisionCode: '750',
             court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
             courtOffice: {
               courtOfficeCode: '5',
               courtOfficeName: 'Ketchikan',
             },
+            divisionCode: '750',
           },
         ],
+        groupDesignator: 'AK',
       },
     ],
+    idpGroupName: 'USTP CAMS Region 18 Office Seattle',
+    officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+    officeName: 'Seattle',
     regionId: '18',
     regionName: 'SEATTLE',
   },
   {
-    officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
-    idpGroupName: 'USTP CAMS Region 3 Office Wilmington',
-    officeName: 'Wilmington',
     groups: [
       {
-        groupDesignator: 'WL',
         divisions: [
           {
-            divisionCode: '111',
             court: { courtId: '0311', courtName: 'District of Delaware', state: 'DE' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Delaware',
             },
+            divisionCode: '111',
           },
         ],
+        groupDesignator: 'WL',
       },
     ],
+    idpGroupName: 'USTP CAMS Region 3 Office Wilmington',
+    officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
+    officeName: 'Wilmington',
     regionId: '3',
     regionName: 'PHILADELPHIA',
   },
   {
-    officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-    idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
-    officeName: 'Manhattan',
     groups: [
       {
-        groupDesignator: 'NY',
         divisions: [
           {
-            divisionCode: '081',
             court: { courtId: '0208', courtName: 'Southern District of New York', state: 'NY' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Manhattan',
             },
+            divisionCode: '081',
           },
           {
-            divisionCode: '087',
             court: { courtId: '0208', courtName: 'Southern District of New York', state: 'NY' },
             courtOffice: {
               courtOfficeCode: '7',
               courtOfficeName: 'White Plains',
             },
+            divisionCode: '087',
           },
         ],
+        groupDesignator: 'NY',
       },
     ],
+    idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
+    officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+    officeName: 'Manhattan',
     regionId: '2',
     regionName: 'NEW YORK',
   },
   {
-    officeCode: 'USTP_CAMS_Region_2_Office_Buffalo',
-    idpGroupName: 'USTP CAMS Region 2 Office Buffalo',
-    officeName: 'Buffalo',
     groups: [
       {
-        groupDesignator: 'BU',
         divisions: [
           {
-            divisionCode: '091',
             court: { courtId: '0209', courtName: 'Western District of New York', state: 'NY' },
             courtOffice: {
               courtOfficeCode: '1',
               courtOfficeName: 'Buffalo',
             },
+            divisionCode: '091',
           },
         ],
+        groupDesignator: 'BU',
       },
     ],
+    idpGroupName: 'USTP CAMS Region 2 Office Buffalo',
+    officeCode: 'USTP_CAMS_Region_2_Office_Buffalo',
+    officeName: 'Buffalo',
     regionId: '2',
     regionName: 'NEW YORK',
   },

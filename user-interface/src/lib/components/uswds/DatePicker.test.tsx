@@ -1,8 +1,9 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import DatePicker, { DatePickerProps } from './DatePicker';
 import { InputRef } from '@/lib/type-declarations/input-fields';
+import { render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
+import DatePicker, { DatePickerProps } from './DatePicker';
 
 // NOTE For some reason (known issue) a date input element can not be changed by typing a date
 // in the formation that the UI expects. The date may only be changed using a change event and

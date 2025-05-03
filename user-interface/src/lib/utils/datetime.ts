@@ -1,7 +1,7 @@
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'UTC',
   day: '2-digit',
   month: '2-digit',
+  timeZone: 'UTC',
   year: 'numeric',
 });
 
@@ -15,14 +15,14 @@ export function formatDate(dateOrString: Date | string): string {
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
   hour: 'numeric',
-  minute: '2-digit',
   hour12: true,
+  minute: '2-digit',
+  month: '2-digit',
+  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   timeZoneName: 'short',
+  year: 'numeric',
 });
 
 export function formatDateTime(dateOrString: Date | string): string {

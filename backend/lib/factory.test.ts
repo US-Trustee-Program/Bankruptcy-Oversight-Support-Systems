@@ -99,10 +99,10 @@ describe('Factory function-apps', () => {
     dbContext = await createMockApplicationContext({
       env: {
         CAMS_LOGIN_PROVIDER: 'okta',
-        DATABASE_MOCK: 'false',
-        COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
         CAMS_USER_GROUP_GATEWAY_CONFIG:
           'url=https://fake.url|clientId=mock|keyId=mock|privateKey={"foo": "bar"}}',
+        COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
+        DATABASE_MOCK: 'false',
       },
     });
     mockDbContext = await createMockApplicationContext();

@@ -1,12 +1,13 @@
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { SyncedCase } from '@common/cams/cases';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
-import { SearchResults, SearchResultsProps } from './SearchResults';
-import { BrowserRouter } from 'react-router-dom';
+import Api2 from '@/lib/models/api2';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
 import { SearchResultsRow } from '@/search/SearchResultsRow';
-import Api2 from '@/lib/models/api2';
+import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
+import { SyncedCase } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import { SearchResults, SearchResultsProps } from './SearchResults';
 
 describe('SearchResults component tests', () => {
   let caseList: SyncedCase[];
@@ -17,32 +18,32 @@ describe('SearchResults component tests', () => {
     vi.stubEnv('CAMS_PA11Y', 'true');
     caseList = MockData.buildArray(MockData.getSyncedCase, 60);
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: caseList,
       meta: {
         self: 'self-link',
       },
       pagination: {
+        count: caseList.length,
         currentPage: 1,
         limit: DEFAULT_SEARCH_LIMIT,
-        count: caseList.length,
         next: 'next-link',
         totalPages: Math.ceil(caseList.length / DEFAULT_SEARCH_LIMIT),
       },
-      data: caseList,
     });
   });
 
   function renderWithProps(props: Partial<SearchResultsProps> = {}) {
     const defaultProps: SearchResultsProps = {
+      header: SearchResultsHeader,
       id: 'search-results',
+      onEndSearching: onEndSearchingSpy,
+      onStartSearching: onStartSearchingSpy,
+      row: SearchResultsRow,
       searchPredicate: {
         caseNumber: '00-11111',
         limit: 25,
         offset: 0,
       },
-      onStartSearching: onStartSearchingSpy,
-      onEndSearching: onEndSearchingSpy,
-      header: SearchResultsHeader,
-      row: SearchResultsRow,
     };
     render(
       <BrowserRouter>
@@ -80,15 +81,15 @@ describe('SearchResults component tests', () => {
 
   test('should show the no results alert when no results are available', async () => {
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: [],
       meta: {
         self: 'self-link',
       },
       pagination: {
+        count: 0,
         currentPage: 0,
         limit: DEFAULT_SEARCH_LIMIT,
-        count: 0,
       },
-      data: [],
     });
 
     renderWithProps();

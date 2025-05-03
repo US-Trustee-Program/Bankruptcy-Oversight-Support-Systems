@@ -1,11 +1,11 @@
-import React, { useRef } from 'react';
-import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { OrderTableImperative } from '@/data-verification/consolidation/ConsolidationCasesTable';
-import { ButtonRef } from '@/lib/components/uswds/Button';
+import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
 import { ConfirmationModalImperative } from '@/data-verification/consolidation/ConsolidationOrderModal';
-import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
+import { ButtonRef } from '@/lib/components/uswds/Button';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
+import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+import React, { useRef } from 'react';
 
 export function useConsolidationControlsReact(): ConsolidationControls {
   const approveButton = useRef<ButtonRef>(null);
@@ -26,10 +26,10 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     consolidationType?: ConsolidationType,
   ) => {
     confirmationModal.current?.show({
-      status,
       cases: selectedCases,
-      leadCase,
       consolidationType,
+      leadCase,
+      status,
     });
   };
 
@@ -53,18 +53,18 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   return {
     approveButton,
     caseTableActions,
+    clearAllCheckBoxes,
     clearButton,
     confirmationModal,
+    disableButton,
+    disableLeadCaseForm,
     jointAdministrationRadio,
     leadCaseDivisionInput,
+    leadCaseFormToggle,
     leadCaseNumberInput,
     rejectButton,
-    substantiveRadio,
-    leadCaseFormToggle,
     showConfirmationModal,
-    disableLeadCaseForm,
-    clearAllCheckBoxes,
-    disableButton,
+    substantiveRadio,
     unsetConsolidationType,
   };
 }

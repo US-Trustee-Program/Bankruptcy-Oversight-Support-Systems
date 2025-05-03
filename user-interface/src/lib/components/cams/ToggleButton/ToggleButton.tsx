@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
+
 import Icon from '../../uswds/Icon';
 import './ToggleButton.scss';
+
+type ToggleButtonProps = {
+  ariaLabel: string | ToggleLabel;
+  id: string;
+  isActive: boolean;
+  label: string | ToggleLabel;
+  onToggle: (isActive: boolean) => boolean;
+  tooltipLabel: string | ToggleLabel;
+};
 
 type ToggleLabel = {
   active: string;
   inactive: string;
 };
-
-function isModeLabel(obj: unknown): obj is ToggleLabel {
-  return obj !== null && typeof obj === 'object' && 'active' in obj && 'inactive' in obj;
-}
 
 function getLabel(label: string | ToggleLabel, isActive: boolean) {
   if (isModeLabel(label)) {
@@ -19,14 +25,9 @@ function getLabel(label: string | ToggleLabel, isActive: boolean) {
   }
 }
 
-type ToggleButtonProps = {
-  id: string;
-  label: string | ToggleLabel;
-  ariaLabel: string | ToggleLabel;
-  tooltipLabel: string | ToggleLabel;
-  isActive: boolean;
-  onToggle: (isActive: boolean) => boolean;
-};
+function isModeLabel(obj: unknown): obj is ToggleLabel {
+  return obj !== null && typeof obj === 'object' && 'active' in obj && 'inactive' in obj;
+}
 
 function ToggleButton(props: ToggleButtonProps) {
   const [isActive, setIsActive] = useState(props.isActive);
@@ -46,13 +47,13 @@ function ToggleButton(props: ToggleButtonProps) {
 
   return (
     <button
-      id={props.id}
-      data-testid={props.id}
-      role="switch"
-      className={`toggle-button ${isActive ? 'active' : 'inactive'} usa-tag--big usa-button--unstyled`}
-      aria-label={ariaLabel}
       aria-checked={isActive}
+      aria-label={ariaLabel}
+      className={`toggle-button ${isActive ? 'active' : 'inactive'} usa-tag--big usa-button--unstyled`}
+      data-testid={props.id}
+      id={props.id}
       onClick={handleToggle}
+      role="switch"
       title={tooltip}
     >
       {label}

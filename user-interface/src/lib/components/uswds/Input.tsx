@@ -1,19 +1,21 @@
 import './forms.scss';
+
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
 import { InputRef } from '../../type-declarations/input-fields';
-import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
+import Icon from './Icon';
 
 export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
-  label?: string;
+  ariaDescription?: string;
   autoComplete?: 'off';
-  position?: 'left' | 'right';
-  value?: string;
+  errorMessage?: string;
   icon?: string;
   includeClearButton?: boolean;
-  ariaDescription?: string;
+  label?: string;
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
-  errorMessage?: string;
+  position?: 'left' | 'right';
+  value?: string;
 };
 
 function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
@@ -21,7 +23,7 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   const [inputValue, setInputValue] = useState<string>(props.value || '');
   const [inputDisabled, setInputDisabled] = useState<boolean>(props.disabled ?? false);
 
-  const { includeClearButton, ariaDescription, errorMessage, ...otherProps } = props;
+  const { ariaDescription, errorMessage, includeClearButton, ...otherProps } = props;
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -80,12 +82,12 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
     setInputValue(props.value || '');
   }, [props.value]);
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
+  useImperativeHandle(ref, () => ({ clearValue, disable, focus, getValue, resetValue, setValue }));
 
   return (
     <>
       <div className="usa-form-group">
-        <label className="usa-label" id={props.id + '-label'} htmlFor={props.id}>
+        <label className="usa-label" htmlFor={props.id} id={props.id + '-label'}>
           {props.label}
           {props.required && <span className="required-form-field" />}
         </label>
@@ -99,38 +101,38 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
         >
           <input
             {...otherProps}
-            className={`usa-input usa-tooltip ${props.className ?? ''}`}
-            aria-invalid={errorMessage ? 'true' : undefined}
+            aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
             aria-errormessage={errorMessage ? `${props.id}-input__error-message` : undefined}
+            aria-invalid={errorMessage ? 'true' : undefined}
+            className={`usa-input usa-tooltip ${props.className ?? ''}`}
             data-position={props.position ?? 'right'}
-            onChange={handleOnChange}
-            onFocus={handleFocus}
             data-testid={props.id}
             disabled={inputDisabled}
-            value={inputValue}
-            aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+            onChange={handleOnChange}
+            onFocus={handleFocus}
             ref={inputRef}
+            value={inputValue}
           />
           {includeClearButton && !inputDisabled && inputValue.length > 0 && (
             <div className="usa-input-suffix">
               <Button
-                id={`clear-${props.id}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                onClick={clearValue}
                 aria-label="clear text input."
+                id={`clear-${props.id}`}
+                onClick={clearValue}
+                uswdsStyle={UswdsButtonStyle.Unstyled}
               >
                 <Icon name="close"></Icon>
               </Button>
             </div>
           )}
           {!includeClearButton && props.icon && (
-            <div className="usa-input-prefix" aria-hidden="true">
+            <div aria-hidden="true" className="usa-input-prefix">
               <Icon focusable={false} name={props.icon}></Icon>
             </div>
           )}
         </div>
         {errorMessage && errorMessage.length > 0 && (
-          <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+          <div className="usa-input__error-message" id={`${props.id}-input__error-message`}>
             {errorMessage}
           </div>
         )}

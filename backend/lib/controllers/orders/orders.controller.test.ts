@@ -1,9 +1,7 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
-import { CamsError } from '../../common-errors/cams-error';
-import { UnknownError } from '../../common-errors/unknown-error';
-import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
+import * as crypto from 'crypto';
+
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import { ResponseBody } from '../../../../common/src/api/response';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -14,32 +12,35 @@ import {
 } from '../../../../common/src/cams/orders';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { sortDates } from '../../../../common/src/date-helper';
-import { OrdersController } from './orders.controller';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, commonHeaders } from '../../adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
-import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
-import { ResponseBody } from '../../../../common/src/api/response';
-import { NotFoundError } from '../../common-errors/not-found-error';
 import { BadRequestError } from '../../common-errors/bad-request';
-import * as crypto from 'crypto';
+import { CamsError } from '../../common-errors/cams-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { OrdersUseCase, SyncOrdersStatus } from '../../use-cases/orders/orders';
+import { OrdersController } from './orders.controller';
 
 const syncResponse: SyncOrdersStatus = {
-  options: {
-    txIdOverride: '10',
+  finalSyncState: {
+    documentType: 'ORDERS_SYNC_STATE',
+    id: '28e35739-58cd-400b-9d4b-26969773618b',
+    txId: '464',
   },
   initialSyncState: {
     documentType: 'ORDERS_SYNC_STATE',
-    txId: '464',
     id: '28e35739-58cd-400b-9d4b-26969773618b',
-  },
-  finalSyncState: {
-    documentType: 'ORDERS_SYNC_STATE',
     txId: '464',
-    id: '28e35739-58cd-400b-9d4b-26969773618b',
   },
   length: 13,
-  startingTxId: '10',
   maxTxId: '464',
+  options: {
+    txIdOverride: '10',
+  },
+  startingTxId: '10',
 };
 
 describe('orders controller tests', () => {
@@ -50,9 +51,9 @@ describe('orders controller tests', () => {
     .sort((a, b) => sortDates(a.orderDate, b.orderDate));
   const id = '12345';
   const orderTransfer: TransferOrderAction = {
+    caseId: (mockTransferOrder[0] as TransferOrder).caseId,
     id,
     orderType: 'transfer',
-    caseId: (mockTransferOrder[0] as TransferOrder).caseId,
     status: 'rejected',
   };
   let applicationContext: ApplicationContext;
@@ -139,7 +140,7 @@ describe('orders controller tests', () => {
     expect(getSuggestedCasesSpy).toHaveBeenCalledWith(applicationContext);
     expect(response).toEqual(
       expect.objectContaining({
-        body: { meta: expect.objectContaining({ self: expect.any(String) }), data: suggestedCases },
+        body: { data: suggestedCases, meta: expect.objectContaining({ self: expect.any(String) }) },
       }),
     );
   });
@@ -183,8 +184,8 @@ describe('orders controller tests', () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
     const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
       ...mockConsolidationOrder,
-      rejectedCases: [],
       leadCase: undefined,
+      rejectedCases: [],
     };
     const request = mockCamsHttpRequest({ body: mockConsolidationOrderActionRejection });
     applicationContext.request = request;
@@ -210,9 +211,9 @@ describe('orders controller tests', () => {
 
     const expectedBody: ResponseBody<ConsolidationOrder[]> = { data: [mockConsolidationOrder] };
     expect(actualResult).toEqual({
+      body: expectedBody,
       headers: commonHeaders,
       statusCode: HttpStatusCodes.OK,
-      body: expectedBody,
     });
   });
 
@@ -236,8 +237,8 @@ describe('orders controller tests', () => {
     const mockConsolidationOrderActionApproval2: ConsolidationOrderActionApproval = {
       ...mockConsolidationOrder2,
       approvedCases: [],
-      leadCase: mockConsolidationOrder.childCases[0],
       consolidationType: undefined,
+      leadCase: mockConsolidationOrder.childCases[0],
     };
     const request2 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval2 });
     applicationContext.request = request2;

@@ -8,6 +8,6 @@ const debtorTypeLabelMap = new Map<string, string>([
   ['PB', 'Partnership Business'],
 ]);
 
-export function getDebtorTypeLabel(id: string | null): string {
+export function getDebtorTypeLabel(id: null | string): string {
   return debtorTypeLabelMap.has(id) ? debtorTypeLabelMap.get(id) : 'Debtor Type Not Available';
 }

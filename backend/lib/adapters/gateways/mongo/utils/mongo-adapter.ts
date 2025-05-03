@@ -1,3 +1,6 @@
+import { randomUUID } from 'crypto';
+import { Document as MongoDocument, MongoServerError } from 'mongodb';
+
 import { PaginationParameters } from '../../../../../../common/src/api/pagination';
 import { DEFAULT_SEARCH_LIMIT } from '../../../../../../common/src/api/search';
 import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
@@ -15,8 +18,11 @@ import {
 } from '../../../../use-cases/gateways.types';
 import { toMongoAggregate } from './mongo-aggregate-renderer';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
-import { randomUUID } from 'crypto';
-import { Document as MongoDocument, MongoServerError } from 'mongodb';
+
+type CamsItem<T> = T & {
+  _id?: unknown;
+  id?: string;
+};
 
 export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private collectionHumble: CollectionHumble<T>;
@@ -25,6 +31,18 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   constructor(moduleName: string, collection: CollectionHumble<T>) {
     this.collectionHumble = collection;
     this.moduleName = moduleName + '_ADAPTER';
+  }
+
+  public static newAdapter<T>(
+    moduleName: string,
+    collection: string,
+    database: string,
+    client: DocumentClient,
+  ) {
+    return new MongoCollectionAdapter<T>(
+      moduleName,
+      client.database(database).collection<T>(collection),
+    );
   }
 
   async aggregate<U = T>(pipeline: Pipeline): Promise<U[]> {
@@ -45,9 +63,161 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
+  public async countAllDocuments() {
+    const mongoQuery = {};
+    try {
+      return await this.collectionHumble.countDocuments(mongoQuery);
+    } catch (originalError) {
+      throw this.handleError(originalError, 'Failed while counting all documents.');
+    }
+  }
+
+  public async countDocuments(query: Query<T>) {
+    const mongoQuery = toMongoQuery<T>(query);
+    try {
+      return await this.collectionHumble.countDocuments(mongoQuery);
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to count documents. ${originalError.message}`, {
+        query,
+      });
+    }
+  }
+
+  public async deleteMany(query: Query<T>) {
+    const mongoQuery = toMongoQuery<T>(query);
+    try {
+      const result = await this.collectionHumble.deleteMany(mongoQuery);
+      if (result.deletedCount < 1) {
+        throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
+      }
+
+      return result.deletedCount;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to delete items. ${originalError.message}`, {
+        query,
+      });
+    }
+  }
+
+  public async deleteOne(query: Query<T>) {
+    const mongoQuery = toMongoQuery<T>(query);
+    try {
+      const result = await this.collectionHumble.deleteOne(mongoQuery);
+      if (result.deletedCount !== 1) {
+        throw new NotFoundError(this.moduleName, {
+          message: `Matched and deleted ${result.deletedCount} items.`,
+        });
+      }
+
+      return result.deletedCount;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to delete item. ${originalError.message}`, {
+        query,
+      });
+    }
+  }
+
+  public async find(query: Query<T>, sort?: SortSpec): Promise<T[]> {
+    const mongoQuery = toMongoQuery<T>(query);
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
+    try {
+      const items: T[] = [];
+
+      const findResults = await this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? findResults.sort(mongoSort) : findResults;
+      for await (const doc of results) {
+        items.push(doc as CamsItem<T>);
+      }
+
+      return items;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
+    }
+  }
+
+  public async findOne(query: Query<T>): Promise<T> {
+    const mongoQuery = toMongoQuery<T>(query);
+    try {
+      const result = await this.collectionHumble.findOne<T>(mongoQuery);
+      if (!result) {
+        throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
+      }
+      return result;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
+    }
+  }
+
+  public async getAll(sort?: SortSpec): Promise<T[]> {
+    const mongoQuery = {};
+    const mongoSort = sort ? toMongoSort(sort) : undefined;
+    try {
+      const findResult = await this.collectionHumble.find(mongoQuery);
+      const results = mongoSort ? findResult.sort(mongoSort) : findResult;
+
+      const items: T[] = [];
+      for await (const doc of results) {
+        items.push(doc as CamsItem<T>);
+      }
+      return items;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to retrieve all. ${originalError.message}`, {
+        sort,
+      });
+    }
+  }
+
+  getPage<T>(result: MongoDocument): CamsPaginationResponse<T> {
+    return {
+      data: result['data'] ?? [],
+      metadata: result['metadata'] && result['metadata'][0] ? result['metadata'][0] : { total: 0 },
+    };
+  }
+
+  public async insertMany(items: T[]) {
+    try {
+      const mongoItems = items.map((item) => {
+        const cleanItem = removeIds(item);
+        return createOrGetId<T>(cleanItem);
+      });
+      const result = await this.collectionHumble.insertMany(mongoItems);
+      const insertedIds = mongoItems.map((item) => item.id);
+      if (insertedIds.length !== result.insertedCount) {
+        throw new CamsError(this.moduleName, {
+          data: insertedIds,
+          message: 'Not all items inserted',
+        });
+      }
+      return insertedIds;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to insert items. ${originalError.message}`, {
+        items,
+      });
+    }
+  }
+
+  public async insertOne(item: T) {
+    try {
+      const cleanItem = removeIds(item);
+      const mongoItem = createOrGetId<T>(cleanItem);
+      const result = await this.collectionHumble.insertOne(mongoItem);
+      if (!result.acknowledged) {
+        throw new UnknownError(this.moduleName, {
+          message: 'Failed to insert document into database.',
+        });
+      }
+
+      return mongoItem.id;
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to insert item. ${originalError.message}`, {
+        item,
+      });
+    }
+  }
+
   public async paginate(
-    pipelineOrQuery: Pipeline | ConditionOrConjunction,
-    page: PaginationParameters = { offset: 0, limit: DEFAULT_SEARCH_LIMIT },
+    pipelineOrQuery: ConditionOrConjunction | Pipeline,
+    page: PaginationParameters = { limit: DEFAULT_SEARCH_LIMIT, offset: 0 },
   ): Promise<CamsPaginationResponse<T>> {
     try {
       const pipeline = isPipeline(pipelineOrQuery)
@@ -73,63 +243,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
         `Query failed. ${originalError.message}`,
         pipelineOrQuery,
       );
-    }
-  }
-
-  getPage<T>(result: MongoDocument): CamsPaginationResponse<T> {
-    return {
-      metadata: result['metadata'] && result['metadata'][0] ? result['metadata'][0] : { total: 0 },
-      data: result['data'] ?? [],
-    };
-  }
-
-  public async find(query: Query<T>, sort?: SortSpec): Promise<T[]> {
-    const mongoQuery = toMongoQuery<T>(query);
-    const mongoSort = sort ? toMongoSort(sort) : undefined;
-    try {
-      const items: T[] = [];
-
-      const findResults = await this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? findResults.sort(mongoSort) : findResults;
-      for await (const doc of results) {
-        items.push(doc as CamsItem<T>);
-      }
-
-      return items;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
-    }
-  }
-
-  public async getAll(sort?: SortSpec): Promise<T[]> {
-    const mongoQuery = {};
-    const mongoSort = sort ? toMongoSort(sort) : undefined;
-    try {
-      const findResult = await this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? findResult.sort(mongoSort) : findResult;
-
-      const items: T[] = [];
-      for await (const doc of results) {
-        items.push(doc as CamsItem<T>);
-      }
-      return items;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Failed to retrieve all. ${originalError.message}`, {
-        sort,
-      });
-    }
-  }
-
-  public async findOne(query: Query<T>): Promise<T> {
-    const mongoQuery = toMongoQuery<T>(query);
-    try {
-      const result = await this.collectionHumble.findOne<T>(mongoQuery);
-      if (!result) {
-        throw new NotFoundError(this.moduleName, { message: 'No matching item found.' });
-      }
-      return result;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Query failed. ${originalError.message}`, { query });
     }
   }
 
@@ -182,8 +295,8 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       };
     } catch (originalError) {
       throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
-        query,
         item,
+        query,
       });
     }
   }
@@ -214,117 +327,10 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       };
     } catch (originalError) {
       throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
-        query,
         item: itemProperties,
-      });
-    }
-  }
-
-  public async insertOne(item: T) {
-    try {
-      const cleanItem = removeIds(item);
-      const mongoItem = createOrGetId<T>(cleanItem);
-      const result = await this.collectionHumble.insertOne(mongoItem);
-      if (!result.acknowledged) {
-        throw new UnknownError(this.moduleName, {
-          message: 'Failed to insert document into database.',
-        });
-      }
-
-      return mongoItem.id;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Failed to insert item. ${originalError.message}`, {
-        item,
-      });
-    }
-  }
-
-  public async insertMany(items: T[]) {
-    try {
-      const mongoItems = items.map((item) => {
-        const cleanItem = removeIds(item);
-        return createOrGetId<T>(cleanItem);
-      });
-      const result = await this.collectionHumble.insertMany(mongoItems);
-      const insertedIds = mongoItems.map((item) => item.id);
-      if (insertedIds.length !== result.insertedCount) {
-        throw new CamsError(this.moduleName, {
-          message: 'Not all items inserted',
-          data: insertedIds,
-        });
-      }
-      return insertedIds;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Failed to insert items. ${originalError.message}`, {
-        items,
-      });
-    }
-  }
-
-  public async deleteOne(query: Query<T>) {
-    const mongoQuery = toMongoQuery<T>(query);
-    try {
-      const result = await this.collectionHumble.deleteOne(mongoQuery);
-      if (result.deletedCount !== 1) {
-        throw new NotFoundError(this.moduleName, {
-          message: `Matched and deleted ${result.deletedCount} items.`,
-        });
-      }
-
-      return result.deletedCount;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Failed to delete item. ${originalError.message}`, {
         query,
       });
     }
-  }
-
-  public async deleteMany(query: Query<T>) {
-    const mongoQuery = toMongoQuery<T>(query);
-    try {
-      const result = await this.collectionHumble.deleteMany(mongoQuery);
-      if (result.deletedCount < 1) {
-        throw new NotFoundError(this.moduleName, { message: 'No items deleted' });
-      }
-
-      return result.deletedCount;
-    } catch (originalError) {
-      throw this.handleError(originalError, `Failed to delete items. ${originalError.message}`, {
-        query,
-      });
-    }
-  }
-
-  public async countDocuments(query: Query<T>) {
-    const mongoQuery = toMongoQuery<T>(query);
-    try {
-      return await this.collectionHumble.countDocuments(mongoQuery);
-    } catch (originalError) {
-      throw this.handleError(originalError, `Failed to count documents. ${originalError.message}`, {
-        query,
-      });
-    }
-  }
-
-  public async countAllDocuments() {
-    const mongoQuery = {};
-    try {
-      return await this.collectionHumble.countDocuments(mongoQuery);
-    } catch (originalError) {
-      throw this.handleError(originalError, 'Failed while counting all documents.');
-    }
-  }
-
-  public static newAdapter<T>(
-    moduleName: string,
-    collection: string,
-    database: string,
-    client: DocumentClient,
-  ) {
-    return new MongoCollectionAdapter<T>(
-      moduleName,
-      client.database(database).collection<T>(collection),
-    );
   }
 
   private handleError(error: unknown, message: string, data?: object): CamsError {
@@ -333,16 +339,16 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     if (!isCamsError(error)) {
       mongoError = error as MongoServerError;
       err = {
-        name: mongoError.name,
         message: mongoError.message,
+        name: mongoError.name,
       } as unknown as Error;
     } else {
       err = error;
     }
     return getCamsErrorWithStack(err, this.moduleName, {
-      camsStackInfo: { module: this.moduleName, message: err.message },
-      message,
+      camsStackInfo: { message: err.message, module: this.moduleName },
       data,
+      message,
     });
   }
 }
@@ -360,8 +366,3 @@ export function removeIds<T>(item: CamsItem<T>): CamsItem<T> {
   delete cleanItem.id;
   return cleanItem;
 }
-
-type CamsItem<T> = T & {
-  _id?: unknown;
-  id?: string;
-};

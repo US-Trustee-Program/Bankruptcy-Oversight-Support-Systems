@@ -1,8 +1,8 @@
 import { DeferCloseAccumulator } from './defer-close';
-import { DeferReleaseAccumulator } from './defer-release';
-import { finalizeDeferrable } from './finalize-deferrable';
 import * as DeferCloseModule from './defer-close';
+import { DeferReleaseAccumulator } from './defer-release';
 import * as DeferReleaseModule from './defer-release';
+import { finalizeDeferrable } from './finalize-deferrable';
 
 describe('Finalize deferrable', () => {
   test('should call closeDeferred and releaseDeferred', async () => {

@@ -1,17 +1,18 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+
 import Checkbox, { CheckboxProps, CheckboxRef, CheckboxState } from './Checkbox';
-import testingUtilities from '@/lib/testing/testing-utilities';
 
 describe('Test Checkbox component', async () => {
   function renderWithProps(props?: Partial<CheckboxProps>, ref?: React.Ref<CheckboxRef>) {
     const defaultProps: CheckboxProps = {
-      id: 'checkbox123',
-      value: 'checkbox toggle',
       checked: false,
+      id: 'checkbox123',
       onChange: () => {},
       onFocus: () => {},
+      value: 'checkbox toggle',
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -100,7 +101,7 @@ describe('Test Checkbox component', async () => {
 
   test('should add a class if className is provided', () => {
     const addedClassName = 'test-class';
-    renderWithProps({ id: 'test', className: addedClassName });
+    renderWithProps({ className: addedClassName, id: 'test' });
     const checkbox = screen.getByTestId('checkbox-test');
     expect(checkbox.parentNode).toHaveClass(addedClassName);
   });

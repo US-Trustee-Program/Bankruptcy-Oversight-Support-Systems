@@ -3,10 +3,10 @@ import { ApplicationContext } from '../../../types/basic';
 import { MongoCollectionAdapter } from './mongo-adapter';
 
 export abstract class BaseMongoRepository {
-  protected readonly moduleName: string = '';
-  protected readonly collectionName: string;
   protected readonly client: DocumentClient;
+  protected readonly collectionName: string;
   protected readonly databaseName: string;
+  protected readonly moduleName: string = '';
 
   protected constructor(context: ApplicationContext, moduleName: string, collectionName: string) {
     this.moduleName = moduleName;

@@ -1,12 +1,13 @@
-import { BrowserRouter } from 'react-router-dom';
-import { describe } from 'vitest';
-import * as oktaReactModule from '@okta/okta-react';
-import { OktaSession } from './OktaSession';
-import { render, screen, waitFor } from '@testing-library/react';
-import * as sessionModule from '../../Session';
-import * as accessDeniedModule from '../../AccessDenied';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import { urlRegex } from '@common/cams/test-utilities/regex';
+import * as oktaReactModule from '@okta/okta-react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
+
+import * as accessDeniedModule from '../../AccessDenied';
+import * as sessionModule from '../../Session';
+import { OktaSession } from './OktaSession';
 
 const accessToken = MockData.getJwt();
 
@@ -24,14 +25,14 @@ describe('OktaSession', () => {
   });
   const useOktaAuth = vi.fn().mockImplementation(() => {
     return {
+      authState,
       oktaAuth: {
-        handleLoginRedirect,
         getAccessToken,
+        handleLoginRedirect,
         token: {
           decode,
         },
       },
-      authState,
     };
   });
   vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
@@ -65,11 +66,11 @@ describe('OktaSession', () => {
 
     expect(sessionSpy).toHaveBeenCalledWith(
       {
-        children: children,
-        provider: 'okta',
-        issuer: expect.stringMatching(urlRegex),
         accessToken,
+        children: children,
         expires: expect.any(Number),
+        issuer: expect.stringMatching(urlRegex),
+        provider: 'okta',
       },
       {},
     );
@@ -94,11 +95,11 @@ describe('OktaSession', () => {
     const errorMessage = 'error message';
     useOktaAuth.mockImplementation(() => {
       return {
-        oktaAuth: {
-          handleLoginRedirect,
-        },
         authState: {
           error: new Error(errorMessage),
+        },
+        oktaAuth: {
+          handleLoginRedirect,
         },
       };
     });
@@ -125,11 +126,11 @@ describe('OktaSession', () => {
     });
     useOktaAuth.mockImplementation(() => {
       return {
-        oktaAuth: {
-          handleLoginRedirect,
-          getAccessToken,
-        },
         authState,
+        oktaAuth: {
+          getAccessToken,
+          handleLoginRedirect,
+        },
       };
     });
 
@@ -163,14 +164,14 @@ describe('OktaSession', () => {
     });
     useOktaAuth.mockImplementation(() => {
       return {
+        authState,
         oktaAuth: {
-          handleLoginRedirect,
           getAccessToken,
+          handleLoginRedirect,
           token: {
             decode,
           },
         },
-        authState,
       };
     });
 
@@ -204,14 +205,14 @@ describe('OktaSession', () => {
     });
     useOktaAuth.mockImplementation(() => {
       return {
+        authState,
         oktaAuth: {
-          handleLoginRedirect,
           getAccessToken,
+          handleLoginRedirect,
           token: {
             decode,
           },
         },
-        authState,
       };
     });
 

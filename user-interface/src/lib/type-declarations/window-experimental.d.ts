@@ -2,8 +2,8 @@ declare namespace BrowserExperimental {
   export interface WindowExperimental extends window {
     CSS: {
       highlights?: {
-        set: (name: string, highlight: Highlight) => void;
         clear: () => void;
+        set: (name: string, highlight: Highlight) => void;
       };
     };
   }

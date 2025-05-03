@@ -1,8 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { mockAuthentication } from '../../../lib/testing/mock-gateways/mock-oauth2-gateway';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
+
 import { httpSuccess } from '../../../lib/adapters/utils/http-response';
+import { mockAuthentication } from '../../../lib/testing/mock-gateways/mock-oauth2-gateway';
+import ContextCreator from '../../azure/application-context-creator';
+import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 const MODULE_NAME = 'MOCK-OAUTH2-FUNCTION';
 
@@ -27,8 +28,8 @@ export default async function handler(
 }
 
 app.http('oauth2', {
-  methods: ['POST'],
   authLevel: 'anonymous',
   handler,
+  methods: ['POST'],
   route: 'oauth2/default',
 });

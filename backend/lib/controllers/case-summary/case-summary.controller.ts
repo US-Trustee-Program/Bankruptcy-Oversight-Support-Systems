@@ -1,10 +1,10 @@
-import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseSummary } from '../../../../common/src/cams/cases';
-import CaseManagement from '../../use-cases/cases/case-management';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import CaseManagement from '../../use-cases/cases/case-management';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'CASE-SUMMARY-CONTROLLER';
 
@@ -24,10 +24,10 @@ export class CaseSummaryController implements CamsController {
       );
       const success = httpSuccess({
         body: {
+          data: caseSummary,
           meta: {
             self: context.request!.url,
           },
-          data: caseSummary,
         },
       });
       return success;

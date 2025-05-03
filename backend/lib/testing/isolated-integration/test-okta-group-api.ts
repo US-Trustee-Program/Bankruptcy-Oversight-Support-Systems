@@ -1,10 +1,11 @@
-import * as dotenv from 'dotenv';
 import { InvocationContext } from '@azure/functions';
-import { LoggerImpl } from '../../adapters/services/logger.service';
+import * as dotenv from 'dotenv';
+
 import ContextCreator from '../../../function-apps/azure/application-context-creator';
+import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
+import { LoggerImpl } from '../../adapters/services/logger.service';
 import { UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { getUserGroupGatewayConfig } from '../../configs/user-groups-gateway-configuration';
-import OktaUserGroupGateway from '../../adapters/gateways/okta/okta-user-group-gateway';
 import { OfficesUseCase } from '../../use-cases/offices/offices';
 
 dotenv.config({ path: '../../../.env' });

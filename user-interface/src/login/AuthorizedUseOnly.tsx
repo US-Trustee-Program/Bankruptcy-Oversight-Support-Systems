@@ -1,7 +1,8 @@
-import { PropsWithChildren, useEffect, useState } from 'react';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button from '@/lib/components/uswds/Button';
 import { LocalStorage } from '@/lib/utils/local-storage';
+import { PropsWithChildren, useEffect, useState } from 'react';
+
 import { BlankPage } from './BlankPage';
 import './AuthorizedUseOnly.scss';
 
@@ -31,12 +32,12 @@ export function AuthorizedUseOnly(props: AuthorizedUseOnlyProps) {
   return (
     <BlankPage>
       <Alert
-        data-testid="authorized-use-only-alert"
         className="measure-6"
-        show={true}
+        data-testid="authorized-use-only-alert"
         inline={true}
-        type={UswdsAlertStyle.Warning}
+        show={true}
         title="WARNING"
+        type={UswdsAlertStyle.Warning}
       >
         <p>You are accessing a U.S. Government information system, which includes:</p>
         <ol className="parenthesized">

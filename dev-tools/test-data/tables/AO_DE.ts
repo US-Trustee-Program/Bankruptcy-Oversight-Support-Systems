@@ -64,38 +64,35 @@ export const AO_DE_InsertableColumnNames: ColumnNames = [
 ];
 export const AO_DE_ColumnNames: ColumnNames = [...AO_DE_InsertableColumnNames];
 export interface AO_DE_RecordProps {
-  CS_CASEID: string;
   COURT_ID: string;
-  DE_SEQNO: number;
-  DE_DOCUMENT_NUM?: number;
+  CS_CASEID: string;
   DE_DATE_ENTER?: string;
   DE_DATE_FILED?: string;
+  DE_DOCUMENT_NUM?: number;
+  DE_SEQNO: number;
   DE_TYPE?: string;
-  DO_SUMMARY_TEXT?: string;
-  DO_SUB_TYPE?: string;
   DO_SELECT_TEXT?: string;
+  DO_SUB_TYPE?: string;
+  DO_SUMMARY_TEXT?: string;
   DP_FEE?: number;
   DT_TEXT?: string;
 }
 export class AO_DE_Record implements TableRecordHelper {
-  CS_CASEID: string = '';
   COURT_ID: string = '';
-  DE_SEQNO: number = 0;
-  DE_DOCUMENT_NUM?: string;
+  CS_CASEID: string = '';
   DE_DATE_ENTER?: string;
   DE_DATE_FILED?: string;
+  DE_DOCUMENT_NUM?: string;
+  DE_SEQNO: number = 0;
   DE_TYPE?: string;
-  DO_SUMMARY_TEXT?: string;
-  DO_SUB_TYPE?: string;
   DO_SELECT_TEXT?: string;
+  DO_SUB_TYPE?: string;
+  DO_SUMMARY_TEXT?: string;
   DP_FEE?: string;
   DT_TEXT?: string;
 
   constructor(props: AO_DE_RecordProps) {
     Object.assign(this, props);
-  }
-  validate(): void {
-    /// TODO: implement this schema validation
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
@@ -113,6 +110,9 @@ export class AO_DE_Record implements TableRecordHelper {
       this.DP_FEE,
       this.DT_TEXT,
     ];
+  }
+  validate(): void {
+    /// TODO: implement this schema validation
   }
 }
 export function toAoDeInsertStatements(records: Array<AO_DE_Record>): string[] {

@@ -1,5 +1,5 @@
-import { getFeatureFlags } from './feature-flag';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { getFeatureFlags } from './feature-flag';
 
 jest.mock('@launchdarkly/node-server-sdk', () => {
   return {
@@ -9,8 +9,8 @@ jest.mock('@launchdarkly/node-server-sdk', () => {
           'chapter-twelve-enabled': true,
         }),
       }),
-      flush: jest.fn(),
       close: jest.fn(),
+      flush: jest.fn(),
       waitForInitialization: jest.fn(),
     }),
   };

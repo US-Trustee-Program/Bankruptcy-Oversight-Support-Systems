@@ -1,26 +1,27 @@
-import { render, waitFor } from '@testing-library/react';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import * as reactRouter from 'react-router';
-import { CamsSession } from '@common/cams/session';
+import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
+import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/offices';
+import { CamsSession } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { render, waitFor } from '@testing-library/react';
+import * as reactRouter from 'react-router';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { MockInstance } from 'vitest';
+
 import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
 import { Session, SessionProps } from './Session';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import Api2 from '@/lib/models/api2';
-import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/offices';
-import { MockInstance } from 'vitest';
 
 describe('Session', () => {
   const testSession: CamsSession = {
+    accessToken: MockData.getJwt(),
+    expires: Number.MAX_SAFE_INTEGER,
+    issuer: 'http://issuer/',
+    provider: 'mock',
     user: {
       id: 'mockId',
       name: 'Mock User',
       offices: [MOCKED_USTP_OFFICE_DATA_MAP.get('USTP_CAMS_Region_2_Office_Manhattan')!],
     },
-    provider: 'mock',
-    accessToken: MockData.getJwt(),
-    expires: Number.MAX_SAFE_INTEGER,
-    issuer: 'http://issuer/',
   };
   let useNavigateSpy: MockInstance;
 

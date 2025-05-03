@@ -1,34 +1,34 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-function ok(body: unknown, status?: number) {
-  return (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+function notOk(body: unknown, status?: number) {
+  return (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
     return Promise.resolve({
-      ok: true,
-      status,
       json: jest.fn().mockResolvedValue(body),
+      ok: false,
+      status,
     } as unknown as Response);
   };
 }
 
-function notOk(body: unknown, status?: number) {
-  return (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+function ok(body: unknown, status?: number) {
+  return (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
     return Promise.resolve({
-      ok: false,
-      status,
       json: jest.fn().mockResolvedValue(body),
+      ok: true,
+      status,
     } as unknown as Response);
   };
 }
 
 function throws(error: Error) {
-  return (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  return (input: Request | string | URL, init?: RequestInit): Promise<Response> => {
     return Promise.reject(error);
   };
 }
 
 export const MockFetch = {
-  ok,
   notOk,
+  ok,
   throws,
 };
 

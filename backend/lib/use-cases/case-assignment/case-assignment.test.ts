@@ -1,16 +1,16 @@
+import { ConsolidationOrder } from '../../../../common/src/cams/orders';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentUseCase } from './case-assignment';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import CaseManagement from '../cases/case-management';
-import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { ConsolidationOrder } from '../../../../common/src/cams/orders';
 import OfficeAssigneesUseCase from '../../use-cases/offices/office-assignees';
+import CaseManagement from '../cases/case-management';
+import { CaseAssignmentUseCase } from './case-assignment';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -37,11 +37,11 @@ jest.mock('../../adapters/gateways/mongo/case-assignment.mongo.repository', () =
   return {
     CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {
+        close,
         createAssignment,
+        createAssignmentHistory,
         findAssignmentsByCaseId,
         updateAssignment,
-        createAssignmentHistory,
-        close,
       };
     }),
   };
@@ -51,13 +51,13 @@ jest.mock('../../adapters/gateways/mongo/cases.mongo.repository', () => {
   return {
     CaseAssignmentMongoRepository: jest.fn().mockImplementation(() => {
       return {
-        getTransfers: jest.fn(),
+        close: jest.fn(),
+        createCaseHistory: jest.fn(),
         createTransferFrom: jest.fn(),
         createTransferTo: jest.fn(),
-        getConsolidation: jest.fn(),
         getCaseHistory: jest.fn(),
-        createCaseHistory: jest.fn(),
-        close: jest.fn(),
+        getConsolidation: jest.fn(),
+        getTransfers: jest.fn(),
       };
     }),
   };
@@ -87,16 +87,16 @@ describe('Case assignment tests', () => {
       const caseId = '111-22-12345';
       const assignments = [
         {
+          assignedOn: new Date().toISOString(),
           caseId: caseId,
           name: 'Joe',
           role: CamsRole.TrialAttorney,
-          assignedOn: new Date().toISOString(),
         },
         {
+          assignedOn: new Date().toISOString(),
           caseId: caseId,
           name: 'Jane',
           role: CamsRole.TrialAttorney,
-          assignedOn: new Date().toISOString(),
         },
       ];
 
@@ -136,16 +136,16 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        userId: attorneyJaneSmith.id,
         name: attorneyJaneSmith.name,
         role,
+        userId: attorneyJaneSmith.id,
       };
 
       const assignmentTwo = {
         caseId,
-        userId: attorneyJoeNobel.id,
         name: attorneyJoeNobel.name,
         role,
+        userId: attorneyJoeNobel.id,
       };
 
       findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, []]]));
@@ -169,16 +169,16 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        userId: attorneyJaneSmith.id,
         name: attorneyJaneSmith.name,
         role,
+        userId: attorneyJaneSmith.id,
       };
 
       const assignmentTwo = {
         caseId,
-        userId: attorneyJoeNobel.id,
         name: attorneyJoeNobel.name,
         role,
+        userId: attorneyJoeNobel.id,
       };
 
       findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, [assignmentOne]]]));
@@ -215,9 +215,9 @@ describe('Case assignment tests', () => {
 
       const assignmentOne = {
         caseId,
-        userId: attorneyJaneSmith.id,
         name: attorneyJaneSmith.name,
         role,
+        userId: attorneyJaneSmith.id,
       };
 
       findAssignmentsByCaseId.mockResolvedValue(new Map([[caseId, [assignmentOne]]]));

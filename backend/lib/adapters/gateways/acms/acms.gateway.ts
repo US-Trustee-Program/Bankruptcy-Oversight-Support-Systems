@@ -1,4 +1,6 @@
 import * as mssql from 'mssql';
+
+import { getCamsError } from '../../../common-errors/error-utilities';
 import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
@@ -6,9 +8,8 @@ import {
 } from '../../../use-cases/dataflows/migrate-consolidations';
 import { AcmsGateway } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
-import { AbstractMssqlClient } from '../abstract-mssql-client';
-import { getCamsError } from '../../../common-errors/error-utilities';
 import { DbTableFieldSpec } from '../../types/database';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 
 const MODULE_NAME = 'ACMS-GATEWAY';
 
@@ -18,6 +19,77 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     // We pick off the configuration specific to this ACMS gateway.
     const config = context.config.acmsDbConfig;
     super(config, MODULE_NAME);
+  }
+
+  public async emptyMigrationTable(context: ApplicationContext) {
+    const emptyTableQuery = 'TRUNCATE TABLE dbo.CAMS_MIGRATION_TEMP';
+
+    try {
+      await this.executeQuery(context, emptyTableQuery);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
+  public async getConsolidationDetails(
+    context: ApplicationContext,
+    leadCaseId: string,
+  ): Promise<AcmsConsolidation> {
+    const input: DbTableFieldSpec[] = [];
+    input.push({
+      name: `leadCaseId`,
+      type: mssql.BigInt,
+      value: leadCaseId,
+    });
+
+    const query = `
+      SELECT
+        CONCAT(
+          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+          '-',
+          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+          '-',
+          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId,
+        CONSOLIDATION_DATE as consolidationDate,
+        CONSOLIDATION_TYPE as consolidationType
+      FROM [dbo].[CMMDB]
+      WHERE CONSOLIDATED_CASE_NUMBER = @leadCaseId`;
+
+    try {
+      const results = await this.executeQuery<AcmsConsolidationChildCase>(context, query, input);
+      const rawResults = results.results as AcmsConsolidationChildCase[];
+
+      const formattedLeadCaseId = this.formatCaseId(leadCaseId);
+      const childCases = rawResults
+        .filter((bCase) => bCase.caseId !== formattedLeadCaseId)
+        .map((bCase) => {
+          const date = String(bCase.consolidationDate);
+          return {
+            ...bCase,
+            consolidationDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
+            consolidationType: bCase.consolidationType === 'S' ? 'substantive' : 'administrative',
+          };
+        });
+
+      context.logger.debug(
+        MODULE_NAME,
+        `Child caseIds for lead case id ${formattedLeadCaseId}`,
+        childCases,
+      );
+
+      return {
+        childCases,
+        leadCaseId: this.formatCaseId(leadCaseId.toString()),
+      };
+    } catch (originalError) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to get case info for lead case id: ${leadCaseId}.`,
+        originalError,
+      );
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
   }
 
   async getLeadCaseIds(context: ApplicationContext, predicate: AcmsPredicate): Promise<string[]> {
@@ -67,82 +139,17 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
-  public async getConsolidationDetails(
-    context: ApplicationContext,
-    leadCaseId: string,
-  ): Promise<AcmsConsolidation> {
-    const input: DbTableFieldSpec[] = [];
-    input.push({
-      name: `leadCaseId`,
-      type: mssql.BigInt,
-      value: leadCaseId,
-    });
+  public async getMigrationCaseCount(context: ApplicationContext) {
+    const countQuery = 'SELECT COUNT(*) AS total FROM dbo.CAMS_MIGRATION_TEMP';
 
-    const query = `
-      SELECT
-        CONCAT(
-          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
-          '-',
-          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
-          '-',
-          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
-        ) AS caseId,
-        CONSOLIDATION_DATE as consolidationDate,
-        CONSOLIDATION_TYPE as consolidationType
-      FROM [dbo].[CMMDB]
-      WHERE CONSOLIDATED_CASE_NUMBER = @leadCaseId`;
+    type ResultType = {
+      total: number;
+    };
 
     try {
-      const results = await this.executeQuery<AcmsConsolidationChildCase>(context, query, input);
-      const rawResults = results.results as AcmsConsolidationChildCase[];
-
-      const formattedLeadCaseId = this.formatCaseId(leadCaseId);
-      const childCases = rawResults
-        .filter((bCase) => bCase.caseId !== formattedLeadCaseId)
-        .map((bCase) => {
-          const date = String(bCase.consolidationDate);
-          return {
-            ...bCase,
-            consolidationType: bCase.consolidationType === 'S' ? 'substantive' : 'administrative',
-            consolidationDate: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6)}`,
-          };
-        });
-
-      context.logger.debug(
-        MODULE_NAME,
-        `Child caseIds for lead case id ${formattedLeadCaseId}`,
-        childCases,
-      );
-
-      return {
-        leadCaseId: this.formatCaseId(leadCaseId.toString()),
-        childCases,
-      };
-    } catch (originalError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to get case info for lead case id: ${leadCaseId}.`,
-        originalError,
-      );
-      throw getCamsError(originalError, MODULE_NAME, originalError.message);
-    }
-  }
-
-  public async loadMigrationTable(context: ApplicationContext) {
-    const selectIntoQuery = `
-      INSERT INTO dbo.CAMS_MIGRATION_TEMP (caseId)
-      SELECT CONCAT(
-         RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
-           '-',
-         RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
-           '-',
-         RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
-        ) AS caseId
-      FROM [dbo].[CMMDB]
-      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
-
-    try {
-      await this.executeQuery(context, selectIntoQuery);
+      const { results } = await this.executeQuery<ResultType>(context, countQuery);
+      const caseIdResults = results as ResultType[];
+      return caseIdResults[0].total;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }
@@ -163,27 +170,21 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
-  public async emptyMigrationTable(context: ApplicationContext) {
-    const emptyTableQuery = 'TRUNCATE TABLE dbo.CAMS_MIGRATION_TEMP';
+  public async loadMigrationTable(context: ApplicationContext) {
+    const selectIntoQuery = `
+      INSERT INTO dbo.CAMS_MIGRATION_TEMP (caseId)
+      SELECT CONCAT(
+         RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+           '-',
+         RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+           '-',
+         RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId
+      FROM [dbo].[CMMDB]
+      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
 
     try {
-      await this.executeQuery(context, emptyTableQuery);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, originalError.message);
-    }
-  }
-
-  public async getMigrationCaseCount(context: ApplicationContext) {
-    const countQuery = 'SELECT COUNT(*) AS total FROM dbo.CAMS_MIGRATION_TEMP';
-
-    type ResultType = {
-      total: number;
-    };
-
-    try {
-      const { results } = await this.executeQuery<ResultType>(context, countQuery);
-      const caseIdResults = results as ResultType[];
-      return caseIdResults[0].total;
+      await this.executeQuery(context, selectIntoQuery);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, originalError.message);
     }

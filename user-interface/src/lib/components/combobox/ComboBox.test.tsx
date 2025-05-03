@@ -1,26 +1,16 @@
-import React, { LegacyRef } from 'react';
-import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
+import testingUtilities from '@/lib/testing/testing-utilities';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import React, { LegacyRef } from 'react';
+
+import ComboBox, { ComboBoxProps, ComboOption } from './ComboBox';
 
 const comboboxId = 'test-combobox';
 
-async function toggleDropdown(id: string = comboboxId) {
-  const toggleButton = document.querySelector(`#${id}-expand`);
-
-  expect(toggleButton).toBeInTheDocument();
-
-  await userEvent.click(toggleButton!);
-}
-
-async function toggleDropdownByKeystroke() {
-  const button1 = document.querySelector(`.button1`) as HTMLButtonElement;
-  expect(button1).toBeInTheDocument();
-  button1!.focus();
-  await userEvent.keyboard('{Tab}');
-  await userEvent.keyboard('{ArrowDown}');
+function getClearAllButton() {
+  const clearButton = document.querySelector('.clear-all-button');
+  return clearButton ? (clearButton as HTMLButtonElement) : null;
 }
 
 async function getComboInputContainer(): Promise<Element | null> {
@@ -47,9 +37,20 @@ function isDropdownClosed() {
   return !!itemListContainer && itemListContainer.classList.contains('closed');
 }
 
-function getClearAllButton() {
-  const clearButton = document.querySelector('.clear-all-button');
-  return clearButton ? (clearButton as HTMLButtonElement) : null;
+async function toggleDropdown(id: string = comboboxId) {
+  const toggleButton = document.querySelector(`#${id}-expand`);
+
+  expect(toggleButton).toBeInTheDocument();
+
+  await userEvent.click(toggleButton!);
+}
+
+async function toggleDropdownByKeystroke() {
+  const button1 = document.querySelector(`.button1`) as HTMLButtonElement;
+  expect(button1).toBeInTheDocument();
+  button1!.focus();
+  await userEvent.keyboard('{Tab}');
+  await userEvent.keyboard('{ArrowDown}');
 }
 
 const getDefaultOptions = (count: number = 25) => {
@@ -71,15 +72,15 @@ describe('test cams combobox', () => {
     defaultOptions = getDefaultOptions();
 
     const defaultProps: ComboBoxProps = {
+      ariaLabelPrefix: 'test-combobox',
       id: comboboxId,
       label: 'Test Combobox',
-      ariaLabelPrefix: 'test-combobox',
-      options: defaultOptions,
-      onUpdateSelection: (_options: ComboOption[]) => {},
-      onUpdateFilter: updateFilterMock,
       multiSelect: true,
-      singularLabel: 'thing',
+      onUpdateFilter: updateFilterMock,
+      onUpdateSelection: (_options: ComboOption[]) => {},
+      options: defaultOptions,
       pluralLabel: 'things',
+      singularLabel: 'thing',
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -92,11 +93,11 @@ describe('test cams combobox', () => {
         <ComboBox tabIndex={0} {...renderProps} ref={ref}></ComboBox>
 
         <input
-          type="text"
           className="input1"
-          tabIndex={0}
-          value="Some text"
           onChange={() => {}}
+          tabIndex={0}
+          type="text"
+          value="Some text"
         ></input>
       </div>,
     );
@@ -129,69 +130,69 @@ describe('test cams combobox', () => {
 
   const ariaLabelTestCases = [
     {
-      testName: 'single select nominal',
-      multiSelect: false,
       ariaLabelPrefix: '',
-      option: { label: 'theThing', value: '0', isAriaDefault: false },
       expected: 'single-select option: theThing',
+      multiSelect: false,
+      option: { isAriaDefault: false, label: 'theThing', value: '0' },
+      testName: 'single select nominal',
     },
     {
-      testName: 'single select with default',
-      multiSelect: false,
       ariaLabelPrefix: '',
-      option: { label: 'theThing', value: '0', isAriaDefault: true },
       expected: 'Default thing single-select option: theThing',
+      multiSelect: false,
+      option: { isAriaDefault: true, label: 'theThing', value: '0' },
+      testName: 'single select with default',
     },
     {
-      testName: 'single select with default and aria label prefix',
-      multiSelect: false,
       ariaLabelPrefix: 'prefix',
-      option: { label: 'theThing', value: '0', isAriaDefault: true },
       expected: 'Default thing single-select option: prefix theThing',
-    },
-    {
-      testName: 'single select without default and aria label prefix',
       multiSelect: false,
+      option: { isAriaDefault: true, label: 'theThing', value: '0' },
+      testName: 'single select with default and aria label prefix',
+    },
+    {
       ariaLabelPrefix: 'prefix',
-      option: { label: 'theThing', value: '0', isAriaDefault: false },
       expected: 'single-select option: prefix theThing',
+      multiSelect: false,
+      option: { isAriaDefault: false, label: 'theThing', value: '0' },
+      testName: 'single select without default and aria label prefix',
     },
     {
-      testName: 'multi select nominal',
-      multiSelect: true,
       ariaLabelPrefix: '',
-      option: { label: 'theThing', value: '0', isAriaDefault: false },
       expected: 'multi-select option: theThing',
+      multiSelect: true,
+      option: { isAriaDefault: false, label: 'theThing', value: '0' },
+      testName: 'multi select nominal',
     },
     {
-      testName: 'multi select with default',
-      multiSelect: true,
       ariaLabelPrefix: '',
-      option: { label: 'theThing', value: '0', isAriaDefault: true },
       expected: 'Default thing multi-select option: theThing',
+      multiSelect: true,
+      option: { isAriaDefault: true, label: 'theThing', value: '0' },
+      testName: 'multi select with default',
     },
     {
-      testName: 'multi select with default and aria label prefix',
-      multiSelect: true,
       ariaLabelPrefix: 'prefix',
-      option: { label: 'theThing', value: '0', isAriaDefault: true },
       expected: 'Default thing multi-select option: prefix theThing',
+      multiSelect: true,
+      option: { isAriaDefault: true, label: 'theThing', value: '0' },
+      testName: 'multi select with default and aria label prefix',
     },
     {
-      testName: 'multi select without default and aria label prefix',
-      multiSelect: true,
       ariaLabelPrefix: 'prefix',
-      option: { label: 'theThing', value: '0', isAriaDefault: false },
       expected: 'multi-select option: prefix theThing',
+      multiSelect: true,
+      option: { isAriaDefault: false, label: 'theThing', value: '0' },
+      testName: 'multi select without default and aria label prefix',
     },
   ];
 
   test.each(ariaLabelTestCases)(
     'Should render the aria-label for an $testName option and for the input correctly',
     async (params) => {
-      const { multiSelect, option, expected, ariaLabelPrefix } = params;
+      const { ariaLabelPrefix, expected, multiSelect, option } = params;
       const singularLabel = 'thing';
-      renderWithProps({ multiSelect, singularLabel, ariaLabelPrefix, options: [option] });
+      renderWithProps({ ariaLabelPrefix, multiSelect, options: [option], singularLabel });
 
       await toggleDropdown();
 
@@ -489,7 +490,7 @@ describe('test cams combobox', () => {
       { label: 'option1', value: 'option1' },
       { label: 'option2', value: 'option2' },
     ];
-    renderWithProps({ options, multiSelect: false });
+    renderWithProps({ multiSelect: false, options });
     await toggleDropdown(comboboxId);
 
     const inputField = await getFocusedComboInputField(comboboxId);
@@ -670,7 +671,7 @@ describe('test cams combobox', () => {
     const options = getDefaultOptions();
     const updateSelection = vi.fn();
     const results = [options[0]];
-    renderWithProps({ options, onUpdateSelection: updateSelection });
+    renderWithProps({ onUpdateSelection: updateSelection, options });
     await toggleDropdown();
 
     await toggleDropdown(comboboxId);
@@ -683,7 +684,7 @@ describe('test cams combobox', () => {
   test('Pressing Enter key while on the clear button should clear the selections.', async () => {
     const options = getDefaultOptions();
     const updateSelection = vi.fn();
-    renderWithProps({ options, onUpdateSelection: updateSelection });
+    renderWithProps({ onUpdateSelection: updateSelection, options });
 
     await toggleDropdown(comboboxId);
     const listButtons = document.querySelectorAll('li');
@@ -857,9 +858,9 @@ describe('test cams combobox', () => {
 
   test('should add divider style when divider prop is set to true', async () => {
     const options: ComboOption[] = [
-      { label: 'option 0', value: 'o0', divider: true },
-      { label: 'option 1', value: 'o1', divider: false },
-      { label: 'option 2', value: 'o2', divider: true },
+      { divider: true, label: 'option 0', value: 'o0' },
+      { divider: false, label: 'option 1', value: 'o1' },
+      { divider: true, label: 'option 2', value: 'o2' },
       { label: 'option 3', value: 'o3' },
     ];
 

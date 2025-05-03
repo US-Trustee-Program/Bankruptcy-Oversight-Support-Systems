@@ -72,58 +72,55 @@ export const AO_AT_InsertableColumnNames: ColumnNames = [
 ];
 export const AO_AT_ColumnNames: ColumnNames = [...AO_AT_InsertableColumnNames];
 export interface AO_AT_RecordProps {
-  CS_CASEID: string;
-  COURT_ID: string;
-  PY_ROLE: string;
-  AT_LAST_NAME?: string;
-  AT_MIDDLE_NAME?: string;
-  AT_FIRST_NAME?: string;
-  AT_GENERATION?: string;
-  PR_TAXID?: string;
-  PR_SSN?: string;
-  AT_OFFICE?: string;
   AT_ADDRESS1?: string;
   AT_ADDRESS2?: string;
   AT_ADDRESS3?: string;
   AT_CITY?: string;
-  AT_STATE?: string;
-  AT_ZIP?: string;
   AT_COUNTRY?: string;
-  AT_PHONENO?: string;
-  AT_FAX_PHONE?: string;
   AT_E_MAIL?: string;
   AT_END_DATE?: string;
+  AT_FAX_PHONE?: string;
+  AT_FIRST_NAME?: string;
+  AT_GENERATION?: string;
+  AT_LAST_NAME?: string;
+  AT_MIDDLE_NAME?: string;
+  AT_OFFICE?: string;
+  AT_PHONENO?: string;
+  AT_STATE?: string;
+  AT_ZIP?: string;
+  COURT_ID: string;
+  CS_CASEID: string;
   NAME_EVENT?: string;
+  PR_SSN?: string;
+  PR_TAXID?: string;
+  PY_ROLE: string;
 }
 export class AO_AT_Record implements TableRecordHelper {
-  CS_CASEID: string = '';
-  COURT_ID: string = '';
-  PY_ROLE: string = '';
-  AT_LAST_NAME?: string;
-  AT_MIDDLE_NAME?: string;
-  AT_FIRST_NAME?: string;
-  AT_GENERATION?: string;
-  PR_TAXID?: string;
-  PR_SSN?: string;
-  AT_OFFICE?: string;
   AT_ADDRESS1?: string;
   AT_ADDRESS2?: string;
   AT_ADDRESS3?: string;
   AT_CITY?: string;
-  AT_STATE?: string;
-  AT_ZIP?: string;
   AT_COUNTRY?: string;
-  AT_PHONENO?: string;
-  AT_FAX_PHONE?: string;
   AT_E_MAIL?: string;
   AT_END_DATE?: string;
+  AT_FAX_PHONE?: string;
+  AT_FIRST_NAME?: string;
+  AT_GENERATION?: string;
+  AT_LAST_NAME?: string;
+  AT_MIDDLE_NAME?: string;
+  AT_OFFICE?: string;
+  AT_PHONENO?: string;
+  AT_STATE?: string;
+  AT_ZIP?: string;
+  COURT_ID: string = '';
+  CS_CASEID: string = '';
   NAME_EVENT?: string;
+  PR_SSN?: string;
+  PR_TAXID?: string;
+  PY_ROLE: string = '';
 
   constructor(props: AO_AT_RecordProps) {
     Object.assign(this, props);
-  }
-  validate(): void {
-    /// TODO: implement this schema validation
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
@@ -151,6 +148,9 @@ export class AO_AT_Record implements TableRecordHelper {
       this.AT_END_DATE,
       this.NAME_EVENT,
     ];
+  }
+  validate(): void {
+    /// TODO: implement this schema validation
   }
 }
 export function toAoAtInsertStatements(records: Array<AO_AT_Record>): string[] {

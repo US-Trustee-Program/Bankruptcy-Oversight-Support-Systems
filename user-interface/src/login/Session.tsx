@@ -1,26 +1,61 @@
-import { PropsWithChildren, useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { LOGIN_PATHS, LOGIN_BASE_PATH } from './login-library';
-import { LocalStorage } from '@/lib/utils/local-storage';
+import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import Api2 from '@/lib/models/api2';
-import { AccessDenied } from './AccessDenied';
-import { Interstitial } from './Interstitial';
+import { LocalStorage } from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
-import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import { PropsWithChildren, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+
+import { AccessDenied } from './AccessDenied';
+import { Interstitial } from './Interstitial';
+import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
 import { initializeSessionEndLogout } from './session-end-logout';
 
+export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { user?: CamsUser };
+
 type SessionState = {
-  isLoaded: boolean;
+  errorMessage: null | string;
   isError: boolean;
-  errorMessage: string | null;
+  isLoaded: boolean;
 };
+
+export function Session(props: SessionProps) {
+  const { accessToken, expires, issuer, provider } = props;
+  const user = props.user ?? { id: '', name: '' };
+  const navigator = useCamsNavigator();
+  const location = useLocation();
+  const { actions, state } = useStateAndActions();
+
+  useEffect(() => {
+    const preflight: CamsSession = { accessToken, expires, issuer, provider, user };
+    LocalStorage.setSession(preflight);
+    actions.getMe();
+  }, []);
+
+  useEffect(() => {
+    if (LOGIN_PATHS.includes(location.pathname)) {
+      navigator.navigateTo(LOGIN_BASE_PATH);
+    }
+  }, [state.isLoaded === true && !state.isError]);
+
+  if (!state.isLoaded) {
+    return (
+      <Interstitial caption="Loading session..." id="interstital-loading-session"></Interstitial>
+    );
+  }
+
+  if (state.isError) {
+    return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
+  }
+
+  return <>{props.children}</>;
+}
 
 export function useStateAndActions() {
   const [state, setState] = useState<SessionState>({
-    isLoaded: false,
-    isError: false,
     errorMessage: '',
+    isError: false,
+    isLoaded: false,
   });
 
   function postLoginTasks(session: CamsSession) {
@@ -50,43 +85,9 @@ export function useStateAndActions() {
   }
 
   return {
-    state,
     actions: {
       getMe,
     },
+    state,
   };
-}
-
-export type SessionProps = Omit<CamsSession, 'user'> & PropsWithChildren & { user?: CamsUser };
-
-export function Session(props: SessionProps) {
-  const { accessToken, provider, expires, issuer } = props;
-  const user = props.user ?? { id: '', name: '' };
-  const navigator = useCamsNavigator();
-  const location = useLocation();
-  const { state, actions } = useStateAndActions();
-
-  useEffect(() => {
-    const preflight: CamsSession = { accessToken, provider, user, expires, issuer };
-    LocalStorage.setSession(preflight);
-    actions.getMe();
-  }, []);
-
-  useEffect(() => {
-    if (LOGIN_PATHS.includes(location.pathname)) {
-      navigator.navigateTo(LOGIN_BASE_PATH);
-    }
-  }, [state.isLoaded === true && !state.isError]);
-
-  if (!state.isLoaded) {
-    return (
-      <Interstitial id="interstital-loading-session" caption="Loading session..."></Interstitial>
-    );
-  }
-
-  if (state.isError) {
-    return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
-  }
-
-  return <>{props.children}</>;
 }

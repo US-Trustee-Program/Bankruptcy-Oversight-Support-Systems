@@ -1,4 +1,5 @@
 import { HttpRequest, InvocationContext, StorageQueueOutput, Timer } from '@azure/functions';
+
 import {
   buildFunctionName,
   buildHttpTrigger,
@@ -123,10 +124,10 @@ describe('Dataflows Common', () => {
     test('should return a http trigger that puts a message on a given start queue', async () => {
       const setSpy = jest.fn();
       const invocationContext = {
-        log: jest.fn(),
         extraOutputs: {
           set: setSpy,
         },
+        log: jest.fn(),
       } as unknown as InvocationContext;
 
       const storageQueue = {} as unknown as StorageQueueOutput;

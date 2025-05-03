@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react';
+
 import NotFound from './NotFound';
 
 test('should load Not Found 404 page', () => {

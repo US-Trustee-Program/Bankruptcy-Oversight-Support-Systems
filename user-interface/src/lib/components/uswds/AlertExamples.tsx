@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+
 import Alert, { AlertRefType, UswdsAlertStyle } from './Alert';
 
 export const UswdsAlertExamples = () => {
@@ -15,40 +16,40 @@ export const UswdsAlertExamples = () => {
   return (
     <>
       <Alert
-        type={UswdsAlertStyle.Info}
         message="Info Message"
-        role="status"
-        slim={true}
         ref={alertRef1}
-      />
-      <Alert
-        type={UswdsAlertStyle.Success}
-        message="Success Message"
         role="status"
         slim={true}
+        type={UswdsAlertStyle.Info}
+      />
+      <Alert
+        message="Success Message"
         ref={alertRef2}
+        role="status"
+        slim={true}
+        type={UswdsAlertStyle.Success}
       />
       <Alert
-        type={UswdsAlertStyle.Warning}
         message="Warning Message"
-        role="alert"
-        slim={true}
         ref={alertRef3}
-      />
-      <Alert
-        type={UswdsAlertStyle.Error}
-        message="Error Message"
         role="alert"
         slim={true}
-        ref={alertRef4}
+        type={UswdsAlertStyle.Warning}
       />
       <Alert
+        message="Error Message"
+        ref={alertRef4}
+        role="alert"
+        slim={true}
         type={UswdsAlertStyle.Error}
+      />
+      <Alert
         message="Error Message with timeout"
+        ref={alertRef5}
         role="alert"
         slim={true}
         timeout={4}
-        ref={alertRef5}
+        type={UswdsAlertStyle.Error}
       />
     </>
   );

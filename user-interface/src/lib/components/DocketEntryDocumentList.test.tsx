@@ -1,15 +1,16 @@
+import { CaseDocketEntryDocument } from '@common/cams/cases';
 import { render, screen } from '@testing-library/react';
+
 import DocketEntryDocumentList, {
   fileSizeDescription,
   generateDocketFilenameDisplay,
 } from './DocketEntryDocumentList';
-import { CaseDocketEntryDocument } from '@common/cams/cases';
 
 const document: CaseDocketEntryDocument = {
-  fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',
-  fileSize: 1000,
-  fileLabel: '2-0',
   fileExt: 'pdf',
+  fileLabel: '2-0',
+  fileSize: 1000,
+  fileUri: 'http://somehost.gov/pdf/0000-111111-2-2-0.pdf',
 };
 
 const badDocument = {
@@ -21,11 +22,11 @@ describe('DocketEntryDocumentList component', () => {
   describe('HTML', () => {
     function createDocket(documents: CaseDocketEntryDocument[]) {
       return {
-        sequenceNumber: 1,
         dateFiled: '2024-10-01',
-        summaryText: 'Summary Text',
-        fullText: 'Full text description',
         documents,
+        fullText: 'Full text description',
+        sequenceNumber: 1,
+        summaryText: 'Summary Text',
       };
     }
 

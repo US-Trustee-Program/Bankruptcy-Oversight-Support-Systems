@@ -1,14 +1,15 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MyCasesScreen } from './MyCasesScreen';
-import LocalStorage from '@/lib/utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { CamsUser } from '@common/cams/users';
-import { BrowserRouter } from 'react-router-dom';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsUser } from '@common/cams/users';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import { MyCasesScreen } from './MyCasesScreen';
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});

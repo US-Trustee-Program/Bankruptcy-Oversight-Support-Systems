@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
+
+import { isConsolidationOrder, Order } from '../../../common/src/cams/orders';
 import { test } from './fixture/urlQueryString';
-import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
 import { logout } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };

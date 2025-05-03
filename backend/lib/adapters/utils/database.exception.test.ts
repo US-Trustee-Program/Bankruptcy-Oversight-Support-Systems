@@ -1,7 +1,8 @@
-import { executeQuery } from './database';
-import { QueryResults, IDbConfig } from '../types/database';
 import { ConnectionError, MSSQLError, RequestError } from 'mssql';
+
 import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { IDbConfig, QueryResults } from '../types/database';
+import { executeQuery } from './database';
 
 // Setting default Jest mocks for mssql
 //NOTE: using const here causes these tests to error out with 'Cannot access {const} before initialization
@@ -21,20 +22,20 @@ const mockRequest = jest.fn().mockImplementation(() => ({
 const mockConnect = jest.fn().mockImplementation(
   (): Promise<unknown> =>
     Promise.resolve({
-      request: mockRequest,
       close: mockClose,
+      request: mockRequest,
     }),
 );
 jest.mock('mssql', () => {
   return {
     ConnectionError: jest.fn().mockReturnValue(connectionError),
-    RequestError: jest.fn().mockReturnValue(requestError),
-    MSSQLError: jest.fn().mockReturnValue(mssqlError),
     ConnectionPool: jest.fn().mockImplementation(() => {
       return {
         connect: mockConnect,
       };
     }),
+    MSSQLError: jest.fn().mockReturnValue(mssqlError),
+    RequestError: jest.fn().mockReturnValue(requestError),
   };
 });
 
@@ -95,24 +96,24 @@ describe('Tests database client exceptions', () => {
     connectionError.name = 'ConnectionError';
     connectionError.message = expectedErrorMessage;
     connectionError.originalError = {
-      message: '',
-      name: 'AggregateError',
       errors: [
-        { message: 'Something happen 01', name: '01', code: '' } as MSSQLError,
+        { code: '', message: 'Something happen 01', name: '01' } as MSSQLError,
         {
+          code: '',
           message: 'Something happen 02',
           name: '02',
-          code: '',
           originalError: {
-            name: '03',
-            message: 'Nested aggregate errors',
             errors: [
-              { message: 'Nested aggregate error 04', name: '04', code: '' } as MSSQLError,
-              { message: 'Nested aggregate error 05', name: '05', code: '' } as MSSQLError,
+              { code: '', message: 'Nested aggregate error 04', name: '04' } as MSSQLError,
+              { code: '', message: 'Nested aggregate error 05', name: '05' } as MSSQLError,
             ],
+            message: 'Nested aggregate errors',
+            name: '03',
           } as AggregateError,
         } as ConnectionError,
       ],
+      message: '',
+      name: 'AggregateError',
     } as AggregateError;
     mockConnect.mockImplementation(() => {
       throw connectionError;

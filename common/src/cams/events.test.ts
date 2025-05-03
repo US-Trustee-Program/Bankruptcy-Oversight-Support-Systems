@@ -7,22 +7,22 @@ import { MockData } from './test-utilities/mock-data';
 
 const jointAdministrationLeadCase: Consolidation[] = [
   MockData.getConsolidationReference({
-    override: { documentType: 'CONSOLIDATION_FROM', consolidationType: 'administrative' },
+    override: { consolidationType: 'administrative', documentType: 'CONSOLIDATION_FROM' },
   }),
 ];
 const jointAdministrationChildCase: Consolidation[] = [
   MockData.getConsolidationReference({
-    override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'administrative' },
+    override: { consolidationType: 'administrative', documentType: 'CONSOLIDATION_TO' },
   }),
 ];
 const substantiveConsolidationLeadCase: Consolidation[] = [
   MockData.getConsolidationReference({
-    override: { documentType: 'CONSOLIDATION_FROM', consolidationType: 'substantive' },
+    override: { consolidationType: 'substantive', documentType: 'CONSOLIDATION_FROM' },
   }),
 ];
 const substantiveConsolidationChildCase: Consolidation[] = [
   MockData.getConsolidationReference({
-    override: { documentType: 'CONSOLIDATION_TO', consolidationType: 'substantive' },
+    override: { consolidationType: 'substantive', documentType: 'CONSOLIDATION_TO' },
   }),
 ];
 

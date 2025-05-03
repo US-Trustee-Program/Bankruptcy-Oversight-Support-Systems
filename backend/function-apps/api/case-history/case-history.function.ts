@@ -1,8 +1,9 @@
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import * as dotenv from 'dotenv';
-import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
+
 import { CaseHistoryController } from '../../../lib/controllers/case-history/case-history.controller';
 import { initializeApplicationInsights } from '../../azure/app-insights';
+import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 const MODULE_NAME = 'CASE-HISTORY-FUNCTION';
@@ -30,8 +31,8 @@ export default async function handler(
 }
 
 app.http('case-history', {
-  methods: ['GET'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET'],
   route: 'cases/{id?}/history',
 });

@@ -1,19 +1,23 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '@/lib/components/uswds/modal/Modal';
-import { OrderStatus } from '@common/cams/orders';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { OrderStatus } from '@common/cams/orders';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+
+export type TransferConfirmationModalImperative = ModalRefType & {
+  show: (options: ShowOptionParams) => void;
+};
 
 export interface TransferConfirmationModalProps {
-  id: string;
   fromCaseId: string;
-  toCaseId?: string;
-  fromDivisionName: string;
-  toDivisionName?: string;
   fromCourtName: string;
-  toCourtName?: string;
+  fromDivisionName: string;
+  id: string;
   onCancel?: () => void;
   onConfirm: (status: OrderStatus, reason?: string) => void;
+  toCaseId?: string;
+  toCourtName?: string;
+  toDivisionName?: string;
 }
 
 type ShowOptionParams = {
@@ -25,24 +29,20 @@ type ShowOptions = {
   title: string;
 };
 
-export type TransferConfirmationModalImperative = ModalRefType & {
-  show: (options: ShowOptionParams) => void;
-};
-
 function TransferConfirmationModalComponent(
   props: TransferConfirmationModalProps,
   ConfirmationModalRef: React.Ref<TransferConfirmationModalImperative>,
 ) {
   const {
-    id,
     fromCaseId,
-    toCaseId,
-    fromDivisionName,
-    toDivisionName,
     fromCourtName,
-    toCourtName,
-    onConfirm,
+    fromDivisionName,
+    id,
     onCancel,
+    onConfirm,
+    toCaseId,
+    toCourtName,
+    toDivisionName,
   }: TransferConfirmationModalProps = props;
 
   const modalRef = useRef<ModalRefType>(null);
@@ -58,21 +58,21 @@ function TransferConfirmationModalComponent(
   }
 
   const actionButtonGroup = {
-    modalId: `confirmation-modal-${id}`,
-    modalRef: modalRef,
-    submitButton: {
-      label: options.title,
-      onClick: () => {
-        onConfirm(options.status, reasonRef.current?.value);
-      },
-      className: options.status === 'rejected' ? 'usa-button--secondary' : '',
-    },
     cancelButton: {
       label: 'Go back',
       onClick: () => {
         if (onCancel) onCancel();
         clearReason();
         hide();
+      },
+    },
+    modalId: `confirmation-modal-${id}`,
+    modalRef: modalRef,
+    submitButton: {
+      className: options.status === 'rejected' ? 'usa-button--secondary' : '',
+      label: options.title,
+      onClick: () => {
+        onConfirm(options.status, reasonRef.current?.value);
       },
     },
   };
@@ -97,18 +97,14 @@ function TransferConfirmationModalComponent(
   }
 
   useImperativeHandle(ConfirmationModalRef, () => ({
-    show,
     hide,
+    show,
   }));
 
   return (
     <Modal
-      ref={modalRef}
-      modalId={`confirm-modal-${id}`}
+      actionButtonGroup={actionButtonGroup}
       className="confirm-modal"
-      heading={`${options.title} case transfer?`}
-      data-testid={`confirm-modal-${id}`}
-      onClose={clearReason}
       content={
         <>
           This will {options.status === 'approved' ? 'verify' : 'stop'} the transfer of case{' '}
@@ -134,23 +130,27 @@ function TransferConfirmationModalComponent(
           {'.'}
           {options.status === 'rejected' && (
             <div>
-              <label htmlFor={`rejection-reason-${id}`} className="usa-label">
+              <label className="usa-label" htmlFor={`rejection-reason-${id}`}>
                 Reason for rejection
               </label>
               <div>
                 <textarea
-                  id={`rejection-reason-${id}`}
-                  data-testid={`rejection-reason-input-${id}`}
-                  ref={reasonRef}
                   className="rejection-reason-input usa-textarea"
+                  data-testid={`rejection-reason-input-${id}`}
                   defaultValue={reason}
+                  id={`rejection-reason-${id}`}
+                  ref={reasonRef}
                 ></textarea>
               </div>
             </div>
           )}
         </>
       }
-      actionButtonGroup={actionButtonGroup}
+      data-testid={`confirm-modal-${id}`}
+      heading={`${options.title} case transfer?`}
+      modalId={`confirm-modal-${id}`}
+      onClose={clearReason}
+      ref={modalRef}
     ></Modal>
   );
 }

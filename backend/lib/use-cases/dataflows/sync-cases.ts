@@ -1,9 +1,10 @@
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
-import Factory, { getCasesGateway } from '../../factory';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { CasesSyncState } from '../gateways.types';
 import { randomUUID } from 'node:crypto';
+
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { getCamsError } from '../../common-errors/error-utilities';
+import Factory, { getCasesGateway } from '../../factory';
+import { CasesSyncState } from '../gateways.types';
 
 const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
@@ -14,8 +15,8 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     let syncState: CasesSyncState;
     if (lastSyncDate) {
       syncState = {
-        id: randomUUID(),
         documentType: 'CASES_SYNC_STATE',
+        id: randomUUID(),
         lastSyncDate,
       };
     } else {
@@ -27,7 +28,7 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     const caseIds = await casesGateway.getUpdatedCaseIds(context, syncState.lastSyncDate);
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
-      return { type: 'CASE_CHANGED', caseId };
+      return { caseId, type: 'CASE_CHANGED' };
     });
 
     return { events, lastSyncDate: now };

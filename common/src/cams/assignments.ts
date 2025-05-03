@@ -1,20 +1,20 @@
-import { CamsUserReference } from './users';
-import { CamsRole } from './roles';
 import { Auditable } from './auditable';
+import { CamsRole } from './roles';
+import { CamsUserReference } from './users';
 
 export type CaseAssignment = Auditable & {
-  id?: string;
-  documentType: 'ASSIGNMENT';
+  assignedOn: string;
   caseId: string;
-  userId: string;
+  documentType: 'ASSIGNMENT';
+  id?: string;
   name: string;
   role: string;
-  assignedOn: string;
   unassignedOn?: string;
+  userId: string;
 };
 
 export type StaffAssignmentAction = {
-  caseId: string;
   attorneyList: CamsUserReference[];
+  caseId: string;
   role: CamsRole.TrialAttorney;
 };

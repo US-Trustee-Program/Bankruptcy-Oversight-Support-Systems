@@ -1,3 +1,13 @@
+import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
+import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
+import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { useApi2 } from '@/lib/hooks/UseApi2';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { ResponseBody } from '@common/api/response';
+import { CaseAssignment } from '@common/cams/assignments';
+import { CaseSummary } from '@common/cams/cases';
+import { Consolidation } from '@common/cams/events';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -5,42 +15,18 @@ import {
   ConsolidationOrderCase,
   ConsolidationType,
 } from '@common/cams/orders';
-import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
-import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
-import { getCurrentLeadCaseId } from './consolidationOrderAccordionUtils';
-import { useApi2 } from '@/lib/hooks/UseApi2';
-import { CaseSummary } from '@common/cams/cases';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { ConfirmActionResults } from './ConsolidationOrderModal';
-import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { CaseAssignment } from '@common/cams/assignments';
-import { Consolidation } from '@common/cams/events';
-import { ResponseBody } from '@common/api/response';
-import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
 
-type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
-type PreviousLeadConsolidationFacts = {
-  isAlreadyConsolidated: boolean;
-  consolidationType?: ConsolidationType;
-  childCase?: CaseSummary;
-};
-export type OnOrderUpdate = (
-  alertDetails: AlertDetails,
-  orders?: ConsolidationOrder[],
-  deletedOrder?: ConsolidationOrder,
-) => void;
-export type OnExpand = (id: string) => void;
+import { getCurrentLeadCaseId } from './consolidationOrderAccordionUtils';
+import { ConfirmActionResults } from './ConsolidationOrderModal';
 
 export interface ConsolidationsUseCase {
-  updateSubmitButtonsState(): void;
-  updateAllSelections(caseList: ConsolidationOrderCase[]): void;
   getValidLeadCase(): void; //Promise<void>;
-
   handleApproveButtonClick(): void;
   handleCaseAssociationResponse(
     response: ResponseBody<Consolidation[]>,
     currentLeadCaseId: string,
   ): Consolidation[];
+
   handleClearInputs(): void;
   handleConfirmAction(action: ConfirmActionResults): void;
   handleIncludeCase(bCase: ConsolidationOrderCase): void;
@@ -51,7 +37,22 @@ export interface ConsolidationsUseCase {
   handleSelectConsolidationType(value: string): void;
   handleSelectLeadCaseCourt(option: ComboOptionList): void;
   handleToggleLeadCaseForm(checked: boolean): void;
+  updateAllSelections(caseList: ConsolidationOrderCase[]): void;
+  updateSubmitButtonsState(): void;
 }
+export type OnExpand = (id: string) => void;
+export type OnOrderUpdate = (
+  alertDetails: AlertDetails,
+  orders?: ConsolidationOrder[],
+  deletedOrder?: ConsolidationOrder,
+) => void;
+type ChildCaseFacts = { isConsolidationChildCase: boolean; leadCase?: CaseSummary };
+
+type PreviousLeadConsolidationFacts = {
+  childCase?: CaseSummary;
+  consolidationType?: ConsolidationType;
+  isAlreadyConsolidated: boolean;
+};
 
 const consolidationUseCase = (
   store: ConsolidationStore,
@@ -95,9 +96,9 @@ const consolidationUseCase = (
       .filter((reference) => reference.documentType === 'CONSOLIDATION_FROM')
       .map((reference) => {
         return {
-          isAlreadyConsolidated: true,
-          consolidationType: reference.consolidationType,
           childCase: reference.otherCase,
+          consolidationType: reference.consolidationType,
+          isAlreadyConsolidated: true,
         } as PreviousLeadConsolidationFacts;
       });
     const previousConsolidationFacts: PreviousLeadConsolidationFacts =
@@ -183,10 +184,10 @@ const consolidationUseCase = (
           const associations = responses[2] as Consolidation[];
           store.setLeadCase({
             ...caseSummary,
+            associations,
+            attorneyAssignments,
             docketEntries: [],
             orderDate: store.order.orderDate,
-            attorneyAssignments,
-            associations,
           });
           store.setLeadCaseId(currentLeadCaseId);
           store.setIsValidatingLeadCaseNumber(false);
@@ -216,10 +217,10 @@ const consolidationUseCase = (
       const leadCaseId = store.leadCase.caseId;
       const data: ConsolidationOrderActionApproval = {
         ...store.order,
-        consolidationType: store.consolidationType,
         approvedCases: store.selectedCases
           .map((bCase) => bCase.caseId)
           .filter((caseId) => caseId !== leadCaseId),
+        consolidationType: store.consolidationType,
         leadCase: store.leadCase,
       };
 
@@ -235,8 +236,8 @@ const consolidationUseCase = (
               message: `Consolidation to lead case ${getCaseNumber(approvedOrder.leadCase?.caseId)} in ${
                 approvedOrder.leadCase?.courtName
               } (${approvedOrder.leadCase?.courtDivisionName}) was successful.`,
-              type: UswdsAlertStyle.Success,
               timeOut: 8,
+              type: UswdsAlertStyle.Success,
             },
             newOrders,
             store.order,
@@ -246,8 +247,8 @@ const consolidationUseCase = (
           store.setIsProcessing(false);
           onOrderUpdate({
             message: genericErrorMessage,
-            type: UswdsAlertStyle.Error,
             timeOut: 8,
+            type: UswdsAlertStyle.Error,
           });
         });
     }
@@ -260,8 +261,8 @@ const consolidationUseCase = (
     if (action.status === 'rejected') {
       const data: ConsolidationOrderActionRejection = {
         ...store.order,
-        rejectedCases: store.selectedCases.map((bCase) => bCase.caseId),
         reason: action.rejectionReason ?? '',
+        rejectedCases: store.selectedCases.map((bCase) => bCase.caseId),
       };
 
       store.setIsProcessing(true);
@@ -274,8 +275,8 @@ const consolidationUseCase = (
             onOrderUpdate(
               {
                 message: `Rejection of consolidation order was successful.`,
-                type: UswdsAlertStyle.Success,
                 timeOut: 8,
+                type: UswdsAlertStyle.Success,
               },
               newOrders,
               store.order,
@@ -286,8 +287,8 @@ const consolidationUseCase = (
           store.setIsProcessing(false);
           onOrderUpdate({
             message: genericErrorMessage,
-            type: UswdsAlertStyle.Error,
             timeOut: 8,
+            type: UswdsAlertStyle.Error,
           });
         });
     }
@@ -435,8 +436,6 @@ const consolidationUseCase = (
 
   return {
     getValidLeadCase,
-    updateSubmitButtonsState,
-    updateAllSelections,
     handleApproveButtonClick,
     handleCaseAssociationResponse,
     handleClearInputs,
@@ -449,6 +448,8 @@ const consolidationUseCase = (
     handleSelectConsolidationType,
     handleSelectLeadCaseCourt,
     handleToggleLeadCaseForm,
+    updateAllSelections,
+    updateSubmitButtonsState,
   };
 };
 

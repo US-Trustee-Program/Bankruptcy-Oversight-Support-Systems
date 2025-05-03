@@ -1,24 +1,24 @@
-import { CaseAssignmentController } from './case.assignment.controller';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { httpSuccess } from '../../adapters/utils/http-response';
+import { CamsError } from '../../common-errors/cams-error';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import {
   THROW_PERMISSIONS_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
-import { CamsError } from '../../common-errors/cams-error';
-import { ForbiddenError } from '../../common-errors/forbidden-error';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { UnknownError } from '../../common-errors/unknown-error';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
-import { httpSuccess } from '../../adapters/utils/http-response';
-import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
-import { ApplicationContext } from '../../adapters/types/basic';
+import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
+import { CaseAssignmentController } from './case.assignment.controller';
 
 const Jane = MockData.getCamsUserReference({ name: 'Jane' });
 const Adrian = MockData.getCamsUserReference({ name: 'Adrian' });
@@ -47,14 +47,14 @@ describe('Case Assignment Creation Tests', () => {
   test('A case is assigned to an attorney when requested', async () => {
     const listOfAttorneyNames = [Jane];
     const testCaseAssignment = {
-      caseId: '081-18-12345',
       attorneyList: listOfAttorneyNames,
+      caseId: '081-18-12345',
       role: 'TrialAttorney',
     };
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: { id: '081-18-12345' },
-      body: testCaseAssignment,
     });
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
@@ -75,9 +75,9 @@ describe('Case Assignment Creation Tests', () => {
       role: CamsRole.TrialAttorney,
     };
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: undefined,
-      body: testCaseAssignment,
     });
     const assignmentController = new CaseAssignmentController(applicationContext);
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -93,9 +93,9 @@ describe('Case Assignment Creation Tests', () => {
       role: undefined,
     };
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: undefined,
-      body: testCaseAssignment,
     });
     const assignmentController = new CaseAssignmentController(applicationContext);
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -111,9 +111,9 @@ describe('Case Assignment Creation Tests', () => {
       role: CamsRole.TrialAttorney,
     };
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: { id: 'bogus-id' },
-      body: testCaseAssignment,
     });
     const assignmentController = new CaseAssignmentController(applicationContext);
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -129,9 +129,9 @@ describe('Case Assignment Creation Tests', () => {
       role: 'bad-role',
     };
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: { id: '081-18-12345' },
-      body: testCaseAssignment,
     });
     const assignmentController = new CaseAssignmentController(applicationContext);
     await expect(assignmentController.handleRequest(applicationContext)).rejects.toThrow(
@@ -179,9 +179,9 @@ describe('Case Assignment Creation Tests', () => {
     const mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession();
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
-      body: testCaseAssignment,
     });
     jest
       .spyOn(CaseAssignmentUseCase.prototype, 'createTrialAttorneyAssignments')
@@ -215,9 +215,9 @@ describe('Case Assignment Creation Tests', () => {
       role: CamsRole.TrialAttorney,
     };
     applicationContext.request = mockCamsHttpRequest({
+      body: testCaseAssignment,
       method: 'POST',
       params: { id: THROW_UNKNOWN_ERROR_CASE_ID },
-      body: testCaseAssignment,
     });
     const assignmentController = new CaseAssignmentController(applicationContext);
 

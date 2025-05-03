@@ -1,16 +1,16 @@
-import { OfficesUseCase } from './offices';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import * as factory from '../../factory';
-import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { MOCKED_USTP_OFFICES_ARRAY, UstpDivisionMeta } from '../../../../common/src/cams/offices';
-import AttorneysList from '../attorneys/attorneys';
-import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
-import UsersHelpers from '../users/users.helpers';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CamsUserGroup, Staff } from '../../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import * as factory from '../../factory';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import AttorneysList from '../attorneys/attorneys';
+import UsersHelpers from '../users/users.helpers';
+import { OfficesUseCase } from './offices';
 
 const MANHATTAN_OFFICE = MOCKED_USTP_OFFICES_ARRAY.find(
   (office) => office.officeCode === 'USTP_CAMS_Region_2_Office_Manhattan',
@@ -66,14 +66,14 @@ describe('offices use case tests', () => {
     jest.spyOn(factory, 'getStorageGateway').mockImplementation(() => {
       return {
         get: jest.fn(),
+        getPrivilegedIdentityUserRoleGroupName: jest.fn(),
         getRoleMapping: jest.fn(),
-        getUstpOffices: jest.fn(),
         getUstpDivisionMeta: jest
           .fn()
           .mockReturnValue(
             new Map<string, UstpDivisionMeta>([[legacyDivisionCode, { isLegacy: true }]]),
           ),
-        getPrivilegedIdentityUserRoleGroupName: jest.fn(),
+        getUstpOffices: jest.fn(),
       };
     });
 
@@ -88,13 +88,13 @@ describe('offices use case tests', () => {
     const repoSpy = jest.fn().mockResolvedValue(mockAttorneys);
     jest.spyOn(factory, 'getOfficesRepository').mockImplementation(() => {
       return {
-        release: () => {},
-        putOfficeStaff: jest.fn(),
-        getOfficeAttorneys: repoSpy,
-        findAndDeleteStaff: jest.fn(),
-        putOrExtendOfficeStaff: jest.fn(),
-        getOfficeAssignments: jest.fn(),
         close: jest.fn(),
+        findAndDeleteStaff: jest.fn(),
+        getOfficeAssignments: jest.fn(),
+        getOfficeAttorneys: repoSpy,
+        putOfficeStaff: jest.fn(),
+        putOrExtendOfficeStaff: jest.fn(),
+        release: () => {},
       };
     });
     const attorneysSpy = jest.spyOn(AttorneysList.prototype, 'getAttorneyList');
@@ -156,7 +156,7 @@ describe('offices use case tests', () => {
     jest
       .spyOn(UsersHelpers, 'getPrivilegedIdentityUser')
       .mockImplementation(async (_context: ApplicationContext, userId: string) => {
-        const user = { id: userId, name: '', roles: [], offices: [] };
+        const user = { id: userId, name: '', offices: [], roles: [] };
         users.forEach((staff) => {
           if (staff.id === userId) {
             user.name = staff.name;

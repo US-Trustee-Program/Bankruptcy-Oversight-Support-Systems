@@ -9,28 +9,70 @@ import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { RefObject } from 'react';
 
-export interface AssignAttorneyModalStore {
-  bCase: CaseBasics | null;
-  setBCase(val: CaseBasics | null): void;
-  initialDocumentBodyStyle: string;
-  setInitialDocumentBodyStyle(val: string): void;
-  checkListValues: CamsUserReference[];
-  setCheckListValues(val: CamsUserReference[]): void;
+export type AssignAttorneyModalCallbackFunction = (props: AssignAttorneyModalCallbackProps) => void;
+
+export interface AssignAttorneyModalCallbackProps {
+  apiResult: object;
+  bCase: CaseBasics;
   previouslySelectedList: AttorneyUser[];
-  setPreviouslySelectedList(val: AttorneyUser[]): void;
-  isUpdatingAssignment: boolean;
-  setIsUpdatingAssignment(val: boolean): void;
-  attorneyList: AttorneyUser[];
-  setAttorneyList(val: AttorneyUser[]): void;
-  submissionCallback: AssignAttorneyModalCallbackFunction | null;
-  setSubmissionCallback(val: AssignAttorneyModalCallbackFunction | null): void;
-  globalAlertError: string | undefined;
-  setGlobalAlertError(val: string | undefined): void;
+  selectedAttorneyList: AttorneyUser[];
+  status: 'error' | 'success';
 }
 
 export interface AssignAttorneyModalControls {
   modalRef: RefObject<ModalRefType>;
   tableContainerRef: RefObject<HTMLDivElement>;
+}
+
+export interface AssignAttorneyModalOpenProps {
+  bCase: CaseBasics;
+  callback: AssignAttorneyModalCallbackFunction;
+  openModalButtonRef?: React.Ref<OpenModalButtonRef>;
+}
+
+export interface AssignAttorneyModalProps {
+  alertMessage?: AlertDetails;
+  assignmentChangeCallback: (assignees: CamsUserReference[]) => void;
+  modalId: string;
+}
+
+export interface AssignAttorneyModalRef {
+  buttons?: RefObject<SubmitCancelButtonGroupRef>;
+  hide: () => void;
+  show: (showProps: AssignAttorneyModalOpenProps | undefined) => void;
+}
+
+export interface AssignAttorneyModalStore {
+  attorneyList: AttorneyUser[];
+  bCase: CaseBasics | null;
+  checkListValues: CamsUserReference[];
+  globalAlertError: string | undefined;
+  initialDocumentBodyStyle: string;
+  isUpdatingAssignment: boolean;
+  previouslySelectedList: AttorneyUser[];
+  setAttorneyList(val: AttorneyUser[]): void;
+  setBCase(val: CaseBasics | null): void;
+  setCheckListValues(val: CamsUserReference[]): void;
+  setGlobalAlertError(val: string | undefined): void;
+  setInitialDocumentBodyStyle(val: string): void;
+  setIsUpdatingAssignment(val: boolean): void;
+  setPreviouslySelectedList(val: AttorneyUser[]): void;
+  setSubmissionCallback(val: AssignAttorneyModalCallbackFunction | null): void;
+  submissionCallback: AssignAttorneyModalCallbackFunction | null;
+}
+
+export interface AssignAttorneyModalUseCase {
+  attorneyIsInCheckList(val: AttorneyUser): boolean;
+  cancelModal(): void;
+  fetchAttorneys(): void;
+  handleFocus(event: React.FocusEvent<HTMLElement>): void;
+  handleTab(ev: React.KeyboardEvent, isVisible: boolean, modalId: string): void;
+  hide(): void;
+  onOpen(): void;
+  show(showProps: AssignAttorneyModalOpenProps | undefined): void;
+  sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
+  submitValues(callback: (val: CamsUserReference[]) => void): void;
+  updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
 }
 
 export interface AssignAttorneyModalViewModel {
@@ -49,48 +91,6 @@ export interface AssignAttorneyModalViewModel {
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
   tableContainerRef: RefObject<HTMLDivElement>;
   updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
-}
-
-export interface AssignAttorneyModalUseCase {
-  attorneyIsInCheckList(val: AttorneyUser): boolean;
-  cancelModal(): void;
-  fetchAttorneys(): void;
-  handleFocus(event: React.FocusEvent<HTMLElement>): void;
-  handleTab(ev: React.KeyboardEvent, isVisible: boolean, modalId: string): void;
-  hide(): void;
-  onOpen(): void;
-  show(showProps: AssignAttorneyModalOpenProps | undefined): void;
-  sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
-  submitValues(callback: (val: CamsUserReference[]) => void): void;
-  updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
-}
-
-export interface AssignAttorneyModalCallbackProps {
-  bCase: CaseBasics;
-  selectedAttorneyList: AttorneyUser[];
-  previouslySelectedList: AttorneyUser[];
-  status: 'success' | 'error';
-  apiResult: object;
-}
-
-export type AssignAttorneyModalCallbackFunction = (props: AssignAttorneyModalCallbackProps) => void;
-
-export interface AssignAttorneyModalOpenProps {
-  bCase: CaseBasics;
-  callback: AssignAttorneyModalCallbackFunction;
-  openModalButtonRef?: React.Ref<OpenModalButtonRef>;
-}
-
-export interface AssignAttorneyModalRef {
-  show: (showProps: AssignAttorneyModalOpenProps | undefined) => void;
-  hide: () => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef>;
-}
-
-export interface AssignAttorneyModalProps {
-  modalId: string;
-  alertMessage?: AlertDetails;
-  assignmentChangeCallback: (assignees: CamsUserReference[]) => void;
 }
 
 export type AssignAttorneyModalViewProps = {

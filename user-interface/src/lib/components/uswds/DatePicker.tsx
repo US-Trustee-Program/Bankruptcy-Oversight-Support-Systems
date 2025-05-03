@@ -1,30 +1,31 @@
 import './forms.scss';
 import './DatePicker.scss';
+
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { getIsoDate, isInvalidDate } from '@common/date-helper';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
-  id: string;
-  minDate?: string;
-  maxDate?: string;
-  onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
-  label?: string;
   disabled?: boolean;
+  id: string;
+  label?: string;
+  maxDate?: string;
+  minDate?: string;
   name?: string;
-  value?: string;
+  onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  value?: string;
 };
 
 function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
-  const { id, label, minDate, maxDate } = props;
+  const { id, label, maxDate, minDate } = props;
   const defaultErrorMessage = 'Date is not within allowed range. Enter a valid date.';
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isDisabled, setIsDisabled] = useState<boolean>(!!props.disabled);
-  const [dateValue, setDateValue] = useState<string | null>(props.value ?? null);
+  const [dateValue, setDateValue] = useState<null | string>(props.value ?? null);
 
   function setClassName() {
     return `usa-input ${props.className} ${errorMessage.length ? 'usa-input--error' : ''}`;
@@ -125,36 +126,36 @@ function DatePickerComponent(props: DatePickerProps, ref: React.Ref<InputRef>) {
   useImperativeHandle(ref, () => {
     return {
       clearValue,
-      resetValue,
-      getValue,
-      setValue,
       disable,
       focus,
+      getValue,
+      resetValue,
+      setValue,
     };
   });
 
   return (
     <div className="usa-form-group date-picker">
-      <label className="usa-label" id={id + '-date-label'} htmlFor={id + '-date'}>
+      <label className="usa-label" htmlFor={id + '-date'} id={id + '-date-label'}>
         {label || ''}
       </label>
       <div className="usa-date-picker">
         <input
-          type="date"
-          className={setClassName()}
-          id={id}
-          name={props.name ?? ''}
-          aria-labelledby={id + '-date-label'}
           aria-describedby={props['aria-describedby'] ?? id + '-date-hint'}
+          aria-labelledby={id + '-date-label'}
           aria-live={props['aria-live'] ?? undefined}
-          onChange={handleChange}
+          className={setClassName()}
           data-testid={id}
-          min={minDate}
-          max={maxDate}
-          value={dateValue ?? undefined}
           disabled={isDisabled}
-          required={props.required}
+          id={id}
+          max={maxDate}
+          min={minDate}
+          name={props.name ?? ''}
+          onChange={handleChange}
           ref={inputRef}
+          required={props.required}
+          type="date"
+          value={dateValue ?? undefined}
         />
       </div>
       <div className="date-error">{errorMessage}</div>

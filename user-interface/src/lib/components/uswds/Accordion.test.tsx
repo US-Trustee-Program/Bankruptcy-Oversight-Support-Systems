@@ -1,6 +1,7 @@
-import React from 'react';
-import { Accordion, AccordionGroup } from './Accordion';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+
+import { Accordion, AccordionGroup } from './Accordion';
 
 describe('Accordion tests', () => {
   test('Should expand accordion when clicking on expand button and collapse when clicking again and when accordion is used without an accordion group', async () => {

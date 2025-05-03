@@ -1,17 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+
 import ToggleButton from './ToggleButton';
 
 describe('ToggleButton', () => {
   test('should render with inactive state', () => {
     render(
       <ToggleButton
-        id="test-button"
-        label="Test Button"
         ariaLabel="Test Button"
-        tooltipLabel="Test Button"
+        id="test-button"
         isActive={false}
+        label="Test Button"
         onToggle={() => false}
+        tooltipLabel="Test Button"
       />,
     );
 
@@ -25,12 +26,12 @@ describe('ToggleButton', () => {
   test('should render with active state', () => {
     render(
       <ToggleButton
-        id="test-button"
-        label="Test Button"
         ariaLabel="Test Button"
-        tooltipLabel="Test Button"
+        id="test-button"
         isActive={true}
+        label="Test Button"
         onToggle={() => true}
+        tooltipLabel="Test Button"
       />,
     );
 
@@ -44,12 +45,12 @@ describe('ToggleButton', () => {
     const onToggle = vi.fn();
     render(
       <ToggleButton
-        id="test-button"
-        label="Test Button"
         ariaLabel="Test Button"
-        tooltipLabel="Test Button"
+        id="test-button"
         isActive={false}
+        label="Test Button"
         onToggle={onToggle}
+        tooltipLabel="Test Button"
       />,
     );
 
@@ -69,12 +70,12 @@ describe('ToggleButton', () => {
   test('should render with ModeLabel', async () => {
     render(
       <ToggleButton
-        id="test-button"
-        label={{ active: 'Active Label', inactive: 'Inactive Label' }}
         ariaLabel={{ active: 'Active Aria Label', inactive: 'Inactive Aria Label' }}
-        tooltipLabel={{ active: 'Active Tooltip', inactive: 'Inactive Tooltip' }}
+        id="test-button"
         isActive={false}
+        label={{ active: 'Active Label', inactive: 'Inactive Label' }}
         onToggle={() => false}
+        tooltipLabel={{ active: 'Active Tooltip', inactive: 'Inactive Tooltip' }}
       />,
     );
 
@@ -95,12 +96,12 @@ describe('ToggleButton', () => {
     const staticLabel = 'Foo Bar';
     render(
       <ToggleButton
-        id="test-button"
-        label={staticLabel}
         ariaLabel={staticLabel}
-        tooltipLabel={staticLabel}
+        id="test-button"
         isActive={false}
+        label={staticLabel}
         onToggle={() => false}
+        tooltipLabel={staticLabel}
       />,
     );
 
@@ -120,12 +121,12 @@ describe('ToggleButton', () => {
   test('should update state from props', () => {
     const { rerender } = render(
       <ToggleButton
-        id="test-button"
-        label="Test Button"
         ariaLabel="Test Button"
-        tooltipLabel="Test Button"
+        id="test-button"
         isActive={false}
+        label="Test Button"
         onToggle={() => false}
+        tooltipLabel="Test Button"
       />,
     );
 
@@ -134,12 +135,12 @@ describe('ToggleButton', () => {
 
     rerender(
       <ToggleButton
-        id="test-button"
-        label="Test Button"
         ariaLabel="Test Button"
-        tooltipLabel="Test Button"
+        id="test-button"
         isActive={true}
+        label="Test Button"
         onToggle={() => true}
+        tooltipLabel="Test Button"
       />,
     );
 

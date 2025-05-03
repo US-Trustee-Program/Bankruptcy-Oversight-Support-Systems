@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto';
+
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { OfficeAssignee } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneeMongoRepository } from './office-assignee.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import { OfficeAssignee } from '../../../use-cases/gateways.types';
 
 describe('case assignment repo tests', () => {
   let context: ApplicationContext;
@@ -26,9 +27,9 @@ describe('case assignment repo tests', () => {
     const assignees: OfficeAssignee[] = [
       {
         caseId: '',
+        name: '',
         officeCode: '',
         userId: '',
-        name: '',
       },
     ];
     const predicate = { caseId: '000-11-22222' };
@@ -120,9 +121,9 @@ describe('case assignment repo tests', () => {
 
     const assignee: OfficeAssignee = {
       caseId: '',
+      name: '',
       officeCode: '',
       userId: '',
-      name: '',
     };
 
     await repo.create(assignee);

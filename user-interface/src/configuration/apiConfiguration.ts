@@ -9,10 +9,10 @@ export function isCamsApi(url: string) {
 
 export const ApiConfiguration = {
   basePath,
-  server,
+  baseUrl: protocol + '://' + server + (port ? ':' + port : '') + basePath,
   port,
   protocol,
-  baseUrl: protocol + '://' + server + (port ? ':' + port : '') + basePath,
+  server,
 };
 
 export default ApiConfiguration;

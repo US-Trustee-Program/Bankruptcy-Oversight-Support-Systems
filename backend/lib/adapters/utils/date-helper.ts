@@ -2,19 +2,6 @@ import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'DATE-HELPER';
 
-export function getDate(year: number, month: number, dayOfMonth: number): Date {
-  if (month > 12 || dayOfMonth > 31) {
-    throw new CamsError(MODULE_NAME, {
-      message: 'month cannot be greater than 12 and dayOfMonth cannot be greater than 31',
-    });
-  } else if (month === 0 || dayOfMonth === 0) {
-    throw new CamsError(MODULE_NAME, {
-      message: 'month and dayOfMonth should be real month and day numbers, not zero-based',
-    });
-  }
-  return new Date(year, month - 1, dayOfMonth);
-}
-
 export function calculateDifferenceInMonths(left: Date, right: Date): number {
   let earlier, later: Date;
   if (left.getFullYear() < right.getFullYear()) {
@@ -41,8 +28,17 @@ export function calculateDifferenceInMonths(left: Date, right: Date): number {
   return incompleteMonth ? monthsDiff - 1 : monthsDiff;
 }
 
-export function getYearMonthDayStringFromDate(date: Date) {
-  return date.toISOString().split('T')[0];
+export function getDate(year: number, month: number, dayOfMonth: number): Date {
+  if (month > 12 || dayOfMonth > 31) {
+    throw new CamsError(MODULE_NAME, {
+      message: 'month cannot be greater than 12 and dayOfMonth cannot be greater than 31',
+    });
+  } else if (month === 0 || dayOfMonth === 0) {
+    throw new CamsError(MODULE_NAME, {
+      message: 'month and dayOfMonth should be real month and day numbers, not zero-based',
+    });
+  }
+  return new Date(year, month - 1, dayOfMonth);
 }
 
 export function getMonthDayYearStringFromDate(date: Date) {
@@ -51,9 +47,8 @@ export function getMonthDayYearStringFromDate(date: Date) {
   return `${date.getFullYear()}-${monthString}-${dateString}`;
 }
 
-function padDateElement(value: number) {
-  if (value < 10) return '0' + value;
-  return value.toString();
+export function getYearMonthDayStringFromDate(date: Date) {
+  return date.toISOString().split('T')[0];
 }
 
 export function sortListOfDates(dates: Date[], order: 'chronological' | 'reverse' = 'reverse') {
@@ -64,4 +59,9 @@ export function sortListOfDates(dates: Date[], order: 'chronological' | 'reverse
       return b.valueOf() - a.valueOf();
     }
   });
+}
+
+function padDateElement(value: number) {
+  if (value < 10) return '0' + value;
+  return value.toString();
 }

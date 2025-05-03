@@ -16,10 +16,10 @@ export const REGION_03_GROUP_WL = MOCKED_USTP_OFFICE_DATA_MAP.get(
 )!;
 
 export type MockUser = {
-  sub: string;
-  label: string;
-  user: CamsUser;
   hide?: boolean;
+  label: string;
+  sub: string;
+  user: CamsUser;
 };
 
 function addSuperUserOffices(user: CamsUser) {
@@ -30,128 +30,128 @@ function addSuperUserOffices(user: CamsUser) {
 }
 
 export const SUPERUSER = {
-  sub: 'user@fake.com',
+  hide: false,
   label: "Martha's Son - Super User",
+  sub: 'user@fake.com',
   user: {
     id: '==MOCKUSER=user@fake.com==',
     name: "Martha's Son",
-    roles: [CamsRole.SuperUser],
     offices: [],
+    roles: [CamsRole.SuperUser],
   },
-  hide: false,
 };
 
 addSuperUserOffices(SUPERUSER.user);
 
 export const MockUsers: MockUser[] = [
   {
-    sub: 'jpearson@fake.com',
     label: 'Jessica Pearson - Trial Attorney (Manhattan)',
+    sub: 'jpearson@fake.com',
     user: {
       id: 'manAtty0001',
       name: 'Jessica Pearson',
-      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
+      roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
     },
   },
   {
-    sub: 'jmccoy@fake.com',
     label: 'Jack McCoy - Trial Attorney (Manhattan)',
+    sub: 'jmccoy@fake.com',
     user: {
       id: 'manAtty0002',
       name: 'Jack McCoy',
-      roles: [CamsRole.TrialAttorney],
       offices: [REGION_02_GROUP_NY],
+      roles: [CamsRole.TrialAttorney],
     },
   },
   {
-    sub: 'sgoodman@fake.com',
     label: 'Saul Goodman - Trial Attorney (Seattle)',
+    sub: 'sgoodman@fake.com',
     user: {
       id: 'seaAtty0001',
       name: 'Saul Goodman',
-      roles: [CamsRole.TrialAttorney],
       offices: [REGION_02_GROUP_SE],
+      roles: [CamsRole.TrialAttorney],
     },
   },
   {
-    sub: 'rzane@fake.com',
     label: 'Rachel Zane - Trial Attorney (Seattle)',
+    sub: 'rzane@fake.com',
     user: {
       id: 'seaAtty0002',
       name: 'Rachel Zane',
-      roles: [CamsRole.TrialAttorney],
       offices: [REGION_02_GROUP_SE],
+      roles: [CamsRole.TrialAttorney],
     },
   },
   {
-    sub: 'bert@fake.com',
     label: 'Bert - Data Verifier (Manhattan)',
+    sub: 'bert@fake.com',
     user: {
       id: 'bert@fake.com',
       name: 'Bert',
-      roles: [CamsRole.DataVerifier, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
+      roles: [CamsRole.DataVerifier, CamsRole.PrivilegedIdentityUser],
     },
   },
   {
-    sub: 'earnie@fake.com',
     label: 'Earnie - Data Verifier (Seattle)',
+    sub: 'earnie@fake.com',
     user: {
       id: 'earnie@fake.com',
       name: 'Earnie',
-      roles: [CamsRole.DataVerifier],
       offices: [REGION_02_GROUP_SE],
+      roles: [CamsRole.DataVerifier],
     },
   },
   {
-    sub: 'charlie@fake.com',
     label: 'Charlie - Assistant US Trustee (Manhattan)',
+    sub: 'charlie@fake.com',
     user: {
       id: 'manAUST0001',
       name: 'Charlie',
-      roles: [CamsRole.CaseAssignmentManager, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
+      roles: [CamsRole.CaseAssignmentManager, CamsRole.PrivilegedIdentityUser],
     },
   },
   {
-    sub: 'daniel@fake.com',
     label: 'Daniel - Assistant US Trustee (Seattle)',
+    sub: 'daniel@fake.com',
     user: {
       id: 'bufAUST0001',
       name: 'Daniel',
-      roles: [CamsRole.CaseAssignmentManager],
       offices: [REGION_02_GROUP_SE],
+      roles: [CamsRole.CaseAssignmentManager],
     },
   },
   {
-    sub: 'emma@fake.com',
     label: 'Emma - Assistant US Trustee (Delaware)',
+    sub: 'emma@fake.com',
     user: {
       id: 'delAUST0001',
       name: 'Emma',
-      roles: [CamsRole.CaseAssignmentManager],
       offices: [REGION_03_GROUP_WL],
+      roles: [CamsRole.CaseAssignmentManager],
     },
   },
   {
-    sub: 'unhoused@fake.com',
     label: 'Unhoused - No Office',
+    sub: 'unhoused@fake.com',
     user: {
       id: 'unhoused',
       name: 'Unhoused',
-      roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
       offices: [],
+      roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
     },
   },
   {
-    sub: 'nobody@fake.com',
     label: 'Nobody - No Role. No Office',
+    sub: 'nobody@fake.com',
     user: {
       id: 'nobody',
       name: 'Nobody',
-      roles: [],
       offices: [],
+      roles: [],
     },
   },
   SUPERUSER,

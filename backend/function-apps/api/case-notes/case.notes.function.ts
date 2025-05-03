@@ -1,10 +1,11 @@
-import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
-import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+
 import { CaseNoteInput } from '../../../../common/src/cams/cases';
+import { UnauthorizedError } from '../../../lib/common-errors/unauthorized-error';
+import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
+import { initializeApplicationInsights } from '../../azure/app-insights';
+import ContextCreator from '../../azure/application-context-creator';
+import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
 
@@ -34,8 +35,8 @@ export default async function handler(
 }
 
 app.http('case-notes', {
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   route: 'cases/{caseId}/notes/{noteId?}/{userId?}',
 });

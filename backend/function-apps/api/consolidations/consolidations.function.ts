@@ -1,8 +1,9 @@
-import * as dotenv from 'dotenv';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
+import * as dotenv from 'dotenv';
+
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
+import { initializeApplicationInsights } from '../../azure/app-insights';
+import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 dotenv.config();
@@ -30,8 +31,8 @@ export default async function handler(
 }
 
 app.http('consolidations', {
-  methods: ['PUT'],
   authLevel: 'anonymous',
   handler,
+  methods: ['PUT'],
   route: 'consolidations/{procedure}',
 });

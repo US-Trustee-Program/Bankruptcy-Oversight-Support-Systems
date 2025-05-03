@@ -5,50 +5,52 @@ import useWindowSize from '@/lib/hooks/UseWindowSize';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { consolidationTypeMap } from '@/lib/utils/labels';
 import { CaseAssignment } from '@common/cams/assignments';
-import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import './ConsolidationOrderModal.scss';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+
+import './ConsolidationOrderModal.scss';
+
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+export type ConfirmActionApprovalResults = {
+  status: 'approved';
+};
 
 export type ConfirmActionPendingResults = {
   status: 'pending';
 };
 
 export type ConfirmActionRejectionResults = {
-  status: 'rejected';
   rejectionReason?: string;
-};
-
-export type ConfirmActionApprovalResults = {
-  status: 'approved';
+  status: 'rejected';
 };
 
 export type ConfirmActionResults =
   | ConfirmActionApprovalResults
-  | ConfirmActionRejectionResults
-  | ConfirmActionPendingResults;
-
-export interface ConsolidationOrderModalProps {
-  id: string;
-  onCancel: () => void;
-  onConfirm: (results: ConfirmActionResults) => void;
-  courts?: CourtDivisionDetails[];
-}
-
-export type ShowOptionParams = {
-  status: OrderStatus;
-  cases: ConsolidationOrderCase[];
-  leadCase: ConsolidationOrderCase;
-  consolidationType?: ConsolidationType;
-};
-
-type ShowOptions = {
-  status: OrderStatus;
-  heading: string;
-};
+  | ConfirmActionPendingResults
+  | ConfirmActionRejectionResults;
 
 export type ConfirmationModalImperative = ModalRefType & {
   show: (options: ShowOptionParams) => void;
+};
+
+export interface ConsolidationOrderModalProps {
+  courts?: CourtDivisionDetails[];
+  id: string;
+  onCancel: () => void;
+  onConfirm: (results: ConfirmActionResults) => void;
+}
+
+export type ShowOptionParams = {
+  cases: ConsolidationOrderCase[];
+  consolidationType?: ConsolidationType;
+  leadCase: ConsolidationOrderCase;
+  status: OrderStatus;
+};
+
+type ShowOptions = {
+  heading: string;
+  status: OrderStatus;
 };
 
 export function formatListForDisplay(attorneys: string[]) {
@@ -64,15 +66,15 @@ function ConsolidationOrderModalComponent(
   props: ConsolidationOrderModalProps,
   ConfirmationModalRef: React.Ref<ConfirmationModalImperative>,
 ) {
-  const { id, onConfirm, onCancel } = props;
+  const { id, onCancel, onConfirm } = props;
 
   const [cases, setCases] = useState<ConsolidationOrderCase[]>([]);
   const [childCasesDivHeight, setChildCasesDivHeight] = useState<string>('');
   const [consolidationType, setConsolidationType] = useState<ConsolidationType>();
   const [leadCase, setLeadCase] = useState<ConsolidationOrderCase | null>(null);
   const [options, setOptions] = useState<ShowOptions>({
-    status: 'pending',
     heading: '',
+    status: 'pending',
   });
   const [reason] = useState<string>('');
 
@@ -83,8 +85,8 @@ function ConsolidationOrderModalComponent(
 
   async function reject() {
     onConfirm({
-      status: 'rejected',
       rejectionReason: reasonRef.current?.value,
+      status: 'rejected',
     });
   }
 
@@ -95,37 +97,37 @@ function ConsolidationOrderModalComponent(
   }
 
   const rejectActionButtonGroup: SubmitCancelBtnProps = {
-    modalId: `confirmation-modal-${id}`,
-    modalRef: modalRef,
-    submitButton: {
-      label: 'Reject',
-      onClick: reject,
-      className: 'usa-button--secondary',
-    },
     cancelButton: {
       label: 'Go back',
       onClick: () => {
         reset();
         onCancel();
       },
+    },
+    modalId: `confirmation-modal-${id}`,
+    modalRef: modalRef,
+    submitButton: {
+      className: 'usa-button--secondary',
+      label: 'Reject',
+      onClick: reject,
     },
   };
 
   const approveActionButtonGroup: SubmitCancelBtnProps = {
-    modalId: `confirmation-modal-${id}`,
-    modalRef: modalRef,
-    submitButton: {
-      label: 'Verify',
-      onClick: confirm,
-      closeOnClick: true,
-      disabled: false,
-    },
     cancelButton: {
       label: 'Go back',
       onClick: () => {
         reset();
         onCancel();
       },
+    },
+    modalId: `confirmation-modal-${id}`,
+    modalRef: modalRef,
+    submitButton: {
+      closeOnClick: true,
+      disabled: false,
+      label: 'Verify',
+      onClick: confirm,
     },
   };
 
@@ -135,14 +137,14 @@ function ConsolidationOrderModalComponent(
       setConsolidationType(options.consolidationType);
       setLeadCase(options.leadCase);
       setOptions({
-        status: options.status,
         heading: 'Verify Case Consolidation',
+        status: options.status,
       });
     } else if (options.status === 'rejected') {
       modalRef.current?.buttons?.current?.disableSubmitButton(false);
       setOptions({
-        status: options.status,
         heading: 'Reject Case Consolidation?',
+        status: options.status,
       });
     }
 
@@ -191,8 +193,8 @@ function ConsolidationOrderModalComponent(
   }, [windowSize]);
 
   useImperativeHandle(ConfirmationModalRef, () => ({
-    show,
     hide: reset,
+    show,
   }));
 
   function showRejectedContent() {
@@ -202,8 +204,8 @@ function ConsolidationOrderModalComponent(
           The following cases will not be consolidated
         </div>
         <div
-          data-testid="modal-case-list-container"
           className="modal-case-list-container"
+          data-testid="modal-case-list-container"
           style={{ maxHeight: childCasesDivHeight }}
         >
           <ul className="usa-list--unstyled modal-case-list">
@@ -217,11 +219,11 @@ function ConsolidationOrderModalComponent(
         <div data-testid="modal-rejection-reason-container">
           <label htmlFor={`rejection-reason-${id}`}>Reason for rejection</label>
           <textarea
-            id={`rejection-reason-${id}`}
-            data-testid={`rejection-reason-input-${id}`}
-            ref={reasonRef}
             className="rejection-reason-input usa-textarea"
+            data-testid={`rejection-reason-input-${id}`}
             defaultValue={reason}
+            id={`rejection-reason-${id}`}
+            ref={reasonRef}
           ></textarea>
         </div>
       </div>
@@ -236,8 +238,8 @@ function ConsolidationOrderModalComponent(
           the following cases.
         </div>
         <div
-          data-testid="modal-case-list-container"
           className="modal-case-list-container"
+          data-testid="modal-case-list-container"
           style={{ maxHeight: childCasesDivHeight }}
         >
           <ul className="usa-list--unstyled modal-case-list">
@@ -249,11 +251,11 @@ function ConsolidationOrderModalComponent(
           </ul>
         </div>
         <div
-          className="modal-assignments-list"
           aria-label={
             `with ${getCaseNumber(leadCase?.caseId)} as the Lead Case. All cases will be ` +
             `assigned to ${formatListForDisplay(getAssigneeNames(leadCase?.attorneyAssignments ?? []))}.`
           }
+          className="modal-assignments-list"
         >
           with <strong>{getCaseNumber(leadCase?.caseId)}</strong> as the Lead Case. All cases will
           be assigned to{' '}
@@ -268,24 +270,24 @@ function ConsolidationOrderModalComponent(
 
   return (
     <Modal
-      ref={modalRef}
-      modalId={id}
+      actionButtonGroup={
+        options.status === 'approved' ? approveActionButtonGroup : rejectActionButtonGroup
+      }
       className={`confirm-modal consolidation-order-modal`}
-      heading={`${options.heading}`}
-      data-testid={`confirm-modal-${id}`}
-      onClose={() => {
-        // reset();
-        onCancel();
-      }}
       content={
         <>
           {options.status === 'rejected' && showRejectedContent()}
           {options.status === 'approved' && showApprovedContent()}
         </>
       }
-      actionButtonGroup={
-        options.status === 'approved' ? approveActionButtonGroup : rejectActionButtonGroup
-      }
+      data-testid={`confirm-modal-${id}`}
+      heading={`${options.heading}`}
+      modalId={id}
+      onClose={() => {
+        // reset();
+        onCancel();
+      }}
+      ref={modalRef}
     ></Modal>
   );
 }

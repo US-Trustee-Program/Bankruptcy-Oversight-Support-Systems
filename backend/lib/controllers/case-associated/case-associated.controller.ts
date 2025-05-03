@@ -1,10 +1,10 @@
+import { EventCaseReference } from '../../../../common/src/cams/events';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { EventCaseReference } from '../../../../common/src/cams/events';
-import { CaseAssociatedUseCase } from '../../use-cases/case-associated/case-associated';
-import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import { CaseAssociatedUseCase } from '../../use-cases/case-associated/case-associated';
 
 const MODULE_NAME = 'CASE-ASSOCIATED-CONTROLLER';
 

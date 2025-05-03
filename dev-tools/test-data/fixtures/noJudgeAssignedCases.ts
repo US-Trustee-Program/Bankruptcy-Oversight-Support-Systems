@@ -1,4 +1,4 @@
-import { CreateCaseOptions, createCase } from './lib/common';
+import { createCase, CreateCaseOptions } from './lib/common';
 
 export function createNoJudgeAssignedCases(options: CreateCaseOptions = {}) {
   const bCase = createCase(options);

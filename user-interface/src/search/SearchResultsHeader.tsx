@@ -4,7 +4,7 @@ import { SearchResultsHeaderProps } from '@/search-results/SearchResults';
 export function SearchResultsHeader(props: SearchResultsHeaderProps) {
   const { id } = props;
   return (
-    <TableHeader id={id} className="case-headings">
+    <TableHeader className="case-headings" id={id}>
       <TableHeaderData className="grid-col-3" sortDirection="descending">
         {props.labels[0]}
       </TableHeaderData>

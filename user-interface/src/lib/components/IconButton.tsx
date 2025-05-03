@@ -1,6 +1,7 @@
 import Icon from '@/lib/components/uswds/Icon';
-import Button, { ButtonRef, UswdsButtonStyle } from './uswds/Button';
 import { forwardRef } from 'react';
+
+import Button, { ButtonRef, UswdsButtonStyle } from './uswds/Button';
 
 export type IconButtonProps = JSX.IntrinsicElements['button'] & {
   disabled?: boolean;
@@ -9,7 +10,7 @@ export type IconButtonProps = JSX.IntrinsicElements['button'] & {
 
 function _IconButton(props: IconButtonProps, ref: React.Ref<ButtonRef>) {
   return (
-    <Button {...props} uswdsStyle={UswdsButtonStyle.Unstyled} ref={ref}>
+    <Button {...props} ref={ref} uswdsStyle={UswdsButtonStyle.Unstyled}>
       <Icon name={props.icon}></Icon>
     </Button>
   );

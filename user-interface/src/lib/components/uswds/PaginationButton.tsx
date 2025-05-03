@@ -1,24 +1,25 @@
-import React, { JSX } from 'react';
 import Icon from '@/lib/components/uswds/Icon';
+import React, { JSX } from 'react';
+
 import './PaginationButton.scss';
 
 export const BUTTON_BASE_CLASS = 'usa-pagination__button';
 
 export type PaginationButtonProps = JSX.IntrinsicElements['button'] & {
-  id: string;
   children?: React.ReactNode;
+  id: string;
   isCurrent?: boolean;
-  isPrevious?: boolean;
   isNext?: boolean;
+  isPrevious?: boolean;
 };
 
 export function PaginationButton({
-  id,
-  onClick,
   children,
+  id,
   isCurrent,
-  isPrevious,
   isNext,
+  isPrevious,
+  onClick,
 }: PaginationButtonProps) {
   const classes: string[] = [];
   let ariaLabel = '';
@@ -40,11 +41,11 @@ export function PaginationButton({
 
   return (
     <button
-      className={classes.join(' ')}
-      onClick={onClick}
-      data-testid={`pagination-button-${id}`}
-      aria-label={ariaLabel}
       aria-current={isCurrent ? 'page' : undefined}
+      aria-label={ariaLabel}
+      className={classes.join(' ')}
+      data-testid={`pagination-button-${id}`}
+      onClick={onClick}
       tabIndex={0}
     >
       {isPrevious && (

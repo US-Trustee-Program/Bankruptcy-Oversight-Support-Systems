@@ -1,7 +1,8 @@
-import { ObjectKeyVal } from '../type-declarations/basic';
-import Api, { addApiAfterHook, addApiBeforeHook } from './api';
-import * as httpAdapter from '../utils/http.adapter';
 import { vi } from 'vitest';
+
+import { ObjectKeyVal } from '../type-declarations/basic';
+import * as httpAdapter from '../utils/http.adapter';
+import Api, { addApiAfterHook, addApiBeforeHook } from './api';
 
 describe('Specific tests for the API model', () => {
   beforeEach(() => {
@@ -17,9 +18,9 @@ describe('Specific tests for the API model', () => {
 
     const mockHttpPost = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ status: 201 }),
-      text: () => Promise.resolve(JSON.stringify({ status: 201 })),
-      status: 201,
       ok: true,
+      status: 201,
+      text: () => Promise.resolve(JSON.stringify({ status: 201 })),
     }));
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
@@ -45,9 +46,9 @@ describe('Specific tests for the API model', () => {
 
   test('should return 500 error message when GET response is 500', async () => {
     const mockHttpGet = vi.fn().mockImplementation(() => ({
-      json: () => Promise.resolve({ status: 500, message: 'mock get 500' }),
-      status: 500,
+      json: () => Promise.resolve({ message: 'mock get 500', status: 500 }),
       ok: false,
+      status: 500,
     }));
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
@@ -57,8 +58,8 @@ describe('Specific tests for the API model', () => {
   test('should return 400 error message when GET response is not 500', async () => {
     const mockHttpGet = vi.fn().mockImplementation(() => ({
       json: () => Promise.resolve({ message: 'mock get 400' }),
-      status: 400,
       ok: false,
+      status: 400,
     }));
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
@@ -70,8 +71,8 @@ describe('Specific tests for the API model', () => {
   test('should throw error when GET response is not ok', async () => {
     const mockHttpGet = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock get ok' }),
-      status: 200,
       ok: false,
+      status: 200,
     });
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
@@ -91,8 +92,8 @@ describe('Specific tests for the API model', () => {
     const payload = { foo: 'mock get' };
     const mockHttpGet = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
-      status: 200,
       ok: true,
+      status: 200,
     });
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
@@ -127,8 +128,8 @@ describe('Specific tests for the API model', () => {
     const payload = { foo: 'mock post' };
     const mockHttpPost = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
-      text: () => Promise.resolve(JSON.stringify(payload)),
       ok: true,
+      text: () => Promise.resolve(JSON.stringify(payload)),
     });
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
@@ -138,8 +139,8 @@ describe('Specific tests for the API model', () => {
   test('should return data when POST response is Ok without a payload', () => {
     const mockHttpPost = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
-      text: () => Promise.resolve('{'),
       ok: true,
+      text: () => Promise.resolve('{'),
     });
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
     expect(Api.post('/some/path', {})).resolves.toBeUndefined();
@@ -173,8 +174,8 @@ describe('Specific tests for the API model', () => {
     const payload = { foo: 'mock post' };
     const mockHttpPut = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
-      text: () => Promise.resolve(JSON.stringify(payload)),
       ok: true,
+      text: () => Promise.resolve(JSON.stringify(payload)),
     });
     vi.spyOn(httpAdapter, 'httpPut').mockImplementation(mockHttpPut);
 
@@ -184,8 +185,8 @@ describe('Specific tests for the API model', () => {
   test('should return data when PUT response is Ok without a payload', () => {
     const mockHttpPut = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
-      text: () => Promise.resolve('{'),
       ok: true,
+      text: () => Promise.resolve('{'),
     });
     vi.spyOn(httpAdapter, 'httpPut').mockImplementation(mockHttpPut);
     expect(Api.put('/some/path', {})).resolves.toBeUndefined();
@@ -196,8 +197,8 @@ describe('Specific tests for the API model', () => {
   test('should throw error when PATCH response is not ok', async () => {
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock patch ok' }),
-      status: 200,
       ok: false,
+      status: 200,
     });
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
 
@@ -217,9 +218,9 @@ describe('Specific tests for the API model', () => {
     const payload = { foo: 'mock patch' };
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
-      text: () => Promise.resolve(JSON.stringify(payload)),
-      status: 200,
       ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify(payload)),
     });
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
 
@@ -229,8 +230,8 @@ describe('Specific tests for the API model', () => {
   test('should return data when PATCH response is Ok without a payload', () => {
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
-      text: () => Promise.resolve('{'),
       ok: true,
+      text: () => Promise.resolve('{'),
     });
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
     expect(Api.patch('/some/path', {})).resolves.toBeUndefined();
@@ -241,8 +242,8 @@ describe('Specific tests for the API model', () => {
   test('should throw error when DELETE response is not ok', async () => {
     const mockHttpDelete = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ message: 'mock delete ok' }),
-      status: 200,
       ok: false,
+      status: 200,
     });
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
 
@@ -262,9 +263,9 @@ describe('Specific tests for the API model', () => {
     const payload = { foo: 'mock patch' };
     const mockHttpDelete = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
-      text: () => Promise.resolve(JSON.stringify(payload)),
-      status: 200,
       ok: true,
+      status: 200,
+      text: () => Promise.resolve(JSON.stringify(payload)),
     });
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
 
@@ -274,8 +275,8 @@ describe('Specific tests for the API model', () => {
   test('should return data when DELETE response is Ok without a payload', () => {
     const mockHttpDelete = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
-      text: () => Promise.resolve('{'),
       ok: true,
+      text: () => Promise.resolve('{'),
     });
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
     expect(Api.delete('/some/path')).resolves.toBeUndefined();

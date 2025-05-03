@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
+
 import { OfficesController } from '../../../lib/controllers/offices/offices.controller';
+import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 const MODULE_NAME = 'OFFICES-FUNCTION';
@@ -25,8 +26,8 @@ export default async function handler(
 }
 
 app.http('offices', {
-  methods: ['GET'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET'],
   route: 'offices/{officeCode?}/{subResource?}',
 });

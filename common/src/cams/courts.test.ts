@@ -1,18 +1,18 @@
 import { CourtDivisionDetails, filterCourtByDivision, ustpOfficeToCourtDivision } from './courts';
-import { COURT_DIVISIONS } from './test-utilities/courts.mock';
 import { UstpOfficeDetails } from './offices';
+import { COURT_DIVISIONS } from './test-utilities/courts.mock';
 
 describe('common court library tests', () => {
   test('should filter court offices list by court division', async () => {
     const expectedOffices = [
       {
-        officeName: 'Baton Rouge',
-        officeCode: '3',
-        courtId: '053N',
-        courtName: 'Middle District of Louisiana',
         courtDivisionCode: '313',
         courtDivisionName: 'Baton Rouge',
+        courtId: '053N',
+        courtName: 'Middle District of Louisiana',
         groupDesignator: 'NR',
+        officeCode: '3',
+        officeName: 'Baton Rouge',
         regionId: '5',
         regionName: 'NEW ORLEANS',
         state: 'LA',
@@ -123,77 +123,77 @@ describe('common court library tests', () => {
 });
 
 const seattleOffice = {
-  officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
-  idpGroupName: 'USTP CAMS Region 18 Office Seattle',
-  officeName: 'Seattle',
   groups: [
     {
-      groupDesignator: 'SE',
       divisions: [
         {
-          divisionCode: '812',
           court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
           courtOffice: {
             courtOfficeCode: '2',
             courtOfficeName: 'Seattle',
           },
+          divisionCode: '812',
         },
         {
-          divisionCode: '813',
           court: { courtId: '0981', courtName: 'Western District of Washington', state: 'WA' },
           courtOffice: {
             courtOfficeCode: '3',
             courtOfficeName: 'Tacoma',
           },
+          divisionCode: '813',
         },
       ],
+      groupDesignator: 'SE',
     },
     {
-      groupDesignator: 'AK',
       divisions: [
         {
-          divisionCode: '710',
           court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '1',
             courtOfficeName: 'Juneau',
           },
+          divisionCode: '710',
         },
         {
-          divisionCode: '720',
           court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '2',
             courtOfficeName: 'Nome',
           },
+          divisionCode: '720',
         },
         {
-          divisionCode: '730',
           court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '3',
             courtOfficeName: 'Anchorage',
           },
+          divisionCode: '730',
         },
         {
-          divisionCode: '740',
           court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '4',
             courtOfficeName: 'Fairbanks',
           },
+          divisionCode: '740',
         },
         {
-          divisionCode: '750',
           court: { courtId: '097-', courtName: 'District of Alaska', state: 'AK' },
           courtOffice: {
             courtOfficeCode: '5',
             courtOfficeName: 'Ketchikan',
           },
+          divisionCode: '750',
         },
       ],
+      groupDesignator: 'AK',
     },
   ],
+  idpGroupName: 'USTP CAMS Region 18 Office Seattle',
+  officeCode: 'USTP_CAMS_Region_18_Office_Seattle',
+  officeName: 'Seattle',
   regionId: '18',
   regionName: 'Seattle',
 };

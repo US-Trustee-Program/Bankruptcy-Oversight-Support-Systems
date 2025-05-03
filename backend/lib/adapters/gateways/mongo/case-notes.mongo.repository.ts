@@ -1,5 +1,5 @@
 import { CaseNote } from '../../../../../common/src/cams/cases';
-import { getCamsErrorWithStack, getCamsError } from '../../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseNotesRepository, UpdateResult } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
@@ -12,19 +12,11 @@ const { and, using } = QueryBuilder;
 const doc = using<CaseNote>();
 
 export class CaseNotesMongoRepository extends BaseMongoRepository implements CaseNotesRepository {
-  private static referenceCount: number = 0;
   private static instance: CaseNotesMongoRepository;
+  private static referenceCount: number = 0;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!CaseNotesMongoRepository.instance) {
-      CaseNotesMongoRepository.instance = new CaseNotesMongoRepository(context);
-    }
-    CaseNotesMongoRepository.referenceCount++;
-    return CaseNotesMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -37,8 +29,31 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     }
   }
 
-  public release() {
-    CaseNotesMongoRepository.dropInstance();
+  public static getInstance(context: ApplicationContext) {
+    if (!CaseNotesMongoRepository.instance) {
+      CaseNotesMongoRepository.instance = new CaseNotesMongoRepository(context);
+    }
+    CaseNotesMongoRepository.referenceCount++;
+    return CaseNotesMongoRepository.instance;
+  }
+
+  async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
+    const query = and(
+      doc('documentType').equals('NOTE'),
+      doc('caseId').equals(archiveNote.caseId),
+      doc('id').equals(archiveNote.id),
+    );
+
+    const archiveDate = {
+      archivedBy: archiveNote.archivedBy,
+      archivedOn: archiveNote.archivedOn,
+    };
+
+    try {
+      return await this.getAdapter<CaseNote>().updateOne(query, archiveDate);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to archive case note.');
+    }
   }
 
   async create(data: CaseNote): Promise<CaseNote> {
@@ -52,25 +67,6 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
       return this.getAdapter<CaseNote>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create case note.');
-    }
-  }
-
-  async archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult> {
-    const query = and(
-      doc('documentType').equals('NOTE'),
-      doc('caseId').equals(archiveNote.caseId),
-      doc('id').equals(archiveNote.id),
-    );
-
-    const archiveDate = {
-      archivedOn: archiveNote.archivedOn,
-      archivedBy: archiveNote.archivedBy,
-    };
-
-    try {
-      return await this.getAdapter<CaseNote>().updateOne(query, archiveDate);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to archive case note.');
     }
   }
 
@@ -88,6 +84,24 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     }
   }
 
+  async read(id: string): Promise<CaseNote> {
+    try {
+      const query = doc('id').equals(id);
+      return await this.getAdapter<CaseNote>().findOne(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to find case note ${id}.`,
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
+  public release() {
+    CaseNotesMongoRepository.dropInstance();
+  }
+
   async update(note: Partial<CaseNote>): Promise<void> {
     try {
       const query = and(
@@ -103,22 +117,8 @@ export class CaseNotesMongoRepository extends BaseMongoRepository implements Cas
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          module: MODULE_NAME,
           message: `Failed to update case note ${note.id}.`,
-        },
-      });
-    }
-  }
-
-  async read(id: string): Promise<CaseNote> {
-    try {
-      const query = doc('id').equals(id);
-      return await this.getAdapter<CaseNote>().findOne(query);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
           module: MODULE_NAME,
-          message: `Failed to find case note ${id}.`,
         },
       });
     }

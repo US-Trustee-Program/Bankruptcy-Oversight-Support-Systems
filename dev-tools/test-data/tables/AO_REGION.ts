@@ -29,12 +29,12 @@ export class AO_REGION_Record implements TableRecordHelper {
   constructor(props: AO_REGION_RecordProps) {
     Object.assign(this, props);
   }
-  validate(): void {
-    /// TODO: implement this schema validation
-  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
     return [this.REGION_ID, this.REGION_NAME];
+  }
+  validate(): void {
+    /// TODO: implement this schema validation
   }
 }
 export function toAoRegionInsertStatements(records: Array<AO_REGION_Record>): string[] {

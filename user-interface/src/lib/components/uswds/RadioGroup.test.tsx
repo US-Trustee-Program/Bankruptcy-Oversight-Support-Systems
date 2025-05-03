@@ -1,4 +1,5 @@
 import { render } from '@testing-library/react';
+
 import { RadioGroup, RadioGroupProps } from './RadioGroup';
 
 describe('Test RadioGroup', () => {

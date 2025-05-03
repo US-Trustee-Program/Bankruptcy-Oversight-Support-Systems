@@ -1,9 +1,10 @@
 import * as dotenv from 'dotenv';
+
+import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { deferClose } from '../../../lib/deferrable/defer-close';
 import { DocumentClient } from '../../../lib/humble-objects/mongo-humble';
 import QueryBuilder from '../../../lib/query/query-builder';
-import { deferClose } from '../../../lib/deferrable/defer-close';
-import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
 
 dotenv.config();
 
@@ -11,15 +12,15 @@ const MODULE_NAME = 'HEALTHCHECK-COSMOS-DB';
 const COLLECTION_NAME = 'healthcheck';
 
 export type HealthCheckDocument = {
-  id?: string;
-  healthCheckId: string;
   documentType: 'HEALTH_CHECK';
+  healthCheckId: string;
+  id?: string;
 };
 
 export default class HealthcheckCosmosDb {
   private readonly client: DocumentClient;
-  private readonly databaseName: string;
   private readonly context: ApplicationContext;
+  private readonly databaseName: string;
 
   constructor(context: ApplicationContext) {
     this.context = context;
@@ -29,26 +30,11 @@ export default class HealthcheckCosmosDb {
     deferClose(this.client, context);
   }
 
-  private getAdapter<T>() {
-    return MongoCollectionAdapter.newAdapter<T>(
-      MODULE_NAME,
-      COLLECTION_NAME,
-      this.databaseName,
-      this.client,
-    );
-  }
-
-  public dbConfig() {
-    return {
-      databaseName: this.databaseName,
-    };
-  }
-
   public async checkDocumentDb() {
     const status = {
-      cosmosDbWriteStatus: false,
-      cosmosDbReadStatus: undefined,
       cosmosDbDeleteStatus: undefined,
+      cosmosDbReadStatus: undefined,
+      cosmosDbWriteStatus: false,
     };
 
     status.cosmosDbWriteStatus = await this.checkDbWrite();
@@ -58,29 +44,10 @@ export default class HealthcheckCosmosDb {
     return status;
   }
 
-  private async checkDbRead() {
-    try {
-      const items = await this.getAdapter<HealthCheckDocument>().getAll();
-
-      return items.length > 0;
-    } catch (e) {
-      this.context.logger.error(MODULE_NAME, 'Failed db read check.', e);
-    }
-    return false;
-  }
-
-  private async checkDbWrite() {
-    const healthCheckDocument: HealthCheckDocument = {
-      healthCheckId: 'arbitrary-id',
-      documentType: 'HEALTH_CHECK',
+  public dbConfig() {
+    return {
+      databaseName: this.databaseName,
     };
-    try {
-      await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
-      return true;
-    } catch (e) {
-      this.context.logger.error(MODULE_NAME, 'Failed db write check.', e);
-    }
-    return false;
   }
 
   private async checkDbDelete() {
@@ -102,5 +69,39 @@ export default class HealthcheckCosmosDb {
       this.context.logger.error(MODULE_NAME, 'Failed db delete check.', e);
     }
     return false;
+  }
+
+  private async checkDbRead() {
+    try {
+      const items = await this.getAdapter<HealthCheckDocument>().getAll();
+
+      return items.length > 0;
+    } catch (e) {
+      this.context.logger.error(MODULE_NAME, 'Failed db read check.', e);
+    }
+    return false;
+  }
+
+  private async checkDbWrite() {
+    const healthCheckDocument: HealthCheckDocument = {
+      documentType: 'HEALTH_CHECK',
+      healthCheckId: 'arbitrary-id',
+    };
+    try {
+      await this.getAdapter<HealthCheckDocument>().insertOne(healthCheckDocument);
+      return true;
+    } catch (e) {
+      this.context.logger.error(MODULE_NAME, 'Failed db write check.', e);
+    }
+    return false;
+  }
+
+  private getAdapter<T>() {
+    return MongoCollectionAdapter.newAdapter<T>(
+      MODULE_NAME,
+      COLLECTION_NAME,
+      this.databaseName,
+      this.client,
+    );
   }
 }

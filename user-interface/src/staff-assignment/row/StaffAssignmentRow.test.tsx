@@ -1,17 +1,18 @@
-import { useRef } from 'react';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { StaffAssignmentRow, StaffAssignmentRowOptions } from './StaffAssignmentRow';
-import AssignAttorneyModal from '../modal/AssignAttorneyModal';
-import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Api2 from '@/lib/models/api2';
-import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
-import { BrowserRouter } from 'react-router-dom';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
-import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { CaseBasics } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
+import { CaseBasics } from '@common/cams/cases';
+import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { render, screen, waitFor } from '@testing-library/react';
+import { useRef } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
+import AssignAttorneyModal from '../modal/AssignAttorneyModal';
+import { AssignAttorneyModalRef } from '../modal/assignAttorneyModal.types';
+import { StaffAssignmentRow, StaffAssignmentRowOptions } from './StaffAssignmentRow';
 
 describe('StaffAssignmentRow tests', () => {
   const bCase: ResourceActions<CaseBasics> = {
@@ -50,17 +51,17 @@ describe('StaffAssignmentRow tests', () => {
         <table>
           <tbody>
             <StaffAssignmentRow
-              labels={props.labels}
               bCase={props.bCase}
               idx={0}
+              labels={props.labels}
               options={options}
             />
           </tbody>
         </table>
         <AssignAttorneyModal
+          assignmentChangeCallback={vi.fn()}
           modalId={'test-modal-id'}
           ref={modalRef}
-          assignmentChangeCallback={vi.fn()}
         />
       </div>
     );

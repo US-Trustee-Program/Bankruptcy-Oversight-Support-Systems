@@ -3,29 +3,29 @@ import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnknownError } from '../../common-errors/unknown-error';
 import Factory from '../../factory';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
 import MigrateCases from './migrate-cases';
 import { AcmsConsolidation } from './migrate-consolidations';
-import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 const mockAcmsGateway: AcmsGateway = {
-  getLeadCaseIds: function (..._ignore): Promise<string[]> {
+  emptyMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
   getConsolidationDetails: function (..._ignore): Promise<AcmsConsolidation> {
     throw new Error('Function not implemented.');
   },
-  loadMigrationTable: function (..._ignore) {
+  getLeadCaseIds: function (..._ignore): Promise<string[]> {
+    throw new Error('Function not implemented.');
+  },
+  getMigrationCaseCount(..._ignore) {
     throw new Error('Function not implemented.');
   },
   getMigrationCaseIds: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
-  emptyMigrationTable: function (..._ignore) {
-    throw new Error('Function not implemented.');
-  },
-  getMigrationCaseCount(..._ignore) {
+  loadMigrationTable: function (..._ignore) {
     throw new Error('Function not implemented.');
   },
 };
@@ -48,7 +48,7 @@ describe('Migrate cases use case', () => {
 
       const actual = await MigrateCases.getPageOfCaseEvents(context, 1, 1000);
       expect(actual.events).toEqual(
-        caseIds.map((caseId) => MockData.getCaseSyncEvent({ type: 'MIGRATION', caseId })),
+        caseIds.map((caseId) => MockData.getCaseSyncEvent({ caseId, type: 'MIGRATION' })),
       );
     });
 

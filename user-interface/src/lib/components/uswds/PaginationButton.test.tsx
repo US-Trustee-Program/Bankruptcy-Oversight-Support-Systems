@@ -3,8 +3,8 @@ import {
   PaginationButton,
   PaginationButtonProps,
 } from '@/lib/components/uswds/PaginationButton';
-import { BrowserRouter } from 'react-router-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('PaginationButton tests', () => {
   const onClickSpy = vi.fn();
@@ -14,8 +14,8 @@ describe('PaginationButton tests', () => {
 
   function renderWithProps(props: Partial<PaginationButtonProps> = {}) {
     const defaultProps: PaginationButtonProps = {
-      id: 'test',
       children: 1,
+      id: 'test',
     };
 
     render(

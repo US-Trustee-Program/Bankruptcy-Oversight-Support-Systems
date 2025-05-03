@@ -7,127 +7,127 @@ export const UswdsButtonExamples = () => {
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Default} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Default}>
         Default Style
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Default} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Default}>
         Default Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Default} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Default}>
         Default Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Default} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Default}>
         Default Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Default} buttonState={UswdsButtonState.Active} disabled>
+      <Button buttonState={UswdsButtonState.Active} disabled uswdsStyle={UswdsButtonStyle.Default}>
         Default Disabled
       </Button>
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Secondary} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Secondary}>
         Secondary
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Secondary} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Secondary}>
         Secondary Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Secondary} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Secondary}>
         Secondary Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Secondary} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Secondary}>
         Secondary Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Secondary} disabled>
+      <Button disabled uswdsStyle={UswdsButtonStyle.Secondary}>
         Secondary Disabled
       </Button>
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Cool} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Cool}>
         Cool
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Cool} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Cool}>
         Cool Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Cool} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Cool}>
         Cool Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Cool} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Cool}>
         Cool Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Cool} disabled>
+      <Button disabled uswdsStyle={UswdsButtonStyle.Cool}>
         Cool Disabled
       </Button>
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Warm} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Warm}>
         Warm
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Warm} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Warm}>
         Warm Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Warm} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Warm}>
         Warm Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Warm} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Warm}>
         Warm Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Warm} disabled>
+      <Button disabled uswdsStyle={UswdsButtonStyle.Warm}>
         Warm Disabled
       </Button>
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Base} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Base}>
         Base
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Base} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Base}>
         Base Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Base} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Base}>
         Base Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Base} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Base}>
         Base Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Base} disabled>
+      <Button disabled uswdsStyle={UswdsButtonStyle.Base}>
         Base Disabled
       </Button>
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Outline} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Outline}>
         Outline
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Outline} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Outline}>
         Outline Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Outline} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Outline}>
         Outline Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Outline} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Outline}>
         Outline Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Outline} disabled>
+      <Button disabled uswdsStyle={UswdsButtonStyle.Outline}>
         Outline Disabled
       </Button>
       <br />
       <br />
       <br />
-      <Button uswdsStyle={UswdsButtonStyle.Inverse} buttonState={UswdsButtonState.Default}>
+      <Button buttonState={UswdsButtonState.Default} uswdsStyle={UswdsButtonStyle.Inverse}>
         Inverse
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Inverse} buttonState={UswdsButtonState.Active}>
+      <Button buttonState={UswdsButtonState.Active} uswdsStyle={UswdsButtonStyle.Inverse}>
         Inverse Active
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Inverse} buttonState={UswdsButtonState.Hover}>
+      <Button buttonState={UswdsButtonState.Hover} uswdsStyle={UswdsButtonStyle.Inverse}>
         Inverse Hover
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Inverse} buttonState={UswdsButtonState.Focus}>
+      <Button buttonState={UswdsButtonState.Focus} uswdsStyle={UswdsButtonStyle.Inverse}>
         Inverse Focus
       </Button>
-      <Button uswdsStyle={UswdsButtonStyle.Inverse} disabled>
+      <Button disabled uswdsStyle={UswdsButtonStyle.Inverse}>
         Inverse Disabled
       </Button>
       <br />

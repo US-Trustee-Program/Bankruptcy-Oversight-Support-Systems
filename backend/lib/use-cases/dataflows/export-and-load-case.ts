@@ -1,9 +1,9 @@
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
 import { SyncedCase } from '../../../../common/src/cams/cases';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { getCasesGateway, getCasesRepository } from '../../factory';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 

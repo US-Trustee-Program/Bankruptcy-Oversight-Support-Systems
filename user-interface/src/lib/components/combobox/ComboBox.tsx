@@ -1,5 +1,8 @@
 import '../uswds/forms.scss';
 import './ComboBox.scss';
+
+import useOutsideClick from '@/lib/hooks/UseOutsideClick';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import {
   forwardRef,
   PropsWithChildren,
@@ -8,60 +11,59 @@ import {
   useRef,
   useState,
 } from 'react';
-import Icon from '../uswds/Icon';
+
 import Button, { UswdsButtonStyle } from '../uswds/Button';
-import useOutsideClick from '@/lib/hooks/UseOutsideClick';
-import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import Icon from '../uswds/Icon';
+
+export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' | 'value'> {
+  ariaDescription?: string;
+  ariaLabelPrefix?: string;
+  autoComplete?: 'off';
+  icon?: string;
+  id: string;
+  label?: string;
+  multiSelect?: boolean;
+  onClose?: (options: ComboOption[]) => void;
+  onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
+  onUpdateFilter?: (value: string) => void;
+  onUpdateSelection?: (options: ComboOption[]) => void;
+  options: ComboOption[];
+  overflowStrategy?: 'ellipsis';
+  pluralLabel?: string;
+  singularLabel?: string;
+  wrapPills?: boolean;
+}
 
 export type ComboOption = {
-  value: string;
-  label: string;
-  selectedLabel?: string;
   divider?: boolean;
   isAriaDefault?: boolean;
+  label: string;
+  selectedLabel?: string;
+  value: string;
 };
 
-export type ComboOptionList = ComboOption | Array<ComboOption>;
+export type ComboOptionList = Array<ComboOption> | ComboOption;
 
 type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
 
-export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' | 'value'> {
-  id: string;
-  label?: string;
-  ariaLabelPrefix?: string;
-  ariaDescription?: string;
-  autoComplete?: 'off';
-  icon?: string;
-  options: ComboOption[];
-  onUpdateSelection?: (options: ComboOption[]) => void;
-  onUpdateFilter?: (value: string) => void;
-  onClose?: (options: ComboOption[]) => void;
-  onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
-  multiSelect?: boolean;
-  wrapPills?: boolean;
-  singularLabel?: string;
-  pluralLabel?: string;
-  overflowStrategy?: 'ellipsis';
-}
-
 function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   const {
+    ariaDescription,
+    ariaLabelPrefix,
+    disabled,
     id: comboBoxId,
     label,
-    disabled,
-    onUpdateSelection,
-    onUpdateFilter,
-    onClose,
     multiSelect,
-    wrapPills,
-    ariaLabelPrefix,
-    ariaDescription,
+    onClose,
+    onUpdateFilter,
+    onUpdateSelection,
     options: _options,
-    singularLabel,
-    pluralLabel,
     overflowStrategy,
+    pluralLabel,
+    singularLabel,
+    wrapPills,
     ...otherProps
   } = props;
 
@@ -69,11 +71,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(!!disabled);
   const [expanded, setExpanded] = useState<boolean>(false);
-  const [dropdownLocation, setDropdownLocation] = useState<{ bottom: number } | null>(null);
-  const [currentListItem, setCurrentListItem] = useState<string | null>(null);
+  const [dropdownLocation, setDropdownLocation] = useState<null | { bottom: number }>(null);
+  const [currentListItem, setCurrentListItem] = useState<null | string>(null);
 
   const [selectedMap, setSelectedMap] = useState<Map<string, ComboOption>>(new Map());
-  const [filter, setFilter] = useState<string | null>(null);
+  const [filter, setFilter] = useState<null | string>(null);
 
   // ========== REFS ==========
 
@@ -194,7 +196,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   const navigateList = (
-    direction: 'up' | 'down',
+    direction: 'down' | 'up',
     currentIndex: number,
     listRef: React.RefObject<HTMLUListElement>,
   ) => {
@@ -269,14 +271,13 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
     switch (ev.key) {
-      case 'Tab':
-        closeDropdown(false);
-        setCurrentListItem(null);
-        break;
-      case 'Escape':
-        closeDropdown(true);
-        setCurrentListItem(null);
-        ev.preventDefault();
+      case ' ':
+      case 'Enter':
+        if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
+          handleDropdownItemSelection(option as ComboOption);
+          setCurrentListItem(null);
+          ev.preventDefault();
+        }
         break;
       case 'ArrowDown': {
         ev.preventDefault();
@@ -305,13 +306,14 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         }
         break;
       }
-      case 'Enter':
-      case ' ':
-        if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
-          handleDropdownItemSelection(option as ComboOption);
-          setCurrentListItem(null);
-          ev.preventDefault();
-        }
+      case 'Escape':
+        closeDropdown(true);
+        setCurrentListItem(null);
+        ev.preventDefault();
+        break;
+      case 'Tab':
+        closeDropdown(false);
+        setCurrentListItem(null);
         break;
     }
   }
@@ -378,35 +380,35 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }, [expanded]);
 
   useImperativeHandle(ref, () => ({
-    setSelections,
-    getSelections,
     clearSelections,
     disable,
     focusInput,
+    getSelections,
+    setSelections,
   }));
 
   // ========== JSX ==========
 
   return (
-    <div id={comboBoxId} className="usa-form-group combo-box-form-group" ref={comboBoxRef}>
+    <div className="usa-form-group combo-box-form-group" id={comboBoxId} ref={comboBoxRef}>
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
         <label
           className="usa-label"
-          id={comboBoxId + '-label'}
           htmlFor={`${comboBoxId}-combo-box-input`}
+          id={comboBoxId + '-label'}
         >
           {label} {props.required && <span className="required-form-field">*</span>}
         </label>
-        <span id={`${comboBoxId}-aria-description`} hidden>
+        <span hidden id={`${comboBoxId}-aria-description`}>
           {ariaDescription ?? ''}
         </span>
         {selectedMap.size > 0 && (
           <Button
             className="clear-all-button"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
+            id={`${comboBoxId}-clear-all`}
             onClick={handleClearAllClick}
             onKeyDown={handleClearAllKeyDown}
-            id={`${comboBoxId}-clear-all`}
+            uswdsStyle={UswdsButtonStyle.Unstyled}
           >
             clear
           </Button>
@@ -414,17 +416,17 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       </div>
       <div className="usa-combo-box">
         <div
-          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-owns={`${comboBoxId}-item-list`}
-          aria-expanded={expanded}
           aria-controls={`${comboBoxId}-item-list`}
+          aria-expanded={expanded}
+          aria-haspopup="listbox"
           aria-labelledby={comboBoxId + '-label'}
-          tabIndex={0}
+          aria-owns={`${comboBoxId}-item-list`}
+          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''}`}
           onClick={() => handleToggleDropdown()}
           onKeyDown={handleToggleKeyDown}
           ref={containerRef}
+          role="combobox"
+          tabIndex={0}
         >
           <div className="combo-box-input-container" role="presentation">
             {expanded ? (
@@ -432,56 +434,56 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 <Icon name="search"></Icon>
                 <input
                   {...otherProps}
-                  id={`${comboBoxId}-combo-box-input`}
-                  data-testid="combo-box-input"
-                  className={getInputClassName()}
-                  onChange={handleInputFilter}
-                  onKeyDown={(ev) => handleKeyDown(ev, 0)}
-                  onFocus={handleOnInputFocus}
-                  onClick={handleOnInputClick}
-                  disabled={comboboxDisabled}
-                  autoComplete={'off'}
-                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
-                  aria-describedby={`${comboBoxId}-aria-description`}
-                  aria-live={props['aria-live'] ?? undefined}
-                  aria-autocomplete="list"
                   aria-activedescendant={currentListItem ?? ''}
+                  aria-autocomplete="list"
+                  aria-describedby={`${comboBoxId}-aria-description`}
+                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to open dropdown list.`}
+                  aria-live={props['aria-live'] ?? undefined}
+                  autoComplete={'off'}
+                  className={getInputClassName()}
+                  data-testid="combo-box-input"
+                  disabled={comboboxDisabled}
+                  id={`${comboBoxId}-combo-box-input`}
+                  onChange={handleInputFilter}
+                  onClick={handleOnInputClick}
+                  onFocus={handleOnInputFocus}
+                  onKeyDown={(ev) => handleKeyDown(ev, 0)}
                   ref={filterRef}
                 />
               </>
             ) : (
-              <span title={getSelectedLabel()} className={getSelectedClasses()}>
+              <span className={getSelectedClasses()} title={getSelectedLabel()}>
                 {getSelectedLabel()}
               </span>
             )}
           </div>
           <Button
-            id={`${comboBoxId}-expand`}
+            aria-label="expand dropdown of combo box"
             className="expand-button"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
+            disabled={comboboxDisabled}
+            id={`${comboBoxId}-expand`}
             onClick={() => handleToggleDropdown()}
             onKeyDown={(ev) => handleKeyDown(ev, 0)}
-            disabled={comboboxDisabled}
             tabIndex={-1}
             type="button"
-            aria-label="expand dropdown of combo box"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
           </Button>
         </div>
         {!comboboxDisabled && (
           <div
+            aria-hidden={expanded}
             className={`item-list-container ${expanded ? 'expanded' : 'closed'}`}
             id={`${comboBoxId}-item-list-container`}
-            aria-hidden={expanded}
-            tabIndex={-1}
             style={dropdownLocation ?? undefined}
+            tabIndex={-1}
           >
             <ul
-              id={`${comboBoxId}-item-list`}
-              role="listbox"
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
+              id={`${comboBoxId}-item-list`}
               ref={comboBoxListRef}
+              role="listbox"
             >
               {props.options
                 .filter(
@@ -489,17 +491,17 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                 )
                 .map((option, idx) => (
                   <li
-                    id={`option-${option.value}`}
+                    aria-label={buildAriaLabel(option)}
+                    aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
                     className={setListItemClass(idx, option)}
-                    role="option"
-                    data-value={option.value}
                     data-testid={`${comboBoxId}-option-item-${idx}`}
+                    data-value={option.value}
+                    id={`option-${option.value}`}
                     key={`${comboBoxId}-${idx}`}
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                    role="option"
                     tabIndex={expanded ? 0 : -1}
-                    aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
-                    aria-label={buildAriaLabel(option)}
                   >
                     {
                       <>

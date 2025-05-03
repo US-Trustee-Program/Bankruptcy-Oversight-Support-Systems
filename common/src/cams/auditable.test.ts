@@ -13,8 +13,8 @@ describe('auditable tests', () => {
 
     const expected = {
       ...foo,
-      updatedOn: expect.any(String),
       updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: expect.any(String),
     };
     expect(createAuditRecord<Foo>(foo)).toEqual(expected);
   });
@@ -27,8 +27,8 @@ describe('auditable tests', () => {
 
     const expected = {
       ...foo,
-      updatedOn: expect.any(String),
       updatedBy: user,
+      updatedOn: expect.any(String),
     };
     expect(createAuditRecord<Foo>(foo, user)).toEqual(expected);
   });

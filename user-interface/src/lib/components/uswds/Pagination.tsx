@@ -1,17 +1,17 @@
+import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_OFFSET, SearchPredicate } from '@common/api/search';
-import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 
 export type PaginationProps<P extends SearchPredicate> = {
   paginationValues: PaginationModel;
-  searchPredicate: P;
   retrievePage: (searchPredicate: P) => void;
+  searchPredicate: P;
 };
 
 export function Pagination<P extends SearchPredicate>({
   paginationValues,
-  searchPredicate,
   retrievePage,
+  searchPredicate,
 }: PaginationProps<P>) {
   const { currentPage, totalPages } = paginationValues;
   const lastPage = totalPages ?? 0;
@@ -19,8 +19,8 @@ export function Pagination<P extends SearchPredicate>({
   function renderEllipsis() {
     return (
       <li
-        className="usa-pagination__item usa-pagination__overflow"
         aria-label="ellipsis indicating non-visible pages"
+        className="usa-pagination__item usa-pagination__overflow"
       >
         <span>…</span>
       </li>
@@ -65,7 +65,7 @@ export function Pagination<P extends SearchPredicate>({
     );
   }
 
-  function renderLeftSidePageButton(pageNumber: number, selectedPage: number | boolean) {
+  function renderLeftSidePageButton(pageNumber: number, selectedPage: boolean | number) {
     return (
       <li className="usa-pagination__item usa-pagination__page-no">
         <PaginationButton

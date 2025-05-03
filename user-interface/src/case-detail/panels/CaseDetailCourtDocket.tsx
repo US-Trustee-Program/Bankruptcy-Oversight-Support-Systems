@@ -1,18 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { formatDate } from '@/lib/utils/datetime';
 import { handleHighlight } from '@/lib/utils/highlight-api';
-import './CaseDetailCourtDocket.scss';
 import { CaseDocketEntry } from '@common/cams/cases';
 
-type CaseDocketSummaryFacet = {
-  text: string;
-  count: number;
-};
+import './CaseDetailCourtDocket.scss';
 
-export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
+import { useEffect, useRef, useState } from 'react';
 
 export interface AlertOptions {
   message: string;
@@ -21,13 +16,20 @@ export interface AlertOptions {
 }
 
 export interface CaseDetailCourtDocketProps {
+  alertOptions?: AlertOptions;
   caseId?: string;
   docketEntries?: CaseDocketEntry[];
-  searchString: string;
   hasDocketEntries: boolean;
   isDocketLoading: boolean;
-  alertOptions?: AlertOptions;
+  searchString: string;
 }
+
+export type CaseDocketSummaryFacets = Map<string, CaseDocketSummaryFacet>;
+
+type CaseDocketSummaryFacet = {
+  count: number;
+  text: string;
+};
 
 export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps) {
   const { docketEntries, hasDocketEntries } = props;
@@ -49,8 +51,8 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
         setAlertOptions({
           message:
             'We are unable to retrieve court docket entries for this case. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
-          type: UswdsAlertStyle.Error,
           title: 'Docket Entries Not Available',
+          type: UswdsAlertStyle.Error,
         });
         alertRef.current?.show();
       } else if (props.alertOptions) {
@@ -81,10 +83,10 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
 
   return (
     <div id="case-detail-court-docket-panel">
-      <h3 className="docket-entries-main-header" aria-label="Docket Entries">
+      <h3 aria-label="Docket Entries" className="docket-entries-main-header">
         Docket Entries
       </h3>
-      <ol id="searchable-docket" data-testid="searchable-docket">
+      <ol data-testid="searchable-docket" id="searchable-docket">
         {props.isDocketLoading && <LoadingIndicator />}
         {!props.isDocketLoading &&
           hasDocketEntries &&
@@ -92,26 +94,26 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
             return (
               <li
                 className="docket-entry grid-container"
-                key={idx}
                 data-testid={`docket-entry-${idx}`}
+                key={idx}
               >
                 <div className="grid-row">
                   <div
-                    className="grid-col-1 document-number-column"
                     aria-label={
                       docketEntry.documentNumber
                         ? `Docket Number ${docketEntry.documentNumber}`
                         : undefined
                     }
+                    className="grid-col-1 document-number-column"
                   >
                     {docketEntry.documentNumber}
                   </div>
                   <div className="grid-col-11">
                     <h4
+                      aria-label={`Filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
                       className="docket-entry-header usa-tooltip"
                       data-testid={`docket-entry-${idx}-header`}
                       title={`Document number ${docketEntry.documentNumber} filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
-                      aria-label={`Filed on ${docketEntry.dateFiled} - ${docketEntry.summaryText}`}
                     >
                       {printDocketHeader(docketEntry)}
                     </h4>
@@ -121,9 +123,9 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
                   <div className="grid-col-1"></div>
                   <div className="grid-col-11 docket-content">
                     <div
+                      aria-label="full text of docket entry"
                       className="docket-full-text"
                       data-testid={`docket-entry-${idx}-text`}
-                      aria-label="full text of docket entry"
                     >
                       {docketEntry.fullText}
                     </div>
@@ -135,13 +137,13 @@ export default function CaseDetailCourtDocket(props: CaseDetailCourtDocketProps)
           })}
       </ol>
       <Alert
+        inline={true}
         message={alertOptions?.message || ''}
-        type={alertOptions?.type || UswdsAlertStyle.Error}
-        role={'status'}
         ref={alertRef}
+        role={'status'}
         timeout={0}
         title={alertOptions?.title || ''}
-        inline={true}
+        type={alertOptions?.type || UswdsAlertStyle.Error}
       />
     </div>
   );

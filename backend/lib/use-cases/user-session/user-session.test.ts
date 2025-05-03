@@ -1,51 +1,51 @@
-import { UserSessionUseCase } from './user-session';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { CamsJwtHeader } from '../../../../common/src/cams/jwt';
+import { CamsSession } from '../../../../common/src/cams/session';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { urlRegex } from '../../../../common/src/cams/test-utilities/regex';
+import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { ServerConfigError } from '../../common-errors/server-config-error';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import * as factoryModule from '../../factory';
-import { ServerConfigError } from '../../common-errors/server-config-error';
-import { CamsSession } from '../../../../common/src/cams/session';
-import { urlRegex } from '../../../../common/src/cams/test-utilities/regex';
-import { CamsJwtHeader } from '../../../../common/src/cams/jwt';
-import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
-import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { NotFoundError } from '../../common-errors/not-found-error';
+import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-gateway';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import UsersHelpers from '../users/users.helpers';
+import { UserSessionUseCase } from './user-session';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
   const claims = {
-    iss: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
-    sub: 'user@fake.com',
     aud: 'api://default',
-    iat: 0,
     exp: Number.MAX_SAFE_INTEGER,
     groups: [],
+    iat: 0,
+    iss: 'https://nonsense-3wjj23473kdwh2.okta.com/oauth2/default',
+    sub: 'user@fake.com',
   };
   const provider = 'okta';
   const mockUser = MockData.getCamsUser();
   const expectedSession = MockData.getCamsSession({
-    user: mockUser,
     accessToken: jwtString,
     provider,
+    user: mockUser,
   });
 
   const mockCamsSession: CamsSession = {
-    user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
     accessToken: jwtString,
-    provider,
-    issuer: 'http://issuer/',
     expires: Number.MAX_SAFE_INTEGER,
+    issuer: 'http://issuer/',
+    provider,
+    user: { id: 'userId-Wrong Name', name: 'Wrong Name' },
   };
   let context: ApplicationContext;
   let gateway: UserSessionUseCase;
 
   const jwtHeader = {
     alg: 'RS256',
-    typ: undefined,
     kid: '',
+    typ: undefined,
   };
   const camsJwt = {
     claims,
@@ -62,7 +62,7 @@ describe('user-session.gateway test', () => {
     jest.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
     jest
       .spyOn(MockOpenIdConnectGateway, 'getUser')
-      .mockResolvedValue({ user: mockUser, jwt: camsJwt });
+      .mockResolvedValue({ jwt: camsJwt, user: mockUser });
     jest.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
   });
 
@@ -112,8 +112,8 @@ describe('user-session.gateway test', () => {
   test('should handle null jwt from authGateway', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
-      user: mockUser,
       jwt: null,
+      user: mockUser,
     });
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
   });
@@ -121,8 +121,8 @@ describe('user-session.gateway test', () => {
   test('should handle undefined jwt from authGateway', async () => {
     jest.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     jest.spyOn(MockOpenIdConnectGateway, 'getUser').mockResolvedValue({
-      user: mockUser,
       jwt: undefined,
+      user: mockUser,
     });
     await expect(gateway.lookup(context, jwtString, provider)).rejects.toThrow(UnauthorizedError);
   });

@@ -11,24 +11,24 @@ describe('Session End Logout tests', () => {
   const assign = vi.fn();
 
   const mockLocation: Location = {
+    ancestorOrigins: {
+      contains: vi.fn(),
+      item: vi.fn(),
+      length: 0,
+      [Symbol.iterator]: vi.fn(),
+    },
     assign,
-    host,
-    protocol,
     hash: '',
+    host,
     hostname: '',
     href: '',
     origin: '',
     pathname: '',
     port: '',
-    search: '',
+    protocol,
     reload: vi.fn(),
     replace: vi.fn(),
-    ancestorOrigins: {
-      length: 0,
-      item: vi.fn(),
-      contains: vi.fn(),
-      [Symbol.iterator]: vi.fn(),
-    },
+    search: '',
   } as const;
 
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
@@ -51,11 +51,11 @@ describe('Session End Logout tests', () => {
   test('should redirect if session is expired', () => {
     const oneSecondAgo = nowInSeconds() - 1000;
     const session: CamsSession = {
-      user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
-      provider: 'mock',
-      issuer: '',
       expires: oneSecondAgo,
+      issuer: '',
+      provider: 'mock',
+      user: MockData.getCamsUser(),
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     checkForSessionEnd();
@@ -65,11 +65,11 @@ describe('Session End Logout tests', () => {
   test('should not redirect if session is not expired', () => {
     const tenSecondsFromNow = nowInSeconds() + 10000;
     const session: CamsSession = {
-      user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
-      provider: 'mock',
-      issuer: '',
       expires: tenSecondsFromNow,
+      issuer: '',
+      provider: 'mock',
+      user: MockData.getCamsUser(),
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     checkForSessionEnd();
@@ -79,11 +79,11 @@ describe('Session End Logout tests', () => {
   test('should call setInterval correctly', () => {
     const tenSecondsFromNow = nowInSeconds() + 10000;
     const session: CamsSession = {
-      user: MockData.getCamsUser(),
       accessToken: MockData.getJwt(),
-      provider: 'mock',
-      issuer: '',
       expires: tenSecondsFromNow,
+      issuer: '',
+      provider: 'mock',
+      user: MockData.getCamsUser(),
     };
     const setIntervalSpy = vi.spyOn(global, 'setInterval');
 

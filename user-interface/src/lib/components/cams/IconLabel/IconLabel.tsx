@@ -3,8 +3,8 @@ import Icon from '../../uswds/Icon';
 
 export type IconLabelProps = {
   className?: string;
-  label: string;
   icon: string;
+  label: string;
   location?: 'left' | 'right';
 };
 

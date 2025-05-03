@@ -1,6 +1,6 @@
 export type Action = {
   actionName: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method: 'DELETE' | 'GET' | 'POST' | 'PUT';
   path: string;
 };
 
@@ -45,11 +45,11 @@ const RemoveNote: Action = {
 };
 
 export const Actions = {
-  ManageAssignments,
-  EditNote,
-  RemoveNote,
   contains,
+  EditNote,
+  ManageAssignments,
   merge,
+  RemoveNote,
 } as const;
 
 export default Actions;

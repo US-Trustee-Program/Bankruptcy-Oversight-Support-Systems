@@ -1,9 +1,10 @@
 import { render } from '@testing-library/react';
+
 import { StaffAssignmentHeader } from './StaffAssignmentHeader';
 
 describe('TableHeader test', () => {
   test('Should render header', () => {
-    render(<StaffAssignmentHeader labels={[]} id={'test-id'} />);
+    render(<StaffAssignmentHeader id={'test-id'} labels={[]} />);
     const header = document.querySelector('#test-id-table-header');
     expect(header).toBeVisible();
   });

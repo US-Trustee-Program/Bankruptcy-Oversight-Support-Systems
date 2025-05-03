@@ -1,15 +1,15 @@
-import CasesDxtrGateway from './cases.dxtr.gateway';
-import * as database from '../../utils/database';
-import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '../../../../../common/src/cams/cases';
-import * as featureFlags from '../../utils/feature-flag';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import { CASE_SUMMARIES } from '../../../testing/mock-data/case-summaries.mock';
 import { DEBTORS } from '../../../testing/mock-data/debtors.mock';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
+import * as database from '../../utils/database';
+import * as featureFlags from '../../utils/feature-flag';
+import CasesDxtrGateway from './cases.dxtr.gateway';
 
 const dxtrDatabaseName = 'some-database-name';
 
@@ -40,9 +40,9 @@ describe('Test DXTR Gateway', () => {
   test('should throw error when executeQuery returns success=false', async () => {
     const errorMessage = 'There was some fake error.';
     const mockResults: QueryResults = {
-      success: false,
-      results: {},
       message: errorMessage,
+      results: {},
+      success: false,
     };
     querySpy.mockImplementation(async () => {
       return Promise.resolve(mockResults);
@@ -60,24 +60,24 @@ describe('Test DXTR Gateway', () => {
     const transferDate = '2023-12-31';
 
     const expectedParty = {
-      name: 'John Q. Smith',
       address1: '123 Main St',
       address2: 'Apt 17',
       address3: '',
       cityStateZipCountry: 'Queens NY 12345 USA',
+      name: 'John Q. Smith',
       ssn: '123-45-6789',
       taxId: '12-3456789',
     };
 
     const expectedDebtorAttorney = {
-      name: 'James Brown Esq.',
       address1: '456 South St',
       address2: undefined,
       address3: undefined,
       cityStateZipCountry: 'Queens NY 12345 USA',
-      phone: '101-345-8765',
       email: undefined,
+      name: 'James Brown Esq.',
       office: undefined,
+      phone: '101-345-8765',
     };
 
     const expectedDebtorTypeLabel = 'Corporate Business';
@@ -97,57 +97,57 @@ describe('Test DXTR Gateway', () => {
 
     const transactions = [
       {
+        txCode: 'CBC',
         txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
-        txCode: 'CBC',
       },
       {
+        txCode: 'CBC',
         txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
-        txCode: 'CBC',
       },
       {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz',
         txCode: 'CDC',
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz',
       },
       {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
         txCode: 'OCO',
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
       },
       {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
         txCode: 'CTO',
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231231zzzzzzzzzzzz',
       },
     ];
 
     const mockCaseResults: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: cases,
       },
-      message: '',
+      success: true,
     };
 
     const mockTransactionResults: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: transactions,
       },
-      message: '',
+      success: true,
     };
 
     const mockQueryParties: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: [expectedParty],
       },
-      message: '',
+      success: true,
     };
 
     const mockQueryDebtorAttorney: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: [expectedDebtorAttorney],
       },
-      message: '',
+      success: true,
     };
 
     querySpy.mockImplementationOnce(async () => {
@@ -206,33 +206,33 @@ describe('Test DXTR Gateway', () => {
 
     const cases = [testCase];
     const mockCaseResults: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: cases,
       },
-      message: '',
+      success: true,
     };
 
     const mockQueryParties: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: [{ partyName: 'John Q. Smith' }],
       },
-      message: '',
+      success: true,
     };
 
     const mockDebtorTypeTransactionResults = {
-      success: true,
+      message: '',
       results: {
         recordset: [
           {
+            txCode: '1',
             txRecord:
               '1081201013220-10132            15CB               000000000000000000200117999992001179999920011799999200117VP000000                                 NNNNN',
-            txCode: '1',
           },
         ],
       },
-      message: '',
+      success: true,
     };
 
     querySpy.mockImplementationOnce(async () => {
@@ -271,13 +271,13 @@ describe('Test DXTR Gateway', () => {
       message: `Case summary not found for case ID: ${caseId}.`,
     });
     querySpy.mockResolvedValue({
+      message: '',
       results: {
-        recordsets: [[]],
-        recordset: [],
         output: {},
+        recordset: [],
+        recordsets: [[]],
         rowsAffected: [0],
       },
-      message: '',
       success: true,
     });
     await expect(testCasesDxtrGateway.getCaseSummary(applicationContext, caseId)).rejects.toThrow(
@@ -290,57 +290,57 @@ describe('Test DXTR Gateway', () => {
     const cases = [testCase];
 
     const mockCaseResults: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: cases,
       },
-      message: '',
+      success: true,
     };
 
     const transactions = [
       {
+        txCode: 'CBC',
         txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
-        txCode: 'CBC',
       },
       {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
         txCode: 'CBC',
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
       },
       {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
         txCode: 'CDC',
+        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
       },
     ];
 
     const mockTransactionResults: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: transactions,
       },
-      message: '',
+      success: true,
     };
 
     const mockQueryParties: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: [{ partyName: 'John Q. Smith' }],
       },
-      message: '',
+      success: true,
     };
 
     const expectedDebtorAttorney = {
-      name: 'James Brown Esq.',
       address1: '456 South St',
       cityStateZipCountry: 'Queens NY 12345 USA',
+      name: 'James Brown Esq.',
       phone: '101-345-8765',
     };
 
     const mockQueryDebtorAttorney: QueryResults = {
-      success: true,
+      message: '',
       results: {
         recordset: [expectedDebtorAttorney],
       },
-      message: '',
+      success: true,
     };
 
     querySpy.mockImplementationOnce(async () => {
@@ -393,11 +393,11 @@ describe('Test DXTR Gateway', () => {
   describe('partyQueryCallback', () => {
     test('should return null when no results are returned', async () => {
       const queryResult: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [],
         },
-        message: '',
+        success: true,
       };
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
@@ -407,7 +407,7 @@ describe('Test DXTR Gateway', () => {
 
     test('should return expected debtor name', async () => {
       const queryResult: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [
             {
@@ -415,7 +415,7 @@ describe('Test DXTR Gateway', () => {
             },
           ],
         },
-        message: '',
+        success: true,
       };
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
@@ -426,28 +426,28 @@ describe('Test DXTR Gateway', () => {
 
     test('should return expected address fields', async () => {
       const queryResult: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [
             {
-              name: 'John Q. Smith',
               address1: '123 Main St',
               address2: 'Apt 17',
               address3: '',
               cityStateZipCountry: 'Queens NY     12345 USA',
+              name: 'John Q. Smith',
             },
           ],
         },
-        message: '',
+        success: true,
       };
 
       const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
       expect(party).toEqual({
-        name: 'John Q. Smith',
         address1: '123 Main St',
         address2: 'Apt 17',
         address3: '',
         cityStateZipCountry: 'Queens NY 12345 USA',
+        name: 'John Q. Smith',
       });
     });
   });
@@ -455,11 +455,11 @@ describe('Test DXTR Gateway', () => {
   describe('debtorAttorneyQueryCallback', () => {
     test('should return null when no results are returned', async () => {
       const queryResult: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [],
         },
-        message: '',
+        success: true,
       };
 
       const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
@@ -472,7 +472,7 @@ describe('Test DXTR Gateway', () => {
 
     test('should return expected attorney name', async () => {
       const queryResult: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [
             {
@@ -480,7 +480,7 @@ describe('Test DXTR Gateway', () => {
             },
           ],
         },
-        message: '',
+        success: true,
       };
 
       const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
@@ -495,21 +495,21 @@ describe('Test DXTR Gateway', () => {
 
     test('should return expected attorney fields', async () => {
       const queryResult: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [
             {
-              name: 'John Q. Smith',
               address1: '123 Main St',
               address2: 'Apt 17',
               address3: '',
               cityStateZipCountry: 'Queens NY     12345 USA',
-              phone: '9876543210',
               email: 'someone@email.com',
+              name: 'John Q. Smith',
+              phone: '9876543210',
             },
           ],
         },
-        message: '',
+        success: true,
       };
 
       const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
@@ -518,13 +518,13 @@ describe('Test DXTR Gateway', () => {
       );
 
       expect(attorney).toEqual({
-        name: 'John Q. Smith',
         address1: '123 Main St',
         address2: 'Apt 17',
         address3: '',
         cityStateZipCountry: 'Queens NY 12345 USA',
-        phone: '9876543210',
         email: 'someone@email.com',
+        name: 'John Q. Smith',
+        phone: '9876543210',
       });
     });
   });
@@ -534,20 +534,20 @@ describe('Test DXTR Gateway', () => {
       // Test case summary
       const testCase = MockData.getCaseSummary();
       const mockTestCaseSummaryResponse = {
-        success: true,
+        message: '',
         results: {
           recordset: [testCase],
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
       const mockParties = {
-        success: true,
+        message: '',
         results: {
           recordset: [DEBTORS.get('081-22-23587')],
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValueOnce(mockParties);
 
@@ -556,24 +556,24 @@ describe('Test DXTR Gateway', () => {
         {
           ...CASE_SUMMARIES[0],
           debtorTypeCode: 'CB',
+          debtorTypeLabel: undefined,
           petitionCode: 'TV',
           petitionLabel: undefined,
-          debtorTypeLabel: undefined,
         },
         {
           ...CASE_SUMMARIES[1],
           debtorTypeCode: 'CB',
+          debtorTypeLabel: undefined,
           petitionCode: 'VP',
           petitionLabel: undefined,
-          debtorTypeLabel: undefined,
         },
       ];
       const mockSuggestedCasesResponse = {
-        success: true,
+        message: '',
         results: {
           recordset: mockSuggestedCases,
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
       querySpy.mockResolvedValueOnce(mockParties);
@@ -593,30 +593,30 @@ describe('Test DXTR Gateway', () => {
       // Test case summary
       const testCase = MockData.getCaseDetail();
       const mockTestCaseSummaryResponse = {
-        success: true,
+        message: '',
         results: {
           recordset: [testCase],
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
       const mockParties = {
-        success: true,
+        message: '',
         results: {
           recordset: [DEBTORS.get('081-22-23587')],
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValueOnce(mockParties);
 
       // Get suggested case data
       const mockSuggestedCasesResponse = {
-        success: false,
+        message: '',
         results: {
           recordset: [],
         },
-        message: '',
+        success: false,
       };
       querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
       querySpy.mockResolvedValueOnce(mockParties);
@@ -632,18 +632,18 @@ describe('Test DXTR Gateway', () => {
     const testCase = MockData.getCaseSummary({ override: { caseId: '999-00-00000' } });
     const testParty = MockData.getParty();
     const caseSummaryQueryResult = {
-      success: true,
+      message: '',
       results: {
         recordset: [testCase],
       },
-      message: '',
+      success: true,
     };
     const partyQueryResult = {
-      success: true,
+      message: '',
       results: {
         recordset: [testParty],
       },
-      message: '',
+      success: true,
     };
 
     beforeEach(() => {
@@ -659,11 +659,11 @@ describe('Test DXTR Gateway', () => {
     test('should return empty array', async () => {
       jest.resetAllMocks();
       const mockTestCaseSummaryResponse = {
-        success: true,
+        message: '',
         results: {
           recordset: [],
         },
-        message: '',
+        success: true,
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
@@ -734,9 +734,9 @@ describe('Test DXTR Gateway', () => {
       jest.resetAllMocks();
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
-        success: false,
-        results: {},
         message: errorMessage,
+        results: {},
+        success: false,
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
@@ -783,11 +783,11 @@ describe('Test DXTR Gateway', () => {
       }
 
       const results: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset,
         },
-        message: '',
+        success: true,
       };
 
       return Promise.resolve(results);
@@ -811,19 +811,19 @@ describe('Test DXTR Gateway', () => {
       [
         '2024-03-01',
         {
+          end: 108,
           findDate: '2024-03-01',
           found: true,
           start: 105,
-          end: 108,
         },
       ],
       [
         '2024-04-01',
         {
+          end: 109,
           findDate: '2024-04-01',
           found: true,
           start: 109,
-          end: 109,
         },
       ],
     ];
@@ -847,11 +847,11 @@ describe('Test DXTR Gateway', () => {
       });
 
       const executeResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset,
         },
-        message: '',
+        success: true,
       };
 
       const expectedReturn = recordset.map((record) => record.caseId);
@@ -867,11 +867,11 @@ describe('Test DXTR Gateway', () => {
 
     test('should return an empty array', async () => {
       const mockResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [],
         },
-        message: '',
+        success: true,
       };
 
       querySpy.mockReturnValue(mockResults);

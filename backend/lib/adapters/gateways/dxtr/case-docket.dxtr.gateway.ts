@@ -1,98 +1,26 @@
 import * as mssql from 'mssql';
 
-import { executeQuery } from '../../utils/database';
-import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import { decomposeCaseId } from './dxtr.gateway.helper';
-import { ApplicationContext } from '../../types/basic';
-import { CaseDocketGateway } from '../../../use-cases/gateways.types';
+import { CaseDocket, CaseDocketEntryDocument } from '../../../../../common/src/cams/cases';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { CaseDocket, CaseDocketEntryDocument } from '../../../../../common/src/cams/cases';
+import { CaseDocketGateway } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
+import { executeQuery } from '../../utils/database';
+import { decomposeCaseId } from './dxtr.gateway.helper';
 
 const MODULE_NAME = 'CASE-DOCKET-DXTR-GATEWAY';
 
 export type DxtrCaseDocketEntryDocument = {
-  sequenceNumber: number;
-  fileSize: number;
-  uriStem: string;
-  fileName: string;
   deleted: string;
+  fileName: string;
+  fileSize: number;
   parts?: string[];
+  sequenceNumber: number;
+  uriStem: string;
 };
 
-export function translateModel(files: DxtrCaseDocketEntryDocument[]): CaseDocketEntryDocument[] {
-  const doSingleNaming = files.length === 1;
-
-  return files.reduce<CaseDocketEntryDocument[]>((accumulator, file) => {
-    const { uriStem, fileName, fileSize } = file;
-
-    let mappedFileInfo;
-    const fileUri = uriStem + '/' + fileName;
-    try {
-      const fileNameParts = fileName.split('.');
-      const allLabelParts = fileNameParts[0].split('-');
-      if (allLabelParts.length < 4) {
-        throw new Error('Unexpected filename format');
-      }
-      const labelParts = allLabelParts.slice(3);
-      const fileExt = fileNameParts[1];
-      const fileLabel = doSingleNaming ? labelParts[0] : labelParts.join('-');
-
-      mappedFileInfo = {
-        fileUri,
-        fileSize,
-        fileLabel,
-        fileExt,
-      };
-    } catch {
-      mappedFileInfo = {
-        fileUri,
-        fileSize,
-        fileLabel: fileName,
-      };
-    }
-    accumulator.push(mappedFileInfo);
-    return accumulator;
-  }, []);
-}
-
-export function documentSorter(a: DxtrCaseDocketEntryDocument, b: DxtrCaseDocketEntryDocument) {
-  try {
-    const aEnumerator = parseInt(a.parts[a.parts.length - 2]);
-    const bEnumerator = parseInt(b.parts[b.parts.length - 2]);
-    if (isNaN(aEnumerator) || isNaN(bEnumerator))
-      throw new Error('Filename did not match expectations.');
-    return aEnumerator > bEnumerator ? 1 : -1;
-  } catch {
-    return a.fileName > b.fileName ? 1 : -1;
-  }
-}
-
 export class DxtrCaseDocketGateway implements CaseDocketGateway {
-  async getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket> {
-    const documents = await this._getCaseDocketDocuments(context, caseId);
-    const dxtrDocumentMap = new Map<number, DxtrCaseDocketEntryDocument[]>();
-    documents.forEach((d) => {
-      if (d.deleted === 'Y' || !d.uriStem) return;
-      const key = d.sequenceNumber;
-      const list = dxtrDocumentMap.has(key) ? dxtrDocumentMap.get(key) : [];
-      list.push(d);
-      dxtrDocumentMap.set(key, list);
-      d.parts = d.fileName.split(/-|\./);
-    });
-
-    const docket = await this._getCaseDocket(context, caseId);
-    docket.forEach((d) => {
-      const key = d.sequenceNumber;
-      if (dxtrDocumentMap.has(key)) {
-        const docs = dxtrDocumentMap.get(key);
-        docs.sort(documentSorter);
-        d.documents = translateModel(docs);
-      }
-    });
-    return docket;
-  }
-
   async _getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket> {
     const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
 
@@ -135,7 +63,105 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       if (!recordset.length) throw new NotFoundError(MODULE_NAME, { data: { caseId } });
       return recordset;
     } else {
-      throw new CamsError(MODULE_NAME, { message: queryResult.message, data: { caseId } });
+      throw new CamsError(MODULE_NAME, { data: { caseId }, message: queryResult.message });
+    }
+  }
+
+  async _getCaseDocketDocuments(
+    context: ApplicationContext,
+    caseId: string,
+  ): Promise<DxtrCaseDocketEntryDocument[]> {
+    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
+
+    const input: DbTableFieldSpec[] = [];
+    input.push({
+      name: 'dxtrCaseId',
+      type: mssql.VarChar,
+      value: dxtrCaseId,
+    });
+    input.push({
+      name: 'courtDiv',
+      type: mssql.VarChar,
+      value: courtDiv,
+    });
+
+    // NOTE: A derivative of the this SQL query is in `orders.dxtr.gateway.ts`.
+    const query = `
+      SELECT
+        DE.DE_SEQNO AS sequenceNumber,
+        DC.PDF_SIZE as fileSize,
+        uriStem = CASE
+            --- 1. PDF WEB PATH set to 'This file is no longer accessible via this system.' PDF deleted, case closed > 180 days section---
+            WHEN ((DC.region_copied = 'Y' AND
+            DC.region_deleted = 'Y' AND
+            DC.copied_lt = 'N') OR
+            (DC.copied_lt = 'Y' AND
+            DC.deleted_lt = 'Y'))
+            THEN NULL
+            --- 2. PDF WEB PATH is present but NEVER occurs since regional storage obsolete ---
+            --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
+            WHEN DC.region_copied = 'Y' AND
+            DC.region_deleted = 'N' AND
+            DC.region_copied_date is not NULL
+            THEN pdf.pdf_web_path
+            --- 3. PDF WEB PATH is present ---
+            WHEN (DC.copied_lt = 'Y' AND
+            DC.deleted_lt = 'N' AND
+            DC.copied_lt_date is not NULL) AND
+            ((DC.region_copied = 'Y' AND
+            DC.region_deleted = 'Y'))
+            THEN PDF.pdf_web_path_lt
+            --- 4. PDF WEB PATH set to 'No document was filed for this entry.' PDF type/subtype was never requested / never existed ---
+            END,
+        REPLACE(DC.FILE_NAME, '.gz', '') AS fileName,
+        deleted =  CASE
+              --- 1. Use Y (pdf deleted)---
+              --- copied_lt is N or deleted_lt is Y ---
+              --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
+              WHEN ((DC.region_copied = 'Y' AND
+              DC.region_deleted = 'Y' AND
+              DC.copied_lt = 'N') OR
+              (DC.copied_lt = 'Y' AND
+              DC.deleted_lt = 'Y'))
+              THEN 'Y'
+              --- 2. Use N (pdf present) PDF is present section but NEVER occurs since regional storage obsolete ---
+              --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
+              WHEN DC.region_copied = 'Y' AND
+              DC.region_deleted = 'N' AND
+              DC.region_copied_date is not NULL
+              THEN DC.region_deleted
+              --- 3. Use N value from ao_dc column delete_lt (pdf present)--
+              --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
+              WHEN (DC.copied_lt = 'Y' AND
+              DC.deleted_lt = 'N' AND
+              DC.copied_lt_date is not NULL) AND
+              ((DC.region_copied = 'Y' AND
+              DC.region_deleted = 'Y'))
+              THEN DC.deleted_lt
+              --- 4. Use Y (pdf not present)---
+              ELSE 'Y'  END
+      FROM [dbo].[AO_CS] AS C
+        JOIN [dbo].[AO_DE] AS DE
+          ON C.CS_CASEID = DE.CS_CASEID AND C.COURT_ID = DE.COURT_ID
+        JOIN [dbo].[AO_DC] AS DC ON C.CS_CASEID = DC.CS_CASEID AND C.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
+        JOIN [dbo].[AO_CS_DIV] DIV ON C.CS_DIV = DIV.CS_DIV
+        JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
+      WHERE DIV.CS_DIV_ACMS=@courtDiv
+      AND C.CASE_ID=@dxtrCaseId
+      AND DC.COURT_STATUS != 'unk'
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      input,
+    );
+
+    if (queryResult.success) {
+      return (queryResult.results as mssql.IResult<DxtrCaseDocketEntryDocument>).recordset;
+    } else {
+      throw new CamsError(MODULE_NAME, { data: { caseId }, message: queryResult.message });
     }
   }
 
@@ -243,101 +269,75 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     ORDER BY de.de_date_enter asc, de.de_seqno asc, dc.dm_seq ASC, de.do_summary_text, file_path;
   */
 
-  async _getCaseDocketDocuments(
-    context: ApplicationContext,
-    caseId: string,
-  ): Promise<DxtrCaseDocketEntryDocument[]> {
-    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
-
-    const input: DbTableFieldSpec[] = [];
-    input.push({
-      name: 'dxtrCaseId',
-      type: mssql.VarChar,
-      value: dxtrCaseId,
-    });
-    input.push({
-      name: 'courtDiv',
-      type: mssql.VarChar,
-      value: courtDiv,
+  async getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket> {
+    const documents = await this._getCaseDocketDocuments(context, caseId);
+    const dxtrDocumentMap = new Map<number, DxtrCaseDocketEntryDocument[]>();
+    documents.forEach((d) => {
+      if (d.deleted === 'Y' || !d.uriStem) return;
+      const key = d.sequenceNumber;
+      const list = dxtrDocumentMap.has(key) ? dxtrDocumentMap.get(key) : [];
+      list.push(d);
+      dxtrDocumentMap.set(key, list);
+      d.parts = d.fileName.split(/-|\./);
     });
 
-    // NOTE: A derivative of the this SQL query is in `orders.dxtr.gateway.ts`.
-    const query = `
-      SELECT
-        DE.DE_SEQNO AS sequenceNumber,
-        DC.PDF_SIZE as fileSize,
-        uriStem = CASE
-            --- 1. PDF WEB PATH set to 'This file is no longer accessible via this system.' PDF deleted, case closed > 180 days section---
-            WHEN ((DC.region_copied = 'Y' AND
-            DC.region_deleted = 'Y' AND
-            DC.copied_lt = 'N') OR
-            (DC.copied_lt = 'Y' AND
-            DC.deleted_lt = 'Y'))
-            THEN NULL
-            --- 2. PDF WEB PATH is present but NEVER occurs since regional storage obsolete ---
-            --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
-            WHEN DC.region_copied = 'Y' AND
-            DC.region_deleted = 'N' AND
-            DC.region_copied_date is not NULL
-            THEN pdf.pdf_web_path
-            --- 3. PDF WEB PATH is present ---
-            WHEN (DC.copied_lt = 'Y' AND
-            DC.deleted_lt = 'N' AND
-            DC.copied_lt_date is not NULL) AND
-            ((DC.region_copied = 'Y' AND
-            DC.region_deleted = 'Y'))
-            THEN PDF.pdf_web_path_lt
-            --- 4. PDF WEB PATH set to 'No document was filed for this entry.' PDF type/subtype was never requested / never existed ---
-            END,
-        REPLACE(DC.FILE_NAME, '.gz', '') AS fileName,
-        deleted =  CASE
-              --- 1. Use Y (pdf deleted)---
-              --- copied_lt is N or deleted_lt is Y ---
-              --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
-              WHEN ((DC.region_copied = 'Y' AND
-              DC.region_deleted = 'Y' AND
-              DC.copied_lt = 'N') OR
-              (DC.copied_lt = 'Y' AND
-              DC.deleted_lt = 'Y'))
-              THEN 'Y'
-              --- 2. Use N (pdf present) PDF is present section but NEVER occurs since regional storage obsolete ---
-              --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
-              WHEN DC.region_copied = 'Y' AND
-              DC.region_deleted = 'N' AND
-              DC.region_copied_date is not NULL
-              THEN DC.region_deleted
-              --- 3. Use N value from ao_dc column delete_lt (pdf present)--
-              --- note: when copied_lt is set to 'Y', region_copied set to 'Y' and region_deleted set to 'Y' ---
-              WHEN (DC.copied_lt = 'Y' AND
-              DC.deleted_lt = 'N' AND
-              DC.copied_lt_date is not NULL) AND
-              ((DC.region_copied = 'Y' AND
-              DC.region_deleted = 'Y'))
-              THEN DC.deleted_lt
-              --- 4. Use Y (pdf not present)---
-              ELSE 'Y'  END
-      FROM [dbo].[AO_CS] AS C
-        JOIN [dbo].[AO_DE] AS DE
-          ON C.CS_CASEID = DE.CS_CASEID AND C.COURT_ID = DE.COURT_ID
-        JOIN [dbo].[AO_DC] AS DC ON C.CS_CASEID = DC.CS_CASEID AND C.COURT_ID = DC.COURT_ID AND DE.DE_SEQNO = DC.DE_SEQNO
-        JOIN [dbo].[AO_CS_DIV] DIV ON C.CS_DIV = DIV.CS_DIV
-        JOIN [dbo].[AO_PDF_PATH] AS PDF ON DIV.PDF_PATH_ID = PDF.PDF_PATH_ID
-      WHERE DIV.CS_DIV_ACMS=@courtDiv
-      AND C.CASE_ID=@dxtrCaseId
-      AND DC.COURT_STATUS != 'unk'
-    `;
-
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      input,
-    );
-
-    if (queryResult.success) {
-      return (queryResult.results as mssql.IResult<DxtrCaseDocketEntryDocument>).recordset;
-    } else {
-      throw new CamsError(MODULE_NAME, { message: queryResult.message, data: { caseId } });
-    }
+    const docket = await this._getCaseDocket(context, caseId);
+    docket.forEach((d) => {
+      const key = d.sequenceNumber;
+      if (dxtrDocumentMap.has(key)) {
+        const docs = dxtrDocumentMap.get(key);
+        docs.sort(documentSorter);
+        d.documents = translateModel(docs);
+      }
+    });
+    return docket;
   }
+}
+
+export function documentSorter(a: DxtrCaseDocketEntryDocument, b: DxtrCaseDocketEntryDocument) {
+  try {
+    const aEnumerator = parseInt(a.parts[a.parts.length - 2]);
+    const bEnumerator = parseInt(b.parts[b.parts.length - 2]);
+    if (isNaN(aEnumerator) || isNaN(bEnumerator))
+      throw new Error('Filename did not match expectations.');
+    return aEnumerator > bEnumerator ? 1 : -1;
+  } catch {
+    return a.fileName > b.fileName ? 1 : -1;
+  }
+}
+
+export function translateModel(files: DxtrCaseDocketEntryDocument[]): CaseDocketEntryDocument[] {
+  const doSingleNaming = files.length === 1;
+
+  return files.reduce<CaseDocketEntryDocument[]>((accumulator, file) => {
+    const { fileName, fileSize, uriStem } = file;
+
+    let mappedFileInfo;
+    const fileUri = uriStem + '/' + fileName;
+    try {
+      const fileNameParts = fileName.split('.');
+      const allLabelParts = fileNameParts[0].split('-');
+      if (allLabelParts.length < 4) {
+        throw new Error('Unexpected filename format');
+      }
+      const labelParts = allLabelParts.slice(3);
+      const fileExt = fileNameParts[1];
+      const fileLabel = doSingleNaming ? labelParts[0] : labelParts.join('-');
+
+      mappedFileInfo = {
+        fileExt,
+        fileLabel,
+        fileSize,
+        fileUri,
+      };
+    } catch {
+      mappedFileInfo = {
+        fileLabel: fileName,
+        fileSize,
+        fileUri,
+      };
+    }
+    accumulator.push(mappedFileInfo);
+    return accumulator;
+  }, []);
 }

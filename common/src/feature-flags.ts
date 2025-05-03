@@ -4,15 +4,15 @@
 // to use JSON feature flag values out of LaunchDarkly then this definition would
 // need to be revisited.
 export interface FeatureFlagSet {
-  [key: string]: boolean | string | number;
+  [key: string]: boolean | number | string;
 }
 
 export const testFeatureFlags: FeatureFlagSet = {
-  'chapter-twelve-enabled': true,
-  'chapter-eleven-enabled': true,
-  'transfer-orders-enabled': true,
-  'consolidations-enabled': true,
   'case-notes-enabled': true,
+  'chapter-eleven-enabled': true,
+  'chapter-twelve-enabled': true,
+  'consolidations-enabled': true,
   'privileged-identity-management': true,
   'staff-assignment-filter-enabled': true,
+  'transfer-orders-enabled': true,
 };

@@ -1,9 +1,9 @@
 import { OrdersSearchPredicate } from '../../../../../common/src/api/search';
 import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
+import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder, { ConditionOrConjunction, using } from '../../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
-import { getCamsError } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
@@ -17,21 +17,13 @@ export default class ConsolidationOrdersMongoRepository<
   extends BaseMongoRepository
   implements ConsolidationOrdersRepository<T>
 {
-  private static referenceCount: number = 0;
   private static instance: ConsolidationOrdersMongoRepository;
+  private static referenceCount: number = 0;
 
   private doc = using<T>();
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!ConsolidationOrdersMongoRepository.instance) {
-      ConsolidationOrdersMongoRepository.instance = new ConsolidationOrdersMongoRepository(context);
-    }
-    ConsolidationOrdersMongoRepository.referenceCount++;
-    return ConsolidationOrdersMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -44,17 +36,12 @@ export default class ConsolidationOrdersMongoRepository<
     }
   }
 
-  public release() {
-    ConsolidationOrdersMongoRepository.dropInstance();
-  }
-
-  async read(id: string): Promise<T> {
-    try {
-      const query = this.doc('consolidationId').equals(id);
-      return await this.getAdapter<T>().findOne(query);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
+  public static getInstance(context: ApplicationContext) {
+    if (!ConsolidationOrdersMongoRepository.instance) {
+      ConsolidationOrdersMongoRepository.instance = new ConsolidationOrdersMongoRepository(context);
     }
+    ConsolidationOrdersMongoRepository.referenceCount++;
+    return ConsolidationOrdersMongoRepository.instance;
   }
 
   async create(data: T): Promise<T> {
@@ -83,6 +70,19 @@ export default class ConsolidationOrdersMongoRepository<
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  async read(id: string): Promise<T> {
+    try {
+      const query = this.doc('consolidationId').equals(id);
+      return await this.getAdapter<T>().findOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public release() {
+    ConsolidationOrdersMongoRepository.dropInstance();
   }
 
   public async search(predicate?: OrdersSearchPredicate): Promise<Array<T>> {

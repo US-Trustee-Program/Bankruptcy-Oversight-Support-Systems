@@ -1,31 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
+import * as UseStateModule from '@/lib/hooks/UseState';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
-import LocalStorage from '../utils/local-storage';
-import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
-import * as globalAlertHook from '@/lib/hooks/UseGlobalAlert';
 import { CamsUser } from '@common/cams/users';
-import * as UseStateModule from '@/lib/hooks/UseState';
 import { fireEvent, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
-  const startTime = Date.now();
-
-  return new Promise((resolve, reject) => {
-    const checkCondition = () => {
-      if (condition()) {
-        resolve();
-      } else if (Date.now() - startTime >= timeout) {
-        reject(new Error('waitFor timed out'));
-      } else {
-        setTimeout(checkCondition, interval);
-      }
-    };
-
-    checkCondition();
-  });
-}
+import { GlobalAlertRef } from '../components/cams/GlobalAlert/GlobalAlert';
+import LocalStorage from '../utils/local-storage';
 
 async function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -45,14 +28,32 @@ function setUserWithRoles(roles: CamsRole[]) {
 
 function spyOnGlobalAlert() {
   const hookFunctions: GlobalAlertRef = {
-    show: vi.fn(),
-    info: vi.fn(),
     error: vi.fn(),
-    warning: vi.fn(),
+    info: vi.fn(),
+    show: vi.fn(),
     success: vi.fn(),
+    warning: vi.fn(),
   };
   vi.spyOn(globalAlertHook, 'useGlobalAlert').mockReturnValue(hookFunctions);
   return hookFunctions;
+}
+
+async function waitFor(condition: () => boolean, timeout = 5000, interval = 50): Promise<void> {
+  const startTime = Date.now();
+
+  return new Promise((resolve, reject) => {
+    const checkCondition = () => {
+      if (condition()) {
+        resolve();
+      } else if (Date.now() - startTime >= timeout) {
+        reject(new Error('waitFor timed out'));
+      } else {
+        setTimeout(checkCondition, interval);
+      }
+    };
+
+    checkCondition();
+  });
 }
 
 const useStateMock: any = (initialValue: any) => {
@@ -85,10 +86,6 @@ const useStateMock: any = (initialValue: any) => {
   ];
 };
 
-function spyOnUseState() {
-  return vi.spyOn(UseStateModule, 'useState').mockImplementation(useStateMock);
-}
-
 function selectCheckbox(id: string) {
   const checkbox = document.querySelector(`#checkbox-${id}`);
   if (checkbox) {
@@ -109,6 +106,10 @@ function selectRadio(id: string) {
     }
   }
   return radio;
+}
+
+function spyOnUseState() {
+  return vi.spyOn(UseStateModule, 'useState').mockImplementation(useStateMock);
 }
 
 async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, selected = true) {
@@ -134,15 +135,15 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
 }
 
 export const TestingUtilities = {
-  waitFor,
   delay,
+  selectCheckbox,
+  selectRadio,
   setUser,
   setUserWithRoles,
   spyOnGlobalAlert,
   spyOnUseState,
-  selectCheckbox,
-  selectRadio,
   toggleComboBoxItemSelection,
+  waitFor,
 };
 
 export default TestingUtilities;

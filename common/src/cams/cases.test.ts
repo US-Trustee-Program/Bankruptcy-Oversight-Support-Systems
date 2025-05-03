@@ -31,7 +31,7 @@ describe('cases common functions tests', () => {
   describe('getCaseIdParts', () => {
     test('should deconstruct a case id into a division code and case number', () => {
       const caseId = '000-11-22222';
-      const expected = { divisionCode: '000', caseNumber: '11-22222' };
+      const expected = { caseNumber: '11-22222', divisionCode: '000' };
       const actual = getCaseIdParts(caseId);
       expect(actual).toEqual(expected);
     });

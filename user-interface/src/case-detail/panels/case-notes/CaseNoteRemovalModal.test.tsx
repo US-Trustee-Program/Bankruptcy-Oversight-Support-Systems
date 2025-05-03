@@ -1,20 +1,21 @@
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { randomUUID } from 'crypto';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
 import {
   CaseNoteRemovalModalOpenProps,
   CaseNoteRemovalModalRef,
   CaseNoteRemovalProps,
 } from './CaseNoteRemovalModal';
-import { randomUUID } from 'crypto';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
-import { BrowserRouter } from 'react-router-dom';
-import React from 'react';
-import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import CaseNoteRemovalModal from './CaseNoteRemovalModal';
-import testingUtilities from '@/lib/testing/testing-utilities';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -37,10 +38,10 @@ function renderWithProps(
   };
 
   const modalOpenDefaultProps: CaseNoteRemovalModalOpenProps = {
-    id: randomUUID(),
-    caseId: '000-11-22222',
     buttonId: `case-note-remove-button`,
     callback: vi.fn(),
+    caseId: '000-11-22222',
+    id: randomUUID(),
     openModalButtonRef,
     ...openProps,
   };
@@ -84,15 +85,15 @@ describe('Case Note Removal Modal Tests', async () => {
       name: userFullName,
     };
     const expectedRemovalArgument = {
-      id: caseNotes[0].id,
       caseId: caseNotes[0].caseId,
+      id: caseNotes[0].id,
       updatedBy: expectedUser,
     };
     const callbackSpy = vi.fn();
 
     const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
-      id: caseNotes[0].id,
       callback: callbackSpy,
+      id: caseNotes[0].id,
     };
 
     renderWithProps(modalRef, openProps);
@@ -131,8 +132,8 @@ describe('Case Note Removal Modal Tests', async () => {
     const callbackSpy = vi.fn();
 
     const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
-      id: caseNotes[0].id,
       callback: callbackSpy,
+      id: caseNotes[0].id,
     };
 
     renderWithProps(modalRef, openProps);
@@ -173,15 +174,15 @@ describe('Case Note Removal Modal Tests', async () => {
       name: userFullName,
     };
     const expectedRemovalArgument = {
-      id: caseNotes[0].id,
       caseId: caseNotes[0].caseId,
+      id: caseNotes[0].id,
       updatedBy: expectedUser,
     };
     const callbackSpy = vi.fn();
 
     const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
-      id: caseNotes[0].id,
       callback: callbackSpy,
+      id: caseNotes[0].id,
     };
 
     renderWithProps(modalRef, openProps);

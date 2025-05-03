@@ -1,52 +1,52 @@
-import CaseManagement, { getAction } from './case-management';
-import { UnknownError } from '../../common-errors/unknown-error';
-import { CamsError } from '../../common-errors/cams-error';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import {
-  createMockApplicationContext,
-  createMockApplicationContextSession,
-} from '../../testing/testing-utilities';
+import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
+import { ConsolidationTo } from '../../../../common/src/cams/events';
+import { TransferOrder } from '../../../../common/src/cams/orders';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { getCasesGateway } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsUser } from '../../../../common/src/cams/users';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import {
   REGION_02_GROUP_BU,
   REGION_02_GROUP_NY,
 } from '../../../../common/src/cams/test-utilities/mock-user';
-import { ustpOfficeToCourtDivision } from '../../../../common/src/cams/courts';
-import { buildOfficeCode } from '../offices/offices';
+import { CamsUser } from '../../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsError } from '../../common-errors/cams-error';
+import { UnknownError } from '../../common-errors/unknown-error';
+import { getCasesGateway } from '../../factory';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { TransferOrder } from '../../../../common/src/cams/orders';
-import { ConsolidationTo } from '../../../../common/src/cams/events';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
+import { buildOfficeCode } from '../offices/offices';
+import CaseManagement, { getAction } from './case-management';
 
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
 const currentDate = new Date().toISOString();
 const assignments: CaseAssignment[] = [
   {
+    assignedOn: currentDate,
+    caseId: '081-23-01176',
     documentType: 'ASSIGNMENT',
     id: '1',
-    caseId: '081-23-01176',
-    userId: attorneyJaneSmith.id,
     name: attorneyJaneSmith.name,
     role: CamsRole.TrialAttorney,
-    assignedOn: currentDate,
-    updatedOn: currentDate,
     updatedBy: MockData.getCamsUserReference(),
+    updatedOn: currentDate,
+    userId: attorneyJaneSmith.id,
   },
   {
+    assignedOn: currentDate,
+    caseId: '081-23-01176',
     documentType: 'ASSIGNMENT',
     id: '2',
-    caseId: '081-23-01176',
-    userId: attorneyJoeNobel.id,
     name: attorneyJoeNobel.name,
     role: CamsRole.TrialAttorney,
-    assignedOn: currentDate,
-    updatedOn: currentDate,
     updatedBy: MockData.getCamsUserReference(),
+    updatedOn: currentDate,
+    userId: attorneyJoeNobel.id,
   },
 ];
 
@@ -206,8 +206,8 @@ describe('Case management tests', () => {
       const caseDetail = MockData.getCaseDetail({
         override: {
           caseId,
-          dateFiled,
           closedDate,
+          dateFiled,
         },
       });
 
@@ -250,12 +250,12 @@ describe('Case management tests', () => {
 
       const expected = {
         ...bCase,
-        assignments,
-        officeName,
         _actions,
-        officeCode: builtOfficeCode,
-        transfers: mockTransfers,
+        assignments,
         consolidation: mockConsolidations,
+        officeCode: builtOfficeCode,
+        officeName,
+        transfers: mockTransfers,
       };
 
       jest.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
@@ -308,7 +308,7 @@ describe('Case management tests', () => {
 
       const searchCases = jest
         .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
 
       await useCase.searchCases(applicationContext, predicate, false);
 
@@ -321,9 +321,9 @@ describe('Case management tests', () => {
     test('should return an empty array for no matches', async () => {
       jest
         .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: 0 }, data: [] });
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
       const actual = await useCase.searchCases(applicationContext, { caseNumber }, false);
-      expect(actual).toEqual({ metadata: { total: 0 }, data: [] });
+      expect(actual).toEqual({ data: [], metadata: { total: 0 } });
     });
 
     const optionsCases = [
@@ -346,7 +346,7 @@ describe('Case management tests', () => {
       });
       jest
         .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
+        .mockResolvedValue({ data: cases, metadata: { total: cases.length } });
       const assignmentsSpy = jest
         .spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases')
         .mockImplementation(() => {
@@ -365,7 +365,7 @@ describe('Case management tests', () => {
         return { ...bCase, assignments: assignmentsMap.get(bCase.caseId) ?? [] };
       });
       const expectedCases = args.includeCaseAssignments ? casesWithAssignments : cases;
-      expect(actual).toEqual({ metadata: { total: cases.length }, data: expectedCases });
+      expect(actual).toEqual({ data: expectedCases, metadata: { total: cases.length } });
       expect(!!assignmentsSpy.mock.calls.length).toEqual(args.includeCaseAssignments);
     });
 
@@ -396,13 +396,13 @@ describe('Case management tests', () => {
           ...bCase,
         },
       });
-      const expected = [{ ...syncedCase, officeCode, _actions }];
+      const expected = [{ ...syncedCase, _actions, officeCode }];
       jest.spyOn(useCase.casesRepository, 'getConsolidationChildCaseIds').mockResolvedValue([]);
       jest
         .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: 1 }, data: [syncedCase] });
+        .mockResolvedValue({ data: [syncedCase], metadata: { total: 1 } });
       const actual = await useCase.searchCases(applicationContext, predicate, false);
-      expect(actual).toEqual({ metadata: { total: 1 }, data: expected });
+      expect(actual).toEqual({ data: expected, metadata: { total: 1 } });
     });
 
     test('should return search cases by assignment', async () => {
@@ -418,11 +418,11 @@ describe('Case management tests', () => {
         .mockResolvedValue(assignments);
       const searchCases = jest
         .spyOn(useCase.casesRepository, 'searchCases')
-        .mockResolvedValue({ metadata: { total: cases.length }, data: cases });
+        .mockResolvedValue({ data: cases, metadata: { total: cases.length } });
 
       const actual = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
 
-      expect(actual).toEqual({ metadata: { total: cases.length }, data: cases });
+      expect(actual).toEqual({ data: cases, metadata: { total: cases.length } });
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
       expect(searchCases).toHaveBeenCalledWith({
         assignments: [user],
@@ -441,7 +441,7 @@ describe('Case management tests', () => {
 
       const actual = await useCase.searchCases(applicationContext, { assignments: [user] }, false);
 
-      expect(actual).toEqual({ metadata: { total: 0 }, data: [] });
+      expect(actual).toEqual({ data: [], metadata: { total: 0 } });
       expect(findAssignmentsByAssignee).toHaveBeenCalledWith(user.id);
       expect(searchCases).not.toHaveBeenCalled();
     });

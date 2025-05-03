@@ -1,11 +1,11 @@
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { BadRequestError } from '../../common-errors/bad-request';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AdminUseCase } from '../../use-cases/admin/admin';
 import { PrivilegedIdentityAdminController } from './privileged-identity-admin.controller';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { ForbiddenError } from '../../common-errors/forbidden-error';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
 
 describe('Privileged identity admin controller tests', () => {
   let controller: PrivilegedIdentityAdminController;
@@ -26,8 +26,8 @@ describe('Privileged identity admin controller tests', () => {
     context.featureFlags['privileged-identity-management'] = false;
 
     const expected = expect.objectContaining({
-      status: HttpStatusCodes.FORBIDDEN,
       message: 'Privileged identity management feature is not enabled.',
+      status: HttpStatusCodes.FORBIDDEN,
     });
     await expect(controller.handleRequest(context)).rejects.toThrow(expected);
   });
@@ -45,8 +45,8 @@ describe('Privileged identity admin controller tests', () => {
 
   test('should return a list of group names', async () => {
     const rolesAndOffices = {
-      roles: ['name1', 'name2'],
       offices: ['name1', 'name2'],
+      roles: ['name1', 'name2'],
     };
 
     const context = await createMockApplicationContext();
@@ -60,8 +60,8 @@ describe('Privileged identity admin controller tests', () => {
       .mockResolvedValue(rolesAndOffices);
     const response = await controller.handleRequest(context);
     expect(response).toEqual({
-      headers: expect.anything(),
       body: { data: rolesAndOffices },
+      headers: expect.anything(),
       statusCode: 200,
     });
   });
@@ -77,8 +77,8 @@ describe('Privileged identity admin controller tests', () => {
     jest.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUsers').mockResolvedValue(users);
     const response = await controller.handleRequest(context);
     expect(response).toEqual({
-      headers: expect.anything(),
       body: { data: users },
+      headers: expect.anything(),
       statusCode: 200,
     });
   });
@@ -94,7 +94,7 @@ describe('Privileged identity admin controller tests', () => {
 
     jest.spyOn(AdminUseCase.prototype, 'getPrivilegedIdentityUser').mockResolvedValue(user);
     const response = await controller.handleRequest(context);
-    expect(response).toEqual({ headers: expect.anything(), body: { data: user }, statusCode: 200 });
+    expect(response).toEqual({ body: { data: user }, headers: expect.anything(), statusCode: 200 });
   });
 
   test('should upsert a privileged identity user', async () => {
@@ -103,8 +103,8 @@ describe('Privileged identity admin controller tests', () => {
     context.request.method = 'PUT';
     context.request.params.resourceId = 'userId';
     context.request.body = {
-      groups: ['group1', 'group2'],
       expires: '2025-01-01',
+      groups: ['group1', 'group2'],
     };
     context.featureFlags['privileged-identity-management'] = true;
 
@@ -119,8 +119,8 @@ describe('Privileged identity admin controller tests', () => {
     context.request.method = 'DELETE';
     context.request.params.resourceId = 'userId';
     context.request.body = {
-      officeCode: 'TEST_OFFICE_GROUP',
       id: 'user-okta-id',
+      officeCode: 'TEST_OFFICE_GROUP',
     };
     context.featureFlags['privileged-identity-management'] = true;
 

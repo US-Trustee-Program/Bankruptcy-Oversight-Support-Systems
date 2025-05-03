@@ -1,22 +1,23 @@
+import { randomUUID } from 'node:crypto';
+
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '../../../../../common/src/cams/users';
 import { UnknownError } from '../../../common-errors/unknown-error';
+import OktaHumble, { IdpGroup } from '../../../humble-objects/okta-humble';
+import { MockOfficesGateway } from '../../../testing/mock-gateways/mock.offices.gateway';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
 import { ApplicationContext } from '../../types/basic';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import { randomUUID } from 'node:crypto';
-import { MockOfficesGateway } from '../../../testing/mock-gateways/mock.offices.gateway';
-import { CamsRole } from '../../../../../common/src/cams/roles';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
-import OktaHumble, { IdpGroup } from '../../../humble-objects/okta-humble';
 import OktaUserGroupGateway from './okta-user-group-gateway';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 
 const configuration: UserGroupGatewayConfig = {
+  clientId: 'clientId',
+  keyId: 'keyId',
+  privateKey: '{}', // pragma: allowlist secret
   provider: 'okta',
   url: 'http://somedomain/',
-  clientId: 'clientId',
-  privateKey: '{}', // pragma: allowlist secret
-  keyId: 'keyId',
 };
 
 describe('OktaGroupGateway', () => {
@@ -197,11 +198,11 @@ describe('OktaGroupGateway', () => {
         jest.spyOn(OktaHumble.prototype, 'listGroups').mockResolvedValue(groups);
         const groupName = 'test-group';
         const expected = new UnknownError(expect.anything(), {
-          message: `Found ${count} groups matching ${groupName}, expected 1.`,
           camsStackInfo: {
             message: `Failed to retrieve ${groupName} group.`,
             module: expect.anything(),
           },
+          message: `Found ${count} groups matching ${groupName}, expected 1.`,
         });
         await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(expected);
       },
@@ -211,11 +212,11 @@ describe('OktaGroupGateway', () => {
       jest.spyOn(OktaHumble.prototype, 'listGroups').mockRejectedValue('some unknown error');
       const groupName = 'test-group';
       const expected = new UnknownError(expect.anything(), {
-        message: 'Unknown Error',
         camsStackInfo: {
           message: `Failed to retrieve ${groupName} group.`,
           module: expect.anything(),
         },
+        message: 'Unknown Error',
       });
       await expect(gateway.getUserGroupWithUsers(context, groupName)).rejects.toThrow(expected);
     });
@@ -224,10 +225,10 @@ describe('OktaGroupGateway', () => {
   describe('getUserById tests', () => {
     let context: ApplicationContext;
     const manhattanOffice: UstpOfficeDetails = {
-      officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
-      officeName: 'Manhattan',
       groups: [],
       idpGroupName: 'USTP CAMS Region 2 Office Manhattan',
+      officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+      officeName: 'Manhattan',
       regionId: '02',
       regionName: 'Region 2',
     };
@@ -258,8 +259,8 @@ describe('OktaGroupGateway', () => {
       const expected: CamsUser = {
         id: user.id,
         name: user.name,
-        roles: [CamsRole.TrialAttorney],
         offices: [manhattanOffice],
+        roles: [CamsRole.TrialAttorney],
       };
       const actual = await gateway.getUserById(context, user.id);
       expect(actual).toEqual(expected);
@@ -268,8 +269,8 @@ describe('OktaGroupGateway', () => {
     test('should throw error with CamsStack', async () => {
       jest.spyOn(OktaHumble.prototype, 'getUser').mockRejectedValue('some unknown error');
       const expected = new UnknownError(expect.anything(), {
-        message: 'Unknown Error',
         camsStackInfo: { message: 'Failed while getting user by id.', module: expect.anything() },
+        message: 'Unknown Error',
       });
       await expect(gateway.getUserById(context, 'test-user')).rejects.toThrow(expected);
     });

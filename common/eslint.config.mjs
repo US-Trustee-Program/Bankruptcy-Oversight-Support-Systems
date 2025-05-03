@@ -1,3 +1,4 @@
+import eslintConfigsConfig from './configs.config.mjs';
 import eslintTsConfig from './eslint-ts.config.mjs';
 import eslintTestConfig from './eslint-test.config.mjs';
 
@@ -9,6 +10,10 @@ const testConfig = eslintTestConfig.map((configObject) => ({
   files: ['**/*.test.ts'],
   ...configObject,
 }));
+const configsConfig = eslintConfigsConfig.map((configObject) => ({
+  files: ['**/*.config.[cm]js'],
+  ...configObject,
+}));
 
 const commonEslintConfig = [
   {
@@ -16,6 +21,7 @@ const commonEslintConfig = [
   },
   ...codeConfig,
   ...testConfig,
+  ...configsConfig,
 ];
 
 export default commonEslintConfig;

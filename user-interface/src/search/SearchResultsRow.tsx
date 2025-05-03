@@ -1,5 +1,5 @@
-import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
 import { CaseNumber } from '@/lib/components/CaseNumber';
+import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
 import { formatDate } from '@/lib/utils/datetime';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 
@@ -8,14 +8,14 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
 
   return (
     <TableRow {...otherProps}>
-      <TableRowData dataSortValue={bCase.caseId.replace(/-/g, '')} dataLabel={labels[0]}>
+      <TableRowData dataLabel={labels[0]} dataSortValue={bCase.caseId.replace(/-/g, '')}>
         <span className="no-wrap">
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
       <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
       <TableRowData dataLabel={labels[2]}>{bCase.chapter}</TableRowData>
-      <TableRowData dataSortValue={bCase.dateFiled.replace(/-/g, '')} dataLabel={labels[3]}>
+      <TableRowData dataLabel={labels[3]} dataSortValue={bCase.dateFiled.replace(/-/g, '')}>
         {formatDate(bCase.dateFiled)}
       </TableRowData>
     </TableRow>

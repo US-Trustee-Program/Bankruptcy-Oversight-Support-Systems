@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react';
-import useCamsNavigator, { redirectTo } from './UseCamsNavigator';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
+
+import useCamsNavigator, { redirectTo } from './UseCamsNavigator';
 
 function MyComponent() {
   const navigator = useCamsNavigator();
@@ -19,12 +20,12 @@ vi.mock('react-router-dom', async () => {
 describe('tests for UseCamsNavigator module', () => {
   beforeEach(() => {
     Object.defineProperty(window, 'location', {
-      writable: true,
       value: {
         assign: vi.fn(),
         pathname: '/foo/bar',
         search: '/foo/bar?someparam=something_we_dont_want&x-ms-routing-name=true',
       },
+      writable: true,
     });
   });
 

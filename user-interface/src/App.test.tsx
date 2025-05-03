@@ -1,7 +1,7 @@
-import { act, render, waitFor, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import App from './App';
 
+import App from './App';
 import * as HeaderModule from './lib/components/Header';
 
 describe('App', () => {

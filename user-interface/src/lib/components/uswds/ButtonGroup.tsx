@@ -1,19 +1,20 @@
 import { Children, createElement, isValidElement, ReactElement } from 'react';
+
 import { UswdsButtonStyle } from './Button';
 
 export type ButtonGroupProps = {
-  id: string;
-  children: ReactElement | Array<ReactElement>;
   activeButtonId: string;
-  onButtonClick: (id: string) => void;
+  children: Array<ReactElement> | ReactElement;
   className?: string;
+  id: string;
+  onButtonClick: (id: string) => void;
 };
 
 export default function ButtonGroup({
-  id,
-  className,
-  children,
   activeButtonId,
+  children,
+  className,
+  id,
   onButtonClick,
 }: ButtonGroupProps) {
   const buttonClick = (
@@ -43,10 +44,12 @@ export default function ButtonGroup({
         if (typedChild.props.className) childClassName += ` ${typedChild.props.className}`;
 
         return (
-          <li key={idx} className="usa-button-group__item">
+          <li className="usa-button-group__item" key={idx}>
             {createElement(
               typedChild.type,
               {
+                className: childClassName,
+                id: childId,
                 onClick: (ev: React.MouseEvent<HTMLButtonElement>) =>
                   buttonClick(
                     ev,
@@ -54,8 +57,6 @@ export default function ButtonGroup({
                       | ((ev: React.MouseEvent<HTMLButtonElement>) => void)
                       | undefined,
                   ),
-                id: childId,
-                className: childClassName,
               },
               typedChild.props.children,
             )}
@@ -67,9 +68,9 @@ export default function ButtonGroup({
 
   return (
     <ul
-      id={id}
       className={`usa-button-group usa-button-group--segmented ${className ? `${className}` : ''}`}
       data-testid={`button-group${id ? `-${id}` : ''}`}
+      id={id}
     >
       {renderChildren()}
     </ul>

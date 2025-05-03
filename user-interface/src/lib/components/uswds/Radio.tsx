@@ -1,18 +1,19 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+
 import { RadioRef } from '../../type-declarations/input-fields';
 import Button, { UswdsButtonStyle } from './Button';
 
 export interface RadioProps {
-  id: string;
-  className?: string;
-  name: string;
-  label: string;
-  onChange?: (value: string) => void;
-  disabled?: boolean;
-  value: string | number;
   checked?: boolean;
+  className?: string;
+  disabled?: boolean;
+  id: string;
+  label: string;
+  name: string;
+  onChange?: (value: string) => void;
   required?: boolean;
   title?: string;
+  value: number | string;
 }
 
 function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
@@ -46,26 +47,26 @@ function RadioComponent(props: RadioProps, ref: React.Ref<RadioRef>) {
   return (
     <div className={`usa-form-group usa-radio ${props.className ?? ''}`}>
       <input
-        className={`usa-input usa-tooltip usa-radio__input`}
-        id={radioTestId}
-        type="radio"
-        name={props.name}
-        data-testid={radioTestId}
-        title={props.title}
-        disabled={isDisabled}
-        value={props.value}
         checked={isChecked()}
-        required={props.required}
+        className={`usa-input usa-tooltip usa-radio__input`}
+        data-testid={radioTestId}
+        disabled={isDisabled}
+        id={radioTestId}
+        name={props.name}
         onChange={() => {}}
-        tabIndex={-1}
         ref={inputRef}
+        required={props.required}
+        tabIndex={-1}
+        title={props.title}
+        type="radio"
+        value={props.value}
       />
       <label htmlFor={radioTestId}>
         <Button
-          id={`${radioTestId}-click-target`}
           className={`usa-input usa-radio__label ${UswdsButtonStyle.Unstyled}`}
-          title={props.title}
+          id={`${radioTestId}-click-target`}
           onClick={handleOnClick}
+          title={props.title}
         >
           {props.label}
         </Button>

@@ -1,21 +1,21 @@
-import { OfficesMongoRepository, OfficeStaff } from './offices.mongo.repository';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
+import { CamsRole } from '../../../../../common/src/cams/roles';
+import { CamsSession } from '../../../../../common/src/cams/session';
+import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { Staff } from '../../../../../common/src/cams/users';
+import { CamsError } from '../../../common-errors/cams-error';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { NotFoundError } from '../../../common-errors/not-found-error';
+import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder, { using } from '../../../query/query-builder';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
 } from '../../../testing/testing-utilities';
-import { ApplicationContext } from '../../types/basic';
-import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
-import QueryBuilder, { using } from '../../../query/query-builder';
-import { CamsRole } from '../../../../../common/src/cams/roles';
-import { closeDeferred } from '../../../deferrable/defer-close';
-import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../../common/src/cams/auditable';
-import { getCamsError } from '../../../common-errors/error-utilities';
-import { CamsSession } from '../../../../../common/src/cams/session';
 import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
-import { Staff } from '../../../../../common/src/cams/users';
-import { NotFoundError } from '../../../common-errors/not-found-error';
-import { CamsError } from '../../../common-errors/cams-error';
+import { ApplicationContext } from '../../types/basic';
+import { OfficesMongoRepository, OfficeStaff } from './offices.mongo.repository';
+import { MongoCollectionAdapter } from './utils/mongo-adapter';
 
 describe('offices repo', () => {
   let context: ApplicationContext;
@@ -59,8 +59,8 @@ describe('offices repo', () => {
 
   test('putOfficeStaff', async () => {
     const staff = createAuditRecord<OfficeStaff>({
-      id: session.user.id,
       documentType: 'OFFICE_STAFF',
+      id: session.user.id,
       officeCode,
       ...session.user,
       ttl: DEFAULT_STAFF_TTL,
@@ -102,15 +102,15 @@ describe('offices repo', () => {
         officeCode: 'test-office',
         ...staff,
         roles: [CamsRole.CaseAssignmentManager],
+        ttl: DEFAULT_STAFF_TTL,
         updatedBy: SYSTEM_USER_REFERENCE,
         updatedOn: '2025-01-01',
-        ttl: DEFAULT_STAFF_TTL,
       } as OfficeStaff,
     ],
   ];
   test.each(staffRecords)(
     'should extend %s staff when calling putOrExtendOfficeStaff',
-    async (_name: string, existing: OfficeStaff | null) => {
+    async (_name: string, existing: null | OfficeStaff) => {
       const findOneSpy = jest
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(existing);
@@ -128,9 +128,9 @@ describe('offices repo', () => {
         officeCode: 'test-office',
         ...staff,
         roles: expect.arrayContaining(expectedRoles),
+        ttl: expect.anything(),
         updatedBy: expect.anything(),
         updatedOn: expect.anything(),
-        ttl: expect.anything(),
       };
 
       await repo.putOrExtendOfficeStaff('test-office', staff, expires);
@@ -152,9 +152,9 @@ describe('offices repo', () => {
       officeCode: 'test-office',
       ...staff,
       roles: [CamsRole.TrialAttorney],
+      ttl: expect.anything(),
       updatedBy: expect.anything(),
       updatedOn: expect.anything(),
-      ttl: expect.anything(),
     };
 
     await repo.putOrExtendOfficeStaff(
@@ -195,7 +195,7 @@ describe('offices repo', () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(error);
 
       await expect(repo.findAndDeleteStaff(officeCode, session.user.id)).rejects.toThrow(
-        expect.objectContaining({ module, message: 'Unknown Error' }),
+        expect.objectContaining({ message: 'Unknown Error', module }),
       );
     });
 
@@ -208,11 +208,11 @@ describe('offices repo', () => {
         .mockRejectedValue(new Error('some error'));
       const expires = MockData.someDateAfterThisDate(new Date().toISOString(), 2);
       const expectedError = new CamsError(expect.anything(), {
-        message: 'Unknown Error',
         camsStackInfo: {
           message: 'Failed to create or update office staff.',
           module: expect.anything(),
         },
+        message: 'Unknown Error',
       });
       await expect(repo.putOrExtendOfficeStaff('test-office', staff, expires)).rejects.toThrow(
         expectedError,
@@ -226,11 +226,11 @@ describe('offices repo', () => {
       const expires = MockData.someDateAfterThisDate(new Date().toISOString(), 2);
 
       const expectedError = new CamsError(expect.anything(), {
-        message: 'Unknown Error',
         camsStackInfo: {
           message: 'Failed to create or update office staff.',
           module: expect.anything(),
         },
+        message: 'Unknown Error',
       });
       await expect(repo.putOrExtendOfficeStaff('test-office', staff, expires)).rejects.toThrow(
         expectedError,

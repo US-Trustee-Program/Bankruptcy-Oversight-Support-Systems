@@ -1,16 +1,25 @@
-import ContextCreator from '../../azure/application-context-creator';
-import { CamsError } from '../../../lib/common-errors/cams-error';
-import HealthcheckCosmosDb from './healthcheck.db.cosmos';
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 
-import { app, InvocationContext, HttpResponseInit, HttpRequest } from '@azure/functions';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import { httpSuccess } from '../../../lib/adapters/utils/http-response';
+import { CamsError } from '../../../lib/common-errors/cams-error';
+import { closeDeferred } from '../../../lib/deferrable/defer-close';
+import ContextCreator from '../../azure/application-context-creator';
+import { toAzureError, toAzureSuccess } from '../../azure/functions';
+import HealthcheckCosmosDb from './healthcheck.db.cosmos';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 import HealthcheckInfo from './healthcheck.info';
-import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { httpSuccess } from '../../../lib/adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
-import { closeDeferred } from '../../../lib/deferrable/defer-close';
 
 const MODULE_NAME = 'HEALTHCHECK';
+
+export function checkResults(...results: boolean[]) {
+  for (const i in results) {
+    if (!results[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export default async function handler(
   request: HttpRequest,
@@ -38,10 +47,10 @@ export default async function handler(
 
   const respBody = {
     database: {
-      metadata: healthcheckCosmosDbClient.dbConfig(),
-      cosmosDbWriteStatus: cosmosStatus.cosmosDbWriteStatus,
-      cosmosDbReadStatus: cosmosStatus.cosmosDbReadStatus,
       cosmosDbDeleteStatus: cosmosStatus.cosmosDbDeleteStatus,
+      cosmosDbReadStatus: cosmosStatus.cosmosDbReadStatus,
+      cosmosDbWriteStatus: cosmosStatus.cosmosDbWriteStatus,
+      metadata: healthcheckCosmosDbClient.dbConfig(),
       sqlDbReadStatus: checkSqlDbReadAccess,
     },
     info,
@@ -73,16 +82,7 @@ export default async function handler(
   return result;
 }
 
-export function checkResults(...results: boolean[]) {
-  for (const i in results) {
-    if (!results[i]) {
-      return false;
-    }
-  }
-  return true;
-}
-
 app.http('healthcheck', {
-  methods: ['GET'],
   handler,
+  methods: ['GET'],
 });

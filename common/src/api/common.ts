@@ -1,4 +1,4 @@
 import { UUID } from 'crypto';
 
-export type Key = string | number | UUID;
+export type Key = number | string | UUID;
 export type UriString = string;

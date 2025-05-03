@@ -1,13 +1,13 @@
-import { CaseAssociatedController } from './case-associated.controller';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import {
   NORMAL_CASE_ID,
   NOT_FOUND_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
-import { NotFoundError } from '../../common-errors/not-found-error';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseAssociatedUseCase } from '../../use-cases/case-associated/case-associated';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseAssociatedController } from './case-associated.controller';
 
 describe('Test case-history controller', () => {
   let applicationContext;

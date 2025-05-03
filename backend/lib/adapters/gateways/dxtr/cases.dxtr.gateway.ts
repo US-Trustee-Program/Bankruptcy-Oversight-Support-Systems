@@ -1,20 +1,5 @@
 import * as mssql from 'mssql';
-import {
-  CasesInterface,
-  TransactionIdRangeForDate,
-} from '../../../use-cases/cases/cases.interface';
-import { ApplicationContext } from '../../types/basic';
-import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
-import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
-import { executeQuery } from '../../utils/database';
-import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import { handleQueryResult } from '../gateway-helper';
-import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
-import { removeExtraSpaces } from '../../utils/string-helper';
-import { getDebtorTypeLabel } from '../debtor-type-gateway';
-import { getPetitionInfo } from '../petition-gateway';
-import { NotFoundError } from '../../../common-errors/not-found-error';
-import { CamsError } from '../../../common-errors/cams-error';
+
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '../../../../../common/src/api/search';
 import {
   CaseBasics,
@@ -22,7 +7,23 @@ import {
   CaseSummary,
   getCaseIdParts,
 } from '../../../../../common/src/cams/cases';
-import { Party, DebtorAttorney } from '../../../../../common/src/cams/parties';
+import { DebtorAttorney, Party } from '../../../../../common/src/cams/parties';
+import { CamsError } from '../../../common-errors/cams-error';
+import { NotFoundError } from '../../../common-errors/not-found-error';
+import {
+  CasesInterface,
+  TransactionIdRangeForDate,
+} from '../../../use-cases/cases/cases.interface';
+import { ApplicationContext } from '../../types/basic';
+import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
+import { executeQuery } from '../../utils/database';
+import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
+import { removeExtraSpaces } from '../../utils/string-helper';
+import { getDebtorTypeLabel } from '../debtor-type-gateway';
+import { handleQueryResult } from '../gateway-helper';
+import { getPetitionInfo } from '../petition-gateway';
+import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
@@ -33,10 +34,82 @@ const orderToTransferCode = 'CTO';
 
 const NOT_FOUND = -1;
 
-type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 type CaseIdRecord = { caseId: string };
+type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 
 export default class CasesDxtrGateway implements CasesInterface {
+  caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Case results received from DXTR`);
+
+    return (queryResult.results as mssql.IResult<CaseSummary>).recordset[0];
+  }
+
+  caseIdsAndMaxTxIdCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
+
+    return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
+  }
+
+  casesBasicQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
+
+    return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
+  }
+
+  casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
+
+    return (queryResult.results as mssql.IResult<CaseSummary[]>).recordset;
+  }
+
+  debtorAttorneyQueryCallback(_context: ApplicationContext, queryResult: QueryResults) {
+    let debtorAttorney: DebtorAttorney;
+
+    (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
+      debtorAttorney = { name: removeExtraSpaces(record.name) };
+      debtorAttorney.address1 = record.address1;
+      debtorAttorney.address2 = record.address2;
+      debtorAttorney.address3 = record.address3;
+      debtorAttorney.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
+      debtorAttorney.phone = record.phone;
+      debtorAttorney.email = record.email;
+      debtorAttorney.office = record.office;
+    });
+    return debtorAttorney || null;
+  }
+
+  public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
+    const query = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+    const { results } = await executeQuery(context, context.config.dxtrDbConfig, query);
+    return results['recordset'][0]['MAX_TX_ID'] ?? undefined;
+  }
+
+  public async findTransactionIdRangeForDate(
+    context: ApplicationContext,
+    findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
+    const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
+    const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
+    const maxTxId: number = parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
+
+    const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX ORDER BY TX_ID ASC';
+    const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
+    const minTxId: number = parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
+
+    const startTxId = await this.bisectBound(context, minTxId, maxTxId, findDate, 'START');
+    const endTxId =
+      startTxId !== NOT_FOUND
+        ? await this.bisectBound(context, startTxId, maxTxId, findDate, 'END')
+        : undefined;
+
+    return {
+      end: endTxId === NOT_FOUND ? undefined : endTxId,
+      findDate,
+      found: startTxId !== NOT_FOUND && endTxId !== NOT_FOUND,
+      start: startTxId === NOT_FOUND ? undefined : startTxId,
+    };
+  }
+
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
     const bCase: CaseDetail = {
@@ -71,6 +144,24 @@ export default class CasesDxtrGateway implements CasesInterface {
       bCase.courtId,
     );
 
+    return bCase;
+  }
+
+  async getCaseSummary(
+    applicationContext: ApplicationContext,
+    caseId: string,
+  ): Promise<CaseSummary> {
+    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
+    const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
+
+    if (!bCase) {
+      throw new NotFoundError(MODULE_NAME, {
+        message: `Case summary not found for case ID: ${caseId}.`,
+      });
+    }
+    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
+    bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
+    bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
   }
 
@@ -222,91 +313,67 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
-  public async findTransactionIdRangeForDate(
-    context: ApplicationContext,
-    findDate: string,
-  ): Promise<TransactionIdRangeForDate> {
-    const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
-    const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
-    const maxTxId: number = parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
+  /**
+   * getUpdatedCaseIds
+   *
+   * Gets the case ids for all cases with LAST_UPDATE_DATE values greater than the provided date.
+   * 2025-02-23 06:35:30.453
+   *
+   * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
+   * @returns {string[]} A list of case ids for updated cases.
+   */
+  async getUpdatedCaseIds(context: ApplicationContext, start: string): Promise<string[]> {
+    const params: DbTableFieldSpec[] = [];
+    params.push({
+      name: 'start',
+      type: mssql.DateTime,
+      value: start,
+    });
 
-    const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX ORDER BY TX_ID ASC';
-    const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
-    const minTxId: number = parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
+    const query = `
+      SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
+      FROM AO_CS C
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE C.LAST_UPDATE_DATE > @start
+    `;
 
-    const startTxId = await this.bisectBound(context, minTxId, maxTxId, findDate, 'START');
-    const endTxId =
-      startTxId !== NOT_FOUND
-        ? await this.bisectBound(context, startTxId, maxTxId, findDate, 'END')
-        : undefined;
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
 
-    return {
-      findDate,
-      found: startTxId !== NOT_FOUND && endTxId !== NOT_FOUND,
-      end: endTxId === NOT_FOUND ? undefined : endTxId,
-      start: startTxId === NOT_FOUND ? undefined : startTxId,
-    };
+    const results = handleQueryResult<CaseIdRecord[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.getUpdatedCaseIdsCallback,
+    );
+
+    return results.map((record) => record.caseId);
   }
 
-  public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
-    const query = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
-    const { results } = await executeQuery(context, context.config.dxtrDbConfig, query);
-    return results['recordset'][0]['MAX_TX_ID'] ?? undefined;
+  getUpdatedCaseIdsCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
+
+    return (queryResult.results as mssql.IResult<CaseIdRecord[]>).recordset;
   }
 
-  private async bisectBound(
-    context: ApplicationContext,
-    minTxId: number,
-    maxTxId: number,
-    findDate: string,
-    direction: 'START' | 'END',
-  ) {
-    let dMinTxId = minTxId;
-    let dMaxTxId = maxTxId;
-    let txId = NOT_FOUND;
+  partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    let debtor: Party;
+    applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR`);
 
-    while (dMinTxId <= dMaxTxId) {
-      const midTxId = Math.floor((dMaxTxId - dMinTxId + 1) / 2) + dMinTxId;
-
-      const params: DbTableFieldSpec[] = [
-        {
-          name: `midTxId`,
-          type: mssql.Int,
-          value: midTxId,
-        },
-      ];
-
-      const txDateQuery =
-        "SELECT FORMAT(TX_DATE, 'yyyy-MM-dd') AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId";
-      const { results } = await executeQuery(
-        context,
-        context.config.dxtrDbConfig,
-        txDateQuery,
-        params,
-      );
-
-      const answer = results['recordset'][0];
-
-      if (!answer) {
-        throw new Error('Found gap in the transaction IDs');
-      }
-
-      const txDate = answer['TX_DATE'];
-
-      if (txDate < findDate) {
-        dMinTxId = midTxId + 1;
-      } else if (txDate > findDate) {
-        dMaxTxId = midTxId - 1;
-      } else {
-        txId = midTxId;
-        if (direction === 'START') {
-          dMaxTxId = midTxId - 1;
-        } else {
-          dMinTxId = midTxId + 1;
-        }
-      }
-    }
-    return txId;
+    (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
+      debtor = { name: removeExtraSpaces(record.name) };
+      debtor.address1 = record.address1;
+      debtor.address2 = record.address2;
+      debtor.address3 = record.address3;
+      debtor.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
+      debtor.taxId = record.taxId;
+      debtor.ssn = record.ssn;
+    });
+    return debtor || null;
   }
 
   public async searchCases(
@@ -382,7 +449,7 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
     if (!predicate.caseNumber && predicate.caseIds && predicate.caseIds.length > 0) {
       const divisionsAndCaseNumbers = predicate.caseIds.reduce((acc, caseId) => {
-        const { divisionCode, caseNumber } = getCaseIdParts(caseId);
+        const { caseNumber, divisionCode } = getCaseIdParts(caseId);
         let caseNumbers;
         if (acc.has(divisionCode)) {
           caseNumbers = acc.get(divisionCode);
@@ -454,63 +521,90 @@ export default class CasesDxtrGateway implements CasesInterface {
     }
   }
 
-  async getCaseSummary(
-    applicationContext: ApplicationContext,
-    caseId: string,
-  ): Promise<CaseSummary> {
-    const { courtDiv, dxtrCaseId } = decomposeCaseId(caseId);
-    const bCase = await this.queryCase(applicationContext, courtDiv, dxtrCaseId);
+  transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
+    const closedDates: Date[] = [];
+    const dismissedDates: Date[] = [];
+    const reopenedDates: Date[] = [];
+    const transferDates: Date[] = [];
 
-    if (!bCase) {
-      throw new NotFoundError(MODULE_NAME, {
-        message: `Case summary not found for case ID: ${caseId}.`,
-      });
-    }
-    bCase.debtor = await this.queryParties(applicationContext, bCase.dxtrId, bCase.courtId);
-    bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
-    bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
-    return bCase;
-  }
+    applicationContext.logger.debug(MODULE_NAME, `Transaction results received from DXTR`);
 
-  /**
-   * getUpdatedCaseIds
-   *
-   * Gets the case ids for all cases with LAST_UPDATE_DATE values greater than the provided date.
-   * 2025-02-23 06:35:30.453
-   *
-   * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
-   * @returns {string[]} A list of case ids for updated cases.
-   */
-  async getUpdatedCaseIds(context: ApplicationContext, start: string): Promise<string[]> {
-    const params: DbTableFieldSpec[] = [];
-    params.push({
-      name: 'start',
-      type: mssql.DateTime,
-      value: start,
+    (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
+      const transactionDate = parseTransactionDate(record);
+
+      if (record.txCode === closedByCourtTxCode) {
+        closedDates.push(transactionDate);
+      } else if (record.txCode === dismissedByCourtTxCode) {
+        dismissedDates.push(transactionDate);
+      } else if (record.txCode === orderToTransferCode) {
+        transferDates.push(transactionDate);
+      } else {
+        reopenedDates.push(transactionDate);
+      }
     });
 
-    const query = `
-      SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
-      FROM AO_CS C
-      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE C.LAST_UPDATE_DATE > @start
-    `;
+    sortListOfDates(closedDates);
+    sortListOfDates(dismissedDates);
+    sortListOfDates(reopenedDates);
+    sortListOfDates(transferDates);
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const dates: TransactionDates = { closedDates, dismissedDates, reopenedDates, transferDates };
+    return dates;
+  }
 
-    const results = handleQueryResult<CaseIdRecord[]>(
-      context,
-      queryResult,
-      MODULE_NAME,
-      this.getUpdatedCaseIdsCallback,
-    );
+  private async bisectBound(
+    context: ApplicationContext,
+    minTxId: number,
+    maxTxId: number,
+    findDate: string,
+    direction: 'END' | 'START',
+  ) {
+    let dMinTxId = minTxId;
+    let dMaxTxId = maxTxId;
+    let txId = NOT_FOUND;
 
-    return results.map((record) => record.caseId);
+    while (dMinTxId <= dMaxTxId) {
+      const midTxId = Math.floor((dMaxTxId - dMinTxId + 1) / 2) + dMinTxId;
+
+      const params: DbTableFieldSpec[] = [
+        {
+          name: `midTxId`,
+          type: mssql.Int,
+          value: midTxId,
+        },
+      ];
+
+      const txDateQuery =
+        "SELECT FORMAT(TX_DATE, 'yyyy-MM-dd') AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId";
+      const { results } = await executeQuery(
+        context,
+        context.config.dxtrDbConfig,
+        txDateQuery,
+        params,
+      );
+
+      const answer = results['recordset'][0];
+
+      if (!answer) {
+        throw new Error('Found gap in the transaction IDs');
+      }
+
+      const txDate = answer['TX_DATE'];
+
+      if (txDate < findDate) {
+        dMinTxId = midTxId + 1;
+      } else if (txDate > findDate) {
+        dMaxTxId = midTxId - 1;
+      } else {
+        txId = midTxId;
+        if (direction === 'START') {
+          dMaxTxId = midTxId - 1;
+        } else {
+          dMinTxId = midTxId + 1;
+        }
+      }
+    }
+    return txId;
   }
 
   private async queryCase(
@@ -591,11 +685,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  private async queryTransactionDates(
-    applicationContext: ApplicationContext,
+  private async queryDebtorAttorney(
+    context: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<TransactionDates> {
+  ): Promise<DebtorAttorney> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -610,52 +704,52 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: courtId,
     });
 
-    input.push({
-      name: 'closedByCourtTxCode',
-      type: mssql.VarChar,
-      value: closedByCourtTxCode,
-    });
-
-    input.push({
-      name: 'dismissedByCourtTxCode',
-      type: mssql.VarChar,
-      value: dismissedByCourtTxCode,
-    });
-
-    input.push({
-      name: 'orderToTransferCode',
-      type: mssql.VarChar,
-      value: orderToTransferCode,
-    });
-
-    input.push({
-      name: 'reopenedDate',
-      type: mssql.VarChar,
-      value: reopenedDateTxCode,
-    });
-
-    const query = `select
-      REC as txRecord,
-      TX_CODE as txCode
-      FROM [dbo].[AO_TX]
-      WHERE CS_CASEID = @dxtrId
-      AND COURT_ID = @courtId
-      AND TX_TYPE = 'O'
-      AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @orderToTransferCode, @reopenedDate)`;
+    const query = `
+      SELECT
+        TRIM(CONCAT(
+          AT_FIRST_NAME,
+          ' ',
+          AT_MIDDLE_NAME,
+          ' ',
+          AT_LAST_NAME,
+          ' ',
+          AT_GENERATION
+        )) as name,
+        AT_ADDRESS1 as address1,
+        AT_ADDRESS2 as address2,
+        AT_ADDRESS3 as address3,
+        TRIM(CONCAT(
+          AT_CITY,
+          ' ',
+          AT_STATE,
+          ' ',
+          AT_ZIP,
+          ' ',
+          AT_COUNTRY
+        )) as cityStateZipCountry,
+        AT_PHONENO as phone,
+        AT_E_MAIL as email,
+        AT_OFFICE as office
+      FROM [dbo].[AO_AT]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = 'db'
+    `;
 
     const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
+      context,
+      context.config.dxtrDbConfig,
       query,
       input,
     );
 
     return Promise.resolve(
-      handleQueryResult<TransactionDates>(
-        applicationContext,
+      handleQueryResult<DebtorAttorney>(
+        context,
         queryResult,
         MODULE_NAME,
-        this.transactionQueryCallback,
+        this.debtorAttorneyQueryCallback,
       ),
     );
   }
@@ -734,11 +828,11 @@ export default class CasesDxtrGateway implements CasesInterface {
     );
   }
 
-  private async queryDebtorAttorney(
-    context: ApplicationContext,
+  private async queryTransactionDates(
+    applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
-  ): Promise<DebtorAttorney> {
+  ): Promise<TransactionDates> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -753,146 +847,53 @@ export default class CasesDxtrGateway implements CasesInterface {
       value: courtId,
     });
 
-    const query = `
-      SELECT
-        TRIM(CONCAT(
-          AT_FIRST_NAME,
-          ' ',
-          AT_MIDDLE_NAME,
-          ' ',
-          AT_LAST_NAME,
-          ' ',
-          AT_GENERATION
-        )) as name,
-        AT_ADDRESS1 as address1,
-        AT_ADDRESS2 as address2,
-        AT_ADDRESS3 as address3,
-        TRIM(CONCAT(
-          AT_CITY,
-          ' ',
-          AT_STATE,
-          ' ',
-          AT_ZIP,
-          ' ',
-          AT_COUNTRY
-        )) as cityStateZipCountry,
-        AT_PHONENO as phone,
-        AT_E_MAIL as email,
-        AT_OFFICE as office
-      FROM [dbo].[AO_AT]
-      WHERE
-        CS_CASEID = @dxtrId AND
-        COURT_ID = @courtId AND
-        PY_ROLE = 'db'
-    `;
+    input.push({
+      name: 'closedByCourtTxCode',
+      type: mssql.VarChar,
+      value: closedByCourtTxCode,
+    });
+
+    input.push({
+      name: 'dismissedByCourtTxCode',
+      type: mssql.VarChar,
+      value: dismissedByCourtTxCode,
+    });
+
+    input.push({
+      name: 'orderToTransferCode',
+      type: mssql.VarChar,
+      value: orderToTransferCode,
+    });
+
+    input.push({
+      name: 'reopenedDate',
+      type: mssql.VarChar,
+      value: reopenedDateTxCode,
+    });
+
+    const query = `select
+      REC as txRecord,
+      TX_CODE as txCode
+      FROM [dbo].[AO_TX]
+      WHERE CS_CASEID = @dxtrId
+      AND COURT_ID = @courtId
+      AND TX_TYPE = 'O'
+      AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @orderToTransferCode, @reopenedDate)`;
 
     const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
+      applicationContext,
+      applicationContext.config.dxtrDbConfig,
       query,
       input,
     );
 
     return Promise.resolve(
-      handleQueryResult<DebtorAttorney>(
-        context,
+      handleQueryResult<TransactionDates>(
+        applicationContext,
         queryResult,
         MODULE_NAME,
-        this.debtorAttorneyQueryCallback,
+        this.transactionQueryCallback,
       ),
     );
-  }
-
-  debtorAttorneyQueryCallback(_context: ApplicationContext, queryResult: QueryResults) {
-    let debtorAttorney: DebtorAttorney;
-
-    (queryResult.results as mssql.IResult<DebtorAttorney>).recordset.forEach((record) => {
-      debtorAttorney = { name: removeExtraSpaces(record.name) };
-      debtorAttorney.address1 = record.address1;
-      debtorAttorney.address2 = record.address2;
-      debtorAttorney.address3 = record.address3;
-      debtorAttorney.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
-      debtorAttorney.phone = record.phone;
-      debtorAttorney.email = record.email;
-      debtorAttorney.office = record.office;
-    });
-    return debtorAttorney || null;
-  }
-
-  partyQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    let debtor: Party;
-    applicationContext.logger.debug(MODULE_NAME, `Party results received from DXTR`);
-
-    (queryResult.results as mssql.IResult<Party>).recordset.forEach((record) => {
-      debtor = { name: removeExtraSpaces(record.name) };
-      debtor.address1 = record.address1;
-      debtor.address2 = record.address2;
-      debtor.address3 = record.address3;
-      debtor.cityStateZipCountry = removeExtraSpaces(record.cityStateZipCountry);
-      debtor.taxId = record.taxId;
-      debtor.ssn = record.ssn;
-    });
-    return debtor || null;
-  }
-
-  transactionQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    const closedDates: Date[] = [];
-    const dismissedDates: Date[] = [];
-    const reopenedDates: Date[] = [];
-    const transferDates: Date[] = [];
-
-    applicationContext.logger.debug(MODULE_NAME, `Transaction results received from DXTR`);
-
-    (queryResult.results as mssql.IResult<DxtrTransactionRecord>).recordset.forEach((record) => {
-      const transactionDate = parseTransactionDate(record);
-
-      if (record.txCode === closedByCourtTxCode) {
-        closedDates.push(transactionDate);
-      } else if (record.txCode === dismissedByCourtTxCode) {
-        dismissedDates.push(transactionDate);
-      } else if (record.txCode === orderToTransferCode) {
-        transferDates.push(transactionDate);
-      } else {
-        reopenedDates.push(transactionDate);
-      }
-    });
-
-    sortListOfDates(closedDates);
-    sortListOfDates(dismissedDates);
-    sortListOfDates(reopenedDates);
-    sortListOfDates(transferDates);
-
-    const dates: TransactionDates = { closedDates, dismissedDates, reopenedDates, transferDates };
-    return dates;
-  }
-
-  caseDetailsQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Case results received from DXTR`);
-
-    return (queryResult.results as mssql.IResult<CaseSummary>).recordset[0];
-  }
-
-  casesQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
-
-    return (queryResult.results as mssql.IResult<CaseSummary[]>).recordset;
-  }
-
-  casesBasicQueryCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
-
-    return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
-  }
-
-  caseIdsAndMaxTxIdCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
-
-    return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
-  }
-
-  getUpdatedCaseIdsCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
-
-    return (queryResult.results as mssql.IResult<CaseIdRecord[]>).recordset;
   }
 }

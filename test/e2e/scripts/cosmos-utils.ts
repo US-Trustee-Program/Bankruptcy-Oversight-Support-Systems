@@ -29,7 +29,7 @@ export async function insertTransferOrders(
 
 export async function syncCases(context: ApplicationContext, caseIds: string[]) {
   const events: CaseSyncEvent[] = caseIds.map((caseId) => {
-    return { type: 'CASE_CHANGED', caseId };
+    return { caseId, type: 'CASE_CHANGED' };
   });
   return await ExportAndLoadCase.exportAndLoad(context, events);
 }

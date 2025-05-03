@@ -1,18 +1,19 @@
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { AssignAttorneyModalControls, AssignAttorneyModalStore } from './assignAttorneyModal.types';
-import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
 import { ChangeEvent } from 'react';
 
+import { AssignAttorneyModalControls, AssignAttorneyModalStore } from './assignAttorneyModal.types';
+import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
+
 type RectProps = {
-  top?: number;
   bottom?: number;
+  height?: number;
   left?: number;
   right?: number;
+  toJSON?: () => void;
+  top?: number;
   width?: number;
-  height?: number;
   x?: number;
   y?: number;
-  toJSON?: () => void;
 };
 
 const screenTop = 100;
@@ -21,15 +22,15 @@ const initialScrollTop = 0;
 
 const buildBoundingClientRect = (props: RectProps = {}): DOMRect => {
   return {
-    top: screenTop,
     bottom: screenBottom,
+    height: 400,
     left: 100,
     right: 500,
+    toJSON: () => '',
+    top: screenTop,
     width: 400,
-    height: 400,
     x: 100,
     y: 100,
-    toJSON: () => '',
     ...props,
   };
 };
@@ -37,13 +38,13 @@ const buildBoundingClientRect = (props: RectProps = {}): DOMRect => {
 function useAssignAttorneyModalControlsMock(): AssignAttorneyModalControls {
   const modalRef: React.RefObject<ModalRefType> = {
     current: {
-      show: () => {},
-      hide: () => {},
       buttons: {
         current: {
           disableSubmitButton: (_state: boolean) => {},
         },
       },
+      hide: () => {},
+      show: () => {},
     },
   };
 
@@ -62,22 +63,22 @@ function useAssignAttorneyModalControlsMock(): AssignAttorneyModalControls {
 
 const mockControls = useAssignAttorneyModalControlsMock();
 const mockStore: AssignAttorneyModalStore = {
-  bCase: null,
-  setBCase: vi.fn(),
-  initialDocumentBodyStyle: '',
-  setInitialDocumentBodyStyle: vi.fn(),
-  checkListValues: [],
-  setCheckListValues: vi.fn(),
-  previouslySelectedList: [],
-  setPreviouslySelectedList: vi.fn(),
-  isUpdatingAssignment: false,
-  setIsUpdatingAssignment: vi.fn(),
   attorneyList: [],
-  setAttorneyList: vi.fn(),
-  submissionCallback: null,
-  setSubmissionCallback: vi.fn(),
+  bCase: null,
+  checkListValues: [],
   globalAlertError: undefined,
+  initialDocumentBodyStyle: '',
+  isUpdatingAssignment: false,
+  previouslySelectedList: [],
+  setAttorneyList: vi.fn(),
+  setBCase: vi.fn(),
+  setCheckListValues: vi.fn(),
   setGlobalAlertError: vi.fn(),
+  setInitialDocumentBodyStyle: vi.fn(),
+  setIsUpdatingAssignment: vi.fn(),
+  setPreviouslySelectedList: vi.fn(),
+  setSubmissionCallback: vi.fn(),
+  submissionCallback: null,
 };
 
 const useCase = assignAttorneyModalUseCase(mockStore, mockControls);
@@ -92,8 +93,8 @@ describe('assignAttorneyModalUseCase tests', () => {
       const mockInput = document.createElement('input');
       mockInput.getBoundingClientRect = () =>
         buildBoundingClientRect({
-          top: screenTop - 150,
           bottom: screenTop - 120,
+          top: screenTop - 150,
         });
 
       const mockEvent = {
@@ -113,8 +114,8 @@ describe('assignAttorneyModalUseCase tests', () => {
       const mockInput = document.createElement('input');
       mockInput.getBoundingClientRect = () =>
         buildBoundingClientRect({
-          top: screenBottom + 100,
           bottom: screenBottom + 130,
+          top: screenBottom + 100,
         });
 
       const mockEvent = {
@@ -134,8 +135,8 @@ describe('assignAttorneyModalUseCase tests', () => {
       const mockInput = document.createElement('input');
       mockInput.getBoundingClientRect = () =>
         buildBoundingClientRect({
-          top: screenTop + 100,
           bottom: screenBottom - 100,
+          top: screenTop + 100,
         });
 
       const mockEvent = {
@@ -192,49 +193,49 @@ describe('assignAttorneyModalUseCase tests', () => {
   const tabTestProps = [
     {
       _label: 'should',
-      shouldHaveFocus: true,
+      className: 'usa-modal__close',
+      isVisible: true,
       keyName: 'Tab',
       shiftKey: false,
-      isVisible: true,
-      className: 'usa-modal__close',
+      shouldHaveFocus: true,
     },
     {
       _label: 'should not',
-      shouldHaveFocus: false,
+      className: 'usa-modal__close',
+      isVisible: true,
       keyName: 'Enter',
       shiftKey: false,
-      isVisible: true,
-      className: 'usa-modal__close',
+      shouldHaveFocus: false,
     },
     {
       _label: 'should not',
-      shouldHaveFocus: false,
+      className: 'usa-modal__close',
+      isVisible: true,
       keyName: 'Tab',
       shiftKey: true,
-      isVisible: true,
-      className: 'usa-modal__close',
+      shouldHaveFocus: false,
     },
     {
       _label: 'should not',
-      shouldHaveFocus: false,
-      keyName: 'Tab',
-      shiftKey: false,
+      className: 'usa-modal__close',
       isVisible: false,
-      className: 'usa-modal__close',
+      keyName: 'Tab',
+      shiftKey: false,
+      shouldHaveFocus: false,
     },
     {
       _label: 'should not',
-      shouldHaveFocus: false,
+      className: 'bad_button',
+      isVisible: true,
       keyName: 'Tab',
       shiftKey: false,
-      isVisible: true,
-      className: 'bad_button',
+      shouldHaveFocus: false,
     },
   ];
 
   test.each(tabTestProps)(
     'pressing the tab key %s focus on the next element in a list of attorneys',
-    async ({ _label, shouldHaveFocus, keyName, shiftKey, isVisible, className }) => {
+    async ({ _label, className, isVisible, keyName, shiftKey, shouldHaveFocus }) => {
       const modalId = 'test-id';
 
       // Setup the DOM
@@ -256,29 +257,29 @@ describe('assignAttorneyModalUseCase tests', () => {
 
       // Create the native tab event
       const tabEvent = new KeyboardEvent('keydown', {
-        key: keyName,
-        shiftKey,
-        keyCode: 9,
-        code: keyName,
-        which: 9,
         altKey: false, // No Alt key
-        ctrlKey: false, // No Ctrl key
-        metaKey: false, // No Meta key
         bubbles: true, // Event can bubble up
         cancelable: true, // Event can be cancelled
+        code: keyName,
+        ctrlKey: false, // No Ctrl key
+        key: keyName,
+        keyCode: 9,
+        metaKey: false, // No Meta key
+        shiftKey,
+        which: 9,
       });
 
       // Mock React's KeyboardEvent and extend the native event
       const reactTabEvent = {
         ...tabEvent, // Spread the tab event properties from native event
-        target: closeButton, // Set the target element
-        nativeEvent: tabEvent, // Set nativeEvent as the original tabEvent
         isDefaultPrevented: () => false, // Mock method to return false (no default action prevented)
         isPropagationStopped: () => false, // Mock method to return false (event not stopped)
-        persist: () => {}, // Mock persist method (no-op)
-        locale: '',
         key: keyName,
+        locale: '',
+        nativeEvent: tabEvent, // Set nativeEvent as the original tabEvent
+        persist: () => {}, // Mock persist method (no-op)
         shiftKey,
+        target: closeButton, // Set the target element
       } as unknown as React.KeyboardEvent; // Cast to React's KeyboardEvent type
 
       // Call handleTab with the mocked React.KeyboardEvent

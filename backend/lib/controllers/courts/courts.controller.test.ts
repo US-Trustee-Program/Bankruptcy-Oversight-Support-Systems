@@ -1,8 +1,8 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { ApplicationContext } from '../../adapters/types/basic';
 import { COURT_DIVISIONS } from '../../../../common/src/cams/test-utilities/courts.mock';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CourtsController } from './courts.controller';
 
 let getCourts = jest.fn();
@@ -38,8 +38,8 @@ describe('courts controller tests', () => {
     expect(offices).toEqual(
       expect.objectContaining({
         body: {
-          meta: expect.objectContaining({ self: expect.any(String) }),
           data: COURT_DIVISIONS,
+          meta: expect.objectContaining({ self: expect.any(String) }),
         },
       }),
     );

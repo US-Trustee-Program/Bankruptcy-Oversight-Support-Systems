@@ -1,14 +1,14 @@
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
-import { AssignmentError } from '../../use-cases/case-assignment/assignment.exception';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { CamsUserReference } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
-import { CamsController } from '../controller';
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference } from '../../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import { AssignmentError } from '../../use-cases/case-assignment/assignment.exception';
+import { CaseAssignmentUseCase } from '../../use-cases/case-assignment/case-assignment';
+import { CamsController } from '../controller';
 
 const MODULE_NAME = 'ASSIGNMENT-CONTROLLER';
 const INVALID_ROLE_MESSAGE =

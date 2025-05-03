@@ -1,7 +1,8 @@
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+
 import Alert, { AlertRefType, UswdsAlertStyle } from './Alert';
-import { render, screen } from '@testing-library/react';
 
 const sleep = (milliseconds: number) =>
   new Promise((callback) => setTimeout(callback, milliseconds));
@@ -14,11 +15,11 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
             timeout={4}
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -53,10 +54,10 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -95,12 +96,12 @@ describe('Test Alert component', () => {
       <React.StrictMode>
         <BrowserRouter>
           <Alert
+            inline={true}
             message="Test alert message"
-            type={UswdsAlertStyle.Info}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
-            inline={true}
+            type={UswdsAlertStyle.Info}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -117,10 +118,10 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Info}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
+            type={UswdsAlertStyle.Info}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -137,10 +138,10 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Warning}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
+            type={UswdsAlertStyle.Warning}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -157,10 +158,10 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Error}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
+            type={UswdsAlertStyle.Error}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -177,10 +178,10 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -197,10 +198,10 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
+            ref={alertRef}
             role="status"
             slim={true}
-            ref={alertRef}
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -217,9 +218,9 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
-            role="status"
             ref={alertRef}
+            role="status"
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -236,9 +237,9 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
-            role="status"
             ref={alertRef}
+            role="status"
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -255,9 +256,9 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
-            role="status"
             ref={alertRef}
+            role="status"
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,
@@ -274,9 +275,9 @@ describe('Test Alert component', () => {
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Success}
-            role="alert"
             ref={alertRef}
+            role="alert"
+            type={UswdsAlertStyle.Success}
           ></Alert>
         </BrowserRouter>
       </React.StrictMode>,

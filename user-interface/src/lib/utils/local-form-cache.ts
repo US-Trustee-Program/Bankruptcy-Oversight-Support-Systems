@@ -3,11 +3,20 @@ import LocalCache from './local-cache';
 
 const NAMESPACE = 'form:';
 
-const { get, set, remove, removeNamespace } = LocalCache;
+const { get, remove, removeNamespace, set } = LocalCache;
 
-function getForm(key: string): object | null {
+function clearForm(key: string) {
+  const formKey = NAMESPACE + key;
+  remove(formKey);
+}
+
+function getForm(key: string): null | object {
   const formKey = NAMESPACE + key;
   return get<object>(formKey);
+}
+
+function removeAll() {
+  removeNamespace(NAMESPACE);
 }
 
 function saveForm(key: string, data: object) {
@@ -15,20 +24,11 @@ function saveForm(key: string, data: object) {
   set<object>(formKey, data, DAY);
 }
 
-function clearForm(key: string) {
-  const formKey = NAMESPACE + key;
-  remove(formKey);
-}
-
-function removeAll() {
-  removeNamespace(NAMESPACE);
-}
-
 const LocalFormCache = {
-  getForm,
-  saveForm,
   clearForm,
+  getForm,
   removeAll,
+  saveForm,
 };
 
 export default LocalFormCache;

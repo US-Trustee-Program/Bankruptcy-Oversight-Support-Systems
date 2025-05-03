@@ -1,19 +1,27 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { ForbiddenError } from '../../common-errors/forbidden-error';
+
+import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import { MockUser, MockUsers } from '../../../../common/src/cams/test-utilities/mock-user';
 import { CamsUser } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { CamsJwt, CamsJwtClaims, CamsJwtHeader } from '../../../../common/src/cams/jwt';
-import { OpenIdConnectGateway } from '../../adapters/types/authorization';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { nowInSeconds } from '../../../../common/src/date-helper';
+import { OpenIdConnectGateway } from '../../adapters/types/authorization';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { ForbiddenError } from '../../common-errors/forbidden-error';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';
 const mockUsers: MockUser[] = MockUsers;
 const key = 'mock-secret'; //pragma: allowlist secret
 
 const EXPIRE_OVERRIDE = parseInt(process.env.MOCK_SESSION_EXPIRE_LENGTH);
+
+export async function getUser(accessToken: string) {
+  const decodedToken = jwt.decode(accessToken);
+  const mockUser = mockUsers.find((role) => role.sub === decodedToken.sub);
+  addSuperUserOffices(mockUser.user);
+  return { groups: [], jwt: {} as CamsJwt, user: mockUser.user };
+}
 
 export async function mockAuthentication(context: ApplicationContext): Promise<string> {
   if (context.config.authConfig.provider !== 'mock') {
@@ -29,10 +37,10 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
 
   const claims: CamsJwtClaims = {
     aud: 'api://default',
-    sub: validMockRole.sub,
-    iss: context.request.url,
     exp: expiration,
     groups: [],
+    iss: context.request.url,
+    sub: validMockRole.sub,
   };
 
   const token = jwt.sign(claims, key);
@@ -42,11 +50,11 @@ export async function mockAuthentication(context: ApplicationContext): Promise<s
 export async function verifyToken(accessToken: string): Promise<CamsJwt> {
   const payload = jwt.verify(accessToken, key) as jwt.JwtPayload;
   const claims: CamsJwtClaims = {
-    iss: payload.iss!,
-    sub: payload.sub!,
     aud: payload.aud!,
     exp: payload.exp!,
     groups: payload.groups!,
+    iss: payload.iss!,
+    sub: payload.sub!,
     ...payload,
   };
 
@@ -63,13 +71,6 @@ function addSuperUserOffices(user: CamsUser) {
     user.offices = MOCKED_USTP_OFFICES_ARRAY;
     user.roles = Object.values(CamsRole);
   }
-}
-
-export async function getUser(accessToken: string) {
-  const decodedToken = jwt.decode(accessToken);
-  const mockUser = mockUsers.find((role) => role.sub === decodedToken.sub);
-  addSuperUserOffices(mockUser.user);
-  return { user: mockUser.user, groups: [], jwt: {} as CamsJwt };
 }
 
 const MockOpenIdConnectGateway: OpenIdConnectGateway = {

@@ -1,14 +1,15 @@
-import { describe } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import * as oktaProviderModule from './providers/okta/OktaProvider';
-import * as oktaLogoutModule from './providers/okta/OktaLogout';
-import * as mockLogoutModule from './providers/mock/MockLogout';
-import * as sessionEndModule from './SessionEnd';
-import { PropsWithChildren } from 'react';
 import * as libraryModule from '@/login/login-library';
-import { Logout } from './Logout';
-import { SessionEnd } from './SessionEnd';
+import { render, screen, waitFor } from '@testing-library/react';
+import { PropsWithChildren } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
+
+import { Logout } from './Logout';
+import * as mockLogoutModule from './providers/mock/MockLogout';
+import * as oktaLogoutModule from './providers/okta/OktaLogout';
+import * as oktaProviderModule from './providers/okta/OktaProvider';
+import * as sessionEndModule from './SessionEnd';
+import { SessionEnd } from './SessionEnd';
 
 describe('Logout', () => {
   const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');

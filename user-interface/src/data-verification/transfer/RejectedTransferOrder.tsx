@@ -1,12 +1,13 @@
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { AlertDetails } from '@/lib/components/uswds/Alert';
-import { TransferOrder } from '@common/cams/orders';
-import { FromCaseSummary } from './FromCaseSummary';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
+import { TransferOrder } from '@common/cams/orders';
+
+import { FromCaseSummary } from './FromCaseSummary';
 
 type RejectedTransferOrderProps = {
-  order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
+  order: TransferOrder;
 };
 
 export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
@@ -49,7 +50,7 @@ export function RejectedTransferOrder(props: RejectedTransferOrderProps) {
         </div>
         <div className="grid-col-1"></div>
       </div>
-      <FromCaseSummary order={order} onOrderUpdate={props.onOrderUpdate} />
+      <FromCaseSummary onOrderUpdate={props.onOrderUpdate} order={order} />
     </>
   );
 }

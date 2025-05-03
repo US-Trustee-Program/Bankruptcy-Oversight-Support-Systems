@@ -1,11 +1,11 @@
 import { CamsUser, CamsUserReference } from './users';
 
 export type CamsSession = {
-  user: CamsUser;
   accessToken: string;
-  provider: string;
-  issuer: string;
   expires: number;
+  issuer: string;
+  provider: string;
+  user: CamsUser;
 };
 
 export function getCamsUserReference<T extends CamsUserReference>(user: T): CamsUserReference {

@@ -1,6 +1,8 @@
-import * as database from '../../utils/database';
+import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
 import { QueryResults } from '../../types/database';
+import * as database from '../../utils/database';
 import {
   DxtrOrder,
   DxtrOrderDocketEntry,
@@ -8,8 +10,6 @@ import {
   DxtrOrdersGateway,
   dxtrOrdersSorter,
 } from './orders.dxtr.gateway';
-import { ApplicationContext } from '../../types/basic';
-import { MockData } from '../../../../../common/src/cams/test-utilities/mock-data';
 
 function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
   return docket.reduce<string>((earliestDate, de) => {
@@ -20,25 +20,25 @@ function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
 
 const dxtrTransferCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
+    dateFiled: '2023-12-01',
     docketSuggestedCaseNumber: '22-11111',
+    documentNumber: 0,
+    dxtrCaseId: '11111',
+    fullText: 'This is the full text.',
     rawRec: 'NNNNNN WARN: 22-11111',
     sequenceNumber: 0,
-    dateFiled: '2023-12-01',
-    txId: '1',
-    dxtrCaseId: '11111',
-    documentNumber: 0,
     summaryText: 'Summary Text',
-    fullText: 'This is the full text.',
+    txId: '1',
   },
   {
+    dateFiled: '2023-11-01',
+    documentNumber: 1,
+    dxtrCaseId: '11111',
+    fullText: 'This is the other full text.',
     rawRec: '',
     sequenceNumber: 1,
-    dateFiled: '2023-11-01',
-    txId: '2',
-    dxtrCaseId: '11111',
-    documentNumber: 1,
     summaryText: 'Some other Text',
-    fullText: 'This is the other full text.',
+    txId: '2',
   },
 ];
 
@@ -48,59 +48,59 @@ const dxtrTransferOrder: DxtrOrder = {
 };
 
 const dxtrTransferOrderDocument: DxtrOrderDocument = {
-  txId: '1',
-  sequenceNumber: 0,
-  fileSize: 9999,
-  uriStem: 'https://somedomain.gov/files',
-  fileName: '0208-173976-0-0-0.pdf',
   deleted: 'N',
+  fileName: '0208-173976-0-0-0.pdf',
+  fileSize: 9999,
+  sequenceNumber: 0,
+  txId: '1',
+  uriStem: 'https://somedomain.gov/files',
 };
 
 const dxtrConsolidationCaseDocketEntries1: DxtrOrderDocketEntry[] = [
   {
+    dateFiled: '2023-12-01',
     docketSuggestedCaseNumber: '22-11111',
+    documentNumber: 0,
+    dxtrCaseId: '11111',
+    fullText: 'This is the full text.',
     rawRec: 'NNNNNN WARN: 22-11111',
     sequenceNumber: 0,
-    dateFiled: '2023-12-01',
-    txId: '3',
-    dxtrCaseId: '11111',
-    documentNumber: 0,
     summaryText: 'Summary Text',
-    fullText: 'This is the full text.',
+    txId: '3',
   },
   {
+    dateFiled: '2023-11-01',
+    documentNumber: 1,
+    dxtrCaseId: '11111',
+    fullText: 'This is the other full text.',
     rawRec: '',
     sequenceNumber: 1,
-    dateFiled: '2023-11-01',
-    txId: '4',
-    dxtrCaseId: '11111',
-    documentNumber: 1,
     summaryText: 'Some other Text',
-    fullText: 'This is the other full text.',
+    txId: '4',
   },
 ];
 
 const dxtrConsolidationCaseDocketEntries2: DxtrOrderDocketEntry[] = [
   {
+    dateFiled: '2023-12-01',
     docketSuggestedCaseNumber: '22-11111',
+    documentNumber: 0,
+    dxtrCaseId: '22222',
+    fullText: 'This is the full text.',
     rawRec: 'NNNNNN WARN: 22-11111',
     sequenceNumber: 0,
-    dateFiled: '2023-12-01',
-    txId: '5',
-    dxtrCaseId: '22222',
-    documentNumber: 0,
     summaryText: 'Summary Text',
-    fullText: 'This is the full text.',
+    txId: '5',
   },
   {
+    dateFiled: '2023-11-01',
+    documentNumber: 1,
+    dxtrCaseId: '22222',
+    fullText: 'This is the other full text.',
     rawRec: '',
     sequenceNumber: 1,
-    dateFiled: '2023-11-01',
-    txId: '6',
-    dxtrCaseId: '22222',
-    documentNumber: 1,
     summaryText: 'Some other Text',
-    fullText: 'This is the other full text.',
+    txId: '6',
   },
 ];
 
@@ -121,21 +121,21 @@ const dxtrConsolidationOrders: DxtrOrder[] = [
 ];
 
 const dxtrConsolidationOrderDocument: DxtrOrderDocument = {
-  txId: '1',
-  sequenceNumber: 0,
-  fileSize: 9999,
-  uriStem: 'https://somedomain.gov/files',
-  fileName: '0208-173976-0-0-0.pdf',
   deleted: 'N',
+  fileName: '0208-173976-0-0-0.pdf',
+  fileSize: 9999,
+  sequenceNumber: 0,
+  txId: '1',
+  uriStem: 'https://somedomain.gov/files',
 };
 
 function buildSuccessfulQueryResult(recordset: Array<unknown> = []) {
   const orderDocumentResults: QueryResults = {
-    success: true,
+    message: '',
     results: {
       recordset: recordset,
     },
-    message: '',
+    success: true,
   };
   return orderDocumentResults;
 }
@@ -217,19 +217,19 @@ describe('DxtrOrdersGateway', () => {
 
       const querySpy = jest.spyOn(database, 'executeQuery');
       const mockOrdersResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [dxtrTransferOrder],
         },
-        message: '',
+        success: true,
       };
 
       const mockDocumentsResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [dxtrTransferOrderDocument],
         },
-        message: '',
+        success: true,
       };
 
       applicationContext.featureFlags = {};
@@ -257,17 +257,17 @@ describe('DxtrOrdersGateway', () => {
 
       const expectedErrorMessage = 'some warning from the orders query';
       const mockOrdersResults: QueryResults = {
-        success: false,
         message: expectedErrorMessage,
         results: undefined,
+        success: false,
       };
 
       const mockDocumentsResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [dxtrTransferOrderDocument],
         },
-        message: '',
+        success: true,
       };
 
       let callSequence = 0;
@@ -288,18 +288,18 @@ describe('DxtrOrdersGateway', () => {
 
     test('should handle thrown errors from _getDocuments', async () => {
       const mockOrdersResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [dxtrTransferOrder],
         },
-        message: '',
+        success: true,
       };
 
       const expectedErrorMessage = 'some warning from the documents query';
       const mockDocumentsResults: QueryResults = {
-        success: false,
         message: expectedErrorMessage,
         results: undefined,
+        success: false,
       };
 
       let callSequence = 0;
@@ -321,26 +321,26 @@ describe('DxtrOrdersGateway', () => {
 
     test('_getOrderDocuments should throw a CamsError when the query execution fails', async () => {
       const mockOrdersResults: QueryResults = {
-        success: true,
+        message: '',
         results: {
           recordset: [dxtrTransferOrder],
         },
-        message: '',
+        success: true,
       };
 
       const mockDocketEntries: QueryResults = {
-        success: true,
         message: '',
         results: {
           recordset: [],
         },
+        success: true,
       };
 
       const expectedErrorMessage = 'some warning from the documents query';
       const mockDocumentsResults: QueryResults = {
-        success: false,
         message: expectedErrorMessage,
         results: undefined,
+        success: false,
       };
 
       let callSequence = 0;

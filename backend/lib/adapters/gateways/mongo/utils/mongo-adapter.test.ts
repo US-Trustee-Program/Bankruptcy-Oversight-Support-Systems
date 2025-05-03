@@ -22,23 +22,23 @@ const countDocuments = jest.fn();
 const aggregate = jest.fn();
 
 const spies = {
+  aggregate,
+  countDocuments,
+  deleteMany,
+  deleteOne,
   find,
   findOne,
+  insertMany,
+  insertOne,
   paginate,
   replaceOne,
   updateOne,
-  insertOne,
-  insertMany,
-  deleteOne,
-  deleteMany,
-  countDocuments,
-  aggregate,
 };
 
 type TestType = {
   _id?: unknown;
-  id?: string;
   foo?: string;
+  id?: string;
 };
 
 describe('Mongo adapter', () => {
@@ -118,14 +118,14 @@ describe('Mongo adapter', () => {
 
   test('should return a sorted list of items from paginate', async () => {
     const expectedValue = {
-      metadata: { total: 3 },
       data: [{}, {}, {}],
+      metadata: { total: 3 },
     };
     aggregate.mockResolvedValue({
       next: () => {
         return Promise.resolve({
-          metadata: [{ total: 3 }],
           data: [{}, {}, {}],
+          metadata: [{ total: 3 }],
         });
       },
     });
@@ -133,7 +133,7 @@ describe('Mongo adapter', () => {
     const item = await adapter.paginate(
       QueryPipeline.pipeline(
         QueryPipeline.match(testQuery),
-        QueryPipeline.sort({ field: { name: 'foo' }, direction: 'ASCENDING' }),
+        QueryPipeline.sort({ direction: 'ASCENDING', field: { name: 'foo' } }),
         QueryPipeline.paginate(0, 25),
       ),
     );
@@ -160,14 +160,14 @@ describe('Mongo adapter', () => {
   });
 
   test('should return a single Id from replaceOne', async () => {
-    const testObject: TestType = { id: '12345', foo: 'bar' };
+    const testObject: TestType = { foo: 'bar', id: '12345' };
     const _id = 'mongoGeneratedId';
     replaceOne.mockResolvedValue({
       acknowledged: true,
       matchedCount: 1,
       modifiedCount: 1,
-      upsertedId: _id,
       upsertedCount: 0,
+      upsertedId: _id,
     });
 
     const expected = {
@@ -182,7 +182,7 @@ describe('Mongo adapter', () => {
   });
 
   test('should throw an error calling replaceOne for a nonexistent record and upsert=false', async () => {
-    const testObject: TestType = { id: '12345', foo: 'bar' };
+    const testObject: TestType = { foo: 'bar', id: '12345' };
     replaceOne.mockResolvedValue({
       acknowledged: true,
       matchedCount: 0,
@@ -203,7 +203,7 @@ describe('Mongo adapter', () => {
   test.each(matchedCountCases)(
     'should throw an error when %s items were found but nothing was modified',
     async (_caseName: string, acknowledged: boolean, matchedCount: number) => {
-      const testObject: TestType = { id: '12345', foo: 'bar' };
+      const testObject: TestType = { foo: 'bar', id: '12345' };
       replaceOne.mockResolvedValue({
         acknowledged,
         matchedCount,
@@ -218,7 +218,7 @@ describe('Mongo adapter', () => {
   );
 
   test('should return a single Id from replaceOne when upsert = true and no match was made', async () => {
-    const testObject: TestType = { id: '12345', foo: 'bar' };
+    const testObject: TestType = { foo: 'bar', id: '12345' };
     const _id = 'mongoGeneratedId';
 
     replaceOne.mockResolvedValue({
@@ -254,7 +254,7 @@ describe('Mongo adapter', () => {
       modifiedCount,
       upsertedCount,
     ) => {
-      const testObject: TestType = { id: '12345', foo: 'bar' };
+      const testObject: TestType = { foo: 'bar', id: '12345' };
       replaceOne.mockResolvedValue({
         acknowledged,
         matchedCount,
@@ -307,8 +307,8 @@ describe('Mongo adapter', () => {
     const ids = ['0', '1', '2', '3', '4'];
     insertMany.mockResolvedValue({
       acknowledged: true,
-      insertedIds: ids,
       insertedCount: ids.length,
+      insertedIds: ids,
     });
     const result = await adapter.insertMany([{}, {}, {}, {}, {}]);
     expect(result.length).toEqual(ids.length);
@@ -359,17 +359,17 @@ describe('Mongo adapter', () => {
   test('should throw CamsError when some but not all items are inserted', async () => {
     insertMany.mockResolvedValue({
       acknowledged: true,
+      insertedCount: 3,
       insertedIds: {
         one: 'one',
-        two: 'two',
         three: 'three',
+        two: 'two',
       },
-      insertedCount: 3,
     });
 
     const error = new CamsError(MODULE_NAME, {
-      message: 'Not all items inserted',
       data: expect.anything(),
+      message: 'Not all items inserted',
     });
 
     await expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(error);
@@ -378,14 +378,14 @@ describe('Mongo adapter', () => {
   test('should handle errors', async () => {
     const originalError = new Error('Test Exception');
     const expectedError = expect.objectContaining({
-      isCamsError: true,
-      message: expect.any(String),
       camsStack: [
         expect.objectContaining({
-          module: `${MODULE_NAME}_ADAPTER`,
           message: expect.any(String),
+          module: `${MODULE_NAME}_ADAPTER`,
         }),
       ],
+      isCamsError: true,
+      message: expect.any(String),
     });
     Object.values(spies).forEach((spy) => {
       spy.mockRejectedValue(originalError);

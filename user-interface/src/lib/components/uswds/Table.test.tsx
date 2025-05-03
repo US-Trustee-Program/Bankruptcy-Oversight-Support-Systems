@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import { render, screen } from '@testing-library/react';
+
 import {
   Table,
   TableBody,
@@ -223,7 +224,7 @@ describe('Table component', () => {
   });
 
   test('should render the caption if title is passed to table', () => {
-    render(<Table data-testid="test-table" title="test caption" caption="test caption"></Table>);
+    render(<Table caption="test caption" data-testid="test-table" title="test caption"></Table>);
 
     const table = screen.queryByTestId('test-table');
     expect(table).toBeInTheDocument();

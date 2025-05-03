@@ -1,13 +1,43 @@
-import { AttorneyGatewayInterface } from './use-cases/attorneys/attorney.gateway.interface';
-import { CasesInterface } from './use-cases/cases/cases.interface';
-import { ApplicationContext } from './adapters/types/basic';
+import { config, ConnectionPool } from 'mssql';
+
+import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
-import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { IDbConfig } from './adapters/types/database';
-import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
-import { ConnectionPool, config } from 'mssql';
+import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
+import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import { CaseAssignmentMongoRepository } from './adapters/gateways/mongo/case-assignment.mongo.repository';
+import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
+import { CasesMongoRepository } from './adapters/gateways/mongo/cases.mongo.repository';
+import ConsolidationOrdersMongoRepository from './adapters/gateways/mongo/consolidations.mongo.repository';
+import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
+import { OfficesMongoRepository } from './adapters/gateways/mongo/offices.mongo.repository';
+import { OrdersMongoRepository } from './adapters/gateways/mongo/orders.mongo.repository';
+import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
+import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
+import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
+import OktaGateway from './adapters/gateways/okta/okta-gateway';
+import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
+import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
+import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
+import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
+import { ApplicationContext } from './adapters/types/basic';
+import { IDbConfig } from './adapters/types/database';
+import { StorageGateway } from './adapters/types/storage';
+import { getCamsErrorWithStack } from './common-errors/error-utilities';
+import { deferRelease } from './deferrable/defer-release';
+import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
+import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
+import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
+import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
+import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
+import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
+import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
+import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
+import { AttorneyGatewayInterface } from './use-cases/attorneys/attorney.gateway.interface';
+import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
+import { CasesInterface } from './use-cases/cases/cases.interface';
 import {
   AcmsGateway,
   CaseAssignmentRepository,
@@ -27,37 +57,8 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from './use-cases/gateways.types';
-import { DxtrOrdersGateway } from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
-import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
-import { OpenIdConnectGateway, UserGroupGateway } from './adapters/types/authorization';
-import OktaGateway from './adapters/gateways/okta/okta-gateway';
-import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
-import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
-import { StorageGateway } from './adapters/types/storage';
-import LocalStorageGateway from './adapters/gateways/storage/local-storage-gateway';
-import MockAttorneysGateway from './testing/mock-gateways/mock-attorneys.gateway';
-import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
-import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
-import OktaUserGroupGateway from './adapters/gateways/okta/okta-user-group-gateway';
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
-import { OfficesMongoRepository } from './adapters/gateways/mongo/offices.mongo.repository';
-import { CaseAssignmentMongoRepository } from './adapters/gateways/mongo/case-assignment.mongo.repository';
-import { OrdersMongoRepository } from './adapters/gateways/mongo/orders.mongo.repository';
-import { CasesMongoRepository } from './adapters/gateways/mongo/cases.mongo.repository';
-import ConsolidationOrdersMongoRepository from './adapters/gateways/mongo/consolidations.mongo.repository';
-import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
-import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
-import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
-import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
-import { deferRelease } from './deferrable/defer-release';
-import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
-import { MockOfficesRepository } from './testing/mock-gateways/mock.offices.repository';
-import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
-import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
-import { getCamsErrorWithStack } from './common-errors/error-utilities';
-import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
-import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -294,8 +295,8 @@ export const getUserGroupGateway = async (
         idpApiGateway = null;
         throw getCamsErrorWithStack(originalError, 'FACTORY', {
           camsStackInfo: {
-            module: 'FACTORY',
             message: 'Identity provider API Gateway failed to initialize.',
+            module: 'FACTORY',
           },
         });
       }
@@ -329,30 +330,30 @@ export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
 
 export const Factory = {
   getAcmsGateway,
-  getAttorneyGateway,
-  getCasesGateway,
   getAssignmentRepository,
-  getCaseNotesRepository,
+  getAttorneyGateway,
+  getAuthorizationGateway,
   getCaseDocketUseCase,
-  getSqlConnection,
-  getOrdersGateway,
+  getCaseNotesRepository,
+  getCasesGateway,
+  getCasesRepository,
+  getCasesSyncStateRepo,
+  getConsolidationOrdersRepository,
   getOfficeAssigneesRepository,
   getOfficesGateway,
   getOfficesRepository,
-  getOrdersRepository,
-  getConsolidationOrdersRepository,
-  getCasesRepository,
-  getRuntimeStateRepository,
-  getOrderSyncStateRepo,
   getOfficeStaffSyncStateRepo,
-  getCasesSyncStateRepo,
-  getAuthorizationGateway,
-  getUserSessionUseCase,
-  getUserSessionCacheRepository,
+  getOrdersGateway,
+  getOrdersRepository,
+  getOrderSyncStateRepo,
+  getQueueGateway,
+  getRuntimeStateRepository,
+  getSqlConnection,
   getStorageGateway,
   getUserGroupGateway,
+  getUserSessionCacheRepository,
+  getUserSessionUseCase,
   getUsersRepository,
-  getQueueGateway,
 };
 
 export default Factory;

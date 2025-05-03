@@ -1,6 +1,8 @@
+import { CaseNote } from '../../../../../common/src/cams/cases';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder from '../../../query/query-builder';
 import {
   createMockApplicationContext,
   getTheThrownError,
@@ -8,8 +10,6 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { CaseNotesMongoRepository } from './case-notes.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import QueryBuilder from '../../../query/query-builder';
-import { CaseNote } from '../../../../../common/src/cams/cases';
 
 const { and, using } = QueryBuilder;
 const doc = using<CaseNote>();
@@ -79,8 +79,8 @@ describe('case notes repo tests', () => {
       const note = MockData.getCaseNote();
       const input: Partial<CaseNote> = {
         ...note,
-        createdOn: note.updatedOn,
         createdBy: note.updatedBy,
+        createdOn: note.updatedOn,
       };
 
       const expectedData = {
@@ -97,7 +97,7 @@ describe('case notes repo tests', () => {
 
       const updateOneSpy = jest
         .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
-        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+        .mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
 
       await repo.update(input);
 
@@ -168,12 +168,12 @@ describe('case notes repo tests', () => {
         await repo.read('some-id');
       });
       const expected = {
+        camsStack: expect.anything(),
+        data: undefined,
+        isCamsError: true,
         message: 'Unknown Error',
         module: expect.any(String),
         originalError: expect.anything(),
-        isCamsError: true,
-        camsStack: expect.anything(),
-        data: undefined,
         status: 500,
       };
       expect(actual).toEqual(expected);

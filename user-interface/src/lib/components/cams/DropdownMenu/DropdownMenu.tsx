@@ -1,27 +1,29 @@
 import './DropdownMenu.scss';
+
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
+
 import LinkUtils from '../linkUtils';
 
-export type MenuItem = {
-  label: string;
-  address: string;
-  title?: string;
-  className?: string;
-  target?: string;
-};
-
 export type DropdownMenuProps = {
-  id: string;
-  children: React.ReactNode;
-  menuItems: MenuItem[];
-  className?: string;
   ariaLabel: string;
+  children: React.ReactNode;
+  className?: string;
+  id: string;
+  menuItems: MenuItem[];
   onClick?: () => void;
 };
 
+export type MenuItem = {
+  address: string;
+  className?: string;
+  label: string;
+  target?: string;
+  title?: string;
+};
+
 export function DropdownMenu(props: DropdownMenuProps) {
-  const { id, menuItems, className, children, ariaLabel } = props;
+  const { ariaLabel, children, className, id, menuItems } = props;
   const submenuItemCount = menuItems.length;
 
   const [expanded, setExpanded] = useState<boolean>(false);
@@ -115,39 +117,39 @@ export function DropdownMenu(props: DropdownMenuProps) {
   return (
     <div className="cams-dropdown-menu">
       <button
-        id={id}
-        type="button"
-        className={`usa-accordion__button usa-nav__link ${className ?? ''}`}
-        onClick={handleToggleExpand}
+        aria-controls={`${id}-item-list`}
         aria-expanded={expanded}
         aria-haspopup="menu"
-        aria-controls={`${id}-item-list`}
         aria-label={ariaLabel}
+        className={`usa-accordion__button usa-nav__link ${className ?? ''}`}
+        id={id}
+        onClick={handleToggleExpand}
         ref={buttonRef}
+        type="button"
       >
         <span>{children}</span>
       </button>
       <ul
-        id={`${id}-item-list`}
         className={`usa-nav__submenu ${className}`}
         hidden={!expanded}
+        id={`${id}-item-list`}
         role="menu"
       >
         {menuItems.map((item, idx) => (
           <li
-            id={`li-${id}-${idx}`}
             className={`usa-nav__submenu-item ${item.className ?? ''}`}
-            role="menuitem"
+            id={`li-${id}-${idx}`}
             key={idx}
+            role="menuitem"
           >
             <NavLink
-              id={`menu-link-${id}-${idx}`}
-              to={item.address}
-              data-testid={`menu-item-${id}-${idx}`}
               className="usa-nav-link"
-              title={item.title ?? ''}
-              target={item.target}
+              data-testid={`menu-item-${id}-${idx}`}
+              id={`menu-link-${id}-${idx}`}
               onKeyDown={handleSubItemKeyDown}
+              target={item.target}
+              title={item.title ?? ''}
+              to={item.address}
             >
               {item.label}
             </NavLink>

@@ -1,20 +1,17 @@
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { CaseSummary } from '@common/cams/cases';
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { CaseTable, CaseTableImperative } from './CaseTable';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
-import { getDivisionComboOptions } from '../dataVerificationHelper';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { TransferOrder } from '@common/cams/orders';
-import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
+import { CaseSummary } from '@common/cams/cases';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { TransferOrder } from '@common/cams/orders';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-export type SuggestedTransferCasesImperative = {
-  cancel: () => void;
-};
+import { getDivisionComboOptions } from '../dataVerificationHelper';
+import { CaseTable, CaseTableImperative } from './CaseTable';
 
 enum ValidationStates {
   notValidated,
@@ -22,26 +19,30 @@ enum ValidationStates {
   notFound,
 }
 
+export type SuggestedTransferCasesImperative = {
+  cancel: () => void;
+};
+
 export type SuggestedTransferCasesProps = {
-  order: TransferOrder;
   officesList: CourtDivisionDetails[];
-  onCaseSelection: (bCase: CaseSummary | null) => void;
   onAlert: (alertDetails: AlertDetails) => void;
+  onCaseSelection: (bCase: CaseSummary | null) => void;
   onInvalidCaseNumber: () => void;
+  order: TransferOrder;
 };
 
 function _SuggestedTransferCases(
   props: SuggestedTransferCasesProps,
   SuggestedTransferCasesRef: React.Ref<SuggestedTransferCasesImperative>,
 ) {
-  const { order, officesList } = props;
+  const { officesList, order } = props;
 
   const [validationState, setValidationState] = useState<ValidationStates>(
     ValidationStates.notValidated,
   );
   const [newCaseSummary, setNewCaseSummary] = useState<CaseSummary | null>(null);
   const [newCaseDivision, setNewCaseDivision] = useState<CourtDivisionDetails | null>(null);
-  const [newCaseNumber, setNewCaseNumber] = useState<string | null>(
+  const [newCaseNumber, setNewCaseNumber] = useState<null | string>(
     order.docketSuggestedCaseNumber || null,
   );
   const [enableCaseEntry, setEnableCaseEntry] = useState<boolean>(false);
@@ -136,7 +137,7 @@ function _SuggestedTransferCases(
       })
       .catch((reason: Error) => {
         setLoadingSuggestions(false);
-        props.onAlert({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        props.onAlert({ message: reason.message, timeOut: 8, type: UswdsAlertStyle.Error });
       });
   }
 
@@ -208,8 +209,8 @@ function _SuggestedTransferCases(
               <div className="grid-col-1"></div>
               <div className="grid-col-11">
                 <LoadingSpinner
-                  id={`loading-spinner-${order.id}-suggestions`}
                   caption="Loading suggestions..."
+                  id={`loading-spinner-${order.id}-suggestions`}
                 ></LoadingSpinner>
               </div>
             </>
@@ -221,8 +222,8 @@ function _SuggestedTransferCases(
                 <div className="transfer-text">
                   {suggestedCases && suggestedCases?.length > 0 && (
                     <CaseTable
-                      id="suggested-cases"
                       cases={[...suggestedCases, null]}
+                      id="suggested-cases"
                       onSelect={handleCaseSelection}
                       ref={suggestedCasesRef}
                     ></CaseTable>
@@ -248,15 +249,15 @@ function _SuggestedTransferCases(
                       data-testid={`court-selection-usa-combo-box-${order.id}`}
                     >
                       <ComboBox
-                        id={`court-selection-${order.id}`}
+                        ariaLabelPrefix="Select a Court and Division"
                         className="new-court__select"
+                        id={`court-selection-${order.id}`}
                         label="New Court"
-                        wrapPills={true}
-                        ref={courtSelectionRef}
                         onUpdateSelection={handleCourtSelection}
                         options={getDivisionComboOptions(officesList)}
-                        ariaLabelPrefix="Select a Court and Division"
+                        ref={courtSelectionRef}
                         required={true}
+                        wrapPills={true}
                       />
                     </div>
                   </div>
@@ -270,17 +271,17 @@ function _SuggestedTransferCases(
               <div className="grid-col-4">
                 <div>
                   <CaseNumberInput
-                    id={`new-case-input-${order.id}`}
-                    data-testid={`new-case-input-${order.id}`}
-                    className="usa-input"
-                    value={order.docketSuggestedCaseNumber}
-                    onChange={handleCaseInputChange}
                     allowPartialCaseNumber={false}
                     aria-label="New case number. This will automatically select the case for this case event."
-                    ref={caseNumberRef}
+                    className="usa-input"
+                    data-testid={`new-case-input-${order.id}`}
                     disabled={true}
-                    required={true}
+                    id={`new-case-input-${order.id}`}
                     label="New Case Number"
+                    onChange={handleCaseInputChange}
+                    ref={caseNumberRef}
+                    required={true}
+                    value={order.docketSuggestedCaseNumber}
                   />
                 </div>
               </div>
@@ -292,22 +293,22 @@ function _SuggestedTransferCases(
               <div className="grid-col-10">
                 {loadingCaseSummary && (
                   <LoadingSpinner
-                    id={`loading-spinner-${order.id}-case-verification`}
                     caption="Loading cases..."
+                    id={`loading-spinner-${order.id}-case-verification`}
                   ></LoadingSpinner>
                 )}
                 {!loadingCaseSummary && validationState === ValidationStates.found && (
-                  <CaseTable id="validated-cases" cases={[newCaseSummary!]}></CaseTable>
+                  <CaseTable cases={[newCaseSummary!]} id="validated-cases"></CaseTable>
                 )}
                 {!loadingCaseSummary && validationState === ValidationStates.notFound && (
                   <Alert
-                    inline={true}
-                    show={true}
-                    message="We couldn't find a case with that number"
-                    type={UswdsAlertStyle.Error}
-                    role="status"
                     className="validation-alert"
                     id="validation-not-found"
+                    inline={true}
+                    message="We couldn't find a case with that number"
+                    role="status"
+                    show={true}
+                    type={UswdsAlertStyle.Error}
                   />
                 )}
               </div>

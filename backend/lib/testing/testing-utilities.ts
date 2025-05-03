@@ -1,10 +1,11 @@
-import { ApplicationContext } from '../adapters/types/basic';
 import { HttpRequest, InvocationContext } from '@azure/functions';
-import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
+
 import { CamsSession } from '../../../common/src/cams/session';
-import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
+import { MockData } from '../../../common/src/cams/test-utilities/mock-data';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';
+import { ApplicationContext } from '../adapters/types/basic';
+import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import { CamsError } from '../common-errors/cams-error';
 
 const invocationContext = new InvocationContext();
@@ -37,28 +38,15 @@ export async function createMockApplicationContextSession(
 }
 
 export function createMockRequest(request: Partial<CamsHttpRequest> = {}): HttpRequest {
-  const { headers, method, body, ...other } = request;
+  const { body, headers, method, ...other } = request;
   const requestInit = {
-    method: (method as CamsHttpMethod) ?? 'GET',
-    url: 'http://localhost:3000',
     body: { string: JSON.stringify(body) },
     headers: { authorization: 'Bearer ' + MockData.getJwt(), ...headers },
+    method: (method as CamsHttpMethod) ?? 'GET',
+    url: 'http://localhost:3000',
     ...other,
   };
   return new HttpRequest(requestInit);
-}
-
-function convertError<T extends CamsError>(error: unknown): T {
-  const camsError = {
-    message: error['message'],
-    status: error['status'],
-    module: error['module'],
-    originalError: error['originalError'],
-    data: error['data'],
-    isCamsError: error['isCamsError'],
-    camsStack: error['camsStack'],
-  };
-  return camsError as T;
 }
 
 /**
@@ -76,4 +64,17 @@ export async function getTheThrownError<T extends CamsError>(fn: () => unknown):
   } catch (e: unknown) {
     return convertError<T>(e);
   }
+}
+
+function convertError<T extends CamsError>(error: unknown): T {
+  const camsError = {
+    camsStack: error['camsStack'],
+    data: error['data'],
+    isCamsError: error['isCamsError'],
+    message: error['message'],
+    module: error['module'],
+    originalError: error['originalError'],
+    status: error['status'],
+  };
+  return camsError as T;
 }

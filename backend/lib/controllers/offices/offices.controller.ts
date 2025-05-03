@@ -1,12 +1,12 @@
-import { OfficesUseCase } from '../../use-cases/offices/offices';
-import { ApplicationContext } from '../../adapters/types/basic';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
-import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { CamsController, CamsTimerController } from '../controller';
 import { CamsUserReference } from '../../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import { OfficesUseCase } from '../../use-cases/offices/offices';
+import { CamsController, CamsTimerController } from '../controller';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 
@@ -17,19 +17,9 @@ export class OfficesController implements CamsController, CamsTimerController {
     this.useCase = new OfficesUseCase();
   }
 
-  public async handleTimer(context: ApplicationContext): Promise<void> {
-    try {
-      await this.useCase.syncOfficeStaff(context);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    } finally {
-      await finalizeDeferrable(context);
-    }
-  }
-
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<UstpOfficeDetails[] | CamsUserReference[]>> {
+  ): Promise<CamsHttpResponseInit<CamsUserReference[] | UstpOfficeDetails[]>> {
     try {
       const { params } = context.request;
       let data;
@@ -46,12 +36,22 @@ export class OfficesController implements CamsController, CamsTimerController {
       }
       return httpSuccess({
         body: {
+          data,
           meta: {
             self: context.request.url,
           },
-          data,
         },
       });
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await finalizeDeferrable(context);
+    }
+  }
+
+  public async handleTimer(context: ApplicationContext): Promise<void> {
+    try {
+      await this.useCase.syncOfficeStaff(context);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {

@@ -7,8 +7,8 @@ export class MockOrdersGateway implements OrdersGateway {
   async getOrderSync(_applicationContext: ApplicationContext, txId: string): Promise<RawOrderSync> {
     return Promise.resolve({
       consolidations: [MockData.getRawConsolidationOrder()],
-      transfers: [MockData.getTransferOrder()],
       maxTxId: (2 + parseInt(txId)).toString(),
+      transfers: [MockData.getTransferOrder()],
     });
   }
 }

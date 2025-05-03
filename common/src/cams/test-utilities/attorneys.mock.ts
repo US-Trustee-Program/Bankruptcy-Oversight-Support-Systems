@@ -3,14 +3,14 @@ import { AttorneyUser } from '../users';
 import MockUsers, { REGION_02_GROUP_NY } from './mock-user';
 
 export const MockAttorneys: Record<string, AttorneyUser> = {
-  Daisy: { id: '0001', name: 'Daisy', offices: [], roles: [CamsRole.TrialAttorney] },
-  Roger: { id: '0002', name: 'Roger', offices: [], roles: [CamsRole.TrialAttorney] },
-  Frank: { id: '0003', name: 'Frank', offices: [], roles: [CamsRole.TrialAttorney] },
-  MrJones: { id: '0004', name: 'Mr. Jones', offices: [], roles: [CamsRole.TrialAttorney] },
-  Diana: { id: '0005', name: 'Diana', offices: [], roles: [CamsRole.TrialAttorney] },
-  Joe: { id: '0006', name: 'Joe', offices: [], roles: [CamsRole.TrialAttorney] },
-  Carl: { id: '0007', name: 'Carl', offices: [], roles: [CamsRole.TrialAttorney] },
   Brian: { id: '0008', name: 'Brian', offices: [], roles: [CamsRole.TrialAttorney] },
+  Carl: { id: '0007', name: 'Carl', offices: [], roles: [CamsRole.TrialAttorney] },
+  Daisy: { id: '0001', name: 'Daisy', offices: [], roles: [CamsRole.TrialAttorney] },
+  Diana: { id: '0005', name: 'Diana', offices: [], roles: [CamsRole.TrialAttorney] },
+  Frank: { id: '0003', name: 'Frank', offices: [], roles: [CamsRole.TrialAttorney] },
+  Joe: { id: '0006', name: 'Joe', offices: [], roles: [CamsRole.TrialAttorney] },
+  MrJones: { id: '0004', name: 'Mr. Jones', offices: [], roles: [CamsRole.TrialAttorney] },
+  Roger: { id: '0002', name: 'Roger', offices: [], roles: [CamsRole.TrialAttorney] },
 };
 
 const manhattanAttorneys = MockUsers.filter(

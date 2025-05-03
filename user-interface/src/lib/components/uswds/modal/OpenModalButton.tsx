@@ -1,35 +1,36 @@
-import { ButtonProps, BUTTON_BASE_CLASS, UswdsButtonStyle } from '../Button';
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+
+import { BUTTON_BASE_CLASS, ButtonProps, UswdsButtonStyle } from '../Button';
 import { ModalRefType, OpenModalButtonRef } from './modal-refs';
 
 export interface ModalOpenButtonProps {
-  id?: string;
-  children: React.ReactNode;
+  ariaLabel?: string;
   buttonIndex?: string;
-  uswdsStyle?: UswdsButtonStyle;
+  children: React.ReactNode;
   disabled?: boolean;
-  openProps?: object;
+  id?: string;
   modalId: string;
   modalRef: React.RefObject<ModalRefType>;
+  openProps?: object;
   title?: string;
-  ariaLabel?: string;
+  uswdsStyle?: UswdsButtonStyle;
 }
 
 function OpenModalButtonComponent(
   {
-    id,
-    children,
-    buttonIndex,
-    uswdsStyle,
-    disabled,
-    openProps,
-    modalId,
-    onClick,
-    className,
-    modalRef,
-    title,
     ariaLabel,
-  }: ModalOpenButtonProps & ButtonProps & JSX.IntrinsicElements['button'],
+    buttonIndex,
+    children,
+    className,
+    disabled,
+    id,
+    modalId,
+    modalRef,
+    onClick,
+    openProps,
+    title,
+    uswdsStyle,
+  }: ButtonProps & JSX.IntrinsicElements['button'] & ModalOpenButtonProps,
   ref: React.Ref<OpenModalButtonRef>,
 ) {
   let dataTestidSuffix = id ? `_${id}` : '';
@@ -65,16 +66,16 @@ function OpenModalButtonComponent(
 
   return (
     <button
-      type="button"
       aria-controls={modalId}
-      className={classes}
-      onClick={handleOnClick}
-      data-testid={`open-modal-button${dataTestidSuffix}`}
-      aria-label={ariaLabel}
       aria-disabled={isDisabled}
+      aria-label={ariaLabel}
+      className={classes}
+      data-testid={`open-modal-button${dataTestidSuffix}`}
       disabled={isDisabled}
-      title={title}
+      onClick={handleOnClick}
       ref={buttonRef}
+      title={title}
+      type="button"
     >
       {children}
     </button>

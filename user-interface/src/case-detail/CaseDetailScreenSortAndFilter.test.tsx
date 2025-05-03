@@ -1,51 +1,52 @@
+import { CaseDocket, CaseNote } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import ReactRouter from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
+import { vi } from 'vitest';
+
 import CaseDetailScreen, {
   applyDocketEntrySortAndFilters,
   findDocketLimits,
   getSummaryFacetList,
 } from './CaseDetailScreen';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
-import ReactRouter from 'react-router';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseDocket, CaseNote } from '@common/cams/cases';
-import userEvent from '@testing-library/user-event';
 
 const testCaseDocketEntries: CaseDocket = [
   {
-    sequenceNumber: 2,
-    documentNumber: 1,
     dateFiled: '2023-05-07',
-    summaryText: 'Add Judge',
+    documentNumber: 1,
     fullText: 'Docket entry number 1.',
+    sequenceNumber: 2,
+    summaryText: 'Add Judge',
   },
   {
-    sequenceNumber: 3,
     dateFiled: '2023-06-07',
-    summaryText: 'Motion',
     fullText: 'Docket entry number 2.',
+    sequenceNumber: 3,
+    summaryText: 'Motion',
   },
   {
-    sequenceNumber: 4,
-    documentNumber: 2,
     dateFiled: '2023-07-07',
-    summaryText: 'Add Attorney',
-    fullText: 'Docket entry number 3.',
+    documentNumber: 2,
     documents: [
       {
+        fileExt: 'pdf',
         fileLabel: '0-0',
         fileSize: 1000,
-        fileExt: 'pdf',
         fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
       },
     ],
+    fullText: 'Docket entry number 3.',
+    sequenceNumber: 4,
+    summaryText: 'Add Attorney',
   },
   {
-    sequenceNumber: 5,
     dateFiled: '2023-08-07',
-    summaryText: 'Motion',
     fullText: 'Docket entry number 4.',
+    sequenceNumber: 5,
+    summaryText: 'Motion',
   },
 ];
 const testCaseNotes: CaseNote[] = [];
@@ -63,7 +64,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -71,6 +71,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -119,7 +120,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[docketEntryPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/court-docket"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -127,6 +127,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/court-docket"
             />
           </Routes>
         </MemoryRouter>,
@@ -161,7 +162,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -169,6 +169,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -206,7 +207,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[docketEntryPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/court-docket"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -214,6 +214,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/court-docket"
             />
           </Routes>
         </MemoryRouter>,
@@ -257,10 +258,10 @@ describe('Case Detail sort, search, and filter tests', () => {
       const dateFiled = '2023-05-07';
       const limits = findDocketLimits([
         {
-          sequenceNumber: 2,
           dateFiled,
-          summaryText: 'Add Judge',
           fullText: 'Docket entry number 1.',
+          sequenceNumber: 2,
+          summaryText: 'Add Judge',
         },
       ]);
       expect(limits.dateRange.start).toEqual(dateFiled);
@@ -270,14 +271,14 @@ describe('Case Detail sort, search, and filter tests', () => {
     });
 
     test('should filter the list of docket entries per the search text', async () => {
-      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+      const { alertOptions, filteredDocketEntries } = applyDocketEntrySortAndFilters(
         testCaseDocketEntries,
         {
+          documentNumber: null,
           searchInDocketText: 'number 2',
+          selectedDateRange: {},
           selectedFacets: [],
           sortDirection: 'Oldest',
-          documentNumber: null,
-          selectedDateRange: {},
         },
       );
 
@@ -289,17 +290,17 @@ describe('Case Detail sort, search, and filter tests', () => {
     });
 
     test('should filter the list of docket entries per the selected facets', async () => {
-      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+      const { alertOptions, filteredDocketEntries } = applyDocketEntrySortAndFilters(
         testCaseDocketEntries,
         {
+          documentNumber: null,
           searchInDocketText: '',
+          selectedDateRange: {},
           selectedFacets: [
             testCaseDocketEntries[1].summaryText,
             testCaseDocketEntries[3].summaryText,
           ],
           sortDirection: 'Oldest',
-          documentNumber: null,
-          selectedDateRange: {},
         },
       );
 
@@ -318,14 +319,14 @@ describe('Case Detail sort, search, and filter tests', () => {
       const oldestEntry = testCaseDocketEntries[0];
 
       const docketEntries = testCaseDocketEntries.slice(0, 3);
-      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+      const { alertOptions, filteredDocketEntries } = applyDocketEntrySortAndFilters(
         docketEntries,
         {
+          documentNumber: null,
           searchInDocketText: '',
+          selectedDateRange: {},
           selectedFacets: [],
           sortDirection: 'Oldest',
-          documentNumber: null,
-          selectedDateRange: {},
         },
       );
 
@@ -346,14 +347,14 @@ describe('Case Detail sort, search, and filter tests', () => {
       const oldestEntry = testCaseDocketEntries[0];
 
       const docketEntries = testCaseDocketEntries.slice(0, 3);
-      const { filteredDocketEntries, alertOptions } = applyDocketEntrySortAndFilters(
+      const { alertOptions, filteredDocketEntries } = applyDocketEntrySortAndFilters(
         docketEntries,
         {
+          documentNumber: null,
           searchInDocketText: '',
+          selectedDateRange: {},
           selectedFacets: [],
           sortDirection: 'Newest',
-          documentNumber: null,
-          selectedDateRange: {},
         },
       );
 
@@ -371,48 +372,48 @@ describe('Case Detail sort, search, and filter tests', () => {
     test('should sort facets in call to getDocumentSummaryFacets', async () => {
       const testFacets = new Map([
         [
-          'Motion for Joint Administration',
-          {
-            text: 'Motion for Joint Administration',
-            count: 5,
-          },
-        ],
-        [
           'Add Judge',
           {
-            text: 'Add Judge',
             count: 2,
+            text: 'Add Judge',
           },
         ],
         [
           'Case Association - Joint Administration',
           {
-            text: 'Case Association - Joint Administration',
             count: 2,
+            text: 'Case Association - Joint Administration',
+          },
+        ],
+        [
+          'Motion for Joint Administration',
+          {
+            count: 5,
+            text: 'Motion for Joint Administration',
           },
         ],
         [
           'Order Re: Motion for Joint Administration',
           {
-            text: 'Order Re: Motion for Joint Administration',
             count: 1,
+            text: 'Order Re: Motion for Joint Administration',
           },
         ],
       ]);
 
       const expectedFacets = [
-        { value: 'Add Judge', label: 'Add Judge (2)' },
+        { label: 'Add Judge (2)', value: 'Add Judge' },
         {
-          value: 'Case Association - Joint Administration',
           label: 'Case Association - Joint Administration (2)',
+          value: 'Case Association - Joint Administration',
         },
         {
-          value: 'Motion for Joint Administration',
           label: 'Motion for Joint Administration (5)',
+          value: 'Motion for Joint Administration',
         },
         {
-          value: 'Order Re: Motion for Joint Administration',
           label: 'Order Re: Motion for Joint Administration (1)',
+          value: 'Order Re: Motion for Joint Administration',
         },
       ];
 
@@ -429,7 +430,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -437,6 +437,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -469,7 +470,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -477,6 +477,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -510,7 +511,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -518,6 +518,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -554,7 +555,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -562,6 +562,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -595,7 +596,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -603,6 +603,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,
@@ -638,7 +639,6 @@ describe('Case Detail sort, search, and filter tests', () => {
         <MemoryRouter initialEntries={[basicInfoPath]}>
           <Routes>
             <Route
-              path="case-detail/:caseId/*"
               element={
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
@@ -646,6 +646,7 @@ describe('Case Detail sort, search, and filter tests', () => {
                   caseNotes={testCaseNotes}
                 />
               }
+              path="case-detail/:caseId/*"
             />
           </Routes>
         </MemoryRouter>,

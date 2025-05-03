@@ -1,37 +1,37 @@
-import React, { JSX, forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, JSX, useEffect, useImperativeHandle, useState } from 'react';
 
 export const BUTTON_BASE_CLASS = 'usa-button';
 
-export enum UswdsButtonStyle {
+export enum UswdsButtonState {
+  Active = 'usa-button--active',
   Default = '',
-  Unstyled = 'usa-button--unstyled',
-  Secondary = 'usa-button--secondary',
-  Cool = 'usa-button--accent-cool',
-  Warm = 'usa-button--accent-warm',
-  Base = 'usa-button--base',
-  Outline = 'usa-button--outline',
-  Inverse = 'usa-button--outline usa-button--inverse',
+  Focus = 'usa-focus',
+  Hover = 'usa-button--hover',
 }
 
-export enum UswdsButtonState {
+export enum UswdsButtonStyle {
+  Base = 'usa-button--base',
+  Cool = 'usa-button--accent-cool',
   Default = '',
-  Hover = 'usa-button--hover',
-  Active = 'usa-button--active',
-  Focus = 'usa-focus',
+  Inverse = 'usa-button--outline usa-button--inverse',
+  Outline = 'usa-button--outline',
+  Secondary = 'usa-button--secondary',
+  Unstyled = 'usa-button--unstyled',
+  Warm = 'usa-button--accent-warm',
 }
+
+export type ButtonProps = JSX.IntrinsicElements['button'] & {
+  buttonState?: UswdsButtonState;
+  disabled?: boolean;
+  uswdsStyle?: UswdsButtonStyle;
+};
 
 export interface ButtonRef {
   disableButton: (state: boolean) => void;
 }
 
-export type ButtonProps = JSX.IntrinsicElements['button'] & {
-  uswdsStyle?: UswdsButtonStyle;
-  buttonState?: UswdsButtonState;
-  disabled?: boolean;
-};
-
 const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
-  const { id, uswdsStyle, buttonState, className, title, children, ...otherProps } = props;
+  const { buttonState, children, className, id, title, uswdsStyle, ...otherProps } = props;
 
   const [isDisabled, setIsDisabled] = useState<boolean>(!!otherProps.disabled);
   const classes = [BUTTON_BASE_CLASS];
@@ -65,14 +65,14 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   return (
     <button
       {...otherProps}
-      id={buttonId}
-      type="button"
+      aria-disabled={isDisabled}
       className={classes.join(' ')}
       data-testid={`button-${testId}`}
       disabled={isDisabled}
-      aria-disabled={isDisabled}
-      title={title}
+      id={buttonId}
       tabIndex={tabIndex}
+      title={title}
+      type="button"
     >
       {children}
     </button>

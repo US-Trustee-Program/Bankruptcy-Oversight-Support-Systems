@@ -1,17 +1,17 @@
 import { Pagination, PaginationProps } from '@/lib/components/uswds/Pagination';
-import { BrowserRouter } from 'react-router-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
 import { Pagination as PaginationModel } from '@common/api/pagination';
 import { SearchPredicate } from '@common/api/search';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('Pagination tests', () => {
   const retrievePageSpy = vi.fn();
   const defaultPagination: PaginationModel = {
     count: 25,
-    limit: 25,
     currentPage: 1,
-    totalPages: 10,
+    limit: 25,
     totalCount: 500,
+    totalPages: 10,
   };
   const next = 'next-link';
   const previous = 'previous-link';
@@ -26,8 +26,8 @@ describe('Pagination tests', () => {
   function renderWithProps(props: Partial<PaginationProps<SearchPredicate>> = {}) {
     const defaultProps: PaginationProps<SearchPredicate> = {
       paginationValues: defaultPagination,
-      searchPredicate: defaultSearchPredicate,
       retrievePage: retrievePageSpy,
+      searchPredicate: defaultSearchPredicate,
       ...props,
     };
 
@@ -56,9 +56,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
+        count: 100,
         currentPage: 1,
         limit: 10,
-        count: 100,
         totalCount: 100,
         totalPages: 10,
       },
@@ -103,7 +103,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationValues: { ...defaultPagination, previous, currentPage },
+      paginationValues: { ...defaultPagination, currentPage, previous },
       searchPredicate,
     };
     renderWithProps(props);
@@ -122,7 +122,7 @@ describe('Pagination tests', () => {
   test('should call retrievePage correctly for previous button', () => {
     const searchPredicate = { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit };
     const props = {
-      paginationValues: { ...defaultPagination, previous, currentPage: 2 },
+      paginationValues: { ...defaultPagination, currentPage: 2, previous },
       searchPredicate,
     };
     renderWithProps(props);
@@ -145,7 +145,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationValues: { ...defaultPagination, previous, currentPage },
+      paginationValues: { ...defaultPagination, currentPage, previous },
       searchPredicate,
     };
     renderWithProps(props);
@@ -168,7 +168,7 @@ describe('Pagination tests', () => {
       offset: defaultSearchPredicate.limit * (currentPage - 1),
     };
     const props = {
-      paginationValues: { ...defaultPagination, previous, currentPage },
+      paginationValues: { ...defaultPagination, currentPage, previous },
       searchPredicate,
     };
     renderWithProps(props);
@@ -207,10 +207,10 @@ describe('Pagination tests', () => {
     const testPagination = {
       ...defaultPagination,
       count: 225,
-      limit: 25,
       currentPage: 6,
-      totalPages: 6,
+      limit: 25,
       totalCount: 225,
+      totalPages: 6,
     };
 
     renderWithProps({ paginationValues: testPagination });
@@ -237,10 +237,10 @@ describe('Pagination tests', () => {
     const testPagination = {
       ...defaultPagination,
       count: 225,
-      limit: 25,
       currentPage: 1,
-      totalPages: 6,
+      limit: 25,
       totalCount: 225,
+      totalPages: 6,
     };
 
     renderWithProps({ paginationValues: testPagination });
@@ -267,9 +267,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
-        previous,
         currentPage: 2,
         next,
+        previous,
       },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit },
     };
@@ -293,9 +293,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
-        previous,
         currentPage: 3,
         next,
+        previous,
       },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit * 2 },
     };
@@ -321,9 +321,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
-        previous,
         currentPage: 4,
         next,
+        previous,
       },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit * 3 },
     };
@@ -351,9 +351,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
-        previous,
         currentPage: 5,
         next,
+        previous,
       },
       searchPredicate: { ...defaultSearchPredicate, offset: defaultSearchPredicate.limit * 4 },
     };
@@ -383,9 +383,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
-        previous,
         currentPage: 2,
         next,
+        previous,
       },
       searchPredicate: {},
     };
@@ -413,9 +413,9 @@ describe('Pagination tests', () => {
     const props = {
       paginationValues: {
         ...defaultPagination,
-        previous,
         currentPage: 2,
         next,
+        previous,
       },
       searchPredicate: {},
     };

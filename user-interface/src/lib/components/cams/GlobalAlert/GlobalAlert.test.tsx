@@ -1,15 +1,16 @@
-import { render, screen, act } from '@testing-library/react';
-import { useRef } from 'react';
-import GlobalAlert, { GlobalAlertRef } from './GlobalAlert';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { act, render, screen } from '@testing-library/react';
+import { useRef } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+
+import GlobalAlert, { GlobalAlertRef } from './GlobalAlert';
 
 describe('GlobalAlert', () => {
   const TestComponent = () => {
     const alertRef = useRef<GlobalAlertRef>(null);
     return (
       <div>
-        <GlobalAlert ref={alertRef} type={UswdsAlertStyle.Info} message="Initial message" />
+        <GlobalAlert message="Initial message" ref={alertRef} type={UswdsAlertStyle.Info} />
         <button onClick={() => alertRef.current?.error('Test error')}>Show Error</button>
         <button onClick={() => alertRef.current?.info('Test info')}>Show Info</button>
         <button onClick={() => alertRef.current?.success('Test success')}>Show Success</button>
@@ -87,13 +88,13 @@ describe('GlobalAlert', () => {
       const alertRef = useRef<GlobalAlertRef>(null);
       return (
         <div>
-          <GlobalAlert ref={alertRef} type={UswdsAlertStyle.Info} message="Initial message" />
+          <GlobalAlert message="Initial message" ref={alertRef} type={UswdsAlertStyle.Info} />
           <button
             onClick={() =>
               alertRef.current?.show({
                 message: 'Custom alert',
-                type: UswdsAlertStyle.Info,
                 timeout: 5,
+                type: UswdsAlertStyle.Info,
               })
             }
           >

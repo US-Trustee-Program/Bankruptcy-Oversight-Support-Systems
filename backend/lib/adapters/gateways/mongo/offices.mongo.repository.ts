@@ -1,14 +1,14 @@
-import { ApplicationContext } from '../../types/basic';
-import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
 import { CamsRole } from '../../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../../common/src/cams/session';
-import QueryBuilder from '../../../query/query-builder';
+import { CamsUserReference, Staff } from '../../../../../common/src/cams/users';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
-import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
 import { isNotFoundError } from '../../../common-errors/not-found-error';
+import QueryBuilder from '../../../query/query-builder';
+import { OfficesRepository, ReplaceResult } from '../../../use-cases/gateways.types';
+import { DEFAULT_STAFF_TTL } from '../../../use-cases/offices/offices';
+import { ApplicationContext } from '../../types/basic';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'OFFICES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'offices';
@@ -16,27 +16,19 @@ const COLLECTION_NAME = 'offices';
 const { and, using } = QueryBuilder;
 const doc = using<OfficeStaff>();
 
-export type OfficeStaff = Staff &
-  Auditable & {
+export type OfficeStaff = Auditable &
+  Staff & {
     documentType: 'OFFICE_STAFF';
     officeCode: string;
     ttl: number;
   };
 
 export class OfficesMongoRepository extends BaseMongoRepository implements OfficesRepository {
-  private static referenceCount: number = 0;
   private static instance: OfficesMongoRepository;
+  private static referenceCount: number = 0;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!OfficesMongoRepository.instance) {
-      OfficesMongoRepository.instance = new OfficesMongoRepository(context);
-    }
-    OfficesMongoRepository.referenceCount++;
-    return OfficesMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -49,30 +41,26 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  public release() {
-    OfficesMongoRepository.dropInstance();
+  public static getInstance(context: ApplicationContext) {
+    if (!OfficesMongoRepository.instance) {
+      OfficesMongoRepository.instance = new OfficesMongoRepository(context);
+    }
+    OfficesMongoRepository.referenceCount++;
+    return OfficesMongoRepository.instance;
   }
 
-  async putOfficeStaff(
-    officeCode: string,
-    user: Staff,
-    ttl: number = DEFAULT_STAFF_TTL,
-  ): Promise<ReplaceResult> {
-    const existing = await this.findOneOfficeStaff(officeCode, user);
-    const officeStaff = createAuditRecord<OfficeStaff>({
-      id: user.id,
-      documentType: 'OFFICE_STAFF',
-      officeCode,
-      ...user,
-      ttl: existing ? Math.max(existing.ttl, ttl) : ttl,
-    });
-    const query = and(doc('id').equals(officeStaff.id), doc('officeCode').equals(officeCode));
+  public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
+    const query = and(
+      doc('officeCode').equals(officeCode),
+      doc('id').equals(id),
+      doc('documentType').equals('OFFICE_STAFF'),
+    );
+
     try {
-      return await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
+      await this.getAdapter<OfficeStaff>().deleteOne(query);
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to write user ${user.id} to ${officeCode}.`,
-      });
+      const error = getCamsError(originalError, MODULE_NAME);
+      throw error;
     }
   }
 
@@ -92,18 +80,26 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  public async findAndDeleteStaff(officeCode: string, id: string): Promise<void> {
-    const query = and(
-      doc('officeCode').equals(officeCode),
-      doc('id').equals(id),
-      doc('documentType').equals('OFFICE_STAFF'),
-    );
-
+  async putOfficeStaff(
+    officeCode: string,
+    user: Staff,
+    ttl: number = DEFAULT_STAFF_TTL,
+  ): Promise<ReplaceResult> {
+    const existing = await this.findOneOfficeStaff(officeCode, user);
+    const officeStaff = createAuditRecord<OfficeStaff>({
+      documentType: 'OFFICE_STAFF',
+      id: user.id,
+      officeCode,
+      ...user,
+      ttl: existing ? Math.max(existing.ttl, ttl) : ttl,
+    });
+    const query = and(doc('id').equals(officeStaff.id), doc('officeCode').equals(officeCode));
     try {
-      await this.getAdapter<OfficeStaff>().deleteOne(query);
+      return await this.getAdapter<OfficeStaff>().replaceOne(query, officeStaff, true);
     } catch (originalError) {
-      const error = getCamsError(originalError, MODULE_NAME);
-      throw error;
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write user ${user.id} to ${officeCode}.`,
+      });
     }
   }
 
@@ -121,8 +117,8 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
         officeStaff.roles = Array.from(new Set([...existing.roles, ...staff.roles]));
       } else {
         officeStaff = createAuditRecord<OfficeStaff>({
-          id: staff.id,
           documentType: 'OFFICE_STAFF',
+          id: staff.id,
           officeCode,
           ...staff,
           ttl: newTtl,
@@ -143,7 +139,11 @@ export class OfficesMongoRepository extends BaseMongoRepository implements Offic
     }
   }
 
-  private async findOneOfficeStaff(officeCode: string, staff: Staff): Promise<OfficeStaff | null> {
+  public release() {
+    OfficesMongoRepository.dropInstance();
+  }
+
+  private async findOneOfficeStaff(officeCode: string, staff: Staff): Promise<null | OfficeStaff> {
     const query = and(
       doc('officeCode').equals(officeCode),
       doc('id').equals(staff.id),

@@ -1,3 +1,5 @@
+import * as crypto from 'crypto';
+
 import { CasesSearchPredicate } from '../../../../../common/src/api/search';
 import { ResourceActions } from '../../../../../common/src/cams/actions';
 import { SyncedCase } from '../../../../../common/src/cams/cases';
@@ -8,19 +10,18 @@ import {
   TransferFrom,
   TransferTo,
 } from '../../../../../common/src/cams/events';
+import { CaseHistory } from '../../../../../common/src/cams/history';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
+import { UnknownError } from '../../../common-errors/unknown-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import * as crypto from 'crypto';
-import { UnknownError } from '../../../common-errors/unknown-error';
-import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
-import { CaseHistory } from '../../../../../common/src/cams/history';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -30,16 +31,16 @@ describe('Cases repository', () => {
 
   const transferIn: TransferFrom = {
     caseId: caseId2,
-    otherCase: MockData.getCaseSummary({ override: { caseId: caseId1 } }),
-    orderDate: '01/01/2024',
     documentType: 'TRANSFER_FROM',
+    orderDate: '01/01/2024',
+    otherCase: MockData.getCaseSummary({ override: { caseId: caseId1 } }),
   };
 
   const transferOut: TransferTo = {
     caseId: caseId1,
-    otherCase: MockData.getCaseSummary({ override: { caseId: caseId2 } }),
-    orderDate: '01/01/2024',
     documentType: 'TRANSFER_TO',
+    orderDate: '01/01/2024',
+    otherCase: MockData.getCaseSummary({ override: { caseId: caseId2 } }),
   };
   const { and } = QueryBuilder;
 
@@ -84,19 +85,19 @@ describe('Cases repository', () => {
     const caseId = '123-12-12345';
     await expect(async () => await repo.getTransfers(caseId)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: `Failed to get transfers for ${caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
 
   test('should getConsolidation', async () => {
-    const query: Conjunction<ConsolidationTo | ConsolidationFrom> = {
+    const query: Conjunction<ConsolidationFrom | ConsolidationTo> = {
       conjunction: 'AND',
       values: [
         {
@@ -125,13 +126,13 @@ describe('Cases repository', () => {
     const caseId = '111-82-80331';
     await expect(async () => await repo.getConsolidation(caseId)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: `Failed to retrieve consolidation for ${caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
@@ -165,13 +166,13 @@ describe('Cases repository', () => {
     const caseId = '111-82-80331';
     await expect(async () => await repo.getCaseHistory(caseId)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: `Failed to get case history for ${caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
@@ -182,17 +183,17 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('test error'));
     await expect(async () => await repo.createTransferTo(transferOut)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: 'Failed to create item.',
+            module: expect.anything(),
           },
           {
-            module: expect.anything(),
             message: `Failed to create transferTo for: ${transferOut.caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
@@ -212,17 +213,17 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('test error'));
     await expect(async () => await repo.createTransferFrom(transferIn)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: 'Failed to create item.',
+            module: expect.anything(),
           },
           {
-            module: expect.anything(),
             message: `Failed to create transferFrom for: ${transferIn.caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
@@ -254,17 +255,17 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('test error'));
     await expect(async () => await repo.createConsolidationTo(consolidaitonTo)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: 'Failed to create item.',
+            module: expect.anything(),
           },
           {
-            module: expect.anything(),
             message: `Failed to create consolidationTo for: ${consolidaitonTo.caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
@@ -287,17 +288,17 @@ describe('Cases repository', () => {
       .mockRejectedValue(new Error('test error'));
     await expect(async () => await repo.createConsolidationFrom(consolidationFrom)).rejects.toThrow(
       expect.objectContaining({
-        message: 'Unknown Error',
         camsStack: expect.arrayContaining([
           {
-            module: expect.anything(),
             message: 'Failed to create item.',
+            module: expect.anything(),
           },
           {
-            module: expect.anything(),
             message: `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
+            module: expect.anything(),
           },
         ]),
+        message: 'Unknown Error',
       }),
     );
   });
@@ -329,16 +330,16 @@ describe('Cases repository', () => {
           ),
         },
         {
-          stage: 'SORT',
           fields: [
-            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
-            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+            { direction: 'DESCENDING', field: { name: 'dateFiled' } },
+            { direction: 'DESCENDING', field: { name: 'caseNumber' } },
           ],
+          stage: 'SORT',
         },
         {
-          stage: 'PAGINATE',
-          skip: predicate.offset,
           limit: predicate.limit,
+          skip: predicate.offset,
+          stage: 'PAGINATE',
         },
       ],
     };
@@ -350,9 +351,9 @@ describe('Cases repository', () => {
 
   test('should call paginate with caseIds array in query', async () => {
     const predicate: CasesSearchPredicate = {
+      caseIds: [caseId1, caseId2],
       chapters: ['15'],
       excludeChildConsolidations: true,
-      caseIds: [caseId1, caseId2],
       limit: 25,
       offset: 0,
     };
@@ -377,16 +378,16 @@ describe('Cases repository', () => {
           ),
         },
         {
-          stage: 'SORT',
           fields: [
-            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
-            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+            { direction: 'DESCENDING', field: { name: 'dateFiled' } },
+            { direction: 'DESCENDING', field: { name: 'caseNumber' } },
           ],
+          stage: 'SORT',
         },
         {
-          stage: 'PAGINATE',
-          skip: predicate.offset,
           limit: predicate.limit,
+          skip: predicate.offset,
+          stage: 'PAGINATE',
         },
       ],
     };
@@ -398,9 +399,9 @@ describe('Cases repository', () => {
   test('should call paginate with caseIds array and excludedCaseIds in query', async () => {
     const excludedCaseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
+      caseIds: [caseId1, caseId2],
       chapters: ['15'],
       excludeChildConsolidations: true,
-      caseIds: [caseId1, caseId2],
       excludedCaseIds,
       limit: 5,
       offset: 0,
@@ -429,16 +430,16 @@ describe('Cases repository', () => {
           ),
         },
         {
-          stage: 'SORT',
           fields: [
-            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
-            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+            { direction: 'DESCENDING', field: { name: 'dateFiled' } },
+            { direction: 'DESCENDING', field: { name: 'caseNumber' } },
           ],
+          stage: 'SORT',
         },
         {
-          stage: 'PAGINATE',
-          skip: predicate.offset,
           limit: predicate.limit,
+          skip: predicate.offset,
+          stage: 'PAGINATE',
         },
       ],
     };
@@ -461,8 +462,8 @@ describe('Cases repository', () => {
     ];
 
     const expectedPaginationResponse: CamsPaginationResponse<SyncedCase> = {
-      metadata: { total: expectedSyncedCaseArray.length },
       data: expectedSyncedCaseArray,
+      metadata: { total: expectedSyncedCaseArray.length },
     };
 
     const aggregateSpy = jest
@@ -479,16 +480,16 @@ describe('Cases repository', () => {
         expect.objectContaining({ condition: 'EQUALS', stage: 'MATCH' }),
         expect.objectContaining({ stage: 'EXCLUDE' }),
         expect.objectContaining({
-          stage: 'SORT',
           fields: [
-            { field: { name: 'dateFiled' }, direction: 'DESCENDING' },
-            { field: { name: 'caseNumber' }, direction: 'DESCENDING' },
+            { direction: 'DESCENDING', field: { name: 'dateFiled' } },
+            { direction: 'DESCENDING', field: { name: 'caseNumber' } },
           ],
+          stage: 'SORT',
         }),
         expect.objectContaining({
-          stage: 'PAGINATE',
-          skip: predicate.offset,
           limit: predicate.limit,
+          skip: predicate.offset,
+          stage: 'PAGINATE',
         }),
       ],
     };
@@ -550,8 +551,8 @@ describe('Cases repository', () => {
   test('getConsolidationChildCaseIds should return a list of caseIds when given full predicate', async () => {
     const caseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
-      chapters: ['15'],
       caseIds,
+      chapters: ['15'],
       divisionCodes: ['111'],
       excludeChildConsolidations: true,
     };
@@ -587,8 +588,8 @@ describe('Cases repository', () => {
   test('getConsolidationChildCaseIds should return a list of caseIds when predicate missing divisionCodes', async () => {
     const caseIds = ['111-11-11111', '111-11-11112'];
     const predicate: CasesSearchPredicate = {
-      chapters: ['15'],
       caseIds,
+      chapters: ['15'],
       excludeChildConsolidations: true,
     };
 

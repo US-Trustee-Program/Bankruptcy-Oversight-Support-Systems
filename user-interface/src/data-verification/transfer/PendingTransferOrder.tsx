@@ -1,22 +1,23 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { useApi2 } from '@/lib/hooks/UseApi2';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { CaseSummary } from '@common/cams/cases';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import {
   FlexibleTransferOrderAction,
   OrderStatus,
   TransferOrder,
   TransferOrderAction,
 } from '@common/cams/orders';
-import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+
+import { FromCaseSummary } from './FromCaseSummary';
+import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
 import {
   TransferConfirmationModal,
   TransferConfirmationModalImperative,
 } from './TransferConfirmationModal';
-import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { SuggestedTransferCases, SuggestedTransferCasesImperative } from './SuggestedTransferCases';
-import { FromCaseSummary } from './FromCaseSummary';
-import { useApi2 } from '@/lib/hooks/UseApi2';
 import './PendingTransferOrder.scss';
 
 export type PendingTransferOrderImperative = {
@@ -24,17 +25,17 @@ export type PendingTransferOrderImperative = {
 };
 
 export type PendingTransferOrderProps = {
-  order: TransferOrder;
-  onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
   // TODO: This is a lot of prop drilling. Maybe add a custom hook???
   officesList: Array<CourtDivisionDetails>;
+  onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
+  order: TransferOrder;
 };
 
 export function getOrderTransferFromOrder(order: TransferOrder): FlexibleTransferOrderAction {
-  const { id, caseId, orderType } = order;
+  const { caseId, id, orderType } = order;
   return {
-    id,
     caseId,
+    id,
     orderType,
   };
 }
@@ -43,7 +44,7 @@ function _PendingTransferOrder(
   props: PendingTransferOrderProps,
   PendingTransferOrderRef: React.Ref<PendingTransferOrderImperative>,
 ) {
-  const { order, officesList } = props;
+  const { officesList, order } = props;
   const [orderTransfer, setOrderTransfer] = useState<FlexibleTransferOrderAction>(
     getOrderTransferFromOrder(order),
   );
@@ -72,22 +73,22 @@ function _PendingTransferOrder(
             message: `Transfer of case to ${getCaseNumber(orderTransfer.newCase?.caseId)} in ${
               orderTransfer.newCase?.courtName
             } (${orderTransfer.newCase?.courtDivisionName}) was ${orderTransfer.status === 'approved' ? 'verified' : 'rejected'}.`,
-            type: UswdsAlertStyle.Success,
             timeOut: 8,
+            type: UswdsAlertStyle.Success,
           },
           updatedOrder,
         );
       })
       .catch((reason) => {
         // TODO: make the error message more meaningful
-        props.onOrderUpdate({ message: reason.message, type: UswdsAlertStyle.Error, timeOut: 8 });
+        props.onOrderUpdate({ message: reason.message, timeOut: 8, type: UswdsAlertStyle.Error });
       });
   }
 
   function approveOrderRejection(rejectionReason?: string) {
     const rejection: TransferOrderAction = {
-      id: order.id,
       caseId: order.caseId,
+      id: order.id,
       orderType: 'transfer',
       reason: rejectionReason,
       status: 'rejected',
@@ -99,8 +100,8 @@ function _PendingTransferOrder(
         props.onOrderUpdate(
           {
             message: `Transfer of case ${getCaseNumber(order.caseId)} was rejected.`,
-            type: UswdsAlertStyle.Success,
             timeOut: 8,
+            type: UswdsAlertStyle.Success,
           },
           {
             ...order,
@@ -112,8 +113,8 @@ function _PendingTransferOrder(
         // TODO: make the error message more meaningful
         props.onOrderUpdate({
           message: reason.message,
-          type: UswdsAlertStyle.Error,
           timeOut: 8,
+          type: UswdsAlertStyle.Error,
         });
       });
   }
@@ -165,38 +166,38 @@ function _PendingTransferOrder(
         </div>
         <div className="grid-col-1"></div>
       </div>
-      <FromCaseSummary order={order} onOrderUpdate={handleAlert} />
+      <FromCaseSummary onOrderUpdate={handleAlert} order={order} />
       <SuggestedTransferCases
-        order={order}
         officesList={officesList}
+        onAlert={handleAlert}
         onCaseSelection={handleSuggestedCaseSelection}
         onInvalidCaseNumber={handleInvalidCaseNumber}
-        onAlert={handleAlert}
+        order={order}
         ref={suggestedCasesRef}
       ></SuggestedTransferCases>
       <div className="button-bar grid-row grid-gap-lg">
         <div className="grid-col-1"></div>
         <div className="grid-col-10 text-no-wrap float-right">
           <Button
+            className="unstyled-button"
             id={`accordion-cancel-button-${order.id}`}
             onClick={cancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}
-            className="unstyled-button"
           >
             Clear
           </Button>
           <Button
+            className="margin-right-2"
             id={`accordion-reject-button-${order.id}`}
             onClick={() => modalRef.current?.show({ status: 'rejected' })}
             uswdsStyle={UswdsButtonStyle.Outline}
-            className="margin-right-2"
           >
             Reject
           </Button>
           <Button
+            disabled={true}
             id={`accordion-approve-button-${order.id}`}
             onClick={() => modalRef.current?.show({ status: 'approved' })}
-            disabled={true}
             ref={approveButtonRef}
           >
             Verify
@@ -205,15 +206,15 @@ function _PendingTransferOrder(
         <div className="grid-col-1"></div>
       </div>
       <TransferConfirmationModal
-        ref={modalRef}
-        id={`confirmation-modal-${order.id}`}
         fromCaseId={order.caseId}
-        toCaseId={orderTransfer.newCase?.caseId}
-        fromDivisionName={order.courtDivisionName}
-        toDivisionName={orderTransfer.newCase?.courtDivisionName}
         fromCourtName={order.courtName!}
-        toCourtName={orderTransfer.newCase?.courtName}
+        fromDivisionName={order.courtDivisionName}
+        id={`confirmation-modal-${order.id}`}
         onConfirm={confirmAction}
+        ref={modalRef}
+        toCaseId={orderTransfer.newCase?.caseId}
+        toCourtName={orderTransfer.newCase?.courtName}
+        toDivisionName={orderTransfer.newCase?.courtDivisionName}
       ></TransferConfirmationModal>
     </div>
   );

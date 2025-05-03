@@ -1,22 +1,15 @@
+import { HttpRequest, InvocationContext } from '@azure/functions';
 import * as jwt from 'jsonwebtoken';
-import { InvocationContext, HttpRequest } from '@azure/functions';
-import { ApplicationContext } from '../../lib/adapters/types/basic';
-import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
-import { getFeatureFlags } from '../../lib/adapters/utils/feature-flag';
+
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
-import { azureToCamsHttpRequest } from './functions';
+import { ApplicationContext } from '../../lib/adapters/types/basic';
+import { getFeatureFlags } from '../../lib/adapters/utils/feature-flag';
 import { UnauthorizedError } from '../../lib/common-errors/unauthorized-error';
+import { ApplicationConfiguration } from '../../lib/configs/application-configuration';
 import { getUserSessionUseCase } from '../../lib/factory';
+import { azureToCamsHttpRequest } from './functions';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
-
-function getLogger(invocationContext: InvocationContext) {
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const logWrapper: Console['log'] = (...args: any[]) => {
-    invocationContext.log(args);
-  };
-  return new LoggerImpl(invocationContext.invocationId, logWrapper);
-}
 
 type ContextCreatorArgs = {
   invocationContext: InvocationContext;
@@ -44,15 +37,15 @@ async function getApplicationContext<B = unknown>(
   const featureFlags = await getFeatureFlags(config);
 
   return {
+    closables: [],
     config,
+    extraOutputs: invocationContext.extraOutputs,
     featureFlags,
-    logger: logger ?? ContextCreator.getLogger(invocationContext),
     invocationId: invocationContext.invocationId,
+    logger: logger ?? ContextCreator.getLogger(invocationContext),
+    releasables: [],
     request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
     session: undefined,
-    closables: [],
-    releasables: [],
-    extraOutputs: invocationContext.extraOutputs,
   } satisfies ApplicationContext<B | unknown>;
 }
 
@@ -85,6 +78,14 @@ async function getApplicationContextSession(context: ApplicationContext) {
 
   const sessionUseCase = getUserSessionUseCase(context);
   return sessionUseCase.lookup(context, accessToken, context.config.authConfig.provider);
+}
+
+function getLogger(invocationContext: InvocationContext) {
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  const logWrapper: Console['log'] = (...args: any[]) => {
+    invocationContext.log(args);
+  };
+  return new LoggerImpl(invocationContext.invocationId, logWrapper);
 }
 
 const ContextCreator = {

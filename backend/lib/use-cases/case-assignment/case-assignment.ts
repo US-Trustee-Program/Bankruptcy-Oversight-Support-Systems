@@ -1,20 +1,20 @@
-import Factory, { getAssignmentRepository, getQueueGateway } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
-import CaseManagement from '../cases/case-management';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import { CaseAssignmentHistory } from '../../../../common/src/cams/history';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { ApplicationContext } from '../../adapters/types/basic';
+import Factory, { getAssignmentRepository, getQueueGateway } from '../../factory';
+import CaseManagement from '../cases/case-management';
+import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import OfficeAssigneesUseCase from '../offices/office-assignees';
+import { AssignmentError } from './assignment.exception';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT';
 
 export class CaseAssignmentUseCase {
-  private context: ApplicationContext;
   private assignmentRepository: CaseAssignmentRepository;
+  private context: ApplicationContext;
   private queueGateway: QueueGateway;
 
   constructor(applicationContext: ApplicationContext) {
@@ -61,6 +61,21 @@ export class CaseAssignmentUseCase {
     }
   }
 
+  public async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
+    const assignmentRepo = Factory.getAssignmentRepository(this.context);
+    return await assignmentRepo.getAssignmentsForCases(caseIds);
+  }
+
+  public async getCaseAssignments(userId: string): Promise<CaseAssignment[]> {
+    const assignmentRepo = Factory.getAssignmentRepository(this.context);
+    return await assignmentRepo.findAssignmentsByAssignee(userId);
+  }
+
+  public async getCaseLoad(userId: string): Promise<number> {
+    const assignments = await this.getCaseAssignments(userId);
+    return assignments.length;
+  }
+
   private async assignTrialAttorneys(
     context: ApplicationContext,
     caseId: string,
@@ -77,12 +92,12 @@ export class CaseAssignmentUseCase {
     attorneys.forEach((attorney) => {
       const assignment = createAuditRecord<CaseAssignment>(
         {
-          documentType: 'ASSIGNMENT',
+          assignedOn: currentDate,
           caseId: caseId,
-          userId: attorney.id,
+          documentType: 'ASSIGNMENT',
           name: attorney.name,
           role: CamsRole[role],
-          assignedOn: currentDate,
+          userId: attorney.id,
         },
         context.session?.user,
       );
@@ -130,10 +145,10 @@ export class CaseAssignmentUseCase {
     const newAssignmentRecords = newAssignmentRecordsMap.get(caseId);
     const history = createAuditRecord<CaseAssignmentHistory>(
       {
+        after: newAssignmentRecords,
+        before: existingAssignmentRecords,
         caseId,
         documentType: 'AUDIT_ASSIGNMENT',
-        before: existingAssignmentRecords,
-        after: newAssignmentRecords,
       },
       context.session?.user,
     );
@@ -150,20 +165,5 @@ export class CaseAssignmentUseCase {
       listOfAssignmentIdsCreated,
     );
     return listOfAssignmentIdsCreated;
-  }
-
-  public async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
-    const assignmentRepo = Factory.getAssignmentRepository(this.context);
-    return await assignmentRepo.getAssignmentsForCases(caseIds);
-  }
-
-  public async getCaseLoad(userId: string): Promise<number> {
-    const assignments = await this.getCaseAssignments(userId);
-    return assignments.length;
-  }
-
-  public async getCaseAssignments(userId: string): Promise<CaseAssignment[]> {
-    const assignmentRepo = Factory.getAssignmentRepository(this.context);
-    return await assignmentRepo.findAssignmentsByAssignee(userId);
   }
 }

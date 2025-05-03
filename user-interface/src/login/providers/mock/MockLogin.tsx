@@ -1,30 +1,94 @@
-import { PropsWithChildren, useEffect, useRef, useState } from 'react';
-import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
-import Radio from '@/lib/components/uswds/Radio';
-import { Session } from '@/login/Session';
+import apiConfiguration from '@/configuration/apiConfiguration';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import Radio from '@/lib/components/uswds/Radio';
+import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import { BlankPage } from '@/login/BlankPage';
-import apiConfiguration from '@/configuration/apiConfiguration';
+import { Session } from '@/login/Session';
+import { CamsSession } from '@common/cams/session';
 import { MockUser, MockUsers } from '@common/cams/test-utilities/mock-user';
 import { CamsUser } from '@common/cams/users';
-import { CamsSession } from '@common/cams/session';
+import { PropsWithChildren, useEffect, useRef, useState } from 'react';
+
+export type MockLoginProps = PropsWithChildren & {
+  user: CamsUser | null;
+};
 
 type MockLoginState = {
-  session: CamsSession | null;
-  selectedRole: MockUser | null;
   form: {
     submitDisabled: boolean;
   };
+  selectedRole: MockUser | null;
+  session: CamsSession | null;
 };
+
+export function MockLogin(props: MockLoginProps) {
+  const { actions, state } = useStateAndActions();
+
+  const modalRef = useRef<ModalRefType>(null);
+  const modalId = 'login-modal';
+
+  useEffect(() => {
+    modalRef.current?.show(!!state.session);
+  }, []);
+
+  if (state.session)
+    return (
+      <Session
+        accessToken={state.session.accessToken}
+        expires={state.session.expires}
+        issuer={state.session.issuer}
+        provider="mock"
+        user={state.session.user}
+      >
+        {props.children}
+      </Session>
+    );
+
+  return (
+    <BlankPage>
+      <Modal
+        actionButtonGroup={{
+          modalId,
+          modalRef,
+          submitButton: {
+            disabled: state.form.submitDisabled,
+            label: 'Login',
+            onClick: actions.handleLogin,
+          },
+        }}
+        content={
+          <RadioGroup label="Choose a role:">
+            {MockUsers.filter((role) => !role.hide).map((role, idx) => {
+              return (
+                <Radio
+                  id={`role-${idx}`}
+                  key={`role-${idx}`}
+                  label={role.label}
+                  name="role"
+                  onChange={actions.handleRoleSelection}
+                  value={role.sub}
+                />
+              );
+            })}
+          </RadioGroup>
+        }
+        forceAction={true}
+        heading={'Login'}
+        modalId={modalId}
+        ref={modalRef}
+      ></Modal>
+    </BlankPage>
+  );
+}
 
 export function useStateAndActions() {
   const [state, setState] = useState<MockLoginState>({
-    session: null,
-    selectedRole: null,
     form: {
       submitDisabled: true,
     },
+    selectedRole: null,
+    session: null,
   });
 
   const handleRoleSelection = (sub: string) => {
@@ -40,7 +104,7 @@ export function useStateAndActions() {
   const handleLogin = async () => {
     const newState = { ...state };
 
-    const { protocol, server, port, basePath } = apiConfiguration;
+    const { basePath, port, protocol, server } = apiConfiguration;
     if (!state.selectedRole) {
       return;
     }
@@ -54,8 +118,8 @@ export function useStateAndActions() {
     }
 
     const response = await fetch(issuer, {
-      method: 'POST',
       body: JSON.stringify({ sub: state.selectedRole.sub }),
+      method: 'POST',
     });
     const payload = await response.json();
     if (!payload.data.value) {
@@ -64,84 +128,20 @@ export function useStateAndActions() {
 
     newState.session = {
       accessToken: payload.data.value,
-      user: state.selectedRole.user,
-      provider: 'mock',
-      issuer,
       expires: Number.MAX_SAFE_INTEGER,
+      issuer,
+      provider: 'mock',
+      user: state.selectedRole.user,
     };
 
     setState(newState);
   };
 
   return {
-    state,
     actions: {
-      handleRoleSelection,
       handleLogin,
+      handleRoleSelection,
     },
+    state,
   };
-}
-
-export type MockLoginProps = PropsWithChildren & {
-  user: CamsUser | null;
-};
-
-export function MockLogin(props: MockLoginProps) {
-  const { state, actions } = useStateAndActions();
-
-  const modalRef = useRef<ModalRefType>(null);
-  const modalId = 'login-modal';
-
-  useEffect(() => {
-    modalRef.current?.show(!!state.session);
-  }, []);
-
-  if (state.session)
-    return (
-      <Session
-        provider="mock"
-        user={state.session.user}
-        accessToken={state.session.accessToken}
-        expires={state.session.expires}
-        issuer={state.session.issuer}
-      >
-        {props.children}
-      </Session>
-    );
-
-  return (
-    <BlankPage>
-      <Modal
-        ref={modalRef}
-        modalId={modalId}
-        heading={'Login'}
-        content={
-          <RadioGroup label="Choose a role:">
-            {MockUsers.filter((role) => !role.hide).map((role, idx) => {
-              return (
-                <Radio
-                  key={`role-${idx}`}
-                  id={`role-${idx}`}
-                  name="role"
-                  label={role.label}
-                  value={role.sub}
-                  onChange={actions.handleRoleSelection}
-                />
-              );
-            })}
-          </RadioGroup>
-        }
-        forceAction={true}
-        actionButtonGroup={{
-          modalId,
-          modalRef,
-          submitButton: {
-            label: 'Login',
-            onClick: actions.handleLogin,
-            disabled: state.form.submitDisabled,
-          },
-        }}
-      ></Modal>
-    </BlankPage>
-  );
 }

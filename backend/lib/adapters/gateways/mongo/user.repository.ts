@@ -1,12 +1,12 @@
-import { ApplicationContext } from '../../types/basic';
 import { Auditable, createAuditRecord } from '../../../../../common/src/cams/auditable';
-import QueryBuilder from '../../../query/query-builder';
-import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import { ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
-import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { UnknownError } from '../../../common-errors/unknown-error';
 import { CamsUserReference, PrivilegedIdentityUser } from '../../../../../common/src/cams/users';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { UnknownError } from '../../../common-errors/unknown-error';
+import QueryBuilder from '../../../query/query-builder';
+import { ReplaceResult, UsersRepository } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'USERS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'users';
@@ -15,18 +15,11 @@ const { and, using } = QueryBuilder;
 const doc = using<PrivilegedIdentityUser>();
 
 export class UsersMongoRepository extends BaseMongoRepository implements UsersRepository {
-  private static referenceCount: number = 0;
   private static instance: UsersMongoRepository;
+  private static referenceCount: number = 0;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!UsersMongoRepository.instance)
-      UsersMongoRepository.instance = new UsersMongoRepository(context);
-    UsersMongoRepository.referenceCount++;
-    return UsersMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -37,35 +30,24 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     }
   }
 
-  public release() {
-    UsersMongoRepository.dropInstance();
+  public static getInstance(context: ApplicationContext) {
+    if (!UsersMongoRepository.instance)
+      UsersMongoRepository.instance = new UsersMongoRepository(context);
+    UsersMongoRepository.referenceCount++;
+    return UsersMongoRepository.instance;
   }
 
-  async putPrivilegedIdentityUser(
-    privilegedIdentityUser: PrivilegedIdentityUser,
-    updatedBy: CamsUserReference,
-  ): Promise<ReplaceResult> {
-    type AuditablePrivilegedIdentityUser = PrivilegedIdentityUser & Auditable;
-    const user = createAuditRecord<AuditablePrivilegedIdentityUser>(
-      privilegedIdentityUser,
-      updatedBy,
-    );
-    const query = and(
-      doc('id').equals(user.id),
-      doc('documentType').equals('PRIVILEGED_IDENTITY_USER'),
-    );
+  async deletePrivilegedIdentityUser(id: string): Promise<void> {
+    const query = and(doc('id').equals(id), doc('documentType').equals('PRIVILEGED_IDENTITY_USER'));
+
     try {
-      const result = await this.getAdapter<PrivilegedIdentityUser>().replaceOne(query, user, true);
-      if (result.modifiedCount + result.upsertedCount !== 1) {
-        throw new UnknownError(MODULE_NAME, {
-          message: `While upserting privileged identity user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
-        });
-      }
-      return result;
+      await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);
     } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to write privileged identity user ${user.id}.`,
-      });
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Failed to delete privileged identity user ${id}.`,
+      );
     }
   }
 
@@ -91,17 +73,35 @@ export class UsersMongoRepository extends BaseMongoRepository implements UsersRe
     }
   }
 
-  async deletePrivilegedIdentityUser(id: string): Promise<void> {
-    const query = and(doc('id').equals(id), doc('documentType').equals('PRIVILEGED_IDENTITY_USER'));
-
+  async putPrivilegedIdentityUser(
+    privilegedIdentityUser: PrivilegedIdentityUser,
+    updatedBy: CamsUserReference,
+  ): Promise<ReplaceResult> {
+    type AuditablePrivilegedIdentityUser = Auditable & PrivilegedIdentityUser;
+    const user = createAuditRecord<AuditablePrivilegedIdentityUser>(
+      privilegedIdentityUser,
+      updatedBy,
+    );
+    const query = and(
+      doc('id').equals(user.id),
+      doc('documentType').equals('PRIVILEGED_IDENTITY_USER'),
+    );
     try {
-      await this.getAdapter<PrivilegedIdentityUser>().deleteOne(query);
+      const result = await this.getAdapter<PrivilegedIdentityUser>().replaceOne(query, user, true);
+      if (result.modifiedCount + result.upsertedCount !== 1) {
+        throw new UnknownError(MODULE_NAME, {
+          message: `While upserting privileged identity user ${user.id}, we modified ${result.modifiedCount} and created ${result.upsertedCount} documents.`,
+        });
+      }
+      return result;
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to delete privileged identity user ${id}.`,
-      );
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to write privileged identity user ${user.id}.`,
+      });
     }
+  }
+
+  public release() {
+    UsersMongoRepository.dropInstance();
   }
 }

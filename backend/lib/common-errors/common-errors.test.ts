@@ -1,3 +1,4 @@
+import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 import { BadRequestError } from './bad-request';
 import { CamsError, isCamsError } from './cams-error';
 import { ForbiddenError } from './forbidden-error';
@@ -5,7 +6,6 @@ import { NotFoundError } from './not-found-error';
 import { ServerConfigError } from './server-config-error';
 import { UnauthorizedError } from './unauthorized-error';
 import { UnknownError } from './unknown-error';
-import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 describe('Common errors', () => {
   const testModuleName = 'Test';

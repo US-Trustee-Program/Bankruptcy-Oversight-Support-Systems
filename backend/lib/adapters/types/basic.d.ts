@@ -1,28 +1,20 @@
-import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { CamsSession } from '../../../../common/src/cams/session';
-import { CamsHttpRequest } from './http';
+import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { Closable } from '../../deferrable/defer-close';
 import { Releasable } from '../../use-cases/gateways.types';
 import { LoggerImpl } from '../services/logger.service';
+import { CamsHttpRequest } from './http';
 
 export interface ApplicationContext<B = unknown> {
-  config: ApplicationConfiguration;
-  featureFlags: FeatureFlagSet;
-  logger: LoggerImpl;
-  session?: CamsSession;
-  invocationId: string;
-  request?: CamsHttpRequest<B>;
   closables: Closable[];
-  releasables: Releasable[];
+  config: ApplicationConfiguration;
   extraOutputs: unknown;
-}
-
-export interface ObjectKeyVal {
-  [key: string]: string | number | unknown[];
-}
-
-export interface ObjectKeyValArrayKeyVal {
-  [key: string]: ObjectKeyVal[];
+  featureFlags: FeatureFlagSet;
+  invocationId: string;
+  logger: LoggerImpl;
+  releasables: Releasable[];
+  request?: CamsHttpRequest<B>;
+  session?: CamsSession;
 }
 
 // This internal interface aligns with the LaunchDarkly LDFlagSet interface that
@@ -31,12 +23,20 @@ export interface ObjectKeyValArrayKeyVal {
 // to use JSON feature flag values out of LaunchDarkly then this definition would
 // need to be revisited.
 export interface FeatureFlagSet {
-  [key: string]: boolean | string | number;
+  [key: string]: boolean | number | string;
+}
+
+export interface ObjectKeyVal {
+  [key: string]: number | string | unknown[];
+}
+
+export interface ObjectKeyValArrayKeyVal {
+  [key: string]: ObjectKeyVal[];
 }
 
 export interface RecordObj {
   fieldName: string;
-  fieldValue: string | number;
+  fieldValue: number | string;
 }
 
 export interface ServerType {

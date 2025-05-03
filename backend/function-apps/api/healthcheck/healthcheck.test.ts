@@ -1,6 +1,5 @@
-import { createMockAzureFunctionRequest } from '../../azure/testing-helpers';
 import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
-
+import { createMockAzureFunctionRequest } from '../../azure/testing-helpers';
 import { HealthCheckDocument } from './healthcheck.db.cosmos';
 import handler, { checkResults } from './healthcheck.function';
 
@@ -13,15 +12,15 @@ const mockQueryFunc = jest.fn();
 const mockConnect = jest.fn().mockImplementation(
   (): Promise<unknown> =>
     Promise.resolve({
-      request: mockRequestFunc,
       close: mockCloseFunc,
+      request: mockRequestFunc,
     }),
 );
 
 const healthCheckDocument: HealthCheckDocument = {
-  id: 'some-id',
-  healthCheckId: 'some-other-id',
   documentType: 'HEALTH_CHECK',
+  healthCheckId: 'some-other-id',
+  id: 'some-id',
 };
 
 jest.mock('mssql', () => {

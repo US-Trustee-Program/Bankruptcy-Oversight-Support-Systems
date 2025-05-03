@@ -1,6 +1,11 @@
 import { randomUUID } from 'crypto';
+
+import { ResourceActions } from '../../../../common/src/cams/actions';
 import { CaseNote, CaseNoteEditRequest, CaseNoteInput } from '../../../../common/src/cams/cases';
+import { CamsRole } from '../../../../common/src/cams/roles';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NORMAL_CASE_ID } from '../../testing/testing-constants';
 import {
@@ -8,10 +13,6 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { CaseNotesUseCase } from './case-notes';
-import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
-import { CamsRole } from '../../../../common/src/cams/roles';
-import { ResourceActions } from '../../../../common/src/cams/actions';
-import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 describe('Test case-notes use case', () => {
   afterEach(() => {
@@ -66,8 +67,8 @@ describe('Test case-notes use case', () => {
     const useCase = new CaseNotesUseCase(context);
     const expectedError = getCamsErrorWithStack(error, MODULE_NAME, {
       camsStackInfo: {
-        module: MODULE_NAME,
         message: `Failed to get notes for case: ${NORMAL_CASE_ID}.`,
+        module: MODULE_NAME,
       },
     });
     await expect(useCase.getCaseNotes(NORMAL_CASE_ID)).rejects.toThrow(expectedError);
@@ -86,19 +87,19 @@ describe('Test case-notes use case', () => {
       .mockImplementation(async () => {});
 
     const expectedNote: CaseNote = {
-      title: caseNoteTitle,
-      documentType: 'NOTE',
       caseId: mockCase.caseId,
+      content: caseNoteContent,
       createdBy: user,
       createdOn: expect.anything(),
+      documentType: 'NOTE',
+      title: caseNoteTitle,
       updatedBy: user,
       updatedOn: expect.anything(),
-      content: caseNoteContent,
     };
     const caseNoteInput: CaseNoteInput = {
       caseId: mockCase.caseId,
-      title: caseNoteTitle,
       content: caseNoteContent,
+      title: caseNoteTitle,
     };
     await useCase.createCaseNote(user, caseNoteInput);
 
@@ -115,7 +116,7 @@ describe('Test case-notes use case', () => {
 
     const context = await createMockApplicationContext();
     context.session = await createMockApplicationContextSession({ user });
-    const existingNote = MockData.getCaseNote({ updatedBy: user, createdBy: user });
+    const existingNote = MockData.getCaseNote({ createdBy: user, updatedBy: user });
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const useCase = new CaseNotesUseCase(context);
     const archiveSpy = jest
@@ -127,10 +128,10 @@ describe('Test case-notes use case', () => {
       sessionUser: userRef,
     });
     const expectedArchiveNote: Partial<CaseNote> = {
-      id: archiveNoteRequest.id,
-      caseId: archiveNoteRequest.caseId,
-      archivedOn: expect.anything(),
       archivedBy: userRef,
+      archivedOn: expect.anything(),
+      caseId: archiveNoteRequest.caseId,
+      id: archiveNoteRequest.id,
     };
 
     await useCase.archiveCaseNote(archiveNoteRequest);
@@ -159,21 +160,21 @@ describe('Test case-notes use case', () => {
       .spyOn(MockMongoRepository.prototype, 'archiveCaseNote')
       .mockImplementation(async () => {});
 
-    const existingNote: CaseNote = MockData.getCaseNote({ updatedBy: user, createdBy: user });
+    const existingNote: CaseNote = MockData.getCaseNote({ createdBy: user, updatedBy: user });
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingNote);
     const newNote: CaseNote = MockData.getCaseNote({
       ...existingNote,
       content: 'Edited Note Content',
-      title: 'Edited Note Title',
       previousVersionId: existingNote.id,
+      title: 'Edited Note Title',
       updatedBy: userRef,
     });
 
     const expectedArchiveNote: Partial<CaseNote> = {
-      id: existingNote.id,
-      caseId: existingNote.caseId,
-      archivedOn: expect.anything(),
       archivedBy: userRef,
+      archivedOn: expect.anything(),
+      caseId: existingNote.caseId,
+      id: existingNote.id,
     };
 
     const request: CaseNoteEditRequest = {

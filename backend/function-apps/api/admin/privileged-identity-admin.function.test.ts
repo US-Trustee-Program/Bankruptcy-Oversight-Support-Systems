@@ -1,4 +1,5 @@
 import { InvocationContext } from '@azure/functions';
+
 import { PrivilegedIdentityAdminController } from '../../../lib/controllers/admin/privileged-identity-admin.controller';
 import {
   buildTestResponseError,
@@ -14,7 +15,7 @@ describe('Privileged identity admin Function tests', () => {
     const request = createMockAzureFunctionRequest({
       method: 'GET',
     });
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess({ data: {} });
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess({ data: {} });
     jest
       .spyOn(PrivilegedIdentityAdminController.prototype, 'handleRequest')
       .mockResolvedValue(camsHttpResponse);

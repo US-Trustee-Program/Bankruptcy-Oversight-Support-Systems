@@ -1,22 +1,23 @@
-import {
-  createMockApplicationContext,
-  createMockApplicationContextSession,
-} from '../../testing/testing-utilities';
-import { OrdersUseCase } from './orders';
-import { getCasesRepository } from '../../factory';
+import * as crypto from 'crypto';
+
+import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';
 import {
   ConsolidationOrderActionApproval,
   getCaseSummaryFromConsolidationOrderCase,
 } from '../../../../common/src/cams/orders';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
-import * as crypto from 'crypto';
-import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';
-import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { getCasesRepository } from '../../factory';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { OrdersUseCase } from './orders';
 
 describe('Orders use case', () => {
   let mockContext;
@@ -24,8 +25,8 @@ describe('Orders use case', () => {
   let useCase: OrdersUseCase;
   const courtDivisionCode = '081';
   const authorizedUser = MockData.getCamsUser({
-    roles: [CamsRole.DataVerifier],
     offices: [REGION_02_GROUP_NY],
+    roles: [CamsRole.DataVerifier],
   });
 
   beforeEach(async () => {
@@ -43,8 +44,8 @@ describe('Orders use case', () => {
   test('should approve a split consolidation order', async () => {
     const originalConsolidation = MockData.getConsolidationOrder({
       override: {
-        status: 'approved',
         courtDivisionCode,
+        status: 'approved',
       },
     });
     const mockDelete = jest.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue();
@@ -58,8 +59,8 @@ describe('Orders use case', () => {
     const approvedConsolidation = {
       ...originalConsolidation,
       childCases: [originalConsolidation.childCases[0]],
-      leadCase: leadCaseSummary,
       id: crypto.randomUUID(),
+      leadCase: leadCaseSummary,
     };
     const newPendingConsolidation = {
       ...originalConsolidation,
@@ -72,44 +73,44 @@ describe('Orders use case', () => {
       .mockResolvedValueOnce(newPendingConsolidation)
       .mockResolvedValueOnce(approvedConsolidation);
     const leadCaseBefore: ConsolidationOrderSummary = {
-      status: 'pending',
       childCases: [],
+      status: 'pending',
     };
     const childCaseSummaries = approvedConsolidation.childCases.map((bCase) =>
       getCaseSummaryFromConsolidationOrderCase(bCase),
     );
     const leadCaseAfter: ConsolidationOrderSummary = {
-      status: 'approved',
       childCases: [childCaseSummaries[0]],
+      status: 'approved',
     };
     const leadCaseHistory: Partial<CaseHistory> = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: approvedConsolidation.leadCase.caseId,
-      before: leadCaseBefore,
       after: leadCaseAfter,
+      before: leadCaseBefore,
+      caseId: approvedConsolidation.leadCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
     };
     const before: ConsolidationOrderSummary = {
-      status: 'pending',
       childCases: [],
+      status: 'pending',
     };
     const after: ConsolidationOrderSummary = {
-      status: 'approved',
-      leadCase: approvedConsolidation.leadCase,
       childCases: [],
+      leadCase: approvedConsolidation.leadCase,
+      status: 'approved',
     };
     const childCaseHistory: Partial<CaseHistory> = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: originalConsolidation.childCases[0].caseId,
-      before,
       after,
+      before,
+      caseId: originalConsolidation.childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
     };
     const initialCaseHistory: CaseHistory = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: originalConsolidation.childCases[0].caseId,
-      before: null,
       after: before,
-      updatedOn: '2024-01-01T12:00:00.000Z',
+      before: null,
+      caseId: originalConsolidation.childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
       updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
@@ -186,8 +187,8 @@ describe('Orders use case', () => {
 
     const newConsolidation = {
       ...pendingConsolidation,
-      leadCase: leadCaseSummary,
       id: crypto.randomUUID(),
+      leadCase: leadCaseSummary,
     };
 
     const mockPut = jest
@@ -195,8 +196,8 @@ describe('Orders use case', () => {
       .mockResolvedValue(newConsolidation);
 
     const leadCaseBefore: ConsolidationOrderSummary = {
-      status: 'pending',
       childCases: [],
+      status: 'pending',
     };
 
     const childCaseSummaries = newConsolidation.childCases.map((bCase) =>
@@ -204,42 +205,42 @@ describe('Orders use case', () => {
     );
 
     const leadCaseAfter: ConsolidationOrderSummary = {
-      status: 'approved',
       childCases: childCaseSummaries,
+      status: 'approved',
     };
 
     const leadCaseHistory: Partial<CaseHistory> = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: newConsolidation.leadCase.caseId,
-      before: leadCaseBefore,
       after: leadCaseAfter,
+      before: leadCaseBefore,
+      caseId: newConsolidation.leadCase.caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
     };
 
     const before: ConsolidationOrderSummary = {
-      status: 'pending',
       childCases: [],
+      status: 'pending',
     };
 
     const after: ConsolidationOrderSummary = {
-      status: 'approved',
-      leadCase: newConsolidation.leadCase,
       childCases: [],
+      leadCase: newConsolidation.leadCase,
+      status: 'approved',
     };
 
     const childCaseHistory: Partial<CaseHistory> = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
-      before,
       after,
+      before,
+      caseId: pendingConsolidation.childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
     };
 
     const initialCaseHistory: CaseHistory = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
-      before: null,
       after: before,
-      updatedOn: '2024-01-01T12:00:00.000Z',
+      before: null,
+      caseId: pendingConsolidation.childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
       updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-01-01T12:00:00.000Z',
     };
 
     const mockGetHistory = jest

@@ -1,8 +1,9 @@
-import { describe } from 'vitest';
+import * as oktaReactModule from '@okta/okta-react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
+
 import { OktaLogout } from './OktaLogout';
-import * as oktaReactModule from '@okta/okta-react';
 
 describe('OktaLogout', () => {
   const clearStorage = vi.fn();

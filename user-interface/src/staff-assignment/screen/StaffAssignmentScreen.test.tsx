@@ -1,29 +1,30 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import StaffAssignmentScreen from './StaffAssignmentScreen';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import * as searchResultsModule from '@/search-results/SearchResults';
+import { SearchResultsProps } from '@/search-results/SearchResults';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import MockData from '@common/cams/test-utilities/mock-data';
-import * as searchResultsModule from '@/search-results/SearchResults';
-import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import { SearchResultsProps } from '@/search-results/SearchResults';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
 import { CamsRole } from '@common/cams/roles';
-import { BrowserRouter } from 'react-router-dom';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { BrowserRouter } from 'react-router-dom';
+
+import StaffAssignmentScreen from './StaffAssignmentScreen';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
   const user = MockData.getCamsUser({
-    roles: [CamsRole.CaseAssignmentManager],
     offices: MOCKED_USTP_OFFICES_ARRAY,
+    roles: [CamsRole.CaseAssignmentManager],
   });
 
   function renderWithoutProps() {
@@ -74,12 +75,12 @@ describe('StaffAssignmentScreen', () => {
 
     const expectedPredicate: CasesSearchPredicate = {
       assignments: [expectedAssignments],
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: getCourtDivisionCodes(user),
       chapters: ['15'],
+      divisionCodes: getCourtDivisionCodes(user),
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
 
     const SearchResults = vi
@@ -109,15 +110,15 @@ describe('StaffAssignmentScreen', () => {
 
     expect(SearchResults).toHaveBeenCalledWith(
       {
+        header: expect.anything(),
         id: 'search-results',
         noResultsAlertProps: {
           message: 'There are no cases currently assigned.',
           title: 'No Cases Assigned',
           type: UswdsAlertStyle.Warning,
         },
-        searchPredicate: expectedPredicate,
-        header: expect.anything(),
         row: expect.anything(),
+        searchPredicate: expectedPredicate,
       },
       {},
     );
@@ -135,12 +136,12 @@ describe('StaffAssignmentScreen', () => {
     });
 
     const expectedPredicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: getCourtDivisionCodes(user),
       chapters: expect.arrayContaining(['11', '12', '15']),
+      divisionCodes: getCourtDivisionCodes(user),
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
 
     const SearchResults = vi
@@ -153,15 +154,15 @@ describe('StaffAssignmentScreen', () => {
 
     expect(SearchResults).toHaveBeenCalledWith(
       {
+        header: expect.anything(),
         id: 'search-results',
         noResultsAlertProps: {
           message: 'There are no cases currently assigned.',
           title: 'No Cases Assigned',
           type: UswdsAlertStyle.Warning,
         },
-        searchPredicate: expectedPredicate,
-        header: expect.anything(),
         row: expect.anything(),
+        searchPredicate: expectedPredicate,
       },
       {},
     );
@@ -198,13 +199,13 @@ describe('StaffAssignmentScreen', () => {
     await userEvent.click(unassignedFilter!);
 
     const expectedPredicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
+      chapters: ['15'],
       divisionCodes: getCourtDivisionCodes(user),
-      includeOnlyUnassigned: true,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
-      chapters: ['15'],
+      includeOnlyUnassigned: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
 
     await waitFor(() => {
@@ -212,22 +213,22 @@ describe('StaffAssignmentScreen', () => {
     });
 
     expect(SearchResults.mock.calls[1][0]).toEqual({
+      header: expect.anything(),
       id: 'search-results',
       noResultsAlertProps: {
         message: 'There are no more cases to be assigned.',
         title: 'All Cases Assigned',
         type: UswdsAlertStyle.Info,
       },
-      searchPredicate: expectedPredicate,
-      header: expect.anything(),
       row: expect.anything(),
+      searchPredicate: expectedPredicate,
     });
   });
 
   describe('StaffAssignmentScreen - other errors', () => {
     const user = MockData.getCamsUser({
-      roles: [CamsRole.CaseAssignmentManager],
       offices: MOCKED_USTP_OFFICES_ARRAY,
+      roles: [CamsRole.CaseAssignmentManager],
     });
 
     beforeEach(() => {

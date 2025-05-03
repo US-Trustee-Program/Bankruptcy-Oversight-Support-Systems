@@ -1,7 +1,8 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import DateRangePicker from './DateRangePicker';
 import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+
+import DateRangePicker from './DateRangePicker';
 
 describe('Test DateRangePicker component', async () => {
   test('should call change handlers when either date is changed', async () => {
@@ -10,11 +11,11 @@ describe('Test DateRangePicker component', async () => {
     render(
       <React.StrictMode>
         <DateRangePicker
-          id={'date-picker'}
           endDateLabel="end date"
-          startDateLabel="start date"
-          onStartDateChange={mockHandlerStart}
+          id={'date-picker'}
           onEndDateChange={mockHandlerEnd}
+          onStartDateChange={mockHandlerStart}
+          startDateLabel="start date"
         ></DateRangePicker>
       </React.StrictMode>,
     );
@@ -36,8 +37,8 @@ describe('Test DateRangePicker component', async () => {
       <React.StrictMode>
         <DateRangePicker
           id={'date-picker'}
-          minDate="2024-01-01"
           maxDate="2025-01-01"
+          minDate="2024-01-01"
         ></DateRangePicker>
       </React.StrictMode>,
     );
@@ -58,8 +59,8 @@ describe('Test DateRangePicker component', async () => {
       <React.StrictMode>
         <DateRangePicker
           id={'date-picker'}
-          minDate="2020-01-01"
           maxDate="2035-01-01"
+          minDate="2020-01-01"
         ></DateRangePicker>
       </React.StrictMode>,
     );
@@ -112,10 +113,10 @@ describe('Test DateRangePicker component', async () => {
       <React.StrictMode>
         <DateRangePicker
           id={'date-picker'}
-          value={{ start: initialStartDate, end: initialEndDate }}
-          ref={rangeRef}
-          onStartDateChange={mockHandlerStart}
           onEndDateChange={mockHandlerEnd}
+          onStartDateChange={mockHandlerStart}
+          ref={rangeRef}
+          value={{ end: initialEndDate, start: initialStartDate }}
         ></DateRangePicker>
       </React.StrictMode>,
     );

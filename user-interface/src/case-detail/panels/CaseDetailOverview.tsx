@@ -1,22 +1,23 @@
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { CaseNumber } from '@/lib/components/CaseNumber';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
-import { CaseNumber } from '@/lib/components/CaseNumber';
-import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
-import { CaseDetail } from '@common/cams/cases';
 import { consolidationTypeMap } from '@/lib/utils/labels';
-import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
 import {
   AssignAttorneyModalCallbackProps,
   AssignAttorneyModalRef,
 } from '@/staff-assignment/modal/assignAttorneyModal.types';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
-import { useRef } from 'react';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
+import { CaseDetail } from '@common/cams/cases';
+import { isJointAdministrationChildCase, Transfer } from '@common/cams/events';
 import { AttorneyUser } from '@common/cams/users';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import Icon from '@/lib/components/uswds/Icon';
+import { useRef } from 'react';
+
 import { OpenModalButtonRef } from '../../lib/components/uswds/modal/modal-refs';
 
 const informationUnavailable = 'Information is not available.';
@@ -24,12 +25,12 @@ const taxIdUnavailable = 'Tax ID information is not available.';
 
 export interface CaseDetailOverviewProps {
   caseDetail: CaseDetail;
-  showReopenDate: boolean;
   onCaseAssignment: (props: AssignAttorneyModalCallbackProps) => void;
+  showReopenDate: boolean;
 }
 
 export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
-  const { caseDetail, showReopenDate, onCaseAssignment } = props;
+  const { caseDetail, onCaseAssignment, showReopenDate } = props;
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
@@ -96,13 +97,13 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               {Actions.contains(caseDetail, Actions.ManageAssignments) &&
                 caseDetail.chapter === '15' && (
                   <OpenModalButton
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
+                    ariaLabel="Edit assigned staff"
                     modalId={'assignmentModalId'}
                     modalRef={assignmentModalRef}
-                    ref={openModalButtonRef}
                     openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
-                    ariaLabel="Edit assigned staff"
+                    ref={openModalButtonRef}
                     title="Open Staff Assignment window"
+                    uswdsStyle={UswdsButtonStyle.Unstyled}
                   >
                     <IconLabel icon="edit" label="Edit" />
                   </OpenModalButton>
@@ -111,9 +112,9 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             <div className="assigned-staff-list">
               {caseDetail.regionId && (
                 <div
+                  aria-label="assigned region and office"
                   className="case-detail-region-id"
                   data-testid="case-detail-region-id"
-                  aria-label="assigned region and office"
                 >
                   Region {caseDetail.regionId.replace(/^0*/, '')} - {caseDetail.officeName} Office
                 </div>
@@ -129,7 +130,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                     (caseDetail.assignments as Array<AttorneyUser>)?.map(
                       (staff: AttorneyUser, idx: number) => {
                         return (
-                          <li key={idx} className="individual-assignee">
+                          <li className="individual-assignee" key={idx}>
                             <span className="assignee-name">{staff.name}</span>
                             <span className="vertical-divider"> | </span>
                             <span className="assignee-role">Trial Attorney</span>
@@ -157,55 +158,55 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
           <div className="debtor-information padding-bottom-4 case-card">
             <h3>Debtor</h3>
             <ul className="usa-list usa-list--unstyled">
-              <li data-testid="case-detail-debtor-name" aria-label="debtor name">
+              <li aria-label="debtor name" data-testid="case-detail-debtor-name">
                 {caseDetail.debtor.name}
               </li>
               {caseDetail.debtor.taxId && (
                 <li
-                  data-testid="case-detail-debtor-taxId"
                   aria-label="debtor employer identification number"
+                  data-testid="case-detail-debtor-taxId"
                 >
                   <span className="case-detail-item-name">EIN:</span>
                   <span className="case-detail-item-value">{caseDetail.debtor.taxId}</span>
                 </li>
               )}
               {caseDetail.debtor.ssn && (
-                <li data-testid="case-detail-debtor-ssn" aria-label="debtor social security number">
+                <li aria-label="debtor social security number" data-testid="case-detail-debtor-ssn">
                   <span className="case-detail-item-name">SSN/ITIN:</span>
                   <span className="case-detail-item-value">{caseDetail.debtor.ssn}</span>
                 </li>
               )}
               {!caseDetail.debtor.taxId && !caseDetail.debtor.ssn && (
                 <li
-                  data-testid="case-detail-debtor-no-taxids"
                   aria-label="debtor tax identification"
+                  data-testid="case-detail-debtor-no-taxids"
                 >
                   {taxIdUnavailable}
                 </li>
               )}
-              <li data-testid="case-detail-debtor-type" aria-label="debtor type">
+              <li aria-label="debtor type" data-testid="case-detail-debtor-type">
                 {caseDetail.debtorTypeLabel}
               </li>
             </ul>
             {caseDetail.debtor.address1 && (
-              <div data-testid="case-detail-debtor-address1" aria-label="debtor address line 1">
+              <div aria-label="debtor address line 1" data-testid="case-detail-debtor-address1">
                 {caseDetail.debtor.address1}
               </div>
             )}
             {caseDetail.debtor.address2 && (
-              <div data-testid="case-detail-debtor-address2" aria-label="debtor address line 2">
+              <div aria-label="debtor address line 2" data-testid="case-detail-debtor-address2">
                 {caseDetail.debtor.address2}
               </div>
             )}
             {caseDetail.debtor.address3 && (
-              <div data-testid="case-detail-debtor-address3" aria-label="debtor address line 3">
+              <div aria-label="debtor address line 3" data-testid="case-detail-debtor-address3">
                 {caseDetail.debtor.address3}
               </div>
             )}
             {caseDetail.debtor.cityStateZipCountry && (
               <div
-                data-testid="case-detail-debtor-cityStateZipCountry"
                 aria-label="debtor city, state, zip, country"
+                data-testid="case-detail-debtor-cityStateZipCountry"
               >
                 {caseDetail.debtor.cityStateZipCountry}
               </div>
@@ -216,17 +217,17 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
             {caseDetail.debtorAttorney && (
               <>
                 <div
+                  aria-label="debtor counsel name"
                   className="padding-bottom-1"
                   data-testid="case-detail-debtor-counsel-name"
-                  aria-label="debtor counsel name"
                 >
                   {caseDetail.debtorAttorney.name}
                 </div>
                 {caseDetail.debtorAttorney.office && (
                   <div
+                    aria-label="debtor counsel office"
                     className="padding-bottom-1"
                     data-testid="case-detail-debtor-counsel-office"
-                    aria-label="debtor counsel office"
                   >
                     {caseDetail.debtorAttorney.office}
                   </div>
@@ -234,32 +235,32 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                 <div className="padding-bottom-1">
                   {caseDetail.debtorAttorney.address1 && (
                     <div
-                      data-testid="case-detail-debtor-counsel-address1"
                       aria-label="debtor counsel address line 1"
+                      data-testid="case-detail-debtor-counsel-address1"
                     >
                       {caseDetail.debtorAttorney.address1}
                     </div>
                   )}
                   {caseDetail.debtorAttorney.address2 && (
                     <div
-                      data-testid="case-detail-debtor-counsel-address2"
                       aria-label="debtor counsel address line 2"
+                      data-testid="case-detail-debtor-counsel-address2"
                     >
                       {caseDetail.debtorAttorney.address2}
                     </div>
                   )}
                   {caseDetail.debtorAttorney.address3 && (
                     <div
-                      data-testid="case-detail-debtor-counsel-address3"
                       aria-label="debtor counsel address line 3"
+                      data-testid="case-detail-debtor-counsel-address3"
                     >
                       {caseDetail.debtorAttorney.address3}
                     </div>
                   )}
                   {caseDetail.debtorAttorney.cityStateZipCountry && (
                     <div
-                      data-testid="case-detail-debtor-counsel-cityStateZipCountry"
                       aria-label="debtor counsel city, state, zip, country"
+                      data-testid="case-detail-debtor-counsel-cityStateZipCountry"
                     >
                       {caseDetail.debtorAttorney.cityStateZipCountry}
                     </div>
@@ -267,18 +268,18 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                 </div>
                 {caseDetail.debtorAttorney.phone && (
                   <div
+                    aria-label="debtor counsel phone"
                     className="padding-bottom-1"
                     data-testid="case-detail-debtor-counsel-phone"
-                    aria-label="debtor counsel phone"
                   >
                     {caseDetail.debtorAttorney.phone}
                   </div>
                 )}
                 {caseDetail.debtorAttorney.email && (
                   <div
+                    aria-label="debtor counsel email"
                     className="padding-bottom-1"
                     data-testid="case-detail-debtor-counsel-email"
-                    aria-label="debtor counsel email"
                   >
                     <a
                       href={`mailto:${caseDetail.debtorAttorney.email}?subject=${getCaseNumber(
@@ -293,7 +294,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
               </>
             )}
             {!caseDetail.debtorAttorney && (
-              <div data-testid="case-detail-no-debtor-attorney" aria-label="debtor attorney">
+              <div aria-label="debtor attorney" data-testid="case-detail-no-debtor-attorney">
                 {informationUnavailable}
               </div>
             )}
@@ -359,7 +360,7 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
                   ?.sort(sortTransfers)
                   .map((transfer: Transfer, idx: number) => {
                     return (
-                      <li key={idx} className="transfer">
+                      <li className="transfer" key={idx}>
                         <h4>
                           Transferred {transfer.documentType === 'TRANSFER_FROM' ? 'from' : 'to'}:
                         </h4>
@@ -400,18 +401,18 @@ export default function CaseDetailOverview(props: CaseDetailOverviewProps) {
         </span>
       </div>
       <AssignAttorneyModal
-        ref={assignmentModalRef}
-        modalId={'assignmentModalId'}
         alertMessage={
           isJointAdministrationChildCase(caseDetail.consolidation)
             ? {
                 message: 'The assignees for this case will not match the lead case.',
-                type: UswdsAlertStyle.Warning,
                 timeOut: 0,
+                type: UswdsAlertStyle.Warning,
               }
             : undefined
         }
         assignmentChangeCallback={() => {}}
+        modalId={'assignmentModalId'}
+        ref={assignmentModalRef}
       ></AssignAttorneyModal>
     </>
   );

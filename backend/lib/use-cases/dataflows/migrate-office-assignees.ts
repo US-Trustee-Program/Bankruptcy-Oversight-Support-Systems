@@ -1,18 +1,38 @@
+import { CaseAssignment } from '../../../../common/src/cams/assignments';
+import { isCaseOpen } from '../../../../common/src/cams/cases';
+import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
 import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsError } from '../../common-errors/cams-error';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import {
   getAssignmentRepository,
   getCasesRepository,
   getOfficeAssigneesRepository,
   getOfficesGateway,
 } from '../../factory';
-import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { CamsError } from '../../common-errors/cams-error';
-import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
-import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { isCaseOpen } from '../../../../common/src/cams/cases';
 import { OfficeAssignee } from '../gateways.types';
 
 const MODULE_NAME = 'MIGRATE-OFFICE-ASSIGNEES-USE-CASE';
+
+async function createOfficeAssignee(
+  context: ApplicationContext,
+  assignee: OfficeAssignee,
+): Promise<boolean> {
+  const officeAssigneesRepo = getOfficeAssigneesRepository(context);
+  let error: CamsError;
+  try {
+    await officeAssigneesRepo.create(assignee);
+  } catch (originalError) {
+    error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+      camsStackInfo: {
+        message: `Failed writing assignment for userId: ${assignee.userId} to case: ${assignee.caseId}.`,
+        module: MODULE_NAME,
+      },
+    });
+    context.logger.camsError(error);
+  }
+  return !error;
+}
 
 async function migrateAssignments(context: ApplicationContext) {
   const assignmentsRepo = getAssignmentRepository(context);
@@ -42,9 +62,9 @@ async function migrateAssignments(context: ApplicationContext) {
   const officeAssignees: OfficeAssignee[] = filteredAssignments.map((assignment) => {
     return {
       caseId: assignment.caseId,
+      name: assignment.name,
       officeCode: divisionCodeMap.get(assignment.caseId.substring(0, 3)).officeCode,
       userId: assignment.userId,
-      name: assignment.name,
     };
   });
 
@@ -61,30 +81,10 @@ async function migrateAssignments(context: ApplicationContext) {
       }
       return acc;
     },
-    { success: 0, fail: 0 },
+    { fail: 0, success: 0 },
   );
 
   context.logger.info(MODULE_NAME, 'Office assignees migration results', summary);
-}
-
-async function createOfficeAssignee(
-  context: ApplicationContext,
-  assignee: OfficeAssignee,
-): Promise<boolean> {
-  const officeAssigneesRepo = getOfficeAssigneesRepository(context);
-  let error: CamsError;
-  try {
-    await officeAssigneesRepo.create(assignee);
-  } catch (originalError) {
-    error = getCamsErrorWithStack(originalError, MODULE_NAME, {
-      camsStackInfo: {
-        message: `Failed writing assignment for userId: ${assignee.userId} to case: ${assignee.caseId}.`,
-        module: MODULE_NAME,
-      },
-    });
-    context.logger.camsError(error);
-  }
-  return !error;
 }
 
 const MigrateOfficeAssigneesUseCase = {

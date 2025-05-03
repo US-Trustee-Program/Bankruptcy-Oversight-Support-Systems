@@ -14,20 +14,44 @@ export function assert(condition: boolean, message: string = 'Assertion failed.'
 
 const COMMA_SEPARATOR = ', ';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sqlEscapeValue(value: any): string {
-  if (typeof value === 'string') return `'${value.replace("'", "''")}'`;
-  if (typeof value === 'number') return `${value}`;
-  if (!value) return 'NULL';
-  console.log('No case for: value', value, 'typeof', typeof value);
-  return value;
+export function concatenateCityStateZipCountry(
+  props: { city?: string; country?: string; state?: string; zip?: string } = {},
+) {
+  return removeExtraSpaces([props.city, props.state, props.zip, props.country].join(' '));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sqlEscape(record: Array<any>) {
-  return record.map((column) => {
-    return sqlEscapeValue(column);
-  });
+export function concatenateName(
+  props: { firstName?: string; generation?: string; lastName?: string; middleName?: string } = {},
+) {
+  return removeExtraSpaces(
+    [props.firstName, props.middleName, props.lastName, props.generation].join(' '),
+  );
+}
+
+export function randomInt(range: number) {
+  return Math.floor(Math.random() * range);
+}
+
+export function randomTruth() {
+  return randomInt(2) > 0;
+}
+
+export function removeExtraSpaces(s: string | undefined): string | undefined {
+  if (s) {
+    return s
+      .trim()
+      .split(/[\s,\t,\n]+/g)
+      .join(' ');
+  }
+
+  return undefined;
+}
+
+export function someDateAfterThisDate(thisDateString: string, days?: number): string {
+  const thisDate = new Date(Date.parse(thisDateString));
+  const daysToAdd = days || randomInt(1000);
+  const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
+  return getIsoDate(someDate);
 }
 
 export function toSqlInsertStatement(
@@ -101,42 +125,18 @@ export function toSqlUpdateStatements(
   });
 }
 
-export function randomTruth() {
-  return randomInt(2) > 0;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sqlEscape(record: Array<any>) {
+  return record.map((column) => {
+    return sqlEscapeValue(column);
+  });
 }
 
-export function randomInt(range: number) {
-  return Math.floor(Math.random() * range);
-}
-
-export function removeExtraSpaces(s: string | undefined): string | undefined {
-  if (s) {
-    return s
-      .trim()
-      .split(/[\s,\t,\n]+/g)
-      .join(' ');
-  }
-
-  return undefined;
-}
-
-export function concatenateName(
-  props: { firstName?: string; lastName?: string; middleName?: string; generation?: string } = {},
-) {
-  return removeExtraSpaces(
-    [props.firstName, props.middleName, props.lastName, props.generation].join(' '),
-  );
-}
-
-export function concatenateCityStateZipCountry(
-  props: { city?: string; state?: string; zip?: string; country?: string } = {},
-) {
-  return removeExtraSpaces([props.city, props.state, props.zip, props.country].join(' '));
-}
-
-export function someDateAfterThisDate(thisDateString: string, days?: number): string {
-  const thisDate = new Date(Date.parse(thisDateString));
-  const daysToAdd = days || randomInt(1000);
-  const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
-  return getIsoDate(someDate);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function sqlEscapeValue(value: any): string {
+  if (typeof value === 'string') return `'${value.replace("'", "''")}'`;
+  if (typeof value === 'number') return `${value}`;
+  if (!value) return 'NULL';
+  console.log('No case for: value', value, 'typeof', typeof value);
+  return value;
 }

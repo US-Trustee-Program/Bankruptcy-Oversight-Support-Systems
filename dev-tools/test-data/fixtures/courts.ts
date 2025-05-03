@@ -1,11 +1,11 @@
-import { Court } from '../domain/court';
 import { OfficeDetails } from '../../../common/src/cams/courts';
 import { OFFICES } from '../../../common/src/cams/test-utilities/offices.mock';
+import { Court } from '../domain/court';
 
 export const courts: Array<Court> = [
   {
     county: 'NEW YORK-NY',
-    id: '0208',
+    div: '081',
     group: {
       id: 'NY',
       region: {
@@ -13,11 +13,11 @@ export const courts: Array<Court> = [
         name: 'NEW YORK',
       },
     },
-    div: '081',
+    id: '0208',
   },
   {
     county: 'WHITE PLAINS',
-    id: '0208',
+    div: '087',
     group: {
       id: 'NY',
       region: {
@@ -25,11 +25,11 @@ export const courts: Array<Court> = [
         name: 'NEW YORK',
       },
     },
-    div: '087',
+    id: '0208',
   },
   {
     county: 'BUFFALO',
-    id: '0209',
+    div: '091',
     group: {
       id: 'BU',
       region: {
@@ -37,11 +37,11 @@ export const courts: Array<Court> = [
         name: 'NEW YORK',
       },
     },
-    div: '091',
+    id: '0209',
   },
   {
     county: 'BUFFALO',
-    id: '0209',
+    div: '091',
     group: {
       id: 'BU',
       region: {
@@ -49,11 +49,11 @@ export const courts: Array<Court> = [
         name: 'NEW YORK',
       },
     },
-    div: '091',
+    id: '0209',
   },
   {
     county: 'WILMINGTON',
-    id: '0311',
+    div: '111',
     group: {
       id: 'WL',
       region: {
@@ -61,7 +61,7 @@ export const courts: Array<Court> = [
         name: 'PHILADELPHIA',
       },
     },
-    div: '111',
+    id: '0311',
   },
 ];
 
@@ -69,7 +69,7 @@ function generateCourtsFromCommon(offices: Array<OfficeDetails>): Array<Court> {
   return offices.map((office) => {
     return {
       county: office.courtDivisionName,
-      id: office.courtId,
+      div: office.courtDivisionCode,
       group: {
         id: office.groupDesignator,
         region: {
@@ -77,7 +77,7 @@ function generateCourtsFromCommon(offices: Array<OfficeDetails>): Array<Court> {
           name: office.regionName,
         },
       },
-      div: office.courtDivisionCode,
+      id: office.courtId,
     };
   });
 }

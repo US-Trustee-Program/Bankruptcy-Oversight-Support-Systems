@@ -7,43 +7,43 @@ import React, {
   useState,
 } from 'react';
 
-export type AlertDetails = {
-  message: string;
-  title?: string;
-  type: UswdsAlertStyle;
-  timeOut: number;
-};
-
-export type AlertProps = PropsWithChildren & {
-  id?: string;
-  message?: string;
-  type: UswdsAlertStyle;
-  role?: 'status' | 'alert';
-  slim?: boolean;
-  timeout?: number;
-  title?: string;
-  className?: string;
-  inline?: boolean;
-  show?: boolean;
-  noIcon?: true;
-};
-
 export enum UswdsAlertStyle {
-  Info = 'usa-alert--info',
-  Warning = 'usa-alert--warning',
   Error = 'usa-alert--error',
+  Info = 'usa-alert--info',
   Success = 'usa-alert--success',
+  Warning = 'usa-alert--warning',
 }
 
 enum IsVisible {
-  True = 1,
   False = 0,
+  True = 1,
   Unset = -1,
 }
 
+export type AlertDetails = {
+  message: string;
+  timeOut: number;
+  title?: string;
+  type: UswdsAlertStyle;
+};
+
+export type AlertProps = PropsWithChildren & {
+  className?: string;
+  id?: string;
+  inline?: boolean;
+  message?: string;
+  noIcon?: true;
+  role?: 'alert' | 'status';
+  show?: boolean;
+  slim?: boolean;
+  timeout?: number;
+  title?: string;
+  type: UswdsAlertStyle;
+};
+
 export type AlertRefType = {
-  show: (inline?: boolean) => void;
   hide: () => void;
+  show: (inline?: boolean) => void;
 };
 
 function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
@@ -78,8 +78,8 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
   }, [isVisible === IsVisible.True]);
 
   useImperativeHandle(ref, () => ({
-    show,
     hide,
+    show,
   }));
 
   return (
@@ -90,6 +90,7 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
       role="alert"
     >
       <div
+        aria-live={props.role === 'alert' ? 'assertive' : 'polite'}
         className={`${classes} ${
           isVisible === IsVisible.True
             ? 'usa-alert__visible'
@@ -97,17 +98,16 @@ function AlertComponent(props: AlertProps, ref: React.Ref<AlertRefType>) {
               ? 'usa-alert__hidden'
               : 'usa-alert__unset'
         }`}
-        role={props.role}
-        aria-live={props.role === 'alert' ? 'assertive' : 'polite'}
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
+        role={props.role}
       >
         <div className="usa-alert__body">
           {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}
           {!!props.message && (
             <p
+              aria-label={props.message}
               className="usa-alert__text"
               data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
-              aria-label={props.message}
             >
               {props.message}
             </p>

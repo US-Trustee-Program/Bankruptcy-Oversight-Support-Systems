@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
-import { useOktaAuth } from '@okta/okta-react';
 import { Interstitial } from '@/login/Interstitial';
+import { useOktaAuth } from '@okta/okta-react';
+import { useEffect } from 'react';
 
 export function OktaLogin() {
-  const { oktaAuth, authState } = useOktaAuth();
+  const { authState, oktaAuth } = useOktaAuth();
 
   useEffect(() => {
     oktaAuth.signInWithRedirect();
   }, [oktaAuth, authState]);
 
-  return <Interstitial id="interstitial-login" caption="Logging in..."></Interstitial>;
+  return <Interstitial caption="Logging in..." id="interstitial-login"></Interstitial>;
 }

@@ -1,15 +1,14 @@
+import * as crypto from 'crypto';
+
+import { CaseSummary } from '../../../../common/src/cams/cases';
 import {
-  createMockApplicationContext,
-  createMockApplicationContextSession,
-} from '../../testing/testing-utilities';
-import { OrdersUseCase } from './orders';
-import {
-  getOrdersRepository,
-  getCasesRepository,
-  getCasesGateway,
-  getConsolidationOrdersRepository,
-} from '../../factory';
-import { OrderSyncState } from '../gateways.types';
+  ConsolidationFrom,
+  ConsolidationTo,
+  TransferFrom,
+  TransferTo,
+} from '../../../../common/src/cams/events';
+import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';
+import { UstpDivisionMeta } from '../../../../common/src/cams/offices';
 import {
   ConsolidationOrder,
   ConsolidationOrderActionApproval,
@@ -18,28 +17,30 @@ import {
   TransferOrder,
   TransferOrderAction,
 } from '../../../../common/src/cams/orders';
-import {
-  ConsolidationFrom,
-  ConsolidationTo,
-  TransferFrom,
-  TransferTo,
-} from '../../../../common/src/cams/events';
-import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
-import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { NotFoundError } from '../../common-errors/not-found-error';
-import * as crypto from 'crypto';
-import { CaseHistory, ConsolidationOrderSummary } from '../../../../common/src/cams/history';
-import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
 import { CamsRole } from '../../../../common/src/cams/roles';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { REGION_02_GROUP_NY } from '../../../../common/src/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import {
+  getCasesGateway,
+  getCasesRepository,
+  getConsolidationOrdersRepository,
+  getOrdersRepository,
+} from '../../factory';
+import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { UstpDivisionMeta } from '../../../../common/src/cams/offices';
+import { MockOrdersGateway } from '../../testing/mock-gateways/mock.orders.gateway';
+import {
+  createMockApplicationContext,
+  createMockApplicationContextSession,
+} from '../../testing/testing-utilities';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { OrderSyncState } from '../gateways.types';
+import { OrdersUseCase } from './orders';
 
 describe('Orders use case', () => {
   const CASE_ID = '000-11-22222';
@@ -51,8 +52,8 @@ describe('Orders use case', () => {
 
   let useCase: OrdersUseCase;
   const authorizedUser = MockData.getCamsUser({
-    roles: [CamsRole.DataVerifier],
     offices: [REGION_02_GROUP_NY],
+    roles: [CamsRole.DataVerifier],
   });
   const unauthorizedUser = MockData.getCamsUser({ roles: [] });
 
@@ -113,25 +114,25 @@ describe('Orders use case', () => {
     const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
 
     const action: TransferOrderAction = {
-      id: order.id,
-      orderType: 'transfer',
       caseId: order.caseId,
+      id: order.id,
       newCase: order.newCase,
+      orderType: 'transfer',
       status: 'approved',
     };
 
     const transferIn: TransferFrom = {
       caseId: order.newCase.caseId,
-      otherCase: getCaseSummaryFromTransferOrder(order),
-      orderDate: order.orderDate,
       documentType: 'TRANSFER_FROM',
+      orderDate: order.orderDate,
+      otherCase: getCaseSummaryFromTransferOrder(order),
     };
 
     const transferOut: TransferTo = {
       caseId: order.caseId,
-      otherCase: order.newCase,
-      orderDate: order.orderDate,
       documentType: 'TRANSFER_TO',
+      orderDate: order.orderDate,
+      otherCase: order.newCase,
     };
 
     const updateOrderFn = jest.spyOn(ordersRepo, 'update').mockResolvedValue({ id: 'mock-guid' });
@@ -157,9 +158,9 @@ describe('Orders use case', () => {
   test('should add audit records when a transfer order is rejected', async () => {
     const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'rejected' } });
     const orderTransfer: TransferOrderAction = {
+      caseId: order.caseId,
       id: order.id,
       orderType: 'transfer',
-      caseId: order.caseId,
       status: 'rejected',
     };
 
@@ -179,17 +180,17 @@ describe('Orders use case', () => {
 
     const consolidations = MockData.buildArray(MockData.getConsolidationOrder, 3);
     const rawConsolidationOrders = MockData.buildArray(MockData.getRawConsolidationOrder, 3);
-    const startState = { documentType: 'ORDERS_SYNC_STATE', txId: '1234', id: 'guid-1' };
+    const startState = { documentType: 'ORDERS_SYNC_STATE', id: 'guid-1', txId: '1234' };
 
     jest.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
-      id: 'guid-1',
       documentType: 'ORDERS_SYNC_STATE',
+      id: 'guid-1',
     });
 
     jest.spyOn(MockOrdersGateway.prototype, 'getOrderSync').mockResolvedValue({
       consolidations: rawConsolidationOrders,
-      transfers,
       maxTxId: '3000',
+      transfers,
     });
 
     const endState = {
@@ -235,10 +236,10 @@ describe('Orders use case', () => {
     // Add two consolidation orders, each with a lead case ID. One lead case ID will return a case, the other will not.
     const rawConsolidationOrders = [
       MockData.getRawConsolidationOrder({
-        override: { jobId, caseId: '999-99-11111', leadCaseIdHint: '99-00000' },
+        override: { caseId: '999-99-11111', jobId, leadCaseIdHint: '99-00000' },
       }),
       MockData.getRawConsolidationOrder({
-        override: { jobId, caseId: '999-99-22222', leadCaseIdHint: '99-99999' },
+        override: { caseId: '999-99-22222', jobId, leadCaseIdHint: '99-99999' },
       }),
     ];
 
@@ -274,8 +275,8 @@ describe('Orders use case', () => {
 
     const endState = {
       ...initialState,
-      txId: '3000',
       id,
+      txId: '3000',
     };
 
     const mockUpsertState = jest
@@ -287,8 +288,8 @@ describe('Orders use case', () => {
       .spyOn(MockOrdersGateway.prototype, 'getOrderSync')
       .mockResolvedValue({
         consolidations: rawConsolidations,
-        transfers,
         maxTxId: '3000',
+        transfers,
       });
 
     const mockPutOrders = jest
@@ -337,38 +338,38 @@ describe('Orders use case', () => {
     const rejectionReason = 'test';
     const rejection: ConsolidationOrderActionRejection = {
       ...pendingConsolidation,
-      rejectedCases: pendingConsolidation.childCases.map((bCase) => bCase.caseId),
       reason: rejectionReason,
+      rejectedCases: pendingConsolidation.childCases.map((bCase) => bCase.caseId),
     };
     const newConsolidation = {
       ...pendingConsolidation,
-      leadCase: leadCaseSummary,
       id: crypto.randomUUID(),
+      leadCase: leadCaseSummary,
     };
     const mockPut = jest
       .spyOn(MockMongoRepository.prototype, 'create')
       .mockResolvedValue(newConsolidation);
     const before: ConsolidationOrderSummary = {
-      status: 'pending',
       childCases: [],
+      status: 'pending',
     };
     const after: ConsolidationOrderSummary = {
-      status: 'rejected',
       childCases: [],
+      status: 'rejected',
     };
     const childCaseHistory: Partial<CaseHistory> = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
-      before,
       after,
+      before,
+      caseId: pendingConsolidation.childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
     };
     const initialCaseHistory: CaseHistory = {
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId: pendingConsolidation.childCases[0].caseId,
-      before: null,
       after: before,
-      updatedOn: '2024-01-01T12:00:00.000Z',
+      before: null,
+      caseId: pendingConsolidation.childCases[0].caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
       updatedBy: authorizedUser,
+      updatedOn: '2024-01-01T12:00:00.000Z',
     };
     const mockGetHistory = jest
       .spyOn(MockMongoRepository.prototype, 'getCaseHistory')
@@ -463,10 +464,10 @@ describe('Orders use case', () => {
     const order: TransferOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
 
     const action: TransferOrderAction = {
-      id: order.id,
-      orderType: 'transfer',
       caseId: order.caseId,
+      id: order.id,
       newCase: order.newCase,
+      orderType: 'transfer',
       status: 'approved',
     };
 
@@ -512,10 +513,10 @@ describe('Orders use case', () => {
     const leadCase = MockData.getCaseSummary();
     const rejection: ConsolidationOrderActionRejection = {
       ...pendingConsolidation,
+      leadCase,
       rejectedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
-      leadCase,
       status: 'rejected',
     };
     const mockDelete = jest
@@ -604,16 +605,16 @@ describe('Orders use case', () => {
     const leadCase = MockData.getCaseSummary();
     const rejection: ConsolidationOrderActionRejection = {
       ...pendingConsolidation,
+      leadCase,
       rejectedCases: pendingConsolidation.childCases.map((bCase) => {
         return bCase.caseId;
       }),
-      leadCase,
       status: 'approved',
     };
     const newConsolidation = {
       ...pendingConsolidation,
-      leadCase: leadCase,
       id: crypto.randomUUID(),
+      leadCase: leadCase,
     };
     jest.spyOn(MockMongoRepository.prototype, 'create').mockResolvedValue(newConsolidation);
     const mockCreateCaseHistory = jest
@@ -644,10 +645,10 @@ describe('Orders use case', () => {
       return {
         get: jest.fn(),
         getRoleMapping: jest.fn(),
-        getUstpOffices: jest.fn(),
         getUstpDivisionMeta: jest.fn().mockImplementation(() => {
           return new Map<string, UstpDivisionMeta>([[courtDivisionCode, { isLegacy: true }]]);
         }),
+        getUstpOffices: jest.fn(),
       };
     });
 
@@ -655,14 +656,14 @@ describe('Orders use case', () => {
 
     const newCase = MockData.getCaseSummary({ override: { courtDivisionCode } });
     const order: TransferOrder = MockData.getTransferOrder({
-      override: { status: 'approved', newCase },
+      override: { newCase, status: 'approved' },
     });
 
     const action: TransferOrderAction = {
-      id: order.id,
-      orderType: 'transfer',
       caseId: order.caseId,
+      id: order.id,
       newCase: order.newCase,
+      orderType: 'transfer',
       status: 'approved',
     };
 

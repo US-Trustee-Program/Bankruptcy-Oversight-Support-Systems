@@ -1,4 +1,4 @@
-import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, {
   CHAPTER_ELEVEN_ENABLED,
   CHAPTER_TWELVE_ENABLED,
@@ -8,12 +8,13 @@ import {
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { CamsUser, CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
+
 import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
 import {
   StaffAssignmentControls,
-  StaffAssignmentUseCase,
   StaffAssignmentStore,
+  StaffAssignmentUseCase,
 } from './StaffAssignment.types';
 
 const useStaffAssignmentUseCase = (
@@ -66,12 +67,12 @@ const useStaffAssignmentUseCase = (
     filter?: StaffAssignmentScreenFilter,
   ): CasesSearchPredicate => {
     const predicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: getCourtDivisionCodes(user),
       chapters: getChapters(),
+      divisionCodes: getCourtDivisionCodes(user),
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
 
     if (filter?.includeOnlyUnassigned) {

@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
+import { getCamsError } from '../../common-errors/error-utilities';
 import Factory from '../../factory';
 import { CasesSyncState } from '../gateways.types';
-import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-RUNTIME-STATE';
 

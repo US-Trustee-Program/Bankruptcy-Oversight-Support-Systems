@@ -2,14 +2,14 @@ import { describe } from 'vitest';
 
 const MUTEX_NAME = 'test';
 
-interface UseMutex {
-  lock: () => string | null;
-  unlock: (receipt: string) => void;
-}
-
 interface MutexModule {
   registerMutex: (name: string) => void;
   useMutex: (name: string) => UseMutex;
+}
+
+interface UseMutex {
+  lock: () => null | string;
+  unlock: (receipt: string) => void;
 }
 
 describe('Mutex', () => {

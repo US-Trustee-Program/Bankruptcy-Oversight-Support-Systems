@@ -1,8 +1,9 @@
-import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
+import * as dotenv from 'dotenv';
+
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
+import { initializeApplicationInsights } from '../../azure/app-insights';
+import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 const MODULE_NAME = 'ORDERS-FUNCTION';
@@ -29,8 +30,8 @@ export default async function handler(
 }
 
 app.http('orders', {
-  methods: ['GET', 'PATCH'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET', 'PATCH'],
   route: 'orders/{id?}',
 });

@@ -1,16 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
-import React from 'react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseBasics } from '@common/cams/cases';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
-import { AttorneyUser } from '@common/cams/users';
-import { ResponseBody } from '@common/api/response';
-import testingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { ResponseBody } from '@common/api/response';
+import { CaseBasics } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
+import { AttorneyUser } from '@common/cams/users';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
+
 import AssignAttorneyModal from './AssignAttorneyModal';
+import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
 
 const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -31,8 +32,8 @@ describe('Test Assign Attorney Modal Component', () => {
   let callback = vi.fn();
 
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
-    meta: { self: 'self-url' },
     data: attorneyList,
+    meta: { self: 'self-url' },
   };
 
   function renderWithProps(
@@ -40,8 +41,8 @@ describe('Test Assign Attorney Modal Component', () => {
     props: Partial<AssignAttorneyModalProps> = {},
   ) {
     const defaults: AssignAttorneyModalProps = {
-      modalId,
       assignmentChangeCallback: vi.fn(),
+      modalId,
     };
 
     const propsToRender: AssignAttorneyModalProps = {
@@ -147,8 +148,8 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef, { assignmentChangeCallback });
 
     modalRef.current?.show({
-      callback,
       bCase: mockCase,
+      callback,
     });
     const button = screen.getByTestId('open-modal-button');
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -193,11 +194,11 @@ describe('Test Assign Attorney Modal Component', () => {
     await waitFor(() => {
       expect(callback).toHaveBeenCalledWith(
         expect.objectContaining({
-          bCase: mockCase,
-          selectedAttorneyList: expectedAttorneys,
-          previouslySelectedList: [],
-          status: 'success',
           apiResult: {},
+          bCase: mockCase,
+          previouslySelectedList: [],
+          selectedAttorneyList: expectedAttorneys,
+          status: 'success',
         }),
       );
     });
@@ -212,7 +213,6 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef);
 
     modalRef.current?.show({
-      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -220,6 +220,7 @@ describe('Test Assign Attorney Modal Component', () => {
           dateFiled: '2024-01-01',
         },
       }),
+      callback,
     });
 
     const modal = screen.getByTestId(`modal-${modalId}`);
@@ -241,7 +242,6 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef, {});
 
     modalRef.current?.show({
-      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -249,6 +249,7 @@ describe('Test Assign Attorney Modal Component', () => {
           dateFiled: '2024-01-01',
         },
       }),
+      callback,
     });
     const modal = screen.getByTestId(`modal-${modalId}`);
 
@@ -282,7 +283,6 @@ describe('Test Assign Attorney Modal Component', () => {
     renderWithProps(modalRef, {});
 
     modalRef.current?.show({
-      callback,
       bCase: MockData.getCaseBasics({
         override: {
           caseId: '123',
@@ -290,6 +290,7 @@ describe('Test Assign Attorney Modal Component', () => {
           dateFiled: '2024-01-01',
         },
       }),
+      callback,
     });
 
     await waitFor(() => {

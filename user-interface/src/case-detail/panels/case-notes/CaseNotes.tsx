@@ -1,43 +1,45 @@
 import './CaseNotes.scss';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { TextAreaRef } from '@/lib/type-declarations/input-fields';
-import { formatDateTime } from '@/lib/utils/datetime';
-import { CaseNote } from '@common/cams/cases';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { sanitizeText } from '@/lib/utils/sanitize-text';
-import { AlertOptions } from '../CaseDetailCourtDocket';
-import { handleHighlight } from '@/lib/utils/highlight-api';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
-import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import Icon from '@/lib/components/uswds/Icon';
+
 import CaseNoteFormModal, {
   CaseNoteFormModalRef,
 } from '@/case-detail/panels/case-notes/CaseNoteFormModal';
-import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import { TextAreaRef } from '@/lib/type-declarations/input-fields';
+import { formatDateTime } from '@/lib/utils/datetime';
+import { handleHighlight } from '@/lib/utils/highlight-api';
+import { sanitizeText } from '@/lib/utils/sanitize-text';
 import Actions from '@common/cams/actions';
+import { CaseNote } from '@common/cams/cases';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
-export function getCaseNotesInputValue(ref: TextAreaRef | null) {
-  return ref?.getValue() ?? '';
+import { AlertOptions } from '../CaseDetailCourtDocket';
+import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemovalModal';
+
+export interface CaseNotesProps {
+  alertOptions?: AlertOptions;
+  areCaseNotesLoading?: boolean;
+  caseId: string;
+  caseNotes?: CaseNote[];
+  hasCaseNotes: boolean;
+  onUpdateNoteRequest: (noteId?: string) => void;
+  searchString: string;
 }
 
 export type CaseNotesRef = {
   focusEditButton: (noteId: string) => void;
 };
 
-export interface CaseNotesProps {
-  caseId: string;
-  areCaseNotesLoading?: boolean;
-  hasCaseNotes: boolean;
-  caseNotes?: CaseNote[];
-  alertOptions?: AlertOptions;
-  onUpdateNoteRequest: (noteId?: string) => void;
-  searchString: string;
+export function getCaseNotesInputValue(ref: null | TextAreaRef) {
+  return ref?.getValue() ?? '';
 }
 
 function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
-  const { caseId, caseNotes, areCaseNotesLoading, searchString, onUpdateNoteRequest } = props;
+  const { areCaseNotesLoading, caseId, caseNotes, onUpdateNoteRequest, searchString } = props;
   const removeConfirmationModalRef = useRef<CaseNoteRemovalModalRef>(null);
   const caseNoteModalRef = useRef<CaseNoteFormModalRef>(null);
   const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef>[]>([]);
@@ -45,7 +47,7 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   const openEditModalButtonRefs = useRef(new Map<string, React.RefObject<OpenModalButtonRef>>());
   useMemo(mapArchiveButtonRefs, [caseNotes]);
   useMemo(mapEditButtonRefs, [caseNotes]);
-  const [focusId, setFocusId] = useState<string | null>(null);
+  const [focusId, setFocusId] = useState<null | string>(null);
   const removeConfirmationModalId = 'remove-note-modal';
   const editNoteModalId = 'edit-note-modal';
   const addNoteModalId = 'add-note-modal';
@@ -81,14 +83,14 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     const sanitizedCaseNoteTitle = sanitizeText(note.title);
 
     return (
-      <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
+      <li className="case-note grid-container" data-testid={`case-note-${idx}`} key={idx}>
         <div className="grid-row case-note-title-and-date">
           <div className="grid-col-8">
             <h4
+              aria-label={`Note Title: ${sanitizedCaseNoteTitle}`}
               className="case-note-header usa-tooltip"
               data-testid={`case-note-${idx}-header`}
               title={sanitizedCaseNoteTitle}
-              aria-label={`Note Title: ${sanitizedCaseNoteTitle}`}
             >
               {sanitizedCaseNoteTitle}
             </h4>
@@ -101,9 +103,9 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="grid-row">
           <div className="grid-col-12 case-note-content">
             <div
+              aria-label="full text of case note"
               className="note-content"
               data-testid={`case-note-${idx}-text`}
-              aria-label="full text of case note"
             >
               {sanitizedCaseNote}
             </div>
@@ -115,45 +117,45 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
         <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
           {Actions.contains(note, Actions.EditNote) && (
             <OpenModalButton
+              ariaLabel={`Edit note titled ${note.title}`}
+              buttonIndex={`${idx}`}
               className="edit-button"
               id={`case-note-edit-button`}
-              buttonIndex={`${idx}`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
               modalId={editNoteModalId}
               modalRef={caseNoteModalRef}
-              ref={openEditModalButtonRefs.current.get(note.id!)}
               openProps={{
-                id: note.id,
-                caseId: note.caseId,
                 buttonId: `case-note-edit-button-${idx}`,
-                title: note.title,
-                content: note.content,
                 callback: onUpdateNoteRequest,
+                caseId: note.caseId,
+                content: note.content,
+                id: note.id,
+                title: note.title,
               }}
-              ariaLabel={`Edit note titled ${note.title}`}
+              ref={openEditModalButtonRefs.current.get(note.id!)}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
             >
-              <Icon name="edit" className="edit-icon" />
+              <Icon className="edit-icon" name="edit" />
               Edit
             </OpenModalButton>
           )}
           {Actions.contains(note, Actions.RemoveNote) && (
             <OpenModalButton
+              ariaLabel={`Remove note titled ${note.title}`}
+              buttonIndex={`${idx}`}
               className="remove-button"
               id={`case-note-remove-button`}
-              buttonIndex={`${idx}`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
               modalId={removeConfirmationModalId}
               modalRef={removeConfirmationModalRef}
-              ref={openArchiveModalButtonRefs.current[idx]}
               openProps={{
-                id: note.id,
-                caseId: note.caseId,
                 buttonId: `case-note-remove-button-${idx}`,
                 callback: onUpdateNoteRequest,
+                caseId: note.caseId,
+                id: note.id,
               }}
-              ariaLabel={`Remove note titled ${note.title}`}
+              ref={openArchiveModalButtonRefs.current[idx]}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
             >
-              <Icon name="remove_circle" className="remove-icon" />
+              <Icon className="remove-icon" name="remove_circle" />
               Remove
             </OpenModalButton>
           )}
@@ -207,48 +209,48 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
       <div className="case-notes-title">
         <h3>Case Notes</h3>
         <OpenModalButton
+          ariaLabel={`Add new note`}
           className="add-button"
           id={'case-note-add-button'}
-          uswdsStyle={UswdsButtonStyle.Default}
           modalId={addNoteModalId}
           modalRef={caseNoteModalRef}
-          ref={openAddModalButtonRef}
-          openProps={{
-            caseId,
-            buttonId: `case-note-add-button`,
-            callback: onUpdateNoteRequest,
-          }}
           onClick={() => {
             setFocusId('');
           }}
-          ariaLabel={`Add new note`}
+          openProps={{
+            buttonId: `case-note-add-button`,
+            callback: onUpdateNoteRequest,
+            caseId,
+          }}
+          ref={openAddModalButtonRef}
+          uswdsStyle={UswdsButtonStyle.Default}
         >
-          <Icon name="add_circle_outline" className="add-circle-outline-icon" />
+          <Icon className="add-circle-outline-icon" name="add_circle_outline" />
           Add
         </OpenModalButton>
         {areCaseNotesLoading && (
-          <LoadingSpinner id="notes-loading-indicator" caption="Loading case notes..." />
+          <LoadingSpinner caption="Loading case notes..." id="notes-loading-indicator" />
         )}
         {!areCaseNotesLoading && (
           <>
             {!props.hasCaseNotes && (
               <div data-testid="empty-notes-test-id">
                 <Alert
+                  inline={true}
                   message="No notes exist for this case."
-                  type={UswdsAlertStyle.Info}
                   role={'status'}
+                  show={true}
                   timeout={0}
                   title=""
-                  show={true}
-                  inline={true}
+                  type={UswdsAlertStyle.Info}
                 />
               </div>
             )}
             {caseNotes && caseNotes.length > 0 && (
               <ol
                 className="search-case-notes"
-                id="searchable-case-notes"
                 data-testid="searchable-case-notes"
+                id="searchable-case-notes"
               >
                 {renderCaseNotes()}
               </ol>
@@ -256,10 +258,10 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
           </>
         )}
       </div>
-      <CaseNoteFormModal ref={caseNoteModalRef} modalId="case-note-modal"></CaseNoteFormModal>
+      <CaseNoteFormModal modalId="case-note-modal" ref={caseNoteModalRef}></CaseNoteFormModal>
       <CaseNoteRemovalModal
-        ref={removeConfirmationModalRef}
         modalId={removeConfirmationModalId}
+        ref={removeConfirmationModalRef}
       ></CaseNoteRemovalModal>
     </div>
   );

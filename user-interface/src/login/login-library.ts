@@ -11,10 +11,7 @@ export const LOGOUT_PATH = '/logout';
 export const LOGOUT_SESSION_END_PATH = '/session-end';
 export const LOGIN_PATHS = [LOGIN_PATH, LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT_SESSION_END_PATH];
 
-export function getLoginProviderFromEnv(): string {
-  const value = import.meta.env[LOGIN_PROVIDER_ENV_VAR_NAME];
-  return value.toLowerCase();
-}
+export type LoginProvider = 'mock' | 'none' | 'okta';
 
 export function getAuthIssuerFromEnv(): string | undefined {
   const config = getLoginConfigurationFromEnv<object>();
@@ -32,8 +29,11 @@ export function getLoginConfigurationFromEnv<T = unknown>(): T {
   }
 }
 
-export type LoginProvider = 'okta' | 'mock' | 'none';
+export function getLoginProviderFromEnv(): string {
+  const value = import.meta.env[LOGIN_PROVIDER_ENV_VAR_NAME];
+  return value.toLowerCase();
+}
 
 export function isLoginProviderType(provider: string): provider is LoginProvider {
-  return ['okta', 'mock', 'none'].includes(provider);
+  return ['mock', 'none', 'okta'].includes(provider);
 }

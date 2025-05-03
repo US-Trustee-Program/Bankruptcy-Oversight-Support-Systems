@@ -4,6 +4,7 @@
  */
 module.exports = {
   clearMocks: true,
+  collectCoverageFrom: ['**/*.{js,ts}'],
   coverageDirectory: 'coverage',
   coveragePathIgnorePatterns: [
     'coverage/',
@@ -16,11 +17,10 @@ module.exports = {
     '.*mock.*',
     'http-status-codes.ts',
   ],
-  collectCoverageFrom: ['**/*.{js,ts}'],
   coverageThreshold: {
     global: {
-      lines: 90,
       branches: 90,
+      lines: 90,
     },
   },
   preset: 'ts-jest',

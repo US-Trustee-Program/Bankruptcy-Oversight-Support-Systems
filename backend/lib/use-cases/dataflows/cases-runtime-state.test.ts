@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CasesSyncState } from '../gateways.types';
 import CasesRuntimeState from './cases-runtime-state';
 

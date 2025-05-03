@@ -6,19 +6,18 @@ import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './queue-types';
 const MODULE_NAME = 'MIGRATE-CASES-USE-CASE';
 
 /**
- * createMigrationTable
+ * emptyMigrationTable
  *
  * @param context
  */
-async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
+async function emptyMigrationTable(context: ApplicationContext): Promise<MaybeVoid> {
   try {
     const gateway = Factory.getAcmsGateway(context);
-    await gateway.loadMigrationTable(context);
-    const count = await gateway.getMigrationCaseCount(context);
-    return { data: count };
+    await gateway.emptyMigrationTable(context);
+    return { success: true };
   } catch (originalError) {
     return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to populate migration table.'),
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to empty migration table.'),
     };
   }
 }
@@ -40,8 +39,8 @@ async function getPageOfCaseEvents(
     return {
       events: caseIds.map((caseId) => {
         return {
-          type: 'MIGRATION',
           caseId,
+          type: 'MIGRATION',
         };
       }),
     };
@@ -57,26 +56,27 @@ async function getPageOfCaseEvents(
 }
 
 /**
- * emptyMigrationTable
+ * createMigrationTable
  *
  * @param context
  */
-async function emptyMigrationTable(context: ApplicationContext): Promise<MaybeVoid> {
+async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
     const gateway = Factory.getAcmsGateway(context);
-    await gateway.emptyMigrationTable(context);
-    return { success: true };
+    await gateway.loadMigrationTable(context);
+    const count = await gateway.getMigrationCaseCount(context);
+    return { data: count };
   } catch (originalError) {
     return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to empty migration table.'),
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to populate migration table.'),
     };
   }
 }
 
 const MigrateCases = {
-  loadMigrationTable,
-  getPageOfCaseEvents,
   emptyMigrationTable,
+  getPageOfCaseEvents,
+  loadMigrationTable,
 };
 
 export default MigrateCases;

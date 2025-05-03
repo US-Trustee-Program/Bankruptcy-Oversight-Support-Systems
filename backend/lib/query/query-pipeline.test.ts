@@ -9,32 +9,32 @@ import QueryPipeline, {
 } from './query-pipeline';
 
 const {
-  pipeline,
-  paginate,
-  match,
-  sort,
-  ascending,
-  descending,
-  exclude,
-  join,
-  source,
   addFields,
   additionalField,
+  ascending,
   count,
+  descending,
+  exclude,
   first,
+  join,
+  match,
+  paginate,
+  pipeline,
+  sort,
+  source,
 } = QueryPipeline;
 
 describe('Query Pipeline', () => {
   type Foo = {
-    uno: string;
-    two: number;
     three: boolean;
+    two: number;
+    uno: string;
   };
 
   type Bar = {
-    uno: string;
-    four: number;
     five: boolean;
+    four: number;
+    uno: string;
   };
 
   type FooExtension = Foo & {
@@ -110,27 +110,27 @@ describe('Query Pipeline', () => {
     const attributeFoo = ascending(fooCollection.field('uno'));
     const attributeBar = descending(barCollection.field('four'));
 
-    expect(sort(attributeFoo)).toEqual({ stage: 'SORT', fields: [attributeFoo] });
+    expect(sort(attributeFoo)).toEqual({ fields: [attributeFoo], stage: 'SORT' });
     expect(sort(attributeFoo, attributeBar)).toEqual({
-      stage: 'SORT',
       fields: [attributeFoo, attributeBar],
+      stage: 'SORT',
     });
   });
 
   test('should proxy a Join stage', () => {
     const expected = {
-      stage: 'JOIN',
-      local: expect.objectContaining({
-        name: 'uno',
-        source: 'fooCollection',
+      alias: expect.objectContaining({
+        name: 'barDocs',
       }),
       foreign: expect.objectContaining({
         name: 'uno',
         source: 'barCollection',
       }),
-      alias: expect.objectContaining({
-        name: 'barDocs',
+      local: expect.objectContaining({
+        name: 'uno',
+        source: 'fooCollection',
       }),
+      stage: 'JOIN',
     };
 
     const fooCollection = source<Foo>('fooCollection');
@@ -148,11 +148,9 @@ describe('Query Pipeline', () => {
 
   test('should proxy an AddFields stage', () => {
     const expected = {
-      stage: 'ADD_FIELDS',
       fields: [
         {
           fieldToAdd: expect.objectContaining({ name: 'matchingBars' }),
-          querySource: expect.objectContaining({ name: 'barDocs' }),
           query: {
             conjunction: 'AND',
             values: [
@@ -166,8 +164,10 @@ describe('Query Pipeline', () => {
               },
             ],
           },
+          querySource: expect.objectContaining({ name: 'barDocs' }),
         },
       ],
+      stage: 'ADD_FIELDS',
     };
 
     const matchingBars: FieldReference<FooExtension> = {
@@ -197,11 +197,11 @@ describe('Query Pipeline', () => {
 
   test('should proxy an Exclude stage', () => {
     const expected = {
-      stage: 'EXCLUDE',
       fields: [
         expect.objectContaining({ name: 'four' }),
         expect.objectContaining({ name: 'five' }),
       ],
+      stage: 'EXCLUDE',
     };
 
     const barCollection = source<Bar>();
@@ -215,9 +215,9 @@ describe('Query Pipeline', () => {
 
   test('should proxy a Paginate stage', () => {
     const expected = {
-      stage: 'PAGINATE',
-      skip: 0,
       limit: 5,
+      skip: 0,
+      stage: 'PAGINATE',
     };
 
     const actual = paginate(0, 5);
@@ -228,8 +228,8 @@ describe('Query Pipeline', () => {
   test('should proxy a Match stage', () => {
     const expected = {
       conjunction: 'AND',
-      values: [],
       stage: 'MATCH',
+      values: [],
     };
 
     const actual = match({
@@ -242,13 +242,13 @@ describe('Query Pipeline', () => {
 
   test('should coalesce Stage args into a Pipeline', () => {
     const stageOne: Stage = {
-      stage: 'PAGINATE',
-      skip: 0,
       limit: 5,
+      skip: 0,
+      stage: 'PAGINATE',
     };
     const stageTwo: Stage = {
-      stage: 'EXCLUDE',
       fields: [{ name: 'four' }, { name: 'five' }],
+      stage: 'EXCLUDE',
     };
 
     const expected = {
@@ -262,8 +262,8 @@ describe('Query Pipeline', () => {
 
   test('isSort', () => {
     const sort: Sort = {
+      fields: [{ direction: 'ASCENDING', field: { name: 'uno' } }],
       stage: 'SORT',
-      fields: [{ field: { name: 'uno' }, direction: 'ASCENDING' }],
     };
     expect(isSort(sort)).toBeTruthy();
     expect(isSort({})).toBeFalsy();
@@ -271,9 +271,9 @@ describe('Query Pipeline', () => {
 
   test('isPaginate', () => {
     const paginate: Paginate = {
-      stage: 'PAGINATE',
       limit: 100,
       skip: 0,
+      stage: 'PAGINATE',
     };
     expect(isPaginate(paginate)).toBeTruthy();
     const notPagination = {

@@ -21,8 +21,8 @@ describe('Actions', () => {
   describe('merge', () => {
     test('should merge a value object with the path template of an Action', () => {
       const values = {
-        foo: 'FOO',
         bar: 'BAR',
+        foo: 'FOO',
         zoo: 'ZOO',
       };
 

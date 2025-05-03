@@ -1,11 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react';
 import CaseDetailAuditHistory from '@/case-detail/panels/CaseDetailAuditHistory';
+import Api2 from '@/lib/models/api2';
 import { CaseAssignment } from '@common/cams/assignments';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CaseHistory } from '@common/cams/history';
 import { ConsolidationOrder } from '@common/cams/orders';
 import MockData from '@common/cams/test-utilities/mock-data';
-import Api2 from '@/lib/models/api2';
-import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { render, screen, waitFor } from '@testing-library/react';
 
 describe('audit history tests', () => {
   const caseId = '000-11-22222';
@@ -18,99 +18,99 @@ describe('audit history tests', () => {
   const pendingConsolidationOrder: ConsolidationOrder = MockData.getConsolidationOrder();
   const rejectedConsolidationOrder: ConsolidationOrder = {
     ...pendingConsolidationOrder,
-    status: 'rejected',
     reason: 'This order is rejected',
+    status: 'rejected',
   };
   const assignmentBefore: CaseAssignment[] = [
     {
+      assignedOn: '2023-12-25T00:00:00.000Z',
       caseId,
       documentType: 'ASSIGNMENT',
-      userId: 'userId-01',
       name: 'Alfred',
       role: 'TrialAttorney',
-      assignedOn: '2023-12-25T00:00:00.000Z',
-      updatedOn: '2023-12-25T00:00:00.000Z',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      userId: 'userId-01',
     },
     {
+      assignedOn: '2023-12-25T00:00:00.000Z',
       caseId,
       documentType: 'ASSIGNMENT',
-      userId: 'userId-02',
       name: 'Bradford',
       role: 'TrialAttorney',
-      assignedOn: '2023-12-25T00:00:00.000Z',
-      updatedOn: '2023-12-25T00:00:00.000Z',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      userId: 'userId-02',
     },
   ];
   const assignmentAfter: CaseAssignment[] = [
     {
+      assignedOn: '2023-12-25T00:00:00.000Z',
       caseId,
       documentType: 'ASSIGNMENT',
-      userId: 'userId-03',
       name: 'Charles',
       role: 'TrialAttorney',
-      assignedOn: '2023-12-25T00:00:00.000Z',
-      updatedOn: '2023-12-25T00:00:00.000Z',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      userId: 'userId-03',
     },
     {
+      assignedOn: '2023-12-25T00:00:00.000Z',
       caseId,
       documentType: 'ASSIGNMENT',
-      userId: 'userId-04',
       name: 'Daniel',
       role: 'TrialAttorney',
-      assignedOn: '2023-12-25T00:00:00.000Z',
-      updatedOn: '2023-12-25T00:00:00.000Z',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      userId: 'userId-04',
     },
     {
+      assignedOn: '2023-12-25T00:00:00.000Z',
       caseId,
       documentType: 'ASSIGNMENT',
-      userId: 'userId-05',
       name: 'Edward',
       role: 'TrialAttorney',
-      assignedOn: '2023-12-25T00:00:00.000Z',
-      updatedOn: '2023-12-25T00:00:00.000Z',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
+      userId: 'userId-05',
     },
   ];
   const caseHistory: CaseHistory[] = [
     {
-      id: '1234567890',
-      documentType: 'AUDIT_ASSIGNMENT',
-      caseId,
-      updatedOn: '2023-12-25T00:00:00.000Z',
-      before: assignmentBefore,
       after: assignmentAfter,
+      before: assignmentBefore,
+      caseId,
+      documentType: 'AUDIT_ASSIGNMENT',
+      id: '1234567890',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
     },
     {
-      id: '1234567890',
-      documentType: 'AUDIT_TRANSFER',
-      caseId,
-      updatedOn: '2023-12-25T00:00:00.000Z',
-      before: pendingTransferOrder,
       after: approvedTransferOrder,
+      before: pendingTransferOrder,
+      caseId,
+      documentType: 'AUDIT_TRANSFER',
+      id: '1234567890',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
     },
     {
-      id: '1234567890',
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId,
-      updatedOn: '2023-12-25T00:00:00.000Z',
-      before: null,
       after: pendingConsolidationOrder,
+      before: null,
+      caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      id: '1234567890',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
     },
     {
-      id: '1234567890',
-      documentType: 'AUDIT_CONSOLIDATION',
-      caseId,
-      updatedOn: '2023-12-25T00:00:00.000Z',
-      before: pendingConsolidationOrder,
       after: rejectedConsolidationOrder,
+      before: pendingConsolidationOrder,
+      caseId,
+      documentType: 'AUDIT_CONSOLIDATION',
+      id: '1234567890',
       updatedBy: MockData.getCamsUserReference(),
+      updatedOn: '2023-12-25T00:00:00.000Z',
     },
   ];
 
@@ -171,13 +171,13 @@ describe('audit history tests', () => {
   test('should display (none) when no assignments exist.', async () => {
     const caseHistory: CaseHistory[] = [
       {
-        id: '',
-        documentType: 'AUDIT_ASSIGNMENT',
-        caseId,
-        updatedOn: '',
-        updatedBy: SYSTEM_USER_REFERENCE,
-        before: [],
         after: [],
+        before: [],
+        caseId,
+        documentType: 'AUDIT_ASSIGNMENT',
+        id: '',
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: '',
       },
     ];
     vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({
@@ -200,22 +200,22 @@ describe('audit history tests', () => {
   test('should display a row for pending transfer', async () => {
     const caseHistory: CaseHistory[] = [
       {
-        id: '',
-        documentType: 'AUDIT_TRANSFER',
-        caseId,
-        updatedOn: '2024-01-31T12:00:00Z',
-        updatedBy: SYSTEM_USER_REFERENCE,
-        before: pendingTransferOrder,
         after: approvedTransferOrder,
+        before: pendingTransferOrder,
+        caseId,
+        documentType: 'AUDIT_TRANSFER',
+        id: '',
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-31T12:00:00Z',
       },
       {
-        id: '',
-        documentType: 'AUDIT_TRANSFER',
-        caseId,
-        updatedOn: '2024-01-29T12:00:00Z',
-        updatedBy: SYSTEM_USER_REFERENCE,
-        before: null,
         after: pendingTransferOrder,
+        before: null,
+        caseId,
+        documentType: 'AUDIT_TRANSFER',
+        id: '',
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-29T12:00:00Z',
       },
     ];
     vi.spyOn(Api2, 'getCaseHistory').mockResolvedValue({

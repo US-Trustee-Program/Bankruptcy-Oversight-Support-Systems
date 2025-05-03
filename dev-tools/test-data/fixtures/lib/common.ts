@@ -1,11 +1,20 @@
 import { Faker, fakerEN_GB, fakerEN_US, fakerES_MX } from '@faker-js/faker';
-import { concatenateName, randomInt, randomTruth } from '../../utility';
+
 import { BCase, BCaseParty, DebtorAttorney, Judge } from '../../domain/bcase';
-import { Chapter } from '../../types';
 import { Court } from '../../domain/court';
+import { Chapter } from '../../types';
+import { concatenateName, randomInt, randomTruth } from '../../utility';
 import { courts } from '../courts';
 
 const DEFAULT_CHAPTER: Chapter = '15';
+
+export interface CreateCaseOptions {
+  attorneys?: Array<DebtorAttorney>;
+  chapters?: Chapter[];
+  courts?: Array<Court>;
+  isCompany?: boolean;
+  judges?: Array<Judge>;
+}
 
 export function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
@@ -15,44 +24,27 @@ export function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   return arr;
 }
 
-export function getFakerLocale(useForeignLocales: boolean = false): Faker {
-  const locales = [{ faker: fakerEN_US, countryCode: 'US', countryName: 'United States' }];
-  if (useForeignLocales) {
-    locales.push({ faker: fakerEN_GB, countryCode: 'UK', countryName: 'United Kingdom' });
-    locales.push({ faker: fakerES_MX, countryCode: 'MX', countryName: 'Mexico' });
-  }
-  const { faker, countryCode, countryName } = locales[randomInt(locales.length)];
-  faker.location.countryCode = () => {
-    return countryCode;
+export function createAttorney(): DebtorAttorney {
+  const faker = getFakerLocale();
+  const fakerState = faker.location.state({ abbreviated: true });
+  const state = fakerState.length === 2 ? fakerState : undefined; // LIMITED TO 2 CHARACTERS
+  const city = faker.location.city();
+  const address3 = state ? undefined : [faker.location.county(), faker.location.state()].join(', ');
+
+  return {
+    address1: faker.location.streetAddress(),
+    address2: faker.location.secondaryAddress(),
+    address3,
+    city,
+    country: faker.location.country(),
+    firstName: faker.person.firstName(),
+    generation: faker.person.suffix(),
+    lastName: faker.person.lastName(),
+    middleName: faker.person.middleName(),
+    phone: faker.phone.number(),
+    state,
+    zip: faker.location.zipCode(),
   };
-  faker.location.country = () => {
-    return countryName;
-  };
-  return faker;
-}
-
-export function generateFakeDxtrId() {
-  return '' + ('999999' + randomInt(99999)).slice(-6);
-}
-
-function generateFakeCaseId() {
-  return '99-' + ('00000' + randomInt(99999)).slice(-5);
-}
-
-export interface CreateCaseOptions {
-  chapters?: Chapter[];
-  judges?: Array<Judge>;
-  attorneys?: Array<DebtorAttorney>;
-  isCompany?: boolean;
-  courts?: Array<Court>;
-}
-
-export function createCases(caseCount: number, options: CreateCaseOptions): Array<BCase> {
-  const bCases: Array<BCase> = [];
-  for (let _ = 0; _ < caseCount; _++) {
-    bCases.push(createCase(options));
-  }
-  return bCases;
 }
 
 export function createCase(options: CreateCaseOptions = {}): BCase {
@@ -76,22 +68,30 @@ export function createCase(options: CreateCaseOptions = {}): BCase {
   const judge = options.judges ? options.judges[randomInt(options.judges.length)] : undefined;
 
   return {
-    dxtrId: generateFakeDxtrId(),
     caseId: generateFakeCaseId(),
-    shortTitle: isCompany ? debtor.lastName : concatenateName(debtor) || '',
     chapter,
     county,
-    group,
-    div,
     courtId,
-    judge,
-    reopenCode,
-    transactions: [],
-    debtorType: isCompany ? 'CB' : chapter === '15' ? 'FD' : 'IC',
+    dateFiled: '2023-02-15',
     debtor,
     debtorAttorney,
-    dateFiled: '2023-02-15',
+    debtorType: isCompany ? 'CB' : chapter === '15' ? 'FD' : 'IC',
+    div,
+    dxtrId: generateFakeDxtrId(),
+    group,
+    judge,
+    reopenCode,
+    shortTitle: isCompany ? debtor.lastName : concatenateName(debtor) || '',
+    transactions: [],
   };
+}
+
+export function createCases(caseCount: number, options: CreateCaseOptions): Array<BCase> {
+  const bCases: Array<BCase> = [];
+  for (let _ = 0; _ < caseCount; _++) {
+    bCases.push(createCase(options));
+  }
+  return bCases;
 }
 
 export function createDebtor(isCompany: boolean, chapter: string): BCaseParty {
@@ -102,66 +102,67 @@ export function createDebtor(isCompany: boolean, chapter: string): BCaseParty {
   const address3 = state ? undefined : [faker.location.county(), faker.location.state()].join(', ');
 
   return {
-    role: 'DB',
-    lastName: isCompany ? faker.company.name() : faker.person.lastName(),
-    middleName: isCompany ? undefined : faker.person.middleName(),
+    address1: faker.location.streetAddress(),
+    address2: faker.location.secondaryAddress(),
+    address3,
+    city,
+    country: faker.location.country(),
+    email: faker.internet.email(),
+    fax: faker.phone.number(),
     firstName: isCompany ? undefined : faker.person.firstName(),
     generation: isCompany ? undefined : faker.person.suffix(),
-    taxId:
-      isCompany && chapter !== '15'
-        ? faker.number.int({ min: 10, max: 99 }) +
-          '-' +
-          faker.number.int({ min: 1000000, max: 9999999 })
-        : undefined,
+    lastName: isCompany ? faker.company.name() : faker.person.lastName(),
+    middleName: isCompany ? undefined : faker.person.middleName(),
+    phone: faker.phone.number(),
+    prose: 'n',
+    role: 'DB',
     ssn:
       isCompany || chapter === '15'
         ? undefined
-        : faker.number.int({ min: 100, max: 999 }) +
+        : faker.number.int({ max: 999, min: 100 }) +
           '-' +
-          faker.number.int({ min: 10, max: 99 }) +
+          faker.number.int({ max: 99, min: 10 }) +
           '-' +
-          faker.number.int({ min: 1000, max: 9999 }),
-    address1: faker.location.streetAddress(),
-    address2: faker.location.secondaryAddress(),
-    address3,
-    city,
+          faker.number.int({ max: 9999, min: 1000 }),
     state,
+    taxId:
+      isCompany && chapter !== '15'
+        ? faker.number.int({ max: 99, min: 10 }) +
+          '-' +
+          faker.number.int({ max: 9999999, min: 1000000 })
+        : undefined,
     zip: faker.location.zipCode(),
-    country: faker.location.country(),
-    phone: faker.phone.number(),
-    fax: faker.phone.number(),
-    email: faker.internet.email(),
-    prose: 'n',
-  };
-}
-
-export function createAttorney(): DebtorAttorney {
-  const faker = getFakerLocale();
-  const fakerState = faker.location.state({ abbreviated: true });
-  const state = fakerState.length === 2 ? fakerState : undefined; // LIMITED TO 2 CHARACTERS
-  const city = faker.location.city();
-  const address3 = state ? undefined : [faker.location.county(), faker.location.state()].join(', ');
-
-  return {
-    lastName: faker.person.lastName(),
-    middleName: faker.person.middleName(),
-    firstName: faker.person.firstName(),
-    generation: faker.person.suffix(),
-    address1: faker.location.streetAddress(),
-    address2: faker.location.secondaryAddress(),
-    address3,
-    city,
-    state,
-    zip: faker.location.zipCode(),
-    country: faker.location.country(),
-    phone: faker.phone.number(),
   };
 }
 
 export function createJudge() {
   const faker = getFakerLocale();
   return {
-    lastName: faker.person.lastName(),
     firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
   };
+}
+
+export function generateFakeDxtrId() {
+  return '' + ('999999' + randomInt(99999)).slice(-6);
+}
+
+export function getFakerLocale(useForeignLocales: boolean = false): Faker {
+  const locales = [{ countryCode: 'US', countryName: 'United States', faker: fakerEN_US }];
+  if (useForeignLocales) {
+    locales.push({ countryCode: 'UK', countryName: 'United Kingdom', faker: fakerEN_GB });
+    locales.push({ countryCode: 'MX', countryName: 'Mexico', faker: fakerES_MX });
+  }
+  const { countryCode, countryName, faker } = locales[randomInt(locales.length)];
+  faker.location.countryCode = () => {
+    return countryCode;
+  };
+  faker.location.country = () => {
+    return countryName;
+  };
+  return faker;
+}
+
+function generateFakeCaseId() {
+  return '99-' + ('00000' + randomInt(99999)).slice(-5);
 }

@@ -1,5 +1,5 @@
-import { AssignmentError } from './assignment.exception';
 import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import { AssignmentError } from './assignment.exception';
 
 describe('CAMS Assignment Exception', () => {
   const testModuleName = 'Test';

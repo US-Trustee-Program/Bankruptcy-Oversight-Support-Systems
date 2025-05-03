@@ -1,6 +1,6 @@
 export interface DxtrTransactionRecord {
-  txRecord: string;
   txCode: string;
+  txRecord: string;
 }
 
 export interface TransactionDates {

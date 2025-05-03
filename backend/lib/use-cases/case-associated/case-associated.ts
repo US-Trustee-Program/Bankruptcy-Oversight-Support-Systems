@@ -1,12 +1,6 @@
-import Factory from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
 import { EventCaseReference } from '../../../../common/src/cams/events';
-
-function getEarliestDate(orders: Array<EventCaseReference>) {
-  const earliestOrder = orders.sort((a, b) => (a.orderDate < b.orderDate ? -1 : 1))[0];
-  const earliestOrderDate = earliestOrder.orderDate;
-  return earliestOrderDate;
-}
+import { ApplicationContext } from '../../adapters/types/basic';
+import Factory from '../../factory';
 
 export class CaseAssociatedUseCase {
   public async getAssociatedCases(context: ApplicationContext): Promise<EventCaseReference[]> {
@@ -34,4 +28,10 @@ export class CaseAssociatedUseCase {
     leadCaseRef.orderDate = getEarliestDate(childCaseRefs);
     return [leadCaseRef, ...childCaseRefs];
   }
+}
+
+function getEarliestDate(orders: Array<EventCaseReference>) {
+  const earliestOrder = orders.sort((a, b) => (a.orderDate < b.orderDate ? -1 : 1))[0];
+  const earliestOrderDate = earliestOrder.orderDate;
+  return earliestOrderDate;
 }

@@ -1,4 +1,5 @@
 import { describe } from 'vitest';
+
 import {
   getAuthIssuerFromEnv,
   getLoginConfigurationFromEnv,

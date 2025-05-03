@@ -3,6 +3,7 @@ import { Interstitial } from '@/login/Interstitial';
 import { Session } from '@/login/Session';
 import { useOktaAuth } from '@okta/okta-react';
 import { PropsWithChildren, useEffect, useState } from 'react';
+
 import { registerRefreshOktaToken } from './okta-library';
 
 export type OktaSessionProps = PropsWithChildren;
@@ -11,7 +12,7 @@ export function OktaSession(props: OktaSessionProps) {
   const [redirectComplete, setRedirectComplete] = useState<boolean>(false);
   const [callbackError, setCallbackError] = useState<Error | null>(null);
 
-  const { oktaAuth, authState } = useOktaAuth();
+  const { authState, oktaAuth } = useOktaAuth();
 
   useEffect(() => {
     oktaAuth
@@ -33,7 +34,7 @@ export function OktaSession(props: OktaSessionProps) {
   }
 
   if (!redirectComplete) {
-    return <Interstitial id="interstital-continue" caption="Continue from Okta..."></Interstitial>;
+    return <Interstitial caption="Continue from Okta..." id="interstital-continue"></Interstitial>;
   }
 
   const accessToken = oktaAuth.getAccessToken();
@@ -53,7 +54,7 @@ export function OktaSession(props: OktaSessionProps) {
   registerRefreshOktaToken(oktaAuth);
 
   return (
-    <Session provider="okta" accessToken={accessToken} expires={expires} issuer={issuer}>
+    <Session accessToken={accessToken} expires={expires} issuer={issuer} provider="okta">
       {props.children}
     </Session>
   );

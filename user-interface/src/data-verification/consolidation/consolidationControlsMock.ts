@@ -4,10 +4,10 @@ import {
   Ref,
 } from '@/data-verification/consolidation/consolidationControls';
 import { ShowOptionParams } from '@/data-verification/consolidation/ConsolidationOrderModal';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ButtonRef } from '@/lib/components/uswds/Button';
 import { CheckboxState } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import { ButtonRef } from '@/lib/components/uswds/Button';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 export function useConsolidationControlsMock(): ConsolidationControls {
   const approveButton = {
@@ -18,8 +18,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   const caseTableRef = {
     current: {
       clearAllCheckboxes: () => {},
-      selectAllCheckboxes: () => {},
       clearLeadCase: () => {},
+      selectAllCheckboxes: () => {},
     },
   };
   const clearButton = {
@@ -29,41 +29,41 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const confirmationModalRef = {
     current: {
-      show: (options: ShowOptionParams) => {},
       hide: () => {},
+      show: (options: ShowOptionParams) => {},
     },
   };
   const jointAdministrationRef = {
     current: {
-      disable: (value: boolean) => {},
       check: (value: boolean) => {},
+      disable: (value: boolean) => {},
       isChecked: () => true,
     },
   };
   const leadCaseDivisionRef = {
     current: {
-      setSelections: (options: ComboOption[]) => {},
-      getSelections: () => [
-        {
-          value: '',
-          label: '',
-          selected: false,
-          hidden: false,
-        },
-      ],
       clearSelections: () => {},
       disable: (value: boolean) => {},
       focusInput: () => {},
+      getSelections: () => [
+        {
+          hidden: false,
+          label: '',
+          selected: false,
+          value: '',
+        },
+      ],
+      setSelections: (options: ComboOption[]) => {},
     },
   };
   const leadCaseNumberRef = {
     current: {
-      setValue: (value: string) => {},
-      disable: (value: boolean) => {},
       clearValue: () => {},
-      resetValue: () => {},
-      getValue: () => '',
+      disable: (value: boolean) => {},
       focus: () => {},
+      getValue: () => '',
+      resetValue: () => {},
+      setValue: (value: string) => {},
     },
   };
   const rejectButton = {
@@ -73,17 +73,17 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   };
   const substantiveRef = {
     current: {
-      disable: (value: boolean) => {},
       check: (value: boolean) => {},
+      disable: (value: boolean) => {},
       isChecked: () => true,
     },
   };
   const toggleLeadCaseFormRef = {
     current: {
-      setChecked: (value: boolean | CheckboxState) => {},
       getLabel: () => {
         return '';
       },
+      setChecked: (value: boolean | CheckboxState) => {},
     },
   };
 
@@ -101,18 +101,18 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   return {
     approveButton,
     caseTableActions: caseTableRef,
+    clearAllCheckBoxes,
     clearButton,
     confirmationModal: confirmationModalRef,
+    disableButton,
+    disableLeadCaseForm,
     jointAdministrationRadio: jointAdministrationRef,
     leadCaseDivisionInput: leadCaseDivisionRef,
+    leadCaseFormToggle: toggleLeadCaseFormRef,
     leadCaseNumberInput: leadCaseNumberRef,
     rejectButton,
-    substantiveRadio: substantiveRef,
-    leadCaseFormToggle: toggleLeadCaseFormRef,
     showConfirmationModal,
-    disableLeadCaseForm,
-    clearAllCheckBoxes,
-    disableButton,
+    substantiveRadio: substantiveRef,
     unsetConsolidationType,
   };
 }

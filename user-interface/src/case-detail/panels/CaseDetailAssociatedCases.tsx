@@ -1,11 +1,13 @@
-import { Consolidation, EventCaseReference } from '@common/cams/events';
-import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { formatDate } from '@/lib/utils/datetime';
-import { consolidationTypeMap } from '@/lib/utils/labels';
-import './CaseDetailAssociatedCases.scss';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { formatDate } from '@/lib/utils/datetime';
+
+import './CaseDetailAssociatedCases.scss';
+
+import { consolidationTypeMap } from '@/lib/utils/labels';
+import { Consolidation, EventCaseReference } from '@common/cams/events';
 
 export interface CaseDetailAssociatedCasesProps {
   associatedCases: EventCaseReference[];
@@ -24,9 +26,9 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
       {!isAssociatedCasesLoading && consolidation.length === 0 && (
         <Alert
           id="no-cases"
-          type={UswdsAlertStyle.Error}
-          title="Associated Cases Not Available"
           message="We are unable to retrieve associated cases at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue."
+          title="Associated Cases Not Available"
+          type={UswdsAlertStyle.Error}
         ></Alert>
       )}
       {!isAssociatedCasesLoading && consolidation.length > 0 && (
@@ -37,13 +39,13 @@ export default function CaseDetailAssociatedCases(props: CaseDetailAssociatedCas
             <div className="grid-col-12">
               <table
                 className="usa-table usa-table--borderless"
-                id="associated-cases-table"
                 data-testid="associated-cases-table"
+                id="associated-cases-table"
               >
                 <thead>
                   <tr>
                     <th scope="col">Case Number (Division)</th>
-                    <th scope="col" className="title-column">
+                    <th className="title-column" scope="col">
                       Case Title
                     </th>
                     <th scope="col">Case Filed</th>

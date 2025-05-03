@@ -1,17 +1,18 @@
 import * as mssql from 'mssql';
-import { executeQuery } from '../../utils/database';
-import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import { ApplicationContext } from '../../types/basic';
-import { OrdersGateway } from '../../../use-cases/gateways.types';
-import { CamsError } from '../../../common-errors/cams-error';
+
+import { CaseDocketEntry } from '../../../../../common/src/cams/cases';
 import {
   OrderSync,
   RawConsolidationOrder,
   RawOrderSync,
   TransferOrder,
 } from '../../../../../common/src/cams/orders';
+import { CamsError } from '../../../common-errors/cams-error';
+import { OrdersGateway } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
+import { executeQuery } from '../../utils/database';
 import { DxtrCaseDocketEntryDocument, translateModel } from './case-docket.dxtr.gateway';
-import { CaseDocketEntry } from '../../../../../common/src/cams/cases';
 
 const MODULE_NAME = 'ORDERS-DXTR-GATEWAY';
 const REGIONS_TO_SYNC = [
@@ -38,21 +39,19 @@ const REGIONS_TO_SYNC = [
   '21',
 ];
 
-export interface DxtrTransfer extends TransferOrder, DxtrOrder {}
-
-export interface DxtrConsolidation extends RawConsolidationOrder, DxtrOrder {}
+export interface DxtrConsolidation extends DxtrOrder, RawConsolidationOrder {}
 
 export interface DxtrOrder {
   dxtrCaseId: string;
 }
 
 export interface DxtrOrderDocketEntry extends CaseDocketEntry {
+  docketSuggestedCaseNumber?: string;
+  dxtrCaseId: string;
+  rawRec: string;
   // txId will be encoded as a string, not a number, because it is
   // of type BIGINT in MS-SQL Server.
   txId: string;
-  dxtrCaseId: string;
-  docketSuggestedCaseNumber?: string;
-  rawRec: string;
 }
 
 export interface DxtrOrderDocument extends DxtrCaseDocketEntryDocument {
@@ -61,10 +60,7 @@ export interface DxtrOrderDocument extends DxtrCaseDocketEntryDocument {
   txId: string;
 }
 
-export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: string }) {
-  if (a.orderDate === b.orderDate) return 0;
-  return a.orderDate < b.orderDate ? -1 : 1;
-}
+export interface DxtrTransfer extends DxtrOrder, TransferOrder {}
 
 export class DxtrOrdersGateway implements OrdersGateway {
   async getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync> {
@@ -73,154 +69,28 @@ export class DxtrOrdersGateway implements OrdersGateway {
 
     return {
       consolidations: consolidations.consolidations,
-      transfers: transfers.transfers,
       maxTxId:
         transfers.maxTxId > consolidations.maxTxId ? transfers.maxTxId : consolidations.maxTxId,
+      transfers: transfers.transfers,
     };
   }
 
-  private async getConsolidationOrderSync(
-    context: ApplicationContext,
-    txId: string,
-  ): Promise<RawOrderSync> {
-    try {
-      const { maxTxId, chapters, regions } = this.setUpCommonParameters(txId, context);
-
-      // Get raw order which are a subset of case detail associated with a transfer order
-      const rawOrders = await this.getConsolidationOrders(context, txId, chapters, regions);
-
-      // Get the docket entries for transfer orders
-      const rawDocketEntries = await this.getConsolidationOrderDocketEntries(
-        context,
-        txId,
-        chapters,
-        regions,
-      );
-      context.logger.info(
-        MODULE_NAME,
-        `Retrieved ${rawDocketEntries.length} raw orders from DXTR.`,
-      );
-
-      // Get documents for consolidation docket entries
-      const documents = await this.getConsolidationOrderDocuments(context, txId, chapters, regions);
-      const { maxTxId: newMaxTxId, mappedDocketEntries } = this.processDocketEntries(
-        context,
-        documents,
-        rawDocketEntries,
-        maxTxId,
-      );
-
-      const consolidations = rawOrders
-        .map((rawOrder) => {
-          if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
-            rawOrder.docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
-          }
-          const { dxtrCaseId: _dxtrCaseId, ...orderProps } = rawOrder;
-          return orderProps satisfies RawConsolidationOrder;
-        })
-        .sort(dxtrOrdersSorter);
-      context.logger.info(
-        MODULE_NAME,
-        `Processed ${consolidations.length} orders and their documents from DXTR. New maxTxId is ${newMaxTxId}.`,
-      );
-
-      // Prefer the docket entry filing date over the TX table order date as the order date for the consolidation.
-      consolidations.forEach((consolidation) => {
-        let dateFiled;
-        consolidation.docketEntries.forEach((de) => {
-          if (!dateFiled || dateFiled > de.dateFiled) dateFiled = de.dateFiled;
-        });
-        if (dateFiled) consolidation.orderDate = dateFiled;
-      });
-
-      // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
-      // auto-incrementing PK as a string, not an integer value.
-      return {
-        consolidations,
-        transfers: undefined,
-        maxTxId: newMaxTxId.toString(),
-      };
-    } catch (originalError) {
-      throw new CamsError(MODULE_NAME, { originalError });
-    }
-  }
-
-  private async getTransferOrderSync(
-    context: ApplicationContext,
-    txId: string,
-  ): Promise<OrderSync> {
-    try {
-      const { maxTxId, chapters, regions } = this.setUpCommonParameters(txId, context);
-
-      // Get raw order which are a subset of case detail associated with a transfer order
-      const rawOrders = await this.getTransferOrders(context, txId, chapters, regions);
-
-      // Get the docket entries for transfer orders
-      const rawDocketEntries = await this.getTransferOrderDocketEntries(
-        context,
-        txId,
-        chapters,
-        regions,
-      );
-      context.logger.info(
-        MODULE_NAME,
-        `Retrieved ${rawDocketEntries.length} raw orders from DXTR.`,
-      );
-
-      // Get documents for transfer docket entries
-      const documents = await this.getTransferOrderDocuments(context, txId, chapters, regions);
-      const { maxTxId: newMaxTxId, mappedDocketEntries } = this.processDocketEntries(
-        context,
-        documents,
-        rawDocketEntries,
-        maxTxId,
-      );
-
-      const orders = rawOrders
-        .map((rawOrder) => {
-          if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
-            const docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
-            rawOrder.docketEntries = docketEntries;
-
-            // Prefer the docket entry filing date over the TX table order date as the order date for the transfer.
-            let dateFiled;
-            docketEntries.forEach((docket) => {
-              if (!dateFiled || dateFiled > docket.dateFiled) dateFiled = docket.dateFiled;
-              if (docket.docketSuggestedCaseNumber) {
-                rawOrder.docketSuggestedCaseNumber = docket.docketSuggestedCaseNumber;
-                delete docket.docketSuggestedCaseNumber;
-              }
-            });
-            if (dateFiled) rawOrder.orderDate = dateFiled;
-          }
-          delete rawOrder.dxtrCaseId;
-          return rawOrder satisfies TransferOrder;
-        })
-        .sort(dxtrOrdersSorter);
-      context.logger.info(
-        MODULE_NAME,
-        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${newMaxTxId}.`,
-      );
-
-      // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
-      // auto-incrementing PK as a string, not an integer value.
-      return {
-        consolidations: undefined,
-        transfers: orders,
-        maxTxId: newMaxTxId.toString(),
-      };
-    } catch (originalError) {
-      throw new CamsError(MODULE_NAME, { message: originalError.message });
-    }
-  }
-
-  private async getTransferOrders(
+  private async getConsolidationOrderDocketEntries(
     context: ApplicationContext,
     txId: string,
     chapters: string[],
     regions: string[],
-  ): Promise<Array<DxtrTransfer>> {
-    return this.getOrders<DxtrTransfer>(context, txId, 'CTO', chapters, regions);
+  ): Promise<Array<DxtrOrderDocketEntry>> {
+    return this.getOrderDocketEntries(context, txId, 'OCS', chapters, regions);
+  }
+
+  private async getConsolidationOrderDocuments(
+    context: ApplicationContext,
+    txId: string,
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrderDocument>> {
+    return this.getOrderDocuments(context, txId, 'OCS', chapters, regions);
   }
 
   private async getConsolidationOrders(
@@ -299,94 +169,70 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  private async getOrders<T>(
+  private async getConsolidationOrderSync(
     context: ApplicationContext,
     txId: string,
-    transactionCode: string,
-    chapters: string[],
-    regions: string[],
-  ): Promise<Array<T>> {
-    const params: DbTableFieldSpec[] = [];
+  ): Promise<RawOrderSync> {
+    try {
+      const { chapters, maxTxId, regions } = this.setUpCommonParameters(txId, context);
 
-    params.push({
-      name: 'txId',
-      type: mssql.BigInt,
-      value: txId,
-    });
+      // Get raw order which are a subset of case detail associated with a transfer order
+      const rawOrders = await this.getConsolidationOrders(context, txId, chapters, regions);
 
-    params.push({
-      name: 'transactionCode',
-      type: mssql.VarChar,
-      value: transactionCode,
-    });
+      // Get the docket entries for transfer orders
+      const rawDocketEntries = await this.getConsolidationOrderDocketEntries(
+        context,
+        txId,
+        chapters,
+        regions,
+      );
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved ${rawDocketEntries.length} raw orders from DXTR.`,
+      );
 
-    const query = `
-      SELECT
-        '${transactionCode === 'CTO' ? 'transfer' : 'consolidation'}' AS orderType,
-        'pending' AS status,
-        CS.CS_CASEID AS dxtrCaseId,
-        CSD.CS_DIV_ACMS+'-'+CS.CASE_ID AS caseId,
-        CS.CS_SHORT_TITLE AS caseTitle,
-        CS.CS_CHAPTER AS chapter,
-        C.COURT_NAME AS courtName,
-        CSD.CS_DIV_ACMS as courtDivisionCode,
-        O.OFFICE_NAME_DISPLAY AS courtDivisionName,
-        G.REGION_ID AS regionId,
-        R.REGION_NAME AS regionName,
-        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate
-      FROM (
-        SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE
-        FROM [dbo].[AO_TX] AS TX2
-        JOIN [dbo].[AO_DE] AS DE ON TX2.CS_CASEID=DE.CS_CASEID AND TX2.DE_SEQNO=DE.DE_SEQNO AND TX2.COURT_ID=DE.COURT_ID
-        WHERE TX2.TX_CODE = @transactionCode
-        AND TX2.TX_ID > @txId
-        GROUP BY TX2.CS_CASEID, TX2.COURT_ID
-      ) AS TX
-      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID=CS.COURT_ID
-      JOIN [dbo].[AO_GRP_DES] AS G
-        ON CS.GRP_DES = G.GRP_DES
-      JOIN [dbo].[AO_COURT] AS C
-        ON CS.COURT_ID = C.COURT_ID
-      JOIN [dbo].[AO_CS_DIV] AS CSD
-        ON CS.CS_DIV = CSD.CS_DIV
-      JOIN [dbo].[AO_OFFICE] AS O
-        ON CS.COURT_ID = O.COURT_ID
-        AND CSD.OFFICE_CODE = O.OFFICE_CODE
-      JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
-      WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
-      AND G.REGION_ID IN ('${regions.join("','")}')
-      `;
+      // Get documents for consolidation docket entries
+      const documents = await this.getConsolidationOrderDocuments(context, txId, chapters, regions);
+      const { mappedDocketEntries, maxTxId: newMaxTxId } = this.processDocketEntries(
+        context,
+        documents,
+        rawDocketEntries,
+        maxTxId,
+      );
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+      const consolidations = rawOrders
+        .map((rawOrder) => {
+          if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
+            rawOrder.docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
+          }
+          const { dxtrCaseId: _dxtrCaseId, ...orderProps } = rawOrder;
+          return orderProps satisfies RawConsolidationOrder;
+        })
+        .sort(dxtrOrdersSorter);
+      context.logger.info(
+        MODULE_NAME,
+        `Processed ${consolidations.length} orders and their documents from DXTR. New maxTxId is ${newMaxTxId}.`,
+      );
 
-    if (queryResult.success) {
-      return (queryResult.results as mssql.IResult<T>).recordset;
-    } else {
-      return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
+      // Prefer the docket entry filing date over the TX table order date as the order date for the consolidation.
+      consolidations.forEach((consolidation) => {
+        let dateFiled;
+        consolidation.docketEntries.forEach((de) => {
+          if (!dateFiled || dateFiled > de.dateFiled) dateFiled = de.dateFiled;
+        });
+        if (dateFiled) consolidation.orderDate = dateFiled;
+      });
+
+      // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
+      // auto-incrementing PK as a string, not an integer value.
+      return {
+        consolidations,
+        maxTxId: newMaxTxId.toString(),
+        transfers: undefined,
+      };
+    } catch (originalError) {
+      throw new CamsError(MODULE_NAME, { originalError });
     }
-  }
-
-  private async getTransferOrderDocketEntries(
-    context: ApplicationContext,
-    txId: string,
-    chapters: string[],
-    regions: string[],
-  ): Promise<Array<DxtrOrderDocketEntry>> {
-    return this.getOrderDocketEntries(context, txId, 'CTO', chapters, regions);
-  }
-
-  private async getConsolidationOrderDocketEntries(
-    context: ApplicationContext,
-    txId: string,
-    chapters: string[],
-    regions: string[],
-  ): Promise<Array<DxtrOrderDocketEntry>> {
-    return this.getOrderDocketEntries(context, txId, 'OCS', chapters, regions);
   }
 
   private async getOrderDocketEntries(
@@ -445,24 +291,6 @@ export class DxtrOrdersGateway implements OrdersGateway {
     } else {
       return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
     }
-  }
-
-  private async getTransferOrderDocuments(
-    context: ApplicationContext,
-    txId: string,
-    chapters: string[],
-    regions: string[],
-  ): Promise<Array<DxtrOrderDocument>> {
-    return this.getOrderDocuments(context, txId, 'CTO', chapters, regions);
-  }
-
-  private async getConsolidationOrderDocuments(
-    context: ApplicationContext,
-    txId: string,
-    chapters: string[],
-    regions: string[],
-  ): Promise<Array<DxtrOrderDocument>> {
-    return this.getOrderDocuments(context, txId, 'OCS', chapters, regions);
   }
 
   private async getOrderDocuments(
@@ -580,16 +408,172 @@ export class DxtrOrdersGateway implements OrdersGateway {
     }
   }
 
-  private setUpCommonParameters(txId: string, context: ApplicationContext<unknown>) {
-    const maxTxId: number = parseInt(txId);
+  private async getOrders<T>(
+    context: ApplicationContext,
+    txId: string,
+    transactionCode: string,
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<T>> {
+    const params: DbTableFieldSpec[] = [];
 
-    // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
-    const chapters: string[] = ['15'];
-    if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
-    if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
+    params.push({
+      name: 'txId',
+      type: mssql.BigInt,
+      value: txId,
+    });
 
-    const regions = REGIONS_TO_SYNC;
-    return { maxTxId, chapters, regions };
+    params.push({
+      name: 'transactionCode',
+      type: mssql.VarChar,
+      value: transactionCode,
+    });
+
+    const query = `
+      SELECT
+        '${transactionCode === 'CTO' ? 'transfer' : 'consolidation'}' AS orderType,
+        'pending' AS status,
+        CS.CS_CASEID AS dxtrCaseId,
+        CSD.CS_DIV_ACMS+'-'+CS.CASE_ID AS caseId,
+        CS.CS_SHORT_TITLE AS caseTitle,
+        CS.CS_CHAPTER AS chapter,
+        C.COURT_NAME AS courtName,
+        CSD.CS_DIV_ACMS as courtDivisionCode,
+        O.OFFICE_NAME_DISPLAY AS courtDivisionName,
+        G.REGION_ID AS regionId,
+        R.REGION_NAME AS regionName,
+        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate
+      FROM (
+        SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE
+        FROM [dbo].[AO_TX] AS TX2
+        JOIN [dbo].[AO_DE] AS DE ON TX2.CS_CASEID=DE.CS_CASEID AND TX2.DE_SEQNO=DE.DE_SEQNO AND TX2.COURT_ID=DE.COURT_ID
+        WHERE TX2.TX_CODE = @transactionCode
+        AND TX2.TX_ID > @txId
+        GROUP BY TX2.CS_CASEID, TX2.COURT_ID
+      ) AS TX
+      JOIN [dbo].[AO_CS] AS CS ON TX.CS_CASEID=CS.CS_CASEID AND TX.COURT_ID=CS.COURT_ID
+      JOIN [dbo].[AO_GRP_DES] AS G
+        ON CS.GRP_DES = G.GRP_DES
+      JOIN [dbo].[AO_COURT] AS C
+        ON CS.COURT_ID = C.COURT_ID
+      JOIN [dbo].[AO_CS_DIV] AS CSD
+        ON CS.CS_DIV = CSD.CS_DIV
+      JOIN [dbo].[AO_OFFICE] AS O
+        ON CS.COURT_ID = O.COURT_ID
+        AND CSD.OFFICE_CODE = O.OFFICE_CODE
+      JOIN [dbo].[AO_REGION] AS R ON G.REGION_ID = R.REGION_ID
+      WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
+      AND G.REGION_ID IN ('${regions.join("','")}')
+      `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    if (queryResult.success) {
+      return (queryResult.results as mssql.IResult<T>).recordset;
+    } else {
+      return Promise.reject(new CamsError(MODULE_NAME, { message: queryResult.message }));
+    }
+  }
+
+  private async getTransferOrderDocketEntries(
+    context: ApplicationContext,
+    txId: string,
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrderDocketEntry>> {
+    return this.getOrderDocketEntries(context, txId, 'CTO', chapters, regions);
+  }
+
+  private async getTransferOrderDocuments(
+    context: ApplicationContext,
+    txId: string,
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrOrderDocument>> {
+    return this.getOrderDocuments(context, txId, 'CTO', chapters, regions);
+  }
+
+  private async getTransferOrders(
+    context: ApplicationContext,
+    txId: string,
+    chapters: string[],
+    regions: string[],
+  ): Promise<Array<DxtrTransfer>> {
+    return this.getOrders<DxtrTransfer>(context, txId, 'CTO', chapters, regions);
+  }
+
+  private async getTransferOrderSync(
+    context: ApplicationContext,
+    txId: string,
+  ): Promise<OrderSync> {
+    try {
+      const { chapters, maxTxId, regions } = this.setUpCommonParameters(txId, context);
+
+      // Get raw order which are a subset of case detail associated with a transfer order
+      const rawOrders = await this.getTransferOrders(context, txId, chapters, regions);
+
+      // Get the docket entries for transfer orders
+      const rawDocketEntries = await this.getTransferOrderDocketEntries(
+        context,
+        txId,
+        chapters,
+        regions,
+      );
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved ${rawDocketEntries.length} raw orders from DXTR.`,
+      );
+
+      // Get documents for transfer docket entries
+      const documents = await this.getTransferOrderDocuments(context, txId, chapters, regions);
+      const { mappedDocketEntries, maxTxId: newMaxTxId } = this.processDocketEntries(
+        context,
+        documents,
+        rawDocketEntries,
+        maxTxId,
+      );
+
+      const orders = rawOrders
+        .map((rawOrder) => {
+          if (mappedDocketEntries.has(rawOrder.dxtrCaseId)) {
+            const docketEntries = mappedDocketEntries.get(rawOrder.dxtrCaseId);
+            rawOrder.docketEntries = docketEntries;
+
+            // Prefer the docket entry filing date over the TX table order date as the order date for the transfer.
+            let dateFiled;
+            docketEntries.forEach((docket) => {
+              if (!dateFiled || dateFiled > docket.dateFiled) dateFiled = docket.dateFiled;
+              if (docket.docketSuggestedCaseNumber) {
+                rawOrder.docketSuggestedCaseNumber = docket.docketSuggestedCaseNumber;
+                delete docket.docketSuggestedCaseNumber;
+              }
+            });
+            if (dateFiled) rawOrder.orderDate = dateFiled;
+          }
+          delete rawOrder.dxtrCaseId;
+          return rawOrder satisfies TransferOrder;
+        })
+        .sort(dxtrOrdersSorter);
+      context.logger.info(
+        MODULE_NAME,
+        `Processed ${orders.length} orders and their documents from DXTR. New maxTxId is ${newMaxTxId}.`,
+      );
+
+      // NOTE: maxTxId is stored as a string here because the SQL Server driver returns the
+      // auto-incrementing PK as a string, not an integer value.
+      return {
+        consolidations: undefined,
+        maxTxId: newMaxTxId.toString(),
+        transfers: orders,
+      };
+    } catch (originalError) {
+      throw new CamsError(MODULE_NAME, { message: originalError.message });
+    }
   }
 
   private processDocketEntries(
@@ -597,7 +581,7 @@ export class DxtrOrdersGateway implements OrdersGateway {
     documents: Array<DxtrOrderDocument>,
     rawDocketEntries: Array<DxtrOrderDocketEntry>,
     maxTxId: number,
-  ): { maxTxId: number; mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]> } {
+  ): { mappedDocketEntries: Map<string, DxtrOrderDocketEntry[]>; maxTxId: number } {
     context.logger.info(MODULE_NAME, `Retrieved ${documents.length} documents from DXTR.`);
 
     const mappedDocuments = documents.reduce((map, document) => {
@@ -641,6 +625,23 @@ export class DxtrOrdersGateway implements OrdersGateway {
       },
       new Map<string, DxtrOrderDocketEntry[]>(),
     );
-    return { maxTxId, mappedDocketEntries };
+    return { mappedDocketEntries, maxTxId };
   }
+
+  private setUpCommonParameters(txId: string, context: ApplicationContext<unknown>) {
+    const maxTxId: number = parseInt(txId);
+
+    // TODO: We need to consider whether we partially load cosmos by chapter. This has ongoing data handling concerns whether we load all or load partially.
+    const chapters: string[] = ['15'];
+    if (context.featureFlags['chapter-eleven-enabled']) chapters.push('11');
+    if (context.featureFlags['chapter-twelve-enabled']) chapters.push('12');
+
+    const regions = REGIONS_TO_SYNC;
+    return { chapters, maxTxId, regions };
+  }
+}
+
+export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: string }) {
+  if (a.orderDate === b.orderDate) return 0;
+  return a.orderDate < b.orderDate ? -1 : 1;
 }

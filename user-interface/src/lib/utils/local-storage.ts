@@ -7,6 +7,28 @@ export const LOGIN_LOCAL_STORAGE_ACK_KEY = 'cams:ack';
 export const REFRESHING_TOKEN = 'cams:refreshing-token';
 export const LAST_INTERACTION_KEY = 'cams:last-interaction';
 
+function getAck(): boolean {
+  let ack = false;
+  if (window.localStorage) {
+    const ackValue = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
+    if (ackValue) {
+      ack = ackValue.toLowerCase() === 'true';
+    }
+  }
+  return ack;
+}
+
+function getLastInteraction(): null | number {
+  return getNumber(LAST_INTERACTION_KEY);
+}
+
+function getNumber(key: string): null | number {
+  const value = localStorage.getItem(key);
+  if (!value) return null;
+  const parsed = Number.parseInt(value);
+  return isNaN(parsed) ? null : parsed;
+}
+
 function getSession(): CamsSession | null {
   let session: CamsSession | null = null;
   try {
@@ -22,9 +44,22 @@ function getSession(): CamsSession | null {
   return session;
 }
 
-function setSession(session: CamsSession) {
+function isTokenBeingRefreshed() {
   if (window.localStorage) {
-    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
+    const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
+    return alreadyRefreshing === 'true';
+  }
+}
+
+function removeAck() {
+  if (window.localStorage) {
+    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
+  }
+}
+
+function removeRefreshingToken() {
+  if (window.localStorage) {
+    window.localStorage.removeItem(REFRESHING_TOKEN);
   }
 }
 
@@ -32,17 +67,6 @@ function removeSession() {
   if (window.localStorage) {
     window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
   }
-}
-
-function getAck(): boolean {
-  let ack = false;
-  if (window.localStorage) {
-    const ackValue = window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
-    if (ackValue) {
-      ack = ackValue.toLowerCase() === 'true';
-    }
-  }
-  return ack;
 }
 
 function setAck(ack: boolean) {
@@ -55,17 +79,12 @@ function setAck(ack: boolean) {
   }
 }
 
-function removeAck() {
-  if (window.localStorage) {
-    window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
-  }
+function setLastInteraction(timestamp: number) {
+  setNumber(LAST_INTERACTION_KEY, timestamp);
 }
 
-function isTokenBeingRefreshed() {
-  if (window.localStorage) {
-    const alreadyRefreshing = window.localStorage.getItem(REFRESHING_TOKEN);
-    return alreadyRefreshing === 'true';
-  }
+function setNumber(key: string, value: number) {
+  localStorage.setItem(key, value.toString());
 }
 
 function setRefreshingToken() {
@@ -80,43 +99,24 @@ function setRefreshingToken() {
   }
 }
 
-function removeRefreshingToken() {
+function setSession(session: CamsSession) {
   if (window.localStorage) {
-    window.localStorage.removeItem(REFRESHING_TOKEN);
+    window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(session));
   }
 }
 
-function getLastInteraction(): number | null {
-  return getNumber(LAST_INTERACTION_KEY);
-}
-
-function setLastInteraction(timestamp: number) {
-  setNumber(LAST_INTERACTION_KEY, timestamp);
-}
-
-function getNumber(key: string): number | null {
-  const value = localStorage.getItem(key);
-  if (!value) return null;
-  const parsed = Number.parseInt(value);
-  return isNaN(parsed) ? null : parsed;
-}
-
-function setNumber(key: string, value: number) {
-  localStorage.setItem(key, value.toString());
-}
-
 export const LocalStorage = {
-  getSession,
-  setSession,
-  removeSession,
   getAck,
-  setAck,
-  removeAck,
-  isTokenBeingRefreshed,
-  setRefreshingToken,
-  removeRefreshingToken,
   getLastInteraction,
+  getSession,
+  isTokenBeingRefreshed,
+  removeAck,
+  removeRefreshingToken,
+  removeSession,
+  setAck,
   setLastInteraction,
+  setRefreshingToken,
+  setSession,
 };
 
 export default LocalStorage;

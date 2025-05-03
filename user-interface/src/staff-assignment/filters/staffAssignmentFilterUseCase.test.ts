@@ -1,19 +1,20 @@
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import Api2 from '@/lib/models/api2';
+import MockApi2 from '@/lib/testing/mock-api2';
+import LocalStorage from '@/lib/utils/local-storage';
+import { ResponseBody } from '@common/api/response';
+import { UstpOfficeDetails } from '@common/cams/offices';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsUserReference } from '@common/cams/users';
+import { FeatureFlagSet } from '@common/feature-flags';
+import { MockInstance } from 'vitest';
+
 import {
   StaffAssignmentFilterControls,
   StaffAssignmentFilterStore,
 } from './staffAssignmentFilter.types';
-import MockData from '@common/cams/test-utilities/mock-data';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
-import LocalStorage from '@/lib/utils/local-storage';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { FeatureFlagSet } from '@common/feature-flags';
-import { UstpOfficeDetails } from '@common/cams/offices';
-import Api2 from '@/lib/models/api2';
-import MockApi2 from '@/lib/testing/mock-api2';
-import { MockInstance } from 'vitest';
-import { CamsUserReference } from '@common/cams/users';
-import { ResponseBody } from '@common/api/response';
 
 describe('staff assignment filter use case tests', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -21,29 +22,29 @@ describe('staff assignment filter use case tests', () => {
   let setOfficeAssigneesErrorSpy: MockInstance<(val: boolean) => void>;
   const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
   const mockStore: StaffAssignmentFilterStore = {
-    officeAssignees: assignees,
-    setOfficeAssignees: vi.fn(),
-    officeAssigneesError: false,
-    setOfficeAssigneesError: vi.fn(),
     filterAssigneeCallback: null,
-    setFilterAssigneeCallback: vi.fn(),
     focusOnRender: false,
+    officeAssignees: assignees,
+    officeAssigneesError: false,
+    setFilterAssigneeCallback: vi.fn(),
     setFocusOnRender: vi.fn(),
+    setOfficeAssignees: vi.fn(),
+    setOfficeAssigneesError: vi.fn(),
   };
   const comboBoxRef = {
     current: {
-      setSelections: (_options: ComboOption[]) => {},
-      getSelections: () => [
-        {
-          value: '',
-          label: '',
-          selected: false,
-          hidden: false,
-        },
-      ],
       clearSelections: () => {},
       disable: (_value: boolean) => {},
       focusInput: () => {},
+      getSelections: () => [
+        {
+          hidden: false,
+          label: '',
+          selected: false,
+          value: '',
+        },
+      ],
+      setSelections: (_options: ComboOption[]) => {},
     },
   };
   const mockControls: StaffAssignmentFilterControls = {
@@ -72,9 +73,9 @@ describe('staff assignment filter use case tests', () => {
   test('assigneesToComboOptions should return valid comboOptions for supplied assignees and unassigned option', async () => {
     const expectedComboOptions: ComboOption[] = [
       {
+        divider: true,
         label: '(unassigned)',
         value: 'UNASSIGNED',
-        divider: true,
       },
     ];
     assignees.forEach((assignee) => {

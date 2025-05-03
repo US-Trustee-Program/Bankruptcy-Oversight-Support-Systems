@@ -1,44 +1,46 @@
 import './SearchScreen.scss';
-import { useEffect, useRef, useState } from 'react';
+
+import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Modal from '@/lib/components/uswds/modal/Modal';
+import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
+import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
+import LocalStorage from '@/lib/utils/local-storage';
+import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
-import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
+import { getCourtDivisionCodes } from '@common/cams/users';
+import { useEffect, useRef, useState } from 'react';
+
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
-import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
-import Modal from '@/lib/components/uswds/modal/Modal';
-import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { getCourtDivisionCodes } from '@common/cams/users';
-import LocalStorage from '@/lib/utils/local-storage';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export default function SearchScreen() {
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
   const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
   const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
+    divisionCodes: defaultDivisionCodes,
+    excludeChildConsolidations: false,
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
-    excludeChildConsolidations: false,
-    divisionCodes: defaultDivisionCodes,
   });
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
+    divisionCodes: defaultDivisionCodes,
+    excludeChildConsolidations: false,
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
-    excludeChildConsolidations: false,
-    divisionCodes: defaultDivisionCodes,
   });
 
   const infoModalRef = useRef(null);
@@ -152,12 +154,12 @@ export default function SearchScreen() {
   }
 
   const infoModalActionButtonGroup = {
-    modalId: infoModalId,
-    modalRef: infoModalRef as React.RefObject<ModalRefType>,
     cancelButton: {
       label: 'Return',
       uswdsStyle: UswdsButtonStyle.Default,
     },
+    modalId: infoModalId,
+    modalRef: infoModalRef as React.RefObject<ModalRefType>,
   };
 
   useEffect(() => {
@@ -184,16 +186,16 @@ export default function SearchScreen() {
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
-                  className="search-icon"
-                  id="basic-search-field"
-                  name="basic-search"
-                  label="Case Number"
-                  autoComplete="off"
-                  onChange={handleCaseNumberChange}
-                  onFocus={handleFilterFormElementFocus}
                   allowEnterKey={true}
                   allowPartialCaseNumber={false}
                   aria-label="Find case by Case Number."
+                  autoComplete="off"
+                  className="search-icon"
+                  id="basic-search-field"
+                  label="Case Number"
+                  name="basic-search"
+                  onChange={handleCaseNumberChange}
+                  onFocus={handleFilterFormElementFocus}
                   ref={caseNumberInputRef}
                 />
               </div>
@@ -201,93 +203,91 @@ export default function SearchScreen() {
             <div className="case-district-search form-field" data-testid="case-district-search">
               <div className="usa-search usa-search--small">
                 <ComboBox
-                  id={'court-selections-search'}
-                  className="new-court__select"
-                  label="District (Division)"
-                  ariaLabelPrefix="District (Division)"
-                  ariaDescription="multi-select"
                   aria-live="off"
-                  onUpdateSelection={handleCourtSelection}
-                  onFocus={handleFilterFormElementFocus}
-                  options={officesList}
-                  required={false}
+                  ariaDescription="multi-select"
+                  ariaLabelPrefix="District (Division)"
+                  className="new-court__select"
+                  id={'court-selections-search'}
+                  label="District (Division)"
                   multiSelect={true}
-                  wrapPills={true}
-                  ref={courtSelectionRef}
-                  singularLabel="division"
-                  pluralLabel="divisions"
+                  onFocus={handleFilterFormElementFocus}
+                  onUpdateSelection={handleCourtSelection}
+                  options={officesList}
                   overflowStrategy="ellipsis"
+                  pluralLabel="divisions"
+                  ref={courtSelectionRef}
+                  required={false}
+                  singularLabel="division"
+                  wrapPills={true}
                 />
               </div>
             </div>
             <div className="case-chapter-search form-field" data-testid="case-chapter-search">
               <div className="usa-search usa-search--small">
                 <ComboBox
-                  id={'case-chapter-search'}
-                  className="case-chapter__select"
-                  label="Chapter"
-                  ariaLabelPrefix="Chapter"
-                  ariaDescription="multi-select"
                   aria-live="off"
-                  onUpdateSelection={handleChapterSelection}
-                  onFocus={handleFilterFormElementFocus}
-                  options={chapterList}
-                  required={false}
+                  ariaDescription="multi-select"
+                  ariaLabelPrefix="Chapter"
+                  className="case-chapter__select"
+                  id={'case-chapter-search'}
+                  label="Chapter"
                   multiSelect={true}
-                  ref={chapterSelectionRef}
-                  singularLabel="chapter"
+                  onFocus={handleFilterFormElementFocus}
+                  onUpdateSelection={handleChapterSelection}
+                  options={chapterList}
                   pluralLabel="chapters"
+                  ref={chapterSelectionRef}
+                  required={false}
+                  singularLabel="chapter"
                 />
               </div>
             </div>
             <div className="search-form-submit form-field">
               <Button
-                id="search-submit"
                 className="search-submit-button"
-                uswdsStyle={UswdsButtonStyle.Default}
-                ref={submitButtonRef}
-                onClick={performSearch}
                 disabled={!isValidSearchPredicate(temporarySearchPredicate)}
+                id="search-submit"
+                onClick={performSearch}
+                ref={submitButtonRef}
+                uswdsStyle={UswdsButtonStyle.Default}
               >
                 Search
               </Button>
             </div>
           </div>
         </div>
-        <div className="grid-col-8" role="status" aria-live="polite">
+        <div aria-live="polite" className="grid-col-8" role="status">
           <h2>Results</h2>
           {!isValidSearchPredicate(searchPredicate) && (
             <div className="search-alert">
               <Alert
                 id="default-state-alert"
+                inline={true}
                 message="Use the Search Filters to find cases."
-                title="Enter search terms"
-                type={UswdsAlertStyle.Info}
+                role="alert"
                 show={true}
                 slim={true}
-                inline={true}
-                role="alert"
+                title="Enter search terms"
+                type={UswdsAlertStyle.Info}
               ></Alert>
             </div>
           )}
           {isValidSearchPredicate(searchPredicate) && (
             <SearchResults
-              id="search-results"
-              searchPredicate={searchPredicate}
-              onStartSearching={setStartSearching}
-              onEndSearching={setEndSearching}
               header={SearchResultsHeader}
+              id="search-results"
+              onEndSearching={setEndSearching}
+              onStartSearching={setStartSearching}
               row={SearchResultsRow}
+              searchPredicate={searchPredicate}
             />
           )}
         </div>
         <div className="grid-col-1"></div>
       </div>
       <Modal
-        ref={infoModalRef}
-        modalId={infoModalId}
+        actionButtonGroup={infoModalActionButtonGroup}
         className="search-info-modal"
-        heading="Case Search - Using This Page"
         content={
           <>
             Case Search allows you to search for any case in the system, across regions and offices.
@@ -295,7 +295,9 @@ export default function SearchScreen() {
             in the search results by clicking on its case number.
           </>
         }
-        actionButtonGroup={infoModalActionButtonGroup}
+        heading="Case Search - Using This Page"
+        modalId={infoModalId}
+        ref={infoModalRef}
       ></Modal>
     </MainContent>
   );

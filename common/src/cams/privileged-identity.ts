@@ -1,9 +1,9 @@
 export type ElevatePrivilegedUserAction = {
-  groups: string[];
   expires: string;
+  groups: string[];
 };
 
 export type RoleAndOfficeGroupNames = {
-  roles: string[];
   offices: string[];
+  roles: string[];
 };

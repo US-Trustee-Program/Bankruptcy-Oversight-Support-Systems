@@ -1,8 +1,11 @@
 import './CaseDetailAuditHistory.scss';
-import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
+
 import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Api2 from '@/lib/models/api2';
+import { formatDate, sortByDateReverse } from '@/lib/utils/datetime';
 import { orderStatusType } from '@/lib/utils/labels';
+import { CaseAssignment } from '@common/cams/assignments';
 import {
   CaseAssignmentHistory,
   CaseConsolidationHistory,
@@ -10,8 +13,6 @@ import {
   CaseTransferHistory,
 } from '@common/cams/history';
 import { useEffect, useState } from 'react';
-import Api2 from '@/lib/models/api2';
-import { CaseAssignment } from '@common/cams/assignments';
 
 export interface CaseDetailAuditHistoryProps {
   caseId: string;
@@ -75,7 +76,7 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
   }
 
   function showCaseOrderHistory(
-    history: CaseTransferHistory | CaseConsolidationHistory,
+    history: CaseConsolidationHistory | CaseTransferHistory,
     idx: number,
   ) {
     return (
@@ -110,8 +111,8 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
       switch (history.documentType) {
         case 'AUDIT_ASSIGNMENT':
           return showCaseAssignmentHistory(history, idx);
-        case 'AUDIT_TRANSFER':
         case 'AUDIT_CONSOLIDATION':
+        case 'AUDIT_TRANSFER':
           return showCaseOrderHistory(history, idx);
       }
     });
@@ -131,18 +132,18 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
             {caseHistory.length < 1 && (
               <div data-testid="empty-assignments-test-id">
                 <Alert
+                  inline={true}
                   message="No changes have been made to this case."
-                  type={UswdsAlertStyle.Info}
                   role={'status'}
+                  show={true}
                   timeout={0}
                   title=""
-                  show={true}
-                  inline={true}
+                  type={UswdsAlertStyle.Info}
                 />
               </div>
             )}
             {caseHistory.length > 0 && (
-              <table data-testid="history-table" className="usa-table usa-table--borderless">
+              <table className="usa-table usa-table--borderless" data-testid="history-table">
                 <thead>
                   <tr>
                     <th>Change</th>

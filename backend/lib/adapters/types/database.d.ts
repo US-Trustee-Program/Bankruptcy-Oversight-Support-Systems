@@ -1,16 +1,10 @@
 import * as mssql from 'mssql';
 
 export interface DbResult {
-  success: boolean;
-  message: string;
-  count: number;
   body: object;
-}
-
-export interface QueryResults {
-  success: boolean;
-  results: void | object;
+  count: number;
   message: string;
+  success: boolean;
 }
 
 export interface DbTableFieldSpec {
@@ -19,31 +13,37 @@ export interface DbTableFieldSpec {
   value: unknown;
 }
 
+export interface DocumentDbConfig {
+  connectionString: string;
+  databaseName: string;
+}
+
 export interface IDbConfig {
-  server: string;
-  port: number;
-  database: string;
-  user?: string;
-  password?: string;
   authentication?: {
-    type: string;
     options?: {
       clientId: string;
     };
+    type: string;
   };
-  pool?: {
-    max: number;
-    min: number;
-    idleTimeoutMillis: number;
-  };
+  database: string;
   options?: {
     encrypt: boolean;
     trustServerCertificate: boolean;
   };
+  password?: string;
+  pool?: {
+    idleTimeoutMillis: number;
+    max: number;
+    min: number;
+  };
+  port: number;
   requestTimeout?: number;
+  server: string;
+  user?: string;
 }
 
-export interface DocumentDbConfig {
-  databaseName: string;
-  connectionString: string;
+export interface QueryResults {
+  message: string;
+  results: object | void;
+  success: boolean;
 }

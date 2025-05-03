@@ -1,8 +1,9 @@
 import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
-import TextArea from './TextArea';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
+
+import TextArea from './TextArea';
 
 describe('Tests for USWDS TextArea component', () => {
   const ref = React.createRef<TextAreaRef>();
@@ -19,12 +20,12 @@ describe('Tests for USWDS TextArea component', () => {
     render(
       <div>
         <TextArea
-          ref={ref}
+          className={testClassName}
           id={id}
           label={label}
-          value={value}
           onChange={youChangedMe}
-          className={testClassName}
+          ref={ref}
+          value={value}
         />
       </div>,
     );
@@ -136,7 +137,7 @@ describe('Testing TextArea for ariaDescription', () => {
 
     render(
       <div>
-        <TextArea id="text-area-id" ariaDescription={description} />
+        <TextArea ariaDescription={description} id="text-area-id" />
       </div>,
     );
 
@@ -164,11 +165,11 @@ describe('Test in odd cases', () => {
     render(
       <div>
         <TextArea
-          ref={ref}
+          className={testClassName}
           id={id}
           label={label}
           onChange={youChangedMe}
-          className={testClassName}
+          ref={ref}
         />
       </div>,
     );

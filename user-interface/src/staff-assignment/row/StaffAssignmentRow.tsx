@@ -1,18 +1,19 @@
-import { useRef } from 'react';
-import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
-import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import Actions from '@common/cams/actions';
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
+import { formatDate } from '@/lib/utils/datetime';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
+import Actions from '@common/cams/actions';
+import { CaseAssignment } from '@common/cams/assignments';
+import { useRef } from 'react';
+
 import {
-  AssignAttorneyModalRef,
   AssignAttorneyModalCallbackProps,
+  AssignAttorneyModalRef,
 } from '../modal/assignAttorneyModal.types';
 import Internal from './StaffAssignmentRow.internal';
-import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import { CaseAssignment } from '@common/cams/assignments';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -29,13 +30,13 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
   const initialState = {
     assignments: bCase.assignments ?? [],
-    isLoading: true,
     bCase,
+    isLoading: true,
     modalRef,
   };
 
   const openAssignmentsModalButtonRef = useRef<OpenModalButtonRef>(null);
-  const { state, actions } = Internal.useStateActions(initialState);
+  const { actions, state } = Internal.useStateActions(initialState);
 
   function handleAssignmentModalCallback(props: AssignAttorneyModalCallbackProps) {
     actions.updateAssignmentsCallback(props).then(() => {
@@ -45,14 +46,14 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
   function buildActionButton(assignments: CaseAssignment[] | undefined) {
     const commonModalButtonProps = {
-      className: 'case-assignment-modal-toggle',
       buttonIndex: `${idx}`,
+      className: 'case-assignment-modal-toggle',
+      modalId,
+      modalRef,
       openProps: {
         bCase: { ...bCase, assignments: state.assignments },
         callback: handleAssignmentModalCallback,
       },
-      modalId,
-      modalRef,
       ref: openAssignmentsModalButtonRef,
     };
 
@@ -60,8 +61,8 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       return (
         <OpenModalButton
           {...commonModalButtonProps}
-          uswdsStyle={UswdsButtonStyle.Outline}
           title="Edit Staff Assignments"
+          uswdsStyle={UswdsButtonStyle.Outline}
         >
           Edit
         </OpenModalButton>
@@ -78,7 +79,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
     if (assignments && assignments.length > 0) {
       return state.assignments?.map((attorney, key: number) => (
-        <span key={key} data-testid={`staff-name-${key}`}>
+        <span data-testid={`staff-name-${key}`} key={key}>
           {attorney.name}
           <br />
         </span>
@@ -90,17 +91,17 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
   return (
     <TableRow {...otherProps} key={idx}>
-      <TableRowData dataSortValue={bCase.caseId.replace(/-/g, '')} aria-sort="descending">
+      <TableRowData aria-sort="descending" dataSortValue={bCase.caseId.replace(/-/g, '')}>
         <span className="no-wrap">
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
       <TableRowData>{bCase.caseTitle}</TableRowData>
       <TableRowData>{bCase.chapter}</TableRowData>
-      <TableRowData dataSortValue={bCase.dateFiled.replace(/-/g, '')} aria-sort="descending">
+      <TableRowData aria-sort="descending" dataSortValue={bCase.dateFiled.replace(/-/g, '')}>
         {formatDate(bCase.dateFiled)}
       </TableRowData>
-      <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
+      <TableRowData className="attorney-list" data-testid={`attorney-list-${idx}`}>
         <span className="mobile-title">Assigned Attorney:</span>
         <div className="table-flex-container">
           <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>

@@ -1,17 +1,17 @@
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { TransferOrder } from '@common/cams/orders';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe } from 'vitest';
 import {
   PendingTransferOrder,
   PendingTransferOrderProps,
 } from '@/data-verification/transfer/PendingTransferOrder';
-import { BrowserRouter } from 'react-router-dom';
-import { MockData } from '@common/cams/test-utilities/mock-data';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { TransferOrder } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
 
 const fromCaseSummary = MockData.getCaseSummary();
 const toCaseSummary = MockData.getCaseSummary();
@@ -27,58 +27,58 @@ regionMap.set('02', 'NEW YORK');
 const testOffices: CourtDivisionDetails[] = [
   {
     courtDivisionCode: '001',
-    groupDesignator: 'AA',
+    courtDivisionName: 'New York 1',
     courtId: '0101',
+    courtName: 'A',
+    groupDesignator: 'AA',
     officeCode: '1',
     officeName: 'A1',
-    state: 'NY',
-    courtName: 'A',
-    courtDivisionName: 'New York 1',
     regionId: '02',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     courtDivisionCode: '003',
-    groupDesignator: 'AC',
+    courtDivisionName: 'New York 1',
     courtId: '0103',
+    courtName: 'C',
+    groupDesignator: 'AC',
     officeCode: '3',
     officeName: 'C1',
-    state: 'NY',
-    courtName: 'C',
-    courtDivisionName: 'New York 1',
     regionId: '02',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     courtDivisionCode: '002',
-    groupDesignator: 'AB',
+    courtDivisionName: 'New York 1',
     courtId: '0102',
+    courtName: 'B',
+    groupDesignator: 'AB',
     officeCode: '2',
     officeName: 'B1',
-    state: 'NY',
-    courtName: 'B',
-    courtDivisionName: 'New York 1',
     regionId: '02',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
 ];
 
 const mockTransferOrder = {
-  id: '8237b1bb-94b6-4434-b44c-77fbd906fe08',
-  docketSuggestedCaseNumber: '24-12345',
-  status: 'pending',
-  orderType: 'transfer',
-  orderDate: '2024-01-01',
   docketEntries: [
     {
-      documentNumber: 1,
-      summaryText: 'Transfer Order',
-      fullText: 'Order to transfer case',
-      documents: [],
-      sequenceNumber: 1,
       dateFiled: '2024-01-01',
+      documentNumber: 1,
+      documents: [],
+      fullText: 'Order to transfer case',
+      sequenceNumber: 1,
+      summaryText: 'Transfer Order',
     },
   ],
+  docketSuggestedCaseNumber: '24-12345',
+  id: '8237b1bb-94b6-4434-b44c-77fbd906fe08',
+  orderDate: '2024-01-01',
+  orderType: 'transfer',
+  status: 'pending',
   ...fromCaseSummary,
 } as TransferOrder;
 
@@ -90,8 +90,8 @@ describe('PendingTransferOrder component', () => {
       const onOrderUpdate = vitest.fn();
       const defaultProps: PendingTransferOrderProps = {
         officesList: testOffices,
-        order,
         onOrderUpdate,
+        order,
       };
 
       const renderProps = { ...defaultProps, ...props };
@@ -192,8 +192,8 @@ describe('PendingTransferOrder component', () => {
       const onOrderUpdate = vitest.fn();
       const defaultProps: PendingTransferOrderProps = {
         officesList: testOffices,
-        order,
         onOrderUpdate,
+        order,
       };
 
       const renderProps = { ...defaultProps, ...props };
@@ -352,16 +352,16 @@ describe('PendingTransferOrder component', () => {
 
       const rejectedOrder = {
         ...order,
-        status: 'rejected',
         reason: rejectionValue,
+        status: 'rejected',
       };
 
       await waitFor(async () => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
           {
             message: `Transfer of case ${getCaseNumber(order.caseId)} was rejected.`,
-            type: UswdsAlertStyle.Success,
             timeOut: 8,
+            type: UswdsAlertStyle.Success,
           },
           rejectedOrder,
         );
@@ -482,8 +482,8 @@ describe('PendingTransferOrder component', () => {
         expect(onOrderUpdate).toHaveBeenCalled();
         expect(onOrderUpdate).toHaveBeenCalledWith({
           message: errorMessage,
-          type: UswdsAlertStyle.Error,
           timeOut: 8,
+          type: UswdsAlertStyle.Error,
         });
       });
     });
@@ -528,8 +528,8 @@ describe('PendingTransferOrder component', () => {
         expect(onOrderUpdate).toHaveBeenCalled();
         expect(onOrderUpdate).toHaveBeenCalledWith({
           message: errorMessage,
-          type: UswdsAlertStyle.Error,
           timeOut: 8,
+          type: UswdsAlertStyle.Error,
         });
       });
     });

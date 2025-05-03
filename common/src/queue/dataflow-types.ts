@@ -1,11 +1,11 @@
 import { DxtrCase } from '../cams/cases';
 
 export type CaseSyncEvent = {
-  type: 'CASE_CHANGED' | 'MIGRATION';
-  caseId: string;
   bCase?: DxtrCase;
+  caseId: string;
   error?: unknown;
   retryCount?: number;
+  type: 'CASE_CHANGED' | 'MIGRATION';
 };
 
 export type CaseSyncResults = {

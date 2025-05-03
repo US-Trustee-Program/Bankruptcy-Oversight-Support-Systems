@@ -5,8 +5,8 @@ describe('Authorization config tests', () => {
   beforeEach(() => {
     process.env = {
       ...process.env,
-      CAMS_LOGIN_PROVIDER_CONFIG: undefined,
       CAMS_LOGIN_PROVIDER: '',
+      CAMS_LOGIN_PROVIDER_CONFIG: undefined,
     };
   });
 

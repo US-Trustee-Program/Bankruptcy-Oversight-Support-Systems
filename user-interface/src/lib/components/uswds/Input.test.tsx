@@ -1,8 +1,9 @@
-import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { InputRef } from '@/lib/type-declarations/input-fields';
-import Input from './Input';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
+
+import Input from './Input';
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<InputRef>();
@@ -11,7 +12,7 @@ describe('Tests for USWDS Input component.', () => {
   const renderWithoutProps = () => {
     render(
       <div>
-        <Input ref={ref} id="input-1" inputMode="numeric" value="1" onChange={youChangedMe}></Input>
+        <Input id="input-1" inputMode="numeric" onChange={youChangedMe} ref={ref} value="1"></Input>
       </div>,
     );
   };
@@ -70,7 +71,7 @@ describe('Test error handling', () => {
     const errorMessageId = 'input-1-input__error-message';
     const { rerender } = render(
       <div>
-        <Input id="input-1" errorMessage={undefined}></Input>
+        <Input errorMessage={undefined} id="input-1"></Input>
       </div>,
     );
 
@@ -80,7 +81,7 @@ describe('Test error handling', () => {
 
     rerender(
       <div>
-        <Input id="input-1" errorMessage="TEST MESSAGE"></Input>
+        <Input errorMessage="TEST MESSAGE" id="input-1"></Input>
       </div>,
     );
 
@@ -100,7 +101,7 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
   test('Should change value to empty string when props.input is not set and ref.setValue() is called.', async () => {
     render(
       <div>
-        <Input ref={ref} id="input-1"></Input>
+        <Input id="input-1" ref={ref}></Input>
       </div>,
     );
 
@@ -123,7 +124,7 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
       const expectedClassName = 'classNameTest';
       render(
         <div>
-          <Input id="input-1" className={expectedClassName}></Input>
+          <Input className={expectedClassName} id="input-1"></Input>
         </div>,
       );
       const inputEl = screen.getByTestId('input-1');
@@ -155,7 +156,7 @@ describe('Tests for USWDS Input component when no value is initially set.', () =
     test('should not have clear button if input is empty and should appear once text is entered', async () => {
       render(
         <div>
-          <Input includeClearButton={true} id="input-1"></Input>
+          <Input id="input-1" includeClearButton={true}></Input>
         </div>,
       );
       let clearButton;

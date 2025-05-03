@@ -1,16 +1,17 @@
 import {
   Children,
-  PropsWithChildren,
-  FunctionComponent,
-  ReactElement,
   cloneElement,
-  useState,
+  FunctionComponent,
+  PropsWithChildren,
+  ReactElement,
   useEffect,
+  useState,
 } from 'react';
+
 import './Accordion.scss';
 
 interface AccordionGroupProps extends PropsWithChildren {
-  children?: ReactElement | Array<ReactElement>;
+  children?: Array<ReactElement> | ReactElement;
 }
 
 export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) => {
@@ -24,9 +25,9 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
     if (!props.children) return;
     return Children.map(props.children, (child) => {
       return cloneElement(child, {
+        expandedId: expandedAccordion,
         key: `${child.key}-copy`,
         onExpand: expandAccordion,
-        expandedId: expandedAccordion,
       });
     });
   };
@@ -39,13 +40,13 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
 };
 
 interface AccordionProps extends PropsWithChildren {
-  id: string;
+  ariaDescription?: string;
   children: Array<ReactElement | string>;
   expandedId?: string;
-  onExpand?: (id: string) => void;
-  onCollapse?: (id: string) => void;
   hidden?: boolean;
-  ariaDescription?: string;
+  id: string;
+  onCollapse?: (id: string) => void;
+  onExpand?: (id: string) => void;
 }
 
 export const Accordion: FunctionComponent<AccordionProps> = (props) => {
@@ -70,21 +71,21 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
     <>
       <h4 className="usa-accordion__heading" data-testid={`accordion-${props.id}`} hidden={hidden}>
         <button
-          type="button"
-          className="usa-accordion__button"
-          aria-expanded={expanded}
           aria-controls={`accordion-${props.id}`}
+          aria-expanded={expanded}
+          className="usa-accordion__button"
           data-testid={`accordion-button-${props.id}`}
           onClick={toggle}
+          type="button"
         >
           {props.children[0]}
         </button>
       </h4>
       <div
-        id={`accordion-${props.id}`}
         className="usa-accordion__content usa-prose no-overflow"
         data-testid={`accordion-content-${props.id}`}
         hidden={!!hidden || !expanded}
+        id={`accordion-${props.id}`}
       >
         {props.children[1]}
       </div>

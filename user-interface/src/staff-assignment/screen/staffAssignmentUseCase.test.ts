@@ -1,57 +1,58 @@
-import MockData from '@common/cams/test-utilities/mock-data';
-import { StaffAssignmentControls, StaffAssignmentStore } from './StaffAssignment.types';
-import useStaffAssignmentUseCase from './staffAssignmentUseCase';
-import LocalStorage from '@/lib/utils/local-storage';
-import * as commonUsers from '@common/cams/users';
-import { MockInstance } from 'vitest';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import LocalStorage from '@/lib/utils/local-storage';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
+import MockData from '@common/cams/test-utilities/mock-data';
+import * as commonUsers from '@common/cams/users';
+import { FeatureFlagSet } from '@common/feature-flags';
+import { MockInstance } from 'vitest';
+
 import { StaffAssignmentScreenFilter } from '../filters/staffAssignmentFilter.types';
+import { StaffAssignmentControls, StaffAssignmentStore } from './StaffAssignment.types';
+import useStaffAssignmentUseCase from './staffAssignmentUseCase';
 
 const refreshSpy = vi.fn();
 
 function useStaffAssignmentControlsMock(): StaffAssignmentControls {
   const infoModalRef = {
     current: {
-      show: vi.fn(),
-      hide: vi.fn(),
       buttons: {
         current: {
           disableSubmitButton: (_state: boolean) => {},
         },
       },
+      hide: vi.fn(),
+      show: vi.fn(),
     },
   };
 
   const assignmentModalRef = {
     current: {
-      show: vi.fn(),
-      hide: vi.fn(),
       buttons: {
         current: {
           disableSubmitButton: (_state: boolean) => {},
         },
       },
+      hide: vi.fn(),
+      show: vi.fn(),
     },
   };
 
   const filterRef = {
     current: {
-      refresh: refreshSpy,
       focus: vi.fn(),
+      refresh: refreshSpy,
     },
   };
 
   return {
     assignmentModalRef,
-    infoModalRef,
     filterRef,
+    infoModalRef,
   };
 }
 
@@ -64,8 +65,8 @@ describe('staff assignment use case tests', () => {
 
   const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
   const mockStore: StaffAssignmentStore = {
-    staffAssignmentFilter: undefined,
     setStaffAssignmentFilter: vi.fn(),
+    staffAssignmentFilter: undefined,
   };
 
   const mockControls = useStaffAssignmentControlsMock();
@@ -129,13 +130,13 @@ describe('staff assignment use case tests', () => {
     const expectedDivisionCodes = ['081', '087'];
     const filter = { assignee: assignees[0] };
     const expectedPredicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: expectedDivisionCodes,
-      chapters: ['15', '11', '12'],
       assignments: [assignees[0]],
+      chapters: ['15', '11', '12'],
+      divisionCodes: expectedDivisionCodes,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
     vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
     const newPredicate = useCase.getPredicateByUserContextWithFilter(session.user, filter);
@@ -146,13 +147,13 @@ describe('staff assignment use case tests', () => {
     const expectedDivisionCodes = ['081', '087'];
     const filter = { includeOnlyUnassigned: true };
     const expectedPredicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: expectedDivisionCodes,
       chapters: ['15', '11', '12'],
-      includeOnlyUnassigned: true,
+      divisionCodes: expectedDivisionCodes,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      includeOnlyUnassigned: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
     vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
     const newPredicate = useCase.getPredicateByUserContextWithFilter(session.user, filter);
@@ -162,12 +163,12 @@ describe('staff assignment use case tests', () => {
   test('getPredicateByUserContextWithFilter should return a valid predicate with assignments undefined if no filter is supplied', async () => {
     const expectedDivisionCodes = ['081', '087'];
     const expectedPredicate: CasesSearchPredicate = {
-      limit: DEFAULT_SEARCH_LIMIT,
-      offset: DEFAULT_SEARCH_OFFSET,
-      divisionCodes: expectedDivisionCodes,
       chapters: ['15', '11', '12'],
+      divisionCodes: expectedDivisionCodes,
       excludeChildConsolidations: true,
       excludeClosedCases: true,
+      limit: DEFAULT_SEARCH_LIMIT,
+      offset: DEFAULT_SEARCH_OFFSET,
     };
     vi.spyOn(commonUsers, 'getCourtDivisionCodes').mockReturnValue(expectedDivisionCodes);
     const newPredicate = useCase.getPredicateByUserContextWithFilter(session.user, undefined);

@@ -1,7 +1,8 @@
-import { MockInstance } from 'vitest';
-import { copyCaseNumber, getCaseNumber } from './caseNumber';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { waitFor } from '@testing-library/react';
+import { MockInstance } from 'vitest';
+
+import { copyCaseNumber, getCaseNumber } from './caseNumber';
 
 describe('Formatting case id', () => {
   it('Should get case number from case id', async () => {

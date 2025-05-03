@@ -7,7 +7,7 @@ const useCamelCaseFlagKeys = false;
 export const getFeatureFlagConfiguration = () => {
   return {
     clientId,
-    useExternalProvider,
     useCamelCaseFlagKeys,
+    useExternalProvider,
   } as const;
 };

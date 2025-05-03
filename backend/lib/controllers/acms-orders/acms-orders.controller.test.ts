@@ -1,11 +1,11 @@
+import { ApplicationContext } from '../../adapters/types/basic';
+import { NotFoundError } from '../../common-errors/not-found-error';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
 import AcmsOrders, {
-  AcmsTransformationResult,
   AcmsPredicate,
+  AcmsTransformationResult,
 } from '../../use-cases/dataflows/migrate-consolidations';
 import AcmsOrdersController from './acms-orders.controller';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { NotFoundError } from '../../common-errors/not-found-error';
 
 describe('AcmsOrdersController', () => {
   let context: ApplicationContext;
@@ -21,8 +21,8 @@ describe('AcmsOrdersController', () => {
   test('should return array of lead case ids when calling getLeadCaseIds', async () => {
     const leadCaseIds = ['811100000', '1231111111'];
     const predicate: AcmsPredicate = {
-      divisionCode: '000',
       chapter: '00',
+      divisionCode: '000',
     };
 
     jest.spyOn(AcmsOrders.prototype, 'getLeadCaseIds').mockResolvedValue(leadCaseIds);
@@ -36,8 +36,8 @@ describe('AcmsOrdersController', () => {
   test('should return processing report from migrateConsolidation', async () => {
     const leadCaseId = '811100000';
     const report: AcmsTransformationResult = {
-      leadCaseId,
       childCaseCount: 1,
+      leadCaseId,
       success: true,
     };
     const spy = jest.spyOn(AcmsOrders.prototype, 'migrateConsolidation').mockResolvedValue(report);
@@ -62,8 +62,8 @@ describe('AcmsOrdersController', () => {
 
   test('should handle failed listing of lead case IDs', async () => {
     const predicate: AcmsPredicate = {
-      divisionCode: '000',
       chapter: '00',
+      divisionCode: '000',
     };
 
     const error = new Error('some error');

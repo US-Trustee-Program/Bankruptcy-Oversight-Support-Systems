@@ -1,18 +1,18 @@
 import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 import { SyncedCase } from '../../../../common/src/cams/cases';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CaseSyncEvent } from '../../../../common/src/queue/dataflow-types';
 import ExportAndLoadCase from './export-and-load-case';
 
 function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent {
   return {
-    type: 'CASE_CHANGED',
     caseId: '000-00-00000',
+    type: 'CASE_CHANGED',
     ...override,
   };
 }

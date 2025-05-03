@@ -1,5 +1,5 @@
 export type EnvLoginConfig = {
-  issuer: string;
   clientId: string;
+  issuer: string;
   redirectUri?: string;
 };

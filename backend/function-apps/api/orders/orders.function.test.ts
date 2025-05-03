@@ -1,17 +1,17 @@
-import handler from './orders.function';
-import { CamsError } from '../../../lib/common-errors/cams-error';
+import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import { Order } from '../../../../common/src/cams/orders';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
+import { commonHeaders } from '../../../lib/adapters/utils/http-response';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { Order } from '../../../../common/src/cams/orders';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { commonHeaders } from '../../../lib/adapters/utils/http-response';
-import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
+import handler from './orders.function';
 
 describe('Orders Function tests', () => {
   const request = createMockAzureFunctionRequest({
@@ -25,7 +25,7 @@ describe('Orders Function tests', () => {
 
   test('should return a list of orders', async () => {
     const mockOrders = [MockData.getTransferOrder(), MockData.getConsolidationOrder()];
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<Order[]>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<Order[]>({
       data: mockOrders,
     });
 
@@ -39,7 +39,7 @@ describe('Orders Function tests', () => {
   test('should return proper response when successfully updating an order', async () => {
     const id = '1234567890';
 
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess(undefined, {
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess(undefined, {
       headers: commonHeaders,
       statusCode: HttpStatusCodes.NO_CONTENT,
     });
@@ -49,13 +49,13 @@ describe('Orders Function tests', () => {
       .mockResolvedValue(camsHttpResponse);
 
     const orderRequest = createMockAzureFunctionRequest({
-      url: 'http://domain/api/orders',
-      params: { id },
       body: {
         id,
         orderType: 'transfer',
       },
       method: 'PATCH',
+      params: { id },
+      url: 'http://domain/api/orders',
     });
 
     const response = await handler(orderRequest, context);
@@ -83,13 +83,13 @@ describe('Orders Function tests', () => {
 
     const id = '1234567890';
     const requestOverride: Partial<CamsHttpRequest> = {
-      url: 'http://domain/api/orders',
-      params: { id },
       body: {
         id,
         orderType: 'transfer',
       },
       method: 'PATCH',
+      params: { id },
+      url: 'http://domain/api/orders',
     };
     const orderRequest = createMockAzureFunctionRequest(requestOverride);
     const response = await handler(orderRequest, context);

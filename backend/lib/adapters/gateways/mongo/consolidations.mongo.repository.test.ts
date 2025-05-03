@@ -1,12 +1,12 @@
-import { ApplicationContext } from '../../types/basic';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 import MockData from '../../../../../common/src/cams/test-utilities/mock-data';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import { closeDeferred } from '../../../deferrable/defer-close';
+import QueryBuilder from '../../../query/query-builder';
+import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { ApplicationContext } from '../../types/basic';
 import ConsolidationOrdersMongoRepository from './consolidations.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import QueryBuilder from '../../../query/query-builder';
-import { closeDeferred } from '../../../deferrable/defer-close';
-import { getCamsError } from '../../../common-errors/error-utilities';
-import { ConsolidationOrder } from '../../../../../common/src/cams/orders';
 
 describe('Consolidations Repository tests', () => {
   let context: ApplicationContext;
@@ -39,8 +39,8 @@ describe('Consolidations Repository tests', () => {
       doc('consolidationId').equals(consolidationOrder.consolidationId),
     );
     const results = await repo.search({
-      divisionCodes: ['081'],
       consolidationId: consolidationOrder.consolidationId,
+      divisionCodes: ['081'],
     });
 
     expect(results).toEqual([consolidationOrder]);
@@ -133,8 +133,8 @@ describe('Consolidations Repository tests', () => {
       jest.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
       await expect(() =>
         repo.search({
-          divisionCodes: ['081'],
           consolidationId: consolidationOrder.consolidationId,
+          divisionCodes: ['081'],
         }),
       ).rejects.toThrow(camsError);
     });

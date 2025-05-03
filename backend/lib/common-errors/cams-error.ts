@@ -1,26 +1,27 @@
-import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 import * as util from 'node:util';
 
-export type CamsStackInfo = {
-  module: string;
-  message?: string;
-};
+import HttpStatusCodes from '../../../common/src/api/http-status-codes';
 
 export interface CamsErrorOptions {
-  status?: number;
+  camsStackInfo?: CamsStackInfo;
+  data?: object;
   message?: string;
   originalError?: Error;
-  data?: object;
-  camsStackInfo?: CamsStackInfo;
+  status?: number;
 }
 
-export class CamsError extends Error {
-  isCamsError: true;
-  status: number;
+export type CamsStackInfo = {
+  message?: string;
   module: string;
+};
+
+export class CamsError extends Error {
   camsStack: CamsStackInfo[];
-  originalError?: string;
   data?: object;
+  isCamsError: true;
+  module: string;
+  originalError?: string;
+  status: number;
 
   constructor(module: string, options: CamsErrorOptions = {}) {
     super();

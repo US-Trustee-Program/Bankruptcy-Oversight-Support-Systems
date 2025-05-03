@@ -16,61 +16,61 @@ describe('http adapter tests', () => {
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'GET',
+        cache: 'default',
         headers: {
           Accept: 'application/json',
           'content-type': 'application/json;charset=UTF-8',
         },
-        cache: 'default',
+        method: 'GET',
       }),
     );
   });
 
   test('should GET with additional headers', async () => {
-    httpGet({ url, headers });
+    httpGet({ headers, url });
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'GET',
+        cache: 'default',
         headers: {
           Accept: 'application/json',
           'content-type': 'application/json;charset=UTF-8',
           ...headers,
         },
-        cache: 'default',
+        method: 'GET',
       }),
     );
   });
 
   test('should POST', async () => {
-    httpPost({ url, body });
+    httpPost({ body, url });
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'POST',
+        cache: 'default',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
         },
-        cache: 'default',
+        method: 'POST',
       }),
     );
   });
 
   test('should POST with additional headers', async () => {
     httpPost({
-      url,
       body,
       headers,
+      url,
     });
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'POST',
+        cache: 'default',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
           ...headers,
         },
-        cache: 'default',
+        method: 'POST',
       }),
     );
   });
@@ -80,40 +80,40 @@ describe('http adapter tests', () => {
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'DELETE',
+        cache: 'default',
         headers: {
           Accept: 'application/json',
           'content-type': 'application/json;charset=UTF-8',
         },
-        cache: 'default',
+        method: 'DELETE',
       }),
     );
   });
 
   test('should PATCH', async () => {
-    httpPatch({ url, body });
+    httpPatch({ body, url });
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'PATCH',
+        cache: 'default',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
         },
-        cache: 'default',
+        method: 'PATCH',
       }),
     );
   });
 
   test('should PUT', async () => {
-    httpPut({ url, body });
+    httpPut({ body, url });
     expect(fetchSpy).toHaveBeenCalledWith(
       url,
       expect.objectContaining({
-        method: 'PUT',
+        cache: 'default',
         headers: {
           'content-type': 'application/json;charset=UTF-8',
         },
-        cache: 'default',
+        method: 'PUT',
       }),
     );
   });

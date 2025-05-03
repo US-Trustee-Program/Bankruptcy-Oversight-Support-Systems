@@ -1,39 +1,39 @@
-import { BrowserRouter } from 'react-router-dom';
-import { render, screen } from '@testing-library/react';
 import CaseDetailCourtDocket from '@/case-detail/panels/CaseDetailCourtDocket';
 import { formatDate } from '@/lib/utils/datetime';
 import * as highlightModule from '@/lib/utils/highlight-api';
 import { CaseDocket } from '@common/cams/cases';
+import { render, screen } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 
 describe('court docket panel tests', () => {
   const docketEntries: CaseDocket = [
     {
-      sequenceNumber: 2,
+      dateFiled: '2023-05-07T00:00:00.0000000',
       documentNumber: 1,
-      dateFiled: '2023-05-07T00:00:00.0000000',
-      summaryText: 'Add Judge',
       fullText: 'Docket entry number 1.',
+      sequenceNumber: 2,
+      summaryText: 'Add Judge',
     },
     {
-      sequenceNumber: 3,
       dateFiled: '2023-05-07T00:00:00.0000000',
-      summaryText: 'Motion',
       fullText: 'Docket entry number 2.',
+      sequenceNumber: 3,
+      summaryText: 'Motion',
     },
     {
-      sequenceNumber: 4,
-      documentNumber: 2,
       dateFiled: '2023-07-07T00:00:00.0000000',
-      summaryText: 'Add Attorney',
-      fullText: 'Docket entry number 3.',
+      documentNumber: 2,
       documents: [
         {
+          fileExt: 'pdf',
           fileLabel: '0-0',
           fileSize: 1000,
-          fileExt: 'pdf',
           fileUri: 'https://somehost.gov/pdf/0000-111111-3-0-0.pdf',
         },
       ],
+      fullText: 'Docket entry number 3.',
+      sequenceNumber: 4,
+      summaryText: 'Add Attorney',
     },
   ];
   const firstIndex = 0;
@@ -45,9 +45,9 @@ describe('court docket panel tests', () => {
         <CaseDetailCourtDocket
           caseId="081-12-12345"
           docketEntries={undefined}
-          searchString=""
           hasDocketEntries={false}
           isDocketLoading={true}
+          searchString=""
         />
       </BrowserRouter>,
     );
@@ -64,9 +64,9 @@ describe('court docket panel tests', () => {
         <CaseDetailCourtDocket
           caseId="081-12-12345"
           docketEntries={docketEntries}
-          searchString=""
           hasDocketEntries={true}
           isDocketLoading={false}
+          searchString=""
         />
       </BrowserRouter>,
     );
@@ -106,9 +106,9 @@ describe('court docket panel tests', () => {
         <CaseDetailCourtDocket
           caseId="081-12-12345"
           docketEntries={docketEntries}
-          searchString=""
           hasDocketEntries={true}
           isDocketLoading={false}
+          searchString=""
         />
       </BrowserRouter>,
     );
@@ -136,9 +136,9 @@ describe('court docket panel tests', () => {
           <CaseDetailCourtDocket
             caseId="081-12-12345"
             docketEntries={[]}
-            searchString=""
             hasDocketEntries={false}
             isDocketLoading={false}
+            searchString=""
           />
         </BrowserRouter>,
       );
@@ -157,9 +157,9 @@ describe('court docket panel tests', () => {
           <CaseDetailCourtDocket
             caseId="081-12-12345"
             docketEntries={docketEntries}
-            searchString=""
             hasDocketEntries={true}
             isDocketLoading={false}
+            searchString=""
           />
         </BrowserRouter>,
       );
@@ -180,9 +180,9 @@ describe('court docket panel tests', () => {
           <CaseDetailCourtDocket
             caseId="081-12-12345"
             docketEntries={[]}
-            searchString="test"
             hasDocketEntries={true}
             isDocketLoading={false}
+            searchString="test"
           />
         </BrowserRouter>,
       );

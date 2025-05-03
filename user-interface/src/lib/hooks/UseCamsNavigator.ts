@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, Location } from 'react-router-dom';
+import { Location, useLocation, useNavigate } from 'react-router-dom';
 
 function getFinalDestination(
   destination: string,

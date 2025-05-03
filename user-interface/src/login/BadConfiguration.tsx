@@ -1,4 +1,5 @@
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+
 import { BlankPage } from './BlankPage';
 
 export type BadConfigurationProps = {
@@ -10,11 +11,11 @@ export function BadConfiguration(props: BadConfigurationProps) {
     <BlankPage>
       <Alert
         className="measure-6"
-        show={true}
         inline={true}
-        type={UswdsAlertStyle.Error}
-        title="Bad Configuration"
         message={props.message}
+        show={true}
+        title="Bad Configuration"
+        type={UswdsAlertStyle.Error}
       ></Alert>
     </BlankPage>
   );

@@ -1,5 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { vi } from 'vitest';
+
 import { handleHighlight } from './highlight-api';
 
 describe('CSS Highlight API integration', () => {
@@ -39,8 +40,8 @@ describe('CSS Highlight API integration', () => {
     const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
-        set: setMock,
         clear: clearMock,
+        set: setMock,
       },
     };
     const typeCastWindow = window as unknown as Window;
@@ -64,8 +65,8 @@ describe('CSS Highlight API integration', () => {
     const { window } = dom;
     window.CSS = {
       highlights: {
-        set: setMock,
         clear: clearMock,
+        set: setMock,
       },
     };
     const typeCastWindow = window as unknown as Window;
@@ -95,8 +96,8 @@ describe('CSS Highlight API integration', () => {
     const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
-        set: setMock,
         clear: clearMock,
+        set: setMock,
       },
     };
     const typeCastWindow = window as unknown as Window;
@@ -114,8 +115,8 @@ describe('CSS Highlight API integration', () => {
     const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
-        set: setMock,
         clear: clearMock,
+        set: setMock,
       },
     };
     const typeCastWindow = window as unknown as Window;
@@ -130,10 +131,10 @@ describe('CSS Highlight API integration', () => {
     const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
+        clear: () => {},
         set: () => {
           throw new Error('Test error');
         },
-        clear: () => {},
       },
     };
     const typeCastWindow = window as unknown as Window;
@@ -151,8 +152,8 @@ describe('CSS Highlight API integration', () => {
     const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
-        set: setMock,
         clear: clearMock,
+        set: setMock,
       },
     };
     const typeCastWindow = window as unknown as Window;
@@ -181,8 +182,8 @@ describe('CSS Highlight API integration', () => {
     const { window } = defaultTestDom;
     window.CSS = {
       highlights: {
-        set: setMock,
         clear: clearMock,
+        set: setMock,
       },
     };
     const typeCastWindow = window as unknown as Window;

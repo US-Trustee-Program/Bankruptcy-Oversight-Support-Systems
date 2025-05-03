@@ -1,85 +1,85 @@
-async function runHttp(url: string, init: RequestInit) {
-  return await fetch(url, init);
-}
-
-export async function httpGet(data: { url: string; headers?: object }): Promise<Response> {
+export async function httpDelete(data: { headers?: object; url: string }): Promise<Response> {
   const requestInit: RequestInit = {
-    method: 'GET',
+    cache: 'default',
     headers: {
       Accept: 'application/json',
       'content-type': 'application/json;charset=UTF-8',
       ...data.headers,
     },
-    cache: 'default',
-  };
-
-  return await runHttp(data.url, requestInit);
-}
-
-export async function httpDelete(data: { url: string; headers?: object }): Promise<Response> {
-  const requestInit: RequestInit = {
     method: 'DELETE',
-    headers: {
-      Accept: 'application/json',
-      'content-type': 'application/json;charset=UTF-8',
-      ...data.headers,
-    },
-    cache: 'default',
   };
 
   return await runHttp(data.url, requestInit);
 }
 
-export async function httpPost(data: {
-  url: string;
-  body: object;
-  headers?: object;
-}): Promise<Response> {
+export async function httpGet(data: { headers?: object; url: string }): Promise<Response> {
   const requestInit: RequestInit = {
-    method: 'POST',
+    cache: 'default',
     headers: {
+      Accept: 'application/json',
       'content-type': 'application/json;charset=UTF-8',
       ...data.headers,
     },
-    body: JSON.stringify(data.body),
-    cache: 'default',
+    method: 'GET',
   };
 
   return await runHttp(data.url, requestInit);
 }
 
 export async function httpPatch(data: {
-  url: string;
   body: object;
   headers?: object;
+  url: string;
 }): Promise<Response> {
   const requestInit: RequestInit = {
-    method: 'PATCH',
+    body: JSON.stringify(data.body),
+    cache: 'default',
     headers: {
       'content-type': 'application/json;charset=UTF-8',
       ...data.headers,
     },
+    method: 'PATCH',
+  };
+
+  return await runHttp(data.url, requestInit);
+}
+
+export async function httpPost(data: {
+  body: object;
+  headers?: object;
+  url: string;
+}): Promise<Response> {
+  const requestInit: RequestInit = {
     body: JSON.stringify(data.body),
     cache: 'default',
+    headers: {
+      'content-type': 'application/json;charset=UTF-8',
+      ...data.headers,
+    },
+    method: 'POST',
   };
 
   return await runHttp(data.url, requestInit);
 }
 
 export async function httpPut(data: {
-  url: string;
   body: object;
   headers?: object;
+  url: string;
 }): Promise<Response> {
   const requestInit: RequestInit = {
-    method: 'PUT',
+    body: JSON.stringify(data.body),
+    cache: 'default',
     headers: {
       'content-type': 'application/json;charset=UTF-8',
       ...data.headers,
     },
-    body: JSON.stringify(data.body),
-    cache: 'default',
+    method: 'PUT',
   };
 
   return await runHttp(data.url, requestInit);
+}
+
+async function runHttp(url: string, init: RequestInit) {
+  return await fetch(url, init);
 }

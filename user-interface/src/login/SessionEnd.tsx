@@ -1,14 +1,15 @@
-import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Button from '@/lib/components/uswds/Button';
-import { LocalStorage } from '@/lib/utils/local-storage';
-import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
-import { BlankPage } from './BlankPage';
-import { broadcastLogout } from '@/login/broadcast-logout';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
-import LocalCache from '@/lib/utils/local-cache';
 import { API_CACHE_NAMESPACE } from '@/lib/models/api2';
+import LocalCache from '@/lib/utils/local-cache';
+import { LocalStorage } from '@/lib/utils/local-storage';
+import { broadcastLogout } from '@/login/broadcast-logout';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+
+import { BlankPage } from './BlankPage';
+import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 
 export function SessionEnd() {
   const location = useLocation();
@@ -33,11 +34,11 @@ export function SessionEnd() {
     <BlankPage>
       <Alert
         className="measure-6"
-        show={true}
         inline={true}
-        type={UswdsAlertStyle.Info}
-        title="Session End"
         message="You are now logged out of the application."
+        show={true}
+        title="Session End"
+        type={UswdsAlertStyle.Info}
       ></Alert>
       <div>
         <Button id="login" onClick={handleLoginRedirect}>

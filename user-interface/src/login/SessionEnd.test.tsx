@@ -1,10 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe } from 'vitest';
-import { SessionEnd } from './SessionEnd';
-import { BrowserRouter } from 'react-router-dom';
-import * as reactRouter from 'react-router';
-import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
 import LocalStorage from '@/lib/utils/local-storage';
+import { fireEvent, render, screen } from '@testing-library/react';
+import * as reactRouter from 'react-router';
+import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
+
+import { LOGIN_PATH, LOGOUT_SESSION_END_PATH } from './login-library';
+import { SessionEnd } from './SessionEnd';
 
 describe('SessionEnd', () => {
   const navigate = vi.fn();

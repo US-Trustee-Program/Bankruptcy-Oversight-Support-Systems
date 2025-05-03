@@ -1,30 +1,31 @@
-import { describe } from 'vitest';
-import MockApi2 from '@/lib/testing/mock-api2';
-import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } from './api2';
 import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
-import MockData from '@common/cams/test-utilities/mock-data';
+import MockApi2 from '@/lib/testing/mock-api2';
+import LocalStorage from '@/lib/utils/local-storage';
 import { StaffAssignmentAction } from '@common/cams/assignments';
-import { CamsRole } from '@common/cams/roles';
-import { randomUUID } from 'crypto';
 import {
   ConsolidationOrderActionRejection,
   TransferOrderAction,
   TransferOrderActionRejection,
 } from '@common/cams/orders';
-import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { randomUUID } from 'crypto';
+import { describe } from 'vitest';
 
-type ApiType = {
-  addApiBeforeHook: typeof addApiBeforeHook;
-  addApiAfterHook: typeof addApiAfterHook;
-  readonly default: typeof Api;
-};
+import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } from './api2';
 
 type Api2Type = {
-  extractPathFromUri: typeof extractPathFromUri;
-  addAuthHeaderToApi: typeof addAuthHeaderToApi;
-  useGenericApi: typeof useGenericApi;
   _Api2: typeof _Api2;
+  addAuthHeaderToApi: typeof addAuthHeaderToApi;
   Api2: typeof Api2;
+  extractPathFromUri: typeof extractPathFromUri;
+  useGenericApi: typeof useGenericApi;
+};
+
+type ApiType = {
+  addApiAfterHook: typeof addApiAfterHook;
+  addApiBeforeHook: typeof addApiBeforeHook;
+  readonly default: typeof Api;
 };
 
 describe.skip('Api2 mocking', () => {
@@ -118,24 +119,24 @@ describe('_Api2 functions', async () => {
 
   test('should call api.put function when calling putPrivilegedIdentityUser', () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: '' });
-    const action = { groups: ['some-group'], expires: '00-00-0000' };
+    const action = { expires: '00-00-0000', groups: ['some-group'] };
     api2.Api2.putPrivilegedIdentityUser('some-id', action);
     expect(putSpy).toHaveBeenCalledWith(`/dev-tools/privileged-identity/some-id`, action, {});
   });
 
   test('should call postCaseNote api function', async () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: ['some-note'] });
-    api2.Api2.postCaseNote({ caseId: 'some-id', title: 'some title', content: 'some note' });
+    api2.Api2.postCaseNote({ caseId: 'some-id', content: 'some note', title: 'some title' });
     expect(postSpy).toHaveBeenCalled();
   });
 
   test('should call putCaseNote api function', async () => {
     const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: ['some-note'] });
     api2.Api2.putCaseNote({
-      id: 'some-id',
       caseId: 'some-id',
-      title: 'some title',
       content: 'some note',
+      id: 'some-id',
+      title: 'some title',
     });
     expect(putSpy).toHaveBeenCalled();
   });
@@ -145,8 +146,8 @@ describe('_Api2 functions', async () => {
     await expect(
       api2.Api2.putCaseNote({
         caseId: 'some-id',
-        title: 'some title',
         content: 'some note',
+        title: 'some title',
       }),
     ).rejects.toThrow('Id must be provided');
     expect(putSpy).not.toHaveBeenCalled();
@@ -155,8 +156,8 @@ describe('_Api2 functions', async () => {
   test('should call http delete when deleteCaseNote api function is called', async () => {
     const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue();
     api2.Api2.deleteCaseNote({
-      id: 'note-id',
       caseId: 'case-id',
+      id: 'note-id',
       updatedBy: MockData.getCamsUserReference(),
     });
 
@@ -169,10 +170,10 @@ describe('_Api2 functions', async () => {
     const path = '/cases/some-id/notes';
     api2.Api2.postCaseNote({
       caseId: 'some-id',
-      title,
       content: inputPassedThroughApi,
+      title,
     });
-    expect(postSpy).toHaveBeenCalledWith(path, { title, content: inputPassedThroughApi }, {});
+    expect(postSpy).toHaveBeenCalledWith(path, { content: inputPassedThroughApi, title }, {});
   });
 
   test('should get through input title validation and call postCaseNote', () => {
@@ -181,18 +182,18 @@ describe('_Api2 functions', async () => {
     const path = '/cases/some-id/notes';
     api2.Api2.postCaseNote({
       caseId: 'some-id',
-      title: inputPassedThroughApi,
       content,
+      title: inputPassedThroughApi,
     });
-    expect(postSpy).toHaveBeenCalledWith(path, { title: inputPassedThroughApi, content }, {});
+    expect(postSpy).toHaveBeenCalledWith(path, { content, title: inputPassedThroughApi }, {});
   });
 
   test('should be rejected by input validation and not call postCaseNote', () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     api2.Api2.postCaseNote({
       caseId: 'some-id',
-      title: inputBlockedFromApi,
       content: inputBlockedFromApi,
+      title: inputBlockedFromApi,
     });
     expect(postSpy).not.toHaveBeenCalled();
   });
@@ -201,8 +202,8 @@ describe('_Api2 functions', async () => {
     const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
     api2.Api2.postCaseNote({
       caseId: 'some-id',
-      title: '<script>foo</script>',
       content: '<script>foo</script>',
+      title: '<script>foo</script>',
     });
     expect(postSpy).not.toHaveBeenCalled();
   });
@@ -212,9 +213,9 @@ describe('_Api2 functions', async () => {
     const baseOrder = MockData.getConsolidationOrder();
     const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
       ...baseOrder,
+      reason: inputBlockedFromApi,
       rejectedCases: [baseOrder.childCases[0].caseId],
       status: 'rejected',
-      reason: inputBlockedFromApi,
     };
 
     api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
@@ -227,16 +228,16 @@ describe('_Api2 functions', async () => {
     const baseOrder = MockData.getConsolidationOrder();
     const dirtyConsolidationOrder: ConsolidationOrderActionRejection = {
       ...baseOrder,
+      reason: inputPassedThroughApi,
       rejectedCases: [baseOrder.childCases[0].caseId],
       status: 'rejected',
-      reason: inputPassedThroughApi,
     };
 
     const cleanConsolidationOrder = {
       ...baseOrder,
+      reason: inputPassedThroughApi,
       rejectedCases: [baseOrder.childCases[0].caseId],
       status: 'rejected',
-      reason: inputPassedThroughApi,
     };
 
     api2.Api2.putConsolidationOrderRejection(dirtyConsolidationOrder);
@@ -247,8 +248,8 @@ describe('_Api2 functions', async () => {
     const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
     const dirtyTransferOrder: TransferOrderActionRejection = {
       ...MockData.getTransferOrder(),
-      status: 'rejected',
       reason: inputBlockedFromApi,
+      status: 'rejected',
     };
     const purifiedTransferOrder = { ...dirtyTransferOrder, reason: '' };
     api2.Api2.patchTransferOrderRejection(dirtyTransferOrder);
@@ -263,8 +264,8 @@ describe('_Api2 functions', async () => {
     const postSpy = vi.spyOn(api.default, 'patch').mockResolvedValue({ data: '' });
     const transferOrder: TransferOrderActionRejection = {
       ...MockData.getTransferOrder(),
-      status: 'rejected',
       reason: inputPassedThroughApi,
+      status: 'rejected',
     };
 
     const path = `/orders/${transferOrder.id}`;
@@ -278,8 +279,8 @@ describe('_Api2 functions', async () => {
       return Promise.resolve();
     });
     const assignmentAction: StaffAssignmentAction = {
-      caseId: '000-00-00000',
       attorneyList: MockData.buildArray(MockData.getAttorneyUser, 2),
+      caseId: '000-00-00000',
       role: CamsRole.TrialAttorney,
     };
     await api2.Api2.postStaffAssignments(assignmentAction);
@@ -289,10 +290,10 @@ describe('_Api2 functions', async () => {
       return Promise.resolve();
     });
     const approval: TransferOrderAction = {
-      id: randomUUID(),
       caseId: MockData.randomCaseId(),
-      orderType: 'transfer',
+      id: randomUUID(),
       newCase: MockData.getCaseSummary(),
+      orderType: 'transfer',
       status: 'approved',
     };
     await api2.Api2.patchTransferOrderApproval(approval);
@@ -348,12 +349,6 @@ describe('addAuthHeaderToApi', () => {
   });
 });
 
-function sum(...values: number[]) {
-  return values.reduce((total, value) => {
-    return total + value;
-  }, 0);
-}
-
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: ApiType) {
   const stuff = ['some stuff'];
@@ -371,4 +366,10 @@ async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: A
     deleteSpy.mock.calls.length,
   );
   expect(spyCalls).toEqual(1);
+}
+
+function sum(...values: number[]) {
+  return values.reduce((total, value) => {
+    return total + value;
+  }, 0);
 }

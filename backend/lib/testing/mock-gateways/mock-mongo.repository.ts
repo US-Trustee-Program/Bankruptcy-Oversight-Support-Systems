@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SyncedCase } from '../../../../common/src/cams/cases';
 import {
+  ConsolidationFrom,
+  ConsolidationTo,
   TransferFrom,
   TransferTo,
-  ConsolidationTo,
-  ConsolidationFrom,
 } from '../../../../common/src/cams/events';
 import { CaseHistory } from '../../../../common/src/cams/history';
 import { CamsUserReference } from '../../../../common/src/cams/users';
@@ -29,54 +29,38 @@ export class MockMongoRepository
     CaseAssignmentRepository,
     CasesRepository,
     ConsolidationOrdersRepository,
-    OrdersRepository,
+    OfficeAssigneesRepository,
     OfficesRepository,
+    OrdersRepository,
     RuntimeStateRepository,
-    UsersRepository,
     UserSessionCacheRepository,
-    OfficeAssigneesRepository
+    UsersRepository
 {
-  deleteSyncedCases(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  release() {
-    return;
-  }
-
   static getInstance(_context: ApplicationContext) {
     return new MockMongoRepository();
   }
 
-  getAssignmentsForCases(..._ignore): Promise<any> {
+  archiveCaseNote(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  findAssignmentsByAssignee(..._ignore): Promise<any> {
+  create(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
-  findAndDeleteStaff(..._ignore): Promise<void> {
+  createCaseHistory(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
-  getOfficeAttorneys(..._ignore): Promise<any[]> {
+  createConsolidationFrom(..._ignore): Promise<ConsolidationFrom> {
     throw new Error('Method not implemented.');
   }
 
-  putOrExtendOfficeStaff(..._ignore): Promise<void> {
+  createConsolidationTo(..._ignore): Promise<ConsolidationTo> {
     throw new Error('Method not implemented.');
   }
 
-  putOfficeStaff(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  getState<T extends RuntimeState>(..._ignore): Promise<T> {
-    throw new Error('Method not implemented.');
-  }
-
-  updateState(..._ignore): Promise<void> {
+  createMany(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
@@ -92,15 +76,35 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  createConsolidationTo(..._ignore): Promise<ConsolidationTo> {
+  delete(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
-  createConsolidationFrom(..._ignore): Promise<ConsolidationFrom> {
+  deleteMany(_ignore: any): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
-  getConsolidation(..._ignore): Promise<Array<ConsolidationTo | ConsolidationFrom>> {
+  deletePrivilegedIdentityUser(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  deleteSyncedCases(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findAndDeleteStaff(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findAssignmentsByAssignee(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getAllActiveAssignments(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getAssignmentsForCases(..._ignore): Promise<any> {
     throw new Error('Method not implemented.');
   }
 
@@ -108,7 +112,67 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  createCaseHistory(..._ignore): Promise<void> {
+  getConsolidation(..._ignore): Promise<Array<ConsolidationFrom | ConsolidationTo>> {
+    throw new Error('Method not implemented.');
+  }
+
+  getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getDistinctAssigneesByOffice(_ignore: any): Promise<CamsUserReference[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNotesByCaseId(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getOfficeAttorneys(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getPrivilegedIdentityUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getState<T extends RuntimeState>(..._ignore): Promise<T> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSyncedCase(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  async getTransfers(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  putOfficeStaff(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  putOrExtendOfficeStaff(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  putPrivilegedIdentityUser(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  read(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  release() {
+    return;
+  }
+
+  search(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
     throw new Error('Method not implemented.');
   }
 
@@ -124,75 +188,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  updateState(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   upsert(..._ignore): Promise<any | void> {
-    throw new Error('Method not implemented.');
-  }
-
-  search(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
-    throw new Error('Method not implemented.');
-  }
-
-  create(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  createMany(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  read(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  delete(..._ignore): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  getNotesByCaseId(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  archiveCaseNote(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  async getTransfers(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  putPrivilegedIdentityUser(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  getPrivilegedIdentityUser(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  deletePrivilegedIdentityUser(..._ignore): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  getConsolidationChildCaseIds(..._ignore): Promise<string[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  getAllActiveAssignments(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
-  }
-
-  getSyncedCase(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
-  deleteMany(_ignore: any): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
-  getDistinctAssigneesByOffice(_ignore: any): Promise<CamsUserReference[]> {
     throw new Error('Method not implemented.');
   }
 }

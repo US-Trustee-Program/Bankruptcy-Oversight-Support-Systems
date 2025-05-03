@@ -7,13 +7,21 @@ import {
   KNOWN_GOOD_TRANSFER_TO_CASE_ID,
 } from './data-generation-utils';
 
+export async function extractAndPrepareSqlData(appContext: ApplicationContext) {
+  const dxtrCases = await getCasesFromDxtr(appContext);
+  const { transferFrom, transferTo } = await getKnownGoodTransferCasesFromDxtr(appContext);
+  const dxtrCaseIds = deduplicateCases(dxtrCases).map((bCase) => bCase.caseId);
+  dxtrCaseIds.push(transferTo.caseId, transferFrom.caseId);
+  return { dxtrCaseIds, dxtrCases, transferFrom, transferTo };
+}
+
 export async function getCasesFromDxtr(appContext: ApplicationContext) {
   const casesGateway = getCasesGateway(appContext);
   const predicate: CasesSearchPredicate = {
-    limit: 50,
-    offset: 0,
     chapters: ['15'],
     divisionCodes: ['081'],
+    limit: 50,
+    offset: 0,
   };
   const dxtrCases = await casesGateway.searchCases(appContext, predicate);
 
@@ -28,15 +36,7 @@ export async function getKnownGoodTransferCasesFromDxtr(appContext: ApplicationC
     KNOWN_GOOD_TRANSFER_FROM_CASE_ID,
   );
 
-  return { transferTo, transferFrom };
-}
-
-export async function extractAndPrepareSqlData(appContext: ApplicationContext) {
-  const dxtrCases = await getCasesFromDxtr(appContext);
-  const { transferTo, transferFrom } = await getKnownGoodTransferCasesFromDxtr(appContext);
-  const dxtrCaseIds = deduplicateCases(dxtrCases).map((bCase) => bCase.caseId);
-  dxtrCaseIds.push(transferTo.caseId, transferFrom.caseId);
-  return { dxtrCaseIds, dxtrCases, transferTo, transferFrom };
+  return { transferFrom, transferTo };
 }
 
 function deduplicateCases(cases: CaseBasics[]) {

@@ -1,8 +1,8 @@
-import { ApplicationContext } from '../../types/basic';
 import { CaseAssignment } from '../../../../../common/src/cams/assignments';
+import { getCamsError } from '../../../common-errors/error-utilities';
 import QueryBuilder from '../../../query/query-builder';
 import { CaseAssignmentRepository } from '../../../use-cases/gateways.types';
-import { getCamsError } from '../../../common-errors/error-utilities';
+import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-MONGO-REPOSITORY';
@@ -15,19 +15,11 @@ export class CaseAssignmentMongoRepository
   extends BaseMongoRepository
   implements CaseAssignmentRepository
 {
-  private static referenceCount: number = 0;
   private static instance: CaseAssignmentMongoRepository;
+  private static referenceCount: number = 0;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!CaseAssignmentMongoRepository.instance) {
-      CaseAssignmentMongoRepository.instance = new CaseAssignmentMongoRepository(context);
-    }
-    CaseAssignmentMongoRepository.referenceCount++;
-    return CaseAssignmentMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -40,8 +32,12 @@ export class CaseAssignmentMongoRepository
     }
   }
 
-  public release() {
-    CaseAssignmentMongoRepository.dropInstance();
+  public static getInstance(context: ApplicationContext) {
+    if (!CaseAssignmentMongoRepository.instance) {
+      CaseAssignmentMongoRepository.instance = new CaseAssignmentMongoRepository(context);
+    }
+    CaseAssignmentMongoRepository.referenceCount++;
+    return CaseAssignmentMongoRepository.instance;
   }
 
   async create(caseAssignment: CaseAssignment): Promise<string> {
@@ -52,15 +48,27 @@ export class CaseAssignmentMongoRepository
     }
   }
 
-  async update(caseAssignment: CaseAssignment): Promise<string> {
-    const query = doc('id').equals(caseAssignment.id);
+  async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
+    const query = and(
+      doc('documentType').equals('ASSIGNMENT'),
+      doc('userId').equals(userId),
+      doc('unassignedOn').notExists(),
+    );
+
     try {
-      const result = await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
-      if (result.modifiedCount > 0) {
-        return result.id;
-      }
+      return await this.getAdapter<CaseAssignment>().find(query);
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to update assignment.');
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignment.');
+    }
+  }
+
+  async getAllActiveAssignments(): Promise<CaseAssignment[]> {
+    const query = and(doc('documentType').equals('ASSIGNMENT'), doc('unassignedOn').notExists());
+
+    try {
+      return await this.getAdapter<CaseAssignment>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignments.');
     }
   }
 
@@ -89,27 +97,19 @@ export class CaseAssignmentMongoRepository
     }
   }
 
-  async findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]> {
-    const query = and(
-      doc('documentType').equals('ASSIGNMENT'),
-      doc('userId').equals(userId),
-      doc('unassignedOn').notExists(),
-    );
-
-    try {
-      return await this.getAdapter<CaseAssignment>().find(query);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignment.');
-    }
+  public release() {
+    CaseAssignmentMongoRepository.dropInstance();
   }
 
-  async getAllActiveAssignments(): Promise<CaseAssignment[]> {
-    const query = and(doc('documentType').equals('ASSIGNMENT'), doc('unassignedOn').notExists());
-
+  async update(caseAssignment: CaseAssignment): Promise<string> {
+    const query = doc('id').equals(caseAssignment.id);
     try {
-      return await this.getAdapter<CaseAssignment>().find(query);
+      const result = await this.getAdapter<CaseAssignment>().replaceOne(query, caseAssignment);
+      if (result.modifiedCount > 0) {
+        return result.id;
+      }
     } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignments.');
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to update assignment.');
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
 require('dotenv').config();
 

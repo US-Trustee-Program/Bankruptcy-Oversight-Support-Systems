@@ -1,9 +1,9 @@
-import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
-import { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsRole } from '../../../../common/src/cams/roles';
 import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import { CamsRole } from '../../../../common/src/cams/roles';
+import { CamsUser, PrivilegedIdentityUser } from '../../../../common/src/cams/users';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { getOfficesGateway, getUserGroupGateway, getUsersRepository } from '../../factory';
 
 export type PrivilegedIdentityHelperOptions = {
   idpUser?: CamsUser;
@@ -11,6 +11,15 @@ export type PrivilegedIdentityHelperOptions = {
 };
 
 const MODULE_NAME = 'USERS-HELPERS';
+
+async function getOfficesFromGroupNames(
+  context: ApplicationContext,
+  idpGroups: string[],
+): Promise<UstpOfficeDetails[]> {
+  const officesGateway = getOfficesGateway(context);
+  const ustpOffices = await officesGateway.getOffices(context);
+  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
+}
 
 async function getPrivilegedIdentityUser(
   context: ApplicationContext,
@@ -22,8 +31,8 @@ async function getPrivilegedIdentityUser(
   const combined: CamsUser = {
     id: userId,
     name: idpUser.name ?? '',
-    roles: idpUser.roles ?? [],
     offices: idpUser.offices ?? [],
+    roles: idpUser.roles ?? [],
   };
 
   if (!options?.idpUser) {
@@ -69,19 +78,10 @@ function getRolesFromGroupNames(idpGroups: string[]): CamsRole[] {
   return idpGroups.filter((group) => rolesMap.has(group)).map((group) => rolesMap.get(group));
 }
 
-async function getOfficesFromGroupNames(
-  context: ApplicationContext,
-  idpGroups: string[],
-): Promise<UstpOfficeDetails[]> {
-  const officesGateway = getOfficesGateway(context);
-  const ustpOffices = await officesGateway.getOffices(context);
-  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
-}
-
 const UsersHelpers = {
+  getOfficesFromGroupNames,
   getPrivilegedIdentityUser,
   getRolesFromGroupNames,
-  getOfficesFromGroupNames,
 };
 
 export default UsersHelpers;

@@ -1,18 +1,19 @@
+import { InvocationContext } from '@azure/functions';
+
+import { CaseHistory } from '../../../../common/src/cams/history';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CamsHttpRequest } from '../../../lib/adapters/types/http';
+import { NotFoundError } from '../../../lib/common-errors/not-found-error';
+import { CaseHistoryController } from '../../../lib/controllers/case-history/case-history.controller';
 import { CASE_HISTORY } from '../../../lib/testing/mock-data/case-history.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../lib/testing/testing-constants';
-import { NotFoundError } from '../../../lib/common-errors/not-found-error';
-import { CamsHttpRequest } from '../../../lib/adapters/types/http';
-import { InvocationContext } from '@azure/functions';
-import handler from './case-history.function';
 import ContextCreator from '../../azure/application-context-creator';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseHistoryController } from '../../../lib/controllers/case-history/case-history.controller';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { CaseHistory } from '../../../../common/src/cams/history';
+import handler from './case-history.function';
 
 describe('Case History Function Tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
@@ -43,10 +44,10 @@ describe('Case History Function Tests', () => {
     });
 
     const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseHistory[]>({
+      data: CASE_HISTORY,
       meta: {
         self: request.url,
       },
-      data: CASE_HISTORY,
     });
     jest
       .spyOn(CaseHistoryController.prototype, 'handleRequest')

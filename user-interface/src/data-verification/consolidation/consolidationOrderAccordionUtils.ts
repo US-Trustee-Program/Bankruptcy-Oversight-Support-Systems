@@ -1,6 +1,15 @@
-import { CaseAssignment } from '@common/cams/assignments';
 import { useApi2 } from '@/lib/hooks/UseApi2';
+import { CaseAssignment } from '@common/cams/assignments';
 import { CaseSummary } from '@common/cams/cases';
+
+export async function fetchLeadCaseAttorneys(leadCaseId: string) {
+  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
+  if (caseAssignments.length && caseAssignments[0].name) {
+    return caseAssignments.map((assignment) => assignment.name);
+  } else {
+    return [];
+  }
+}
 
 export function getCurrentLeadCaseId(params: { leadCaseCourt?: string; leadCaseNumber?: string }) {
   if (
@@ -12,15 +21,6 @@ export function getCurrentLeadCaseId(params: { leadCaseCourt?: string; leadCaseN
     return `${params.leadCaseCourt}-${params.leadCaseNumber}`;
   }
   return '';
-}
-
-export async function fetchLeadCaseAttorneys(leadCaseId: string) {
-  const caseAssignments: CaseAssignment[] = (await useApi2().getCaseAssignments(leadCaseId)).data;
-  if (caseAssignments.length && caseAssignments[0].name) {
-    return caseAssignments.map((assignment) => assignment.name);
-  } else {
-    return [];
-  }
 }
 
 export function getUniqueDivisionCodeOrUndefined(cases: CaseSummary[]) {

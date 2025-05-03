@@ -8,10 +8,10 @@ describe('Queue types', () => {
     const activityName = 'activity';
 
     const expected: QueueError = {
-      type: 'QUEUE_ERROR',
       activityName,
       error,
       module,
+      type: 'QUEUE_ERROR',
     };
 
     expect(buildQueueError(error, module, activityName)).toEqual(expected);

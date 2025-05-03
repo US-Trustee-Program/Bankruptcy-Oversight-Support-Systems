@@ -1,14 +1,14 @@
 import { app, InvocationContext, output } from '@azure/functions';
 
-import ApplicationContextCreator from '../../azure/application-context-creator';
-import { buildFunctionName, buildQueueName } from '../dataflows-common';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import {
   AcmsBounds,
   AcmsEtlQueueItem,
   AcmsPredicate,
 } from '../../../lib/use-cases/dataflows/migrate-consolidations';
-import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
-import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import ApplicationContextCreator from '../../azure/application-context-creator';
+import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 
 const MODULE_NAME = 'MIGRATE-CONSOLIDATIONS';
@@ -16,23 +16,43 @@ const PAGE_SIZE = 10;
 
 // Queues
 const START = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'start'),
   connection: 'AzureWebJobsStorage',
+  queueName: buildQueueName(MODULE_NAME, 'start'),
 });
 
 const PAGE = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'page'),
   connection: 'AzureWebJobsStorage',
+  queueName: buildQueueName(MODULE_NAME, 'page'),
 });
 
 const HARD_STOP = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
   connection: 'AzureWebJobsStorage',
+  queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
 });
 
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
+
+function formatCaseIdForLog(item: AcmsEtlQueueItem) {
+  // The caseId is a numeric string. The divisionCode is not left padded with zeros.
+  const caseNumber = item.leadCaseId.slice(item.leadCaseId.length - 5);
+  return [item.divisionCode.padStart(3, '0'), item.chapter, caseNumber].join('-');
+}
+
+/**
+ * handlePage
+ *
+ * @param page
+ * @param invocationContext
+ */
+async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
+  for (const event of page) {
+    await migrateConsolidation(event, invocationContext);
+  }
+}
 
 /**
  * handleStart
@@ -47,8 +67,8 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
       logger.debug(MODULE_NAME, `Queueing division ${divisionCode} chapter ${chapter}.`);
       await queuePages(
         {
-          divisionCode,
           chapter,
+          divisionCode,
         },
         invocationContext,
       );
@@ -56,17 +76,34 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
   }
 }
 
-/**
- * handlePage
- *
- * @param page
- * @param invocationContext
- */
-async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
-  for (const event of page) {
-    await migrateConsolidation(event, invocationContext);
+async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: InvocationContext) {
+  const context = await ApplicationContextCreator.getApplicationContext({
+    invocationContext,
+  });
+  const { logger } = context;
+  try {
+    logger.debug(
+      MODULE_NAME,
+      `Starting migration of case ${formatCaseIdForLog(item)} for division ${item.divisionCode}, chapter ${item.chapter}.`,
+    );
+    const controller = new AcmsOrdersController();
+    const result = await controller.migrateConsolidation(context, item.leadCaseId);
+    logger.debug(
+      MODULE_NAME,
+      `Migrate consolidation of case ${formatCaseIdForLog(item)} ${result.success ? 'successful' : 'failed'}.`,
+      result.error ?? result,
+    );
+
+    if (!result.success && result.error) {
+      throw result.error;
+    }
+  } catch (originalError) {
+    const errorMessage = {
+      error: getCamsError(originalError, MODULE_NAME),
+      message: item,
+    };
+    logger.error(MODULE_NAME, errorMessage.error.message);
+    invocationContext.extraOutputs.set(HARD_STOP, [errorMessage]);
   }
 }
 
@@ -97,8 +134,8 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
     // Transform the lead case IDs into queue items.
     const queueItems: AcmsEtlQueueItem[] = leadCaseIds.map((leadCaseId) => {
       return {
-        divisionCode: predicate.divisionCode,
         chapter: predicate.chapter,
+        divisionCode: predicate.divisionCode,
         leadCaseId: leadCaseId.toString(),
       };
     });
@@ -125,56 +162,19 @@ async function queuePages(predicate: AcmsPredicate, invocationContext: Invocatio
   }
 }
 
-async function migrateConsolidation(item: AcmsEtlQueueItem, invocationContext: InvocationContext) {
-  const context = await ApplicationContextCreator.getApplicationContext({
-    invocationContext,
-  });
-  const { logger } = context;
-  try {
-    logger.debug(
-      MODULE_NAME,
-      `Starting migration of case ${formatCaseIdForLog(item)} for division ${item.divisionCode}, chapter ${item.chapter}.`,
-    );
-    const controller = new AcmsOrdersController();
-    const result = await controller.migrateConsolidation(context, item.leadCaseId);
-    logger.debug(
-      MODULE_NAME,
-      `Migrate consolidation of case ${formatCaseIdForLog(item)} ${result.success ? 'successful' : 'failed'}.`,
-      result.error ?? result,
-    );
-
-    if (!result.success && result.error) {
-      throw result.error;
-    }
-  } catch (originalError) {
-    const errorMessage = {
-      message: item,
-      error: getCamsError(originalError, MODULE_NAME),
-    };
-    logger.error(MODULE_NAME, errorMessage.error.message);
-    invocationContext.extraOutputs.set(HARD_STOP, [errorMessage]);
-  }
-}
-
-function formatCaseIdForLog(item: AcmsEtlQueueItem) {
-  // The caseId is a numeric string. The divisionCode is not left padded with zeros.
-  const caseNumber = item.leadCaseId.slice(item.leadCaseId.length - 5);
-  return [item.divisionCode.padStart(3, '0'), item.chapter, caseNumber].join('-');
-}
-
 function setup() {
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
-    queueName: START.queueName,
-    handler: handleStart,
     extraOutputs: [PAGE],
+    handler: handleStart,
+    queueName: START.queueName,
   });
 
   app.storageQueue(HANDLE_PAGE, {
     connection: STORAGE_QUEUE_CONNECTION,
-    queueName: PAGE.queueName,
-    handler: handlePage,
     extraOutputs: [HARD_STOP],
+    handler: handlePage,
+    queueName: PAGE.queueName,
   });
 }
 

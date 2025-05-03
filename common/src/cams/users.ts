@@ -1,22 +1,13 @@
 import { UstpOfficeDetails } from './offices';
 import { CamsRole } from './roles';
 
-export type CamsUserReference = {
-  id: string;
-  name: string;
-};
-
-export type Staff = CamsUserReference & {
-  roles?: CamsRole[];
+export type AttorneyUser = CamsUser & {
+  caseLoad?: number;
 };
 
 export type CamsUser = CamsUserReference & {
   offices?: UstpOfficeDetails[];
   roles?: CamsRole[];
-};
-
-export type AttorneyUser = CamsUser & {
-  caseLoad?: number;
 };
 
 export type CamsUserGroup = {
@@ -25,12 +16,21 @@ export type CamsUserGroup = {
   users?: CamsUser[];
 };
 
+export type CamsUserReference = {
+  id: string;
+  name: string;
+};
+
 export type PrivilegedIdentityUser = CamsUserReference & {
-  documentType: 'PRIVILEGED_IDENTITY_USER';
   claims: {
     groups: string[];
   };
+  documentType: 'PRIVILEGED_IDENTITY_USER';
   expires: string;
+};
+
+export type Staff = CamsUserReference & {
+  roles?: CamsRole[];
 };
 
 export function getCourtDivisionCodes(user: CamsUser): string[] {

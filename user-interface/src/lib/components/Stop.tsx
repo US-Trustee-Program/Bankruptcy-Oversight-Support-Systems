@@ -1,23 +1,23 @@
 import Alert, { UswdsAlertStyle } from './uswds/Alert';
 
 type StopProps = {
+  asError?: true;
   id: string;
-  title: string;
   message: string;
   showHelpDeskContact?: true;
-  asError?: true;
+  title: string;
 };
 
 export function Stop(props: StopProps) {
-  const { id, title, message, showHelpDeskContact, asError } = props;
+  const { asError, id, message, showHelpDeskContact, title } = props;
   return (
     <Alert
       className="measure-6"
-      type={asError ? UswdsAlertStyle.Error : UswdsAlertStyle.Warning}
+      id={id}
       inline={true}
       show={true}
       title={title}
-      id={id}
+      type={asError ? UswdsAlertStyle.Error : UswdsAlertStyle.Warning}
     >
       <span>
         {message}{' '}

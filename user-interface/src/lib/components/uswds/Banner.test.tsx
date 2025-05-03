@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { Banner } from './Banner';
 import { BrowserRouter } from 'react-router-dom';
+
+import { Banner } from './Banner';
 
 describe('Test Banner Environment', () => {
   beforeEach(() => {

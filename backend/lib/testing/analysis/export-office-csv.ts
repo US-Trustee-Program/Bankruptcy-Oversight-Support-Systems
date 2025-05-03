@@ -1,34 +1,12 @@
 import { InvocationContext } from '@azure/functions';
-import applicationContextCreator from '../../../function-apps/azure/application-context-creator';
-import { LoggerImpl } from '../../adapters/services/logger.service';
-import OfficesDxtrGateway from '../../adapters/gateways/dxtr/offices.dxtr.gateway';
-import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
 import * as fs from 'fs/promises';
 
+import { UstpOfficeDetails } from '../../../../common/src/cams/offices';
+import applicationContextCreator from '../../../function-apps/azure/application-context-creator';
+import OfficesDxtrGateway from '../../adapters/gateways/dxtr/offices.dxtr.gateway';
+import { LoggerImpl } from '../../adapters/services/logger.service';
+
 const MODULE_NAME = 'ITEST';
-
-function toCommaDelimitedString(record: string[]) {
-  record.forEach((item, idx) => {
-    if (item.includes(',')) {
-      record[idx] = '"' + item + '"';
-    }
-  });
-  return record.join(',');
-}
-
-function officesToCsv(offices: UstpOfficeDetails[]) {
-  const records: string[] = offices
-    .map((office) => [
-      office.officeCode,
-      office.idpGroupName,
-      office.officeName,
-      office.regionId,
-      office.regionName,
-    ])
-    .map(toCommaDelimitedString);
-  records.unshift('OFFICE_ID,OKTA_GROUP_NAME,OFFICE_NAME,REGION_ID,REGION_NAME');
-  return records;
-}
 
 async function exportCsv() {
   const context = await applicationContextCreator.getApplicationContext({
@@ -51,6 +29,29 @@ async function exportCsv() {
   } finally {
     context.logger.info(MODULE_NAME, 'Done.');
   }
+}
+
+function officesToCsv(offices: UstpOfficeDetails[]) {
+  const records: string[] = offices
+    .map((office) => [
+      office.officeCode,
+      office.idpGroupName,
+      office.officeName,
+      office.regionId,
+      office.regionName,
+    ])
+    .map(toCommaDelimitedString);
+  records.unshift('OFFICE_ID,OKTA_GROUP_NAME,OFFICE_NAME,REGION_ID,REGION_NAME');
+  return records;
+}
+
+function toCommaDelimitedString(record: string[]) {
+  record.forEach((item, idx) => {
+    if (item.includes(',')) {
+      record[idx] = '"' + item + '"';
+    }
+  });
+  return record.join(',');
 }
 
 if (require.main === module) {

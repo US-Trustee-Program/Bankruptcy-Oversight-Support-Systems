@@ -1,6 +1,8 @@
+import { ConsolidationOrder } from '../../../../common/src/cams/orders';
 import { MockData } from '../../../../common/src/cams/test-utilities/mock-data';
-import handler from './consolidations.function';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
+import { BadRequestError } from '../../../lib/common-errors/bad-request';
+import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
 import ContextCreator from '../../azure/application-context-creator';
 import {
   buildTestResponseError,
@@ -8,18 +10,16 @@ import {
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import { ConsolidationOrder } from '../../../../common/src/cams/orders';
-import { BadRequestError } from '../../../lib/common-errors/bad-request';
+import handler from './consolidations.function';
 
 describe('Consolidations Function tests', () => {
   const defaultRequestProps: Partial<CamsHttpRequest> = {
+    body: {},
+    method: 'PUT',
     params: {
       procedure: '',
     },
     url: 'http://domain/api/consolidations',
-    method: 'PUT',
-    body: {},
   };
 
   const context = createMockAzureFunctionContext();
@@ -36,17 +36,17 @@ describe('Consolidations Function tests', () => {
     const mockConsolidationOrder = MockData.getConsolidationOrder();
     const requestProps = {
       ...defaultRequestProps,
-      params: {
-        procedure: 'reject',
-      },
       body: {
         ...mockConsolidationOrder,
         rejectedCases: [mockConsolidationOrder.childCases[0]],
       },
+      params: {
+        procedure: 'reject',
+      },
     };
     const request = createMockAzureFunctionRequest(requestProps);
 
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
       data: [mockConsolidationOrder],
     });
     jest
@@ -69,7 +69,7 @@ describe('Consolidations Function tests', () => {
     };
     const request = createMockAzureFunctionRequest(requestProps);
 
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<ConsolidationOrder[]>({
       data: [mockConsolidationOrder],
     });
 

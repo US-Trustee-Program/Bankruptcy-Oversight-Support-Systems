@@ -1,20 +1,19 @@
 import { describe } from 'node:test';
 
-import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
-import { closeDeferred } from '../../../lib/deferrable/defer-close';
-
-import HealthcheckCosmosDb, { HealthCheckDocument } from './healthcheck.db.cosmos';
 import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { closeDeferred } from '../../../lib/deferrable/defer-close';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import HealthcheckCosmosDb, { HealthCheckDocument } from './healthcheck.db.cosmos';
 
 describe('healthcheck db tests', () => {
   let context: ApplicationContext;
   let healthcheckRepository: HealthcheckCosmosDb;
 
   const healthCheckDocument: HealthCheckDocument = {
-    id: 'some-id',
-    healthCheckId: 'some-other-id',
     documentType: 'HEALTH_CHECK',
+    healthCheckId: 'some-other-id',
+    id: 'some-id',
   };
 
   beforeAll(async () => {

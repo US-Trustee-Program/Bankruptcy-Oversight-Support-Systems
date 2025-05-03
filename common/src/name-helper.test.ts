@@ -6,7 +6,7 @@ describe('Name helper tests', () => {
   });
 
   test('should get first, middle initial and last name', async () => {
-    expect(getFullName({ firstName: 'First', middleName: 'Middle', lastName: 'Last' })).toEqual(
+    expect(getFullName({ firstName: 'First', lastName: 'Last', middleName: 'Middle' })).toEqual(
       'First M Last',
     );
   });
@@ -15,9 +15,9 @@ describe('Name helper tests', () => {
     expect(
       getFullName({
         firstName: 'First',
-        middleName: 'Middle',
-        lastName: 'Last',
         generation: 'Jr.',
+        lastName: 'Last',
+        middleName: 'Middle',
       }),
     ).toEqual('First M Last Jr.');
   });
@@ -26,8 +26,8 @@ describe('Name helper tests', () => {
     expect(
       getFullName({
         firstName: 'First',
-        lastName: 'Last',
         generation: 'Jr.',
+        lastName: 'Last',
       }),
     ).toEqual('First Last Jr.');
   });
@@ -37,9 +37,9 @@ describe('Name helper tests', () => {
       getFullName(
         {
           firstName: 'First',
-          middleName: 'Middle',
-          lastName: 'Last',
           generation: 'Jr.',
+          lastName: 'Last',
+          middleName: 'Middle',
         },
         true,
       ),

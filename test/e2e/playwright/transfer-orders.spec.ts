@@ -1,14 +1,15 @@
 import { expect, Request } from '@playwright/test';
+
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
 interface Order {
-  id: string;
   caseId: string;
   caseTitle: string;
+  docketSuggestedCaseNumber: string;
+  id: string;
   orderType: string;
   status: string;
-  docketSuggestedCaseNumber: string;
 }
 
 test.describe('Transfer Orders', () => {

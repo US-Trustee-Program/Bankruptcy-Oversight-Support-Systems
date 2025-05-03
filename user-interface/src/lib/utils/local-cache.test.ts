@@ -1,6 +1,7 @@
-import { describe, expect, vi, beforeEach } from 'vitest';
-import LocalCache from './local-cache';
+import { beforeEach, describe, expect, vi } from 'vitest';
+
 import { mockLocalStorage } from '../testing/mock-local-storage';
+import LocalCache from './local-cache';
 
 describe('LocalCache', () => {
   beforeAll(() => {
@@ -192,12 +193,12 @@ describe('LocalCache', () => {
       throw new Error('Test Error');
     });
     vi.stubGlobal('localStorage', {
-      getItem: justThrow,
-      setItem: justThrow,
-      removeItem: justThrow,
       clear: justThrow,
+      getItem: justThrow,
       key: justThrow,
       length: 0,
+      removeItem: justThrow,
+      setItem: justThrow,
     });
 
     const calls = [

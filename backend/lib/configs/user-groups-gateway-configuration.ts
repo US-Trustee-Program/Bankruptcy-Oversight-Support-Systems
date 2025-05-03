@@ -1,10 +1,11 @@
 import * as dotenv from 'dotenv';
-import { UserGroupGatewayConfig } from '../adapters/types/authorization';
+
 import { keyValuesToRecord } from '../../../common/src/cams/utilities';
+import { UserGroupGatewayConfig } from '../adapters/types/authorization';
 
 dotenv.config();
 
-const provider = ['okta', 'mock', 'none'].includes(process.env.CAMS_LOGIN_PROVIDER)
+const provider = ['mock', 'none', 'okta'].includes(process.env.CAMS_LOGIN_PROVIDER)
   ? process.env.CAMS_LOGIN_PROVIDER
   : null;
 const doMockAuth = provider === 'mock';

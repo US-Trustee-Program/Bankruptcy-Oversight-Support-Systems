@@ -1,4 +1,5 @@
 import { describe } from 'vitest';
+
 import { mockLocalStorage } from '../testing/mock-local-storage';
 
 describe('Api2 cache enabled', () => {

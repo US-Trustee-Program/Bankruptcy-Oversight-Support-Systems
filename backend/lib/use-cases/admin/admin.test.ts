@@ -1,21 +1,22 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { AdminUseCase } from './admin';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
-import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
 import { randomUUID } from 'node:crypto';
+
+import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
 import { getCamsUserReference } from '../../../../common/src/cams/session';
-import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { PrivilegedIdentityUser } from '../../../../common/src/cams/users';
+import { getTodaysIsoDate } from '../../../../common/src/date-helper';
+import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { BadRequestError } from '../../common-errors/bad-request';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { UnknownError } from '../../common-errors/unknown-error';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../../../../common/src/cams/offices';
-import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
-import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
-import { BadRequestError } from '../../common-errors/bad-request';
-import { getTodaysIsoDate } from '../../../../common/src/date-helper';
-import { SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
+import { MockOfficesRepository } from '../../testing/mock-gateways/mock.offices.repository';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { AdminUseCase } from './admin';
 
 describe('Admin Use Case', () => {
   let context: ApplicationContext;
@@ -46,16 +47,16 @@ describe('Admin Use Case', () => {
     const groups = ['USTP CAMS Case Assignment Manager', 'USTP CAMS Region 2 Office Manhattan'];
 
     const expected: PrivilegedIdentityUser = {
+      claims: { groups },
+      documentType: 'PRIVILEGED_IDENTITY_USER',
+      expires: futureDate,
       id: users[0].id,
       name: users[0].name,
-      documentType: 'PRIVILEGED_IDENTITY_USER',
-      claims: { groups },
-      expires: futureDate,
     };
 
     await useCase.elevatePrivilegedUser(context, users[0].id, SYSTEM_USER_REFERENCE, {
-      groups,
       expires: futureDate,
+      groups,
     });
 
     expect(repoSpy).toHaveBeenCalledWith(expected, SYSTEM_USER_REFERENCE);
@@ -85,8 +86,8 @@ describe('Admin Use Case', () => {
 
       await expect(
         useCase.elevatePrivilegedUser(context, user.id, SYSTEM_USER_REFERENCE, {
-          groups,
           expires,
+          groups,
         }),
       ).rejects.toThrow(new BadRequestError(expect.anything()));
       expect(repoSpy).not.toHaveBeenCalled();
@@ -108,8 +109,8 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.elevatePrivilegedUser(context, user.id, SYSTEM_USER_REFERENCE, {
-        groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+        groups: [],
       }),
     ).rejects.toThrow('Failed to add privileged identity user.');
   });
@@ -124,8 +125,8 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.elevatePrivilegedUser(context, userId, SYSTEM_USER_REFERENCE, {
-        groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+        groups: [],
       }),
     ).rejects.toThrow('User does not have privileged identity permission.');
   });
@@ -140,8 +141,8 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.elevatePrivilegedUser(context, userId, SYSTEM_USER_REFERENCE, {
-        groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+        groups: [],
       }),
     ).rejects.toThrow('User does not have privileged identity permission.');
 
@@ -153,8 +154,8 @@ describe('Admin Use Case', () => {
 
     await expect(
       useCase.elevatePrivilegedUser(context, userId, SYSTEM_USER_REFERENCE, {
-        groups: [],
         expires: MockData.someDateAfterThisDate(new Date().toISOString()),
+        groups: [],
       }),
     ).rejects.toThrow('User does not have privileged identity permission.');
   });

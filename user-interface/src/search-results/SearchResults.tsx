@@ -1,17 +1,19 @@
-import { useEffect, useState } from 'react';
-import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseBasics, SyncedCase } from '@common/cams/cases';
-import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
-import { CasesSearchPredicate } from '@common/api/search';
-import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { Pagination } from '@/lib/components/uswds/Pagination';
-import { deepEqual } from '@/lib/utils/objectEquality';
+import { Table, TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { useApi2 } from '@/lib/hooks/UseApi2';
-import { ResponseBody } from '@common/api/response';
-import './SearchResults.scss';
+import { useAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import { deepEqual } from '@/lib/utils/objectEquality';
 import { Pagination as PaginationModel } from '@common/api/pagination';
+import { ResponseBody } from '@common/api/response';
+import { CasesSearchPredicate } from '@common/api/search';
+import { CaseBasics, SyncedCase } from '@common/cams/cases';
+import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
+
+import './SearchResults.scss';
+
+import { useEffect, useState } from 'react';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
   if (Object.keys(searchPredicate).length === 0) {
@@ -32,33 +34,33 @@ export type SearchResultsHeaderProps = {
   labels: string[];
 };
 
-export type SearchResultsRowProps = TableRowProps & {
-  idx: number;
-  bCase: CaseBasics;
-  labels: string[];
+export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
+  header: (props: SearchResultsHeaderProps) => JSX.Element;
+  id: string;
+  noResultsAlertProps?: AlertProps;
+  noResultsMessage?: string;
+  onEndSearching?: () => void;
+  onStartSearching?: () => void;
+  row: (props: SearchResultsRowProps) => JSX.Element;
+  searchPredicate: CasesSearchPredicate;
 };
 
-export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
-  id: string;
-  searchPredicate: CasesSearchPredicate;
-  onStartSearching?: () => void;
-  onEndSearching?: () => void;
-  noResultsMessage?: string;
-  noResultsAlertProps?: AlertProps;
-  header: (props: SearchResultsHeaderProps) => JSX.Element;
-  row: (props: SearchResultsRowProps) => JSX.Element;
+export type SearchResultsRowProps = TableRowProps & {
+  bCase: CaseBasics;
+  idx: number;
+  labels: string[];
 };
 
 export function SearchResults(props: SearchResultsProps) {
   const {
-    id,
-    searchPredicate: searchPredicateProp,
-    onStartSearching,
-    onEndSearching,
-    noResultsMessage: noResultsMessageProp,
-    noResultsAlertProps,
     header: Header,
+    id,
+    noResultsAlertProps,
+    noResultsMessage: noResultsMessageProp,
+    onEndSearching,
+    onStartSearching,
     row: Row,
+    searchPredicate: searchPredicateProp,
     ...otherProps
   } = props;
   const { reactPlugin } = useAppInsights();
@@ -67,7 +69,7 @@ export function SearchResults(props: SearchResultsProps) {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
-  const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
+  const [searchResults, setSearchResults] = useState<null | ResponseBody<SyncedCase[]>>(null);
 
   const pagination: PaginationModel | undefined = searchResults?.pagination;
 
@@ -90,11 +92,11 @@ export function SearchResults(props: SearchResultsProps) {
     setSearchResults(null);
     setEmptyResponse(true);
     setAlertInfo({
-      type: UswdsAlertStyle.Error,
-      title: 'Search Results Not Available',
       message:
         'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
       timeOut: 30,
+      title: 'Search Results Not Available',
+      type: UswdsAlertStyle.Error,
     });
   }
 
@@ -145,63 +147,63 @@ export function SearchResults(props: SearchResultsProps) {
       {alertInfo && (
         <div className="search-alert">
           <Alert
-            id="search-error-alert"
             className="measure-6"
+            id="search-error-alert"
+            inline={true}
             message={alertInfo.message}
-            title={alertInfo.title}
-            type={UswdsAlertStyle.Error}
+            role="alert"
             show={true}
             slim={true}
-            inline={true}
-            role="alert"
+            title={alertInfo.title}
+            type={UswdsAlertStyle.Error}
           ></Alert>
         </div>
       )}
       {!isSearching && emptyResponse && !alertInfo && !noResultsAlertProps && (
         <div className="search-alert">
           <Alert
-            id="no-results-alert"
             className="measure-6"
+            id="no-results-alert"
+            inline={true}
             message={noResultsMessage}
-            title="No cases found"
-            type={UswdsAlertStyle.Info}
+            role="alert"
             show={true}
             slim={true}
-            inline={true}
-            role="alert"
+            title="No cases found"
+            type={UswdsAlertStyle.Info}
           ></Alert>
         </div>
       )}
       {!isSearching && emptyResponse && noResultsAlertProps && (
         <div className="search-alert">
-          <Alert {...noResultsAlertProps} id="no-results-alert" className="measure-6"></Alert>
+          <Alert {...noResultsAlertProps} className="measure-6" id="no-results-alert"></Alert>
         </div>
       )}
       {isSearching && (
-        <LoadingSpinner aria-label="Searching" role="status" caption="Searching..." />
+        <LoadingSpinner aria-label="Searching" caption="Searching..." role="status" />
       )}
       {!isSearching && !emptyResponse && (
         <div>
           <Table
-            id={id}
-            className="case-list"
-            scrollable="true"
-            uswdsStyle={['striped']}
-            title="search results."
             caption={`Search yielded ${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'result' : 'results'}.`}
+            className="case-list"
+            id={id}
+            scrollable="true"
+            title="search results."
+            uswdsStyle={['striped']}
           >
             <Header id={id} labels={searchResultsHeaderLabels} />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return <Row bCase={bCase} labels={searchResultsHeaderLabels} idx={idx} key={idx} />;
+                return <Row bCase={bCase} idx={idx} key={idx} labels={searchResultsHeaderLabels} />;
               })}
             </TableBody>
           </Table>
           {pagination && (
             <Pagination<CasesSearchPredicate>
               paginationValues={pagination}
-              searchPredicate={searchPredicate}
               retrievePage={handlePagination}
+              searchPredicate={searchPredicate}
             />
           )}
         </div>

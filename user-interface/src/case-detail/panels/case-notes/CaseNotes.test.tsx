@@ -1,15 +1,16 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import Api2 from '@/lib/models/api2';
-import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { formatDateTime } from '@/lib/utils/datetime';
-import userEvent from '@testing-library/user-event';
-import { InputRef } from '@/lib/type-declarations/input-fields';
-import React from 'react';
 import Input from '@/lib/components/uswds/Input';
+import Api2 from '@/lib/models/api2';
+import { InputRef } from '@/lib/type-declarations/input-fields';
+import { formatDateTime } from '@/lib/utils/datetime';
 import LocalStorage from '@/lib/utils/local-storage';
 import Actions from '@common/cams/actions';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { randomUUID } from 'crypto';
+import React from 'react';
+
+import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -23,8 +24,8 @@ const caseNotes = [
   MockData.addAction(
     MockData.getCaseNote({
       caseId,
-      updatedBy: { id: userId, name: userFullName },
       previousVersionId: randomUUID(),
+      updatedBy: { id: userId, name: userFullName },
     }),
     [Actions.EditNote, Actions.RemoveNote],
   ),
@@ -33,12 +34,12 @@ const caseNotesRef = React.createRef<CaseNotesRef>();
 
 function renderWithProps(props?: Partial<CaseNotesProps>) {
   const defaultProps: CaseNotesProps = {
-    caseId: '000-11-22222',
-    hasCaseNotes: false,
-    caseNotes: [],
-    searchString: '',
-    onUpdateNoteRequest: vi.fn(),
     areCaseNotesLoading: false,
+    caseId: '000-11-22222',
+    caseNotes: [],
+    hasCaseNotes: false,
+    onUpdateNoteRequest: vi.fn(),
+    searchString: '',
   };
   const renderProps = { ...defaultProps, ...props };
   render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
@@ -73,7 +74,7 @@ describe('case note tests', () => {
     session.user.name = userFullName;
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
+    renderWithProps({ caseId, caseNotes, hasCaseNotes: true });
 
     await waitFor(() => {
       expect(caseNotesRef.current).not.toBeNull();
@@ -114,7 +115,7 @@ describe('case note tests', () => {
       data: caseNotes,
     });
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
+    renderWithProps({ caseId, caseNotes, hasCaseNotes: true });
 
     const emptyCaseNotes = screen.queryByTestId('empty-notes-test-id');
     expect(emptyCaseNotes).not.toBeInTheDocument();
@@ -164,21 +165,21 @@ describe('case note tests', () => {
       name: userFullName,
     };
     const expectedFirstRemoveArgument = {
-      id: caseNotes[0].id,
       caseId: caseNotes[0].caseId,
+      id: caseNotes[0].id,
       updatedBy: expectedUser,
     };
     const expectedSecondRemoveArgument = {
-      id: caseNotes[2].id,
       caseId: caseNotes[2].caseId,
+      id: caseNotes[2].id,
       updatedBy: expectedUser,
     };
     const onNoteRemoveSpy = vi.fn();
 
     renderWithProps({
       caseId,
-      hasCaseNotes: true,
       caseNotes,
+      hasCaseNotes: true,
       onUpdateNoteRequest: onNoteRemoveSpy,
     });
 

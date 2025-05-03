@@ -1,12 +1,12 @@
-import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CaseDocketController } from './case-docket.controller';
-import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../../testing/mock-data/case-docket-entries.mock';
 import {
   NORMAL_CASE_ID,
   NOT_FOUND_ERROR_CASE_ID,
   THROW_UNKNOWN_ERROR_CASE_ID,
 } from '../../testing/testing-constants';
+import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
+import { CaseDocketController } from './case-docket.controller';
 
 describe('Test case-docket controller', () => {
   test('should return a case docket when getCaseDocket is called', async () => {

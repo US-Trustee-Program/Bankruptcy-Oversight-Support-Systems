@@ -1,8 +1,9 @@
-import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
+import * as dotenv from 'dotenv';
+
 import { CaseAssociatedController } from '../../../lib/controllers/case-associated/case-associated.controller';
+import { initializeApplicationInsights } from '../../azure/app-insights';
+import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 dotenv.config();
@@ -31,8 +32,8 @@ export default async function handler(
 }
 
 app.http('case-associated', {
-  methods: ['GET'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET'],
   route: 'cases/{caseId?}/associated',
 });

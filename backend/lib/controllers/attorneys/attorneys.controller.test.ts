@@ -1,7 +1,7 @@
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import AttorneysList from '../../use-cases/attorneys/attorneys';
-import { NotFoundError } from '../../common-errors/not-found-error';
 import { AttorneysController } from './attorneys.controller';
 
 describe('Attorneys Controller Tests', () => {

@@ -328,36 +328,33 @@ export const AO_DC_InsertableColumnNames: ColumnNames = [
 ];
 export const AO_DC_ColumnNames: ColumnNames = [...AO_DC_InsertableColumnNames];
 export interface AO_DC_RecordProps {
-  FILE_NAME: string;
-  CS_CASEID?: string;
   COURT_ID?: string;
-  DE_SEQNO?: number;
-  DM_SEQ?: number;
-  PDF_SIZE?: number;
   COURT_STATUS?: string;
+  CS_CASEID?: string;
+  DE_SEQNO?: number;
   DELETED_LT?: string;
-  REGION_DELETED?: string;
+  DM_SEQ?: number;
+  FILE_NAME: string;
+  PDF_SIZE?: number;
   REGION_COPIED?: string;
   REGION_COPIED_DATE?: string;
+  REGION_DELETED?: string;
 }
 export class AO_DC_Record implements TableRecordHelper {
-  FILE_NAME: string = '';
+  COURT_ID?: string;
   COURT_STATUS: string = 'pdf';
   CS_CASEID?: string;
-  COURT_ID?: string;
   DE_SEQNO?: number;
-  DM_SEQ?: number;
-  PDF_SIZE?: number;
   DELETED_LT: string = 'N';
-  REGION_DELETED?: string = 'N';
+  DM_SEQ?: number;
+  FILE_NAME: string = '';
+  PDF_SIZE?: number;
   REGION_COPIED?: string = 'Y';
   REGION_COPIED_DATE?: string = '2023-12-04';
+  REGION_DELETED?: string = 'N';
 
   constructor(props: AO_DC_RecordProps) {
     Object.assign(this, props);
-  }
-  validate(): void {
-    /// TODO: implement this schema validation
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   toInsertableArray(): any[] {
@@ -374,6 +371,9 @@ export class AO_DC_Record implements TableRecordHelper {
       this.REGION_COPIED,
       this.REGION_COPIED_DATE,
     ];
+  }
+  validate(): void {
+    /// TODO: implement this schema validation
   }
 }
 export function toAoDcInsertStatements(records: Array<AO_DC_Record>): string[] {

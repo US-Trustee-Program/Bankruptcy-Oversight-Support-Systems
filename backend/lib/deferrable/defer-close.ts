@@ -6,23 +6,6 @@ export interface DeferCloseAccumulator {
   closables: Closable[];
 }
 
-function isClosable(obj: unknown): obj is Closable {
-  return typeof obj === 'object' && 'close' in obj;
-}
-
-function isDeferCloseAccumulator(obj: unknown): obj is DeferCloseAccumulator {
-  return typeof obj === 'object' && 'closables' in obj;
-}
-
-export function deferClose(closable: unknown, accumulator: unknown = globalAccumulator): boolean {
-  if (isDeferCloseAccumulator(accumulator)) {
-    if (isClosable(closable)) {
-      const priorLength = accumulator.closables.length;
-      return accumulator.closables.push(closable) > priorLength;
-    }
-  }
-}
-
 export async function closeDeferred(accumulator: unknown = globalAccumulator): Promise<boolean> {
   if (isDeferCloseAccumulator(accumulator)) {
     let success = true;
@@ -36,6 +19,23 @@ export async function closeDeferred(accumulator: unknown = globalAccumulator): P
     return success;
   }
   return false;
+}
+
+export function deferClose(closable: unknown, accumulator: unknown = globalAccumulator): boolean {
+  if (isDeferCloseAccumulator(accumulator)) {
+    if (isClosable(closable)) {
+      const priorLength = accumulator.closables.length;
+      return accumulator.closables.push(closable) > priorLength;
+    }
+  }
+}
+
+function isClosable(obj: unknown): obj is Closable {
+  return typeof obj === 'object' && 'close' in obj;
+}
+
+function isDeferCloseAccumulator(obj: unknown): obj is DeferCloseAccumulator {
+  return typeof obj === 'object' && 'closables' in obj;
 }
 
 const globalAccumulator: DeferCloseAccumulator = {

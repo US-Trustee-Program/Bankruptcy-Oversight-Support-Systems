@@ -1,13 +1,14 @@
 import * as jwt from 'jsonwebtoken';
-import { ApplicationContext } from '../../types/basic';
-import { CamsSession } from '../../../../../common/src/cams/session';
-import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
+
 import { CamsJwtClaims } from '../../../../../common/src/cams/jwt';
+import { CamsSession } from '../../../../../common/src/cams/session';
+import { nowInSeconds } from '../../../../../common/src/date-helper';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { UnauthorizedError } from '../../../common-errors/unauthorized-error';
 import QueryBuilder from '../../../query/query-builder';
 import { UserSessionCacheRepository } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { nowInSeconds } from '../../../../../common/src/date-helper';
 
 const MODULE_NAME = 'USER-SESSION-CACHE-MONGO-REPOSITORY';
 const COLLECTION_NAME: string = 'user-session-cache';
@@ -24,19 +25,11 @@ export class UserSessionCacheMongoRepository
   extends BaseMongoRepository
   implements UserSessionCacheRepository
 {
-  private static referenceCount: number = 0;
   private static instance: UserSessionCacheMongoRepository;
+  private static referenceCount: number = 0;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!UserSessionCacheMongoRepository.instance) {
-      UserSessionCacheMongoRepository.instance = new UserSessionCacheMongoRepository(context);
-    }
-    UserSessionCacheMongoRepository.referenceCount++;
-    return UserSessionCacheMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -49,8 +42,12 @@ export class UserSessionCacheMongoRepository
     }
   }
 
-  public release() {
-    UserSessionCacheMongoRepository.dropInstance();
+  public static getInstance(context: ApplicationContext) {
+    if (!UserSessionCacheMongoRepository.instance) {
+      UserSessionCacheMongoRepository.instance = new UserSessionCacheMongoRepository(context);
+    }
+    UserSessionCacheMongoRepository.referenceCount++;
+    return UserSessionCacheMongoRepository.instance;
   }
 
   public async read(token: string): Promise<CamsSession> {
@@ -67,6 +64,10 @@ export class UserSessionCacheMongoRepository
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
+  }
+
+  public release() {
+    UserSessionCacheMongoRepository.dropInstance();
   }
 
   public async upsert(session: CamsSession): Promise<CamsSession> {

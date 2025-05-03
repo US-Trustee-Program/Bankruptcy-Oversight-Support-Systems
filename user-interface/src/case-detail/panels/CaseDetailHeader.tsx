@@ -1,18 +1,19 @@
 import './CaseDetailHeader.scss';
-import { useEffect } from 'react';
-import useFixedPosition from '@/lib/hooks/UseFixedPosition';
-import { CaseDetail } from '@common/cams/cases';
-import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
+
 import CopyButton from '@/lib/components/cams/CopyButton';
+import useFixedPosition from '@/lib/hooks/UseFixedPosition';
+import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
+import { CaseDetail } from '@common/cams/cases';
+import { useEffect } from 'react';
 
 export interface CaseDetailHeaderProps {
-  isLoading: boolean;
-  caseId: string | undefined;
   caseDetail?: CaseDetail;
+  caseId: string | undefined;
+  isLoading: boolean;
 }
 
 export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
-  const { isFixed, fix, loosen } = useFixedPosition();
+  const { fix, isFixed, loosen } = useFixedPosition();
   const courtInformation = `${props.caseDetail?.courtName} (${props.caseDetail?.courtDivisionName})`;
   // u00A0 is a non-breaking space. Using &nbsp; in the string literal does not display correctly.
   const chapterInformation = `${props.caseDetail?.petitionLabel} Chapter\u00A0${props.caseDetail?.chapter}`;
@@ -45,7 +46,7 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
 
   function printCaseIdHeader() {
     return (
-      <h2 className="case-number text-no-wrap" title="Case ID" aria-label="Case ID">
+      <h2 aria-label="Case ID" className="case-number text-no-wrap" title="Case ID">
         {props.caseId}{' '}
         <CopyButton
           id="header-case-id"
@@ -92,8 +93,8 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               <div className="grid-col-3">
                 <h3
                   className="court-name"
-                  title={`Court Name and District: ${courtInformation}`}
                   data-testid="court-name-and-district"
+                  title={`Court Name and District: ${courtInformation}`}
                 >
                   {courtInformation}
                 </h3>
@@ -101,8 +102,8 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               <div className="grid-col-2">
                 <h3
                   className="case-chapter"
-                  title={`Case Chapter: ${chapterInformation}`}
                   data-testid="case-chapter"
+                  title={`Case Chapter: ${chapterInformation}`}
                 >
                   {chapterInformation}
                 </h3>
@@ -141,14 +142,14 @@ export default function CaseDetailHeader(props: CaseDetailHeaderProps) {
               <div className="grid-col-5">
                 <h2
                   className="court-name"
-                  title="Court Name and District"
                   data-testid="court-name-and-district"
+                  title="Court Name and District"
                 >
                   {courtInformation}
                 </h2>
               </div>
               <div className="grid-col-3">
-                <h2 className="case-chapter" title="Case Chapter" data-testid="case-chapter">
+                <h2 className="case-chapter" data-testid="case-chapter" title="Case Chapter">
                   {chapterInformation}
                 </h2>
               </div>

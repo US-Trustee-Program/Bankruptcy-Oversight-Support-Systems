@@ -15,9 +15,9 @@ export function getCamsErrorWithStack(
   return isCamsError(originalError)
     ? addCamsStack(originalError, options.camsStackInfo)
     : new UnknownError(module, {
+        camsStackInfo: options.camsStackInfo,
         message: options.message,
         originalError,
-        camsStackInfo: options.camsStackInfo,
       });
 }
 

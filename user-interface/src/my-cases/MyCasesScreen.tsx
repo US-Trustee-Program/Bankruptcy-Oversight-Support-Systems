@@ -1,22 +1,25 @@
-import { useRef, useState } from 'react';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
+import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
+import ToggleButton from '@/lib/components/cams/ToggleButton/ToggleButton';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import LocalStorage from '@/lib/utils/local-storage';
+import SearchResults from '@/search-results/SearchResults';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
+
+import './MyCasesScreen.scss';
+
 import { getCamsUserReference } from '@common/cams/session';
-import SearchResults from '@/search-results/SearchResults';
+import { useRef, useState } from 'react';
+
 import { MyCasesResultsHeader } from './MyCasesResultsHeader';
 import { MyCasesResultsRow } from './MyCasesResultsRow';
-import './MyCasesScreen.scss';
-import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
-import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
-import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
-import ToggleButton from '@/lib/components/cams/ToggleButton/ToggleButton';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
@@ -31,20 +34,20 @@ export const MyCasesScreen = () => {
     return <></>;
   }
   const searchPredicate: CasesSearchPredicate = {
-    limit: DEFAULT_SEARCH_LIMIT,
-    offset: DEFAULT_SEARCH_OFFSET,
     assignments: [getCamsUserReference(session.user)],
     excludeChildConsolidations: true,
     excludeClosedCases: !doShowClosedCases,
+    limit: DEFAULT_SEARCH_LIMIT,
+    offset: DEFAULT_SEARCH_OFFSET,
   };
 
   const infoModalActionButtonGroup = {
-    modalId: infoModalId,
-    modalRef: infoModalRef as React.RefObject<ModalRefType>,
     cancelButton: {
       label: 'Return',
       uswdsStyle: UswdsButtonStyle.Default,
     },
+    modalId: infoModalId,
+    modalRef: infoModalRef as React.RefObject<ModalRefType>,
   };
 
   function handleShowClosedCasesToggle(isActive: boolean) {
@@ -68,35 +71,33 @@ export const MyCasesScreen = () => {
             <div className="case-status-container">
               <div>
                 <ToggleButton
-                  id="closed-cases-toggle"
                   ariaLabel={'Show closed cases.'}
+                  id="closed-cases-toggle"
+                  isActive={false}
+                  label="Closed Cases"
+                  onToggle={handleShowClosedCasesToggle}
                   tooltipLabel={{
                     active: 'Closed cases shown.',
                     inactive: 'Closed cases hidden.',
                   }}
-                  isActive={false}
-                  label="Closed Cases"
-                  onToggle={handleShowClosedCasesToggle}
                 />
               </div>
             </div>
           </div>
 
           <SearchResults
-            id="search-results"
-            searchPredicate={searchPredicate}
-            noResultsMessage="No cases currently assigned."
             header={MyCasesResultsHeader}
+            id="search-results"
+            noResultsMessage="No cases currently assigned."
             row={MyCasesResultsRow}
+            searchPredicate={searchPredicate}
           ></SearchResults>
         </div>
         <div className="grid-col-1"></div>
       </div>
       <Modal
-        ref={infoModalRef}
-        modalId={infoModalId}
+        actionButtonGroup={infoModalActionButtonGroup}
         className="my-cases-info-modal"
-        heading="My Cases - Using This Page"
         content={
           <>
             My Cases allows you to view the list of cases that are assigned to you. You can view
@@ -104,7 +105,9 @@ export const MyCasesScreen = () => {
             you wish to view.
           </>
         }
-        actionButtonGroup={infoModalActionButtonGroup}
+        heading="My Cases - Using This Page"
+        modalId={infoModalId}
+        ref={infoModalRef}
       ></Modal>
     </MainContent>
   );

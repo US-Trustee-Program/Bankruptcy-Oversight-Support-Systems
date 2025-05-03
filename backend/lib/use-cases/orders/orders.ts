@@ -1,45 +1,46 @@
-import { OrderSyncState } from '../gateways.types';
-import { ApplicationContext } from '../../adapters/types/basic';
-import {
-  ConsolidationOrder,
-  ConsolidationOrderCase,
-  RawConsolidationOrder,
-  TransferOrder,
-  isTransferOrder,
-  Order,
-  ConsolidationOrderActionRejection,
-  OrderStatus,
-  ConsolidationOrderActionApproval,
-  TransferOrderAction,
-  ConsolidationType,
-  getCaseSummaryFromTransferOrder,
-  getCaseSummaryFromConsolidationOrderCase,
-} from '../../../../common/src/cams/orders';
+import * as crypto from 'crypto';
+
+import { OrdersSearchPredicate } from '../../../../common/src/api/search';
+import { createAuditRecord } from '../../../../common/src/cams/auditable';
+import { CaseSummary } from '../../../../common/src/cams/cases';
 import {
   ConsolidationFrom,
   ConsolidationTo,
   TransferFrom,
   TransferTo,
 } from '../../../../common/src/cams/events';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { CamsError } from '../../common-errors/cams-error';
-import { sortDates, sortDatesReverse } from '../../../../common/src/date-helper';
-import * as crypto from 'crypto';
 import {
   CaseConsolidationHistory,
   CaseHistory,
   ConsolidationOrderSummary,
   isConsolidationHistory,
 } from '../../../../common/src/cams/history';
-import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
-import { BadRequestError } from '../../common-errors/bad-request';
-import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import {
+  ConsolidationOrder,
+  ConsolidationOrderActionApproval,
+  ConsolidationOrderActionRejection,
+  ConsolidationOrderCase,
+  ConsolidationType,
+  getCaseSummaryFromConsolidationOrderCase,
+  getCaseSummaryFromTransferOrder,
+  isTransferOrder,
+  Order,
+  OrderStatus,
+  RawConsolidationOrder,
+  TransferOrder,
+  TransferOrderAction,
+} from '../../../../common/src/cams/orders';
 import { CamsRole } from '../../../../common/src/cams/roles';
-import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { createAuditRecord } from '../../../../common/src/cams/auditable';
-import { OrdersSearchPredicate } from '../../../../common/src/api/search';
+import { CamsUserReference, getCourtDivisionCodes } from '../../../../common/src/cams/users';
+import { sortDates, sortDatesReverse } from '../../../../common/src/date-helper';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { BadRequestError } from '../../common-errors/bad-request';
+import { CamsError } from '../../common-errors/cams-error';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { Factory } from '../../factory';
+import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { OrderSyncState } from '../gateways.types';
 
 const MODULE_NAME = 'ORDERS-USE-CASE';
 
@@ -48,12 +49,12 @@ export interface SyncOrdersOptions {
 }
 
 export interface SyncOrdersStatus {
-  options?: SyncOrdersOptions;
-  initialSyncState: OrderSyncState;
   finalSyncState: OrderSyncState;
+  initialSyncState: OrderSyncState;
   length: number;
-  startingTxId: string;
   maxTxId: string;
+  options?: SyncOrdersOptions;
+  startingTxId: string;
 }
 
 export class OrdersUseCase {
@@ -61,6 +62,21 @@ export class OrdersUseCase {
 
   constructor(context: ApplicationContext) {
     this.context = context;
+  }
+
+  public async approveConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionApproval,
+  ): Promise<ConsolidationOrder[]> {
+    const { approvedCases, leadCase, ...provisionalOrder } = data;
+    return await this.handleConsolidation(
+      context,
+      'approved',
+      provisionalOrder,
+      approvedCases,
+      data.consolidationType,
+      leadCase,
+    );
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
@@ -86,68 +102,65 @@ export class OrdersUseCase {
     return casesGateway.getSuggestedCases(context, caseId);
   }
 
-  public async updateTransferOrder(
+  public async mapConsolidations(
     context: ApplicationContext,
-    id: string,
-    data: TransferOrderAction,
-  ): Promise<void> {
-    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
-      throw new UnauthorizedError(MODULE_NAME);
-    }
+    consolidations: RawConsolidationOrder[],
+  ): Promise<Map<number, ConsolidationOrder>> {
+    const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
 
-    const storageGateway = Factory.getStorageGateway(this.context);
-    const ordersRepo = Factory.getOrdersRepository(this.context);
-    const casesRepo = Factory.getCasesRepository(this.context);
-
-    const divisionMeta = storageGateway.getUstpDivisionMeta();
-    const divisionCodeMaybe = data['newCase'] ? data['newCase'].courtDivisionCode : null;
-    if (
-      divisionCodeMaybe &&
-      divisionMeta.has(divisionCodeMaybe) &&
-      divisionMeta.get(divisionCodeMaybe).isLegacy
-    ) {
-      throw new BadRequestError(MODULE_NAME, {
-        message: 'Cannot transfer to legacy division.',
-      });
-    }
-
-    context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
-    const initialOrder = await ordersRepo.read(id, data.caseId);
-    let order: Order;
-    if (isTransferOrder(initialOrder)) {
-      await ordersRepo.update(data);
-      order = await ordersRepo.read(id, data.caseId);
-    }
-    if (isTransferOrder(order)) {
-      if (order.status === 'approved') {
-        const transferFrom: TransferFrom = {
-          caseId: order.newCase.caseId,
-          otherCase: getCaseSummaryFromTransferOrder(order),
-          orderDate: order.orderDate,
-          documentType: 'TRANSFER_FROM',
-        };
-
-        const transferTo: TransferTo = {
-          caseId: order.caseId,
-          otherCase: order.newCase,
-          orderDate: order.orderDate,
-          documentType: 'TRANSFER_TO',
-        };
-
-        await casesRepo.createTransferFrom(transferFrom);
-        await casesRepo.createTransferTo(transferTo);
+    const notFound = new Set<string>();
+    const jobToCaseMap = new Map<number, Map<string, ConsolidationOrderCase>>();
+    for (const order of consolidations) {
+      if (!jobToCaseMap.has(order.jobId)) {
+        jobToCaseMap.set(order.jobId, new Map<string, ConsolidationOrderCase>());
       }
-      const caseHistory = createAuditRecord<CaseHistory>(
-        {
-          caseId: order.caseId,
-          documentType: 'AUDIT_TRANSFER',
-          before: initialOrder as TransferOrder,
-          after: order,
-        },
-        context.session?.user,
-      );
-      await casesRepo.createCaseHistory(caseHistory);
+      const caseMap = jobToCaseMap.get(order.jobId);
+      caseMap.set(order.caseId, order);
+
+      const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
+      if (maybeLeadCaseId && !caseMap.has(maybeLeadCaseId) && !notFound.has(maybeLeadCaseId)) {
+        try {
+          const casesGateway = Factory.getCasesGateway(context);
+          const maybeLeadCase = await casesGateway.getCaseSummary(context, maybeLeadCaseId);
+          if (maybeLeadCase) {
+            caseMap.set(maybeLeadCaseId, {
+              ...maybeLeadCase,
+              docketEntries: [],
+              orderDate: order.orderDate,
+            });
+          }
+        } catch {
+          notFound.add(maybeLeadCaseId);
+        }
+      }
     }
+
+    jobToCaseMap.forEach((caseSummaries, jobId) => {
+      const consolidationId = crypto.randomUUID();
+      // TODO: Maybe grab the earliest date from all the case summaries, rather than just the first one.
+      const firstOrder = caseSummaries.values().next()?.value;
+      const consolidationOrder: ConsolidationOrder = {
+        childCases: Array.from(jobToCaseMap.get(jobId).values()),
+        consolidationId,
+        consolidationType: firstOrder.consolidationType,
+        courtDivisionCode: firstOrder.courtDivisionCode,
+        courtName: firstOrder.courtName,
+        jobId,
+        orderDate: firstOrder.orderDate,
+        orderType: 'consolidation',
+        status: 'pending',
+      };
+      consolidationsByJobId.set(jobId, consolidationOrder);
+    });
+    return consolidationsByJobId;
+  }
+
+  public async rejectConsolidation(
+    context: ApplicationContext,
+    data: ConsolidationOrderActionRejection,
+  ): Promise<ConsolidationOrder[]> {
+    const { rejectedCases, ...provisionalOrder } = data;
+    return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
   }
 
   public async syncOrders(
@@ -197,7 +210,7 @@ export class OrdersUseCase {
     }
 
     const startingTxId = options?.txIdOverride ?? initialSyncState.txId;
-    const { consolidations, transfers, maxTxId } = await ordersGateway.getOrderSync(
+    const { consolidations, maxTxId, transfers } = await ordersGateway.getOrderSync(
       context,
       startingTxId,
     );
@@ -208,10 +221,10 @@ export class OrdersUseCase {
       if (isTransferOrder(order)) {
         const caseHistory = createAuditRecord<CaseHistory>(
           {
+            after: order,
+            before: null,
             caseId: order.caseId,
             documentType: 'AUDIT_TRANSFER',
-            before: null,
-            after: order,
           },
           context.session?.user,
         );
@@ -229,15 +242,15 @@ export class OrdersUseCase {
 
     for (const order of consolidations) {
       const history: ConsolidationOrderSummary = {
-        status: 'pending',
         childCases: [],
+        status: 'pending',
       };
       const caseHistory = createAuditRecord<CaseHistory>(
         {
+          after: history,
+          before: null,
           caseId: order.caseId,
           documentType: 'AUDIT_CONSOLIDATION',
-          before: null,
-          after: history,
         },
         context.session?.user,
       );
@@ -249,36 +262,77 @@ export class OrdersUseCase {
     context.logger.info(MODULE_NAME, 'Updated runtime state in repo (Cosmos)', finalSyncState);
 
     return {
-      options,
-      initialSyncState,
       finalSyncState,
+      initialSyncState,
       length: transfers.length + Array.from(consolidationsByJobId.values()).length,
-      startingTxId,
       maxTxId,
+      options,
+      startingTxId,
     };
   }
 
-  public async approveConsolidation(
+  public async updateTransferOrder(
     context: ApplicationContext,
-    data: ConsolidationOrderActionApproval,
-  ): Promise<ConsolidationOrder[]> {
-    const { approvedCases, leadCase, ...provisionalOrder } = data;
-    return await this.handleConsolidation(
-      context,
-      'approved',
-      provisionalOrder,
-      approvedCases,
-      data.consolidationType,
-      leadCase,
-    );
-  }
+    id: string,
+    data: TransferOrderAction,
+  ): Promise<void> {
+    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
 
-  public async rejectConsolidation(
-    context: ApplicationContext,
-    data: ConsolidationOrderActionRejection,
-  ): Promise<ConsolidationOrder[]> {
-    const { rejectedCases, ...provisionalOrder } = data;
-    return await this.handleConsolidation(context, 'rejected', provisionalOrder, rejectedCases);
+    const storageGateway = Factory.getStorageGateway(this.context);
+    const ordersRepo = Factory.getOrdersRepository(this.context);
+    const casesRepo = Factory.getCasesRepository(this.context);
+
+    const divisionMeta = storageGateway.getUstpDivisionMeta();
+    const divisionCodeMaybe = data['newCase'] ? data['newCase'].courtDivisionCode : null;
+    if (
+      divisionCodeMaybe &&
+      divisionMeta.has(divisionCodeMaybe) &&
+      divisionMeta.get(divisionCodeMaybe).isLegacy
+    ) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Cannot transfer to legacy division.',
+      });
+    }
+
+    context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
+    const initialOrder = await ordersRepo.read(id, data.caseId);
+    let order: Order;
+    if (isTransferOrder(initialOrder)) {
+      await ordersRepo.update(data);
+      order = await ordersRepo.read(id, data.caseId);
+    }
+    if (isTransferOrder(order)) {
+      if (order.status === 'approved') {
+        const transferFrom: TransferFrom = {
+          caseId: order.newCase.caseId,
+          documentType: 'TRANSFER_FROM',
+          orderDate: order.orderDate,
+          otherCase: getCaseSummaryFromTransferOrder(order),
+        };
+
+        const transferTo: TransferTo = {
+          caseId: order.caseId,
+          documentType: 'TRANSFER_TO',
+          orderDate: order.orderDate,
+          otherCase: order.newCase,
+        };
+
+        await casesRepo.createTransferFrom(transferFrom);
+        await casesRepo.createTransferTo(transferTo);
+      }
+      const caseHistory = createAuditRecord<CaseHistory>(
+        {
+          after: order,
+          before: initialOrder as TransferOrder,
+          caseId: order.caseId,
+          documentType: 'AUDIT_TRANSFER',
+        },
+        context.session?.user,
+      );
+      await casesRepo.createCaseHistory(caseHistory);
+    }
   }
 
   private async buildHistory(
@@ -289,8 +343,8 @@ export class OrdersUseCase {
     leadCase?: CaseSummary,
   ): Promise<CaseHistory> {
     const after: ConsolidationOrderSummary = {
-      status,
       childCases,
+      status,
     };
     if (leadCase) after.leadCase = leadCase;
     let before;
@@ -310,10 +364,10 @@ export class OrdersUseCase {
     }
     return createAuditRecord<CaseConsolidationHistory>(
       {
+        after,
+        before: isConsolidationHistory(before) ? before : null,
         caseId: bCase.caseId,
         documentType: 'AUDIT_CONSOLIDATION',
-        before: isConsolidationHistory(before) ? before : null,
-        after,
       },
       context.session?.user,
     );
@@ -366,20 +420,20 @@ export class OrdersUseCase {
     const doSplit = remainingChildCases.length > 0;
     const newConsolidation: ConsolidationOrder = {
       ...provisionalOrder,
-      id: undefined,
-      orderType: 'consolidation',
+      childCases: includedChildCases,
       consolidationId: crypto.randomUUID(),
       consolidationType,
-      status,
-      childCases: includedChildCases,
+      id: undefined,
       leadCase,
+      orderType: 'consolidation',
+      status,
     };
 
     if (doSplit) {
       const remainingOrder = {
         ...provisionalOrder,
-        consolidationType,
         childCases: remainingChildCases,
+        consolidationType,
         id: undefined,
       };
       const updatedRemainingOrder = await consolidationsRepo.create(remainingOrder);
@@ -414,10 +468,10 @@ export class OrdersUseCase {
           // Add the reference to the lead case to the child case.
           const consolidationTo: ConsolidationTo = {
             caseId: childCase.caseId,
-            otherCase: leadCase,
-            orderDate: childCase.orderDate,
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_TO',
+            orderDate: childCase.orderDate,
+            otherCase: leadCase,
             updatedBy: context.session.user,
             updatedOn: new Date().toISOString(),
           };
@@ -426,10 +480,10 @@ export class OrdersUseCase {
           // Add the reference to the child case to the lead case.
           const consolidationFrom: ConsolidationFrom = {
             caseId: newConsolidation.leadCase.caseId,
-            otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
-            orderDate: childCase.orderDate,
             consolidationType: newConsolidation.consolidationType,
             documentType: 'CONSOLIDATION_FROM',
+            orderDate: childCase.orderDate,
+            otherCase: getCaseSummaryFromConsolidationOrderCase(childCase),
             updatedBy: context.session.user,
             updatedOn: new Date().toISOString(),
           };
@@ -461,58 +515,5 @@ export class OrdersUseCase {
     }
 
     return response;
-  }
-
-  public async mapConsolidations(
-    context: ApplicationContext,
-    consolidations: RawConsolidationOrder[],
-  ): Promise<Map<number, ConsolidationOrder>> {
-    const consolidationsByJobId: Map<number, ConsolidationOrder> = new Map();
-
-    const notFound = new Set<string>();
-    const jobToCaseMap = new Map<number, Map<string, ConsolidationOrderCase>>();
-    for (const order of consolidations) {
-      if (!jobToCaseMap.has(order.jobId)) {
-        jobToCaseMap.set(order.jobId, new Map<string, ConsolidationOrderCase>());
-      }
-      const caseMap = jobToCaseMap.get(order.jobId);
-      caseMap.set(order.caseId, order);
-
-      const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
-      if (maybeLeadCaseId && !caseMap.has(maybeLeadCaseId) && !notFound.has(maybeLeadCaseId)) {
-        try {
-          const casesGateway = Factory.getCasesGateway(context);
-          const maybeLeadCase = await casesGateway.getCaseSummary(context, maybeLeadCaseId);
-          if (maybeLeadCase) {
-            caseMap.set(maybeLeadCaseId, {
-              ...maybeLeadCase,
-              orderDate: order.orderDate,
-              docketEntries: [],
-            });
-          }
-        } catch {
-          notFound.add(maybeLeadCaseId);
-        }
-      }
-    }
-
-    jobToCaseMap.forEach((caseSummaries, jobId) => {
-      const consolidationId = crypto.randomUUID();
-      // TODO: Maybe grab the earliest date from all the case summaries, rather than just the first one.
-      const firstOrder = caseSummaries.values().next()?.value;
-      const consolidationOrder: ConsolidationOrder = {
-        consolidationId,
-        consolidationType: firstOrder.consolidationType,
-        orderType: 'consolidation',
-        orderDate: firstOrder.orderDate,
-        status: 'pending',
-        courtDivisionCode: firstOrder.courtDivisionCode,
-        courtName: firstOrder.courtName,
-        jobId,
-        childCases: Array.from(jobToCaseMap.get(jobId).values()),
-      };
-      consolidationsByJobId.set(jobId, consolidationOrder);
-    });
-    return consolidationsByJobId;
   }
 }

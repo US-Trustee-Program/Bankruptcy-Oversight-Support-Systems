@@ -4,6 +4,29 @@ import { PaginationParameters } from './pagination';
 export const DEFAULT_SEARCH_LIMIT = 25;
 export const DEFAULT_SEARCH_OFFSET = 0;
 
+export type CasesSearchPredicate = SearchPredicate & {
+  assignments?: CamsUserReference[];
+  caseIds?: string[];
+  caseNumber?: string;
+  chapters?: string[];
+  divisionCodes?: string[];
+  excludeChildConsolidations?: boolean;
+  excludeClosedCases?: boolean;
+  excludedCaseIds?: string[];
+  includeOnlyUnassigned?: boolean;
+};
+
+export type OfficeAssigneePredicate = {
+  caseId?: string;
+  officeCode?: string;
+  userId?: string;
+};
+
+export type OrdersSearchPredicate = {
+  consolidationId?: string;
+  divisionCodes?: string[];
+};
+
 export type SearchPredicate = PaginationParameters;
 
 export function setPaginationDefaults<P extends SearchPredicate = SearchPredicate>(predicate: P) {
@@ -15,26 +38,3 @@ export function setPaginationDefaults<P extends SearchPredicate = SearchPredicat
   predicate.offset = offset ?? DEFAULT_SEARCH_OFFSET;
   return predicate;
 }
-
-export type CasesSearchPredicate = SearchPredicate & {
-  caseNumber?: string;
-  divisionCodes?: string[];
-  chapters?: string[];
-  assignments?: CamsUserReference[];
-  caseIds?: string[];
-  excludedCaseIds?: string[];
-  excludeChildConsolidations?: boolean;
-  excludeClosedCases?: boolean;
-  includeOnlyUnassigned?: boolean;
-};
-
-export type OrdersSearchPredicate = {
-  divisionCodes?: string[];
-  consolidationId?: string;
-};
-
-export type OfficeAssigneePredicate = {
-  officeCode?: string;
-  caseId?: string;
-  userId?: string;
-};

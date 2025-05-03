@@ -1,7 +1,8 @@
-import * as dotenv from 'dotenv';
 import { InvocationContext } from '@azure/functions';
-import { LoggerImpl } from '../../adapters/services/logger.service';
+import * as dotenv from 'dotenv';
+
 import ContextCreator from '../../../function-apps/azure/application-context-creator';
+import { LoggerImpl } from '../../adapters/services/logger.service';
 import Factory from '../../factory';
 
 dotenv.config({ path: '../../../.env' });

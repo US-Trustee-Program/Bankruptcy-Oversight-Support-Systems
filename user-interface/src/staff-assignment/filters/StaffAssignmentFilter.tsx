@@ -1,3 +1,9 @@
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+import { CamsUserReference } from '../../../../common/dist/cams/users';
 import {
   StaffAssignmentFilterControls,
   StaffAssignmentFilterProps,
@@ -5,13 +11,8 @@ import {
   StaffAssignmentFilterStore,
   StaffAssignmentFilterViewModel,
 } from './staffAssignmentFilter.types';
-import { CamsUserReference } from '../../../../common/dist/cams/users';
-import StaffAssignmentFilterView from './StaffAssignmentFilterView';
 import staffAssignmentFilterUseCase from './staffAssignmentFilterUseCase';
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import StaffAssignmentFilterView from './StaffAssignmentFilterView';
 
 const _StaffAssignmentFilter = (
   props: StaffAssignmentFilterProps,
@@ -24,8 +25,8 @@ const _StaffAssignmentFilter = (
 
   useImperativeHandle(ref, () => {
     return {
-      refresh: useCase.fetchAssignees,
       focus: useCase.focusOnAssigneesFilter,
+      refresh: useCase.fetchAssignees,
     };
   });
 
@@ -49,11 +50,11 @@ const _StaffAssignmentFilter = (
   }, []);
 
   const viewModel: StaffAssignmentFilterViewModel = {
+    assigneesFilterRef: controls.assigneesFilterRef,
+    assigneesToComboOptions: useCase.assigneesToComboOptions,
+    handleFilterAssignee: useCase.handleFilterAssignee,
     officeAssignees: store.officeAssignees,
     officeAssigneesError: store.officeAssigneesError,
-    handleFilterAssignee: useCase.handleFilterAssignee,
-    assigneesToComboOptions: useCase.assigneesToComboOptions,
-    assigneesFilterRef: controls.assigneesFilterRef,
   };
 
   return <StaffAssignmentFilterView viewModel={viewModel}></StaffAssignmentFilterView>;
@@ -61,6 +62,14 @@ const _StaffAssignmentFilter = (
 
 const StaffAssignmentFilter = forwardRef(_StaffAssignmentFilter);
 export default StaffAssignmentFilter;
+
+export function useStaffAssignmentFilterControlsReact() {
+  const assigneesFilterRef = useRef<ComboBoxRef>(null);
+
+  return {
+    assigneesFilterRef,
+  };
+}
 
 export function useStaffAssignmentFilterStoreReact() {
   const [officeAssignees, setOfficeAssignees] = useState<CamsUserReference[]>([]);
@@ -72,20 +81,12 @@ export function useStaffAssignmentFilterStoreReact() {
 
   return {
     filterAssigneeCallback,
-    setFilterAssigneeCallback,
     focusOnRender,
-    setFocusOnRender,
     officeAssignees,
-    setOfficeAssignees,
     officeAssigneesError,
+    setFilterAssigneeCallback,
+    setFocusOnRender,
+    setOfficeAssignees,
     setOfficeAssigneesError,
-  };
-}
-
-export function useStaffAssignmentFilterControlsReact() {
-  const assigneesFilterRef = useRef<ComboBoxRef>(null);
-
-  return {
-    assigneesFilterRef,
   };
 }

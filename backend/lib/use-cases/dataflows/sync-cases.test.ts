@@ -1,10 +1,10 @@
-import SyncCases from './sync-cases';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CasesSyncState } from '../gateways.types';
-import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { ApplicationContext } from '../../adapters/types/basic';
+import SyncCases from './sync-cases';
 
 describe('getCaseIds tests', () => {
   let context: ApplicationContext;

@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import DocketEntryDocumentList from '@/lib/components/DocketEntryDocumentList';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { useApi2 } from '@/lib/hooks/UseApi2';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseSummary } from '@common/cams/cases';
-import { CaseTable } from './CaseTable';
-import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TransferOrder } from '@common/cams/orders';
-import { useApi2 } from '@/lib/hooks/UseApi2';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+
+import { CaseTable } from './CaseTable';
 
 export type FromCaseSummaryProps = {
-  order: TransferOrder;
   onOrderUpdate: (alertDetails: AlertDetails, order?: TransferOrder) => void;
+  order: TransferOrder;
 };
 
 export function FromCaseSummary(props: FromCaseSummaryProps) {
@@ -29,8 +30,8 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
       .catch((reason) => {
         props.onOrderUpdate({
           message: reason.message,
-          type: UswdsAlertStyle.Error,
           timeOut: 8,
+          type: UswdsAlertStyle.Error,
         });
       });
   }
@@ -47,14 +48,14 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
           {!originalCaseSummary && (
             // NOTE!: Do not start an id attribute value with a GUID.  Id's can not start with a number.
             <LoadingSpinner
-              id={`transfer-from-case-loading-${order.id}`}
               caption="Loading case..."
+              id={`transfer-from-case-loading-${order.id}`}
             ></LoadingSpinner>
           )}
           {originalCaseSummary && (
             <CaseTable
-              id={`transfer-from-case-${order.id}`}
               cases={[originalCaseSummary]}
+              id={`transfer-from-case-${order.id}`}
             ></CaseTable>
           )}
         </div>
@@ -74,9 +75,9 @@ export function FromCaseSummary(props: FromCaseSummaryProps) {
             return (
               <div key={idx}>
                 <Link
-                  to={`/case-detail/${order.caseId}/court-docket?document=${docketEntry.documentNumber}`}
                   target="_blank"
                   title={`Open case ${order.caseId} docket in new window`}
+                  to={`/case-detail/${order.caseId}/court-docket?document=${docketEntry.documentNumber}`}
                 >
                   {docketEntry.documentNumber && (
                     <span className="document-number">#{docketEntry.documentNumber} - </span>

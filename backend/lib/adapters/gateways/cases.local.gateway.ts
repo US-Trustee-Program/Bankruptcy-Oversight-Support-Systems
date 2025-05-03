@@ -1,46 +1,25 @@
+import { CasesSearchPredicate } from '../../../../common/src/api/search';
+import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { CamsError } from '../../common-errors/cams-error';
 import { CasesInterface, TransactionIdRangeForDate } from '../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
-import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
-import { CaseBasics, CaseDetail } from '../../../../common/src/cams/cases';
-import { CamsError } from '../../common-errors/cams-error';
-import { CasesSearchPredicate } from '../../../../common/src/api/search';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
+import { GatewayHelper } from './gateway-helper';
 
 const MODULE_NAME = 'MOCK-CASES-GATEWAY';
 
 export class CasesLocalGateway implements CasesInterface {
-  searchCases(
-    _applicationContext: ApplicationContext,
-    searchPredicate: CasesSearchPredicate,
-  ): Promise<CaseBasics[]> {
-    throw new CamsError(MODULE_NAME, {
-      message: `Not implemented for searchCases: ${searchPredicate}`,
-    });
+  public async findMaxTransactionId(_context: ApplicationContext): Promise<string> {
+    throw new Error('Not implemented');
   }
 
-  getCases = async (
-    applicationContext: ApplicationContext,
-    _options: {
-      startingMonth?: number;
-    },
-  ): Promise<CaseDetail[]> => {
-    const gatewayHelper = new GatewayHelper();
-    let cases: CaseDetail[];
-
-    try {
-      cases = gatewayHelper.getAllCasesMockExtract();
-      cases.forEach((bCase) => {
-        bCase.dateFiled = getMonthDayYearStringFromDate(new Date(bCase.dateFiled));
-      });
-    } catch (err) {
-      applicationContext.logger.error(MODULE_NAME, 'Failed to read mock cases.', err);
-      const message = (err as Error).message;
-      return Promise.reject(message);
-    }
-
-    return cases;
-  };
+  public async findTransactionIdRangeForDate(
+    _context: ApplicationContext,
+    _findDate: string,
+  ): Promise<TransactionIdRangeForDate> {
+    throw new Error('Not implemented');
+  }
 
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const gatewayHelper = new GatewayHelper();
@@ -83,6 +62,29 @@ export class CasesLocalGateway implements CasesInterface {
     }
     return caseDetail;
   }
+
+  getCases = async (
+    applicationContext: ApplicationContext,
+    _options: {
+      startingMonth?: number;
+    },
+  ): Promise<CaseDetail[]> => {
+    const gatewayHelper = new GatewayHelper();
+    let cases: CaseDetail[];
+
+    try {
+      cases = gatewayHelper.getAllCasesMockExtract();
+      cases.forEach((bCase) => {
+        bCase.dateFiled = getMonthDayYearStringFromDate(new Date(bCase.dateFiled));
+      });
+    } catch (err) {
+      applicationContext.logger.error(MODULE_NAME, 'Failed to read mock cases.', err);
+      const message = (err as Error).message;
+      return Promise.reject(message);
+    }
+
+    return cases;
+  };
 
   getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     let caseDetail;
@@ -127,14 +129,12 @@ export class CasesLocalGateway implements CasesInterface {
     throw new Error('Not implemented');
   }
 
-  public async findTransactionIdRangeForDate(
-    _context: ApplicationContext,
-    _findDate: string,
-  ): Promise<TransactionIdRangeForDate> {
-    throw new Error('Not implemented');
-  }
-
-  public async findMaxTransactionId(_context: ApplicationContext): Promise<string> {
-    throw new Error('Not implemented');
+  searchCases(
+    _applicationContext: ApplicationContext,
+    searchPredicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]> {
+    throw new CamsError(MODULE_NAME, {
+      message: `Not implemented for searchCases: ${searchPredicate}`,
+    });
   }
 }

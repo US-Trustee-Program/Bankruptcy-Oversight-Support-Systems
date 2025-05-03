@@ -2,14 +2,15 @@ import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import ScreenInfoButton from '@/lib/components/cams/ScreenInfoButton';
 import { Stop } from '@/lib/components/Stop';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { STAFF_ASSIGNMENT_FILTER_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 import SearchResults from '@/search-results/SearchResults';
+
+import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
-import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 import { StaffAssignmentScreenViewProps } from './StaffAssignment.types';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps) {
   const { viewModel } = props;
@@ -47,43 +48,41 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
           </div>
           {!viewModel.hasValidPermission && (
             <Stop
-              id="forbidden-alert"
-              title="Forbidden"
-              message="You do not have permission to assign staff to cases in CAMS."
               asError
+              id="forbidden-alert"
+              message="You do not have permission to assign staff to cases in CAMS."
+              title="Forbidden"
             ></Stop>
           )}
           {viewModel.hasValidPermission && !viewModel.hasAssignedOffices && (
             <Stop
               id="no-office"
-              title="No Office Assigned"
               message="You cannot assign staff to cases because you are not currently assigned to a USTP office in Active Directory."
               showHelpDeskContact
+              title="No Office Assigned"
             ></Stop>
           )}
           {viewModel.featureFlags[STAFF_ASSIGNMENT_FILTER_ENABLED] && (
             <StaffAssignmentFilter
-              ref={viewModel.filterRef}
               handleFilterAssignee={viewModel.handleFilterAssignee}
+              ref={viewModel.filterRef}
             />
           )}
           {showAssignments && (
             <SearchResults
-              id="search-results"
-              searchPredicate={searchPredicate}
-              noResultsAlertProps={noResultsAlertProps}
               header={StaffAssignmentHeader}
+              id="search-results"
+              noResultsAlertProps={noResultsAlertProps}
               row={viewModel.StaffAssignmentRowClosure}
+              searchPredicate={searchPredicate}
             ></SearchResults>
           )}
         </div>
         <div className="grid-col-1"></div>
       </div>
       <Modal
-        ref={viewModel.infoModalRef}
-        modalId={viewModel.infoModalId}
+        actionButtonGroup={viewModel.infoModalActionButtonGroup}
         className="staff-assignment-info"
-        heading="Staff Assignment - Using This Page"
         content={
           <>
             Staff Assignment allows you to assign staff members to unassigned cases. You can also
@@ -92,12 +91,14 @@ export function StaffAssignmentScreenView(props: StaffAssignmentScreenViewProps)
             about a case by clicking on its case number.
           </>
         }
-        actionButtonGroup={viewModel.infoModalActionButtonGroup}
+        heading="Staff Assignment - Using This Page"
+        modalId={viewModel.infoModalId}
+        ref={viewModel.infoModalRef}
       ></Modal>
       <AssignAttorneyModal
-        ref={viewModel.assignmentModalRef}
-        modalId={`${viewModel.assignmentModalId}`}
         assignmentChangeCallback={viewModel.handleAssignmentChange}
+        modalId={`${viewModel.assignmentModalId}`}
+        ref={viewModel.assignmentModalRef}
       ></AssignAttorneyModal>
     </MainContent>
   );

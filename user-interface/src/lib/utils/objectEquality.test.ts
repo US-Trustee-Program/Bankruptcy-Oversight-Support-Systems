@@ -13,13 +13,13 @@ describe('objectEquality tests', () => {
   test('should return false if comparing 2 simple objects that dont match', () => {
     const object1 = {
       one: 'one',
-      two: 'two',
       three: 'three',
+      two: 'two',
     };
     const object2 = {
       one: 1,
-      two: 2,
       three: 3,
+      two: 2,
     };
 
     expect(deepEqual(object1, object2)).toEqual(false);
@@ -28,6 +28,11 @@ describe('objectEquality tests', () => {
   test('should return false if comparing 2 complex objects that dont match', () => {
     const object1 = {
       one: 'one',
+      three: {
+        a: 'Aee',
+        b: 'Bee',
+        c: 'See',
+      },
       two: {
         a: 'a',
         b: {
@@ -35,26 +40,21 @@ describe('objectEquality tests', () => {
           ii: 'two',
         },
       },
+    };
+
+    const object2 = {
+      one: 'one',
       three: {
         a: 'Aee',
         b: 'Bee',
         c: 'See',
       },
-    };
-
-    const object2 = {
-      one: 'one',
       two: {
         a: 'a',
         b: {
           i: 'ai',
           ii: 'ai-ai',
         },
-      },
-      three: {
-        a: 'Aee',
-        b: 'Bee',
-        c: 'See',
       },
     };
 
@@ -70,17 +70,17 @@ describe('objectEquality tests', () => {
 
   test('should return true if simple objects are equal', () => {
     const object1 = {
-      one: 'one',
-      two: 'two',
-      three: 3,
       4: 'four',
+      one: 'one',
+      three: 3,
+      two: 'two',
     };
 
     const object2 = {
-      two: 'two',
       4: 'four',
-      three: 3,
       one: 'one',
+      three: 3,
+      two: 'two',
     };
 
     expect(deepEqual(object1, object2)).toEqual(true);
@@ -89,17 +89,17 @@ describe('objectEquality tests', () => {
   test('should return true if complex objects are equal', () => {
     const object1 = {
       one: 'one',
+      three: {
+        a: 'Aee',
+        b: 'Bee',
+        c: 'See',
+      },
       two: {
         a: 'a',
         b: {
           i: 'one',
           ii: 'two',
         },
-      },
-      three: {
-        a: 'Aee',
-        b: 'Bee',
-        c: 'See',
       },
     };
 
@@ -107,15 +107,15 @@ describe('objectEquality tests', () => {
       one: 'one',
       three: {
         a: 'Aee',
-        c: 'See',
         b: 'Bee',
+        c: 'See',
       },
       two: {
-        b: {
-          ii: 'two',
-          i: 'one',
-        },
         a: 'a',
+        b: {
+          i: 'one',
+          ii: 'two',
+        },
       },
     };
 

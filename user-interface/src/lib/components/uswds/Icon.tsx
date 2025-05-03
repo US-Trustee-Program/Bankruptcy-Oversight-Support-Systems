@@ -3,10 +3,10 @@
  * to determine what the possible options are.
  */
 export interface IconProps {
-  name: string;
-  tooltip?: string;
   className?: string;
   focusable?: boolean;
+  name: string;
+  tooltip?: string;
 }
 
 export default function Icon(props: IconProps) {
@@ -15,11 +15,11 @@ export default function Icon(props: IconProps) {
 
   return (
     <svg
-      className={`usa-icon ${props.className ?? ''}`}
       aria-hidden="true"
+      className={`usa-icon ${props.className ?? ''}`}
+      data-testid="icon"
       focusable={isFocusable}
       role="img"
-      data-testid="icon"
     >
       {props.tooltip && <title>{props.tooltip}</title>}
       <use xlinkHref={link}></use>

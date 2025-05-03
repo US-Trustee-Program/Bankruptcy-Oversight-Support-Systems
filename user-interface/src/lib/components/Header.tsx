@@ -1,19 +1,22 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { ADMIN_PATH } from '@/admin/admin-config';
 import { LOGOUT_PATH } from '@/login/login-library';
+
 import './Header.scss';
+
+import { CamsRole } from '@common/cams/roles';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+
 import useFeatureFlags, {
   PRIVILEGED_IDENTITY_MANAGEMENT,
-  TRANSFER_ORDERS_ENABLED,
   SYSTEM_MAINTENANCE_BANNER,
+  TRANSFER_ORDERS_ENABLED,
 } from '../hooks/UseFeatureFlags';
-import { Banner } from './uswds/Banner';
-import { useEffect, useState } from 'react';
 import LocalStorage from '../utils/local-storage';
-import { CamsRole } from '@common/cams/roles';
-import Icon from './uswds/Icon';
 import { DropdownMenu, MenuItem } from './cams/DropdownMenu/DropdownMenu';
-import { ADMIN_PATH } from '@/admin/admin-config';
 import Alert, { UswdsAlertStyle } from './uswds/Alert';
+import { Banner } from './uswds/Banner';
+import Icon from './uswds/Icon';
 
 export enum NavState {
   DEFAULT,
@@ -45,13 +48,13 @@ function mapNavState(path: string) {
 
 const userMenuItems: MenuItem[] = [
   {
-    label: 'Help',
     address: 'https://doj365.sharepoint.us/sites/USTP-OIT/SitePages/CAMS.aspx',
+    label: 'Help',
     target: 'cams_help',
   },
   {
-    label: 'Logout',
     address: LOGOUT_PATH,
+    label: 'Logout',
   },
 ];
 
@@ -70,8 +73,8 @@ export const Header = () => {
   if (flags[PRIVILEGED_IDENTITY_MANAGEMENT] && session?.user.roles?.includes(CamsRole.SuperUser)) {
     if (!userMenuItems.find((menuItem) => menuItem.label === 'Admin')) {
       userMenuItems.unshift({
-        label: 'Admin',
         address: ADMIN_PATH,
+        label: 'Admin',
       });
     }
   }
@@ -84,12 +87,12 @@ export const Header = () => {
     <>
       <Banner></Banner>
       <div className="usa-overlay"></div>
-      <header role="banner" className="cams-header usa-header usa-header--basic">
+      <header className="cams-header usa-header usa-header--basic" role="banner">
         <div className="usa-nav-container">
           <div className="cams-logo-and-title">
             <div className="usa-navbar">
               <div className="cams-logo usa-logo">
-                <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
+                <img alt="" className="doj-logo usa-banner__header" src="/doj-logo.png"></img>
               </div>
             </div>
             <div className="site-title wide-screen">
@@ -108,11 +111,11 @@ export const Header = () => {
               <ul className="usa-nav__primary">
                 <li className="usa-nav__primary-item">
                   <NavLink
-                    to="/my-cases"
-                    data-testid="header-my-cases-link"
                     className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
+                    data-testid="header-my-cases-link"
                     onClick={() => setActiveNav(NavState.MY_CASES)}
                     title="view a list of cases assigned to your account"
+                    to="/my-cases"
                   >
                     My Cases
                   </NavLink>
@@ -121,15 +124,15 @@ export const Header = () => {
                 {session && session.user.roles?.includes(CamsRole.CaseAssignmentManager) && (
                   <li className="usa-nav__primary-item">
                     <NavLink
-                      to="/staff-assignment"
-                      data-testid="header-staff-assignment-link"
                       className={
                         'usa-nav-link ' + setCurrentNav(activeNav, NavState.STAFF_ASSIGNMENT)
                       }
+                      data-testid="header-staff-assignment-link"
                       onClick={() => {
                         return setActiveNav(NavState.STAFF_ASSIGNMENT);
                       }}
                       title="view or edit staff assignments for cases"
+                      to="/staff-assignment"
                     >
                       Staff Assignment
                     </NavLink>
@@ -141,15 +144,15 @@ export const Header = () => {
                   transferOrdersFlag && (
                     <li className="usa-nav__primary-item">
                       <NavLink
-                        to="/data-verification"
-                        data-testid="header-data-verification-link"
                         className={
                           'usa-nav-link ' + setCurrentNav(activeNav, NavState.DATA_VERIFICATION)
                         }
+                        data-testid="header-data-verification-link"
                         onClick={() => {
                           return setActiveNav(NavState.DATA_VERIFICATION);
                         }}
                         title="view status of, approve, or reject case events"
+                        to="/data-verification"
                       >
                         Data Verification
                       </NavLink>
@@ -158,13 +161,13 @@ export const Header = () => {
 
                 <li className="usa-nav__primary-item">
                   <NavLink
-                    to="/search"
-                    data-testid="header-search-link"
                     className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.SEARCH)}
+                    data-testid="header-search-link"
                     onClick={() => {
                       return setActiveNav(NavState.SEARCH);
                     }}
                     title="search for cases"
+                    to="/search"
                   >
                     Case Search
                   </NavLink>
@@ -173,10 +176,10 @@ export const Header = () => {
                 {session && (
                   <li className="usa-nav__primary-item">
                     <DropdownMenu
+                      ariaLabel={`user menu for ${session.user.name}`}
+                      className="header-menu"
                       id={'user-menu'}
                       menuItems={userMenuItems}
-                      className="header-menu"
-                      ariaLabel={`user menu for ${session.user.name}`}
                     >
                       <Icon name="person"></Icon>
                       {session.user.name}
@@ -193,11 +196,11 @@ export const Header = () => {
           <div className="grid-col-1"></div>
           <div className="grid-col-10">
             <Alert
-              type={UswdsAlertStyle.Warning}
-              title="System maintenance"
-              slim={true}
               inline={true}
               show={true}
+              slim={true}
+              title="System maintenance"
+              type={UswdsAlertStyle.Warning}
             >
               {flags[SYSTEM_MAINTENANCE_BANNER]}
             </Alert>

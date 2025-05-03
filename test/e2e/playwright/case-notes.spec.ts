@@ -1,10 +1,11 @@
-import { KNOWN_GOOD_TRANSFER_TO_CASE_ID } from '../scripts/data-generation-utils';
 import { expect } from '@playwright/test';
+
+import { KNOWN_GOOD_TRANSFER_TO_CASE_ID } from '../scripts/data-generation-utils';
 import { test } from './fixture/urlQueryString';
 import { logout } from './login/login-helpers';
 
 test.describe('Case Notes', () => {
-  test.describe.configure({ retries: 0, mode: 'serial' });
+  test.describe.configure({ mode: 'serial', retries: 0 });
 
   let addCaseNoteButton;
   let noteNotesAlert;

@@ -1,39 +1,39 @@
 import { ComboOption } from '../components/Combobox';
 
-export interface InputRef {
-  setValue: (value: string) => void;
-  disable: (value: boolean) => void;
-  clearValue: () => void;
-  resetValue: () => void;
-  getValue: () => string;
-  focus: () => void;
-}
-
-export type TextAreaRef = InputRef;
-
 export interface ComboBoxRef {
-  setSelections: (options: ComboOption[]) => void;
-  getSelections: () => ComboOption[];
   clearSelections: () => void;
   disable: (value: boolean) => void;
   focusInput: () => void;
-}
-
-export interface RadioRef {
-  disable: (value: boolean) => void;
-  check: (value: boolean) => void;
-  isChecked: () => boolean;
+  getSelections: () => ComboOption[];
+  setSelections: (options: ComboOption[]) => void;
 }
 
 export interface DateRange {
-  start?: string;
   end?: string;
+  start?: string;
 }
 
 export interface DateRangePickerRef extends Omit<InputRef, 'setValue'> {
   setValue: (options: DateRange) => void;
 }
 
+export interface InputRef {
+  clearValue: () => void;
+  disable: (value: boolean) => void;
+  focus: () => void;
+  getValue: () => string;
+  resetValue: () => void;
+  setValue: (value: string) => void;
+}
+
+export interface RadioRef {
+  check: (value: boolean) => void;
+  disable: (value: boolean) => void;
+  isChecked: () => boolean;
+}
+
 export interface SelectRef extends Omit<InputRef, 'getValue'> {
   getValue: () => SingleSelectOptionList;
 }
+
+export type TextAreaRef = InputRef;

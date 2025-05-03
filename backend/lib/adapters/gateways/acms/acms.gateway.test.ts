@@ -1,12 +1,12 @@
-import { AbstractMssqlClient } from '../abstract-mssql-client';
-import { AcmsGatewayImpl } from './acms.gateway';
+import { UnknownError } from '../../../common-errors/unknown-error';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
   AcmsConsolidation,
   AcmsConsolidationChildCase,
   AcmsPredicate,
 } from '../../../use-cases/dataflows/migrate-consolidations';
-import { UnknownError } from '../../../common-errors/unknown-error';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
+import { AcmsGatewayImpl } from './acms.gateway';
 
 describe('ACMS gateway tests', () => {
   const chapters = [
@@ -20,14 +20,14 @@ describe('ACMS gateway tests', () => {
     const spy = jest
       .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
       .mockResolvedValueOnce({
-        success: true,
-        results: [{ leadCaseCount: 0 }],
         message: '',
+        results: [{ leadCaseCount: 0 }],
+        success: true,
       })
       .mockResolvedValue({
-        success: true,
-        results: [],
         message: '',
+        results: [],
+        success: true,
       });
 
     const predicate: AcmsPredicate = {
@@ -52,14 +52,14 @@ describe('ACMS gateway tests', () => {
     const spy = jest
       .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
       .mockResolvedValueOnce({
-        success: true,
-        results: [{ leadCaseCount: 0 }],
         message: '',
+        results: [{ leadCaseCount: 0 }],
+        success: true,
       })
       .mockResolvedValue({
-        success: true,
-        results: [],
         message: '',
+        results: [],
+        success: true,
       });
 
     const predicate: AcmsPredicate = {
@@ -93,7 +93,6 @@ describe('ACMS gateway tests', () => {
       },
     ];
     const expectedResult: AcmsConsolidation = {
-      leadCaseId: '000-00-00000',
       childCases: [
         {
           caseId: '000-00-11111',
@@ -106,12 +105,13 @@ describe('ACMS gateway tests', () => {
           consolidationType: 'substantive',
         },
       ],
+      leadCaseId: '000-00-00000',
     };
 
     const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-      success: true,
-      results: databaseResult,
       message: '',
+      results: databaseResult,
+      success: true,
     });
 
     const context = await createMockApplicationContext();
@@ -141,7 +141,6 @@ describe('ACMS gateway tests', () => {
       },
     ];
     const expectedResult: AcmsConsolidation = {
-      leadCaseId: '000-00-00000',
       childCases: [
         {
           caseId: '000-00-11111',
@@ -154,12 +153,13 @@ describe('ACMS gateway tests', () => {
           consolidationType: 'administrative',
         },
       ],
+      leadCaseId: '000-00-00000',
     };
 
     const spy = jest.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
-      success: true,
-      results: databaseResult,
       message: '',
+      results: databaseResult,
+      success: true,
     });
 
     const context = await createMockApplicationContext();
@@ -187,9 +187,9 @@ describe('ACMS gateway tests', () => {
       } as AcmsPredicate);
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
-        status: 500,
         message: mockError.message,
         originalError: mockError,
+        status: 500,
       }),
     );
   });
@@ -204,9 +204,9 @@ describe('ACMS gateway tests', () => {
       return await gateway.getConsolidationDetails(context, '000-00-1234');
     }).rejects.toThrow(
       new UnknownError('ACMS_GATEWAY', {
-        status: 500,
         message: mockError.message,
         originalError: mockError,
+        status: 500,
       }),
     );
   });

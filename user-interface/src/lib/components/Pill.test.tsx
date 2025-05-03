@@ -1,11 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+
 import { Pill } from './Pill';
 
 describe('Test pill', () => {
   test('should call onclick event when pill is clicked', async () => {
     const clickFn = vi.fn((_value: string) => {});
 
-    render(<Pill id="test" label={'Test pill'} value={'test-value'} onClick={clickFn}></Pill>);
+    render(<Pill id="test" label={'Test pill'} onClick={clickFn} value={'test-value'}></Pill>);
 
     const pill = screen.getByTestId('pill-test');
     fireEvent.click(pill);
@@ -16,7 +17,7 @@ describe('Test pill', () => {
   test('should call onclick event when Enter or Space key is typed', async () => {
     const clickFn = vi.fn((_value: string) => {});
 
-    render(<Pill id="test" label={'Test pill'} value={'test-value'} onClick={clickFn}></Pill>);
+    render(<Pill id="test" label={'Test pill'} onClick={clickFn} value={'test-value'}></Pill>);
 
     const pill = screen.getByTestId('pill-test');
     fireEvent.keyDown(pill, { key: 'Enter' });
@@ -36,9 +37,9 @@ describe('Test pill', () => {
       <Pill
         id="test"
         label={'Test pill'}
-        value={'test-value'}
-        onKeyDown={keyDownFn}
         onClick={clickFn}
+        onKeyDown={keyDownFn}
+        value={'test-value'}
       ></Pill>,
     );
 

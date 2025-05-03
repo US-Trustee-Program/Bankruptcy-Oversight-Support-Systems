@@ -1,55 +1,16 @@
-import { ApplicationContext } from '../../adapters/types/basic';
-import { getOfficeAssigneesRepository, getOfficesGateway } from '../../factory';
-import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CaseAssignment } from '../../../../common/src/cams/assignments';
-import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
-import { OfficeAssignee } from '../gateways.types';
 import { getCaseIdParts } from '../../../../common/src/cams/cases';
+import { mapDivisionCodeToUstpOffice } from '../../../../common/src/cams/offices';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { getOfficeAssigneesRepository, getOfficesGateway } from '../../factory';
+import { OfficeAssignee } from '../gateways.types';
 
 const MODULE_NAME = 'OFFICE-ASSIGNEES-USE-CASE';
 
 export type CaseClosedEvent = {
   caseId: string;
 };
-
-async function getDivisionCodeMap(context: ApplicationContext) {
-  const gateway = getOfficesGateway(context);
-  const offices = await gateway.getOffices(context);
-  return mapDivisionCodeToUstpOffice(offices);
-}
-
-async function handleCaseAssignmentEvent(
-  context: ApplicationContext,
-  event: CaseAssignment,
-): Promise<void> {
-  try {
-    const { caseId, userId, name } = event;
-
-    const map = await getDivisionCodeMap(context);
-    const { divisionCode } = getCaseIdParts(caseId);
-
-    const assignee: OfficeAssignee = {
-      officeCode: map.get(divisionCode).officeCode,
-      caseId,
-      userId,
-      name,
-    };
-
-    if (event.unassignedOn) {
-      await deleteCaseAssignment(context, assignee);
-    } else {
-      await createCaseAssignment(context, assignee);
-    }
-  } catch (originalError) {
-    throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-      camsStackInfo: {
-        message: 'Failed to handle case assignment event.',
-        module: MODULE_NAME,
-      },
-      data: event,
-    });
-  }
-}
 
 async function createCaseAssignment(
   context: ApplicationContext,
@@ -66,6 +27,45 @@ async function deleteCaseAssignment(
   const repo = getOfficeAssigneesRepository(context);
   const { caseId, userId } = assignee;
   await repo.deleteMany({ caseId, userId });
+}
+
+async function getDivisionCodeMap(context: ApplicationContext) {
+  const gateway = getOfficesGateway(context);
+  const offices = await gateway.getOffices(context);
+  return mapDivisionCodeToUstpOffice(offices);
+}
+
+async function handleCaseAssignmentEvent(
+  context: ApplicationContext,
+  event: CaseAssignment,
+): Promise<void> {
+  try {
+    const { caseId, name, userId } = event;
+
+    const map = await getDivisionCodeMap(context);
+    const { divisionCode } = getCaseIdParts(caseId);
+
+    const assignee: OfficeAssignee = {
+      caseId,
+      name,
+      officeCode: map.get(divisionCode).officeCode,
+      userId,
+    };
+
+    if (event.unassignedOn) {
+      await deleteCaseAssignment(context, assignee);
+    } else {
+      await createCaseAssignment(context, assignee);
+    }
+  } catch (originalError) {
+    throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+      camsStackInfo: {
+        message: 'Failed to handle case assignment event.',
+        module: MODULE_NAME,
+      },
+      data: event,
+    });
+  }
 }
 
 async function handleCaseClosedEvent(

@@ -1,4 +1,5 @@
 import { describe } from 'vitest';
+
 import Api2 from '../models/api2';
 import { useApi2 } from './UseApi2';
 

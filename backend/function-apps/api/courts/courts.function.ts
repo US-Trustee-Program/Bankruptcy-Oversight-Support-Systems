@@ -1,7 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+
+import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { CourtsController } from '../../../lib/controllers/courts/courts.controller';
 
 const MODULE_NAME = 'COURTS-FUNCTION';
 
@@ -26,8 +27,8 @@ export default async function handler(
 }
 
 app.http('courts', {
-  methods: ['GET'],
   authLevel: 'anonymous',
   handler,
+  methods: ['GET'],
   route: 'courts',
 });

@@ -1,28 +1,21 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
-import { BrowserRouter } from 'react-router-dom';
-import { ConsolidationOrder } from '@common/cams/orders';
 import {
   ConsolidationOrderAccordion,
   ConsolidationOrderAccordionProps,
 } from '@/data-verification/consolidation/ConsolidationOrderAccordion';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { formatDate } from '@/lib/utils/datetime';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { FeatureFlagSet } from '@common/feature-flags';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { formatDate } from '@/lib/utils/datetime';
+import { orderStatusType, orderType } from '@/lib/utils/labels';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { ConsolidationOrder } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { FeatureFlagSet } from '@common/feature-flags';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent, { UserEvent } from '@testing-library/user-event';
-
-function findAccordionHeading(id: string) {
-  const heading = screen.getByTestId(`accordion-heading-${id}`);
-  expect(heading).toBeInTheDocument();
-  expect(heading).toBeVisible();
-  return heading;
-}
+import { BrowserRouter } from 'react-router-dom';
 
 function findAccordionContent(id: string, visible: boolean) {
   const content = screen.getByTestId(`accordion-content-${id}`);
@@ -33,6 +26,13 @@ function findAccordionContent(id: string, visible: boolean) {
     expect(content).not.toBeVisible();
   }
   return content;
+}
+
+function findAccordionHeading(id: string) {
+  const heading = screen.getByTestId(`accordion-heading-${id}`);
+  expect(heading).toBeInTheDocument();
+  expect(heading).toBeVisible();
+  return heading;
 }
 
 async function openAccordion(user: UserEvent, orderId: string) {
@@ -78,14 +78,14 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   function renderWithProps(props?: Partial<ConsolidationOrderAccordionProps>) {
     const defaultProps: ConsolidationOrderAccordionProps = {
-      order,
       courts: offices,
-      orderType,
-      statusType: orderStatusType,
-      onOrderUpdate: onOrderUpdateMockFunc,
-      onExpand: onExpandMockFunc,
-      regionsMap: regionMap,
       fieldHeaders: accordionFieldHeaders,
+      onExpand: onExpandMockFunc,
+      onOrderUpdate: onOrderUpdateMockFunc,
+      order,
+      orderType,
+      regionsMap: regionMap,
+      statusType: orderStatusType,
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -202,7 +202,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should display approved order content', () => {
     const leadCase = MockData.getCaseSummary();
-    const order = MockData.getConsolidationOrder({ override: { status: 'approved', leadCase } });
+    const order = MockData.getConsolidationOrder({ override: { leadCase, status: 'approved' } });
     renderWithProps({ order });
 
     const leadCaseLink = screen.queryByTestId(`lead-case-number-link`);
@@ -217,7 +217,7 @@ describe('ConsolidationOrderAccordion tests', () => {
 
   test('should display rejected order content', () => {
     const order = MockData.getConsolidationOrder({
-      override: { status: 'rejected', reason: 'Test.' },
+      override: { reason: 'Test.', status: 'rejected' },
     });
     renderWithProps({ order });
 
@@ -524,8 +524,8 @@ describe('ConsolidationOrderAccordion tests', () => {
 
     const expectedOrderRejected: ConsolidationOrder = {
       ...order,
-      status: 'rejected',
       reason: 'Test.',
+      status: 'rejected',
     };
 
     vi.spyOn(Api2, 'putConsolidationOrderRejection').mockResolvedValue({

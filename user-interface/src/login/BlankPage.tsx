@@ -1,8 +1,10 @@
-import { Banner } from '@/lib/components/uswds/Banner';
-import { PropsWithChildren } from 'react';
-import '@/lib/components/Header.scss';
-import './BlankPage.scss';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import { Banner } from '@/lib/components/uswds/Banner';
+import '@/lib/components/Header.scss';
+
+import './BlankPage.scss';
+
+import { PropsWithChildren } from 'react';
 
 export type BlankPageProps = PropsWithChildren;
 
@@ -11,12 +13,12 @@ export function BlankPage(props: BlankPageProps) {
     <MainContent className="blank-page">
       <Banner></Banner>
       <div className="usa-overlay"></div>
-      <header role="banner" className="cams-header usa-header usa-header--basic">
+      <header className="cams-header usa-header usa-header--basic" role="banner">
         <div className="usa-nav-container">
           <div className="cams-logo-and-title">
             <div className="usa-navbar">
               <div className="cams-logo usa-logo">
-                <img src="/doj-logo.png" alt="" className="doj-logo usa-banner__header"></img>
+                <img alt="" className="doj-logo usa-banner__header" src="/doj-logo.png"></img>
               </div>
             </div>
             <div className="site-title">

@@ -1,6 +1,40 @@
 import { CaseDocketEntry, CaseDocketEntryDocument } from '@common/cams/cases';
-import Icon from './uswds/Icon';
+
 import { formatDateForVoiceOver } from './uswds/DateRangePicker';
+import Icon from './uswds/Icon';
+
+export interface DocketEntryDocumentListProps {
+  docketEntry?: CaseDocketEntry;
+}
+
+export default function DocketEntryDocumentList(props: DocketEntryDocumentListProps) {
+  const { docketEntry } = props;
+  const documents: CaseDocketEntryDocument[] | undefined = docketEntry?.documents;
+
+  if (!documents || documents.length === 0) return <></>;
+
+  return (
+    <div className="docket-documents">
+      <ul className="usa-list usa-list--unstyled" data-testid="document-unordered-list">
+        {documents.map((linkInfo: CaseDocketEntryDocument) => {
+          return (
+            <li key={linkInfo.fileUri}>
+              <a
+                aria-label={`Link for document number ${docketEntry?.documentNumber ?? ''} ${formatDateForVoiceOver(docketEntry?.dateFiled ?? '')} ${docketEntry?.summaryText}`}
+                href={linkInfo.fileUri}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {generateDocketFilenameDisplay(linkInfo)}
+                <Icon className="link-icon" name="launch"></Icon>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 export function fileSizeDescription(fileSize: number): string {
   // https://learn.microsoft.com/en-us/style-guide/a-z-word-list-term-collections/term-collections/bits-bytes-terms
@@ -24,40 +58,7 @@ export function fileSizeDescription(fileSize: number): string {
 }
 
 export function generateDocketFilenameDisplay(linkInfo: CaseDocketEntryDocument): string {
-  const { fileLabel, fileSize, fileExt } = linkInfo;
+  const { fileExt, fileLabel, fileSize } = linkInfo;
   const extension = fileExt ? fileExt?.toUpperCase() + ', ' : '';
   return `View ${fileLabel} [${extension}${fileSizeDescription(fileSize)}]`;
-}
-
-export interface DocketEntryDocumentListProps {
-  docketEntry?: CaseDocketEntry;
-}
-
-export default function DocketEntryDocumentList(props: DocketEntryDocumentListProps) {
-  const { docketEntry } = props;
-  const documents: CaseDocketEntryDocument[] | undefined = docketEntry?.documents;
-
-  if (!documents || documents.length === 0) return <></>;
-
-  return (
-    <div className="docket-documents">
-      <ul className="usa-list usa-list--unstyled" data-testid="document-unordered-list">
-        {documents.map((linkInfo: CaseDocketEntryDocument) => {
-          return (
-            <li key={linkInfo.fileUri}>
-              <a
-                href={linkInfo.fileUri}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`Link for document number ${docketEntry?.documentNumber ?? ''} ${formatDateForVoiceOver(docketEntry?.dateFiled ?? '')} ${docketEntry?.summaryText}`}
-              >
-                {generateDocketFilenameDisplay(linkInfo)}
-                <Icon className="link-icon" name="launch"></Icon>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
 }

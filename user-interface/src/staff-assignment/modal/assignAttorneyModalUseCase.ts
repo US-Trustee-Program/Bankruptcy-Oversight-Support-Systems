@@ -1,14 +1,15 @@
-import { AttorneyUser, CamsUserReference } from '@common/cams/users';
-import { deepEqual } from '@/lib/utils/objectEquality';
 import useApi2 from '@/lib/hooks/UseApi2';
+import { deepEqual } from '@/lib/utils/objectEquality';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
+import { AttorneyUser, CamsUserReference } from '@common/cams/users';
+
 import {
-  AssignAttorneyModalStore,
   AssignAttorneyModalControls,
-  AssignAttorneyModalUseCase,
   AssignAttorneyModalOpenProps,
+  AssignAttorneyModalStore,
+  AssignAttorneyModalUseCase,
 } from './assignAttorneyModal.types';
 
 const assignAttorneyModalUseCase = (
@@ -19,11 +20,6 @@ const assignAttorneyModalUseCase = (
     freezeBackground: () => {
       store.setInitialDocumentBodyStyle(document.body.style.overflow);
       document.body.style.overflow = 'hidden';
-    },
-
-    thawBackground: () => {
-      document.body.style.overflow = store.initialDocumentBodyStyle;
-      store.setInitialDocumentBodyStyle('');
     },
 
     handleFocus: (event: React.FocusEvent<HTMLElement>) => {
@@ -57,6 +53,11 @@ const assignAttorneyModalUseCase = (
           (attorneyList as HTMLElement).focus();
         }
       }
+    },
+
+    thawBackground: () => {
+      document.body.style.overflow = store.initialDocumentBodyStyle;
+      store.setInitialDocumentBodyStyle('');
     },
   };
 
@@ -97,17 +98,17 @@ const assignAttorneyModalUseCase = (
 
       try {
         await api.postStaffAssignments({
-          caseId: store.bCase?.caseId,
           attorneyList: finalAttorneyList,
+          caseId: store.bCase?.caseId,
           role: CamsRole.TrialAttorney,
         });
         if (store.submissionCallback) {
           store.submissionCallback({
-            bCase: store.bCase,
-            selectedAttorneyList: finalAttorneyList,
-            previouslySelectedList: store.previouslySelectedList,
-            status: 'success',
             apiResult: {},
+            bCase: store.bCase,
+            previouslySelectedList: store.previouslySelectedList,
+            selectedAttorneyList: finalAttorneyList,
+            status: 'success',
           });
           assignmentChangeCallback(finalAttorneyList);
         }
@@ -116,11 +117,11 @@ const assignAttorneyModalUseCase = (
       } catch (e) {
         if (store.submissionCallback) {
           store.submissionCallback({
-            bCase: store.bCase,
-            selectedAttorneyList: finalAttorneyList,
-            previouslySelectedList: store.previouslySelectedList,
-            status: 'error',
             apiResult: e as Error,
+            bCase: store.bCase,
+            previouslySelectedList: store.previouslySelectedList,
+            selectedAttorneyList: finalAttorneyList,
+            status: 'error',
           });
         }
         store.setCheckListValues([]);
@@ -134,6 +135,16 @@ const assignAttorneyModalUseCase = (
     attorneyIsInCheckList: (attorney: AttorneyUser): boolean => {
       const result = store.checkListValues.find((theAttorney) => theAttorney.id === attorney.id);
       return result !== undefined;
+    },
+
+    sortAttorneys: (a: AttorneyUser, b: AttorneyUser) => {
+      if (a.name < b.name) {
+        return -1;
+      }
+      if (a.name > b.name) {
+        return 1;
+      }
+      return 0;
     },
 
     updateCheckList: (ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser) => {
@@ -156,16 +167,6 @@ const assignAttorneyModalUseCase = (
       controls.modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
 
       store.setCheckListValues(localCheckListValues);
-    },
-
-    sortAttorneys: (a: AttorneyUser, b: AttorneyUser) => {
-      if (a.name < b.name) {
-        return -1;
-      }
-      if (a.name > b.name) {
-        return 1;
-      }
-      return 0;
     },
   };
 

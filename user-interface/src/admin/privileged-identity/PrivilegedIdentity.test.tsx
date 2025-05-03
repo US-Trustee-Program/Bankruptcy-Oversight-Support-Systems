@@ -1,12 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { PrivilegedIdentity, sortUserList, toComboOption } from './PrivilegedIdentity';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
-import MockData from '@common/cams/test-utilities/mock-data';
-import userEvent from '@testing-library/user-event';
-import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { RoleAndOfficeGroupNames } from '@common/cams/privileged-identity';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsUserReference, PrivilegedIdentityUser } from '@common/cams/users';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+import { PrivilegedIdentity, sortUserList, toComboOption } from './PrivilegedIdentity';
 
 async function expectItemToBeDisabled(selector: string) {
   let item;
@@ -80,13 +81,13 @@ describe('Privileged Identity screen tests', () => {
     roleListItemId = `role-list-option-item-${mockGroups.roles.length - 1}`;
 
     mockUserRecord = {
-      id: mockUserList[0].id,
-      documentType: 'PRIVILEGED_IDENTITY_USER',
-      name: mockUserList[0].name,
       claims: {
         groups: [mockGroups.offices[0], mockGroups.roles[0]],
       },
+      documentType: 'PRIVILEGED_IDENTITY_USER',
       expires: mockDate1,
+      id: mockUserList[0].id,
+      name: mockUserList[0].name,
     };
 
     const mockFeatureFlags = {
@@ -113,8 +114,8 @@ describe('Privileged Identity screen tests', () => {
   test('should return a ComboOption for given groupName', async () => {
     const groupName = 'USTP CAMS test string';
     const expectedComboOption = {
-      value: groupName,
       label: 'test string',
+      value: groupName,
     };
     expect(toComboOption(groupName)).toEqual(expectedComboOption);
   });

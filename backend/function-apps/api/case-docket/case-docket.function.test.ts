@@ -1,21 +1,22 @@
-import handler from './case-docket.function';
+import { InvocationContext } from '@azure/functions';
+
+import { CaseDocket } from '../../../../common/src/cams/cases';
+import { CamsHttpRequest } from '../../../lib/adapters/types/http';
+import { NotFoundError } from '../../../lib/common-errors/not-found-error';
+import { CaseDocketController } from '../../../lib/controllers/case-docket/case-docket.controller';
 import { DXTR_CASE_DOCKET_ENTRIES } from '../../../lib/testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../lib/testing/testing-constants';
-import { InvocationContext } from '@azure/functions';
-import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { CaseDocketController } from '../../../lib/controllers/case-docket/case-docket.controller';
-import { NotFoundError } from '../../../lib/common-errors/not-found-error';
-import { CaseDocket } from '../../../../common/src/cams/cases';
+import handler from './case-docket.function';
 
 describe('Case docket function', () => {
   const context = new InvocationContext({
-    logHandler: () => {},
     invocationId: 'id',
+    logHandler: () => {},
   });
 
   test('Should return a docket consisting of a list of docket entries an existing case ID', async () => {
@@ -23,7 +24,7 @@ describe('Case docket function', () => {
       params: { caseId: NORMAL_CASE_ID },
     };
     const request = createMockAzureFunctionRequest(requestProps);
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseDocket>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseDocket>({
       data: DXTR_CASE_DOCKET_ENTRIES,
     });
     jest.spyOn(CaseDocketController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);

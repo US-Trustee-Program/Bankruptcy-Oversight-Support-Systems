@@ -1,5 +1,6 @@
-import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
+import * as sdk from 'launchdarkly-react-client-sdk';
+
 import * as config from '../../configuration/featureFlagConfiguration';
 import useFeatureFlags from './UseFeatureFlags';
 
@@ -22,8 +23,8 @@ describe('useFeatureFlag hook', () => {
   test('should use defaults when an api key is not available', () => {
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: '',
-      useExternalProvider: false,
       useCamelCaseFlagKeys: false,
+      useExternalProvider: false,
     });
     const featureFlags = useFeatureFlags();
     expect(featureFlags).toEqual({});
@@ -33,8 +34,8 @@ describe('useFeatureFlag hook', () => {
     vi.spyOn(sdk, 'useFlags').mockReturnValue({});
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: BOGUS_CLIENT_ID,
-      useExternalProvider: true,
       useCamelCaseFlagKeys: false,
+      useExternalProvider: true,
     });
     const featureFlags = useFeatureFlags();
     expect(featureFlags).toEqual({});
@@ -44,8 +45,8 @@ describe('useFeatureFlag hook', () => {
     vi.spyOn(sdk, 'useFlags').mockReturnValue(remoteFeatureFlags);
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: BOGUS_CLIENT_ID,
-      useExternalProvider: true,
       useCamelCaseFlagKeys: false,
+      useExternalProvider: true,
     });
     const featureFlags = useFeatureFlags();
     expect(featureFlags).toEqual(remoteFeatureFlags);
@@ -57,8 +58,8 @@ describe('useFeatureFlag hook', () => {
     vi.spyOn(sdk, 'useFlags').mockRejectedValue(new Error('this should not be called'));
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: BOGUS_CLIENT_ID,
-      useExternalProvider: true,
       useCamelCaseFlagKeys: false,
+      useExternalProvider: true,
     });
     const featureFlags = useFeatureFlags();
     expect(featureFlags).toEqual(testFeatureFlags);

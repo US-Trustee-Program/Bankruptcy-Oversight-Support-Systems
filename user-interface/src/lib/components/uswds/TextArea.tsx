@@ -4,14 +4,14 @@ import { TextAreaRef } from '@/lib/type-declarations/input-fields';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 export type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
+  ariaDescription?: string;
   id: string;
   label?: string;
-  ariaDescription?: string;
   value?: string;
 };
 
 function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
-  const { id, label, ariaDescription, ...otherProps } = props;
+  const { ariaDescription, id, label, ...otherProps } = props;
   const labelId = `textarea-label-${id}`;
   const textAreaId = `textarea-${id}`;
 
@@ -67,15 +67,15 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
     inputRef?.current?.focus();
   }
 
-  useImperativeHandle(ref, () => ({ clearValue, resetValue, setValue, getValue, disable, focus }));
+  useImperativeHandle(ref, () => ({ clearValue, disable, focus, getValue, resetValue, setValue }));
 
   return (
     <div className="usa-form-group textarea-container">
       <label
+        className={`usa-label ${props.className ? `${props.className}-label` : ''}`}
+        data-testid={labelId}
         htmlFor={textAreaId}
         id={labelId}
-        data-testid={labelId}
-        className={`usa-label ${props.className ? `${props.className}-label` : ''}`}
       >
         {label}
         {props.required && <span className="required-form-field" />}
@@ -88,14 +88,14 @@ function TextAreaComponent(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
       <div className="usa-textarea-group">
         <textarea
           {...otherProps}
-          id={textAreaId}
+          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
           className={`${props.className ?? ''} usa-textarea`}
           data-testid={textAreaId}
-          onChange={handleOnChange}
           disabled={inputDisabled}
-          value={inputValue}
-          aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
+          id={textAreaId}
+          onChange={handleOnChange}
           ref={inputRef}
+          value={inputValue}
         ></textarea>
       </div>
     </div>

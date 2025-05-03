@@ -1,30 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
+
 import { ComboOption } from './combobox/ComboBox';
 import { Pill } from './Pill';
 
 type PillBoxProps = {
-  id: string;
-  disabled?: boolean;
   ariaLabelPrefix?: string;
   className?: string;
+  disabled?: boolean;
+  id: string;
+  onSelectionChange: (selections: ComboOption[]) => void;
   selections: ComboOption[];
   wrapPills?: boolean;
-  onSelectionChange: (selections: ComboOption[]) => void;
 };
 
 type PillFocus = {
-  shouldFocus: boolean;
   index: number;
+  shouldFocus: boolean;
 };
 
 function PillBox(props: PillBoxProps) {
-  const { onSelectionChange, ariaLabelPrefix, disabled, wrapPills } = props;
+  const { ariaLabelPrefix, disabled, onSelectionChange, wrapPills } = props;
   const pillRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const [selections, setSelections] = useState<Map<string, ComboOption>>(
     new Map(props.selections.map((value) => [value.value, value])),
   );
-  const [pillFocus, setPillFocus] = useState<PillFocus>({ shouldFocus: false, index: 0 });
+  const [pillFocus, setPillFocus] = useState<PillFocus>({ index: 0, shouldFocus: false });
 
   function onPillClick(value: string) {
     const removedIndex = Array.from(selections.entries()).findIndex(([key, _]) => key === value);
@@ -35,9 +36,9 @@ function PillBox(props: PillBoxProps) {
     }
 
     if (newSelections.size > 0 && removedIndex > newSelections.size - 1) {
-      setPillFocus({ shouldFocus: true, index: removedIndex });
+      setPillFocus({ index: removedIndex, shouldFocus: true });
     } else {
-      setPillFocus({ shouldFocus: true, index: removedIndex + 1 });
+      setPillFocus({ index: removedIndex + 1, shouldFocus: true });
     }
 
     onSelectionChange([...newSelections.values()]);
@@ -60,18 +61,18 @@ function PillBox(props: PillBoxProps) {
   }, [pillFocus]);
 
   return (
-    <div id={props.id} className={`pill-container ${props.className}`} role="list">
+    <div className={`pill-container ${props.className}`} id={props.id} role="list">
       {[...selections.values()].map((selection, idx) => (
-        <span role="listitem" className="pill-span" key={idx}>
+        <span className="pill-span" key={idx} role="listitem">
           <Pill
+            ariaLabelPrefix={ariaLabelPrefix}
+            disabled={disabled}
             id={`pill-${props.id}-${idx}`}
             label={selection.label}
-            ariaLabelPrefix={ariaLabelPrefix}
-            value={selection.value}
             onClick={onPillClick}
-            disabled={disabled}
-            wrapText={wrapPills}
             ref={(el: HTMLButtonElement | null) => (pillRefs.current[idx] = el)}
+            value={selection.value}
+            wrapText={wrapPills}
           ></Pill>
         </span>
       ))}

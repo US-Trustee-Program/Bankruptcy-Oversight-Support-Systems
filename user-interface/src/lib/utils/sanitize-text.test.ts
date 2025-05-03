@@ -1,38 +1,40 @@
-import { describe, expect, vi, beforeEach } from 'vitest';
-import { sanitizeText } from './sanitize-text';
-import DOMPurify from 'dompurify';
 import type { Config, RemovedElement } from 'dompurify';
+
+import DOMPurify from 'dompurify';
+import { beforeEach, describe, expect, vi } from 'vitest';
+
+import { sanitizeText } from './sanitize-text';
 
 // Mock document.createElement
 const mockElement = {
-  tagName: 'script',
+  addEventListener: vi.fn(),
+  appendChild: vi.fn(),
   baseURI: '',
   childNodes: [],
-  firstChild: null,
-  isConnected: false,
-  nodeType: 1,
-  nodeName: 'SCRIPT',
-  nodeValue: null,
-  parentNode: null,
-  textContent: '',
-  appendChild: vi.fn(),
   cloneNode: vi.fn(),
   compareDocumentPosition: vi.fn(),
   contains: vi.fn(),
+  dispatchEvent: vi.fn(),
+  firstChild: null,
   getRootNode: vi.fn(),
   hasChildNodes: vi.fn(),
   insertBefore: vi.fn(),
+  isConnected: false,
   isDefaultNamespace: vi.fn(),
   isEqualNode: vi.fn(),
   isSameNode: vi.fn(),
   lookupNamespaceURI: vi.fn(),
   lookupPrefix: vi.fn(),
+  nodeName: 'SCRIPT',
+  nodeType: 1,
+  nodeValue: null,
   normalize: vi.fn(),
+  parentNode: null,
   removeChild: vi.fn(),
-  replaceChild: vi.fn(),
-  addEventListener: vi.fn(),
-  dispatchEvent: vi.fn(),
   removeEventListener: vi.fn(),
+  replaceChild: vi.fn(),
+  tagName: 'script',
+  textContent: '',
 } as unknown as Element;
 
 vi.stubGlobal('document', {
@@ -42,8 +44,8 @@ vi.stubGlobal('document', {
 // Mock DOMPurify
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: vi.fn(),
     removed: [] as RemovedElement[],
+    sanitize: vi.fn(),
   },
 }));
 

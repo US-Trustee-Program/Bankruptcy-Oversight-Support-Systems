@@ -1,12 +1,13 @@
-import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
-import { describe, test } from 'vitest';
-import { getCamsUser, refreshOktaToken, registerRefreshOktaToken } from './okta-library';
-import LocalStorage from '@/lib/utils/local-storage';
-import { MockData } from '@common/cams/test-utilities/mock-data';
 import * as apiModule from '@/lib/models/api';
 import TestingUtilities from '@/lib/testing/testing-utilities';
+import LocalStorage from '@/lib/utils/local-storage';
 import { CamsSession } from '@common/cams/session';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import OktaAuth, { UserClaims } from '@okta/okta-auth-js';
+import { describe, test } from 'vitest';
+
 import { urlRegex } from '../../../../../common/src/cams/test-utilities/regex';
+import { getCamsUser, refreshOktaToken, registerRefreshOktaToken } from './okta-library';
 
 const MOCK_OAUTH_CONFIG = { issuer: 'https://mock.okta.com/oauth2/default' };
 
@@ -40,13 +41,13 @@ describe('Okta library', () => {
     test('should return user name', () => {
       const name = 'Bobby Flay';
       const email = 'bobbyFlay@fake.com';
-      const userClaims: UserClaims = { sub: email, name, email };
+      const userClaims: UserClaims = { email, name, sub: email };
       expect(getCamsUser(userClaims)).toEqual({ id: userClaims.sub, name });
     });
 
     test('should return user email', () => {
       const email = 'bobbyFlay@fake.com';
-      const userClaims: UserClaims = { sub: email, email };
+      const userClaims: UserClaims = { email, sub: email };
       expect(getCamsUser(userClaims)).toEqual({ id: userClaims.sub, name: email });
     });
 
@@ -60,20 +61,20 @@ describe('Okta library', () => {
     let oktaAuth: OktaAuth;
 
     const userClaims: UserClaims = {
-      iss: 'http://issuer/',
-      sub: 'nobody@nodomain.xyz',
-      name: 'mock user',
       exp: EXPIRATION_SECONDS,
+      iss: 'http://issuer/',
+      name: 'mock user',
+      sub: 'nobody@nodomain.xyz',
     };
     const getUser = vi.spyOn(OktaAuth.prototype, 'getUser');
     const getOrRenewAccessToken = vi.spyOn(OktaAuth.prototype, 'getOrRenewAccessToken');
 
     const camsSession: CamsSession = {
-      provider: 'okta',
       accessToken: ACCESS_TOKEN,
-      user: { id: userClaims.sub, name: 'mock user' },
       expires: EXPIRATION_SECONDS,
       issuer: userClaims.iss ?? '',
+      provider: 'okta',
+      user: { id: userClaims.sub, name: 'mock user' },
     };
     const getSession = vi.spyOn(LocalStorage, 'getSession');
     const setSession = vi.spyOn(LocalStorage, 'setSession');
@@ -141,11 +142,11 @@ describe('Okta library', () => {
 
       expect(getSession).toHaveBeenCalled();
       expect(setSession).toHaveBeenCalledWith({
-        provider: 'okta',
         accessToken: REFRESHED_ACCESS_TOKEN,
-        user: expect.any(Object),
         expires: expect.any(Number),
         issuer: expect.stringMatching(urlRegex),
+        provider: 'okta',
+        user: expect.any(Object),
       });
     });
 

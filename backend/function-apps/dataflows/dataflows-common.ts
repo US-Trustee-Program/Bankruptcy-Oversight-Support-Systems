@@ -5,31 +5,17 @@ import {
   StorageQueueOutput,
   Timer,
 } from '@azure/functions';
-import { toAzureError, toAzureSuccess } from '../azure/functions';
-import ContextCreator from '../azure/application-context-creator';
-import { ForbiddenError } from '../../lib/common-errors/forbidden-error';
 
-export type StartMessage = object;
+import { ForbiddenError } from '../../lib/common-errors/forbidden-error';
+import ContextCreator from '../azure/application-context-creator';
+import { toAzureError, toAzureSuccess } from '../azure/functions';
 
 export type RangeMessage = {
-  start: number;
   end: number;
+  start: number;
 };
 
-/**
- * isAuthorized
- *
- * Checks for a correct API key to be passed in the Authorization header of requests to
- * http triggers.
- *
- * @param request
- * @returns
- */
-export function isAuthorized(request: HttpRequest) {
-  const header = request.headers.get('Authorization');
-  const parts = header ? header.split(' ') : ['', ''];
-  return process.env.ADMIN_KEY && parts[0] === 'ApiKey' && parts[1] === process.env.ADMIN_KEY;
-}
+export type StartMessage = object;
 
 /**
  * buildFunctionName
@@ -42,19 +28,6 @@ export function isAuthorized(request: HttpRequest) {
  */
 export function buildFunctionName(...parts): string {
   return parts.join('-').replace(/_/g, '-').replace(' ', '-');
-}
-
-/**
- * buildQueueName
- *
- * Builds an Azure storage queue name as seen in the Azure Portal that avoids duplicate names
- * by using the MODULE_NAME as a name space and abides by naming requirements.
- *
- * @param parts
- * @returns
- */
-export function buildQueueName(...parts): string {
-  return buildFunctionName(...parts).toLowerCase();
 }
 
 /**
@@ -84,6 +57,19 @@ export function buildHttpTrigger(
       return new HttpResponse(toAzureError(ContextCreator.getLogger(context), moduleName, error));
     }
   };
+}
+
+/**
+ * buildQueueName
+ *
+ * Builds an Azure storage queue name as seen in the Azure Portal that avoids duplicate names
+ * by using the MODULE_NAME as a name space and abides by naming requirements.
+ *
+ * @param parts
+ * @returns
+ */
+export function buildQueueName(...parts): string {
+  return buildFunctionName(...parts).toLowerCase();
 }
 
 /**
@@ -117,4 +103,19 @@ export function buildStartQueueTimerTrigger(_moduleName: string, queue: StorageQ
     const startMessage: StartMessage = {};
     context.extraOutputs.set(queue, startMessage);
   };
+}
+
+/**
+ * isAuthorized
+ *
+ * Checks for a correct API key to be passed in the Authorization header of requests to
+ * http triggers.
+ *
+ * @param request
+ * @returns
+ */
+export function isAuthorized(request: HttpRequest) {
+  const header = request.headers.get('Authorization');
+  const parts = header ? header.split(' ') : ['', ''];
+  return process.env.ADMIN_KEY && parts[0] === 'ApiKey' && parts[1] === process.env.ADMIN_KEY;
 }

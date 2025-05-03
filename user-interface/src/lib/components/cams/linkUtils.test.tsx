@@ -1,5 +1,6 @@
-import LinkUtils from './linkUtils';
 import { render } from '@testing-library/react';
+
+import LinkUtils from './linkUtils';
 
 describe('Test link utilities', () => {
   test('executeLinkClick should execute onClick on the given link', async () => {

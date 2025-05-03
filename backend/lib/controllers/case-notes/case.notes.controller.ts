@@ -1,19 +1,19 @@
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import HttpStatusCodes from '../../../../common/src/api/http-status-codes';
-import { CamsController } from '../controller';
-import { getCamsError } from '../../common-errors/error-utilities';
-import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
+import { ResourceActions } from '../../../../common/src/cams/actions';
 import {
   CaseNote,
   CaseNoteDeleteRequest,
   CaseNoteEditRequest,
   CaseNoteInput,
 } from '../../../../common/src/cams/cases';
-import { ForbiddenCaseNotesError } from './case.notes.exception';
 import { isValidUserInput } from '../../../../common/src/cams/sanitization';
-import { ResourceActions } from '../../../../common/src/cams/actions';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
+import { getCamsError } from '../../common-errors/error-utilities';
+import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
+import { CaseNotesUseCase } from '../../use-cases/case-notes/case-notes';
+import { CamsController } from '../controller';
+import { ForbiddenCaseNotesError } from './case.notes.exception';
 
 const MODULE_NAME = 'CASE-NOTES-CONTROLLER';
 const VALID_CASEID_PATTERN = RegExp(/^[\dA-Z]{3}-\d{2}-\d{5}$/);
@@ -41,8 +41,8 @@ export class CaseNotesController implements CamsController {
         this.validatePostRequestParameters(caseId, content, title);
         const noteInput: CaseNoteInput = {
           caseId,
-          title,
           content,
+          title,
         };
         await caseNotesUseCase.createCaseNote(context.session.user, noteInput);
         return httpSuccess({
@@ -51,8 +51,8 @@ export class CaseNotesController implements CamsController {
       } else if (context.request.method === 'DELETE') {
         const { caseId, noteId } = context.request.params;
         const archiveNote: CaseNoteDeleteRequest = {
-          id: noteId,
           caseId,
+          id: noteId,
           sessionUser: context.session.user,
         };
         this.validateArchiveRequestParameters(archiveNote);
@@ -65,8 +65,8 @@ export class CaseNotesController implements CamsController {
         const { caseId, noteId } = context.request.params;
         const noteForRequest = {
           ...note,
-          id: noteId,
           caseId,
+          id: noteId,
           updatedBy: note.updatedBy,
         };
         const request: CaseNoteEditRequest = {
@@ -76,10 +76,10 @@ export class CaseNotesController implements CamsController {
 
         const newNote = await caseNotesUseCase.editCaseNote(request);
         return httpSuccess({
-          statusCode: HttpStatusCodes.CREATED,
           body: {
             data: [newNote],
           },
+          statusCode: HttpStatusCodes.CREATED,
         });
       } else {
         const caseNotes = await caseNotesUseCase.getCaseNotes(context.request.params.caseId);
@@ -95,10 +95,36 @@ export class CaseNotesController implements CamsController {
     }
   }
 
+  private validateArchiveRequestParameters(request: Partial<CaseNoteDeleteRequest>) {
+    const badParams = [];
+    const messages = [];
+
+    if (!request['id']) {
+      badParams.push('id');
+    } else if (!request['id'].match(VALID_ID_PATTERN)) {
+      messages.push(INVALID_ID_MESSAGE);
+    }
+
+    if (!request['caseId']) {
+      badParams.push('caseId');
+    } else if (!request['caseId'].match(VALID_CASEID_PATTERN)) {
+      messages.push(INVALID_CASEID_MESSAGE);
+    }
+
+    if (badParams.length > 0) {
+      const isPlural = badParams.length > 1;
+      const message = `Required ${isPlural ? 'parameters' : 'parameter'} ${badParams.join(', ')} ${isPlural ? 'are' : 'is'} absent.`;
+      messages.push(message);
+    }
+    if (messages.length) {
+      throw new ForbiddenCaseNotesError(MODULE_NAME, { message: messages.join(' ') });
+    }
+  }
+
   private validatePostRequestParameters(
     caseId: string,
-    noteContent: string | null,
-    noteTitle: string | null,
+    noteContent: null | string,
+    noteTitle: null | string,
   ) {
     const badParams = [];
     const messages = [];
@@ -118,32 +144,6 @@ export class CaseNotesController implements CamsController {
       badParams.push('case note content');
     } else if (!isValidUserInput(noteContent)) {
       messages.push(INVALID_NOTE_MESSAGE);
-    }
-
-    if (badParams.length > 0) {
-      const isPlural = badParams.length > 1;
-      const message = `Required ${isPlural ? 'parameters' : 'parameter'} ${badParams.join(', ')} ${isPlural ? 'are' : 'is'} absent.`;
-      messages.push(message);
-    }
-    if (messages.length) {
-      throw new ForbiddenCaseNotesError(MODULE_NAME, { message: messages.join(' ') });
-    }
-  }
-
-  private validateArchiveRequestParameters(request: Partial<CaseNoteDeleteRequest>) {
-    const badParams = [];
-    const messages = [];
-
-    if (!request['id']) {
-      badParams.push('id');
-    } else if (!request['id'].match(VALID_ID_PATTERN)) {
-      messages.push(INVALID_ID_MESSAGE);
-    }
-
-    if (!request['caseId']) {
-      badParams.push('caseId');
-    } else if (!request['caseId'].match(VALID_CASEID_PATTERN)) {
-      messages.push(INVALID_CASEID_MESSAGE);
     }
 
     if (badParams.length > 0) {

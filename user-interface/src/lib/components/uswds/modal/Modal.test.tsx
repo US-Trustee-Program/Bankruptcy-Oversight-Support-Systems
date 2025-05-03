@@ -1,12 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { OpenModalButton } from './OpenModalButton';
-import Modal from './Modal';
-import { ModalRefType } from './modal-refs';
+
+import Button from '../Button';
 import Checkbox from '../Checkbox';
 import Radio from '../Radio';
-import Button from '../Button';
+import Modal from './Modal';
+import { ModalRefType } from './modal-refs';
+import { OpenModalButton } from './OpenModalButton';
 
 const testButtonId = 'open-modal-button_open-test';
 
@@ -20,17 +21,17 @@ describe('Test Modal component', () => {
   function createModal() {
     const modalRef = React.createRef<ModalRefType>();
     const actionButtonGroup = {
+      cancelButton: {
+        className: 'cancel-button',
+        label: 'Cancel',
+        onClick: cancelButtonOnClick,
+      },
       modalId: modalId,
       modalRef: modalRef,
       submitButton: {
-        label: 'Submit',
         className: 'submit-button',
+        label: 'Submit',
         onClick: submitButtonOnClick,
-      },
-      cancelButton: {
-        label: 'Cancel',
-        className: 'cancel-button',
-        onClick: cancelButtonOnClick,
       },
     };
 
@@ -38,7 +39,7 @@ describe('Test Modal component', () => {
       <div>
         Test Content
         <Checkbox id={'test-checkbox'} value={5}></Checkbox>
-        <Radio id={'test-radio-button'} name={'radio1'} label={'Radio 1'} value={'1'}></Radio>
+        <Radio id={'test-radio-button'} label={'Radio 1'} name={'radio1'} value={'1'}></Radio>
         <Button>Foo</Button>;
       </div>
     );
@@ -51,13 +52,13 @@ describe('Test Modal component', () => {
               Open Modal
             </OpenModalButton>
             <Modal
-              modalId={modalId}
-              ref={modalRef}
-              heading={'Test Heading'}
-              content={content}
               actionButtonGroup={actionButtonGroup}
+              content={content}
+              heading={'Test Heading'}
+              modalId={modalId}
               onClose={closeModal}
               onOpen={onOpenModal}
+              ref={modalRef}
             ></Modal>
           </>
         </BrowserRouter>
@@ -93,7 +94,7 @@ describe('Test Modal component', () => {
 
     expect(modal).toHaveClass('is-visible');
 
-    fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
+    fireEvent.keyDown(modal, { code: 'Escape', key: 'Escape' });
 
     expect(modal).toHaveClass('is-hidden');
     expect(modal).not.toHaveClass('is-visible');
@@ -238,12 +239,12 @@ describe('Test Modal component with force action set to true', () => {
               Open Modal
             </OpenModalButton>
             <Modal
+              actionButtonGroup={actionButtonGroup}
+              content={'Test Content'}
+              forceAction={true}
+              heading={'Test Heading'}
               modalId={modalId}
               ref={modalRef}
-              heading={'Test Heading'}
-              content={'Test Content'}
-              actionButtonGroup={actionButtonGroup}
-              forceAction={true}
             ></Modal>
           </>
         </BrowserRouter>
@@ -265,7 +266,7 @@ describe('Test Modal component with force action set to true', () => {
 
     expect(modal).toHaveClass('is-visible');
 
-    fireEvent.keyDown(modal, { key: 'Escape', code: 'Escape' });
+    fireEvent.keyDown(modal, { code: 'Escape', key: 'Escape' });
 
     expect(modal).not.toHaveClass('is-hidden');
     expect(modal).toHaveClass('is-visible');

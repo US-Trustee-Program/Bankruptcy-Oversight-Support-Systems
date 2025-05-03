@@ -1,11 +1,11 @@
-import { OfficeAssignee, OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
-import { BaseMongoRepository } from './utils/base-mongo-repository';
-import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneePredicate } from '../../../../../common/src/api/search';
-import QueryBuilder, { using } from '../../../query/query-builder';
-import { CamsError } from '../../../common-errors/cams-error';
 import { CamsUserReference } from '../../../../../common/src/cams/users';
+import { CamsError } from '../../../common-errors/cams-error';
+import QueryBuilder, { using } from '../../../query/query-builder';
 import QueryPipeline from '../../../query/query-pipeline';
+import { OfficeAssignee, OfficeAssigneesRepository } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const { and } = QueryBuilder;
 const { descending, first, group, match, pipeline, sort, source } = QueryPipeline;
@@ -17,19 +17,11 @@ export class OfficeAssigneeMongoRepository
   extends BaseMongoRepository
   implements OfficeAssigneesRepository
 {
-  private static referenceCount: number = 0;
   private static instance: OfficeAssigneeMongoRepository;
+  private static referenceCount: number = 0;
 
   private constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
-  }
-
-  public static getInstance(context: ApplicationContext) {
-    if (!OfficeAssigneeMongoRepository.instance) {
-      OfficeAssigneeMongoRepository.instance = new OfficeAssigneeMongoRepository(context);
-    }
-    OfficeAssigneeMongoRepository.referenceCount++;
-    return OfficeAssigneeMongoRepository.instance;
   }
 
   public static dropInstance() {
@@ -42,16 +34,20 @@ export class OfficeAssigneeMongoRepository
     }
   }
 
-  public release() {
-    OfficeAssigneeMongoRepository.dropInstance();
+  public static getInstance(context: ApplicationContext) {
+    if (!OfficeAssigneeMongoRepository.instance) {
+      OfficeAssigneeMongoRepository.instance = new OfficeAssigneeMongoRepository(context);
+    }
+    OfficeAssigneeMongoRepository.referenceCount++;
+    return OfficeAssigneeMongoRepository.instance;
   }
 
   async create(data: OfficeAssignee): Promise<void> {
     await this.getAdapter().insertOne(data);
   }
 
-  async search(predicate?: OfficeAssigneePredicate): Promise<OfficeAssignee[]> {
-    return this.getAdapter<OfficeAssignee>().find(this.toQuery(predicate));
+  async deleteMany(predicate: OfficeAssigneePredicate): Promise<void> {
+    await this.getAdapter<OfficeAssignee>().deleteMany(this.toQuery(predicate));
   }
 
   async getDistinctAssigneesByOffice(officeCode): Promise<CamsUserReference[]> {
@@ -80,8 +76,12 @@ export class OfficeAssigneeMongoRepository
     });
   }
 
-  async deleteMany(predicate: OfficeAssigneePredicate): Promise<void> {
-    await this.getAdapter<OfficeAssignee>().deleteMany(this.toQuery(predicate));
+  public release() {
+    OfficeAssigneeMongoRepository.dropInstance();
+  }
+
+  async search(predicate?: OfficeAssigneePredicate): Promise<OfficeAssignee[]> {
+    return this.getAdapter<OfficeAssignee>().find(this.toQuery(predicate));
   }
 
   toQuery(predicate: OfficeAssigneePredicate) {
@@ -93,7 +93,7 @@ export class OfficeAssigneeMongoRepository
     } else if (predicate.officeCode) {
       return doc('officeCode').equals(predicate.officeCode);
     } else {
-      throw new CamsError(MODULE_NAME, { message: 'Invalid predicate', data: predicate });
+      throw new CamsError(MODULE_NAME, { data: predicate, message: 'Invalid predicate' });
     }
   }
 }

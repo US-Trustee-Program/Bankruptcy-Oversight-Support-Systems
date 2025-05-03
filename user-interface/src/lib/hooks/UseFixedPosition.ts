@@ -12,8 +12,8 @@ export default function useFixedPosition() {
   };
 
   return {
+    fix,
     isFixed,
     loosen,
-    fix,
   };
 }

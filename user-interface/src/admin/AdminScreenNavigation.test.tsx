@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
+
 import AdminScreenNavigation, { AdminNavState, setCurrentAdminNav } from './AdminScreenNavigation';
 
 describe('Admin screen navigation tests', () => {

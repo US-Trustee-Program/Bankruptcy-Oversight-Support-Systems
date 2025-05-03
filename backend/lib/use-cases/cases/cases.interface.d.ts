@@ -1,26 +1,16 @@
-import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
 import { CasesSearchPredicate } from '../../../../common/src/api/search';
-
-export type CasesSyncMeta = {
-  caseIds: string[];
-  lastTxId: string;
-};
-
-type TransactionIdRangeForDate = {
-  findDate: string;
-  found: boolean;
-  end?: number;
-  start?: number;
-};
+import { CaseBasics, CaseDetail, CaseSummary } from '../../../../common/src/cams/cases';
+import { ApplicationContext } from '../../adapters/types/basic';
 
 export interface CasesInterface {
-  getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail>;
+  findMaxTransactionId(context: ApplicationContext): Promise<string>;
 
-  searchCases(
-    applicationContext: ApplicationContext,
-    searchPredicate: CasesSearchPredicate,
-  ): Promise<CaseBasics[]>;
+  findTransactionIdRangeForDate(
+    context: ApplicationContext,
+    findDate: string,
+  ): Promise<TransactionIdRangeForDate>;
+
+  getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail>;
 
   getCaseSummary(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary>;
 
@@ -28,10 +18,20 @@ export interface CasesInterface {
 
   getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<string[]>;
 
-  findTransactionIdRangeForDate(
-    context: ApplicationContext,
-    findDate: string,
-  ): Promise<TransactionIdRangeForDate>;
-
-  findMaxTransactionId(context: ApplicationContext): Promise<string>;
+  searchCases(
+    applicationContext: ApplicationContext,
+    searchPredicate: CasesSearchPredicate,
+  ): Promise<CaseBasics[]>;
 }
+
+export type CasesSyncMeta = {
+  caseIds: string[];
+  lastTxId: string;
+};
+
+type TransactionIdRangeForDate = {
+  end?: number;
+  findDate: string;
+  found: boolean;
+  start?: number;
+};

@@ -10,19 +10,19 @@ const transferCodes = ['TV', 'TI'];
 
 // TODO: Maybe this should go somewhere more appropriate with the case model or such.
 export interface PetitionInfo {
+  isTransfer: boolean;
+  isVoluntary: boolean;
   petitionCode: string;
   petitionLabel: string;
-  isVoluntary: boolean;
-  isTransfer: boolean;
 }
 
-export function getPetitionInfo(petitionCode: string | null): PetitionInfo {
+export function getPetitionInfo(petitionCode: null | string): PetitionInfo {
   return {
+    isTransfer: transferCodes.includes(petitionCode),
+    isVoluntary: voluntaryCodes.includes(petitionCode),
     petitionCode: petitionCode ?? '',
     petitionLabel: petitionLabelMap.has(petitionCode)
       ? petitionLabelMap.get(petitionCode)
       : 'Petition Not Available',
-    isVoluntary: voluntaryCodes.includes(petitionCode),
-    isTransfer: transferCodes.includes(petitionCode),
   };
 }

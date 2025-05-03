@@ -1,60 +1,61 @@
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Api2 from '@/lib/models/api2';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { OrderStatus, TransferOrder } from '@common/cams/orders';
+import { CamsRole } from '@common/cams/roles';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
+
 import {
   SuggestedTransferCases,
   SuggestedTransferCasesImperative,
   SuggestedTransferCasesProps,
 } from './SuggestedTransferCases';
-import { OrderStatus, TransferOrder } from '@common/cams/orders';
-import { CourtDivisionDetails } from '@common/cams/courts';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import Api2 from '@/lib/models/api2';
-import testingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
-import userEvent from '@testing-library/user-event';
 
 const testOffices: CourtDivisionDetails[] = [
   {
     courtDivisionCode: '001',
-    groupDesignator: 'AA',
+    courtDivisionName: 'New York 1',
     courtId: '0101',
+    courtName: 'A',
+    groupDesignator: 'AA',
     officeCode: '1',
     officeName: 'A1',
-    state: 'NY',
-    courtName: 'A',
-    courtDivisionName: 'New York 1',
     regionId: '02',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     courtDivisionCode: '003',
-    groupDesignator: 'AC',
+    courtDivisionName: 'New York 1',
     courtId: '0103',
+    courtName: 'C',
+    groupDesignator: 'AC',
     officeCode: '3',
     officeName: 'C1',
-    state: 'NY',
-    courtName: 'C',
-    courtDivisionName: 'New York 1',
     regionId: '02',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
   {
     courtDivisionCode: '002',
-    groupDesignator: 'AB',
+    courtDivisionName: 'New York 1',
     courtId: '0102',
+    courtName: 'B',
+    groupDesignator: 'AB',
     officeCode: '2',
     officeName: 'B1',
-    state: 'NY',
-    courtName: 'B',
-    courtDivisionName: 'New York 1',
     regionId: '02',
     regionName: 'NEW YORK',
+    state: 'NY',
   },
 ];
 
@@ -64,22 +65,6 @@ const caseSummaryError = new Error('Case summary not found for case ID.');
 
 const mockErrorMessage = 'Some mock error';
 const emptySuggestedCasesId = 'button-radio-case-not-listed-radio-button-click-target';
-
-async function waitForLoadToComplete(orderId: string) {
-  const testId = `loading-spinner-${orderId}-suggestions`;
-  const spinner = screen.getByTestId(testId);
-  expect(spinner).toBeInTheDocument();
-
-  await waitFor(() => {
-    expect(spinner).not.toBeInTheDocument();
-  });
-}
-
-function findCaseNumberInput(id: string) {
-  const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
-  expect(caseIdInput).toBeInTheDocument();
-  return caseIdInput;
-}
 
 function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
   if (!caseIdInput) {
@@ -92,21 +77,16 @@ function enterCaseNumber(caseIdInput: Element | null | undefined, value: string)
   return caseIdInput;
 }
 
-async function selectItemInCombobox(orderId: string, index: number) {
-  const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
-  await userEvent.click(courtComboboxItems[index]!);
-}
-
 async function fillCaseNotListedForm(
   order: CaseSummary & {
-    id: string;
-    orderType: 'transfer';
-    orderDate: string;
-    status: OrderStatus;
     docketEntries: CaseDocketEntry[];
     docketSuggestedCaseNumber?: string;
+    id: string;
     newCase?: CaseSummary;
+    orderDate: string;
+    orderType: 'transfer';
     reason?: string;
+    status: OrderStatus;
   },
 ) {
   await waitFor(() => {
@@ -128,6 +108,27 @@ async function fillCaseNotListedForm(
   expect(updated).toHaveValue(caseNumber);
 }
 
+function findCaseNumberInput(id: string) {
+  const caseIdInput = document.querySelector(`input#new-case-input-${id}`);
+  expect(caseIdInput).toBeInTheDocument();
+  return caseIdInput;
+}
+
+async function selectItemInCombobox(orderId: string, index: number) {
+  const courtComboboxItems = document.querySelectorAll(`#court-selection-${orderId} li`);
+  await userEvent.click(courtComboboxItems[index]!);
+}
+
+async function waitForLoadToComplete(orderId: string) {
+  const testId = `loading-spinner-${orderId}-suggestions`;
+  const spinner = screen.getByTestId(testId);
+  expect(spinner).toBeInTheDocument();
+
+  await waitFor(() => {
+    expect(spinner).not.toBeInTheDocument();
+  });
+}
+
 describe('SuggestedTransferCases component', () => {
   let order: TransferOrder;
 
@@ -137,11 +138,11 @@ describe('SuggestedTransferCases component', () => {
     const onAlert = vitest.fn();
     const ref = React.createRef<SuggestedTransferCasesImperative>();
     const defaultProps: SuggestedTransferCasesProps = {
-      order,
       officesList: testOffices,
+      onAlert,
       onCaseSelection,
       onInvalidCaseNumber,
-      onAlert,
+      order,
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -152,16 +153,16 @@ describe('SuggestedTransferCases component', () => {
     );
 
     return {
-      ref,
-      onCaseSelection,
       onAlert,
+      onCaseSelection,
+      ref,
     };
   }
 
   beforeEach(async () => {
     testingUtilities.setUser({
-      roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
+      roles: [CamsRole.DataVerifier],
     });
     vi.stubEnv('CAMS_PA11Y', 'true');
     order = MockData.getTransferOrder();
@@ -213,8 +214,8 @@ describe('SuggestedTransferCases component', () => {
     expect(onAlert).toHaveBeenCalled();
     expect(onAlert).toHaveBeenCalledWith({
       message: mockErrorMessage,
-      type: UswdsAlertStyle.Error,
       timeOut: 8,
+      type: UswdsAlertStyle.Error,
     });
   });
 

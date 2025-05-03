@@ -1,23 +1,23 @@
-import { ApplicationInsights, ITelemetryItem } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
+import { ApplicationInsights, ITelemetryItem } from '@microsoft/applicationinsights-web';
 
 const appInsightsConnectionString = import.meta.env['CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING'];
 const reactPlugin = new ReactPlugin();
 
 const appInsights = new ApplicationInsights({
   config: {
+    autoTrackPageVisitTime: true,
     connectionString: appInsightsConnectionString,
-    extensions: [reactPlugin],
-    extensionConfig: {},
-    enableAutoRouteTracking: true,
+    correlationHeaderExcludedDomains: ['launchdarkly.us'],
     disableAjaxTracking: false,
     disableExceptionTracking: false,
-    autoTrackPageVisitTime: true,
+    enableAutoRouteTracking: true,
     enableCorsCorrelation: true,
+    enableDebug: true,
     enableRequestHeaderTracking: true,
     enableResponseHeaderTracking: true,
-    enableDebug: true,
-    correlationHeaderExcludedDomains: ['launchdarkly.us'],
+    extensionConfig: {},
+    extensions: [reactPlugin],
   },
 });
 
@@ -31,5 +31,5 @@ if (appInsightsConnectionString) {
 }
 
 export function useAppInsights() {
-  return { reactPlugin, appInsights };
+  return { appInsights, reactPlugin };
 }

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import './ScrollToTopButton.scss';
 import Button from './uswds/Button';
 import Icon from './uswds/Icon';
@@ -19,7 +20,7 @@ export default function ScrollToTopButton() {
   }
 
   function scrollElement() {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ behavior: 'smooth', top: 0 });
     const scrollEvent = new CustomEvent('scroll');
     window.dispatchEvent(scrollEvent);
   }
@@ -34,10 +35,10 @@ export default function ScrollToTopButton() {
 
   return (
     <Button
-      onClick={() => scrollElement()}
-      className="scroll-to-top-button"
-      title="scroll to top"
       aria-label="scroll to top of the screen contents"
+      className="scroll-to-top-button"
+      onClick={() => scrollElement()}
+      title="scroll to top"
     >
       <Icon name="arrow_upward"></Icon>
     </Button>

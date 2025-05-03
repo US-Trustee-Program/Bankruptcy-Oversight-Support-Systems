@@ -1,32 +1,20 @@
-import { executeQuery } from './database';
-import { QueryResults, IDbConfig } from '../types/database';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { IDbConfig, QueryResults } from '../types/database';
+import { executeQuery } from './database';
 
 type sqlConnect = {
-  request: () => void;
   close: () => void;
   query: () => void;
+  request: () => void;
 };
 
 jest.mock('mssql', () => {
   return {
     ConnectionPool: jest.fn().mockImplementation(() => {
       return {
-        request: jest.fn().mockImplementation(() => ({
-          input: jest.fn(),
-          query: jest
-            .fn()
-            .mockImplementation((): Promise<string> => Promise.resolve('test string')),
-        })),
         connect: jest.fn().mockImplementation(
           (): Promise<sqlConnect> =>
             Promise.resolve({
-              request: jest.fn().mockImplementation(() => ({
-                input: jest.fn(),
-                query: jest
-                  .fn()
-                  .mockImplementation((): Promise<string> => Promise.resolve('test string')),
-              })),
               close: jest.fn(),
               query: jest
                 .fn()
@@ -34,8 +22,20 @@ jest.mock('mssql', () => {
                   (): Promise<string> =>
                     Promise.resolve("this is not the string you're looking for"),
                 ),
+              request: jest.fn().mockImplementation(() => ({
+                input: jest.fn(),
+                query: jest
+                  .fn()
+                  .mockImplementation((): Promise<string> => Promise.resolve('test string')),
+              })),
             }),
         ),
+        request: jest.fn().mockImplementation(() => ({
+          input: jest.fn(),
+          query: jest
+            .fn()
+            .mockImplementation((): Promise<string> => Promise.resolve('test string')),
+        })),
       };
     }),
   };
@@ -66,6 +66,6 @@ describe('Tests database', () => {
     const queryResult: QueryResults = await executeQuery(context, config, query, input);
 
     // assert
-    expect(queryResult).toEqual({ results: 'test string', message: '', success: true });
+    expect(queryResult).toEqual({ message: '', results: 'test string', success: true });
   });
 });

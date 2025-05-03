@@ -1,4 +1,5 @@
 import * as dotenv from 'dotenv';
+
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 
 dotenv.config();
@@ -14,10 +15,10 @@ export default class HealthcheckInfo {
 
   public getServiceInfo() {
     const info = {
-      version: process.env.INFO_VERSION || '',
       branch: process.env.INFO_BRANCH || '',
-      sha: process.env.INFO_SHA || '',
       releasedTimestamp: process.env.INFO_RELEASED_TIMESTAMP || '',
+      sha: process.env.INFO_SHA || '',
+      version: process.env.INFO_VERSION || '',
     };
     this.applicationContext.logger.info(MODULE_NAME, `Api Commit sha ${info.sha}`);
     return info;

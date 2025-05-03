@@ -1,19 +1,19 @@
-import { Accordion } from '@/lib/components/uswds/Accordion';
-import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
-import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
-import Radio from '@/lib/components/uswds/Radio';
 import { ConsolidationCaseTable } from '@/data-verification/consolidation/ConsolidationCasesTable';
-import Checkbox from '@/lib/components/uswds/Checkbox';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import { CaseTable } from '@/data-verification/transfer/CaseTable';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderModal } from '@/data-verification/consolidation/ConsolidationOrderModal';
-import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { CaseTable } from '@/data-verification/transfer/CaseTable';
+import { CaseNumber } from '@/lib/components/CaseNumber';
+import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import ComboBox from '@/lib/components/combobox/ComboBox';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import { Accordion } from '@/lib/components/uswds/Accordion';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Checkbox from '@/lib/components/uswds/Checkbox';
+import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
+import Radio from '@/lib/components/uswds/Radio';
+import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { useEffect } from 'react';
 
@@ -44,29 +44,29 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
 
   return (
     <Accordion
-      key={viewModel.order.id}
-      id={`order-list-${viewModel.order.id}`}
       expandedId={viewModel.expandedAccordionId}
-      onExpand={viewModel.handleOnExpand}
-      onCollapse={viewModel.handleClearInputs}
       hidden={viewModel.hidden}
+      id={`order-list-${viewModel.order.id}`}
+      key={viewModel.order.id}
+      onCollapse={viewModel.handleClearInputs}
+      onExpand={viewModel.handleOnExpand}
     >
       <section
         className="accordion-heading grid-row grid-gap-lg"
         data-testid={`accordion-heading-${viewModel.order.id}`}
       >
         <div
-          className="accordion-header-field grid-col-6 text-no-wrap"
           aria-label={`${viewModel.accordionFieldHeaders[0]} - ${viewModel.order.courtName}.`}
+          className="accordion-header-field grid-col-6 text-no-wrap"
           data-cell={viewModel.accordionFieldHeaders[0]}
         >
           {viewModel.order.courtName}
         </div>
         <div
-          className="accordion-header-field grid-col-2 text-no-wrap"
-          title={viewModel.accordionFieldHeaders[1]}
           aria-label={`${viewModel.accordionFieldHeaders[1]} on ${viewModel.formattedOrderFiledDate}.`}
+          className="accordion-header-field grid-col-2 text-no-wrap"
           data-cell={viewModel.accordionFieldHeaders[1]}
+          title={viewModel.accordionFieldHeaders[1]}
         >
           {viewModel.formattedOrderFiledDate}
         </div>
@@ -75,8 +75,8 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
           data-cell={viewModel.accordionFieldHeaders[2]}
         >
           <span
-            className="event-type-label"
             aria-label={`${viewModel.accordionFieldHeaders[2]} - ${viewModel.orderType.get(viewModel.order.orderType)}.`}
+            className="event-type-label"
             data-cell={viewModel.accordionFieldHeaders[2]}
           >
             {viewModel.orderType.get(viewModel.order.orderType)}
@@ -87,13 +87,13 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
           data-cell={viewModel.accordionFieldHeaders[3]}
         >
           <span
-            className={`${viewModel.order.status} event-status-label`}
             aria-label={`${viewModel.accordionFieldHeaders[3]} - ${viewModel.statusType.get(viewModel.order.status)}.`}
+            className={`${viewModel.order.status} event-status-label`}
           >
             {viewModel.statusType.get(viewModel.order.status)}
           </span>
         </div>
-        <div className="expand-aria-label" aria-label={printAriaLabel()}></div>
+        <div aria-label={printAriaLabel()} className="expand-aria-label"></div>
       </section>
       <>
         {viewModel.order.status === 'pending' && (
@@ -117,21 +117,21 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   required={true}
                 >
                   <Radio
-                    id={`joint-admin-${viewModel.order.id}`}
-                    name="consolidation-type"
-                    label="Joint Administration"
-                    value="administrative"
                     className="text-no-wrap"
+                    id={`joint-admin-${viewModel.order.id}`}
+                    label="Joint Administration"
+                    name="consolidation-type"
                     onChange={viewModel.handleSelectConsolidationType}
                     ref={viewModel.jointAdministrationRadio}
+                    value="administrative"
                   />
                   <Radio
                     id={`substantive-${viewModel.order.id}`}
-                    name="consolidation-type"
                     label="Substantive Consolidation"
-                    value="substantive"
+                    name="consolidation-type"
                     onChange={viewModel.handleSelectConsolidationType}
                     ref={viewModel.substantiveRadio}
+                    value="substantive"
                   />
                 </RadioGroup>
               </div>
@@ -141,15 +141,15 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <ConsolidationCaseTable
-                  id={`case-list-${viewModel.order.id}`}
-                  data-testid={`${viewModel.order.id}-case-list`}
                   cases={viewModel.order.childCases}
-                  leadCaseId={viewModel.showLeadCaseForm ? undefined : viewModel.leadCase?.caseId}
-                  onSelect={viewModel.handleIncludeCase}
-                  updateAllSelections={viewModel.updateAllSelections}
+                  data-testid={`${viewModel.order.id}-case-list`}
+                  id={`case-list-${viewModel.order.id}`}
                   isDataEnhanced={viewModel.isDataEnhanced}
-                  ref={viewModel.caseTableActions}
+                  leadCaseId={viewModel.showLeadCaseForm ? undefined : viewModel.leadCase?.caseId}
                   onMarkLead={viewModel.handleMarkLeadCase}
+                  onSelect={viewModel.handleIncludeCase}
+                  ref={viewModel.caseTableActions}
+                  updateAllSelections={viewModel.updateAllSelections}
                 ></ConsolidationCaseTable>
               </div>
               <div className="grid-col-1"></div>
@@ -161,13 +161,13 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <Checkbox
-                  id={`lead-case-form-checkbox-toggle-${viewModel.order.id}`}
-                  className="lead-case-form-toggle"
-                  onChange={(ev) => viewModel.handleToggleLeadCaseForm(ev.target.checked)}
-                  value=""
-                  ref={viewModel.leadCaseFormToggle}
-                  label="Lead Case Not Listed"
                   checked={viewModel.showLeadCaseForm}
+                  className="lead-case-form-toggle"
+                  id={`lead-case-form-checkbox-toggle-${viewModel.order.id}`}
+                  label="Lead Case Not Listed"
+                  onChange={(ev) => viewModel.handleToggleLeadCaseForm(ev.target.checked)}
+                  ref={viewModel.leadCaseFormToggle}
+                  value=""
                 ></Checkbox>
                 {viewModel.showLeadCaseForm && (
                   <section
@@ -180,55 +180,55 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                     </span>
                     <div className="lead-case-court-container">
                       <ComboBox
-                        id={'lead-case-court'}
-                        className="lead-case-court"
-                        label="Select a court"
-                        ariaDescription="foo bar"
-                        aria-live="off"
                         aria-describedby="lead-case-form-instructions"
+                        aria-live="off"
+                        ariaDescription="foo bar"
+                        className="lead-case-court"
+                        id={'lead-case-court'}
+                        label="Select a court"
+                        multiSelect={false}
                         onUpdateSelection={viewModel.handleSelectLeadCaseCourt}
                         options={viewModel.filteredOfficeRecords!}
-                        required={true}
-                        multiSelect={false}
                         ref={viewModel.leadCaseDivisionInput}
+                        required={true}
                       />
                     </div>
                     <div className="lead-case-number-container">
                       <CaseNumberInput
-                        id={`lead-case-input-${viewModel.order.id}`}
-                        data-testid={`lead-case-input-${viewModel.order.id}`}
-                        className="usa-input"
-                        value={getCaseNumber(viewModel.leadCase?.caseId)}
-                        onChange={viewModel.handleLeadCaseInputChange}
                         allowPartialCaseNumber={false}
-                        required={true}
-                        label="Enter a case number"
-                        ref={viewModel.leadCaseNumberInput}
                         aria-describedby="lead-case-form-instructions"
+                        className="usa-input"
+                        data-testid={`lead-case-input-${viewModel.order.id}`}
+                        id={`lead-case-input-${viewModel.order.id}`}
+                        label="Enter a case number"
+                        onChange={viewModel.handleLeadCaseInputChange}
+                        ref={viewModel.leadCaseNumberInput}
+                        required={true}
+                        value={getCaseNumber(viewModel.leadCase?.caseId)}
                       />
                       {viewModel.leadCaseNumberError ? (
                         <Alert
                           id={`lead-case-number-alert-${viewModel.order.id}`}
+                          inline={true}
                           message={viewModel.leadCaseNumberError}
-                          type={UswdsAlertStyle.Error}
                           show={true}
                           slim={true}
-                          inline={true}
+                          type={UswdsAlertStyle.Error}
                         ></Alert>
                       ) : (
                         <LoadingSpinner
-                          id={`lead-case-number-loading-spinner-${viewModel.order.id}`}
                           caption="Verifying lead case number..."
                           height="40px"
                           hidden={!viewModel.isValidatingLeadCaseNumber}
+                          id={`lead-case-number-loading-spinner-${viewModel.order.id}`}
                         />
                       )}
                       {viewModel.foundValidCaseNumber && viewModel.leadCase && (
                         <>
                           <h4>Selected Lead Case</h4>
                           <CaseTable
-                            id={`valid-case-number-found-${viewModel.order.id}`}
                             cases={[viewModel.leadCase]}
+                            id={`valid-case-number-found-${viewModel.order.id}`}
                           ></CaseTable>
                         </>
                       )}
@@ -242,33 +242,33 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
               <div className="grid-col-10 text-no-wrap float-right">
                 <LoadingSpinner
-                  id={`processing-consolidation-loading-spinner-${viewModel.order.id}`}
                   caption="Updating..."
                   height="40px"
                   hidden={!viewModel.isProcessing}
+                  id={`processing-consolidation-loading-spinner-${viewModel.order.id}`}
                 />
                 <Button
+                  className="unstyled-button"
                   id={`accordion-cancel-button-${viewModel.order.id}`}
                   onClick={viewModel.handleClearInputs}
-                  uswdsStyle={UswdsButtonStyle.Unstyled}
-                  className="unstyled-button"
                   ref={viewModel.clearButton}
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
                 >
                   Clear
                 </Button>
                 <Button
+                  className="margin-right-2"
                   id={`accordion-reject-button-${viewModel.order.id}`}
                   onClick={viewModel.handleRejectButtonClick}
-                  uswdsStyle={UswdsButtonStyle.Outline}
-                  className="margin-right-2"
                   ref={viewModel.rejectButton}
+                  uswdsStyle={UswdsButtonStyle.Outline}
                 >
                   Reject
                 </Button>
                 <Button
+                  disabled={true}
                   id={`accordion-approve-button-${viewModel.order.id}`}
                   onClick={viewModel.handleApproveButtonClick}
-                  disabled={true}
                   ref={viewModel.approveButton}
                 >
                   Verify
@@ -277,10 +277,10 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
             </div>
             <ConsolidationOrderModal
-              ref={viewModel.confirmationModal}
               id={`confirmation-modal-${viewModel.order.id}`}
               onCancel={() => {}}
               onConfirm={viewModel.handleConfirmAction}
+              ref={viewModel.confirmationModal}
             ></ConsolidationOrderModal>
           </section>
         )}
@@ -294,10 +294,10 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-10">
                 Consolidated the following cases to lead case{' '}
                 <CaseNumber
-                  data-testid={'lead-case-number'}
                   caseId={viewModel.order.leadCase!.caseId}
-                  renderAs="link"
+                  data-testid={'lead-case-number'}
                   openLinkIn="new-window"
+                  renderAs="link"
                 ></CaseNumber>{' '}
                 {viewModel.order.leadCase?.caseTitle}.
               </div>
@@ -307,8 +307,8 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <CaseTable
-                  id={`order-${viewModel.order.id}-child-cases`}
                   cases={viewModel.order.childCases}
+                  id={`order-${viewModel.order.id}-child-cases`}
                 ></CaseTable>
               </div>
               <div className="grid-col-1"></div>
@@ -339,9 +339,9 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               <div className="grid-col-1"></div>
               <div className="grid-col-10">
                 <ConsolidationCaseTable
-                  id={`${viewModel.order.id}-case-list`}
-                  data-testid={`${viewModel.order.id}-case-list`}
                   cases={viewModel.order.childCases}
+                  data-testid={`${viewModel.order.id}-case-list`}
+                  id={`${viewModel.order.id}-case-list`}
                   isDataEnhanced={viewModel.isDataEnhanced}
                 ></ConsolidationCaseTable>
               </div>

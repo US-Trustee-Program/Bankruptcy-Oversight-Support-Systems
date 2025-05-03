@@ -1,12 +1,13 @@
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { describe } from 'vitest';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
-import CaseDetailScreen, { applyCaseNoteSortAndFilters, CaseDetailProps } from './CaseDetailScreen';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { vi } from 'vitest';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import { CaseNote } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { CaseNote } from '@common/cams/cases';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { describe } from 'vitest';
+import { vi } from 'vitest';
+
+import CaseDetailScreen, { applyCaseNoteSortAndFilters, CaseDetailProps } from './CaseDetailScreen';
 
 describe('Case Note Tests', async () => {
   const testCaseId = '111-11-12345';
@@ -34,7 +35,7 @@ describe('Case Note Tests', async () => {
     render(
       <MemoryRouter initialEntries={[infoPath ?? basicInfoPath]}>
         <Routes>
-          <Route path="case-detail/:caseId/*" element={<CaseDetailScreen {...renderProps} />} />
+          <Route element={<CaseDetailScreen {...renderProps} />} path="case-detail/:caseId/*" />
         </Routes>
       </MemoryRouter>,
     );

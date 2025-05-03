@@ -1,19 +1,20 @@
-import { describe } from 'vitest';
+import testingUtilities from '@/lib/testing/testing-utilities';
+import { MockData } from '@common/cams/test-utilities/mock-data';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { MockLogin } from './MockLogin';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import testingUtilities from '@/lib/testing/testing-utilities';
+import { describe } from 'vitest';
 import { vi } from 'vitest';
+
+import { MockLogin } from './MockLogin';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
     .spyOn(global, 'fetch')
     .mockImplementation(
-      (_input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
+      (_input: Request | string | URL, _init?: RequestInit): Promise<Response> => {
         return Promise.resolve({
-          ok: true,
           json: vi.fn().mockResolvedValue({ data: { value: MockData.getJwt() } }),
+          ok: true,
         } as unknown as Response);
       },
     );
@@ -101,10 +102,10 @@ describe('MockLogin', () => {
     const fetchSpy = vi
       .spyOn(global, 'fetch')
       .mockImplementation(
-        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
+        (_input: Request | string | URL, _init?: RequestInit): Promise<Response> => {
           return Promise.resolve({
-            ok: true,
             json: vi.fn().mockResolvedValue({ data: { value: null } }),
+            ok: true,
           } as unknown as Response);
         },
       );

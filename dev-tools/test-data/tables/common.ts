@@ -11,9 +11,9 @@ export type DatabaseRecords = {
   AO_CS: Array<AO_CS_Record>;
   AO_DE: Array<AO_DE_Record>;
   AO_GRP_DES: Array<AO_GRP_DES_Record>;
-  AO_TX: Array<AO_TX_Record>;
   AO_PY: Array<AO_PY_Record>;
   AO_REGION: Array<AO_REGION_Record>;
+  AO_TX: Array<AO_TX_Record>;
 };
 
 export function emptyDatabaseRecords(): DatabaseRecords {

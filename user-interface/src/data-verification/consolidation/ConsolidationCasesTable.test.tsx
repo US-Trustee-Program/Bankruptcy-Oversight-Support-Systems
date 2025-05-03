@@ -1,14 +1,15 @@
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import { ConsolidationOrderCase } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
+
 import {
   ConsolidationCaseTable,
   ConsolidationCaseTableProps,
   OrderTableImperative,
 } from './ConsolidationCasesTable';
-import { render, waitFor, screen, fireEvent } from '@testing-library/react';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import React from 'react';
-import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { ConsolidationOrderCase } from '@common/cams/orders';
 
 const tableId = 'test-consolidation-cases-table';
 
@@ -18,13 +19,13 @@ describe('test ConsolidationCasesTable component', () => {
     tableRef?: React.Ref<OrderTableImperative>,
   ) {
     const defaultProps: ConsolidationCaseTableProps = {
-      id: tableId,
       cases: props?.cases ?? [],
+      displayDocket: props?.displayDocket ?? false,
+      id: tableId,
+      isDataEnhanced: props?.isDataEnhanced ?? true,
+      onMarkLead: (_bCase: ConsolidationOrderCase) => {},
       onSelect: props?.onSelect ?? vi.fn(),
       updateAllSelections: props?.updateAllSelections ?? vi.fn(),
-      isDataEnhanced: props?.isDataEnhanced ?? true,
-      displayDocket: props?.displayDocket ?? false,
-      onMarkLead: (_bCase: ConsolidationOrderCase) => {},
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -180,8 +181,8 @@ describe('test ConsolidationCasesTable component', () => {
 
     const props = {
       cases,
-      onMarkLead,
       leadCaseId: cases[0].caseId,
+      onMarkLead,
     };
 
     renderWithProps(props, tableRef);

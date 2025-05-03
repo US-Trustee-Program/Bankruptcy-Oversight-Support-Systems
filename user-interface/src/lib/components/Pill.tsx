@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
+
 import './Pill.scss';
 import Icon from './uswds/Icon';
 
@@ -6,17 +7,17 @@ const defaultColor = 'black';
 const defaultBackgroundColor = '#d0d0d0';
 
 type PillProps = {
-  id: string;
+  ariaLabelPrefix?: string;
+  backgroundColor?: string;
   className?: string;
   color?: string;
-  backgroundColor?: string;
+  disabled?: boolean;
+  id: string;
   label: string;
-  ariaLabelPrefix?: string;
-  value: string;
-  wrapText?: boolean;
   onClick: (value: string) => void;
   onKeyDown?: (ev: React.KeyboardEvent<HTMLButtonElement>, num: number) => void;
-  disabled?: boolean;
+  value: string;
+  wrapText?: boolean;
 };
 
 function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
@@ -47,18 +48,18 @@ function _Pill(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
 
   return (
     <button
-      id={props.id}
-      data-testid={`pill-${props.id}`}
+      aria-label={`${props.ariaLabelPrefix ? props.ariaLabelPrefix + ' - ' : ''}${props.label} selected. Click to deselect.`}
       className={`pill usa-button--unstyled ${wrapTextClass}`}
-      style={{ backgroundColor, color }}
+      data-testid={`pill-${props.id}`}
+      data-value={props.value}
+      disabled={props.disabled}
+      id={props.id}
       onClick={() => props.onClick(props.value)}
       onKeyDown={(ev) => handleKeyDown(ev)}
-      tabIndex={0}
-      aria-label={`${props.ariaLabelPrefix ? props.ariaLabelPrefix + ' - ' : ''}${props.label} selected. Click to deselect.`}
-      disabled={props.disabled}
-      data-value={props.value}
-      title={`${props.label}`}
       ref={buttonRef}
+      style={{ backgroundColor, color }}
+      tabIndex={0}
+      title={`${props.label}`}
     >
       <div className="pill-text">{props.label}</div>
       <Icon name="close"></Icon>

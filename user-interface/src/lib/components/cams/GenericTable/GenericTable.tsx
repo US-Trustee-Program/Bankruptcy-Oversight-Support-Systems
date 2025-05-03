@@ -10,32 +10,32 @@ import {
 
 const defaultTransformer = (v: unknown) => v?.toString() ?? '';
 
-type ColumnInfo<T> = {
-  name: string;
-  content: React.ReactNode;
-  mobileTitle: string;
-  property: keyof T | '@';
-  transformer?: GenericTableTransformer;
+export type GenericTableProps<T> = {
+  columns: GenericTableColumns<T>;
+  data: T[];
 };
-
-type GenericTableColumns<T> = ColumnInfo<T>[];
 
 // TODO: Figure out how to get the correct type for the value parameter.
 // export type GenericTableTransformer<T> = (arg: T[keyof T] | T, idx?: number) => React.ReactNode;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type GenericTableTransformer = (arg: any, idx?: number) => React.ReactNode;
 
-export type GenericTableProps<T> = {
-  columns: GenericTableColumns<T>;
-  data: T[];
+type ColumnInfo<T> = {
+  content: React.ReactNode;
+  mobileTitle: string;
+  name: string;
+  property: '@' | keyof T;
+  transformer?: GenericTableTransformer;
 };
 
-type GenericTablePropsAll<T> = JSX.IntrinsicElements['table'] &
-  Pick<TableProps, 'id' | 'uswdsStyle' | 'scrollable' | 'caption'> &
-  GenericTableProps<T>;
+type GenericTableColumns<T> = ColumnInfo<T>[];
+
+type GenericTablePropsAll<T> = GenericTableProps<T> &
+  JSX.IntrinsicElements['table'] &
+  Pick<TableProps, 'caption' | 'id' | 'scrollable' | 'uswdsStyle'>;
 
 export function GenericTable<T>(props: GenericTablePropsAll<T>) {
-  const { id, data, columns, ...otherProps } = props;
+  const { columns, data, id, ...otherProps } = props;
   return (
     <Table id={id} {...otherProps}>
       <TableHeader id={id}>

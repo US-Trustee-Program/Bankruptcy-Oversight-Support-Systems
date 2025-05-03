@@ -1,8 +1,10 @@
 import { DatabaseRecords, emptyDatabaseRecords } from '../tables/common';
 
-export interface Region {
+export interface Court {
+  county: string;
+  div: string;
+  group: Group;
   id: string;
-  name: string;
 }
 
 export interface Group {
@@ -10,14 +12,12 @@ export interface Group {
   region: Region;
 }
 
-export interface Court {
+export interface Region {
   id: string;
-  group: Group;
-  county: string;
-  div: string;
+  name: string;
 }
 
-export function toDbRecords(input: Court | Array<Court>): DatabaseRecords {
+export function toDbRecords(input: Array<Court> | Court): DatabaseRecords {
   const dbRecords = emptyDatabaseRecords();
   const courts = input instanceof Array ? input : [input];
   // TODO: Implement

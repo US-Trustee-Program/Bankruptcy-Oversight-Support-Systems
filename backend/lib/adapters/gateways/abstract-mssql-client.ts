@@ -1,8 +1,13 @@
-import { config, ConnectionError, ConnectionPool, MSSQLError, IResult } from 'mssql';
-import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
+import { config, ConnectionError, ConnectionPool, IResult, MSSQLError } from 'mssql';
+
+import { getCamsError } from '../../common-errors/error-utilities';
 import { deferClose } from '../../deferrable/defer-close';
 import { ApplicationContext } from '../types/basic';
-import { getCamsError } from '../../common-errors/error-utilities';
+import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
+
+type AggregateError = Error & {
+  errors?: Error[];
+};
 
 export abstract class AbstractMssqlClient {
   private static connectionPool: ConnectionPool;
@@ -35,8 +40,8 @@ export abstract class AbstractMssqlClient {
       const result = (await request.query(query)) as IResult<T>;
 
       const queryResults: QueryResults = {
-        results: result.recordset,
         message: '',
+        results: result.recordset,
         success: true,
       };
 
@@ -62,23 +67,23 @@ export abstract class AbstractMssqlClient {
       } else if (isMssqlError(error)) {
         const newError = {
           error: {
-            name: error.name,
             description: error.message,
+            name: error.name,
           },
+          input,
           originalError: {},
           query,
-          input,
         };
         if (error.originalError) {
           newError.originalError = {
-            name: error.originalError.name,
             description: error.originalError.name,
+            name: error.originalError.name,
           };
         }
 
         context.logger.error(this.moduleName, 'MssqlError', newError);
       } else {
-        context.logger.error(this.moduleName, error.message, { error, query, input });
+        context.logger.error(this.moduleName, error.message, { error, input, query });
       }
 
       throw getCamsError(error, this.moduleName, error.message);
@@ -86,18 +91,14 @@ export abstract class AbstractMssqlClient {
   }
 }
 
-function isMssqlError(e): e is MSSQLError {
-  return e instanceof MSSQLError;
+function isAggregateError(e: unknown): e is AggregateError {
+  return e && 'errors' in (e as object);
 }
 
 function isConnectionError(e): e is ConnectionError {
   return e instanceof ConnectionError;
 }
 
-type AggregateError = Error & {
-  errors?: Error[];
-};
-
-function isAggregateError(e: unknown): e is AggregateError {
-  return e && 'errors' in (e as object);
+function isMssqlError(e): e is MSSQLError {
+  return e instanceof MSSQLError;
 }

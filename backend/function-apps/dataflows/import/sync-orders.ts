@@ -1,6 +1,7 @@
 import { app, HttpRequest, InvocationContext, Timer } from '@azure/functions';
-import ContextCreator from '../../azure/application-context-creator';
+
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
+import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
 
@@ -42,14 +43,14 @@ const httpTrigger = buildHttpTrigger(
 
 function setup() {
   app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
-    schedule: '0 30 9 * * *',
     handler: timerTrigger,
+    schedule: '0 30 9 * * *',
   });
 
   app.http(buildFunctionName(MODULE_NAME, 'httpTrigger'), {
-    route: 'sync-orders',
-    methods: ['POST'],
     handler: httpTrigger,
+    methods: ['POST'],
+    route: 'sync-orders',
   });
 }
 

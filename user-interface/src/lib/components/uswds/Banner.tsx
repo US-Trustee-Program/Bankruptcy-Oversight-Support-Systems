@@ -9,18 +9,18 @@ export const Banner = () => {
 
   return (
     <section
-      className="usa-banner cams-banner"
       aria-label="Official website of the United States government"
+      className="usa-banner cams-banner"
     >
       <SkipToMainContentLink>Skip to main content</SkipToMainContentLink>
       <header className={envHeaderClassName} data-testid="banner-header">
         <div className="usa-banner__inner header-container">
           <div className="header-flag-container">
             <img
+              alt=""
               aria-hidden="true"
               className="usa-banner__header-flag banner-image"
               src="/assets/styles/img/us_flag_small.png"
-              alt=""
             />
             <span className="banner-text usa-banner__header-text">
               An official website of the United States government

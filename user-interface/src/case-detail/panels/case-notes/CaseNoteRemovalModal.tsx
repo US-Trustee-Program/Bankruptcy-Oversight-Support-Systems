@@ -12,24 +12,24 @@ import { getCamsUserReference } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
 
-type CallbackFunction = (noteId?: string) => void;
-
 export type CaseNoteRemovalModalOpenProps = {
-  id: string;
-  caseId: string;
   buttonId: string;
   callback: CallbackFunction;
+  caseId: string;
+  id: string;
   openModalButtonRef: React.Ref<OpenModalButtonRef>;
 };
 
 export interface CaseNoteRemovalModalRef extends ModalRefType {
-  show: (showProps: CaseNoteRemovalModalOpenProps) => void;
   buttons?: RefObject<SubmitCancelButtonGroupRef>;
+  show: (showProps: CaseNoteRemovalModalOpenProps) => void;
 }
 
 export interface CaseNoteRemovalProps {
   modalId: string;
 }
+
+type CallbackFunction = (noteId?: string) => void;
 
 function _CaseNoteRemovalModal(
   props: CaseNoteRemovalProps,
@@ -43,24 +43,24 @@ function _CaseNoteRemovalModal(
   const modalRef = useRef<ModalRefType>(null);
   const globalAlert = useGlobalAlert();
   const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
+    cancelButton: {
+      label: 'Cancel',
+    },
     modalId,
     modalRef: modalRef as React.RefObject<ModalRefType>,
     submitButton: {
+      closeOnClick: true,
+      disabled: false,
       label: 'Remove',
       onClick: handleRemoveSubmitButtonClick,
-      disabled: false,
-      closeOnClick: true,
-    },
-    cancelButton: {
-      label: 'Cancel',
     },
   };
 
   function handleRemoveSubmitButtonClick() {
     if (formValuesFromShowOptions?.id) {
       const noteForRemoval = {
-        id: formValuesFromShowOptions.id,
         caseId: formValuesFromShowOptions.caseId,
+        id: formValuesFromShowOptions.id,
         updatedBy: getCamsUserReference(session?.user as CamsUser),
       };
 
@@ -87,18 +87,18 @@ function _CaseNoteRemovalModal(
   }
 
   useImperativeHandle(ref, () => ({
-    show,
     hide: () => {},
+    show,
   }));
 
   return (
     <Modal
-      ref={modalRef}
-      modalId={modalId}
-      className="remove-note-confirmation-modal"
-      heading="Remove note?"
-      content="Would you like to remove this note? This action cannot be undone."
       actionButtonGroup={removeConfirmationButtonGroup}
+      className="remove-note-confirmation-modal"
+      content="Would you like to remove this note? This action cannot be undone."
+      heading="Remove note?"
+      modalId={modalId}
+      ref={modalRef}
     ></Modal>
   );
 }

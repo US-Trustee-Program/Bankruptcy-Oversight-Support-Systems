@@ -1,20 +1,14 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { formatDate } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
-import { describe } from 'vitest';
-import { orderType, orderStatusType } from '@/lib/utils/labels';
-import { MockData } from '@common/cams/test-utilities/mock-data';
+import { formatDate } from '@/lib/utils/datetime';
+import { orderStatusType, orderType } from '@/lib/utils/labels';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TransferOrder } from '@common/cams/orders';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
 
-function findAccordionHeading(id: string) {
-  const heading = screen.getByTestId(`accordion-heading-${id}`);
-  expect(heading).toBeInTheDocument();
-  expect(heading).toBeVisible();
-  return heading;
-}
+import { TransferOrderAccordion, TransferOrderAccordionProps } from './TransferOrderAccordion';
 
 function findAccordionContent(id: string, visible: boolean) {
   const content = screen.getByTestId(`accordion-content-${id}`);
@@ -25,6 +19,13 @@ function findAccordionContent(id: string, visible: boolean) {
     expect(content).not.toBeVisible();
   }
   return content;
+}
+
+function findAccordionHeading(id: string) {
+  const heading = screen.getByTestId(`accordion-heading-${id}`);
+  expect(heading).toBeInTheDocument();
+  expect(heading).toBeVisible();
+  return heading;
 }
 
 function findActionText(id: string, visible: boolean) {
@@ -45,39 +46,39 @@ describe('TransferOrderAccordion', () => {
   const testOffices: CourtDivisionDetails[] = [
     {
       courtDivisionCode: '001',
-      groupDesignator: 'AA',
+      courtDivisionName: 'New York 1',
       courtId: '0101',
+      courtName: 'A',
+      groupDesignator: 'AA',
       officeCode: '1',
       officeName: 'A1',
-      state: 'NY',
-      courtName: 'A',
-      courtDivisionName: 'New York 1',
       regionId: '02',
       regionName: 'NEW YORK',
+      state: 'NY',
     },
     {
       courtDivisionCode: '003',
-      groupDesignator: 'AC',
+      courtDivisionName: 'New York 1',
       courtId: '0103',
+      courtName: 'C',
+      groupDesignator: 'AC',
       officeCode: '3',
       officeName: 'C1',
-      state: 'NY',
-      courtName: 'C',
-      courtDivisionName: 'New York 1',
       regionId: '02',
       regionName: 'NEW YORK',
+      state: 'NY',
     },
     {
       courtDivisionCode: '002',
-      groupDesignator: 'AB',
+      courtDivisionName: 'New York 1',
       courtId: '0102',
+      courtName: 'B',
+      groupDesignator: 'AB',
       officeCode: '2',
       officeName: 'B1',
-      state: 'NY',
-      courtName: 'B',
-      courtDivisionName: 'New York 1',
       regionId: '02',
       regionName: 'NEW YORK',
+      state: 'NY',
     },
   ];
 
@@ -85,14 +86,14 @@ describe('TransferOrderAccordion', () => {
 
   function renderWithProps(props?: Partial<TransferOrderAccordionProps>) {
     const defaultProps: TransferOrderAccordionProps = {
-      order: order,
       courts: testOffices,
-      orderType,
-      statusType: orderStatusType,
-      onOrderUpdate: () => {},
-      onExpand: () => {},
-      regionsMap: regionMap,
       fieldHeaders: accordionFieldHeaders,
+      onExpand: () => {},
+      onOrderUpdate: () => {},
+      order: order,
+      orderType,
+      regionsMap: regionMap,
+      statusType: orderStatusType,
     };
 
     const renderProps = { ...defaultProps, ...props };

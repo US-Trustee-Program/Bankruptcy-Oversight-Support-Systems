@@ -1,84 +1,67 @@
-import { DebtorAttorney, Party } from './parties';
-import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
+import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from './events';
+import { DebtorAttorney, Party } from './parties';
 import { CamsUserReference } from './users';
 
-export type FlatOfficeDetail = {
-  officeName: string;
-  officeCode: string;
-  courtId: string;
-  courtName: string;
-  courtDivisionCode: string;
-  courtDivisionName: string;
-  groupDesignator: string;
-  regionId: string;
-  regionName: string;
-  state?: string;
-};
-
 export type CaseBasics = FlatOfficeDetail & {
-  dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
+  assignments?: CaseAssignment[];
   caseId: string;
   caseNumber?: string;
-  chapter: string;
   caseTitle: string;
+  chapter: string;
   dateFiled: string;
-  petitionCode?: string;
-  petitionLabel?: string;
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
-  assignments?: CaseAssignment[];
-};
-
-export type CaseSummary = CaseBasics & {
-  debtor: Party;
+  dxtrId: string; // TODO: Refactor this out so it doesn't leak to the UI.
+  petitionCode?: string;
+  petitionLabel?: string;
 };
 
 export type CaseDetail = CaseSummary & {
   closedDate?: string;
+  consolidation?: Array<ConsolidationFrom | ConsolidationTo>;
+  debtorAttorney?: DebtorAttorney;
   dismissedDate?: string;
+  judgeName?: string;
   reopenedDate?: string;
   transferDate?: string;
   transfers?: Array<TransferFrom | TransferTo>;
-  consolidation?: Array<ConsolidationTo | ConsolidationFrom>;
-  debtorAttorney?: DebtorAttorney;
-  judgeName?: string;
-};
-
-export type CaseDocketEntryDocument = {
-  fileUri: string;
-  fileSize: number;
-  fileLabel: string;
-  fileExt?: string;
-};
-
-export type CaseDocketEntry = {
-  sequenceNumber: number;
-  documentNumber?: number;
-  dateFiled: string;
-  summaryText: string;
-  fullText: string;
-  documents?: CaseDocketEntryDocument[];
 };
 
 export type CaseDocket = Array<CaseDocketEntry>;
 
-export type CaseNote = CaseNoteInput &
-  Auditable & {
-    documentType: 'NOTE';
-    updatedBy: CamsUserReference;
-    updatedOn: string;
+export type CaseDocketEntry = {
+  dateFiled: string;
+  documentNumber?: number;
+  documents?: CaseDocketEntryDocument[];
+  fullText: string;
+  sequenceNumber: number;
+  summaryText: string;
+};
+
+export type CaseDocketEntryDocument = {
+  fileExt?: string;
+  fileLabel: string;
+  fileSize: number;
+  fileUri: string;
+};
+
+export type CaseNote = Auditable &
+  CaseNoteInput & {
+    archivedBy?: CamsUserReference;
+    archivedOn?: string;
     createdBy: CamsUserReference;
     createdOn: string;
-    archivedOn?: string;
-    archivedBy?: CamsUserReference;
+    documentType: 'NOTE';
     previousVersionId?: string;
+    updatedBy: CamsUserReference;
+    updatedOn: string;
   };
 
 export type CaseNoteDeleteRequest = {
-  id: string;
   caseId: string;
+  id: string;
   sessionUser: CamsUserReference;
 };
 
@@ -88,38 +71,46 @@ export type CaseNoteEditRequest = {
 };
 
 export type CaseNoteInput = {
-  id?: string;
-  title: string;
   caseId: string;
   content: string;
-  updatedBy?: CamsUserReference;
-  updatedOn?: string;
   createdBy?: CamsUserReference;
   createdOn?: string;
+  id?: string;
+  title: string;
+  updatedBy?: CamsUserReference;
+  updatedOn?: string;
 };
+
+export type CaseSummary = CaseBasics & {
+  debtor: Party;
+};
+
+export type DxtrCase = CaseSummary & ClosedDismissedReopened;
+
+export type FlatOfficeDetail = {
+  courtDivisionCode: string;
+  courtDivisionName: string;
+  courtId: string;
+  courtName: string;
+  groupDesignator: string;
+  officeCode: string;
+  officeName: string;
+  regionId: string;
+  regionName: string;
+  state?: string;
+};
+
+export type SyncedCase = Auditable &
+  DxtrCase & {
+    documentType: 'SYNCED_CASE';
+    id?: string;
+  };
 
 type ClosedDismissedReopened = {
   closedDate?: string;
   dismissedDate?: string;
   reopenedDate?: string;
 };
-
-export type DxtrCase = CaseSummary & ClosedDismissedReopened;
-
-export type SyncedCase = DxtrCase &
-  Auditable & {
-    documentType: 'SYNCED_CASE';
-    id?: string;
-  };
-
-export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
-  const { closedDate, reopenedDate } = bCase;
-  return closedDate ? (reopenedDate ? closedDate >= reopenedDate : true) : false;
-}
-
-export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
-  return !isCaseClosed(bCase);
-}
 
 export function getCaseIdParts(caseId: string) {
   const parts = caseId.split('-');
@@ -133,5 +124,14 @@ export function getCaseIdParts(caseId: string) {
   }
   const divisionCode = parts[0];
   const caseNumber = `${parts[1]}-${parts[2]}`;
-  return { divisionCode, caseNumber };
+  return { caseNumber, divisionCode };
+}
+
+export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
+  const { closedDate, reopenedDate } = bCase;
+  return closedDate ? (reopenedDate ? closedDate >= reopenedDate : true) : false;
+}
+
+export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {
+  return !isCaseClosed(bCase);
 }

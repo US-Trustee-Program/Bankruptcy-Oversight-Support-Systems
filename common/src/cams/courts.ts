@@ -1,6 +1,20 @@
 import { UstpDivisionMeta, UstpOfficeDetails } from './offices';
 import { CamsUserReference } from './users';
 
+export type CourtDivisionDetails = UstpDivisionMeta & {
+  courtDivisionCode: string;
+  courtDivisionName: string;
+  courtId: string;
+  courtName: string;
+  groupDesignator: string;
+  officeCode: string;
+  officeName: string;
+  regionId: string;
+  regionName: string;
+  staff?: CamsUserReference[];
+  state?: string;
+};
+
 export function filterCourtByDivision(divisionCode: string, officeList: CourtDivisionDetails[]) {
   const divisionOffice = officeList.find((office) => office.courtDivisionCode === divisionCode);
   if (divisionOffice) {
@@ -15,16 +29,16 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
   ustp.groups.reduce((acc, group) => {
     group.divisions.forEach((division) => {
       acc.push({
-        officeName: division.courtOffice.courtOfficeName,
-        officeCode: division.courtOffice.courtOfficeCode,
-        courtId: division.court.courtId,
-        courtName: division.court.courtName,
         courtDivisionCode: division.divisionCode,
         courtDivisionName: division.courtOffice.courtOfficeName,
+        courtId: division.court.courtId,
+        courtName: division.court.courtName,
         groupDesignator: group.groupDesignator,
+        isLegacy: division.isLegacy,
+        officeCode: division.courtOffice.courtOfficeCode,
+        officeName: division.courtOffice.courtOfficeName,
         regionId: ustp.regionId,
         regionName: ustp.regionName,
-        isLegacy: division.isLegacy,
         state: division.court.state,
       });
     });
@@ -32,17 +46,3 @@ export function ustpOfficeToCourtDivision(ustp: UstpOfficeDetails): CourtDivisio
   }, courtDivisions);
   return courtDivisions;
 }
-
-export type CourtDivisionDetails = UstpDivisionMeta & {
-  officeName: string;
-  officeCode: string;
-  courtId: string;
-  courtName: string;
-  courtDivisionCode: string;
-  courtDivisionName: string;
-  groupDesignator: string;
-  regionId: string;
-  regionName: string;
-  state?: string;
-  staff?: CamsUserReference[];
-};

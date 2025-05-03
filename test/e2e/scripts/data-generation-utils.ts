@@ -1,13 +1,14 @@
 import * as dotenv from 'dotenv';
+
 import ContextCreator from '../../../backend/function-apps/azure/application-context-creator';
 import { createMockAzureFunctionContext } from '../../../backend/function-apps/azure/testing-helpers';
 import { ApplicationContext } from '../../../backend/lib/adapters/types/basic';
-import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../common/src/cams/cases';
-import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { OrdersUseCase } from '../../../backend/lib/use-cases/orders/orders';
+import { CaseBasics, CaseSummary, getCaseIdParts } from '../../../common/src/cams/cases';
 import { ConsolidationOrder, TransferOrder } from '../../../common/src/cams/orders';
-import { extractAndPrepareSqlData } from './dxtr-utils';
+import MockData from '../../../common/src/cams/test-utilities/mock-data';
 import { insertConsolidationOrders, insertTransferOrders, syncCases } from './cosmos-utils';
+import { extractAndPrepareSqlData } from './dxtr-utils';
 
 export const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-65-67641';
 export const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
@@ -18,7 +19,7 @@ export async function seedCosmosE2eDatabase() {
   const env = { ...process.env };
   const invocationContext = createMockAzureFunctionContext(env);
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  const { dxtrCaseIds, dxtrCases, transferTo, transferFrom } =
+  const { dxtrCaseIds, dxtrCases, transferFrom, transferTo } =
     await extractAndPrepareSqlData(appContext);
 
   await syncCases(appContext, dxtrCaseIds);
@@ -28,6 +29,21 @@ export async function seedCosmosE2eDatabase() {
 
   const transferOrders = generateTransferOrders(dxtrCases.slice(25, 45), transferTo, transferFrom);
   await insertTransferOrders(appContext, transferOrders);
+}
+
+function createKnownGoodTransferOrder(transferTo: CaseSummary, transferFrom: CaseSummary) {
+  const { caseNumber } = getCaseIdParts(KNOWN_GOOD_TRANSFER_TO_CASE_ID);
+  const knownGoodTransferOrder: TransferOrder = {
+    ...transferFrom,
+    docketEntries: [],
+    docketSuggestedCaseNumber: caseNumber,
+    id: MockData.randomId(),
+    newCase: transferTo,
+    orderDate: new Date().toISOString(),
+    orderType: 'transfer',
+    status: 'pending',
+  };
+  return knownGoodTransferOrder;
 }
 
 async function generateConsolidationOrders(
@@ -60,8 +76,8 @@ function generateTransferOrders(
       MockData.getTransferOrder({
         override: {
           ...originalCases[i],
-          status: 'pending',
           newCase: { ...MockData.getCaseSummary({ override: { ...newCases[i] } }) },
+          status: 'pending',
         },
       }),
     );
@@ -71,19 +87,4 @@ function generateTransferOrders(
   transferOrders.push(knownGoodTransferOrder);
 
   return transferOrders;
-}
-
-function createKnownGoodTransferOrder(transferTo: CaseSummary, transferFrom: CaseSummary) {
-  const { caseNumber } = getCaseIdParts(KNOWN_GOOD_TRANSFER_TO_CASE_ID);
-  const knownGoodTransferOrder: TransferOrder = {
-    ...transferFrom,
-    id: MockData.randomId(),
-    orderDate: new Date().toISOString(),
-    orderType: 'transfer',
-    status: 'pending',
-    docketSuggestedCaseNumber: caseNumber,
-    docketEntries: [],
-    newCase: transferTo,
-  };
-  return knownGoodTransferOrder;
 }

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe } from 'vitest';
-import { AccessDenied } from './AccessDenied';
 import { BrowserRouter } from 'react-router-dom';
+import { describe } from 'vitest';
+
+import { AccessDenied } from './AccessDenied';
 
 describe('AccessDenied', () => {
   test('should render alert and return to login button', async () => {

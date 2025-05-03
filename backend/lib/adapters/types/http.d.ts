@@ -1,30 +1,30 @@
 export interface ApiResponse {
+  body: object;
   headers: {
     'Content-Type': string;
     'Last-Modified': string;
   };
   statusCode: number;
-  body: object;
 }
 
-type CamsDict = { [name: string]: string };
-
 export type CamsHttpMethod =
-  | 'GET'
-  | 'POST'
+  | 'CONNECT'
   | 'DELETE'
+  | 'GET'
   | 'HEAD'
-  | 'PATCH'
-  | 'PUT'
   | 'OPTIONS'
-  | 'TRACE'
-  | 'CONNECT';
+  | 'PATCH'
+  | 'POST'
+  | 'PUT'
+  | 'TRACE';
 
 export type CamsHttpRequest<B = unknown> = {
-  method: CamsHttpMethod;
-  url: string;
-  headers: CamsDict;
-  query: CamsDict;
-  params: CamsDict;
   body?: B;
+  headers: CamsDict;
+  method: CamsHttpMethod;
+  params: CamsDict;
+  query: CamsDict;
+  url: string;
 };
+
+type CamsDict = { [name: string]: string };

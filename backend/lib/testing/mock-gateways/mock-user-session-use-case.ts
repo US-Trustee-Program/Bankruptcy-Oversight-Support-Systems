@@ -1,8 +1,9 @@
 import * as jwt from 'jsonwebtoken';
+
+import { CamsJwtClaims } from '../../../../common/src/cams/jwt';
+import { CamsSession } from '../../../../common/src/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getUser } from './mock-oauth2-gateway';
-import { CamsSession } from '../../../../common/src/cams/session';
-import { CamsJwtClaims } from '../../../../common/src/cams/jwt';
 
 const cache = new Map<string, CamsSession>();
 
@@ -22,8 +23,8 @@ export class MockUserSessionUseCase {
       return cache.get(key);
     }
 
-    const { iss: issuer, exp: expires } = jwt.decode(accessToken) as CamsJwtClaims;
-    const cacheEntry: CamsSession = { user, provider, accessToken, expires, issuer };
+    const { exp: expires, iss: issuer } = jwt.decode(accessToken) as CamsJwtClaims;
+    const cacheEntry: CamsSession = { accessToken, expires, issuer, provider, user };
     cache.set(key, cacheEntry);
 
     return cacheEntry;

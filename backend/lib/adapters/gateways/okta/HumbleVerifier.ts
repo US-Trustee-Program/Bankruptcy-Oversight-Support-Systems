@@ -1,47 +1,48 @@
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
 import OktaJwtVerifier = require('@okta/jwt-verifier');
+
 import { CamsJwt } from '../../../../../common/src/cams/jwt';
 
 type Algorithm =
-  | 'HS256'
-  | 'HS384'
-  | 'HS512'
-  | 'RS256'
-  | 'RS384'
-  | 'RS512'
   | 'ES256'
   | 'ES384'
   | 'ES512'
-  | 'none';
-
-type JwtHeader = {
-  alg: Algorithm;
-  typ: string;
-  kid?: string;
-  jku?: string;
-  x5u?: string;
-  x5t?: string;
-};
-
-type JwtClaims = {
-  iss: string;
-  sub: string;
-  aud: string;
-  exp: number;
-  nbf?: number;
-  iat?: number;
-  jti?: string;
-  nonce?: string;
-  scp?: string[];
-  [key: string]: unknown;
-};
+  | 'HS256'
+  | 'HS384'
+  | 'HS512'
+  | 'none'
+  | 'RS256'
+  | 'RS384'
+  | 'RS512';
 
 type Jwt = {
   claims: JwtClaims;
   header: JwtHeader;
-  toString(): string;
   isExpired(): boolean;
   isNotBefore(): boolean;
+  toString(): string;
+};
+
+type JwtClaims = {
+  [key: string]: unknown;
+  aud: string;
+  exp: number;
+  iat?: number;
+  iss: string;
+  jti?: string;
+  nbf?: number;
+  nonce?: string;
+  scp?: string[];
+  sub: string;
+};
+
+type JwtHeader = {
+  alg: Algorithm;
+  jku?: string;
+  kid?: string;
+  typ: string;
+  x5t?: string;
+  x5u?: string;
 };
 
 // This kinda violates the pure nature of a humble.

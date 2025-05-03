@@ -1,7 +1,8 @@
 import { fireEvent, render } from '@testing-library/react';
-import PillBox from './PillBox';
-import { ComboOption } from './combobox/ComboBox';
 import userEvent from '@testing-library/user-event';
+
+import { ComboOption } from './combobox/ComboBox';
+import PillBox from './PillBox';
 
 describe('Tests for Pill Box', () => {
   let testSelections: ComboOption[] = [];
@@ -25,10 +26,10 @@ describe('Tests for Pill Box', () => {
   test('Should disable pills when disabled property is set', async () => {
     render(
       <PillBox
-        id={'test-pillbox'}
-        selections={testSelections}
-        onSelectionChange={() => {}}
         disabled={true}
+        id={'test-pillbox'}
+        onSelectionChange={() => {}}
+        selections={testSelections}
       ></PillBox>,
     );
 
@@ -41,10 +42,10 @@ describe('Tests for Pill Box', () => {
   test('Should set aria labels properly on pills', async () => {
     render(
       <PillBox
-        id={'test-pillbox'}
-        selections={testSelections}
-        onSelectionChange={() => {}}
         ariaLabelPrefix="test-prefix"
+        id={'test-pillbox'}
+        onSelectionChange={() => {}}
+        selections={testSelections}
       ></PillBox>,
     );
 
@@ -73,8 +74,8 @@ describe('Tests for Pill Box', () => {
     render(
       <PillBox
         id={'test-pillbox'}
-        selections={testSelections}
         onSelectionChange={selectionChange}
+        selections={testSelections}
       ></PillBox>,
     );
 
@@ -98,8 +99,8 @@ describe('Tests for Pill Box', () => {
     render(
       <PillBox
         id={'test-pillbox'}
-        selections={selections}
         onSelectionChange={selectionChange}
+        selections={selections}
       ></PillBox>,
     );
 
@@ -159,8 +160,8 @@ describe('Tests for Pill Box', () => {
     render(
       <PillBox
         id={'test-pillbox'}
-        selections={testSelections}
         onSelectionChange={selectionChange}
+        selections={testSelections}
       ></PillBox>,
     );
 

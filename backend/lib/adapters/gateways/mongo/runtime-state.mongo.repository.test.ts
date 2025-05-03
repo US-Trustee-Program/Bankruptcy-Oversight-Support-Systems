@@ -1,16 +1,17 @@
+import * as crypto from 'crypto';
+
+import { UnknownError } from '../../../common-errors/unknown-error';
+import { closeDeferred } from '../../../deferrable/defer-close';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { OrderSyncState } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { RuntimeStateMongoRepository } from './runtime-state.mongo.repository';
-import * as crypto from 'crypto';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
-import { closeDeferred } from '../../../deferrable/defer-close';
-import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('Runtime State Repo', () => {
   const expected: OrderSyncState = {
-    id: crypto.randomUUID().toString(),
     documentType: 'ORDERS_SYNC_STATE',
+    id: crypto.randomUUID().toString(),
     txId: '0',
   };
   let context: ApplicationContext;

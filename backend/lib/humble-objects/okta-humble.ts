@@ -1,61 +1,25 @@
 import { Client, GroupApiListGroupsRequest, OktaApiError } from '@okta/okta-sdk-nodejs';
 import { V2Configuration } from '@okta/okta-sdk-nodejs/src/types/configuration';
+import { RequiredError } from '@okta/okta-sdk-nodejs/src/types/generated/apis/baseapi';
 import { UserApiListUserGroupsRequest } from '@okta/okta-sdk-nodejs/src/types/generated/types/ObjectParamAPI';
+
+import { CamsUserGroup, CamsUserReference } from '../../../common/src/cams/users';
 import { UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { isCamsError } from '../common-errors/cams-error';
-import { UnknownError } from '../common-errors/unknown-error';
 import { ServerConfigError } from '../common-errors/server-config-error';
-import { CamsUserGroup, CamsUserReference } from '../../../common/src/cams/users';
 import { UnauthorizedError } from '../common-errors/unauthorized-error';
-import { RequiredError } from '@okta/okta-sdk-nodejs/src/types/generated/apis/baseapi';
+import { UnknownError } from '../common-errors/unknown-error';
 
 const MODULE_NAME = 'OKTA-HUMBLE';
 
-function isOktaApiError(err: unknown): err is OktaApiError {
-  return typeof err === 'object' && 'name' in err && 'errorSummary' in err;
-}
-
-function isOktaRequiredError(err: unknown): err is RequiredError {
-  return typeof err === 'object' && 'name' in err && err.name === 'RequiredError';
-}
-
-function copyOktaError(error: object, keys: string[]) {
-  return keys.reduce(
-    (acc, key) => {
-      if (key in error) {
-        acc[key] = error[key];
-      }
-      return acc;
-    },
-    { name: 'UNKNOWN', message: 'UNKNOWN' },
-  );
-}
-
-function buildSerializableError(originalError: Error) {
-  if (isOktaRequiredError(originalError)) {
-    return copyOktaError(originalError, ['api', 'message', 'method', 'field', 'name', 'stack']);
-  }
-  if (isOktaApiError(originalError)) {
-    return copyOktaError(originalError, [
-      'errorCode',
-      'errorId',
-      'errorLink',
-      'errorSummary',
-      'headers',
-      'message',
-      'name',
-      'stack',
-      'status',
-      'url',
-      'errorCauses',
-    ]);
-  }
-  return originalError;
-}
+export type IdpGroup = {
+  id: string;
+  name: string;
+};
 
 export type ListGroupsRequest = {
-  query?: string;
   limit?: number;
+  query?: string;
 };
 
 export type ListGroupUsersRequest = {
@@ -63,21 +27,38 @@ export type ListGroupUsersRequest = {
   limit?: number;
 };
 
-export type UserRequest = {
-  userId: string;
-};
-
 export type UserGroupsRequest = {
   userId: string;
 };
 
-export type IdpGroup = {
-  id: string;
-  name: string;
+export type UserRequest = {
+  userId: string;
 };
 
 export class OktaHumble {
   private client: Client;
+
+  async getUser(request: UserRequest): Promise<CamsUserReference> {
+    try {
+      const user = await this.client.userApi.getUser(request);
+      return {
+        id: user.id,
+        name: user.profile.displayName ?? user.profile.lastName + ', ' + user.profile.firstName,
+      };
+    } catch (originalError) {
+      if (isOktaApiError(originalError) && originalError.status === 401) {
+        throw new UnauthorizedError(MODULE_NAME, {
+          message: 'Unauthorized error occurred while accessing Okta User API.',
+          originalError,
+        });
+      } else {
+        throw new UnknownError(MODULE_NAME, {
+          message: 'Failed to retrieve user.',
+          originalError: buildSerializableError(originalError),
+        });
+      }
+    }
+  }
 
   public async init(config: UserGroupGatewayConfig): Promise<void> {
     return await this.initialize(config);
@@ -87,8 +68,8 @@ export class OktaHumble {
     const camsUserGroups: CamsUserGroup[] = [];
     try {
       const oktaRequest: GroupApiListGroupsRequest = {
-        q: request.query,
         limit: request.limit,
+        q: request.query,
       };
       const oktaGroups = await this.client.groupApi.listGroups(oktaRequest);
 
@@ -100,8 +81,8 @@ export class OktaHumble {
       }
     } catch (originalError) {
       throw new UnknownError(MODULE_NAME, {
-        originalError: buildSerializableError(originalError),
         message: 'Failed to retrieve groups.',
+        originalError: buildSerializableError(originalError),
       });
     }
     return camsUserGroups;
@@ -122,33 +103,11 @@ export class OktaHumble {
       }
     } catch (originalError) {
       throw new UnknownError(MODULE_NAME, {
-        originalError: buildSerializableError(originalError),
         message: 'Failed to retrieve users.',
+        originalError: buildSerializableError(originalError),
       });
     }
     return camsUserReferences;
-  }
-
-  async getUser(request: UserRequest): Promise<CamsUserReference> {
-    try {
-      const user = await this.client.userApi.getUser(request);
-      return {
-        id: user.id,
-        name: user.profile.displayName ?? user.profile.lastName + ', ' + user.profile.firstName,
-      };
-    } catch (originalError) {
-      if (isOktaApiError(originalError) && originalError.status === 401) {
-        throw new UnauthorizedError(MODULE_NAME, {
-          originalError,
-          message: 'Unauthorized error occurred while accessing Okta User API.',
-        });
-      } else {
-        throw new UnknownError(MODULE_NAME, {
-          originalError: buildSerializableError(originalError),
-          message: 'Failed to retrieve user.',
-        });
-      }
-    }
   }
 
   async listUserGroups(request: UserGroupsRequest): Promise<IdpGroup[]> {
@@ -163,8 +122,8 @@ export class OktaHumble {
       }
     } catch (originalError) {
       throw new UnknownError(MODULE_NAME, {
-        originalError: buildSerializableError(originalError),
         message: "Failed to retrieve user's groups.",
+        originalError: buildSerializableError(originalError),
       });
     }
 
@@ -178,18 +137,18 @@ export class OktaHumble {
         let clientConfig: V2Configuration;
         if (config.token) {
           clientConfig = {
+            authorizationMode: 'SSWS',
             orgUrl: config.url,
             token: config.token,
-            authorizationMode: 'SSWS',
           };
         } else {
           clientConfig = {
-            orgUrl: config.url,
-            clientId: config.clientId,
             authorizationMode: 'PrivateKey',
-            scopes: ['okta.groups.read'],
-            privateKey: JSON.parse(config.privateKey),
+            clientId: config.clientId,
             keyId: config.keyId,
+            orgUrl: config.url,
+            privateKey: JSON.parse(config.privateKey),
+            scopes: ['okta.groups.read'],
           };
         }
         this.client = new Client(clientConfig);
@@ -197,8 +156,8 @@ export class OktaHumble {
         throw isCamsError(originalError)
           ? originalError
           : new UnknownError(MODULE_NAME, {
-              originalError: buildSerializableError(originalError),
               message: 'Failed to initialize.',
+              originalError: buildSerializableError(originalError),
             });
       }
     }
@@ -224,6 +183,48 @@ export class OktaHumble {
       }
     });
   }
+}
+
+function buildSerializableError(originalError: Error) {
+  if (isOktaRequiredError(originalError)) {
+    return copyOktaError(originalError, ['api', 'message', 'method', 'field', 'name', 'stack']);
+  }
+  if (isOktaApiError(originalError)) {
+    return copyOktaError(originalError, [
+      'errorCode',
+      'errorId',
+      'errorLink',
+      'errorSummary',
+      'headers',
+      'message',
+      'name',
+      'stack',
+      'status',
+      'url',
+      'errorCauses',
+    ]);
+  }
+  return originalError;
+}
+
+function copyOktaError(error: object, keys: string[]) {
+  return keys.reduce(
+    (acc, key) => {
+      if (key in error) {
+        acc[key] = error[key];
+      }
+      return acc;
+    },
+    { message: 'UNKNOWN', name: 'UNKNOWN' },
+  );
+}
+
+function isOktaApiError(err: unknown): err is OktaApiError {
+  return typeof err === 'object' && 'name' in err && 'errorSummary' in err;
+}
+
+function isOktaRequiredError(err: unknown): err is RequiredError {
+  return typeof err === 'object' && 'name' in err && err.name === 'RequiredError';
 }
 
 export default OktaHumble;

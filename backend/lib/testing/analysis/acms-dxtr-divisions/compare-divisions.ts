@@ -1,9 +1,10 @@
 import { InvocationContext } from '@azure/functions';
-import applicationContextCreator from '../../../../function-apps/azure/application-context-creator';
-import { LoggerImpl } from '../../../adapters/services/logger.service';
-import OfficesDxtrGateway from '../../../adapters/gateways/dxtr/offices.dxtr.gateway';
-import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
 import * as fs from 'fs/promises';
+
+import { UstpOfficeDetails } from '../../../../../common/src/cams/offices';
+import applicationContextCreator from '../../../../function-apps/azure/application-context-creator';
+import OfficesDxtrGateway from '../../../adapters/gateways/dxtr/offices.dxtr.gateway';
+import { LoggerImpl } from '../../../adapters/services/logger.service';
 
 // Sourced from Office_Regions_and_Divisions.pdf
 const csv = `acmsRegion,acmsGroup,acmsJudicialDistrictName,acmsDivisionCode,acmsDivisionName
@@ -265,33 +266,55 @@ const csv = `acmsRegion,acmsGroup,acmsJudicialDistrictName,acmsDivisionCode,acms
 21,TP,Middle District of Florida,308,Tampa`;
 
 type AcmsRegionDivision = {
-  acmsRegion: string;
-  acmsGroup: string;
-  acmsJudicialDistrictName: string;
   acmsDivisionCode: string;
   acmsDivisionName: string;
-};
-
-type DxtrRegionDivision = {
-  dxtrRegion: string;
-  dxtrRegionName: string;
-  dxtrGroup: string;
-  dxtrJudicialDistrictName: string;
-  dxtrDivisionCode: string;
-  dxtrDivisionName: string;
-  oktaGroupName: string;
-  camsOfficeCode: string;
-  ustpOfficeName: string;
+  acmsGroup: string;
+  acmsJudicialDistrictName: string;
+  acmsRegion: string;
 };
 
 type DivisionMatch = { acms: AcmsRegionDivision; dxtr: DxtrRegionDivision };
+
+type DxtrRegionDivision = {
+  camsOfficeCode: string;
+  dxtrDivisionCode: string;
+  dxtrDivisionName: string;
+  dxtrGroup: string;
+  dxtrJudicialDistrictName: string;
+  dxtrRegion: string;
+  dxtrRegionName: string;
+  oktaGroupName: string;
+  ustpOfficeName: string;
+};
 type JoinedDivisions = AcmsRegionDivision & DxtrRegionDivision;
 
 type Output = {
+  ignored: DivisionMatch[];
   match: DivisionMatch[];
   noMatch: DivisionMatch[];
-  ignored: DivisionMatch[];
 };
+
+function joinMatchedRecord(match: DivisionMatch) {
+  const record: JoinedDivisions = {
+    acmsDivisionCode: '',
+    acmsDivisionName: '',
+    acmsGroup: '',
+    acmsJudicialDistrictName: '',
+    acmsRegion: '',
+    camsOfficeCode: '',
+    dxtrDivisionCode: '',
+    dxtrDivisionName: '',
+    dxtrGroup: '',
+    dxtrJudicialDistrictName: '',
+    dxtrRegion: '',
+    dxtrRegionName: '',
+    oktaGroupName: '',
+    ustpOfficeName: '',
+    ...match.acms,
+    ...match.dxtr,
+  };
+  return record;
+}
 
 function loadAcmsRegionDivisions() {
   const records = csv.split('\n');
@@ -306,75 +329,6 @@ function loadAcmsRegionDivisions() {
     return obj as AcmsRegionDivision;
   });
   return divisions;
-}
-
-function ustpOfficeToDivision(ustp: UstpOfficeDetails): DxtrRegionDivision[] {
-  const courtDivisions: DxtrRegionDivision[] = [];
-  ustp.groups.reduce((acc, group) => {
-    group.divisions.forEach((division) => {
-      acc.push({
-        dxtrRegion: ustp.regionId,
-        dxtrRegionName: ustp.regionName,
-        dxtrGroup: group.groupDesignator,
-        dxtrJudicialDistrictName: division.court.courtName,
-        dxtrDivisionCode: division.divisionCode,
-        dxtrDivisionName: division.courtOffice.courtOfficeName,
-        oktaGroupName: ustp.idpGroupName,
-        camsOfficeCode: ustp.officeCode,
-        ustpOfficeName: ustp.officeName,
-      });
-    });
-    return acc;
-  }, courtDivisions);
-  return courtDivisions;
-}
-
-async function writeToCsv(records: JoinedDivisions[], fileName: string) {
-  if (records.length === 0) return;
-
-  const outputDirectory = './temp/acms-dxtr-divisions';
-  await fs.mkdir(outputDirectory, { recursive: true });
-  const file = await fs.open(`${outputDirectory}/${fileName}`, 'w');
-
-  file.write(Object.keys(records[0]).join(',') + '\n');
-
-  records.forEach((record) => {
-    const values: string[] = [];
-    Object.keys(record).forEach((key) => values.push(record[key]));
-    values.forEach((value, idx) => {
-      if (value.includes(',')) values[idx] = '"' + value + '"';
-    });
-    file.write(values.join(',') + '\n');
-  });
-  file.close();
-}
-
-function joinMatchedRecord(match: DivisionMatch) {
-  const record: JoinedDivisions = {
-    acmsRegion: '',
-    acmsGroup: '',
-    acmsJudicialDistrictName: '',
-    acmsDivisionCode: '',
-    acmsDivisionName: '',
-    dxtrRegion: '',
-    dxtrRegionName: '',
-    dxtrGroup: '',
-    dxtrJudicialDistrictName: '',
-    dxtrDivisionCode: '',
-    dxtrDivisionName: '',
-    oktaGroupName: '',
-    camsOfficeCode: '',
-    ustpOfficeName: '',
-    ...match.acms,
-    ...match.dxtr,
-  };
-  return record;
-}
-
-async function outputResults(results: Output) {
-  await writeToCsv(results.match.map(joinMatchedRecord), 'acms_dxtr_match.csv');
-  await writeToCsv(results.noMatch.map(joinMatchedRecord), 'acms_dxtr_nomatch.csv');
-  await writeToCsv(results.ignored.map(joinMatchedRecord), 'acms_dxtr_ignored.csv');
 }
 
 async function main() {
@@ -429,12 +383,59 @@ async function main() {
       acc.match.push(mapping);
       return acc;
     },
-    { match: [], noMatch: [], ignored: [] } as Output,
+    { ignored: [], match: [], noMatch: [] } as Output,
   );
 
   // Write the results to the temp directory.
   // See: backend/function-apps/temp/
   await outputResults(output);
+}
+
+async function outputResults(results: Output) {
+  await writeToCsv(results.match.map(joinMatchedRecord), 'acms_dxtr_match.csv');
+  await writeToCsv(results.noMatch.map(joinMatchedRecord), 'acms_dxtr_nomatch.csv');
+  await writeToCsv(results.ignored.map(joinMatchedRecord), 'acms_dxtr_ignored.csv');
+}
+
+function ustpOfficeToDivision(ustp: UstpOfficeDetails): DxtrRegionDivision[] {
+  const courtDivisions: DxtrRegionDivision[] = [];
+  ustp.groups.reduce((acc, group) => {
+    group.divisions.forEach((division) => {
+      acc.push({
+        camsOfficeCode: ustp.officeCode,
+        dxtrDivisionCode: division.divisionCode,
+        dxtrDivisionName: division.courtOffice.courtOfficeName,
+        dxtrGroup: group.groupDesignator,
+        dxtrJudicialDistrictName: division.court.courtName,
+        dxtrRegion: ustp.regionId,
+        dxtrRegionName: ustp.regionName,
+        oktaGroupName: ustp.idpGroupName,
+        ustpOfficeName: ustp.officeName,
+      });
+    });
+    return acc;
+  }, courtDivisions);
+  return courtDivisions;
+}
+
+async function writeToCsv(records: JoinedDivisions[], fileName: string) {
+  if (records.length === 0) return;
+
+  const outputDirectory = './temp/acms-dxtr-divisions';
+  await fs.mkdir(outputDirectory, { recursive: true });
+  const file = await fs.open(`${outputDirectory}/${fileName}`, 'w');
+
+  file.write(Object.keys(records[0]).join(',') + '\n');
+
+  records.forEach((record) => {
+    const values: string[] = [];
+    Object.keys(record).forEach((key) => values.push(record[key]));
+    values.forEach((value, idx) => {
+      if (value.includes(',')) values[idx] = '"' + value + '"';
+    });
+    file.write(values.join(',') + '\n');
+  });
+  file.close();
 }
 
 (async () => {

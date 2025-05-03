@@ -1,78 +1,70 @@
 export type Condition<T = unknown> = {
   condition:
+    | 'CONTAINS'
     | 'EQUALS'
+    | 'EXISTS'
     | 'GREATER_THAN'
     | 'GREATER_THAN_OR_EQUAL'
-    | 'CONTAINS'
     | 'LESS_THAN'
     | 'LESS_THAN_OR_EQUAL'
-    | 'NOT_EQUALS'
     | 'NOT_CONTAINS'
-    | 'EXISTS'
+    | 'NOT_EQUALS'
     | 'REGEX';
   leftOperand: Field<T>;
   rightOperand: unknown;
+};
+
+export interface ConditionFunctions<T = unknown, R = T[keyof T]> {
+  contains: (rightOperand: R | R[]) => Condition<T>;
+  equals: (rightOperand: Field<T> | R) => Condition<T>;
+  exists: () => Condition<T>;
+  greaterThan: (rightOperand: Field<T> | R) => Condition<T>;
+  greaterThanOrEqual: (rightOperand: Field<T> | R) => Condition<T>;
+  lessThan: (rightOperand: Field<T> | R) => Condition<T>;
+  lessThanOrEqual: (rightOperand: Field<T> | R) => Condition<T>;
+  notContains: (rightOperand: R | R[]) => Condition<T>;
+  notEqual: (rightOperand: Field<T> | R) => Condition<T>;
+  notExists: () => Condition<T>;
+  regex: (rightOperand: RegExp | string) => Condition<T>;
+}
+
+export type ConditionOrConjunction<T = unknown> = Condition<T> | Conjunction<T>;
+
+export type Conjunction<T = unknown> = {
+  conjunction: 'AND' | 'NOT' | 'OR';
+  values: ConditionOrConjunction<T>[];
+};
+
+export type Field<T = never> = {
+  name: keyof T;
+};
+
+export type Query<T = unknown> = ConditionOrConjunction<T> | ConditionOrConjunction<T>[];
+
+export type SortedField<T = never> = {
+  direction: 'ASCENDING' | 'DESCENDING';
+  field: Field<T>;
+};
+
+export type SortSpec<T = never> = {
+  fields: SortedField<T>[];
 };
 
 export function isCondition(obj: unknown): obj is Condition {
   return typeof obj === 'object' && 'condition' in obj;
 }
 
-export type Field<T = never> = {
-  name: keyof T;
-};
+export function isConjunction(obj: unknown): obj is Conjunction {
+  return typeof obj === 'object' && 'conjunction' in obj;
+}
 
 export function isField(obj: unknown): obj is Field {
   // TODO: This inference is specced very wide and could return many false positives.
   return obj instanceof Object && 'name' in obj;
 }
 
-export type Conjunction<T = unknown> = {
-  conjunction: 'AND' | 'OR' | 'NOT';
-  values: ConditionOrConjunction<T>[];
-};
-
-export function isConjunction(obj: unknown): obj is Conjunction {
-  return typeof obj === 'object' && 'conjunction' in obj;
-}
-
-export type Query<T = unknown> = ConditionOrConjunction<T> | ConditionOrConjunction<T>[];
-
-export type ConditionOrConjunction<T = unknown> = Condition<T> | Conjunction<T>;
-
-function and<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
-  return {
-    conjunction: 'AND',
-    values,
-  };
-}
-
-function or<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
-  return {
-    conjunction: 'OR',
-    values,
-  };
-}
-
-function not<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
-  return {
-    conjunction: 'NOT',
-    values,
-  };
-}
-
-export interface ConditionFunctions<T = unknown, R = T[keyof T]> {
-  equals: (rightOperand: Field<T> | R) => Condition<T>;
-  greaterThan: (rightOperand: Field<T> | R) => Condition<T>;
-  greaterThanOrEqual: (rightOperand: Field<T> | R) => Condition<T>;
-  lessThan: (rightOperand: Field<T> | R) => Condition<T>;
-  lessThanOrEqual: (rightOperand: Field<T> | R) => Condition<T>;
-  notEqual: (rightOperand: Field<T> | R) => Condition<T>;
-  exists: () => Condition<T>;
-  notExists: () => Condition<T>;
-  contains: (rightOperand: R | R[]) => Condition<T>;
-  notContains: (rightOperand: R | R[]) => Condition<T>;
-  regex: (rightOperand: RegExp | string) => Condition<T>;
+export function isSortSpec(obj: unknown): obj is SortSpec {
+  return typeof obj === 'object' && 'fields' in obj && !('stage' in obj);
 }
 
 export function using<T = unknown>() {
@@ -172,45 +164,53 @@ export function using<T = unknown>() {
       contains,
       equals,
       exists,
-      notExists,
       greaterThan,
       greaterThanOrEqual,
       lessThan,
       lessThanOrEqual,
-      notEqual,
       notContains,
+      notEqual,
+      notExists,
       regex,
     };
   };
 }
 
-export type SortedField<T = never> = {
-  field: Field<T>;
-  direction: 'ASCENDING' | 'DESCENDING';
-};
+function and<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
+  return {
+    conjunction: 'AND',
+    values,
+  };
+}
 
-export type SortSpec<T = never> = {
-  fields: SortedField<T>[];
-};
+function not<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
+  return {
+    conjunction: 'NOT',
+    values,
+  };
+}
 
-export function isSortSpec(obj: unknown): obj is SortSpec {
-  return typeof obj === 'object' && 'fields' in obj && !('stage' in obj);
+function or<T = unknown>(...values: ConditionOrConjunction<T>[]): Conjunction<T> {
+  return {
+    conjunction: 'OR',
+    values,
+  };
 }
 
 function orderBy<T = never>(...specs: [keyof T, 'ASCENDING' | 'DESCENDING'][]): SortSpec {
   return {
     fields: specs.map((spec) => {
-      return { field: { name: spec[0] }, direction: spec[1] };
+      return { direction: spec[1], field: { name: spec[0] } };
     }),
   };
 }
 
 const QueryBuilder = {
-  not,
   and,
+  not,
   or,
-  using,
   orderBy,
+  using,
 };
 
 export default QueryBuilder;

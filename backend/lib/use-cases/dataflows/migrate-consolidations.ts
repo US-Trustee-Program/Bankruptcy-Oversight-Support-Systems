@@ -1,52 +1,48 @@
-import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
-import { ConsolidationFrom, ConsolidationTo } from '../../../../common/src/cams/events';
-import { ConsolidationType } from '../../../../common/src/cams/orders';
-import { CaseSummary } from '../../../../common/src/cams/cases';
-import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
 import { ACMS_SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
-import { getCamsError } from '../../common-errors/error-utilities';
+import { CaseSummary } from '../../../../common/src/cams/cases';
+import { ConsolidationFrom, ConsolidationTo } from '../../../../common/src/cams/events';
+import { CaseConsolidationHistory } from '../../../../common/src/cams/history';
+import { ConsolidationType } from '../../../../common/src/cams/orders';
+import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
+import { getCamsError } from '../../common-errors/error-utilities';
+import Factory from '../../factory';
 
 const MODULE_NAME = 'ACMS-ORDERS-USE-CASE';
 
 export type AcmsBounds = {
-  divisionCodes: string[];
   chapters: string[];
+  divisionCodes: string[];
 };
 
-export type TriggerRequest = AcmsBounds;
+export type AcmsConsolidation = {
+  childCases: AcmsConsolidationChildCase[];
+  leadCaseId: string;
+};
 
-export type AcmsPredicate = {
-  divisionCode: string;
-  chapter: string;
+export type AcmsConsolidationChildCase = {
+  caseId: string;
+  consolidationDate: string;
+  consolidationType: string;
 };
 
 export type AcmsEtlQueueItem = AcmsPredicate & {
   leadCaseId: string;
 };
 
-export function isAcmsEtlQueueItem(item: unknown): item is AcmsEtlQueueItem {
-  return typeof item === 'object' && 'leadCaseId' in item;
-}
-
-export type AcmsConsolidationChildCase = {
-  caseId: string;
-  consolidationType: string;
-  consolidationDate: string;
-};
-
-export type AcmsConsolidation = {
-  leadCaseId: string;
-  childCases: AcmsConsolidationChildCase[];
+export type AcmsPredicate = {
+  chapter: string;
+  divisionCode: string;
 };
 
 export type AcmsTransformationResult = {
-  leadCaseId: string;
   childCaseCount: number;
-  success: boolean;
   error?: CamsError;
+  leadCaseId: string;
+  success: boolean;
 };
+
+export type TriggerRequest = AcmsBounds;
 
 export class AcmsOrders {
   public async getLeadCaseIds(
@@ -76,8 +72,8 @@ export class AcmsOrders {
     acmsLeadCaseId: string,
   ): Promise<AcmsTransformationResult> {
     const report: AcmsTransformationResult = {
-      leadCaseId: acmsLeadCaseId,
       childCaseCount: 0,
+      leadCaseId: acmsLeadCaseId,
       success: true,
     };
     try {
@@ -171,13 +167,13 @@ export class AcmsOrders {
       let leadCaseHistoryBefore: CaseConsolidationHistory['before'] | null = null;
       for (const consolidationDate of consolidationDates) {
         const caseHistory: Omit<CaseConsolidationHistory, 'caseId'> = {
-          documentType: 'AUDIT_CONSOLIDATION',
-          before: null,
           after: {
-            status: 'approved',
-            leadCase,
             childCases: [...historyDateMap.get(consolidationDate)],
+            leadCase,
+            status: 'approved',
           },
+          before: null,
+          documentType: 'AUDIT_CONSOLIDATION',
           updatedBy: ACMS_SYSTEM_USER_REFERENCE,
           updatedOn: consolidationDate,
         };
@@ -191,17 +187,17 @@ export class AcmsOrders {
 
         // Write the history for the lead case.
         const leadCaseHistoryAfter: CaseConsolidationHistory['after'] = {
-          status: 'approved',
-          leadCase,
           childCases: leadCaseHistoryBefore
             ? [...leadCaseHistoryBefore.childCases, ...historyDateMap.get(consolidationDate)]
             : [...historyDateMap.get(consolidationDate)],
+          leadCase,
+          status: 'approved',
         };
         const leadCaseHistory: CaseConsolidationHistory = {
           caseId: leadCase.caseId,
           ...caseHistory,
-          before: leadCaseHistoryBefore ? { ...leadCaseHistoryBefore } : null,
           after: leadCaseHistoryAfter,
+          before: leadCaseHistoryBefore ? { ...leadCaseHistoryBefore } : null,
         };
         await casesRepo.createCaseHistory(leadCaseHistory);
         leadCaseHistoryBefore = leadCaseHistoryAfter;
@@ -219,6 +215,10 @@ export class AcmsOrders {
     }
     return report;
   }
+}
+
+export function isAcmsEtlQueueItem(item: unknown): item is AcmsEtlQueueItem {
+  return typeof item === 'object' && 'leadCaseId' in item;
 }
 
 export default AcmsOrders;

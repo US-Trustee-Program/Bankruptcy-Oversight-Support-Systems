@@ -1,6 +1,7 @@
 import * as ld from '@launchdarkly/node-server-sdk';
-import { ApplicationConfiguration } from '../../configs/application-configuration';
+
 import { testFeatureFlags } from '../../../../common/src/feature-flags';
+import { ApplicationConfiguration } from '../../configs/application-configuration';
 import { FeatureFlagSet } from '../types/basic';
 
 export async function getFeatureFlags(config: ApplicationConfiguration): Promise<FeatureFlagSet> {
@@ -8,14 +9,14 @@ export async function getFeatureFlags(config: ApplicationConfiguration): Promise
 
   const client = ld.init(config.featureFlagKey, {
     baseUri: 'https://clientsdk.launchdarkly.us',
-    streamUri: 'https://clientstream.launchdarkly.us',
     eventsUri: 'https://events.launchdarkly.us',
+    streamUri: 'https://clientstream.launchdarkly.us',
   });
   await client.waitForInitialization();
   const state = await client.allFlagsState({
-    kind: 'user',
-    key: 'feature-flag-migration',
     anonymous: true,
+    key: 'feature-flag-migration',
+    kind: 'user',
   });
   await client.flush();
   client.close();

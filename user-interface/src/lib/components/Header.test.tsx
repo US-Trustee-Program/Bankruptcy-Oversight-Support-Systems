@@ -1,12 +1,13 @@
+import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
-import { Header } from './Header';
-import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
+
 import LocalStorage from '../utils/local-storage';
-import MockData from '@common/cams/test-utilities/mock-data';
-import { CamsRole } from '@common/cams/roles';
-import userEvent from '@testing-library/user-event';
+import { Header } from './Header';
 
 describe('Header', () => {
   const uiUser = userEvent.setup();

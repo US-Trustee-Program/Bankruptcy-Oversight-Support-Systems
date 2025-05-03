@@ -9,12 +9,12 @@ import QueryBuilder, {
 
 describe('Query Builder', () => {
   type Foo = {
-    uno: string;
-    two: number;
     three: boolean;
+    two: number;
+    uno: string;
   };
 
-  const { not, and, or, using } = QueryBuilder;
+  const { and, not, or, using } = QueryBuilder;
   const q = using<Foo>();
 
   test('should build correct query tree', () => {
@@ -203,7 +203,7 @@ describe('Query Builder', () => {
 
   test('isSortSpec', () => {
     const sort: SortSpec<Foo> = {
-      fields: [{ field: { name: 'uno' }, direction: 'ASCENDING' }],
+      fields: [{ direction: 'ASCENDING', field: { name: 'uno' } }],
     };
     expect(isSortSpec(sort)).toBeTruthy();
     expect(isSortSpec({})).toBeFalsy();

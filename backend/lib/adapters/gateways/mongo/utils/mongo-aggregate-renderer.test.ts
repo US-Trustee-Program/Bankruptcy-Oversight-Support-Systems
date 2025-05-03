@@ -1,7 +1,7 @@
+import { CaseAssignment } from '../../../../../../common/src/cams/assignments';
+import { Condition, Field } from '../../../../query/query-builder';
 import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
 import { toMongoAggregate, toMongoFilterCondition } from './mongo-aggregate-renderer';
-import { Condition, Field } from '../../../../query/query-builder';
-import { CaseAssignment } from '../../../../../../common/src/cams/assignments';
 
 const { pipeline } = QueryPipeline;
 
@@ -24,37 +24,36 @@ describe('aggregation query renderer tests', () => {
       },
       {
         $lookup: {
+          as: 'barDocs',
+          foreignField: 'uno',
           from: 'bar',
           localField: 'uno',
-          foreignField: 'uno',
-          as: 'barDocs',
         },
       },
       {
         $addFields: {
           matchingBars: {
             $filter: {
-              input: { $ifNull: ['$barDocs', []] },
               cond: { $eq: ['$$this.name', 'Bob Newhart'] },
+              input: { $ifNull: ['$barDocs', []] },
             },
           },
         },
       },
       {
         $project: {
-          four: 0,
           five: 0,
+          four: 0,
         },
       },
       {
         $sort: {
-          uno: -1,
           two: 1,
+          uno: -1,
         },
       },
       {
         $facet: {
-          metadata: [{ $count: 'total' }],
           data: [
             {
               $skip: 0,
@@ -63,6 +62,7 @@ describe('aggregation query renderer tests', () => {
               $limit: 5,
             },
           ],
+          metadata: [{ $count: 'total' }],
         },
       },
     ];
@@ -135,19 +135,19 @@ describe('aggregation query renderer tests', () => {
     ];
 
     const simpleMatch: Stage = {
-      stage: 'MATCH',
       condition: 'EQUALS',
       leftOperand: { name: 'two' },
       rightOperand: 'hello',
+      stage: 'MATCH',
     };
 
     const group: Stage = {
-      stage: 'GROUP',
-      groupBy: [{ name: 'userId' }],
       accumulators: [
         { accumulator: 'FIRST', as: { name: 'name' }, field: { name: 'name' } },
         { accumulator: 'COUNT', as: { name: 'total' } },
       ],
+      groupBy: [{ name: 'userId' }],
+      stage: 'GROUP',
     };
 
     const query = pipeline(simpleMatch, group);
@@ -160,6 +160,7 @@ describe('aggregation query renderer tests', () => {
 
 const queryMatch: Stage = {
   conjunction: 'OR',
+  stage: 'MATCH',
   values: [
     {
       condition: 'EQUALS',
@@ -207,20 +208,19 @@ const queryMatch: Stage = {
       ],
     },
   ],
-  stage: 'MATCH',
 };
 
 const queryJoin: Stage = {
-  stage: 'JOIN',
-  local: {
-    name: 'uno',
-    source: null,
-  },
+  alias: { name: 'barDocs' },
   foreign: {
     name: 'uno',
     source: 'bar',
   },
-  alias: { name: 'barDocs' },
+  local: {
+    name: 'uno',
+    source: null,
+  },
+  stage: 'JOIN',
 };
 
 const filterCondition: Condition<CaseAssignment> = {
@@ -232,37 +232,37 @@ const filterCondition: Condition<CaseAssignment> = {
 };
 
 const queryAddFields: Stage = {
-  stage: 'ADD_FIELDS',
   fields: [
     {
       fieldToAdd: { name: 'matchingBars' },
-      querySource: { name: 'barDocs' },
       query: filterCondition,
+      querySource: { name: 'barDocs' },
     },
   ],
+  stage: 'ADD_FIELDS',
 };
 
 const queryProject: Stage = {
-  stage: 'EXCLUDE',
   fields: [{ name: 'four' }, { name: 'five' }],
+  stage: 'EXCLUDE',
 };
 
 const querySort: Stage = {
-  stage: 'SORT',
   fields: [
     {
-      field: { name: 'uno' },
       direction: 'DESCENDING',
+      field: { name: 'uno' },
     },
     {
-      field: { name: 'two' },
       direction: 'ASCENDING',
+      field: { name: 'two' },
     },
   ],
+  stage: 'SORT',
 };
 
 const queryPaginate: Stage = {
-  stage: 'PAGINATE',
-  skip: 0,
   limit: 5,
+  skip: 0,
+  stage: 'PAGINATE',
 };

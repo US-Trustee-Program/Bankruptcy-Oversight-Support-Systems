@@ -1,25 +1,26 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import DataVerificationScreen from './DataVerificationScreen';
-import { BrowserRouter } from 'react-router-dom';
-import { formatDate } from '@/lib/utils/datetime';
-import {
-  isTransferOrder,
-  TransferOrder,
-  ConsolidationOrder,
-  isConsolidationOrder,
-} from '@common/cams/orders';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
-import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import { CamsRole } from '@common/cams/roles';
+import { formatDate } from '@/lib/utils/datetime';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import {
+  ConsolidationOrder,
+  isConsolidationOrder,
+  isTransferOrder,
+  TransferOrder,
+} from '@common/cams/orders';
+import { CamsRole } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import DataVerificationScreen from './DataVerificationScreen';
 
 describe('Review Orders screen', () => {
   beforeEach(async () => {
     testingUtilities.setUser({
-      roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
+      roles: [CamsRole.DataVerifier],
     });
     vi.stubEnv('CAMS_PA11Y', 'true');
   });
@@ -133,10 +134,10 @@ describe('Review Orders screen', () => {
         MockData.getTransferOrder({ override: { status: 'approved' } }),
         MockData.getTransferOrder({ override: { status: 'pending' } }),
         MockData.getConsolidationOrder({
-          override: { status: 'approved', leadCase: MockData.getCaseSummary() },
+          override: { leadCase: MockData.getCaseSummary(), status: 'approved' },
         }),
         MockData.getConsolidationOrder({
-          override: { status: 'pending', leadCase: MockData.getCaseSummary() },
+          override: { leadCase: MockData.getCaseSummary(), status: 'pending' },
         }),
       ],
     };

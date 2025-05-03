@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import ButtonGroup, { ButtonGroupProps } from './ButtonGroup';
+
 import Button from './Button';
+import ButtonGroup, { ButtonGroupProps } from './ButtonGroup';
 
 const buttonGroupId = 'test-button-group';
 const buttonGroupCSSClass = 'test-class-name';
@@ -8,11 +9,11 @@ const buttonGroupCSSClass = 'test-class-name';
 describe('tests for USWDS button group', () => {
   function renderWithProps(props?: Partial<ButtonGroupProps>) {
     const defaultProps: ButtonGroupProps = {
-      id: buttonGroupId,
       activeButtonId: 'button-1',
-      className: buttonGroupCSSClass,
-      onButtonClick: (_id: string) => {},
       children: [],
+      className: buttonGroupCSSClass,
+      id: buttonGroupId,
+      onButtonClick: (_id: string) => {},
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -36,8 +37,8 @@ describe('tests for USWDS button group', () => {
 
   test('should not contain class name or id if none are supplied in props', () => {
     renderWithProps({
-      id: '',
       className: '',
+      id: '',
     });
 
     const ul = document.getElementsByClassName('usa-button-group usa-button-group--segmented');
@@ -76,7 +77,6 @@ describe('tests for USWDS button group', () => {
     const buttonOneOnClick = vi.fn();
     const buttonTwoOnClick = vi.fn();
     renderWithProps({
-      onButtonClick: buttonGroupOnClick,
       children: [
         <Button id="button-1" key="button-key-1" onClick={buttonOneOnClick}>
           Button 1
@@ -85,6 +85,7 @@ describe('tests for USWDS button group', () => {
           Button 2
         </Button>,
       ],
+      onButtonClick: buttonGroupOnClick,
     });
 
     const button1 = screen.getByTestId('button-button-1');
@@ -114,10 +115,10 @@ describe('tests for USWDS button group', () => {
   test('should render children with supplied class names', () => {
     renderWithProps({
       children: [
-        <Button key="1" id="button-1" className="class-1">
+        <Button className="class-1" id="button-1" key="1">
           Button 1
         </Button>,
-        <Button key="2" id="button-2" className="class-2">
+        <Button className="class-2" id="button-2" key="2">
           Button 2
         </Button>,
       ],

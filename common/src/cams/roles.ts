@@ -1,7 +1,7 @@
 export enum CamsRole {
+  CaseAssignmentManager = 'CaseAssignmentManager',
+  DataVerifier = 'DataVerifier',
   PrivilegedIdentityUser = 'PrivilegedIdentityUser',
   SuperUser = 'SuperUser',
-  CaseAssignmentManager = 'CaseAssignmentManager',
   TrialAttorney = 'TrialAttorney',
-  DataVerifier = 'DataVerifier',
 }

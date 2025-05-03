@@ -1,19 +1,20 @@
-import { BrowserRouter } from 'react-router-dom';
-import CaseDetailOverview, { CaseDetailOverviewProps } from './CaseDetailOverview';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { formatDate } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { Consolidation, Transfer } from '@common/cams/events';
-import { CaseDetail } from '@common/cams/cases';
-import { MockData } from '@common/cams/test-utilities/mock-data';
-import Actions from '@common/cams/actions';
-import { AttorneyUser, CamsUser } from '@common/cams/users';
-import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
-import { CamsRole } from '@common/cams/roles';
-import LocalStorage from '@/lib/utils/local-storage';
-import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import testingUtilities from '@/lib/testing/testing-utilities';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { formatDate } from '@/lib/utils/datetime';
+import LocalStorage from '@/lib/utils/local-storage';
+import { ResponseBody } from '@common/api/response';
+import Actions from '@common/cams/actions';
+import { CaseDetail } from '@common/cams/cases';
+import { Consolidation, Transfer } from '@common/cams/events';
+import { CamsRole } from '@common/cams/roles';
+import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
+import { MockData } from '@common/cams/test-utilities/mock-data';
+import { AttorneyUser, CamsUser } from '@common/cams/users';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
+
+import CaseDetailOverview, { CaseDetailOverviewProps } from './CaseDetailOverview';
 
 const TEST_CASE_ID = '101-23-12345';
 const OLD_CASE_ID = '111-20-11111';
@@ -26,42 +27,42 @@ const TEST_JUDGE_NAME = 'Rick B Hart';
 const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
 const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
   override: {
+    _actions: [Actions.ManageAssignments],
+    assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
     caseId: TEST_CASE_ID,
     chapter: '15',
-    judgeName: TEST_JUDGE_NAME,
-    assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
     debtorAttorney: TEST_DEBTOR_ATTORNEY,
-    _actions: [Actions.ManageAssignments],
+    judgeName: TEST_JUDGE_NAME,
   },
 });
 const TRANSFER_FROM: Transfer = {
   caseId: TEST_CASE_ID,
-  otherCase: MockData.getCaseSummary({ override: { caseId: OLD_CASE_ID } }),
-  orderDate: '01-04-2023',
   documentType: 'TRANSFER_FROM',
+  orderDate: '01-04-2023',
+  otherCase: MockData.getCaseSummary({ override: { caseId: OLD_CASE_ID } }),
 };
 const TRANSFER_TO: Transfer = {
   caseId: TEST_CASE_ID,
-  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
-  orderDate: '01-12-2024',
   documentType: 'TRANSFER_TO',
+  orderDate: '01-12-2024',
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
 };
 const CONSOLIDATE_TO: Consolidation = {
   caseId: TEST_CASE_ID,
-  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
-  orderDate: '01-12-2024',
   consolidationType: 'administrative',
   documentType: 'CONSOLIDATION_TO',
+  orderDate: '01-12-2024',
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
   updatedBy: MockData.getCamsUser(),
   updatedOn: '01-12-2024',
 };
 
 const CONSOLIDATE_FROM: Consolidation = {
   caseId: TEST_CASE_ID,
-  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
-  orderDate: '01-12-2024',
   consolidationType: 'administrative',
   documentType: 'CONSOLIDATION_FROM',
+  orderDate: '01-12-2024',
+  otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
   updatedBy: MockData.getCamsUser(),
   updatedOn: '01-12-2024',
 };
@@ -70,16 +71,16 @@ const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUse
 
 describe('Case detail basic information panel', () => {
   const attorneyListResponse: ResponseBody<AttorneyUser[]> = {
-    meta: { self: 'self-url' },
     data: attorneyList,
+    meta: { self: 'self-url' },
   };
   vi.spyOn(Api2, 'getAttorneys').mockResolvedValue(attorneyListResponse);
 
   function renderWithProps(props?: Partial<CaseDetailOverviewProps>) {
     const defaultProps: CaseDetailOverviewProps = {
       caseDetail: BASE_TEST_CASE_DETAIL,
-      showReopenDate: false,
       onCaseAssignment: vi.fn(),
+      showReopenDate: false,
     };
 
     const renderProps = { ...defaultProps, ...props };
@@ -121,11 +122,11 @@ describe('Case detail basic information panel', () => {
     test('should not show edit button for trial attorney assignments', () => {
       const caseDetailNoActions = MockData.getCaseDetail({
         override: {
+          assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
           caseId: TEST_CASE_ID,
           chapter: '15',
-          judgeName: TEST_JUDGE_NAME,
-          assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
           debtorAttorney: TEST_DEBTOR_ATTORNEY,
+          judgeName: TEST_JUDGE_NAME,
         },
       });
       renderWithProps({ caseDetail: caseDetailNoActions });

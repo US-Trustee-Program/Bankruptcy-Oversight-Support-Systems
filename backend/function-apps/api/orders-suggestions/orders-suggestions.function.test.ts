@@ -1,20 +1,20 @@
-import handler from './orders-suggestions.function';
+import { CaseSummary } from '../../../../common/src/cams/cases';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import { CamsError } from '../../../lib/common-errors/cams-error';
+import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
 import {
   buildTestResponseSuccess,
   createMockAzureFunctionContext,
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
-import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
-import { CaseSummary } from '../../../../common/src/cams/cases';
 import { buildTestResponseError } from '../../azure/testing-helpers';
+import handler from './orders-suggestions.function';
 
 describe('Orders suggestions function tests', () => {
   const context = createMockAzureFunctionContext();
   const request = createMockAzureFunctionRequest({
-    url: 'http://domain/api/orders-suggestions',
     method: 'GET',
+    url: 'http://domain/api/orders-suggestions',
   });
 
   beforeEach(() => {
@@ -23,7 +23,7 @@ describe('Orders suggestions function tests', () => {
 
   test('should return a list of suggested cases', async () => {
     const summaries = [MockData.getCaseSummary(), MockData.getCaseSummary()];
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<CaseSummary[]>({
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess<CaseSummary[]>({
       data: summaries,
     });
 

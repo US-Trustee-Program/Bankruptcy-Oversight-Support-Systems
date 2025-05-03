@@ -1,10 +1,10 @@
-import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
-import { ApplicationContext } from '../../adapters/types/basic';
-import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import { isCamsError } from '../../common-errors/cams-error';
-import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '../../../../common/src/cams/session';
+import { ApplicationContext } from '../../adapters/types/basic';
+import { isCamsError } from '../../common-errors/cams-error';
 import { isNotFoundError } from '../../common-errors/not-found-error';
+import { ServerConfigError } from '../../common-errors/server-config-error';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
+import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
 import UsersHelpers from '../users/users.helpers';
 
 const MODULE_NAME = 'USER-SESSION-GATEWAY';
@@ -35,15 +35,15 @@ export class UserSessionUseCase {
       }
 
       context.logger.debug(MODULE_NAME, 'Getting user info from Okta.');
-      const { user: camsUserReference, jwt } = await authGateway.getUser(token);
+      const { jwt, user: camsUserReference } = await authGateway.getUser(token);
       const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
       const session: CamsSession = {
-        user,
         accessToken: token,
-        provider: provider,
         expires: jwt.claims.exp,
         issuer: jwt.claims.iss,
+        provider: provider,
+        user,
       };
 
       context.logger.debug(MODULE_NAME, 'Putting session in cache.');
