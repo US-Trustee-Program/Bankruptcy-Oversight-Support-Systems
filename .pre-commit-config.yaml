@@ -21,6 +21,7 @@ repos:
           -   eslint-plugin-prettier
           -   eslint-plugin-react
           -   eslint-plugin-testing-library
+          -   eslint-plugin-perfectionist
           -   '@eslint/js'
           -   typescript
           -   typescript-eslint
