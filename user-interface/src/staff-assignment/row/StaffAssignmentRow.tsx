@@ -90,14 +90,14 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
 
   return (
     <TableRow {...otherProps} key={idx}>
-      <TableRowData dataSortValue={bCase.caseId.replace(/-/g, '')} aria-sort="descending">
+      <TableRowData dataSortValue={bCase.caseId.replace(/-/g, '')}>
         <span className="no-wrap">
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
       <TableRowData>{bCase.caseTitle}</TableRowData>
       <TableRowData>{bCase.chapter}</TableRowData>
-      <TableRowData dataSortValue={bCase.dateFiled.replace(/-/g, '')} aria-sort="descending">
+      <TableRowData dataSortValue={bCase.dateFiled.replace(/-/g, '')}>
         {formatDate(bCase.dateFiled)}
       </TableRowData>
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
