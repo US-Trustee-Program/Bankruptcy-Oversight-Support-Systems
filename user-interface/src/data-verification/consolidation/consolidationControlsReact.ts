@@ -13,8 +13,8 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   const clearButton = useRef<ButtonRef>(null);
   const confirmationModal = useRef<ConfirmationModalImperative>(null);
   const jointAdministrationRadio = useRef<RadioRef>(null);
-  const leadCaseDivisionInput = useRef<ComboBoxRef>(null);
-  const leadCaseNumberInput = useRef<InputRef>(null);
+  const leadCaseDivisionRef = useRef<ComboBoxRef>(null);
+  const leadCaseNumberRef = useRef<InputRef>(null);
   const rejectButton = useRef<ButtonRef>(null);
   const substantiveRadio = useRef<RadioRef>(null);
   const leadCaseFormToggle = useRef<CheckboxRef>(null);
@@ -34,8 +34,8 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   };
 
   const disableLeadCaseForm = (disabled: boolean) => {
-    leadCaseDivisionInput.current?.disable(disabled);
-    leadCaseNumberInput.current?.disable(disabled);
+    leadCaseDivisionRef.current?.disable(disabled);
+    leadCaseNumberRef.current?.disable(disabled);
   };
   const unsetConsolidationType = () => {
     jointAdministrationRadio.current?.check(false);
@@ -56,8 +56,8 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     clearButton,
     confirmationModal,
     jointAdministrationRadio,
-    leadCaseDivisionInput,
-    leadCaseNumberInput,
+    leadCaseDivisionRef: leadCaseDivisionRef,
+    leadCaseNumberRef: leadCaseNumberRef,
     rejectButton,
     substantiveRadio,
     leadCaseFormToggle,

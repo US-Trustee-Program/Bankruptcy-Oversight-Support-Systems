@@ -22,8 +22,8 @@ interface ConsolidationControls {
   clearButton: Ref<ButtonRef>;
   confirmationModal: Ref<ConfirmationModalImperative>;
   jointAdministrationRadio: Ref<RadioRef>;
-  leadCaseDivisionInput: Ref<ComboBoxRef>;
-  leadCaseNumberInput: Ref<InputRef>;
+  leadCaseDivisionRef: Ref<ComboBoxRef>;
+  leadCaseNumberRef: Ref<InputRef>;
   rejectButton: Ref<ButtonRef>;
   substantiveRadio: Ref<RadioRef>;
   leadCaseFormToggle: Ref<CheckboxRef>;

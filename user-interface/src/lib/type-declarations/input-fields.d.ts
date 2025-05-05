@@ -17,6 +17,7 @@ export interface ComboBoxRef {
   clearSelections: () => void;
   disable: (value: boolean) => void;
   focusInput: () => void;
+  focus: () => void;
 }
 
 export interface RadioRef {
