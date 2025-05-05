@@ -100,10 +100,10 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function closeDropdown(shouldFocusOnInput: boolean = true) {
+  function closeDropdown(shouldFocus: boolean = true) {
     setExpanded(false);
     clearFilter();
-    if (shouldFocusOnInput) {
+    if (shouldFocus) {
       focusCombobox();
     }
     if (onClose) {
@@ -388,8 +388,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   useEffect(() => {
     if (expanded) {
       filterRef.current?.focus();
-    } else {
-      containerRef.current?.focus();
     }
   }, [expanded]);
 
