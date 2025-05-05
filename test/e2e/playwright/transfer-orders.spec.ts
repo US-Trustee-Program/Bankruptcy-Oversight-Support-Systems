@@ -114,10 +114,7 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId(`button-accordion-cancel-button-${firstOrderId}`).click();
     await expect(page.getByTestId(`validated-cases-row-0`)).not.toBeVisible();
 
-    const courtInputValue = (
-      await page.locator(`#court-selection-${orderId}-combo-box-input`).inputValue()
-    ).toString();
-    expect(courtInputValue).toBe('');
+    await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).not.toBeAttached();
 
     await expect(page.getByTestId(`new-case-input-${firstOrderId}`)).toBeDisabled();
   });
@@ -153,19 +150,6 @@ test.describe('Transfer Orders', () => {
 
     // Action click Cancel
     await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
-    const courtInputValue = await page
-      .locator(`#court-selection-${orderId}-combo-box-input`)
-      .inputValue();
-    const caseNumberInputValue = await page.getByTestId(`new-case-input-${orderId}`).inputValue();
-    expect(caseNumberInputValue).not.toBeNull();
-    expect(courtInputValue).toEqual('');
+    await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).not.toBeAttached();
   });
-});
-
-test.skip('test opening link to case detail screen', async () => {
-  // TODO: Fix opening a new tab to the case detail screen.
-  // const page1Promise = page.waitForEvent('popup');
-  // await page.getByTestId(`case-detail-${firstOrder.caseId}-${orderId}-link`).click();
-  // const page1 = await page1Promise;
-  // expect(page1.url()).toContain(`/case-detail/${firstOrder.caseId}/`);
 });

@@ -30,7 +30,7 @@ async function mockLogin(page: Page) {
   await mockAuthResponsePromise;
 
   await page.context().storageState({ path: authFile });
-  await expect(page.context().storageState({ path: authFile })).toBeDefined();
+  expect(page.context().storageState({ path: authFile })).toBeDefined();
 }
 
 async function oktaLogin(page: Page) {
@@ -53,11 +53,11 @@ async function oktaLogin(page: Page) {
   await page.waitForURL(TARGET_HOST);
   const state = await page.context().storageState({ path: authFile });
   expect(state).toBeDefined();
-  await await page.goto(TARGET_HOST);
+  await page.goto(TARGET_HOST);
   const expectedHost = TARGET_HOST.includes('localhost:3000')
     ? TARGET_HOST
     : `${TARGET_HOST}/?x-ms-routing-name=staging`;
-  page.waitForURL(expectedHost);
+  await page.waitForURL(expectedHost);
   await expect(page.getByTestId('app-component-test-id')).toBeVisible();
 }
 
