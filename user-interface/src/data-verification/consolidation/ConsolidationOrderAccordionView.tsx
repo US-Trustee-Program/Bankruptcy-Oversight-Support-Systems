@@ -36,8 +36,8 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
         (office) => office.value === viewModel.divisionCode,
       );
 
-      if (selectedOption && viewModel.leadCaseDivisionInput) {
-        viewModel.leadCaseDivisionInput.current?.setSelections([selectedOption]);
+      if (selectedOption && viewModel.leadCaseDivisionRef) {
+        viewModel.leadCaseDivisionRef.current?.setSelections([selectedOption]);
       }
     }
   }, [viewModel.showLeadCaseForm]);
@@ -190,7 +190,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         options={viewModel.filteredOfficeRecords!}
                         required={true}
                         multiSelect={false}
-                        ref={viewModel.leadCaseDivisionInput}
+                        ref={viewModel.leadCaseDivisionRef}
                       />
                     </div>
                     <div className="lead-case-number-container">
@@ -203,7 +203,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                         allowPartialCaseNumber={false}
                         required={true}
                         label="Enter a case number"
-                        ref={viewModel.leadCaseNumberInput}
+                        ref={viewModel.leadCaseNumberRef}
                         aria-describedby="lead-case-form-instructions"
                       />
                       {viewModel.leadCaseNumberError ? (
