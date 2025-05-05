@@ -74,9 +74,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     isValidatingLeadCaseNumber: consolidationStore.isValidatingLeadCaseNumber,
     jointAdministrationRadio: consolidationControls.jointAdministrationRadio,
     leadCase: consolidationStore.leadCase,
-    leadCaseDivisionInput: consolidationControls.leadCaseDivisionInput,
+    leadCaseDivisionInput: consolidationControls.leadCaseDivisionRef,
     leadCaseNumberError: consolidationStore.leadCaseNumberError,
-    leadCaseNumberInput: consolidationControls.leadCaseNumberInput,
+    leadCaseNumberInput: consolidationControls.leadCaseNumberRef,
     order: consolidationStore.order,
     orderType: orderType, // TODO: why is orderType a Map<string, string>?
     rejectButton: consolidationControls.rejectButton,

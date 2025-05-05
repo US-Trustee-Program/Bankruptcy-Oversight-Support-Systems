@@ -54,6 +54,7 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       clearSelections: () => {},
       disable: (value: boolean) => {},
       focusInput: () => {},
+      focus: () => {},
     },
   };
   const leadCaseNumberRef = {
@@ -104,8 +105,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     clearButton,
     confirmationModal: confirmationModalRef,
     jointAdministrationRadio: jointAdministrationRef,
-    leadCaseDivisionInput: leadCaseDivisionRef,
-    leadCaseNumberInput: leadCaseNumberRef,
+    leadCaseDivisionRef,
+    leadCaseNumberRef,
     rejectButton,
     substantiveRadio: substantiveRef,
     leadCaseFormToggle: toggleLeadCaseFormRef,
