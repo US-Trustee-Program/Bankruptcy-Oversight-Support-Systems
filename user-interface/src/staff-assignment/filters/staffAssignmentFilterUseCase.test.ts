@@ -44,6 +44,7 @@ describe('staff assignment filter use case tests', () => {
       clearSelections: () => {},
       disable: (_value: boolean) => {},
       focusInput: () => {},
+      focus: () => {},
     },
   };
   const mockControls: StaffAssignmentFilterControls = {
