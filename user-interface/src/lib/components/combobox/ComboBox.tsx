@@ -459,7 +459,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   onClick={handleOnInputClick}
                   disabled={comboboxDisabled}
                   autoComplete={'off'}
-                  aria-live={props['aria-live'] ?? undefined}
+                  aria-live="assertive"
                   aria-autocomplete="list"
                   aria-activedescendant={currentListItem ?? ''}
                   aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to select an item from the list.`}
