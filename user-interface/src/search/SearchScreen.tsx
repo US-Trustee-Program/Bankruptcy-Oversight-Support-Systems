@@ -1,5 +1,5 @@
 import './SearchScreen.scss';
-import { useEffect, useRef, useState } from 'react';
+import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -23,23 +23,33 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Checkbox from '@/lib/components/uswds/Checkbox';
+
+function isValidFilteredSearch(predicate: CasesSearchPredicate): boolean {
+  const { divisionCodes, caseNumber, chapters } = predicate;
+  const isValid =
+    (!!divisionCodes && divisionCodes.length > 0) ||
+    !!caseNumber ||
+    (!!chapters && chapters.length > 0);
+
+  return isValid && isValidSearchPredicate(predicate);
+}
 
 export default function SearchScreen() {
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
   const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
-  const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
+
+  const defaultSearchPredicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    excludeClosedCases: true,
     divisionCodes: defaultDivisionCodes,
-  });
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
-    limit: DEFAULT_SEARCH_LIMIT,
-    offset: DEFAULT_SEARCH_OFFSET,
-    excludeChildConsolidations: false,
-    divisionCodes: defaultDivisionCodes,
-  });
+  };
+  const [temporarySearchPredicate, setTemporarySearchPredicate] =
+    useState<CasesSearchPredicate>(defaultSearchPredicate);
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -66,7 +76,7 @@ export default function SearchScreen() {
     setChapterList(chapterArray);
   }
 
-  async function getCourts() {
+  function getCourts() {
     api
       .getCourts()
       .then((response) => {
@@ -145,6 +155,15 @@ export default function SearchScreen() {
       newPredicate.chapters = selections.map((option: ComboOption) => option.value);
     }
     setTemporarySearchPredicate(newPredicate);
+  }
+
+  function handleIncludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
+    setTemporarySearchPredicate((previous) => {
+      return {
+        ...previous,
+        excludeClosedCases: !ev.target.checked,
+      };
+    });
   }
 
   function performSearch() {
@@ -240,6 +259,18 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
+            <div className="case-include-closed form-field">
+              <div className="usa-search usa-search--small">
+                <Checkbox
+                  id="include-closed"
+                  name="includeClosedCases"
+                  value="true"
+                  checked={!temporarySearchPredicate.excludeClosedCases}
+                  label="Include Closed Cases"
+                  onChange={handleIncludeClosedCheckbox}
+                />
+              </div>
+            </div>
             <div className="search-form-submit form-field">
               <Button
                 id="search-submit"
@@ -247,7 +278,7 @@ export default function SearchScreen() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
                 onClick={performSearch}
-                disabled={!isValidSearchPredicate(temporarySearchPredicate)}
+                disabled={!isValidFilteredSearch(temporarySearchPredicate)}
               >
                 Search
               </Button>
@@ -256,7 +287,7 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-8" role="status" aria-live="polite">
           <h2>Results</h2>
-          {!isValidSearchPredicate(searchPredicate) && (
+          {!isValidFilteredSearch(searchPredicate) && (
             <div className="search-alert">
               <Alert
                 id="default-state-alert"
@@ -270,7 +301,7 @@ export default function SearchScreen() {
               ></Alert>
             </div>
           )}
-          {isValidSearchPredicate(searchPredicate) && (
+          {isValidFilteredSearch(searchPredicate) && (
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}
