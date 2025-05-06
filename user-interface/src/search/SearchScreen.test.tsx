@@ -451,10 +451,6 @@ describe('search screen', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('.pills-and-clear-all')).toBeNull();
-    });
-
-    await waitFor(() => {
       expect(screen.getByTestId('alert-default-state-alert')).toBeInTheDocument();
     });
   });

@@ -18,7 +18,7 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
     return false;
   }
   return Object.keys(searchPredicate).reduce((isIt, key) => {
-    if (['limit', 'offset'].includes(key)) {
+    if (['limit', 'offset', 'excludeClosedCases'].includes(key)) {
       return isIt;
     }
     return isIt || !!searchPredicate[key as keyof CasesSearchPredicate];
