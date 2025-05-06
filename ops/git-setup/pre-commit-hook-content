@@ -36,7 +36,7 @@ test_files_changed=false
 
 for file in $staged_files; do
     # Check if file is a source code file (ts, tsx, js, jsx)
-    if [[ $file =~ \.(ts|tsx|js|jsx)$ && ! $file =~ \.test\.(ts|tsx|js|jsx)$ && ! $file =~ \.d\.ts$ ]]; then
+    if [[ $file =~ \.(ts|tsx|js|jsx)$ && ! $file =~ \.test\.(ts|tsx|js|jsx)$ && ! $file =~ \.d\.ts$ && ! $file =~ \.config\.ts$ ]]; then
         source_files_changed=true
     # Check if file is a test file
     elif [[ $file =~ \.test\.(ts|tsx|js|jsx)$ ]]; then
