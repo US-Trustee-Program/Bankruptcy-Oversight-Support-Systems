@@ -63,10 +63,10 @@ param oktaUrl string = ''
 param nginxConfigFilename string = 'nginx.conf'
 var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/wwwroot/${nginxConfigFilename} > /etc/nginx/sites-enabled/default;service nginx restart'
 
-@description('The prefered minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
-param preferedMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
+@description('The preferred minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
+param preferredMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
 
-@description('Flag to enable Vercode access')
+@description('Flag to enable Veracode access')
 param allowVeracodeScan bool = false
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
@@ -179,8 +179,12 @@ var applicationSettings = concat(
       value: oktaUrl
     }
     {
-      name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting subsituted when invoking envsubst
+      name: 'NGINX_URI_VAR_VALUE' // workaround to prevent $uri from getting substituted when invoking envsubst
       value: '$uri'
+    }
+    {
+      name: 'CAMS_STAGING'
+      value: 'false'
     }
   ],
   createApplicationInsights
@@ -260,9 +264,10 @@ resource webappConfig 'Microsoft.Web/sites/config@2023-12-01' = {
       linuxFxVersion: linuxFxVersionMap['${appServiceRuntime}']
       appCommandLine: appCommandLine
     },
-    isPremiumPlanType ? { minTlsCipherSuite: preferedMinTLSCipherSuite } : {}
+    isPremiumPlanType ? { minTlsCipherSuite: preferredMinTLSCipherSuite } : {}
   )
 }
+
 module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${webappName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)

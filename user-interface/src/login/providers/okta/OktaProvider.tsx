@@ -7,12 +7,13 @@ import { EnvLoginConfig } from '@common/cams/login';
 import { registerRefreshOktaToken } from './okta-library';
 
 export type OktaProviderProps = PropsWithChildren;
+const isStaging = import.meta.env['CAMS_STAGING'] === 'true';
 
 export function OktaProvider(props: OktaProviderProps) {
   try {
     const config = getLoginConfigurationFromEnv<EnvLoginConfig>();
     const { protocol, host } = window.location;
-    config.redirectUri = `${protocol}//${host}${LOGIN_CONTINUE_PATH}`;
+    config.redirectUri = `${protocol}//${host}${LOGIN_CONTINUE_PATH}${isStaging ? '?x-ms-routing-name=staging' : ''}`;
     const oktaAuth = new OktaAuth(config);
 
     registerRefreshOktaToken(oktaAuth);

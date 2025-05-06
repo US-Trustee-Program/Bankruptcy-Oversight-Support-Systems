@@ -64,7 +64,7 @@ echo "Creating deployment slot for webapp: ${webapp_name}..."
 az webapp deployment slot create --name "$webapp_name" --resource-group "$app_rg" --slot "$slot_name" --configuration-source "$webapp_name"
 
 echo "Modifying app settings for deployment slot..."
-az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
+az webapp config appsettings set --resource-group "${app_rg}" --name "${webapp_name}" --slot "${slot_name}" --slot-settings CAMS_STAGING="true" CSP_API_SERVER_HOST="${api_name}.azurewebsites.us ${api_name}-${slot_name}.azurewebsites.us"
 
 az webapp config set -g "${app_rg}" -n "${webapp_name}" --linux-fx-version "PHP|8.2" 1>/dev/null
 
