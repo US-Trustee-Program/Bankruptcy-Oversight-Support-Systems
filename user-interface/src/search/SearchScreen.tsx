@@ -25,23 +25,32 @@ import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Checkbox from '@/lib/components/uswds/Checkbox';
 
+function isValidFilteredSearch(predicate: CasesSearchPredicate): boolean {
+  const { divisionCodes, caseNumber, chapters } = predicate;
+  const isValid =
+    (!!divisionCodes && divisionCodes.length > 0) ||
+    !!caseNumber ||
+    (!!chapters && chapters.length > 0);
+
+  return isValid && isValidSearchPredicate(predicate);
+}
+
 export default function SearchScreen() {
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
   const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
-  const [temporarySearchPredicate, setTemporarySearchPredicate] = useState<CasesSearchPredicate>({
-    limit: DEFAULT_SEARCH_LIMIT,
-    offset: DEFAULT_SEARCH_OFFSET,
-    excludeChildConsolidations: false,
-    divisionCodes: defaultDivisionCodes,
-  });
-  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({
+
+  const defaultSearchPredicate: CasesSearchPredicate = {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
     excludeClosedCases: true,
     divisionCodes: defaultDivisionCodes,
-  });
+  };
+  const [temporarySearchPredicate, setTemporarySearchPredicate] =
+    useState<CasesSearchPredicate>(defaultSearchPredicate);
+  const [searchPredicate, setSearchPredicate] =
+    useState<CasesSearchPredicate>(defaultSearchPredicate);
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -149,10 +158,10 @@ export default function SearchScreen() {
     setTemporarySearchPredicate(newPredicate);
   }
 
-  function handleExcludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
+  function handleIncludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
     setTemporarySearchPredicate({
       ...temporarySearchPredicate,
-      excludeClosedCases: ev.target.checked,
+      excludeClosedCases: !ev.target.checked,
     });
   }
 
@@ -249,14 +258,14 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
-            <div className="case-exclude-closed form-field" data-testid="case-exclude-closed">
+            <div className="case-include-closed form-field" data-testid="case-include-closed">
               <div className="usa-search usa-search--small">
                 <Checkbox
-                  id="exclude-closed-checkbox"
-                  value="excludeClosedCases"
-                  checked={true}
-                  label="Exclude Closed Cases"
-                  onChange={handleExcludeClosedCheckbox}
+                  id="include-closed-checkbox"
+                  value="includeClosedCases"
+                  checked={!searchPredicate.excludeClosedCases}
+                  label="Include Closed Cases"
+                  onChange={handleIncludeClosedCheckbox}
                 />
               </div>
             </div>
@@ -267,7 +276,7 @@ export default function SearchScreen() {
                 uswdsStyle={UswdsButtonStyle.Default}
                 ref={submitButtonRef}
                 onClick={performSearch}
-                disabled={!isValidSearchPredicate(temporarySearchPredicate)}
+                disabled={!isValidFilteredSearch(temporarySearchPredicate)}
               >
                 Search
               </Button>
@@ -276,7 +285,7 @@ export default function SearchScreen() {
         </div>
         <div className="grid-col-8" role="status" aria-live="polite">
           <h2>Results</h2>
-          {!isValidSearchPredicate(searchPredicate) && (
+          {!isValidFilteredSearch(searchPredicate) && (
             <div className="search-alert">
               <Alert
                 id="default-state-alert"
@@ -290,7 +299,7 @@ export default function SearchScreen() {
               ></Alert>
             </div>
           )}
-          {isValidSearchPredicate(searchPredicate) && (
+          {isValidFilteredSearch(searchPredicate) && (
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}
