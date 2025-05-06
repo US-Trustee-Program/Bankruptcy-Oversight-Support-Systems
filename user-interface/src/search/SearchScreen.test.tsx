@@ -451,4 +451,67 @@ describe('search screen', () => {
       expect(screen.getByTestId('alert-default-state-alert')).toBeInTheDocument();
     });
   });
+
+  test.skip('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
+    renderWithoutProps();
+
+    // Clear the default search on initial render
+    searchCasesSpy.mockClear();
+
+    // Get the checkbox, checkbox label, and search button
+    const includeClosedCheckbox = screen.getByTestId('checkbox-include-closed');
+    const includeClosedCheckboxLabel = screen.getByLabelText('Include Closed Cases');
+    const searchButton = screen.getByTestId('button-search-submit');
+
+    // Verify initial state (checkbox is unchecked by default, excludeClosedCases is true)
+    expect(includeClosedCheckbox).not.toBeChecked();
+
+    // Click the checkbox label to include closed cases
+    await userEvent.click(includeClosedCheckboxLabel);
+
+    // Click search button to perform search
+    await userEvent.click(searchButton);
+
+    // Wait for search to complete
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Now check if the checkbox is checked
+    const updatedCheckbox = screen.getByTestId('checkbox-include-closed');
+    await waitFor(() => {
+      expect(updatedCheckbox).toBeChecked();
+    });
+
+    // Verify that search was called with excludeClosedCases set to false
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        excludeClosedCases: false,
+      }),
+      includeAssignments,
+    );
+
+    // Click the checkbox label again to exclude closed cases
+    await userEvent.click(includeClosedCheckboxLabel);
+
+    // Click search button to perform search
+    await userEvent.click(searchButton);
+
+    // Wait for search to complete
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Now check if the checkbox is unchecked
+    const updatedCheckbox2 = screen.getByTestId('checkbox-include-closed');
+    expect(updatedCheckbox2).not.toBeChecked();
+
+    // Verify that search was called with excludeClosedCases set to true
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        excludeClosedCases: true,
+      }),
+      includeAssignments,
+    );
+  });
 });
