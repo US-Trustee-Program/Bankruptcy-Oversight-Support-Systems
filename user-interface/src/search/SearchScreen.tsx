@@ -258,11 +258,12 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
-            <div className="case-include-closed form-field" data-testid="case-include-closed">
+            <div className="case-include-closed form-field">
               <div className="usa-search usa-search--small">
                 <Checkbox
-                  id="include-closed-checkbox"
-                  value="includeClosedCases"
+                  id="include-closed"
+                  name="includeClosedCases"
+                  value="true"
                   checked={!searchPredicate.excludeClosedCases}
                   label="Include Closed Cases"
                   onChange={handleIncludeClosedCheckbox}
