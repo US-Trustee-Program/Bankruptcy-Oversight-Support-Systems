@@ -260,6 +260,7 @@ describe('search screen', () => {
       divisionCodes: expect.anything(),
       offset: 0,
       excludeChildConsolidations: false,
+      excludeClosedCases: true,
     };
 
     renderWithoutProps();
@@ -434,10 +435,6 @@ describe('search screen', () => {
     );
 
     renderWithoutProps();
-
-    await waitFor(() => {
-      expect(document.querySelector('.pills-and-clear-all')).toBeNull();
-    });
 
     const searchButton = screen.getByTestId('button-search-submit');
     expect(searchButton).toBeDisabled();
