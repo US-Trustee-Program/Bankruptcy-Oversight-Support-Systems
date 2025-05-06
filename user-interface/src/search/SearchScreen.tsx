@@ -1,5 +1,5 @@
 import './SearchScreen.scss';
-import { useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -23,6 +23,7 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Checkbox from '@/lib/components/uswds/Checkbox';
 
 export default function SearchScreen() {
   const session = LocalStorage.getSession();
@@ -38,6 +39,7 @@ export default function SearchScreen() {
     limit: DEFAULT_SEARCH_LIMIT,
     offset: DEFAULT_SEARCH_OFFSET,
     excludeChildConsolidations: false,
+    excludeClosedCases: true,
     divisionCodes: defaultDivisionCodes,
   });
 
@@ -147,6 +149,13 @@ export default function SearchScreen() {
     setTemporarySearchPredicate(newPredicate);
   }
 
+  function handleExcludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
+    setTemporarySearchPredicate({
+      ...temporarySearchPredicate,
+      excludeClosedCases: ev.target.checked,
+    });
+  }
+
   function performSearch() {
     setSearchPredicate(temporarySearchPredicate);
   }
@@ -237,6 +246,17 @@ export default function SearchScreen() {
                   ref={chapterSelectionRef}
                   singularLabel="chapter"
                   pluralLabel="chapters"
+                />
+              </div>
+            </div>
+            <div className="case-exclude-closed form-field" data-testid="case-exclude-closed">
+              <div className="usa-search usa-search--small">
+                <Checkbox
+                  id="exclude-closed-checkbox"
+                  value="excludeClosedCases"
+                  checked={true}
+                  label="Exclude Closed Cases"
+                  onChange={handleExcludeClosedCheckbox}
                 />
               </div>
             </div>
