@@ -187,7 +187,7 @@ jobs:
   swap-nodeapi-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       apiFunctionName: ${{ inputs.apiFunctionName }}
@@ -211,7 +211,7 @@ jobs:
   swap-dataflows-app-deployment-slot:
     if: ${{ inputs.initialDeployment != 'true' }}
     runs-on: ubuntu-latest
-    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot]
+    needs: [deploy-webapp-slot, deploy-api-slot, deploy-dataflows-slot, execute-e2e-test]
     environment: ${{ inputs.ghaEnvironment }}
     env:
       slotName: ${{ inputs.slotName }}
