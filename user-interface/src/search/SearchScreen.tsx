@@ -1,5 +1,5 @@
 import './SearchScreen.scss';
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import React, { ChangeEvent, useEffect, useRef, useState } from 'react';
 import {
   CasesSearchPredicate,
   DEFAULT_SEARCH_LIMIT,
@@ -49,8 +49,7 @@ export default function SearchScreen() {
   };
   const [temporarySearchPredicate, setTemporarySearchPredicate] =
     useState<CasesSearchPredicate>(defaultSearchPredicate);
-  const [searchPredicate, setSearchPredicate] =
-    useState<CasesSearchPredicate>(defaultSearchPredicate);
+  const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -77,7 +76,7 @@ export default function SearchScreen() {
     setChapterList(chapterArray);
   }
 
-  async function getCourts() {
+  function getCourts() {
     api
       .getCourts()
       .then((response) => {
@@ -159,9 +158,11 @@ export default function SearchScreen() {
   }
 
   function handleIncludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
-    setTemporarySearchPredicate({
-      ...temporarySearchPredicate,
-      excludeClosedCases: !ev.target.checked,
+    setTemporarySearchPredicate((previous) => {
+      return {
+        ...previous,
+        excludeClosedCases: !ev.target.checked,
+      };
     });
   }
 
@@ -264,7 +265,7 @@ export default function SearchScreen() {
                   id="include-closed"
                   name="includeClosedCases"
                   value="true"
-                  checked={!searchPredicate.excludeClosedCases}
+                  checked={!temporarySearchPredicate.excludeClosedCases}
                   label="Include Closed Cases"
                   onChange={handleIncludeClosedCheckbox}
                 />

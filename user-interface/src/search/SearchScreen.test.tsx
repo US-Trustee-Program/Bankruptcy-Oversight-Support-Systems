@@ -163,6 +163,7 @@ describe('search screen', () => {
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).toBeInTheDocument();
@@ -336,6 +337,9 @@ describe('search screen', () => {
     let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
 
+    let searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
     let noResultsAlert = document.querySelector('#no-results-alert');
 
     await waitFor(() => {
@@ -352,7 +356,7 @@ describe('search screen', () => {
     await waitFor(() => {
       expect(caseNumberInput['value']).toEqual('00-11111');
     });
-    const searchButton = screen.getByTestId('button-search-submit');
+    searchButton = screen.getByTestId('button-search-submit');
     await userEvent.click(searchButton);
 
     await waitFor(() => {
@@ -459,15 +463,16 @@ describe('search screen', () => {
     searchCasesSpy.mockClear();
 
     // Get the checkbox, checkbox label, and search button
-    const includeClosedCheckbox = screen.getByTestId('checkbox-include-closed');
-    const includeClosedCheckboxLabel = screen.getByLabelText('Include Closed Cases');
+    const checkbox = screen.getByTestId('checkbox-include-closed');
+    const checkboxLabel = screen.getByLabelText('Include Closed Cases');
     const searchButton = screen.getByTestId('button-search-submit');
 
     // Verify initial state (checkbox is unchecked by default, excludeClosedCases is true)
-    expect(includeClosedCheckbox).not.toBeChecked();
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).not.toBeChecked();
 
     // Click the checkbox label to include closed cases
-    await userEvent.click(includeClosedCheckboxLabel);
+    await userEvent.click(checkboxLabel);
 
     // Click search button to perform search
     await userEvent.click(searchButton);
@@ -479,6 +484,7 @@ describe('search screen', () => {
 
     // Now check if the checkbox is checked
     const updatedCheckbox = screen.getByTestId('checkbox-include-closed');
+    expect(updatedCheckbox).toBeInTheDocument();
     await waitFor(() => {
       expect(updatedCheckbox).toBeChecked();
     });
@@ -492,7 +498,7 @@ describe('search screen', () => {
     );
 
     // Click the checkbox label again to exclude closed cases
-    await userEvent.click(includeClosedCheckboxLabel);
+    await userEvent.click(checkboxLabel);
 
     // Click search button to perform search
     await userEvent.click(searchButton);
