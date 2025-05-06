@@ -49,6 +49,11 @@ jobs:
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
 
+      - name: Add env to Artifact
+        id: package-env
+        run: |
+          echo "TODO: Add env variables to the zip in this step"
+
       - name: Deploy to Azure WebApp
         id: deploy-webapp-step
         run: |
