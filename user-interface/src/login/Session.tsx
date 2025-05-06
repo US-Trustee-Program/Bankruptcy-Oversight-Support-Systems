@@ -88,5 +88,5 @@ export function Session(props: SessionProps) {
     return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
   }
 
-  return <>{props.children}</>;
+  return <div data-stagingtest="this-is-a-test">{props.children}</div>;
 }
