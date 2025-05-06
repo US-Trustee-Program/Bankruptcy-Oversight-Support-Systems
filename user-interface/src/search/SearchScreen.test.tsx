@@ -163,6 +163,7 @@ describe('search screen', () => {
     renderWithoutProps();
 
     const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
 
     await waitFor(() => {
       expect(document.querySelector('.search-results table')).toBeInTheDocument();
@@ -260,6 +261,7 @@ describe('search screen', () => {
       divisionCodes: expect.anything(),
       offset: 0,
       excludeChildConsolidations: false,
+      excludeClosedCases: true,
     };
 
     renderWithoutProps();
@@ -335,6 +337,9 @@ describe('search screen', () => {
     let table = document.querySelector('.search-results table');
     expect(table).not.toBeInTheDocument();
 
+    let searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
     let noResultsAlert = document.querySelector('#no-results-alert');
 
     await waitFor(() => {
@@ -351,7 +356,7 @@ describe('search screen', () => {
     await waitFor(() => {
       expect(caseNumberInput['value']).toEqual('00-11111');
     });
-    const searchButton = screen.getByTestId('button-search-submit');
+    searchButton = screen.getByTestId('button-search-submit');
     await userEvent.click(searchButton);
 
     await waitFor(() => {
@@ -435,10 +440,6 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    await waitFor(() => {
-      expect(document.querySelector('.pills-and-clear-all')).toBeNull();
-    });
-
     const searchButton = screen.getByTestId('button-search-submit');
     expect(searchButton).toBeDisabled();
   });
@@ -451,11 +452,63 @@ describe('search screen', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('.pills-and-clear-all')).toBeNull();
-    });
-
-    await waitFor(() => {
       expect(screen.getByTestId('alert-default-state-alert')).toBeInTheDocument();
     });
+  });
+
+  test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
+    renderWithoutProps();
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await userEvent.type(caseNumberInput, '1100000');
+
+    const initialCheckbox = screen.getByTestId('checkbox-include-closed');
+    expect(initialCheckbox).not.toBeChecked();
+
+    // Click the checkbox label to include closed cases
+    await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
+
+    // Click search button to perform search
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    // Wait for search to complete
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Now check if the checkbox is checked
+    const checkedCheckbox = screen.getByTestId('checkbox-include-closed');
+    expect(checkedCheckbox).toBeChecked();
+
+    // Verify that search was called with excludeClosedCases set to false
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        excludeClosedCases: false,
+      }),
+      includeAssignments,
+    );
+
+    // Click the checkbox label again to exclude closed cases
+    await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
+
+    // Click search button to perform search
+    await userEvent.click(searchButton);
+
+    // Wait for search to complete
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    // Now check if the checkbox is unchecked
+    const uncheckedCheckbox = screen.getByTestId('checkbox-include-closed');
+    expect(uncheckedCheckbox).not.toBeChecked();
+
+    // Verify that search was called with excludeClosedCases set to true
+    expect(searchCasesSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        excludeClosedCases: true,
+      }),
+      includeAssignments,
+    );
   });
 });
