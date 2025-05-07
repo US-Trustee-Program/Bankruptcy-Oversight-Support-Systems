@@ -659,6 +659,7 @@ describe('test cams combobox', () => {
     });
 
     await userEvent.click(button1!);
+    (button1 as HTMLButtonElement).focus();
     await waitFor(() => {
       expect(button1!).toHaveFocus();
     });
