@@ -36,8 +36,23 @@ body {
   height: auto;
   min-height: 100vh;
 
+  /* For content we only want screen readers to see --
+     Purpose:
+        * If we use display:off, hidden, or aria-hidden, the screen reader will completely ignore it
+          like it's not there at all.
+        * We don't want the content to be visible.
+        * We need to hide it in this hackish way so that it's not visible, but the screen readers will read it.
+    Use this class anywhere you need screen readers to get more context, such as with aria-describedby sections.
+  */
   .screen-reader-only {
-    display: none;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+      border: 0;
   }
 
   .cams-content {

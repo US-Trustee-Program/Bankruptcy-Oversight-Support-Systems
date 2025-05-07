@@ -223,8 +223,6 @@ export default function SearchScreen() {
                   id={'court-selections-search'}
                   className="new-court__select"
                   label="District (Division)"
-                  ariaLabelPrefix="District (Division)"
-                  ariaDescription="multi-select"
                   aria-live="off"
                   onUpdateSelection={handleCourtSelection}
                   onFocus={handleFilterFormElementFocus}
@@ -245,8 +243,6 @@ export default function SearchScreen() {
                   id={'case-chapter-search'}
                   className="case-chapter__select"
                   label="Chapter"
-                  ariaLabelPrefix="Chapter"
-                  ariaDescription="multi-select"
                   aria-live="off"
                   onUpdateSelection={handleChapterSelection}
                   onFocus={handleFilterFormElementFocus}
