@@ -63,6 +63,21 @@ const getDefaultOptions = (count: number = 25) => {
   return defaultOptions;
 };
 
+const expectInputToHaveFocus = async () => {
+  await waitFor(() => {
+    const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
+    expect(inputField).toHaveFocus();
+  });
+};
+
+const expectInputContainerToHaveFocus = async (): Promise<Element | null> => {
+  const container = await getComboInputContainer();
+  await waitFor(async () => {
+    expect(container).toHaveFocus();
+  });
+  return container!;
+};
+
 describe('test cams combobox', () => {
   let defaultOptions: ComboOption[] = [];
   const updateFilterMock = vi.fn();
@@ -115,14 +130,13 @@ describe('test cams combobox', () => {
 
     expect(isDropdownClosed()).toBeFalsy();
 
-    const inputField = document.querySelector(`#${comboboxId}-combo-box-input`);
-    expect(inputField).toHaveFocus();
+    await expectInputToHaveFocus();
 
     await toggleDropdown();
 
     expect(isDropdownClosed()).toBeTruthy();
 
-    expect(await getComboInputContainer()).toHaveFocus();
+    await expectInputContainerToHaveFocus();
 
     expect(onClose).toHaveBeenCalled();
   });
@@ -197,8 +211,14 @@ describe('test cams combobox', () => {
 
       const input = await getFocusedComboInputField(comboboxId);
       expect(input).toHaveAttribute(
-        'aria-label',
-        `${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to select an item from the list.`,
+        'aria-describedby',
+        `${comboboxId}-filter-input-aria-description`,
+      );
+      const inputDescription = document.querySelector(
+        `#${comboboxId}-filter-input-aria-description`,
+      );
+      expect(inputDescription).toHaveTextContent(
+        `Enter text to filter options. Use up and down arrows to select a filtered item from the list.`,
       );
 
       const firstItem = document.querySelector('li');
@@ -313,7 +333,7 @@ describe('test cams combobox', () => {
     await userEvent.keyboard('{Escape}');
     expect(inputField.value).toEqual('');
     expect(isDropdownClosed()).toBeTruthy();
-    expect(await getComboInputContainer()).toHaveFocus();
+    await expectInputContainerToHaveFocus();
   });
 
   test('should close dropdown list, clear input field, but NOT focus on input field when clicking outside of combobox', async () => {
@@ -365,9 +385,7 @@ describe('test cams combobox', () => {
     await toggleDropdown();
     expect(isDropdownClosed()).toBeFalsy();
 
-    const comboboxInputField = await getFocusedComboInputField(comboboxId);
-
-    comboboxInputField!.focus();
+    await expectInputToHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
 
     const listItem = document.querySelector('li');
@@ -423,11 +441,6 @@ describe('test cams combobox', () => {
     expect(result).toEqual([]);
 
     expect(isDropdownClosed()).toBeTruthy();
-
-    // TODO: This works manually.  Figure out why this focus isn't happening.
-    // await waitFor(() => {
-    //  expect(document.querySelector('.input1')).toHaveFocus();
-    // });
   });
 
   test('should not open when combobox is disabled', async () => {
@@ -452,8 +465,7 @@ describe('test cams combobox', () => {
     await toggleDropdownByKeystroke();
     expect(isDropdownClosed()).toBeFalsy();
 
-    const inputField = await getFocusedComboInputField(comboboxId);
-    inputField!.focus();
+    await expectInputToHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
 
     const listItems = document.querySelectorAll('li');
@@ -478,7 +490,7 @@ describe('test cams combobox', () => {
     expect(listItems[0]).toHaveFocus();
 
     await userEvent.keyboard('{ArrowUp}');
-    expect(inputField).toHaveFocus();
+    await expectInputToHaveFocus();
 
     await userEvent.keyboard('{ArrowUp}');
     expect(isDropdownClosed()).toBeTruthy();
@@ -494,28 +506,32 @@ describe('test cams combobox', () => {
 
     const inputField = await getFocusedComboInputField(comboboxId);
     inputField!.focus();
+    await expectInputToHaveFocus();
     await userEvent.keyboard('{ArrowDown}');
 
-    const listItems = document.querySelectorAll('li');
-    expect(listItems[0]).toHaveFocus();
+    let listItems;
+    await waitFor(() => {
+      listItems = document.querySelectorAll('li');
+      expect(listItems[0]).toHaveFocus();
+    });
 
     await userEvent.keyboard('{ArrowDown}');
-    expect(listItems[1]).toHaveFocus();
+    await waitFor(() => {
+      expect(listItems![1]).toHaveFocus();
+    });
 
     await userEvent.keyboard('{ArrowUp}');
     await userEvent.keyboard('{ArrowUp}');
-    expect(inputField).toHaveFocus();
+    await expectInputToHaveFocus();
 
     await userEvent.keyboard('{ArrowDown}');
     await userEvent.keyboard('{ArrowDown}');
-    expect(listItems[1]).toHaveFocus();
+    expect(listItems![1]).toHaveFocus();
 
     await userEvent.keyboard('{Enter}');
-    expect(listItems[1]).toHaveClass('selected');
+    expect(listItems![1]).toHaveClass('selected');
 
-    const container = await getComboInputContainer();
-
-    expect(container).toHaveFocus();
+    await expectInputContainerToHaveFocus();
   });
 
   test.each([' ', '{Enter}'])(
@@ -527,18 +543,19 @@ describe('test cams combobox', () => {
       ];
       renderWithProps({ options });
       await toggleDropdown();
-
-      const inputField = await getFocusedComboInputField(comboboxId);
-      inputField.focus();
+      await expectInputToHaveFocus();
       await userEvent.keyboard('{ArrowDown}');
 
-      const listItems = document.querySelectorAll('li');
-      const listItem0Button = listItems![0];
-      expect(listItem0Button).toHaveFocus();
+      await waitFor(() => {
+        const listItems = document.querySelectorAll('li');
+        const listItem0Button = listItems![0];
+        expect(listItem0Button).toHaveFocus();
+      });
 
       await userEvent.keyboard(keypress);
 
       await waitFor(() => {
+        const listItems = document.querySelectorAll('li');
         expect(listItems![0]).toHaveClass('selected');
       });
     },
@@ -552,11 +569,10 @@ describe('test cams combobox', () => {
     renderWithProps({ options });
 
     await toggleDropdown();
-
-    const inputField = await getFocusedComboInputField(comboboxId);
-    inputField.focus();
-    await userEvent.keyboard('{ArrowDown}');
     expect(isDropdownClosed()).toBeFalsy();
+
+    await expectInputToHaveFocus();
+    await userEvent.keyboard('{ArrowDown}');
 
     const listItem = document.querySelectorAll('li')[0];
     expect(listItem).toHaveFocus();
@@ -564,7 +580,7 @@ describe('test cams combobox', () => {
 
     await userEvent.keyboard('{Escape}');
     expect(isDropdownClosed()).toBeTruthy();
-    expect(await getComboInputContainer()).toHaveFocus();
+    await expectInputContainerToHaveFocus();
   });
 
   test('Typing text into the input field should filter the dropdown items below the input field.', async () => {
@@ -620,50 +636,51 @@ describe('test cams combobox', () => {
   });
 
   test('Tabbing from another area of the screen to the combo box should first focus on the clear button, then the actual combo box input.', async () => {
-    renderWithProps({ options: getDefaultOptions() });
+    const ref = React.createRef<ComboBoxRef>();
+    renderWithProps({ options: getDefaultOptions() }, ref);
     await toggleDropdown();
 
-    const expandButton = document.querySelector('.expand-button');
     const button1 = document.querySelector('.button1');
 
     await testingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
     await testingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
     await testingUtilities.toggleComboBoxItemSelection(comboboxId, 2);
 
+    const selectedList = ref.current!.getSelections();
+    expect(selectedList.length).toEqual(3);
+    const clearAllBtn = getClearAllButton();
+    expect(clearAllBtn).toBeInTheDocument();
+
     // this shouldn't be necessary as we've tested this elsewhere, but the dropdown isn't closing when clicking on button1
     // so we're forcing closed.
-    await userEvent.click(expandButton!);
+    toggleDropdown();
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
     });
 
     await userEvent.click(button1!);
-    (button1! as HTMLButtonElement).focus();
-    expect(button1!).toHaveFocus();
+    await waitFor(() => {
+      expect(button1!).toHaveFocus();
+    });
 
-    await userEvent.tab();
+    await waitFor(async () => {
+      await userEvent.tab();
+      expect(clearAllBtn).toHaveFocus();
+    });
+
+    await waitFor(async () => {
+      await userEvent.type(clearAllBtn!, '{Tab}');
+      await expectInputContainerToHaveFocus();
+    });
+
     expect(isDropdownClosed()).toBeTruthy();
-
-    await waitFor(() => {
-      expect(getClearAllButton()).toHaveFocus();
-    });
-
-    await userEvent.tab();
-
     const container = await getComboInputContainer();
-    await waitFor(() => {
-      expect(container).toHaveFocus();
-    });
 
     await userEvent.tab();
 
     await waitFor(() => {
       expect(container).not.toHaveFocus();
     });
-
-    // TODO: Once again, not sure why the document body is receiving focus...
-    //const input1 = document.querySelector('.input1');
-    //expect(input1).toHaveFocus();
   });
 
   test('should return selections in onUpdateSelection when a selection is made', async () => {
