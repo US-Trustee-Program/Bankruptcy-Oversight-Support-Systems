@@ -150,7 +150,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   const focusInput = () => {
-    filterRef.current?.focus();
+    requestAnimationFrame(() => {
+      filterRef.current?.focus();
+    });
   };
 
   function getSelectedLabel() {
@@ -233,7 +235,9 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   };
 
   function focusCombobox() {
-    containerRef.current?.focus();
+    requestAnimationFrame(() => {
+      containerRef.current?.focus();
+    });
   }
 
   // ========== HANDLERS ==========
@@ -311,7 +315,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           setCurrentListItem(null);
           closeDropdown();
         } else if (index <= 1) {
-          filterRef.current?.focus();
+          focusInput();
           setCurrentListItem(null);
         } else {
           const newId = navigateList('up', index - 1, comboBoxListRef);
@@ -387,7 +391,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   useEffect(() => {
     if (expanded) {
-      filterRef.current?.focus();
+      focusInput();
     }
   }, [expanded]);
 
@@ -412,10 +416,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         >
           {label} {props.required && <span className="required-form-field">*</span>}
         </label>
-        <span id={`${comboBoxId}-aria-description`} hidden>
-          {ariaDescription ?? ''}
-          {getSelectedItemsDescription()}
-        </span>
         {selectedMap.size > 0 && (
           <Button
             className="clear-all-button"
@@ -444,6 +444,11 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           onKeyDown={handleToggleKeyDown}
           ref={containerRef}
         >
+          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
+            Combo box {multiSelect ? 'multi-select ' : ''}
+            {ariaDescription ? `${ariaDescription}. ` : ''}
+            {getSelectedItemsDescription()}
+          </span>
           <div className="combo-box-input-container" role="presentation">
             {expanded ? (
               <>
@@ -459,12 +464,19 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   onClick={handleOnInputClick}
                   disabled={comboboxDisabled}
                   autoComplete={'off'}
-                  aria-live={props['aria-live'] ?? undefined}
                   aria-autocomplete="list"
                   aria-activedescendant={currentListItem ?? ''}
-                  aria-label={`${ariaLabelPrefix ? ariaLabelPrefix + ': ' : ''}Enter text to filter options. Use up and down arrows to select an item from the list.`}
+                  aria-describedby={`${comboBoxId}-filter-input-aria-description`}
+                  aria-labelledby={`${comboBoxId}-label`}
                   ref={filterRef}
                 />
+                <span
+                  id={`${comboBoxId}-filter-input-aria-description`}
+                  className="screen-reader-only"
+                >
+                  Enter text to filter options. Use up and down arrows to select a filtered item
+                  from the list.
+                </span>
               </>
             ) : (
               <span title={getSelectedLabel()} className={getSelectedClasses()}>
@@ -482,6 +494,7 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             tabIndex={-1}
             type="button"
             aria-label="Press down arrow key to expand dropdown."
+            aria-disabled={comboboxDisabled}
           >
             <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
           </Button>
