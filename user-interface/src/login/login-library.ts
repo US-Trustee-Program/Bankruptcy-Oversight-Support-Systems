@@ -9,18 +9,18 @@ export const LOGOUT_PATH = '/logout';
 export const LOGOUT_SESSION_END_PATH = '/session-end';
 export const LOGIN_PATHS = [LOGIN_PATH, LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT_SESSION_END_PATH];
 
-export function getLoginProviderFromEnv(): string {
+export function getLoginProvider(): string {
   const value = getAppConfiguration().loginProvider?.toLowerCase();
-  if (!value) throw new Error('Missing authentication provider');
+  if (value === undefined) throw new Error('Missing authentication provider');
   return value;
 }
 
-export function getAuthIssuerFromEnv(): string | undefined {
-  const config = getLoginConfigurationFromEnv<object>();
+export function getAuthIssuer(): string | undefined {
+  const config = getLoginConfiguration<object>();
   return 'issuer' in config && typeof config.issuer === 'string' ? config.issuer : undefined;
 }
 
-export function getLoginConfigurationFromEnv<T = unknown>(): T {
+export function getLoginConfiguration<T = unknown>(): T {
   try {
     const kvString = getAppConfiguration().loginProviderConfig;
     if (!kvString) throw new Error('Missing authentication configuration');

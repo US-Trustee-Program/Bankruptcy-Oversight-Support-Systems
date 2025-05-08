@@ -35,3 +35,4 @@ function getAppConfiguration() {
 }
 
 export default getAppConfiguration;
+export type AppConfiguration = ReturnType<typeof getAppConfiguration>;
