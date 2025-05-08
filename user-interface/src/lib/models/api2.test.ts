@@ -1,5 +1,4 @@
 import { describe } from 'vitest';
-import MockApi2 from '@/lib/testing/mock-api2';
 import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } from './api2';
 import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -12,19 +11,6 @@ import {
   TransferOrderActionRejection,
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
-import { CamsConfiguration } from '@/index';
-
-global.window.CAMS_CONFIGURATION = {
-  CAMS_PA11Y: 'false',
-  CAMS_BASE_PATH: '',
-  CAMS_SERVER_HOSTNAME: '',
-  CAMS_SERVER_PORT: '',
-  CAMS_SERVER_PROTOCOL: '',
-  CAMS_FEATURE_FLAG_CLIENT_ID: '',
-  CAMS_LAUNCH_DARKLY_ENV: '',
-  CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING: 'mock-connection-string',
-} as CamsConfiguration;
-// Set up the global window object with CAMS_CONFIGURATION
 
 // Mock the apiConfiguration module completely
 vi.mock('@/configuration/apiConfiguration', () => ({
@@ -70,32 +56,6 @@ type Api2Type = {
   _Api2: typeof _Api2;
   Api2: typeof Api2;
 };
-
-describe.skip('Api2 mocking', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // TODO: Why doesn't the module return the mock api 2?
-  test('should return MockApi2 when CAMS_PA11Y is set to true', async () => {
-    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'true';
-    const api2 = await import('./api2');
-    const mockSpy = vi.spyOn(MockApi2, 'getAttorneys');
-    await api2.Api2.getAttorneys();
-    expect(mockSpy).toHaveBeenCalled();
-  });
-
-  test('should return _Api2 when CAMS_PA11Y is set to false', async () => {
-    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
-    const mockSpy = vi.spyOn(MockApi2, 'getAttorneys');
-    const api2 = await import('./api2');
-    const api = await import('./api');
-    const apiSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
-    await api2.Api2.getAttorneys();
-    expect(mockSpy).not.toHaveBeenCalled();
-    expect(apiSpy).toHaveBeenCalled();
-  });
-});
 
 describe('extractPathFromUri', () => {
   test('should return path when given full uri with protocol, domain, and parameters', () => {
