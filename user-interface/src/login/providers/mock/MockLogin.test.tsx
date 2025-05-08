@@ -1,10 +1,11 @@
 import { describe } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { MockLogin } from './MockLogin';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
@@ -41,14 +42,20 @@ describe('MockLogin', () => {
   test('should report a bad mock issuer to the console', async () => {
     const errorSpy = vi.spyOn(global.console, 'error');
 
-    vi.stubEnv('CAMS_BASE_PATH', '');
-    vi.stubEnv('CAMS_SERVER_HOSTNAME', '');
-    vi.stubEnv('CAMS_SERVER_PORT', '');
-    vi.stubEnv('CAMS_SERVER_PROTOCOL', '');
+    const originalConfig = window.CAMS_CONFIGURATION;
+    window.CAMS_CONFIGURATION = {
+      ...originalConfig,
+      CAMS_BASE_PATH: '',
+      CAMS_SERVER_HOSTNAME: '',
+      CAMS_SERVER_PORT: '',
+      CAMS_SERVER_PROTOCOL: '',
+    };
 
     vi.resetModules();
     const mod = await import('./MockLogin');
     const { MockLogin } = mod;
+
+    window.CAMS_CONFIGURATION = originalConfig;
 
     render(
       <BrowserRouter>
@@ -65,7 +72,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalled();
@@ -86,7 +93,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
 
     expect(fetchSpy).toHaveBeenCalled();
 
@@ -121,7 +128,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
 
     expect(fetchSpy).toHaveBeenCalled();
     await waitFor(() => {
@@ -142,7 +149,7 @@ describe('MockLogin', () => {
     expect(loginButton).toBeInTheDocument();
     expect(loginButton).toBeDisabled();
 
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
