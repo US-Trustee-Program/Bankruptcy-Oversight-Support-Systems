@@ -11,6 +11,7 @@ import {
   TransferOrderActionRejection,
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
+import { mockConfiguration } from '@/lib/testing/mock-configuration';
 
 // Mock the apiConfiguration module completely
 vi.mock('@/configuration/apiConfiguration', () => ({
@@ -89,7 +90,7 @@ describe('_Api2 functions', async () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
+    mockConfiguration({ pa11y: false });
     api = await import('./api');
     api2 = await import('./api2');
   });
