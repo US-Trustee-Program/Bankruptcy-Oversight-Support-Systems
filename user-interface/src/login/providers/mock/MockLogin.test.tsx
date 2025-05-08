@@ -1,11 +1,12 @@
-import { describe } from 'vitest';
+import { describe, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { MockLogin } from './MockLogin';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
+import { MockLogin } from './MockLogin';
+import * as SessionModule from '@/login/Session';
+import { SessionProps } from '@/login/Session';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
@@ -18,6 +19,10 @@ describe('MockLogin', () => {
         } as unknown as Response);
       },
     );
+
+  vi.spyOn(SessionModule, 'Session').mockImplementation((props: SessionProps) => {
+    return <>{props.children}</>;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
