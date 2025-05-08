@@ -1,7 +1,9 @@
 import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
 import { ObjectKeyVal } from '../type-declarations/basic';
-import config from '../../configuration/apiConfiguration';
+import getApiConfiguration from '../../configuration/apiConfiguration';
 import { ResponseBody } from '@common/api/response';
+
+const config = getApiConfiguration();
 
 const beforeHooks: (() => Promise<void>)[] = [];
 const afterHooks: ((response: Response) => Promise<void>)[] = [];

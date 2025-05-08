@@ -1,4 +1,5 @@
 import { HOUR } from './datetime';
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 type Cachable<T = unknown> = {
   expiresAfter: number;
@@ -7,8 +8,7 @@ type Cachable<T = unknown> = {
 
 const NAMESPACE = 'cams:cache:';
 const DEFAULT_TTL = HOUR;
-const canCache =
-  !!window.localStorage && window.CAMS_CONFIGURATION.CAMS_DISABLE_LOCAL_CACHE !== 'true';
+const canCache = !!window.localStorage && getAppConfiguration().disableLocalCache;
 
 function isCacheEnabled() {
   return canCache;

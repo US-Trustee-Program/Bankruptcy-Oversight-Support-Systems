@@ -105,17 +105,24 @@ describe('Login', () => {
   });
 
   test('should check for an existing mock login and skip if a session exists', async () => {
-    vi.stubEnv('CAMS_LOGIN_PROVIDER', 'mock');
-    vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', '');
-    vi.stubEnv('CAMS_SERVER_PROTOCOL', 'https');
-    vi.stubEnv('CAMS_SERVER_HOSTNAME', 'fake.issuer.com');
-    vi.stubEnv('CAMS_SERVER_PORT', '');
-    vi.stubEnv('CAMS_BASE_PATH', '');
+    const originalConfig = window.CAMS_CONFIGURATION;
+    window.CAMS_CONFIGURATION = {
+      ...originalConfig,
+      CAMS_LOGIN_PROVIDER: 'mock',
+      CAMS_LOGIN_PROVIDER_CONFIG: '',
+      CAMS_SERVER_PROTOCOL: 'https',
+      CAMS_SERVER_HOSTNAME: 'fake.issuer.com',
+      CAMS_SERVER_PORT: '',
+      CAMS_BASE_PATH: '',
+    };
 
     vi.resetModules();
+    await import('@/login/login-library');
     const { LocalStorage } = await import('@/lib/utils/local-storage');
     const { Login } = await import('./Login');
     const sessionModule = await import('./Session');
+
+    window.CAMS_CONFIGURATION = originalConfig;
 
     const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
       accessToken: MockData.getJwt(),
@@ -137,7 +144,6 @@ describe('Login', () => {
     expect(getSession).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
-    vi.unstubAllEnvs();
   });
 
   test('should check for an existing okta login and skip if a session exists', () => {

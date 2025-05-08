@@ -1,8 +1,9 @@
 import './Banner.scss';
 import { SkipToMainContentLink } from '../cams/SkipToMainContentLink/SkipToMainContentLink';
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 export const Banner = () => {
-  const launchDarklyEnvironment = window.CAMS_CONFIGURATION.CAMS_LAUNCH_DARKLY_ENV;
+  const launchDarklyEnvironment = getAppConfiguration().launchDarklyEnv;
   const environmentClass =
     launchDarklyEnvironment === 'production' ? '' : `${launchDarklyEnvironment}`;
   const envHeaderClassName = 'usa-banner__header ' + environmentClass;

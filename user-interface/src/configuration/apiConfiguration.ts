@@ -1,18 +1,24 @@
-const basePath = window.CAMS_CONFIGURATION.CAMS_BASE_PATH;
-const server = window.CAMS_CONFIGURATION.CAMS_SERVER_HOSTNAME;
-const port = window.CAMS_CONFIGURATION.CAMS_SERVER_PORT;
-const protocol = window.CAMS_CONFIGURATION.CAMS_SERVER_PROTOCOL;
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 export function isCamsApi(url: string) {
-  return url.startsWith(ApiConfiguration.baseUrl);
+  return url.startsWith(getApiConfiguration().baseUrl);
 }
 
-export const ApiConfiguration = {
-  basePath,
-  server,
-  port,
-  protocol,
-  baseUrl: protocol + '://' + server + (port ? ':' + port : '') + basePath,
-};
+function getApiConfiguration() {
+  const config = getAppConfiguration();
 
-export default ApiConfiguration;
+  const basePath = config.basePath;
+  const server = config.serverHostName;
+  const port = config.serverPort;
+  const protocol = config.serverProtocol;
+
+  return {
+    basePath,
+    server,
+    port,
+    protocol,
+    baseUrl: protocol + '://' + server + (port ? ':' + port : '') + basePath,
+  };
+}
+
+export default getApiConfiguration;
