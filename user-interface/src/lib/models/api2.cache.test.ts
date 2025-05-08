@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
 import { mockLocalStorage } from '../testing/mock-local-storage';
+import * as AppConfiguration from '@/configuration/appConfiguration';
 
 describe('Api2 cache enabled', () => {
   beforeAll(() => {
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
-    vi.stubEnv('CAMS_PA11Y', 'false');
+    vi.spyOn(AppConfiguration, 'default').mockReturnValue(AppConfiguration.default());
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
@@ -42,8 +42,10 @@ describe('Api2 cache enabled', () => {
 
 describe('Api2 cache disabled', () => {
   beforeAll(() => {
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'true');
-    vi.stubEnv('CAMS_PA11Y', 'false');
+    vi.spyOn(AppConfiguration, 'default').mockReturnValue({
+      ...AppConfiguration.default(),
+      disableLocalCache: true,
+    });
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
