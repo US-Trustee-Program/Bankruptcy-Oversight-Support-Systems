@@ -3,10 +3,10 @@ import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
 import {
-  getLoginProviderFromEnv,
+  getLoginProvider,
   LoginProvider,
   isLoginProviderType,
-  getAuthIssuerFromEnv,
+  getAuthIssuer,
 } from './login-library';
 import { BadConfiguration } from './BadConfiguration';
 import { OktaLogin } from './providers/okta/OktaLogin';
@@ -34,7 +34,7 @@ export type LoginProps = PropsWithChildren & {
 const config = getApiConfiguration();
 
 export function Login(props: LoginProps): React.ReactNode {
-  const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
+  const provider = props.provider?.toString().toLowerCase() ?? getLoginProvider();
   let issuer;
   if (!isLoginProviderType(provider)) {
     const errorMessage =
@@ -58,7 +58,7 @@ export function Login(props: LoginProps): React.ReactNode {
 
   if (session) {
     if (provider == 'okta') {
-      issuer = getAuthIssuerFromEnv();
+      issuer = getAuthIssuer();
     } else if (provider === 'mock') {
       const { protocol, server, port, basePath } = config;
       const portString = port ? ':' + port : '';

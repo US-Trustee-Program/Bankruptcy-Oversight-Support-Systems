@@ -14,7 +14,7 @@ describe('OktaProvider', () => {
   };
 
   const getLoginConfigurationFromEnv = vi
-    .spyOn(libraryModule, 'getLoginConfigurationFromEnv')
+    .spyOn(libraryModule, 'getLoginConfiguration')
     .mockReturnValue(mockConfiguration);
 
   const securityComponent = vi

@@ -49,8 +49,8 @@ describe('Login', () => {
     getSession = vi.spyOn(LocalStorage, 'getSession');
     removeSession = vi.spyOn(LocalStorage, 'removeSession');
 
-    getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuerFromEnv');
-    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+    getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuer');
+    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
 
     oktaProviderComponent.mockImplementation((props: PropsWithChildren) => {
       return <>{props.children}</>;
@@ -64,7 +64,7 @@ describe('Login', () => {
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
     vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(true);
-    vi.spyOn(libraryModule, 'getLoginConfigurationFromEnv').mockReturnValue({
+    vi.spyOn(libraryModule, 'getLoginConfiguration').mockReturnValue({
       issuer,
       clientId: randomUUID(),
     });
@@ -81,7 +81,7 @@ describe('Login', () => {
     vi.resetModules();
     const { Login } = await import('./Login');
     const libraryModule = await import('@/login/login-library');
-    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
 
     render(
       <BrowserRouter>

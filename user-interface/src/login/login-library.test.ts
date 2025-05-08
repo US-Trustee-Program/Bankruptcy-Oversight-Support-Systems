@@ -1,12 +1,11 @@
 import { describe } from 'vitest';
 import {
-  getAuthIssuerFromEnv,
-  getLoginConfigurationFromEnv,
-  getLoginProviderFromEnv,
+  getAuthIssuer,
+  getLoginConfiguration,
+  getLoginProvider,
   isLoginProviderType,
-  LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME,
-  LOGIN_PROVIDER_ENV_VAR_NAME,
 } from './login-library';
+import { mockConfiguration } from '@/lib/testing/mock-configuration';
 
 const providerTypes = ['okta', 'mock', 'none'];
 const bogusType = 'bogus';
@@ -22,47 +21,55 @@ describe('Login library', () => {
     });
   });
 
-  describe('getLoginProviderFromEnv', () => {
-    test('should get the provider type from the environment', () => {
-      providerTypes.forEach((key) => {
-        vi.stubEnv(LOGIN_PROVIDER_ENV_VAR_NAME, key);
-        expect(getLoginProviderFromEnv()).toEqual(key);
+  describe('getLoginProvider', () => {
+    test('should get the provider type', () => {
+      [...providerTypes, bogusType, ''].forEach((key) => {
+        mockConfiguration({
+          loginProvider: key,
+        });
+        expect(getLoginProvider()).toEqual(key);
       });
-
-      vi.stubEnv(LOGIN_PROVIDER_ENV_VAR_NAME, bogusType);
-      expect(getLoginProviderFromEnv()).toEqual(bogusType);
-
-      vi.stubEnv(LOGIN_PROVIDER_ENV_VAR_NAME, '');
-      expect(getLoginProviderFromEnv()).toEqual('');
     });
   });
 
-  describe('getLoginConfigurationFromEnv', () => {
-    test('should get the provider configuration from the environment', () => {
+  describe('getLoginConfiguration', () => {
+    test('should get the provider configuration', () => {
       const functionExpectedToThrow = () => {
-        getLoginConfigurationFromEnv();
+        getLoginConfiguration();
       };
 
-      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, '');
+      mockConfiguration({
+        loginProvider: 'okta',
+        loginProviderConfig: '',
+      });
       expect(functionExpectedToThrow).toThrow();
 
+      mockConfiguration({
+        loginProvider: 'okta',
+        loginProviderConfig: 'url=http://localhost/',
+      });
       const expectedConfiguration = { url: 'http://localhost/' };
-      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, 'url=http://localhost/');
-      expect(getLoginConfigurationFromEnv()).toEqual(expectedConfiguration);
+      expect(getLoginConfiguration()).toEqual(expectedConfiguration);
     });
   });
 
-  describe('getAuthIssuerFromEnv', () => {
-    test('should get the auth issuer from the environment', () => {
+  describe('getAuthIssuer', () => {
+    test('should get the auth issuer', () => {
       const expectedIssuer = 'http://localhost/';
-      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, `issuer=${expectedIssuer}`);
-      const issuer = getAuthIssuerFromEnv();
+      mockConfiguration({
+        loginProvider: 'okta',
+        loginProviderConfig: `url=http://localhost/|issuer=${expectedIssuer}`,
+      });
+      const issuer = getAuthIssuer();
       expect(issuer).toEqual(expectedIssuer);
     });
 
-    test('should return undefined for the issuer from the environment if not set', () => {
-      vi.stubEnv(LOGIN_PROVIDER_CONFIG_ENV_VAR_NAME, `foo=bar`);
-      const issuer = getAuthIssuerFromEnv();
+    test('should return undefined for the issuer if not set', () => {
+      mockConfiguration({
+        loginProvider: 'okta',
+        loginProviderConfig: 'foo=bar',
+      });
+      const issuer = getAuthIssuer();
       expect(issuer).toBeUndefined();
     });
   });

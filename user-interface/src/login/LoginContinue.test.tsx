@@ -11,7 +11,7 @@ import { Session } from './Session';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 
 describe('LoginContinue', () => {
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
   const oktaProviderComponent = vi
     .spyOn(oktaProviderModule, 'OktaProvider')
     .mockImplementation((props: PropsWithChildren) => {
