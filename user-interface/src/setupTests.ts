@@ -17,6 +17,7 @@ Object.keys(process.env)
     }
   });
 
+camsConfiguration.CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING = '';
 Object.defineProperty(window, 'CAMS_CONFIGURATION', {
   value: camsConfiguration,
   writable: true,

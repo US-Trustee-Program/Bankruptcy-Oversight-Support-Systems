@@ -10,13 +10,16 @@ const remoteFeatureFlags: FeatureFlagSet = {
   'remote-flag-2': true,
 };
 
+const originalConfig = window.CAMS_CONFIGURATION;
+
 describe('useFeatureFlag hook', () => {
   beforeEach(() => {
-    vi.stubEnv('CAMS_PA11Y', 'false');
+    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    window.CAMS_CONFIGURATION = originalConfig;
   });
 
   test('should use defaults when an api key is not available', () => {
@@ -52,7 +55,7 @@ describe('useFeatureFlag hook', () => {
   });
 
   test('should use default true flags when CAMS_PA11Y is true', () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'true';
 
     vi.spyOn(sdk, 'useFlags').mockRejectedValue(new Error('this should not be called'));
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
