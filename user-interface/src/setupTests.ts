@@ -19,5 +19,5 @@ Object.keys(process.env)
 
 Object.defineProperty(window, 'CAMS_CONFIGURATION', {
   value: camsConfiguration,
-  writable: false,
+  writable: true,
 });
