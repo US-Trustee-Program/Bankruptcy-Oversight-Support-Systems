@@ -89,3 +89,6 @@ cams1.code-workspace
 
 # TypeScript
 **/*.tsbuildinfo*
+
+# Environment Variable RC File
+**/.envrc

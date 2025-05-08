@@ -23,9 +23,13 @@ Help()
   echo "Options:"
   echo "  --help                        Display this help message."
   echo "  --app-resource-group=<rg>     Application resource group name. **REQUIRED**"
+  echo "                                Can be set via APP_RESOURCE_GROUP_BASE environment variable."
   echo "  --db-account=<account>        Database account name. **REQUIRED**"
+  echo "                                Can be set via DB_ACCOUNT environment variable."
   echo "  --db-resource-group=<rg>      Database resource group name. **REQUIRED**"
+  echo "                                Can be set via DB_RESOURCE_GROUP environment variable."
   echo "  --network-resource-group=<rg> Network resource group name. **REQUIRED**"
+  echo "                                Can be set via NETWORK_RESOURCE_GROUP_BASE environment variable."
   echo "  --short-hash=<hash>           Branch hash ID. **REQUIRED**"
   echo "  --ignore-validation           Ignore validation checks."
   echo ""
@@ -88,8 +92,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${hash_id:-}" ]]; then
-  error "Not all required parameters provided. Run this script with the --help flag for details." 2
+  # Use environment variables as fallbacks if parameters not provided
+  app_rg=${app_rg:-${APP_RESOURCE_GROUP_BASE:-}}
+  db_account=${db_account:-${DB_ACCOUNT:-}}
+  db_rg=${db_rg:-${DB_RESOURCE_GROUP:-}}
+  net_rg=${net_rg:-${NETWORK_RESOURCE_GROUP_BASE:-}}
+
+  if [[ -z "${app_rg:-}" || -z "${db_account:-}" || -z "${db_rg:-}" || -z "${net_rg:-}" || -z "${hash_id:-}" ]]; then
+  error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
 fi
 
 # Check that resource groups exists

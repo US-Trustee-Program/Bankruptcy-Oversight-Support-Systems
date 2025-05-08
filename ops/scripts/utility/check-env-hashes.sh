@@ -17,9 +17,13 @@ Help()
      echo "Options:"
      echo "  --help                             Display this help message."
      echo "  --app-resource-group-base=<rg>     Application resource group name. **REQUIRED**"
+     echo "                                     Can be set via APP_RESOURCE_GROUP_BASE environment variable."
      echo "  --db-account=<account>             Database account name. **REQUIRED**"
+     echo "                                     Can be set via DB_ACCOUNT environment variable."
      echo "  --db-resource-group=<rg>           Database resource group name. **REQUIRED**"
+     echo "                                     Can be set via DB_RESOURCE_GROUP environment variable."
      echo "  --network-resource-group-base=<rg> Network resource group name. **REQUIRED**"
+     echo "                                     Can be set via NETWORK_RESOURCE_GROUP_BASE environment variable."
      echo "  --existing-hash=<hash>             Branch hash ID for a specific resource. **OPTIONAL**"
      echo "  --local-branches                   Run against local branches. Overrides default behavior."
      echo "  --remote-branches                  Run against remote branches. Default behavior. Needed only in conjunction with --local-branches."
@@ -87,8 +91,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Use environment variables as fallbacks if parameters not provided
+app_rg_base=${app_rg_base:-${APP_RESOURCE_GROUP_BASE:-}}
+db_account=${db_account:-${DB_ACCOUNT:-}}
+db_rg=${db_rg:-${DB_RESOURCE_GROUP:-}}
+network_rg_base=${network_rg_base:-${NETWORK_RESOURCE_GROUP_BASE:-}}
+
 if [[ -z "${inputHash}" && ( -z "${app_rg_base}" || -z "${db_account}" || -z "${db_rg}" || -z "${network_rg_base}" ) ]]; then
-  error "Not all required parameters provided. Run this script with the --help flag for details." 2
+  error "Not all required parameters provided. Run this script with the --help flag for details, or set the appropriate environment variables." 2
 fi
 
 branches=()
