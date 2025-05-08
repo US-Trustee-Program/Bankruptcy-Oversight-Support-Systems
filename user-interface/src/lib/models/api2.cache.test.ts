@@ -2,9 +2,27 @@ import { describe } from 'vitest';
 import { mockLocalStorage } from '../testing/mock-local-storage';
 import * as AppConfiguration from '@/configuration/appConfiguration';
 
+const defaultMockConfig = {
+  basePath: '',
+  serverHostName: '',
+  serverPort: '',
+  serverProtocol: '',
+  featureFlagClientId: '',
+  launchDarklyEnv: '',
+  applicationInsightsConnectionString: '',
+  pa11y: true,
+  disableLocalCache: false,
+  inactiveTimeout: 30,
+  loginProvider: '',
+  loginProviderConfig: '',
+};
+
 describe('Api2 cache enabled', () => {
   beforeAll(() => {
-    vi.spyOn(AppConfiguration, 'default').mockReturnValue(AppConfiguration.default());
+    vi.spyOn(AppConfiguration, 'default').mockReturnValue({
+      ...defaultMockConfig,
+      disableLocalCache: false,
+    });
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
@@ -43,7 +61,7 @@ describe('Api2 cache enabled', () => {
 describe('Api2 cache disabled', () => {
   beforeAll(() => {
     vi.spyOn(AppConfiguration, 'default').mockReturnValue({
-      ...AppConfiguration.default(),
+      ...defaultMockConfig,
       disableLocalCache: true,
     });
     vi.stubGlobal('localStorage', mockLocalStorage);
