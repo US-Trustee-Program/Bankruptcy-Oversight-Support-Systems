@@ -17,7 +17,7 @@ function getApiConfiguration() {
     server,
     port,
     protocol,
-    baseUrl: protocol + '://' + server + (port ? ':' + port : '') + basePath,
+    baseUrl: `${protocol || 'https'}://${server}${port ? ':' + port : ''}${basePath ?? ''}`,
   };
 }
 
