@@ -17,6 +17,7 @@ export type CamsConfiguration = {
   CAMS_PA11Y: string;
   CAMS_DISABLE_LOCAL_CACHE: string;
   CAMS_INACTIVE_TIMEOUT: string;
+  CAMS_LOGIN_PROVIDER: string;
 };
 
 declare global {
