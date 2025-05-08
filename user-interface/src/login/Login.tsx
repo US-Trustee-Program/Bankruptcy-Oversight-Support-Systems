@@ -3,7 +3,6 @@ import { MockLogin } from './providers/mock/MockLogin';
 import { AuthorizedUseOnly } from './AuthorizedUseOnly';
 import { Session } from './Session';
 import {
-  LOGIN_PROVIDER_ENV_VAR_NAME,
   getLoginProviderFromEnv,
   LoginProvider,
   isLoginProviderType,
@@ -17,7 +16,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { addApiAfterHook } from '@/lib/models/api';
 import { http401Hook } from './http401-logout';
 import { initializeInactiveLogout } from './inactive-logout';
-import ApiConfiguration from '@/configuration/apiConfiguration';
+import getApiConfiguration from '@/configuration/apiConfiguration';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
 import { SUPERUSER } from '@common/cams/test-utilities/mock-user';
@@ -32,6 +31,8 @@ export type LoginProps = PropsWithChildren & {
   skipAuthorizedUseOnly?: boolean;
 };
 
+const config = getApiConfiguration();
+
 export function Login(props: LoginProps): React.ReactNode {
   const provider = props.provider?.toString().toLowerCase() ?? getLoginProviderFromEnv();
   let issuer;
@@ -39,8 +40,8 @@ export function Login(props: LoginProps): React.ReactNode {
     const errorMessage =
       'Login provider not specified or not a valid option.\n' +
       `Valid options are 'okta' | 'mock' | 'none'.\n` +
-      `Build variable name: '${LOGIN_PROVIDER_ENV_VAR_NAME}'.\n` +
-      `Build variable value: '${provider}'.`;
+      `Configuration variable name: 'CAMS_LOGIN_PROVIDER'.\n` +
+      `Configuration variable value: '${provider}'.`;
     return <BadConfiguration message={errorMessage} />;
   }
 
@@ -59,7 +60,7 @@ export function Login(props: LoginProps): React.ReactNode {
     if (provider == 'okta') {
       issuer = getAuthIssuerFromEnv();
     } else if (provider === 'mock') {
-      const { protocol, server, port, basePath } = ApiConfiguration;
+      const { protocol, server, port, basePath } = config;
       const portString = port ? ':' + port : '';
       issuer = protocol + '://' + server + portString + basePath + '/oauth2/default';
     }

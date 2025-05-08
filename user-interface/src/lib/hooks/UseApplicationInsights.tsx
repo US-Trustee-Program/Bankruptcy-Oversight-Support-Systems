@@ -1,8 +1,8 @@
 import { ApplicationInsights, ITelemetryItem } from '@microsoft/applicationinsights-web';
 import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
+import getAppConfiguration from '@/configuration/appConfiguration';
 
-const appInsightsConnectionString =
-  window.CAMS_CONFIGURATION.CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING;
+const appInsightsConnectionString = getAppConfiguration().applicationInsightsConnectionString;
 const reactPlugin = new ReactPlugin();
 
 const appInsights = new ApplicationInsights({
