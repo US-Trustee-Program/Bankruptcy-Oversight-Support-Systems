@@ -13,7 +13,7 @@ export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
-  if (import.meta.env['CAMS_PA11Y'] === 'true') {
+  if (window.CAMS_CONFIGURATION.CAMS_PA11Y === 'true') {
     return testFeatureFlags;
   }
   if (!config.clientId) {
