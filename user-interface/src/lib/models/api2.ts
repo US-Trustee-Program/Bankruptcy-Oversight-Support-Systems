@@ -419,6 +419,6 @@ export const _Api2 = {
   searchCases,
 };
 
-export const Api2 = import.meta.env['CAMS_PA11Y'] === 'true' ? MockApi2 : _Api2;
+export const Api2 = window.CAMS_CONFIGURATION?.CAMS_PA11Y === 'true' ? MockApi2 : _Api2;
 
 export default Api2;

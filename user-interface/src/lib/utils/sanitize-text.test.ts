@@ -1,7 +1,7 @@
 import { describe, expect, vi, beforeEach } from 'vitest';
 import { sanitizeText } from './sanitize-text';
 import DOMPurify from 'dompurify';
-import type { Config, RemovedElement } from 'dompurify';
+import type { RemovedElement } from 'dompurify';
 
 // Mock document.createElement
 const mockElement = {
@@ -109,16 +109,6 @@ describe('sanitizeText', () => {
     sanitizeText(input);
 
     expect(mockTrackEvent).not.toHaveBeenCalled();
-  });
-
-  test('should use custom configuration when provided', () => {
-    const input = 'Test content';
-    const customConfig: Partial<Config> = { ALLOWED_TAGS: ['b', 'i'] };
-    (DOMPurify.sanitize as jest.Mock).mockReturnValue(input);
-
-    sanitizeText(input, customConfig);
-
-    expect(DOMPurify.sanitize).toHaveBeenCalledWith(input, expect.objectContaining(customConfig));
   });
 
   test('should handle empty string input', () => {

@@ -1,7 +1,7 @@
-const basePath = import.meta.env['CAMS_BASE_PATH'];
-const server = import.meta.env['CAMS_SERVER_HOSTNAME'];
-const port = import.meta.env['CAMS_SERVER_PORT'];
-const protocol = import.meta.env['CAMS_SERVER_PROTOCOL'];
+const basePath = window.CAMS_CONFIGURATION.CAMS_BASE_PATH;
+const server = window.CAMS_CONFIGURATION.CAMS_SERVER_HOSTNAME;
+const port = window.CAMS_CONFIGURATION.CAMS_SERVER_PORT;
+const protocol = window.CAMS_CONFIGURATION.CAMS_SERVER_PROTOCOL;
 
 export function isCamsApi(url: string) {
   return url.startsWith(ApiConfiguration.baseUrl);

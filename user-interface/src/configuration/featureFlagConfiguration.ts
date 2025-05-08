@@ -1,4 +1,4 @@
-const clientId = import.meta.env['CAMS_FEATURE_FLAG_CLIENT_ID'];
+const clientId = window.CAMS_CONFIGURATION.CAMS_FEATURE_FLAG_CLIENT_ID;
 const useExternalProvider = !!clientId;
 
 // DECISION IS TO NOT USE CAMEL CASE FLAGS

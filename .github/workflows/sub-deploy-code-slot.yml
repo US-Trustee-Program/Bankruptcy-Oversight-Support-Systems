@@ -33,6 +33,18 @@ on:
       initialDeployment:
         required: true
         type: string
+      camsServerHostname:
+        required: true
+        type: string
+      camsServerPort:
+        required: true
+        type: string
+      camsServerProtocol:
+        required: true
+        type: string
+      camsBasePath:
+        required: true
+        type: string
 
 jobs:
   deploy-code:
@@ -71,6 +83,9 @@ jobs:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ inputs.azResourceGrpAppEncrypted }}
+
+      # TODO CAMS-389
+      # - name: Create runtime config
 
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-slot-step

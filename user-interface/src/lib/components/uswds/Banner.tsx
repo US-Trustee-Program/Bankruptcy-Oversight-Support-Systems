@@ -2,7 +2,7 @@ import './Banner.scss';
 import { SkipToMainContentLink } from '../cams/SkipToMainContentLink/SkipToMainContentLink';
 
 export const Banner = () => {
-  const launchDarklyEnvironment = import.meta.env['CAMS_LAUNCH_DARKLY_ENV'];
+  const launchDarklyEnvironment = window.CAMS_CONFIGURATION.CAMS_LAUNCH_DARKLY_ENV;
   const environmentClass =
     launchDarklyEnvironment === 'production' ? '' : `${launchDarklyEnvironment}`;
   const envHeaderClassName = 'usa-banner__header ' + environmentClass;

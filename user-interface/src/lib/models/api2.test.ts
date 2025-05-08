@@ -12,6 +12,50 @@ import {
   TransferOrderActionRejection,
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
+import { CamsConfiguration } from '@/index';
+
+global.window.CAMS_CONFIGURATION = {
+  CAMS_PA11Y: 'false',
+  CAMS_BASE_PATH: '',
+  CAMS_SERVER_HOSTNAME: '',
+  CAMS_SERVER_PORT: '',
+  CAMS_SERVER_PROTOCOL: '',
+  CAMS_FEATURE_FLAG_CLIENT_ID: '',
+  CAMS_LAUNCH_DARKLY_ENV: '',
+  CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING: 'mock-connection-string',
+} as CamsConfiguration;
+// Set up the global window object with CAMS_CONFIGURATION
+
+// Mock the apiConfiguration module completely
+vi.mock('@/configuration/apiConfiguration', () => ({
+  default: {
+    basePath: '',
+    server: '',
+    port: '',
+    protocol: 'https',
+    baseUrl: 'https://',
+  },
+  isCamsApi: vi.fn().mockReturnValue(true),
+  ApiConfiguration: {
+    basePath: '',
+    server: '',
+    port: '',
+    protocol: 'https',
+    baseUrl: 'https://',
+  },
+}));
+
+// Mock the UseApplicationInsights module
+vi.mock('@/lib/hooks/UseApplicationInsights', () => {
+  const mockReactPlugin = { trackEvent: vi.fn() };
+  const mockAppInsights = { trackEvent: vi.fn() };
+
+  return {
+    useAppInsights: () => ({ reactPlugin: mockReactPlugin, appInsights: mockAppInsights }),
+    reactPlugin: mockReactPlugin,
+    appInsights: mockAppInsights,
+  };
+});
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -34,7 +78,7 @@ describe.skip('Api2 mocking', () => {
 
   // TODO: Why doesn't the module return the mock api 2?
   test('should return MockApi2 when CAMS_PA11Y is set to true', async () => {
-    import.meta.env.CAMS_PA11Y = true;
+    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'true';
     const api2 = await import('./api2');
     const mockSpy = vi.spyOn(MockApi2, 'getAttorneys');
     await api2.Api2.getAttorneys();
@@ -42,7 +86,7 @@ describe.skip('Api2 mocking', () => {
   });
 
   test('should return _Api2 when CAMS_PA11Y is set to false', async () => {
-    import.meta.env.CAMS_PA11Y = false;
+    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
     const mockSpy = vi.spyOn(MockApi2, 'getAttorneys');
     const api2 = await import('./api2');
     const api = await import('./api');
@@ -54,8 +98,6 @@ describe.skip('Api2 mocking', () => {
 });
 
 describe('extractPathFromUri', () => {
-  import.meta.env.CAMS_PA11Y = false;
-
   test('should return path when given full uri with protocol, domain, and parameters', () => {
     const api = addAuthHeaderToApi();
     api.host = `https://some-domain.gov`;
@@ -87,7 +129,7 @@ describe('_Api2 functions', async () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    import.meta.env.CAMS_PA11Y = false;
+    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
     api = await import('./api');
     api2 = await import('./api2');
   });
@@ -326,7 +368,7 @@ describe('_Api2 functions', async () => {
 describe('addAuthHeaderToApi', () => {
   beforeEach(() => {
     vi.resetModules();
-    import.meta.env.CAMS_PA11Y = false;
+    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
     Api.headers = {};
   });
 
