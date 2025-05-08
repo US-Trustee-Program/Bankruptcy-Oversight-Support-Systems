@@ -1,17 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import { Banner } from './Banner';
 import { BrowserRouter } from 'react-router-dom';
+import * as AppConfiguration from '@/configuration/appConfiguration';
 
-const originalCamsConfiguration = window.CAMS_CONFIGURATION;
-beforeAll(() => {
-  window.CAMS_CONFIGURATION = {
-    ...originalCamsConfiguration,
-  };
-});
-
-afterAll(() => {
-  window.CAMS_CONFIGURATION = originalCamsConfiguration;
-});
+const defaultMockConfig = {
+  basePath: '',
+  serverHostName: '',
+  serverPort: '',
+  serverProtocol: '',
+  featureFlagClientId: '',
+  launchDarklyEnv: '',
+  applicationInsightsConnectionString: '',
+  pa11y: true,
+  disableLocalCache: false,
+  inactiveTimeout: 30,
+  loginProvider: '',
+  loginProviderConfig: '',
+};
 
 describe('Test Banner Environment', () => {
   beforeEach(() => {
@@ -19,7 +24,10 @@ describe('Test Banner Environment', () => {
   });
   test('Should not have a css class based on launchDarklyEnvironment env var', () => {
     const expectedEnv = 'production';
-    window.CAMS_CONFIGURATION.CAMS_LAUNCH_DARKLY_ENV = 'production';
+    vi.spyOn(AppConfiguration, 'default').mockReturnValue({
+      ...defaultMockConfig,
+      launchDarklyEnv: 'production',
+    });
     render(
       <BrowserRouter>
         <Banner />
@@ -30,7 +38,10 @@ describe('Test Banner Environment', () => {
   });
   test('Should have a css class based on launchDarklyEnvironment env var', () => {
     const expectedEnv = 'staging';
-    window.CAMS_CONFIGURATION.CAMS_LAUNCH_DARKLY_ENV = 'staging';
+    vi.spyOn(AppConfiguration, 'default').mockReturnValue({
+      ...defaultMockConfig,
+      launchDarklyEnv: 'staging',
+    });
     render(
       <BrowserRouter>
         <Banner />
