@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { MockLogin } from './MockLogin';
 import * as SessionModule from '@/login/Session';
 import { SessionProps } from '@/login/Session';
+import { blankConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
@@ -47,20 +48,21 @@ describe('MockLogin', () => {
   test('should report a bad mock issuer to the console', async () => {
     const errorSpy = vi.spyOn(global.console, 'error');
 
-    const originalConfig = window.CAMS_CONFIGURATION;
-    window.CAMS_CONFIGURATION = {
-      ...originalConfig,
-      CAMS_BASE_PATH: '',
-      CAMS_SERVER_HOSTNAME: '',
-      CAMS_SERVER_PORT: '',
-      CAMS_SERVER_PROTOCOL: '',
-    };
-
     vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          basePath: '',
+          serverHostName: '',
+          serverPort: '',
+          serverProtocol: '',
+        }),
+      };
+    });
+
     const mod = await import('./MockLogin');
     const { MockLogin } = mod;
-
-    window.CAMS_CONFIGURATION = originalConfig;
 
     render(
       <BrowserRouter>
