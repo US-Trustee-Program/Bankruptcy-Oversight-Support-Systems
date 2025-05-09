@@ -11,7 +11,9 @@ export const LOGIN_PATHS = [LOGIN_PATH, LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT
 
 export function getLoginProvider(): string {
   const value = getAppConfiguration().loginProvider?.toLowerCase();
-  if (value === undefined) {
+  if (!value) {
+    throw new Error('Missing login provider');
+  }
   return value;
 }
 
@@ -23,7 +25,9 @@ export function getAuthIssuer(): string | undefined {
 export function getLoginConfiguration<T = unknown>(): T {
   try {
     const kvString = getAppConfiguration().loginProviderConfig;
-    if (!kvString) throw new Error('Missing authentication configuration');
+    if (!kvString) {
+      throw new Error('Missing authentication configuration');
+    }
     return keyValuesToRecord(kvString) as T;
   } catch (e) {
     throw e as Error;
