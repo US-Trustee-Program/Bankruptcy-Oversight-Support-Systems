@@ -11,38 +11,7 @@ import {
   TransferOrderActionRejection,
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
-import { mockConfiguration } from '@/lib/testing/mock-configuration';
-
-// Mock the apiConfiguration module completely
-vi.mock('@/configuration/apiConfiguration', () => ({
-  default: {
-    basePath: '',
-    server: '',
-    port: '',
-    protocol: 'https',
-    baseUrl: 'https://',
-  },
-  isCamsApi: vi.fn().mockReturnValue(true),
-  ApiConfiguration: {
-    basePath: '',
-    server: '',
-    port: '',
-    protocol: 'https',
-    baseUrl: 'https://',
-  },
-}));
-
-// Mock the UseApplicationInsights module
-vi.mock('@/lib/hooks/UseApplicationInsights', () => {
-  const mockReactPlugin = { trackEvent: vi.fn() };
-  const mockAppInsights = { trackEvent: vi.fn() };
-
-  return {
-    useAppInsights: () => ({ reactPlugin: mockReactPlugin, appInsights: mockAppInsights }),
-    reactPlugin: mockReactPlugin,
-    appInsights: mockAppInsights,
-  };
-});
+import { blankConfiguration } from '../testing/mock-configuration';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -90,7 +59,16 @@ describe('_Api2 functions', async () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    mockConfiguration({ pa11y: false });
+
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          pa11y: false,
+        }),
+      };
+    });
+
     api = await import('./api');
     api2 = await import('./api2');
   });
@@ -329,7 +307,14 @@ describe('_Api2 functions', async () => {
 describe('addAuthHeaderToApi', () => {
   beforeEach(() => {
     vi.resetModules();
-    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          pa11y: false,
+        }),
+      };
+    });
     Api.headers = {};
   });
 

@@ -1,7 +1,7 @@
 import * as AppConfigModule from '@/configuration/appConfiguration';
 import { AppConfiguration } from '@/configuration/appConfiguration';
 
-const blankConfiguration: AppConfiguration = {
+export const blankConfiguration: AppConfiguration = {
   loginProvider: undefined,
   basePath: undefined,
   serverHostName: undefined,
