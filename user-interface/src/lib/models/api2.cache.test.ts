@@ -1,22 +1,14 @@
 import { describe } from 'vitest';
 import { mockLocalStorage } from '../testing/mock-local-storage';
-import { blankConfiguration } from '../testing/mock-configuration';
+import { mockConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('Api2 cache enabled', () => {
   beforeAll(() => {
-    vi.doMock('@/configuration/appConfiguration', async () => {
-      return {
-        default: () => ({
-          ...blankConfiguration,
-          disableLocalCache: false,
-        }),
-      };
-    });
-
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
   test('should cache if cache is enabled', async () => {
+    mockConfiguration({ disableLocalCache: false });
     const cacheModule = await import('../utils/local-cache');
     const apiModule = await import('./api');
     const api2Module = await import('./api2');
@@ -50,18 +42,11 @@ describe('Api2 cache enabled', () => {
 
 describe('Api2 cache disabled', () => {
   beforeAll(() => {
-    vi.doMock('@/configuration/appConfiguration', async () => {
-      return {
-        default: () => ({
-          ...blankConfiguration,
-          disableLocalCache: true,
-        }),
-      };
-    });
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
   test('should cache if cache is enabled', async () => {
+    mockConfiguration({ disableLocalCache: true });
     const cacheModule = await import('../utils/local-cache');
     const apiModule = await import('./api');
     const api2Module = await import('./api2');
