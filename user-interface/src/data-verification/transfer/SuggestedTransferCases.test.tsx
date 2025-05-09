@@ -163,7 +163,7 @@ describe('SuggestedTransferCases component', () => {
       roles: [CamsRole.DataVerifier],
       offices: MOCKED_USTP_OFFICES_ARRAY,
     });
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     order = MockData.getTransferOrder();
   });
 

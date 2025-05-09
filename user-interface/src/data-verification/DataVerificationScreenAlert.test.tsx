@@ -13,7 +13,7 @@ describe('Review Orders screen - Alert', () => {
 
   beforeEach(async () => {
     LocalStorage.setSession(MockData.getCamsSession({ user }));
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
   afterEach(() => {

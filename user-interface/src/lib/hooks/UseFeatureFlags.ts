@@ -14,7 +14,7 @@ export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
-  if (getAppConfiguration().pa11y) {
+  if (getAppConfiguration().useFakeApi) {
     return testFeatureFlags;
   }
   if (!config.clientId) {

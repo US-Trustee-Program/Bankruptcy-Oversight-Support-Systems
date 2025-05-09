@@ -10,7 +10,7 @@ export const blankConfiguration: AppConfiguration = {
   featureFlagClientId: undefined,
   launchDarklyEnv: undefined,
   applicationInsightsConnectionString: undefined,
-  pa11y: false,
+  useFakeApi: false,
   disableLocalCache: false,
   inactiveTimeout: undefined,
   loginProviderConfig: undefined,

@@ -64,7 +64,7 @@ describe('_Api2 functions', async () => {
       return {
         default: () => ({
           ...blankConfiguration,
-          pa11y: false,
+          useFakeApi: false,
         }),
       };
     });
@@ -311,7 +311,7 @@ describe('addAuthHeaderToApi', () => {
       return {
         default: () => ({
           ...blankConfiguration,
-          pa11y: false,
+          useFakeApi: false,
         }),
       };
     });
