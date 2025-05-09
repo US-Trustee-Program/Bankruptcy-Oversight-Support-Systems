@@ -18,7 +18,6 @@ Object.keys(process.env)
   });
 
 camsConfiguration.CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING = '';
-Object.defineProperty(window, 'CAMS_CONFIGURATION', {
-  value: camsConfiguration,
-  writable: true,
-});
+camsConfiguration.CAMS_DISABLE_LOCAL_CACHE = 'false';
+
+window.CAMS_CONFIGURATION = camsConfiguration;
