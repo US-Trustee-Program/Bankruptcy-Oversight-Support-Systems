@@ -29,18 +29,18 @@ declare global {
 
 const rootElement = document.getElementById('root');
 
-if (rootElement) {
-  ReactDOM.createRoot(rootElement as HTMLElement).render(
-    <React.StrictMode>
-      <BrowserRouter>
-        <AuthenticationRoutes>
-          <App />
-        </AuthenticationRoutes>
-      </BrowserRouter>
-    </React.StrictMode>,
+if (!rootElement) {
+  throw new Error(
+    'Unable to start CAMS application. Please try again later. If the problem persists, please contact USTP support.',
   );
-  console.log('CAMS Application mounted.');
-} else {
-  console.error('Fatal Error: Root element with ID "root" not found in the DOM.');
-  document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red;"><h3>Fatal Error: Application mount point "root" not found.</h3></div>`;
 }
+
+ReactDOM.createRoot(rootElement as HTMLElement).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <AuthenticationRoutes>
+        <App />
+      </AuthenticationRoutes>
+    </BrowserRouter>
+  </React.StrictMode>,
+);
