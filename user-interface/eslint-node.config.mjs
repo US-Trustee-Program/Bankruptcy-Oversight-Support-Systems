@@ -1,4 +1,3 @@
-import globals from 'globals';
 import eslintTsConfig from '../common/eslint-ts.config.mjs';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
