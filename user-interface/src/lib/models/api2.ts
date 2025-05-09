@@ -36,6 +36,7 @@ import {
   ElevatePrivilegedUserAction,
   RoleAndOfficeGroupNames,
 } from '../../../../common/src/cams/privileged-identity';
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
@@ -419,6 +420,6 @@ export const _Api2 = {
   searchCases,
 };
 
-export const Api2 = window.CAMS_CONFIGURATION?.CAMS_PA11Y === 'true' ? MockApi2 : _Api2;
+export const Api2 = getAppConfiguration().pa11y ? MockApi2 : _Api2;
 
 export default Api2;
