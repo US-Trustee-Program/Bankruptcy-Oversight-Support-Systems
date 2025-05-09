@@ -127,7 +127,7 @@ describe('Case number input component', () => {
 
 describe('Test validateCaseNumberInput function', () => {
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
   test('When supplied a value with a length greater than 7 digits, it should truncate value to 7 digits', async () => {

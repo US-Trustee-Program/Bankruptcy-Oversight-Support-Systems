@@ -1,10 +1,13 @@
-import { describe } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { MockLogin } from './MockLogin';
 import { MockData } from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
-import { vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { MockLogin } from './MockLogin';
+import * as SessionModule from '@/login/Session';
+import { SessionProps } from '@/login/Session';
+import { blankConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('MockLogin', () => {
   const fetchSpy = vi
@@ -17,6 +20,10 @@ describe('MockLogin', () => {
         } as unknown as Response);
       },
     );
+
+  vi.spyOn(SessionModule, 'Session').mockImplementation((props: SessionProps) => {
+    return <>{props.children}</>;
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,12 +48,19 @@ describe('MockLogin', () => {
   test('should report a bad mock issuer to the console', async () => {
     const errorSpy = vi.spyOn(global.console, 'error');
 
-    vi.stubEnv('CAMS_BASE_PATH', '');
-    vi.stubEnv('CAMS_SERVER_HOSTNAME', '');
-    vi.stubEnv('CAMS_SERVER_PORT', '');
-    vi.stubEnv('CAMS_SERVER_PROTOCOL', '');
-
     vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          basePath: '',
+          serverHostName: '',
+          serverPort: '',
+          serverProtocol: '',
+        }),
+      };
+    });
+
     const mod = await import('./MockLogin');
     const { MockLogin } = mod;
 
@@ -65,7 +79,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalled();
@@ -86,7 +100,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
 
     expect(fetchSpy).toHaveBeenCalled();
 
@@ -121,7 +135,7 @@ describe('MockLogin', () => {
 
     const loginButton = screen.queryByTestId('button-login-modal-submit-button');
     expect(loginButton).toBeInTheDocument();
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
 
     expect(fetchSpy).toHaveBeenCalled();
     await waitFor(() => {
@@ -142,7 +156,7 @@ describe('MockLogin', () => {
     expect(loginButton).toBeInTheDocument();
     expect(loginButton).toBeDisabled();
 
-    fireEvent.click(loginButton!);
+    await userEvent.click(loginButton!);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

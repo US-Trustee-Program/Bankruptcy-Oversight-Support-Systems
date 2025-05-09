@@ -1,6 +1,7 @@
 import { useFlags } from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import { getFeatureFlagConfiguration } from '@/configuration/featureFlagConfiguration';
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 export const CASE_NOTES_ENABLED = 'case-notes-enabled';
 export const CHAPTER_ELEVEN_ENABLED = 'chapter-eleven-enabled';
@@ -13,7 +14,7 @@ export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
-  if (import.meta.env['CAMS_PA11Y'] === 'true') {
+  if (getAppConfiguration().useFakeApi) {
     return testFeatureFlags;
   }
   if (!config.clientId) {

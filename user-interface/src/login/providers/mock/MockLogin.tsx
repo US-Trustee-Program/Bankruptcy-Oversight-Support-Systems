@@ -5,7 +5,7 @@ import { Session } from '@/login/Session';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BlankPage } from '@/login/BlankPage';
-import apiConfiguration from '@/configuration/apiConfiguration';
+import getApiConfiguration from '@/configuration/apiConfiguration';
 import { MockUser, MockUsers } from '@common/cams/test-utilities/mock-user';
 import { CamsUser } from '@common/cams/users';
 import { CamsSession } from '@common/cams/session';
@@ -17,6 +17,8 @@ type MockLoginState = {
     submitDisabled: boolean;
   };
 };
+
+const config = getApiConfiguration();
 
 export function useStateAndActions() {
   const [state, setState] = useState<MockLoginState>({
@@ -40,7 +42,7 @@ export function useStateAndActions() {
   const handleLogin = async () => {
     const newState = { ...state };
 
-    const { protocol, server, port, basePath } = apiConfiguration;
+    const { protocol, server, port, basePath } = config;
     if (!state.selectedRole) {
       return;
     }

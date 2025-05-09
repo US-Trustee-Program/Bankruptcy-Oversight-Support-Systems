@@ -1,13 +1,10 @@
-const clientId = import.meta.env['CAMS_FEATURE_FLAG_CLIENT_ID'];
-const useExternalProvider = !!clientId;
-
-// DECISION IS TO NOT USE CAMEL CASE FLAGS
-const useCamelCaseFlagKeys = false;
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 export const getFeatureFlagConfiguration = () => {
+  const clientId = getAppConfiguration().featureFlagClientId ?? '';
   return {
     clientId,
-    useExternalProvider,
-    useCamelCaseFlagKeys,
+    useExternalProvider: !!clientId,
+    useCamelCaseFlagKeys: false,
   } as const;
 };

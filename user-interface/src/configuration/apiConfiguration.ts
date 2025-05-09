@@ -1,18 +1,24 @@
-const basePath = import.meta.env['CAMS_BASE_PATH'];
-const server = import.meta.env['CAMS_SERVER_HOSTNAME'];
-const port = import.meta.env['CAMS_SERVER_PORT'];
-const protocol = import.meta.env['CAMS_SERVER_PROTOCOL'];
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 export function isCamsApi(url: string) {
-  return url.startsWith(ApiConfiguration.baseUrl);
+  return url.startsWith(getApiConfiguration().baseUrl);
 }
 
-export const ApiConfiguration = {
-  basePath,
-  server,
-  port,
-  protocol,
-  baseUrl: protocol + '://' + server + (port ? ':' + port : '') + basePath,
-};
+function getApiConfiguration() {
+  const config = getAppConfiguration();
 
-export default ApiConfiguration;
+  const { basePath } = config;
+  const server = config.serverHostName;
+  const port = config.serverPort;
+  const protocol = config.serverProtocol;
+
+  return {
+    basePath,
+    server,
+    port,
+    protocol,
+    baseUrl: `${protocol || 'https'}://${server}${port ? ':' + port : ''}${basePath ?? ''}`,
+  };
+}
+
+export default getApiConfiguration;

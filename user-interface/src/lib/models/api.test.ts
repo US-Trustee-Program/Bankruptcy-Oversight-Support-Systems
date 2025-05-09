@@ -87,7 +87,7 @@ describe('Specific tests for the API model', () => {
     await expect(Api.get('/some/path', {})).rejects.toThrow(rethrownError);
   });
 
-  test('should return expected result when GET response is ok', () => {
+  test('should return expected result when GET response is ok', async () => {
     const payload = { foo: 'mock get' };
     const mockHttpGet = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
@@ -96,7 +96,7 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpGet').mockImplementation(mockHttpGet);
 
-    expect(Api.get('/some/path', {})).resolves.toEqual(payload);
+    await expect(Api.get('/some/path', {})).resolves.toEqual(payload);
   });
 
   // POST
@@ -123,7 +123,7 @@ describe('Specific tests for the API model', () => {
     await expect(Api.post('/some/path', {})).rejects.toThrow('mock post');
   });
 
-  test('should return data when POST response is Ok with a payload', () => {
+  test('should return data when POST response is Ok with a payload', async () => {
     const payload = { foo: 'mock post' };
     const mockHttpPost = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
@@ -132,17 +132,17 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
 
-    expect(Api.post('/some/path', {})).resolves.toEqual(payload);
+    await expect(Api.post('/some/path', {})).resolves.toEqual(payload);
   });
 
-  test('should return data when POST response is Ok without a payload', () => {
+  test('should return data when POST response is Ok without a payload', async () => {
     const mockHttpPost = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
       text: () => Promise.resolve('{'),
       ok: true,
     });
     vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
-    expect(Api.post('/some/path', {})).resolves.toBeUndefined();
+    await expect(Api.post('/some/path', {})).resolves.toBeUndefined();
   });
 
   // PUT
@@ -169,7 +169,7 @@ describe('Specific tests for the API model', () => {
     await expect(Api.put('/some/path', {})).rejects.toThrow('mock put');
   });
 
-  test('should return data when PUT response is Ok with a payload', () => {
+  test('should return data when PUT response is Ok with a payload', async () => {
     const payload = { foo: 'mock post' };
     const mockHttpPut = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
@@ -178,17 +178,17 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpPut').mockImplementation(mockHttpPut);
 
-    expect(Api.put('/some/path', {})).resolves.toEqual(payload);
+    await expect(Api.put('/some/path', {})).resolves.toEqual(payload);
   });
 
-  test('should return data when PUT response is Ok without a payload', () => {
+  test('should return data when PUT response is Ok without a payload', async () => {
     const mockHttpPut = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
       text: () => Promise.resolve('{'),
       ok: true,
     });
     vi.spyOn(httpAdapter, 'httpPut').mockImplementation(mockHttpPut);
-    expect(Api.put('/some/path', {})).resolves.toBeUndefined();
+    await expect(Api.put('/some/path', {})).resolves.toBeUndefined();
   });
 
   // PATCH
@@ -213,7 +213,7 @@ describe('Specific tests for the API model', () => {
     await expect(Api.patch('/some/path', {})).rejects.toThrow(rethrownError);
   });
 
-  test('should return expected result when PATCH response is ok', () => {
+  test('should return expected result when PATCH response is ok', async () => {
     const payload = { foo: 'mock patch' };
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
@@ -223,17 +223,17 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
 
-    expect(Api.patch('/some/path', {})).resolves.toEqual(payload);
+    await expect(Api.patch('/some/path', {})).resolves.toEqual(payload);
   });
 
-  test('should return data when PATCH response is Ok without a payload', () => {
+  test('should return data when PATCH response is Ok without a payload', async () => {
     const mockHttpPatch = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
       text: () => Promise.resolve('{'),
       ok: true,
     });
     vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
-    expect(Api.patch('/some/path', {})).resolves.toBeUndefined();
+    await expect(Api.patch('/some/path', {})).resolves.toBeUndefined();
   });
 
   // DELETE
@@ -258,7 +258,7 @@ describe('Specific tests for the API model', () => {
     await expect(Api.delete('/some/path')).rejects.toThrow(rethrownError);
   });
 
-  test('should return expected result when DELETE response is ok', () => {
+  test('should return expected result when DELETE response is ok', async () => {
     const payload = { foo: 'mock patch' };
     const mockHttpDelete = vi.fn().mockResolvedValue({
       json: () => Promise.resolve(payload),
@@ -268,17 +268,17 @@ describe('Specific tests for the API model', () => {
     });
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
 
-    expect(Api.delete('/some/path')).resolves.toEqual(payload);
+    await expect(Api.delete('/some/path')).resolves.toEqual(payload);
   });
 
-  test('should return data when DELETE response is Ok without a payload', () => {
+  test('should return data when DELETE response is Ok without a payload', async () => {
     const mockHttpDelete = vi.fn().mockResolvedValue({
       json: () => JSON.parse(''),
       text: () => Promise.resolve('{'),
       ok: true,
     });
     vi.spyOn(httpAdapter, 'httpDelete').mockImplementation(mockHttpDelete);
-    expect(Api.delete('/some/path')).resolves.toBeUndefined();
+    await expect(Api.delete('/some/path')).resolves.toBeUndefined();
   });
 
   test('should pass select query string key values to the api', () => {

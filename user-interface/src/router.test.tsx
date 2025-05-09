@@ -9,7 +9,7 @@ import { CamsRole } from '@common/cams/roles';
 
 describe('App Router Tests', () => {
   beforeAll(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
       MockData.getCamsSession({
         user: MockData.getCamsUser({

@@ -68,7 +68,7 @@ describe('Privileged Identity screen tests', () => {
   beforeEach(async () => {
     process.env = {
       ...env,
-      CAMS_PA11Y: 'true',
+      CAMS_USE_FAKE_API: 'true',
     };
 
     mockUserList = MockData.buildArray(MockData.getCamsUserReference, 5);

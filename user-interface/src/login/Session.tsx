@@ -76,7 +76,7 @@ export function Session(props: SessionProps) {
     if (LOGIN_PATHS.includes(location.pathname)) {
       navigator.navigateTo(LOGIN_BASE_PATH);
     }
-  }, [state.isLoaded === true && !state.isError]);
+  }, [state.isLoaded && !state.isError]);
 
   if (!state.isLoaded) {
     return (
@@ -88,5 +88,5 @@ export function Session(props: SessionProps) {
     return <AccessDenied message={state.errorMessage ?? undefined}></AccessDenied>;
   }
 
-  return <div data-stagingtest="this-is-a-test">{props.children}</div>;
+  return <>{props.children}</>;
 }

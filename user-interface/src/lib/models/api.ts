@@ -1,10 +1,12 @@
 import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '../utils/http.adapter';
 import { ObjectKeyVal } from '../type-declarations/basic';
-import config from '../../configuration/apiConfiguration';
 import { ResponseBody } from '@common/api/response';
+import getApiConfiguration from '@/configuration/apiConfiguration';
 
 const beforeHooks: (() => Promise<void>)[] = [];
 const afterHooks: ((response: Response) => Promise<void>)[] = [];
+
+const { baseUrl } = getApiConfiguration();
 
 export function addApiBeforeHook(hook: () => Promise<void>) {
   const hookExists = beforeHooks.reduce((doesExist, registeredHook) => {
@@ -27,7 +29,7 @@ export function addApiAfterHook(hook: (response: Response) => Promise<void>) {
 export default class Api {
   public static headers: Record<string, string> = {};
 
-  public static host = `${config.protocol || 'https'}://${config.server}:${config.port}${config.basePath ?? ''}`;
+  public static host = baseUrl;
 
   public static createPath(path: string, params: ObjectKeyVal) {
     if (params && Object.keys(params).length > 0) {

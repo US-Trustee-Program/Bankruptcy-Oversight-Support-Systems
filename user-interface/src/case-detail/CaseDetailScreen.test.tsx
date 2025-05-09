@@ -49,7 +49,7 @@ describe('Case Detail screen tests', () => {
     vi.restoreAllMocks();
     process.env = {
       ...env,
-      CAMS_PA11Y: 'true',
+      CAMS_USE_FAKE_API: 'true',
     };
   });
 

@@ -1,9 +1,10 @@
 import LocalStorage from '@/lib/utils/local-storage';
 import { LOGOUT_PATH } from './login-library';
 import { redirectTo } from '@/lib/hooks/UseCamsNavigator';
+import getAppConfiguration from '@/configuration/appConfiguration';
 
 const POLLING_INTERVAL = 60000; // milliseconds
-const TIMEOUT_MINUTES = import.meta.env['CAMS_INACTIVE_TIMEOUT'] ?? 30;
+const TIMEOUT_MINUTES = getAppConfiguration().inactiveTimeout ?? 30;
 const TIMEOUT = TIMEOUT_MINUTES * 60 * 1000;
 
 export function resetLastInteraction() {

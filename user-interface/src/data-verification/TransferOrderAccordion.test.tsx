@@ -104,7 +104,7 @@ describe('TransferOrderAccordion', () => {
   }
 
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     order = MockData.getTransferOrder();
   });
 

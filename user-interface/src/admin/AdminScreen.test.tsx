@@ -15,7 +15,7 @@ vi.mock('./privileged-identity/PrivilegedIdentity', () => {
 
 describe('Admin screen tests', () => {
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     const session = MockData.getCamsSession();
     session.user.roles = [CamsRole.SuperUser];
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);

@@ -1,5 +1,4 @@
 import { describe } from 'vitest';
-import MockApi2 from '@/lib/testing/mock-api2';
 import Api2, { _Api2, addAuthHeaderToApi, extractPathFromUri, useGenericApi } from './api2';
 import Api, { addApiAfterHook, addApiBeforeHook } from '@/lib/models/api';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -12,6 +11,7 @@ import {
   TransferOrderActionRejection,
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
+import { blankConfiguration } from '../testing/mock-configuration';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -27,35 +27,7 @@ type Api2Type = {
   Api2: typeof Api2;
 };
 
-describe.skip('Api2 mocking', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // TODO: Why doesn't the module return the mock api 2?
-  test('should return MockApi2 when CAMS_PA11Y is set to true', async () => {
-    import.meta.env.CAMS_PA11Y = true;
-    const api2 = await import('./api2');
-    const mockSpy = vi.spyOn(MockApi2, 'getAttorneys');
-    await api2.Api2.getAttorneys();
-    expect(mockSpy).toHaveBeenCalled();
-  });
-
-  test('should return _Api2 when CAMS_PA11Y is set to false', async () => {
-    import.meta.env.CAMS_PA11Y = false;
-    const mockSpy = vi.spyOn(MockApi2, 'getAttorneys');
-    const api2 = await import('./api2');
-    const api = await import('./api');
-    const apiSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
-    await api2.Api2.getAttorneys();
-    expect(mockSpy).not.toHaveBeenCalled();
-    expect(apiSpy).toHaveBeenCalled();
-  });
-});
-
 describe('extractPathFromUri', () => {
-  import.meta.env.CAMS_PA11Y = false;
-
   test('should return path when given full uri with protocol, domain, and parameters', () => {
     const api = addAuthHeaderToApi();
     api.host = `https://some-domain.gov`;
@@ -87,7 +59,16 @@ describe('_Api2 functions', async () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    import.meta.env.CAMS_PA11Y = false;
+
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          useFakeApi: false,
+        }),
+      };
+    });
+
     api = await import('./api');
     api2 = await import('./api2');
   });
@@ -326,7 +307,14 @@ describe('_Api2 functions', async () => {
 describe('addAuthHeaderToApi', () => {
   beforeEach(() => {
     vi.resetModules();
-    import.meta.env.CAMS_PA11Y = false;
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          useFakeApi: false,
+        }),
+      };
+    });
     Api.headers = {};
   });
 
