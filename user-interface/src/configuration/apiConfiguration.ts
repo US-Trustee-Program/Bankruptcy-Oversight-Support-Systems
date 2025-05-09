@@ -7,7 +7,7 @@ export function isCamsApi(url: string) {
 function getApiConfiguration() {
   const config = getAppConfiguration();
 
-  const basePath = config.basePath;
+  const { basePath } = config;
   const server = config.serverHostName;
   const port = config.serverPort;
   const protocol = config.serverProtocol;
