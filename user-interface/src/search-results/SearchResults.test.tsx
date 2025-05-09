@@ -14,7 +14,7 @@ describe('SearchResults component tests', () => {
   const onEndSearchingSpy = vi.fn();
 
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     caseList = MockData.buildArray(MockData.getSyncedCase, 60);
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       meta: {

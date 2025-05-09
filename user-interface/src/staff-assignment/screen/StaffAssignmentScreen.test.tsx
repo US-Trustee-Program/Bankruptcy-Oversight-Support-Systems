@@ -37,7 +37,7 @@ describe('StaffAssignmentScreen', () => {
   beforeEach(() => {
     testingUtilities.setUser(user);
 
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     mockFeatureFlags = {
       'chapter-eleven-enabled': false,
       'chapter-twelve-enabled': false,

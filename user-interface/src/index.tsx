@@ -13,7 +13,7 @@ export type CamsConfiguration = Partial<{
   CAMS_FEATURE_FLAG_CLIENT_ID: string;
   CAMS_LAUNCH_DARKLY_ENV: string;
   CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING: string;
-  CAMS_PA11Y: string;
+  CAMS_USE_FAKE_API: string;
   CAMS_DISABLE_LOCAL_CACHE: string;
   CAMS_INACTIVE_TIMEOUT: string;
   CAMS_LOGIN_PROVIDER: string;

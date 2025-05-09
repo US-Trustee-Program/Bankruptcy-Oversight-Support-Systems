@@ -8,7 +8,7 @@ function getAppConfiguration() {
     featureFlagClientId: config?.CAMS_FEATURE_FLAG_CLIENT_ID,
     launchDarklyEnv: config?.CAMS_LAUNCH_DARKLY_ENV,
     applicationInsightsConnectionString: config?.CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING,
-    pa11y: config?.CAMS_PA11Y?.toLowerCase() === 'true',
+    useFakeApi: config?.CAMS_USE_FAKE_API?.toLowerCase() === 'true',
     disableLocalCache: config?.CAMS_DISABLE_LOCAL_CACHE?.toLowerCase() === 'true',
     inactiveTimeout: config?.CAMS_INACTIVE_TIMEOUT
       ? (parseInt(config?.CAMS_INACTIVE_TIMEOUT) ?? undefined)

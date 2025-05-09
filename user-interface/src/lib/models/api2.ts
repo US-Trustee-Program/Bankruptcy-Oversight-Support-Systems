@@ -420,6 +420,6 @@ export const _Api2 = {
   searchCases,
 };
 
-export const Api2 = getAppConfiguration().pa11y ? MockApi2 : _Api2;
+export const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
 
 export default Api2;

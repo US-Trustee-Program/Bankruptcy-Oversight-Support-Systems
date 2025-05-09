@@ -13,7 +13,7 @@ const remoteFeatureFlags: FeatureFlagSet = {
 
 describe('useFeatureFlag hook', () => {
   beforeEach(() => {
-    mockConfiguration({ pa11y: false });
+    mockConfiguration({ useFakeApi: false });
   });
 
   afterEach(() => {
@@ -52,8 +52,8 @@ describe('useFeatureFlag hook', () => {
     expect(featureFlags).toEqual(remoteFeatureFlags);
   });
 
-  test('should use default true flags when CAMS_PA11Y is true', () => {
-    mockConfiguration({ pa11y: true });
+  test('should use default true flags when CAMS_USE_FAKE_API is true', () => {
+    mockConfiguration({ useFakeApi: true });
     vi.spyOn(sdk, 'useFlags').mockRejectedValue(new Error('this should not be called'));
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: BOGUS_CLIENT_ID,
