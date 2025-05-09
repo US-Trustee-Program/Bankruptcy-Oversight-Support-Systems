@@ -11,7 +11,7 @@ export const LOGIN_PATHS = [LOGIN_PATH, LOGIN_CONTINUE_PATH, LOGOUT_PATH, LOGOUT
 
 export function getLoginProvider(): string {
   const value = getAppConfiguration().loginProvider?.toLowerCase();
-  if (value === undefined) throw new Error('Missing authentication provider');
+  if (value === undefined) {
   return value;
 }
 
