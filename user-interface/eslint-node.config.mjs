@@ -8,11 +8,9 @@ const tsEslint = require('typescript-eslint');
 const eslintNodeConfig = tsEslint.config(
   eslintTsConfig,
   {
-    languageOptions: {
-      globals: {
-        ...globals.node,
-      },
-    },
+    rules: {
+      'no-undef': 'off',
+    }
   }
 );
 
