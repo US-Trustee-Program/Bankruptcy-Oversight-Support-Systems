@@ -3,6 +3,7 @@ import eslintTsConfig from './common/eslint-ts.config.mjs';
 import eslintTestConfig from './common/eslint-test.config.mjs';
 import eslintUiTestConfig from './user-interface/eslint-ui-test.config.mjs';
 import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
+import eslintNodeConfig from './user-interface/eslint-node.config.mjs';
 
 const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
   files: ['user-interface/**/*.ts', 'user-interface/**/*.tsx'],
@@ -29,6 +30,10 @@ const jsConfig = eslintJsConfig.map((configObject) => ({
   files: ['**/*.[mc]js', '**/*.js'],
   ...configObject,
 }));
+const nodeConfig = eslintNodeConfig.map((configObject) => ({
+  files: ['**/envToConfig.js'],
+  ...configObject,
+}));
 
 const eslintConfig = [
   {
@@ -39,6 +44,7 @@ const eslintConfig = [
   ...sourceConfig,
   ...testConfig,
   ...jsConfig,
+  ...nodeConfig,
 ];
 
 export default eslintConfig;

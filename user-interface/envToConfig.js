@@ -1,3 +1,5 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -11,7 +13,7 @@ try {
   // Copy environment variables to the config object
   Object.keys(process.env)
     .filter((key) => key.startsWith('CAMS_'))
-    .forEach(varName => {
+    .forEach((varName) => {
       if (process.env[varName] !== undefined) {
         configObject[varName] = process.env[varName];
       }
