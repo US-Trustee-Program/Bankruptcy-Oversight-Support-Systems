@@ -22,14 +22,21 @@ describe('Login library', () => {
   });
 
   describe('getLoginProvider', () => {
-    test('should get the provider type', () => {
-      [...providerTypes, bogusType, ''].forEach((key) => {
+    test.each([...providerTypes, bogusType])('should get the provider type: %s', (key: string) => {
+      mockConfiguration({
+        loginProvider: key,
+      });
+      expect(getLoginProvider()).toEqual(key);
+    });
+    test.each(['', undefined])(
+      'should throw an exception when provider type is not provided: %s',
+      (key: string | undefined) => {
         mockConfiguration({
           loginProvider: key,
         });
-        expect(getLoginProvider()).toEqual(key);
-      });
-    });
+        expect(() => getLoginProvider()).toThrow('Missing login provider');
+      },
+    );
   });
 
   describe('getLoginConfiguration', () => {
