@@ -5,10 +5,8 @@ dotenv.config();
 const localConfigurationJsonPath = './public/configuration.json';
 
 try {
-  // Create an object to store configuration values
   const configObject = {};
 
-  // Copy environment variables to the config object
   Object.keys(process.env)
     .filter((key) => key.startsWith('CAMS_'))
     .forEach((varName) => {
@@ -17,10 +15,8 @@ try {
       }
     });
 
-  // Convert the config object to JSON
   const configJson = JSON.stringify(configObject, null, 2);
 
-  // Open the file for writing
   fs.writeFileSync(localConfigurationJsonPath, configJson, 'utf8');
   console.log(`Configuration written to ${localConfigurationJsonPath}`);
 } catch (error) {
