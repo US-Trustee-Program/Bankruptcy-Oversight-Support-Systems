@@ -14,6 +14,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
 import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';
+import { blankConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -75,8 +76,15 @@ describe('Login', () => {
   });
 
   test('should load provider from environment vars', async () => {
-    vi.stubEnv('CAMS_LOGIN_PROVIDER', 'okta');
-    vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', `{"issuer": "${issuer}", "clientId": "000000000000"}`);
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          loginProvider: 'okta',
+          loginProviderConfig: '{"issuer": "${issuer}", "clientId": "000000000000"}',
+        }),
+      };
+    });
 
     vi.resetModules();
     const { Login } = await import('./Login');
@@ -105,24 +113,25 @@ describe('Login', () => {
   });
 
   test('should check for an existing mock login and skip if a session exists', async () => {
-    const originalConfig = window.CAMS_CONFIGURATION;
-    window.CAMS_CONFIGURATION = {
-      ...originalConfig,
-      CAMS_LOGIN_PROVIDER: 'mock',
-      CAMS_LOGIN_PROVIDER_CONFIG: '',
-      CAMS_SERVER_PROTOCOL: 'https',
-      CAMS_SERVER_HOSTNAME: 'fake.issuer.com',
-      CAMS_SERVER_PORT: '',
-      CAMS_BASE_PATH: '',
-    };
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          loginProvider: 'mock',
+          loginProviderConfig: '',
+          serverHostName: 'fake.issuer.com',
+          serverPort: '',
+          serverProtocol: 'https',
+          basePath: '',
+        }),
+      };
+    });
 
     vi.resetModules();
     await import('@/login/login-library');
     const { LocalStorage } = await import('@/lib/utils/local-storage');
     const { Login } = await import('./Login');
     const sessionModule = await import('./Session');
-
-    window.CAMS_CONFIGURATION = originalConfig;
 
     const getSession = vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
       accessToken: MockData.getJwt(),
