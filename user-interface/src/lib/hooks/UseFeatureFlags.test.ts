@@ -2,6 +2,7 @@ import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import * as config from '../../configuration/featureFlagConfiguration';
 import useFeatureFlags from './UseFeatureFlags';
+import { mockConfiguration } from '../testing/mock-configuration';
 
 const BOGUS_CLIENT_ID = 'bogus-client-id';
 
@@ -10,16 +11,13 @@ const remoteFeatureFlags: FeatureFlagSet = {
   'remote-flag-2': true,
 };
 
-const originalConfig = window.CAMS_CONFIGURATION;
-
 describe('useFeatureFlag hook', () => {
   beforeEach(() => {
-    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'false';
+    mockConfiguration({ pa11y: false });
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
-    window.CAMS_CONFIGURATION = originalConfig;
   });
 
   test('should use defaults when an api key is not available', () => {
@@ -55,8 +53,7 @@ describe('useFeatureFlag hook', () => {
   });
 
   test('should use default true flags when CAMS_PA11Y is true', () => {
-    window.CAMS_CONFIGURATION.CAMS_PA11Y = 'true';
-
+    mockConfiguration({ pa11y: true });
     vi.spyOn(sdk, 'useFlags').mockRejectedValue(new Error('this should not be called'));
     vi.spyOn(config, 'getFeatureFlagConfiguration').mockReturnValue({
       clientId: BOGUS_CLIENT_ID,
