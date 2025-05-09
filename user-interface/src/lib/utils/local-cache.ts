@@ -8,7 +8,7 @@ type Cachable<T = unknown> = {
 
 const NAMESPACE = 'cams:cache:';
 const DEFAULT_TTL = HOUR;
-const canCache = !!window.localStorage && getAppConfiguration().disableLocalCache;
+const canCache = !!window.localStorage && !getAppConfiguration().disableLocalCache;
 
 function isCacheEnabled() {
   return canCache;
