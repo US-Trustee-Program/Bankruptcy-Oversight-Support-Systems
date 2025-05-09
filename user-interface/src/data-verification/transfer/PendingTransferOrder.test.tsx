@@ -107,7 +107,7 @@ describe('PendingTransferOrder component', () => {
     }
 
     beforeEach(async () => {
-      vi.stubEnv('CAMS_PA11Y', 'true');
+      vi.stubEnv('CAMS_USE_FAKE_API', 'true');
       order = { ...mockTransferOrder };
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValueOnce(mockGetCaseSummary);
       vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(
@@ -244,7 +244,7 @@ describe('PendingTransferOrder component', () => {
     }
 
     beforeEach(async () => {
-      vi.stubEnv('CAMS_PA11Y', 'true');
+      vi.stubEnv('CAMS_USE_FAKE_API', 'true');
       order = MockData.getTransferOrder();
       vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(mockGetCaseSummary);
       vi.spyOn(Api2, 'getOrderSuggestions').mockResolvedValueOnce(

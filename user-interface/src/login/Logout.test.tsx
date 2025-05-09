@@ -11,7 +11,7 @@ import { SessionEnd } from './SessionEnd';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('Logout', () => {
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
   const oktaProviderComponent = vi
     .spyOn(oktaProviderModule, 'OktaProvider')
     .mockImplementation((props: PropsWithChildren) => {

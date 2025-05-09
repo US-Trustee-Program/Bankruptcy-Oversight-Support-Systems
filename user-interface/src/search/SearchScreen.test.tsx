@@ -42,7 +42,7 @@ describe('search screen', () => {
   let searchCasesSpy: MockInstance;
 
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
   });

@@ -74,20 +74,21 @@
   },
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
-    "start": "vite",
-    "start:pa11y": "export CAMS_PA11Y=true && export CAMS_LOGIN_PROVIDER=none && tsc -b && vite build && vite preview --port 3000",
-    "build": "tsc -b && vite build",
+    "start": "npm run envToConfig && vite",
+    "start:pa11y": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && tsc -b && vite build && vite preview --port 3000",
+    "build": "npm run envToConfig && tsc -b && vite build",
     "build-common": "pushd ../common && npm ci && npm run build && popd",
-    "serve": "npm run build && vite preview --port 3000",
-    "test": "export CAMS_PA11Y=true && vitest run",
-    "test:watch": "export CAMS_PA11Y=true && vitest watch",
-    "coverage": "export CAMS_PA11Y=true && vitest run --coverage",
-    "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && npm config set script-shell= && export CAMS_PA11Y=true && vitest run --coverage",
+    "serve": "npm run envToConfig && npm run build && vite preview --port 3000",
+    "test": "export CAMS_USE_FAKE_API=true && vitest run",
+    "test:watch": "export CAMS_USE_FAKE_API=true && vitest watch",
+    "coverage": "export CAMS_USE_FAKE_API=true && vitest run --coverage",
+    "coverage:ci": "npm config set script-shell=/bin/bash && npm run build-common && npm config set script-shell= && export CAMS_USE_FAKE_API=true && vitest run --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write './**/*.{js,jsx,ts,tsx,css,md,json}' --config ./.prettierrc",
     "pa11y-ci": "pa11y-ci",
     "dependency-cruiser-graphical": "current_time=$(date +'%Y-%m-%d_%H%M') && npx depcruise --output-type dot --do-not-follow '^node_modules($|/)' public src | dot -T svg > ../docs/architecture/dependency-cruiser/user-interface/dependency-graph_${current_time}.svg",
-    "dependency-cruiser:ci": "npx depcruise --output-type err-long public src"
+    "dependency-cruiser:ci": "npx depcruise --output-type err-long public src",
+    "envToConfig": "node ./envToConfig.js"
   }
 }

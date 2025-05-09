@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { Banner } from './Banner';
 import { BrowserRouter } from 'react-router-dom';
+import { mockConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('Test Banner Environment', () => {
   beforeEach(() => {
@@ -8,7 +9,7 @@ describe('Test Banner Environment', () => {
   });
   test('Should not have a css class based on launchDarklyEnvironment env var', () => {
     const expectedEnv = 'production';
-    vi.stubEnv('CAMS_LAUNCH_DARKLY_ENV', 'production');
+    mockConfiguration({ launchDarklyEnv: 'production' });
     render(
       <BrowserRouter>
         <Banner />
@@ -19,7 +20,7 @@ describe('Test Banner Environment', () => {
   });
   test('Should have a css class based on launchDarklyEnvironment env var', () => {
     const expectedEnv = 'staging';
-    vi.stubEnv('CAMS_LAUNCH_DARKLY_ENV', 'staging');
+    mockConfiguration({ launchDarklyEnv: expectedEnv });
     render(
       <BrowserRouter>
         <Banner />

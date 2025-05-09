@@ -14,6 +14,7 @@ import { MockData } from '@common/cams/test-utilities/mock-data';
 import { randomUUID } from 'node:crypto';
 import { CamsSession } from '@common/cams/session';
 import { JSX } from 'react/jsx-runtime';
+import { blankConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('Login', () => {
   const testId = 'child-div';
@@ -49,8 +50,8 @@ describe('Login', () => {
     getSession = vi.spyOn(LocalStorage, 'getSession');
     removeSession = vi.spyOn(LocalStorage, 'removeSession');
 
-    getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuerFromEnv');
-    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+    getAuthIssuerFromEnv = vi.spyOn(libraryModule, 'getAuthIssuer');
+    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
 
     oktaProviderComponent.mockImplementation((props: PropsWithChildren) => {
       return <>{props.children}</>;
@@ -64,7 +65,7 @@ describe('Login', () => {
     getSession.mockReturnValue(null);
     removeSession.mockImplementation(vi.fn());
     vi.spyOn(localStorage, 'getAck').mockReturnValueOnce(true);
-    vi.spyOn(libraryModule, 'getLoginConfigurationFromEnv').mockReturnValue({
+    vi.spyOn(libraryModule, 'getLoginConfiguration').mockReturnValue({
       issuer,
       clientId: randomUUID(),
     });
@@ -75,13 +76,20 @@ describe('Login', () => {
   });
 
   test('should load provider from environment vars', async () => {
-    vi.stubEnv('CAMS_LOGIN_PROVIDER', 'okta');
-    vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', `{"issuer": "${issuer}", "clientId": "000000000000"}`);
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          loginProvider: 'okta',
+          loginProviderConfig: '{"issuer": "${issuer}", "clientId": "000000000000"}',
+        }),
+      };
+    });
 
     vi.resetModules();
     const { Login } = await import('./Login');
     const libraryModule = await import('@/login/login-library');
-    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProviderFromEnv');
+    const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
 
     render(
       <BrowserRouter>
@@ -105,14 +113,22 @@ describe('Login', () => {
   });
 
   test('should check for an existing mock login and skip if a session exists', async () => {
-    vi.stubEnv('CAMS_LOGIN_PROVIDER', 'mock');
-    vi.stubEnv('CAMS_LOGIN_PROVIDER_CONFIG', '');
-    vi.stubEnv('CAMS_SERVER_PROTOCOL', 'https');
-    vi.stubEnv('CAMS_SERVER_HOSTNAME', 'fake.issuer.com');
-    vi.stubEnv('CAMS_SERVER_PORT', '');
-    vi.stubEnv('CAMS_BASE_PATH', '');
+    vi.doMock('@/configuration/appConfiguration', async () => {
+      return {
+        default: () => ({
+          ...blankConfiguration,
+          loginProvider: 'mock',
+          loginProviderConfig: '',
+          serverHostName: 'fake.issuer.com',
+          serverPort: '',
+          serverProtocol: 'https',
+          basePath: '',
+        }),
+      };
+    });
 
     vi.resetModules();
+    await import('@/login/login-library');
     const { LocalStorage } = await import('@/lib/utils/local-storage');
     const { Login } = await import('./Login');
     const sessionModule = await import('./Session');
@@ -137,7 +153,6 @@ describe('Login', () => {
     expect(getSession).toHaveBeenCalled();
     expect(removeSession).not.toHaveBeenCalled();
     expect(sessionComponent).toHaveBeenCalled();
-    vi.unstubAllEnvs();
   });
 
   test('should check for an existing okta login and skip if a session exists', () => {

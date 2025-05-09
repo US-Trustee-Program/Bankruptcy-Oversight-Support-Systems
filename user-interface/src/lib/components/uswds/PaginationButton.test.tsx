@@ -9,7 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 describe('PaginationButton tests', () => {
   const onClickSpy = vi.fn();
   beforeEach(async () => {
-    vi.stubEnv('CAMS_PA11Y', 'true');
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
   function renderWithProps(props: Partial<PaginationButtonProps> = {}) {

@@ -3,17 +3,10 @@ import { useAppInsights } from '../hooks/UseApplicationInsights';
 import { IEventTelemetry } from '@microsoft/applicationinsights-web';
 import LocalStorage from './local-storage';
 
-// TODO: This is going to have to be a JSON string retrieved from the environment.
-let defaultConfiguration: Partial<Config>;
-
-try {
-  defaultConfiguration = JSON.parse(import.meta.env['SANITIZE_CONFIG']);
-} catch {
-  defaultConfiguration = {
-    ALLOWED_TAGS: ['#text'],
-    KEEP_CONTENT: false,
-  };
-}
+const defaultConfiguration = {
+  ALLOWED_TAGS: ['#text'],
+  KEEP_CONTENT: false,
+};
 
 export function sanitizeText(maybeDirty: string, configuration: Partial<Config> = {}) {
   const domPurifyConfig: Config = { ...defaultConfiguration, ...configuration };

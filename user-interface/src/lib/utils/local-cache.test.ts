@@ -4,7 +4,6 @@ import { mockLocalStorage } from '../testing/mock-local-storage';
 
 describe('LocalCache', () => {
   beforeAll(() => {
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
@@ -181,7 +180,6 @@ describe('LocalCache', () => {
 
   test('should check if cache is enabled', async () => {
     vi.resetModules();
-    vi.stubEnv('CAMS_DISABLE_LOCAL_CACHE', 'false');
     vi.stubGlobal('localStorage', mockLocalStorage);
     const reloaded = await import('./local-cache');
     expect(reloaded.LocalCache.isCacheEnabled()).toBeTruthy();
