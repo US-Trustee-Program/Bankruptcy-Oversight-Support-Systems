@@ -1,6 +1,10 @@
 async function loadConfiguration() {
   console.log('Fetching configuration.json.');
-  const response = await fetch('/configuration.json');
+  const stagingSuffix = '-staging.azurewebsites.us';
+  const configurationUrl = window.location.hostname.endsWith(stagingSuffix)
+    ? '/configuration-staging.json'
+    : '/configuration.json';
+  const response = await fetch(configurationUrl);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch configuration.json.`);
