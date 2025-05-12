@@ -12,9 +12,9 @@ require('dotenv').config();
  */
 export default defineConfig({
   expect: {
-    timeout: 60000,
+    timeout: 10000,
   },
-  timeout: 60000, //Set Test timeout to 1 minute
+  timeout: 30000, //Set Test timeout to 1 minute
   testDir: './playwright',
   /* Run tests in files in parallel */
   fullyParallel: false,
