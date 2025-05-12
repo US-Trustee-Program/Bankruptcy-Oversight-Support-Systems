@@ -1,5 +1,4 @@
 async function loadConfiguration() {
-  console.log('Fetching configuration.json.');
   const stagingSuffix = '-staging.azurewebsites.us';
   const configurationUrl = window.location.hostname.endsWith(stagingSuffix)
     ? '/configuration-staging.json'
