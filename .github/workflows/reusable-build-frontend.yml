@@ -88,8 +88,6 @@ jobs:
 
       - name: Generate Staging Slot Configuration
         run: |
-          npm ci
-          echo "TODO: modify these values and remove the ones we don't need?"
           export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
           export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
           export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
