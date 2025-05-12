@@ -1,8 +1,19 @@
 const fs = require('fs');
 const dotenv = require('dotenv');
+const { parseArgs } = require('util');
 dotenv.config();
 
-const localConfigurationJsonPath = './public/configuration.json';
+const { configFileName } = parseArgs({
+  options: {
+    configFileName: {
+      type: 'string',
+      short: 'f',
+      default: 'configuration.json',
+    },
+  },
+}).values;
+
+const localConfigurationJsonPath = `./public/${configFileName}`;
 
 try {
   const configObject = {};
