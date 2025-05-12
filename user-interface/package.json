@@ -75,6 +75,7 @@
   "scripts": {
     "clean": "rm -rf build && rm -rf node_modules && rm -rf ./coverage",
     "start": "npm run envToConfig && vite",
+    "start:scan": "npm run envToConfig && vite --config vite.scan.mts",
     "start:pa11y": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && tsc -b && vite build && vite preview --port 3000",
     "build": "npm run envToConfig && tsc -b && vite build",
     "build-common": "pushd ../common && npm ci && npm run build && popd",

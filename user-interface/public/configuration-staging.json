@@ -1,0 +1,14 @@
+{
+  "CAMS_INFO_SHA": "",
+  "CAMS_BASE_PATH": "/api",
+  "CAMS_SERVER_HOSTNAME": "localhost",
+  "CAMS_SERVER_PORT": "7071",
+  "CAMS_SERVER_PROTOCOL": "http",
+  "CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING": "",
+  "CAMS_USE_FAKE_API": "false",
+  "CAMS_FEATURE_FLAG_CLIENT_ID": "6526c4be2e879f590dc49379",
+  "CAMS_LOGIN_PROVIDER": "okta",
+  "CAMS_DISABLE_LOCAL_CACHE": "true",
+  "CAMS_INACTIVE_TIMEOUT": "30",
+  "CAMS_LOGIN_PROVIDER_CONFIG": "issuer=https://ustp.oktapreview.com/oauth2/default|clientId=0oais5m09uLoMQIkx1d7"
+}
