@@ -41,7 +41,7 @@ jobs:
     with:
       nodeVersion: ${{ vars.NODE_VERSION }}
       camsServerHostname: ${{ inputs.apiFunctionName }}.azurewebsites.us
-      camsStagingHostname: ${{ inputs.apiFunctionName }}-staging.azurewebsites.us
+      camsStagingHostname: ${{ inputs.apiFunctionName }}-${{ vars.SLOT_NAME }}.azurewebsites.us
       camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
       camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
       camsBasePath: ${{ vars.CAMS_BASE_PATH }}
