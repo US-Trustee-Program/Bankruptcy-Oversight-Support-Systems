@@ -22,6 +22,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 3 : 0,
+  /* Stop after 2 failures in CI. */
+  maxFailures: process.env.CI ? 2 : undefined,
   /* Opt out of parallel tests on CI. */
   workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters. We define the output folder in case the default ever changes. */
