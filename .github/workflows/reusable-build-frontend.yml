@@ -101,6 +101,7 @@ jobs:
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run stagingConfig
+          mv ./public/configuration-staging.json ./build/
 
       - name: Package
         if: inputs.isDeployment
