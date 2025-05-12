@@ -12,6 +12,9 @@ on:
       camsServerHostname:
         required: true
         type: string
+      camsStagingHostname:
+        required: true
+        type: string
       camsServerPort:
         required: true
         type: string
@@ -82,6 +85,21 @@ jobs:
           export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
           export CAMS_INFO_SHA=${{ github.sha }}
           npm run build --if-present
+
+      - name: Generate Staging Slot Configuration
+        run: |
+          export CAMS_SERVER_HOSTNAME=${{ inputs.camsStagingHostname }}
+          export CAMS_SERVER_PORT=${{ inputs.camsServerPort }}
+          export CAMS_SERVER_PROTOCOL=${{ inputs.camsServerProtocol }}
+          export CAMS_BASE_PATH=${{ inputs.camsBasePath }}
+          export CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING="${appiString}"
+          export CAMS_FEATURE_FLAG_CLIENT_ID="${{ secrets.LD_DEVELOPMENT_CLIENT_ID }}"
+          export CAMS_LAUNCH_DARKLY_ENV="${{ inputs.launchDarklyEnvironment }}"
+          export CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }}
+          export CAMS_LOGIN_PROVIDER_CONFIG='${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}'
+          export CAMS_INFO_SHA=${{ github.sha }}
+          npm run stagingConfig
+          mv ./public/configuration-staging.json ./build/
 
       - name: Package
         if: inputs.isDeployment
