@@ -116,6 +116,6 @@ fi
 if [[ $webStatusCode = "200" && $apiStatusCode = "200" && $shaCheck = "OK" ]]; then
   exit 0
 else
-  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode. Sha check $shaCheck"
+  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode shaCheck=$shaCheck"
   exit 1
 fi
