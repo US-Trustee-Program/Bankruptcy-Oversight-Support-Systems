@@ -1,8 +1,6 @@
 async function loadConfiguration() {
-  const stagingSuffix = '-staging.azurewebsites.us';
-  const configurationUrl = window.location.hostname.endsWith(stagingSuffix)
-    ? '/configuration-staging.json'
-    : '/configuration.json';
+  const slotName = window.location.hostname.split('-webapp')[1].split('.')[0];
+  const configurationUrl = `/configuration${slotName}.json`;
   const response = await fetch(configurationUrl);
 
   if (!response.ok) {
