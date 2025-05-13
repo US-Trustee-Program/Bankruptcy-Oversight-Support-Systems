@@ -76,7 +76,7 @@ jobs:
         id: deploy-webapp-slot-step
         run: |
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
-          --src ./${{ inputs.webappName }}.zip \
+          --src ./${{ inputs.webappName }}-build.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.webappName }} \
           --slotName ${{ inputs.slotName }}
