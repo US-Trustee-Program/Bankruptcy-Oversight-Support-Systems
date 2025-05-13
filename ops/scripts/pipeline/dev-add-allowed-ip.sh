@@ -52,24 +52,24 @@ if [[ -z "${app_rg}" || -z "${stack_name}" || -z "${priority}" ]]; then
 fi
 
 
-agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
+agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
 
 
 if [[ -z "${ci}" ]]; then
-    ruleName="dev-agent-${agentIp}"
+    rule_name="dev-agent-${agent_ip}"
 else
-    ruleName="gha-${priority}-${stack_name}"
+    rule_name="gha-${priority}-${stack_name}"
 fi
 
-ruleName=${ruleName:0:32} # trim up to 32 character limit
-echo "Attempting to add Ip allow rule (${ruleName})"
+rule_name=${rule_name:0:32} # trim up to 32 character limit
+echo "Attempting to add Ip allow rule (${rule_name})"
 if [[ ${slot_name} == 'staging' ]]; then
     echo "Adding IP to staging deployment slot..."
-    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --slot "${slot_name}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
-    az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --slot "${slot_name}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
+    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${rule_name}" --slot "${slot_name}" --action Allow --ip-address "${agent_ip}" --priority "${priority}1" 1>/dev/null
+    az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${rule_name}" --slot "${slot_name}" --action Allow --ip-address "$agent_ip" --priority "${priority}2" 1>/dev/null
 else
     echo "Adding IP to main deployment slot..."
-    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${ruleName}" --action Allow --ip-address "${agentIp}" --priority "${priority}1" 1>/dev/null
-    az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${ruleName}" --action Allow --ip-address "$agentIp" --priority "${priority}2" 1>/dev/null
+    az functionapp config access-restriction add -g "${app_rg}" -n "${stack_name}-node-api" --rule-name "${rule_name}" --action Allow --ip-address "${agent_ip}" --priority "${priority}1" 1>/dev/null
+    az webapp config access-restriction add -g "${app_rg}" -n "${stack_name}-webapp" --rule-name "${rule_name}" --action Allow --ip-address "$agent_ip" --priority "${priority}2" 1>/dev/null
 fi
 echo "Done"

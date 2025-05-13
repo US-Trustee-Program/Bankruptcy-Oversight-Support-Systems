@@ -99,13 +99,23 @@ if [[ "${expected_git_sha}" != '' ]]; then
       apiStatusCode=0 # if version does not match set to a non 200 status code
       sleep 60
     fi
+
+    # Check front end SHA meta tag
+    shaCheck="OK"
+    if [[ $("${webCmd[@]}") == "200" && "$expected_git_sha" != "" ]]; then
+      shaFound=$(curl "$targetWebAppURL" | grep "$expected_git_sha")
+      if [[ $shaFound == "" ]]; then
+        shaCheck="FAILED"
+      fi
+    fi
+
   done
 
 fi
 
-if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+if [[ $webStatusCode = "200" && $apiStatusCode = "200" && $shaCheck = "OK" ]]; then
   exit 0
 else
-  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode shaCheck=$shaCheck"
   exit 1
 fi
