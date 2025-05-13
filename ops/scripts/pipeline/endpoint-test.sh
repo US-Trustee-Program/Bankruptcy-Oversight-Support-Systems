@@ -9,7 +9,6 @@
 # 0   No error
 # 1   Script interrupted
 # 2   Unknown flag or switch passed as parameter to script
-# 8   Bad git sha check
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
