@@ -1,5 +1,9 @@
 async function loadConfiguration() {
-  const slotName = window.location.hostname.split('-webapp')[1].split('.')[0];
+  const hostName = window.location.hostname;
+  let slotName = '';
+  if (hostName && !hostName.includes('localhost') && hostName.includes('-webapp')) {
+    slotName = window.location.hostname.split('-webapp')[1].split('.')[0];
+  }
   const configurationUrl = `/configuration${slotName}.json`;
   const response = await fetch(configurationUrl);
 
