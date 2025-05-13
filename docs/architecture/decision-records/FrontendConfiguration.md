@@ -21,15 +21,14 @@ build time to make tree-shaking effective.
 ## Decision
 
 The decision was made to remove the reliance on the MS parameter and the build
-process utilizing Environment Variables to provide Vite's import.meta.env.
+process utilizing environment variables to provide Vite's import.meta.env.
 
-Instead we made the decision to write configuration data to a JSON file, which
-will be accessed by the React app at run time. We create 2 configuration files --
-one for normal use, and another specifically for staging. This enables us to
-provide a staging URL to Okta for redirect, and allows us better control and
-use of configuration for the Webapp in general.
+The solution is to externalize configurations from the build and instead write
+configuration parameters to JSON files which are loaded by the React app at run time.
 
-This also seems to have an effect on overall performance of the deployment process.
+Two configuration files are written: one for normal use, and the other specifically
+for staging. This enables us to provide a staging URL to Okta for redirect successful
+logins to and allows us better control and use of configuration for the Webapp in general.
 
 ## Status
 
@@ -37,4 +36,7 @@ Accepted
 
 ## Consequences
 
-Builds and testing are more reliable.
+* Builds and testing are more reliable.
+* Environment-specific configuration is no longer built into user interface javascript bundles.
+* Front end configuration can be tailored for specific deployments by distributing a configuration JSON along with the front end assets.
+* CI pipelines can be refactored to build the user interface once and deploy multiple times to different environments.
