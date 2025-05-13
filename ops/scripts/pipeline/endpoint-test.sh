@@ -9,6 +9,7 @@
 # 0   No error
 # 1   Script interrupted
 # 2   Unknown flag or switch passed as parameter to script
+# 8   Bad git sha check
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
@@ -99,13 +100,23 @@ if [[ "${expected_git_sha}" != '' ]]; then
       apiStatusCode=0 # if version does not match set to a non 200 status code
       sleep 60
     fi
+
+    # Check front end SHA meta tag
+    shaCheck="OK"
+    if [[ $("${webCmd[@]}") == "200" && "$expected_git_sha" != "" ]]; then
+      shaFound=$(curl "$targetWebAppURL" | grep "$expected_git_sha")
+      if [[ $shaFound == "" ]]; then
+        shaCheck="FAILED"
+      fi
+    fi
+
   done
 
 fi
 
-if [[ $webStatusCode = "200" && $apiStatusCode = "200" ]]; then
+if [[ $webStatusCode = "200" && $apiStatusCode = "200" && $shaCheck = "OK" ]]; then
   exit 0
 else
-  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode"
+  echo "Health check error. Response codes webStatusCode=$webStatusCode apiStatusCode=$apiStatusCode. Sha check $shaCheck"
   exit 1
 fi
