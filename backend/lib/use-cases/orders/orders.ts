@@ -386,6 +386,7 @@ export class OrdersUseCase {
       response.push(updatedRemainingOrder as ConsolidationOrder);
     }
 
+    // TODO: delete this AFTER the successor has been confirmed to have been written to Cosmos.
     await consolidationsRepo.delete(provisionalOrder.id);
 
     const createdConsolidation = await consolidationsRepo.create(newConsolidation);

@@ -8,8 +8,14 @@ import {
   ConfirmationModalImperative,
 } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import React from 'react';
-import { ShowConfirmationModal } from '@/data-verification/consolidation/consolidationControls';
+import {
+  Ref,
+  ShowAddCaseModal,
+  ShowConfirmationModal,
+} from '@/data-verification/consolidation/consolidationControls';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
+import { AddCaseModalImperative } from '@/data-verification/consolidation/AddCaseModal';
+import { CaseSummary } from '@common/cams/cases';
 
 interface ConsolidationViewModel {
   accordionFieldHeaders: string[];
@@ -52,7 +58,33 @@ interface ConsolidationViewModel {
   handleSelectLeadCaseCourt: (option: ComboOptionList) => void;
   handleToggleLeadCaseForm: (checked: boolean) => void;
   showConfirmationModal: ShowConfirmationModal;
+  showAddCaseModal: ShowAddCaseModal;
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
+
+  // TODO: Reorg this when we are nearing done.
+  addCaseModal: React.Ref<AddCaseModalImperative>;
+  handleAddCaseAction: () => void;
+  additionalCaseDivisionRef: Ref<ComboBoxRef>;
+  additionalCaseNumberRef: Ref<InputRef>;
+  addCaseNumberError: string;
+  isLookingForCase: boolean;
+  caseToAdd: CaseSummary;
 }
 
-export type { ConsolidationViewModel };
+interface AddCaseModel
+  extends Pick<
+    ConsolidationViewModel,
+    | 'handleSelectLeadCaseCourt'
+    | 'handleLeadCaseInputChange'
+    | 'filteredOfficeRecords'
+    | 'additionalCaseDivisionRef'
+    | 'additionalCaseNumberRef'
+    | 'addCaseNumberError'
+    | 'isLookingForCase'
+    | 'caseToAdd'
+    | 'handleAddCaseAction'
+  > {
+  orderId: string;
+}
+
+export type { ConsolidationViewModel, AddCaseModel };

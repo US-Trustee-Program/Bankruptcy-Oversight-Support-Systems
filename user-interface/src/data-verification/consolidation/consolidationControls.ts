@@ -12,6 +12,8 @@ export type ShowConfirmationModal = (
   consolidationType?: ConsolidationType,
 ) => void;
 
+export type ShowAddCaseModal = (defaultOffice: string) => void;
+
 export type Ref<T> = {
   current: T | null;
 };
@@ -27,12 +29,15 @@ interface ConsolidationControls {
   rejectButton: Ref<ButtonRef>;
   substantiveRadio: Ref<RadioRef>;
   leadCaseFormToggle: Ref<CheckboxRef>;
+  additionalCaseDivisionRef: Ref<ComboBoxRef>;
+  additionalCaseNumberRef: Ref<InputRef>;
 
   showConfirmationModal: ShowConfirmationModal;
   disableLeadCaseForm: (disabled: boolean) => void;
   clearAllCheckBoxes: () => void;
   disableButton: (button: Ref<ButtonRef>, state: boolean) => void;
   unsetConsolidationType: () => void;
+  submitAddCase: () => void;
 }
 
 export type { ConsolidationControls };
