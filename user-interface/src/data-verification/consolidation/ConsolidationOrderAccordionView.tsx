@@ -16,6 +16,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import ComboBox from '@/lib/components/combobox/ComboBox';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { useEffect } from 'react';
+import { AddCaseModal } from '@/data-verification/consolidation/AddCaseModal';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -282,6 +283,11 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               onCancel={() => {}}
               onConfirm={viewModel.handleConfirmAction}
             ></ConsolidationOrderModal>
+            {/* TODO: remove excess properties from below since AddCaseModel requires only some properties from ConsolidationViewModel */}
+            <AddCaseModal
+              ref={viewModel.addCaseModal}
+              addCaseModel={{ ...viewModel, orderId: viewModel.order.id! }}
+            ></AddCaseModal>
           </section>
         )}
         {viewModel.order.status === 'approved' && (

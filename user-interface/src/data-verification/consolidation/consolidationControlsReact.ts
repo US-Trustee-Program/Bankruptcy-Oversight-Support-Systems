@@ -6,12 +6,16 @@ import { ConfirmationModalImperative } from '@/data-verification/consolidation/C
 import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+import {
+  AddCaseModalImperative
+} from "@/data-verification/consolidation/AddCaseModal";
 
 export function useConsolidationControlsReact(): ConsolidationControls {
   const approveButton = useRef<ButtonRef>(null);
   const caseTableActions = useRef<OrderTableImperative>(null);
   const clearButton = useRef<ButtonRef>(null);
   const confirmationModal = useRef<ConfirmationModalImperative>(null);
+  const addCaseModal = useRef<AddCaseModalImperative>(null)
   const jointAdministrationRadio = useRef<RadioRef>(null);
   const leadCaseDivisionRef = useRef<ComboBoxRef>(null);
   const leadCaseNumberRef = useRef<InputRef>(null);
@@ -32,6 +36,11 @@ export function useConsolidationControlsReact(): ConsolidationControls {
       consolidationType,
     });
   };
+
+  // TODO: We need a showAddCaseModal
+  const showAddCaseModal = () => {
+    // addCaseModal.show
+  }
 
   const disableLeadCaseForm = (disabled: boolean) => {
     leadCaseDivisionRef.current?.disable(disabled);
