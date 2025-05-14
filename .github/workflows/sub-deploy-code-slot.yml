@@ -75,11 +75,13 @@ jobs:
       - name: Deploy to Azure WebApp Slot
         id: deploy-webapp-slot-step
         run: |
+          echo $(ls -la)
           ./ops/scripts/pipeline/slots/az-app-slot-deploy.sh \
           --src ./${{ inputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.webappName }} \
-          --slotName ${{ inputs.slotName }}
+          --slotName ${{ inputs.slotName }} \
+          --gitSha ${{ github.sha }}
 
   deploy-api-slot:
     runs-on: ubuntu-latest
