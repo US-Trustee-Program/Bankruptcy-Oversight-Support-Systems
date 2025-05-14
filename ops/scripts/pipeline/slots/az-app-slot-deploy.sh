@@ -59,12 +59,15 @@ trap on_exit EXIT
 
 # verify gitSha
 mkdir sha-verify
-cd sha-verify
-unzip ../"${artifact_path}"
+pushd sha-verify
+unzip -q ../"${artifact_path}"
 shaFound=$(grep "${gitSha}" index.html)
 if [[ ${shaFound} == "" ]]; then
   exit 3
+else
+  echo "Found ${gitSha} in index.html."
 fi
+popd
 
 # allow build agent access to execute deployment
 agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
