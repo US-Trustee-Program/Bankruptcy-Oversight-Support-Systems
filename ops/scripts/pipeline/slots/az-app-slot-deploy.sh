@@ -9,32 +9,34 @@
 # 0   No error
 # 1   Script interrupted
 # 2   Unknown flag or switch passed as parameter to script
+# 3   Failed commit sha check
 # 10+ Validation check errors
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
-        echo "USAGE: az-app-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName"
+        echo "USAGE: az-app-slot-deploy.sh -h --src ./path/build.zip -g resourceGroupName -n functionappName --slotName slotName --sha commitSha"
         shift
         ;;
     -g | --resourceGroup)
         app_rg="${2}"
         shift 2
         ;;
-
     -n | --name)
         app_name="${2}"
         shift 2
         ;;
-
     -s | --src)
         artifact_path="${2}"
         shift 2
         ;;
-
     --slotName)
         slot_name="${2}"
+        shift 2
+        ;;
+    --gitSha)
+        gitSha="${2}"
         shift 2
         ;;
     *)
@@ -54,6 +56,15 @@ function on_exit() {
 
 }
 trap on_exit EXIT
+
+# verify gitSha
+mkdir sha-verify
+cd sha-verify
+unzip ../"${artifact_path}"
+shaFound=$(grep "${gitSha}" index.html)
+if [[ ${shaFound} == "" ]]; then
+  exit 3
+fi
 
 # allow build agent access to execute deployment
 agent_ip=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
