@@ -59,9 +59,9 @@ apiStatusCode=""
 targetApiURL="https://${api_name}.azurewebsites.us/api/healthcheck"
 targetWebAppURL="https://${webapp_name}.azurewebsites.us"
 
-if [[ ${slot_name} != "" ]]; then
-  targetApiURL="https://${api_name}.${slot_name}.azurewebsites.us/api/healthcheck"
-  targetWebAppURL="https://${webapp_name}.${slot_name}.azurewebsites.us"
+if [[ ${slot_name} == "staging" ]]; then
+  targetApiURL="https://${api_name}-${slot_name}.azurewebsites.us/api/healthcheck"
+  targetWebAppURL="https://${webapp_name}-${slot_name}.azurewebsites.us"
   #  targetApiURL="${targetApiURL}?x-ms-routing-name=${slot_name}"
   #  targetWebAppURL="${targetWebAppURL}?x-ms-routing-name=${slot_name}"
 else
