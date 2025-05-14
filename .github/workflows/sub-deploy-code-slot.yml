@@ -79,7 +79,8 @@ jobs:
           --src ./${{ inputs.webappName }}.zip \
           -g ${{ steps.rgApp.outputs.out }} \
           -n ${{ inputs.webappName }} \
-          --slotName ${{ inputs.slotName }}
+          --slotName ${{ inputs.slotName }} \
+          --gitSha ${{ github.sha }}
 
   deploy-api-slot:
     runs-on: ubuntu-latest

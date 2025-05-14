@@ -60,10 +60,12 @@ targetApiURL="https://${api_name}.azurewebsites.us/api/healthcheck"
 targetWebAppURL="https://${webapp_name}.azurewebsites.us"
 
 if [[ ${slot_name} == "staging" ]]; then
-  targetApiURL="${targetApiURL}?x-ms-routing-name=${slot_name}"
-  targetWebAppURL="${targetWebAppURL}?x-ms-routing-name=${slot_name}"
+  targetApiURL="https://${api_name}-${slot_name}.azurewebsites.us/api/healthcheck"
+  targetWebAppURL="https://${webapp_name}-${slot_name}.azurewebsites.us"
 else
   echo "No Slot Provided"
+  targetApiURL="https://${api_name}.azurewebsites.us/api/healthcheck"
+  targetWebAppURL="https://${webapp_name}.azurewebsites.us"
 fi
 
 if [[ ${slot_name} == "initial" ]]; then
@@ -90,7 +92,7 @@ if [[ "${expected_git_sha}" != '' ]]; then
   currentGitSha=""
   while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
     retry=$((retry+1))
-    curl "${targetApiURL}" | tee api_response.json
+    curl "${targetApiURL}" -s | tee api_response.json
     currentGitSha=$(python3 -c "import sys, json; print(json.load(open('api_response.json'))['data']['info']['sha'])")
     echo "Current sha ${currentGitSha}"
     if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
@@ -103,9 +105,10 @@ if [[ "${expected_git_sha}" != '' ]]; then
     # Check front end SHA meta tag
     shaCheck="OK"
     if [[ $("${webCmd[@]}") == "200" && "$expected_git_sha" != "" ]]; then
-      shaFound=$(curl "$targetWebAppURL" | grep "$expected_git_sha")
+      shaFound=$(curl "$targetWebAppURL" -s | grep "$expected_git_sha")
       if [[ $shaFound == "" ]]; then
         shaCheck="FAILED"
+        curl "$targetWebAppURL" -s | grep -i meta
       fi
     fi
 
