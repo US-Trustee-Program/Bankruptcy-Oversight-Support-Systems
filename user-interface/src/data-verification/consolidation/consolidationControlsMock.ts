@@ -33,6 +33,12 @@ export function useConsolidationControlsMock(): ConsolidationControls {
       hide: () => {},
     },
   };
+  const addCaseModalRef = {
+    current: {
+      show: () => {},
+      hide: () => {},
+    },
+  };
   const jointAdministrationRef = {
     current: {
       disable: (value: boolean) => {},
@@ -58,6 +64,33 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     },
   };
   const leadCaseNumberRef = {
+    current: {
+      setValue: (value: string) => {},
+      disable: (value: boolean) => {},
+      clearValue: () => {},
+      resetValue: () => {},
+      getValue: () => '',
+      focus: () => {},
+    },
+  };
+  const additionalCaseDivisionRef = {
+    current: {
+      setSelections: (options: ComboOption[]) => {},
+      getSelections: () => [
+        {
+          value: '',
+          label: '',
+          selected: false,
+          hidden: false,
+        },
+      ],
+      clearSelections: () => {},
+      disable: (value: boolean) => {},
+      focusInput: () => {},
+      focus: () => {},
+    },
+  };
+  const additionalCaseNumberRef = {
     current: {
       setValue: (value: string) => {},
       disable: (value: boolean) => {},
@@ -94,6 +127,8 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     status: OrderStatus,
     consolidationType?: ConsolidationType,
   ) => {};
+  const showAddCaseModal = (defaultOffice: string) => {};
+
   const disableLeadCaseForm = (disabled: boolean) => {};
   const clearAllCheckBoxes = () => {};
   const disableButton = (button: Ref<ButtonRef>, state: boolean) => {};
@@ -115,5 +150,11 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     clearAllCheckBoxes,
     disableButton,
     unsetConsolidationType,
+
+    // TODO: CAMS-548 properties
+    additionalCaseDivisionRef,
+    additionalCaseNumberRef,
+    addCaseModal: addCaseModalRef,
+    showAddCaseModal,
   };
 }

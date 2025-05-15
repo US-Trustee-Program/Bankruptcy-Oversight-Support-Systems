@@ -55,6 +55,12 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     useCase.getValidLeadCase();
   }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
 
+  useEffect(() => {
+    if (consolidationStore.caseToAddCourt && consolidationStore.caseToAddCaseNumber) {
+      useCase.verifyCaseCanBeAdded();
+    }
+  }, [consolidationStore.caseToAddCourt, consolidationStore.caseToAddCaseNumber]);
+
   const viewModel: ConsolidationViewModel = {
     accordionFieldHeaders: fieldHeaders,
     approveButton: consolidationControls.approveButton,
@@ -99,6 +105,18 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleToggleLeadCaseForm: useCase.handleToggleLeadCaseForm,
     showConfirmationModal: consolidationControls.showConfirmationModal,
     updateAllSelections: useCase.updateAllSelections,
+
+    handleAddCaseReset: useCase.handleAddCaseReset,
+    handleAddCaseNumberInputChange: useCase.handleAddCaseNumberInputChange,
+    handleAddCaseCourtSelectChange: useCase.handleAddCaseCourtSelectChange,
+    showAddCaseModal: consolidationControls.showAddCaseModal,
+    addCaseModal: consolidationControls.addCaseModal,
+    handleAddCaseAction: useCase.handleAddCaseAction,
+    additionalCaseDivisionRef: consolidationControls.additionalCaseDivisionRef,
+    additionalCaseNumberRef: consolidationControls.additionalCaseNumberRef,
+    addCaseNumberError: consolidationStore.addCaseNumberError,
+    isLookingForCase: consolidationStore.isLookingForCase,
+    caseToAdd: consolidationStore.caseToAdd,
   };
 
   return <ConsolidationOrderAccordionView viewModel={viewModel}></ConsolidationOrderAccordionView>;

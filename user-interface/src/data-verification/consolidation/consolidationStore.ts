@@ -2,6 +2,18 @@ import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@
 import { CourtDivisionDetails } from '@common/cams/courts';
 
 interface ConsolidationStore {
+  addCaseNumberError: string | null;
+  setAddCaseNumberError(val: string | null): void;
+
+  caseToAdd: ConsolidationOrderCase | null;
+  setCaseToAdd(val: ConsolidationOrderCase | null): void;
+
+  caseToAddCourt: string;
+  setCaseToAddCourt(val: string): void;
+
+  caseToAddCaseNumber: string;
+  setCaseToAddCaseNumber(val: string): void;
+
   consolidationType: ConsolidationType | null;
   setConsolidationType(val: ConsolidationType | null): void;
 
@@ -16,6 +28,9 @@ interface ConsolidationStore {
 
   isDataEnhanced: boolean;
   setIsDataEnhanced(val: boolean): void;
+
+  isLookingForCase: boolean;
+  setIsLookingForCase(val: boolean): void;
 
   isValidatingLeadCaseNumber: boolean;
   setIsValidatingLeadCaseNumber(val: boolean): void;

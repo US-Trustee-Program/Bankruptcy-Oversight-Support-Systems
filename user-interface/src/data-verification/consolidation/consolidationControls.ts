@@ -4,6 +4,7 @@ import { ConfirmationModalImperative } from '@/data-verification/consolidation/C
 import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
+import { AddCaseModalImperative } from '@/data-verification/consolidation/AddCaseModal';
 
 export type ShowConfirmationModal = (
   selectedCases: ConsolidationOrderCase[],
@@ -23,6 +24,7 @@ interface ConsolidationControls {
   caseTableActions: Ref<OrderTableImperative>;
   clearButton: Ref<ButtonRef>;
   confirmationModal: Ref<ConfirmationModalImperative>;
+  addCaseModal: Ref<AddCaseModalImperative>;
   jointAdministrationRadio: Ref<RadioRef>;
   leadCaseDivisionRef: Ref<ComboBoxRef>;
   leadCaseNumberRef: Ref<InputRef>;
@@ -33,11 +35,11 @@ interface ConsolidationControls {
   additionalCaseNumberRef: Ref<InputRef>;
 
   showConfirmationModal: ShowConfirmationModal;
+  showAddCaseModal: ShowAddCaseModal;
   disableLeadCaseForm: (disabled: boolean) => void;
   clearAllCheckBoxes: () => void;
   disableButton: (button: Ref<ButtonRef>, state: boolean) => void;
   unsetConsolidationType: () => void;
-  submitAddCase: () => void;
 }
 
 export type { ConsolidationControls };

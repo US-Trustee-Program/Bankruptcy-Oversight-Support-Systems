@@ -43,7 +43,9 @@ function InputComponent(props: InputProps, ref: React.Ref<InputRef>) {
   function clearValue() {
     setInputValue('');
     emitChange('');
-    if (inputRef.current) (inputRef.current as HTMLInputElement).focus();
+    if (inputRef.current) {
+      (inputRef.current as HTMLInputElement).focus();
+    }
   }
 
   function setValue(value: string) {

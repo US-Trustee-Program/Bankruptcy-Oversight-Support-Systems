@@ -17,6 +17,7 @@ import ComboBox from '@/lib/components/combobox/ComboBox';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { useEffect } from 'react';
 import { AddCaseModal } from '@/data-verification/consolidation/AddCaseModal';
+import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -152,6 +153,12 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   ref={viewModel.caseTableActions}
                   onMarkLead={viewModel.handleMarkLeadCase}
                 ></ConsolidationCaseTable>
+                <OpenModalButton
+                  modalId={`add-case-modal-${viewModel.order.id}`}
+                  modalRef={viewModel.addCaseModal}
+                >
+                  Add Case
+                </OpenModalButton>
               </div>
               <div className="grid-col-1"></div>
             </div>
@@ -285,6 +292,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
             ></ConsolidationOrderModal>
             {/* TODO: remove excess properties from below since AddCaseModel requires only some properties from ConsolidationViewModel */}
             <AddCaseModal
+              id={`add-case-modal-${viewModel.order.id}`}
               ref={viewModel.addCaseModal}
               addCaseModel={{ ...viewModel, orderId: viewModel.order.id! }}
             ></AddCaseModal>

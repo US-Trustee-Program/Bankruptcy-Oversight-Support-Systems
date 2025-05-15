@@ -19,7 +19,7 @@ export function LoadingSpinner(props: LoadingSpinnerProps) {
       className={`loading-spinner ${className ?? ''}`}
       data-testid={id}
       style={{
-        visibility: hidden === true ? 'hidden' : 'visible',
+        display: hidden === true ? 'none' : 'block',
         height: height ? height : undefined,
       }}
     >
