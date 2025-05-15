@@ -6,19 +6,19 @@ import { ConfirmationModalImperative } from '@/data-verification/consolidation/C
 import { ComboBoxRef, InputRef, RadioRef } from '@/lib/type-declarations/input-fields';
 import { CheckboxRef } from '@/lib/components/uswds/Checkbox';
 import { ConsolidationOrderCase, ConsolidationType, OrderStatus } from '@common/cams/orders';
-import {
-  AddCaseModalImperative
-} from "@/data-verification/consolidation/AddCaseModal";
+import { AddCaseModalImperative } from '@/data-verification/consolidation/AddCaseModal';
 
 export function useConsolidationControlsReact(): ConsolidationControls {
   const approveButton = useRef<ButtonRef>(null);
   const caseTableActions = useRef<OrderTableImperative>(null);
   const clearButton = useRef<ButtonRef>(null);
   const confirmationModal = useRef<ConfirmationModalImperative>(null);
-  const addCaseModal = useRef<AddCaseModalImperative>(null)
+  const addCaseModal = useRef<AddCaseModalImperative>(null);
   const jointAdministrationRadio = useRef<RadioRef>(null);
   const leadCaseDivisionRef = useRef<ComboBoxRef>(null);
   const leadCaseNumberRef = useRef<InputRef>(null);
+  const additionalCaseDivisionRef = useRef<ComboBoxRef>(null);
+  const additionalCaseNumberRef = useRef<InputRef>(null);
   const rejectButton = useRef<ButtonRef>(null);
   const substantiveRadio = useRef<RadioRef>(null);
   const leadCaseFormToggle = useRef<CheckboxRef>(null);
@@ -37,10 +37,10 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     });
   };
 
-  // TODO: We need a showAddCaseModal
-  const showAddCaseModal = () => {
+  const showAddCaseModal = (_defaultOffice: string) => {
+    // TODO: implement
     // addCaseModal.show
-  }
+  };
 
   const disableLeadCaseForm = (disabled: boolean) => {
     leadCaseDivisionRef.current?.disable(disabled);
@@ -65,8 +65,8 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     clearButton,
     confirmationModal,
     jointAdministrationRadio,
-    leadCaseDivisionRef: leadCaseDivisionRef,
-    leadCaseNumberRef: leadCaseNumberRef,
+    leadCaseDivisionRef,
+    leadCaseNumberRef,
     rejectButton,
     substantiveRadio,
     leadCaseFormToggle,
@@ -75,5 +75,11 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     clearAllCheckBoxes,
     disableButton,
     unsetConsolidationType,
+
+    // TODO: CAMS-548 properties
+    additionalCaseDivisionRef,
+    additionalCaseNumberRef,
+    addCaseModal,
+    showAddCaseModal,
   };
 }

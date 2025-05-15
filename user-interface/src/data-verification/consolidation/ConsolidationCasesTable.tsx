@@ -270,7 +270,6 @@ function _ConsolidationCaseTable(
             })}
         </tbody>
       </table>
-      <Button>Add Case</Button>
     </>
   );
 }

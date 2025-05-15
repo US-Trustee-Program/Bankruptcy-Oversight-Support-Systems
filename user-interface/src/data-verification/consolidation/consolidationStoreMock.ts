@@ -4,11 +4,14 @@ import { ConsolidationStore } from '@/data-verification/consolidation/consolidat
 import { ConsolidationOrder, ConsolidationOrderCase, ConsolidationType } from '@common/cams/orders';
 
 export class ConsolidationStoreMock implements ConsolidationStore {
+  addCaseNumberError: string | null = null;
+  caseToAdd: ConsolidationOrderCase | null = null;
   consolidationType: ConsolidationType | null = null;
   filteredOfficesList: CourtDivisionDetails[] | null;
   foundValidCaseNumber: boolean = false;
   isProcessing: boolean = false;
   isDataEnhanced: boolean = false;
+  isLookingForCase: boolean = false;
   isValidatingLeadCaseNumber: boolean = false;
   leadCase: ConsolidationOrderCase | null = null;
   leadCaseCourt: string = '';
@@ -18,10 +21,28 @@ export class ConsolidationStoreMock implements ConsolidationStore {
   order: ConsolidationOrder;
   selectedCases: ConsolidationOrderCase[] = [];
   showLeadCaseForm: boolean = false;
+  caseToAddCourt: string = '';
+  caseToAddCaseNumber: string = '';
 
   constructor(props: ConsolidationOrderAccordionProps, officesList: CourtDivisionDetails[]) {
     this.filteredOfficesList = filterCourtByDivision(props.order.courtDivisionCode, officesList);
     this.order = props.order;
+  }
+
+  setCaseToAddCourt(val: string): void {
+    this.caseToAddCourt = val;
+  }
+
+  setCaseToAddCaseNumber(val: string): void {
+    this.caseToAddCaseNumber = val;
+  }
+
+  setAddCaseNumberError(val: string | null): void {
+    this.addCaseNumberError = val;
+  }
+
+  setCaseToAdd(val: ConsolidationOrderCase | null): void {
+    this.caseToAdd = val;
   }
 
   setConsolidationType = (newType: ConsolidationType): void => {
@@ -43,6 +64,10 @@ export class ConsolidationStoreMock implements ConsolidationStore {
   setIsDataEnhanced = (val: boolean): void => {
     this.isDataEnhanced = val;
   };
+
+  setIsLookingForCase(val: boolean): void {
+    this.isLookingForCase = val;
+  }
 
   setIsValidatingLeadCaseNumber = (val: boolean): void => {
     this.isValidatingLeadCaseNumber = val;

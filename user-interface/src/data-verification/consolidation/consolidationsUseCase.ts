@@ -7,7 +7,7 @@ import {
 } from '@common/cams/orders';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationControls } from '@/data-verification/consolidation/consolidationControls';
-import { getCurrentLeadCaseId } from './consolidationOrderAccordionUtils';
+import { getCaseId } from './consolidationOrderAccordionUtils';
 import { useApi2 } from '@/lib/hooks/UseApi2';
 import { CaseSummary } from '@common/cams/cases';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
@@ -35,7 +35,10 @@ export interface ConsolidationsUseCase {
   updateSubmitButtonsState(): void;
   updateAllSelections(caseList: ConsolidationOrderCase[]): void;
   getValidLeadCase(): void; //Promise<void>;
+  verifyCaseCanBeAdded(): void;
 
+  handleAddCaseAction(): void;
+  handleAddCaseReset(): void;
   handleApproveButtonClick(): void;
   handleCaseAssociationResponse(
     response: ResponseBody<Consolidation[]>,
@@ -51,6 +54,8 @@ export interface ConsolidationsUseCase {
   handleSelectConsolidationType(value: string): void;
   handleSelectLeadCaseCourt(option: ComboOptionList): void;
   handleToggleLeadCaseForm(checked: boolean): void;
+  handleAddCaseNumberInputChange(caseNumber?: string): void;
+  handleAddCaseCourtSelectChange(option: ComboOptionList): void;
 }
 
 const consolidationUseCase = (
@@ -70,6 +75,13 @@ const consolidationUseCase = (
   function clearSelectedCases(): void {
     store.setSelectedCases([]);
     controls.clearAllCheckBoxes();
+  }
+
+  function handleAddCaseAction() {
+    if (store.caseToAdd) {
+      store.order.childCases.push(store.caseToAdd);
+    }
+    handleAddCaseReset();
   }
 
   function handleCaseAssociationResponse(
@@ -131,9 +143,9 @@ const consolidationUseCase = (
 
   function getValidLeadCase() {
     const api2 = useApi2();
-    const currentLeadCaseId = getCurrentLeadCaseId({
-      leadCaseCourt: store.leadCaseCourt,
-      leadCaseNumber: store.leadCaseNumber,
+    const currentLeadCaseId = getCaseId({
+      court: store.leadCaseCourt,
+      caseNumber: store.leadCaseNumber,
     });
     const currentInput = document.activeElement;
     if (currentLeadCaseId && currentLeadCaseId.length === 12) {
@@ -197,6 +209,86 @@ const consolidationUseCase = (
           store.setLeadCaseNumberError(reason.message);
           store.setIsValidatingLeadCaseNumber(false);
           controls.disableLeadCaseForm(false);
+          store.setFoundValidCaseNumber(false);
+        })
+        .finally(() => {
+          setTimeout(() => {
+            (currentInput as HTMLElement).focus();
+          }, 100);
+        });
+    }
+  }
+
+  function verifyCaseCanBeAdded() {
+    const api2 = useApi2();
+    const caseIdToVerify = getCaseId({
+      court: store.caseToAddCourt,
+      caseNumber: store.caseToAddCaseNumber,
+    });
+    const currentInput = document.activeElement;
+    if (caseIdToVerify && caseIdToVerify.length === 12) {
+      // TODO: Disable the form in the modal.
+      // controls.disableLeadCaseForm(true);
+      store.setIsLookingForCase(true);
+      store.setAddCaseNumberError('');
+      store.setCaseToAdd(null);
+      const calls = [];
+      calls.push(
+        api2
+          .getCaseSummary(caseIdToVerify)
+          .then((response) => {
+            return response.data as CaseSummary;
+          })
+          .catch((error) => {
+            // Brittle way to determine if we have encountered a 404...
+            const isNotFound = (error.message as string).startsWith('404');
+            const message = isNotFound
+              ? "We couldn't find a case with that number."
+              : 'Cannot verify case number.';
+            throw new Error(message);
+          }),
+      );
+      calls.push(
+        api2
+          .getCaseAssociations(caseIdToVerify)
+          .then((response) => handleCaseAssociationResponse(response, caseIdToVerify))
+          .catch((error) => {
+            throw new Error(error.message);
+          }),
+      );
+      calls.push(
+        api2
+          .getCaseAssignments(caseIdToVerify)
+          .then((response) => {
+            return response.data as CaseAssignment[];
+          })
+          .catch((reason) => {
+            const message = 'Cannot verify case assignments. ' + reason.message;
+            throw new Error(message);
+          }),
+      );
+      Promise.all(calls)
+        .then((responses) => {
+          const caseSummary = responses[0] as CaseSummary;
+          const attorneyAssignments = responses[1] as CaseAssignment[];
+          const associations = responses[2] as Consolidation[];
+          store.setCaseToAdd({
+            ...caseSummary,
+            docketEntries: [],
+            orderDate: store.order.orderDate,
+            attorneyAssignments,
+            associations,
+          });
+          store.setIsLookingForCase(false);
+          store.setFoundValidCaseNumber(true);
+          // TODO: Enable the form in the modal
+          // controls.disableLeadCaseForm(false);
+        })
+        .catch((reason) => {
+          store.setAddCaseNumberError(reason.message);
+          store.setIsLookingForCase(false);
+          // TODO: Enable the form in the modal
+          // controls.disableLeadCaseForm(false);
           store.setFoundValidCaseNumber(false);
         })
         .finally(() => {
@@ -346,6 +438,15 @@ const consolidationUseCase = (
     controls.unsetConsolidationType();
   }
 
+  function handleAddCaseReset(): void {
+    store.setCaseToAddCaseNumber('');
+    store.setCaseToAddCourt('');
+    controls.additionalCaseDivisionRef.current?.clearSelections();
+    controls.additionalCaseNumberRef.current?.clearValue();
+    store.setAddCaseNumberError(null);
+    store.setCaseToAdd(null);
+  }
+
   function handleConfirmAction(action: ConfirmActionResults): void {
     switch (action.status) {
       case 'approved':
@@ -373,6 +474,27 @@ const consolidationUseCase = (
       store.setLeadCaseNumber(caseNumber);
     } else {
       clearLeadCase();
+      controls.disableButton(controls.approveButton, true);
+    }
+  }
+
+  async function handleAddCaseNumberInputChange(caseNumber?: string) {
+    if (caseNumber) {
+      store.setCaseToAddCaseNumber(caseNumber);
+    } else {
+      store.setCaseToAddCaseNumber('');
+      store.setCaseToAdd(null);
+      controls.disableButton(controls.approveButton, true);
+    }
+  }
+
+  function handleAddCaseCourtSelectChange(option: ComboOption[]): void {
+    const court = option[0]?.value ?? '';
+    if (court) {
+      store.setCaseToAddCourt(court);
+    } else {
+      store.setCaseToAddCourt('');
+      store.setCaseToAdd(null);
       controls.disableButton(controls.approveButton, true);
     }
   }
@@ -435,8 +557,11 @@ const consolidationUseCase = (
 
   return {
     getValidLeadCase,
+    verifyCaseCanBeAdded,
     updateSubmitButtonsState,
     updateAllSelections,
+    handleAddCaseAction,
+    handleAddCaseReset,
     handleApproveButtonClick,
     handleCaseAssociationResponse,
     handleClearInputs,
@@ -449,6 +574,8 @@ const consolidationUseCase = (
     handleSelectConsolidationType,
     handleSelectLeadCaseCourt,
     handleToggleLeadCaseForm,
+    handleAddCaseCourtSelectChange,
+    handleAddCaseNumberInputChange,
   };
 };
 
