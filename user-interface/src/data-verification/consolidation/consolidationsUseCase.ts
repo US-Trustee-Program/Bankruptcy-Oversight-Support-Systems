@@ -34,7 +34,6 @@ export type OnExpand = (id: string) => void;
 export interface ConsolidationsUseCase {
   updateSubmitButtonsState(): void;
   updateAllSelections(caseList: ConsolidationOrderCase[]): void;
-  getValidLeadCase(): void; //Promise<void>;
   verifyCaseCanBeAdded(): void;
 
   handleAddCaseAction(): void;
@@ -123,7 +122,6 @@ const consolidationUseCase = (
         `child case of case ${getCaseNumber(childCaseFacts.leadCase!.caseId)}.`;
       store.setLeadCaseNumberError(message);
       store.setIsValidatingLeadCaseNumber(false);
-      controls.disableLeadCaseForm(false);
       store.setFoundValidCaseNumber(false);
       throw new Error(message);
     } else if (
@@ -133,89 +131,10 @@ const consolidationUseCase = (
       const message = `This case is already part of a consolidation with the same consolidation type.`;
       store.setLeadCaseNumberError(message);
       store.setIsValidatingLeadCaseNumber(false);
-      controls.disableLeadCaseForm(false);
       store.setFoundValidCaseNumber(false);
       throw new Error(message);
     } else {
       return response.data as Consolidation[];
-    }
-  }
-
-  function getValidLeadCase() {
-    const api2 = useApi2();
-    const currentLeadCaseId = getCaseId({
-      court: store.leadCaseCourt,
-      caseNumber: store.leadCaseNumber,
-    });
-    const currentInput = document.activeElement;
-    if (currentLeadCaseId && currentLeadCaseId.length === 12) {
-      controls.disableLeadCaseForm(true);
-      store.setIsValidatingLeadCaseNumber(true);
-      store.setLeadCaseNumberError('');
-      store.setLeadCaseId('');
-      const calls = [];
-      calls.push(
-        api2
-          .getCaseSummary(currentLeadCaseId)
-          .then((response) => {
-            return response.data as CaseSummary;
-          })
-          .catch((error) => {
-            // Brittle way to determine if we have encountered a 404...
-            const isNotFound = (error.message as string).startsWith('404');
-            const message = isNotFound
-              ? "We couldn't find a case with that number."
-              : 'Cannot verify lead case number.';
-            throw new Error(message);
-          }),
-      );
-      calls.push(
-        api2
-          .getCaseAssociations(currentLeadCaseId)
-          .then((response) => handleCaseAssociationResponse(response, currentLeadCaseId))
-          .catch((error) => {
-            throw new Error(error.message);
-          }),
-      );
-      calls.push(
-        api2
-          .getCaseAssignments(currentLeadCaseId)
-          .then((response) => {
-            return response.data as CaseAssignment[];
-          })
-          .catch((reason) => {
-            const message = 'Cannot verify lead case assignments. ' + reason.message;
-            throw new Error(message);
-          }),
-      );
-      Promise.all(calls)
-        .then((responses) => {
-          const caseSummary = responses[0] as CaseSummary;
-          const attorneyAssignments = responses[1] as CaseAssignment[];
-          const associations = responses[2] as Consolidation[];
-          store.setLeadCase({
-            ...caseSummary,
-            docketEntries: [],
-            orderDate: store.order.orderDate,
-            attorneyAssignments,
-            associations,
-          });
-          store.setLeadCaseId(currentLeadCaseId);
-          store.setIsValidatingLeadCaseNumber(false);
-          store.setFoundValidCaseNumber(true);
-          controls.disableLeadCaseForm(false);
-        })
-        .catch((reason) => {
-          store.setLeadCaseNumberError(reason.message);
-          store.setIsValidatingLeadCaseNumber(false);
-          controls.disableLeadCaseForm(false);
-          store.setFoundValidCaseNumber(false);
-        })
-        .finally(() => {
-          setTimeout(() => {
-            (currentInput as HTMLElement).focus();
-          }, 100);
-        });
     }
   }
 
@@ -227,11 +146,20 @@ const consolidationUseCase = (
     });
     const currentInput = document.activeElement;
     if (caseIdToVerify && caseIdToVerify.length === 12) {
-      // TODO: Disable the form in the modal.
-      // controls.disableLeadCaseForm(true);
+      controls.additionalCaseDivisionRef.current?.disable(true);
+      controls.additionalCaseNumberRef.current?.disable(true);
       store.setIsLookingForCase(true);
       store.setAddCaseNumberError('');
       store.setCaseToAdd(null);
+      const caseExists = !!store.order.childCases.find((bCase) => bCase.caseId === caseIdToVerify);
+      if (caseExists) {
+        store.setAddCaseNumberError('This case is already included in the consolidation.');
+        store.setIsLookingForCase(false);
+        controls.additionalCaseDivisionRef.current?.disable(false);
+        controls.additionalCaseNumberRef.current?.disable(false);
+        return;
+      }
+
       const calls = [];
       calls.push(
         api2
@@ -281,17 +209,15 @@ const consolidationUseCase = (
           });
           store.setIsLookingForCase(false);
           store.setFoundValidCaseNumber(true);
-          // TODO: Enable the form in the modal
-          // controls.disableLeadCaseForm(false);
         })
         .catch((reason) => {
           store.setAddCaseNumberError(reason.message);
           store.setIsLookingForCase(false);
-          // TODO: Enable the form in the modal
-          // controls.disableLeadCaseForm(false);
           store.setFoundValidCaseNumber(false);
         })
         .finally(() => {
+          controls.additionalCaseDivisionRef.current?.disable(false);
+          controls.additionalCaseNumberRef.current?.disable(false);
           setTimeout(() => {
             (currentInput as HTMLElement).focus();
           }, 100);
@@ -556,7 +482,6 @@ const consolidationUseCase = (
   }
 
   return {
-    getValidLeadCase,
     verifyCaseCanBeAdded,
     updateSubmitButtonsState,
     updateAllSelections,

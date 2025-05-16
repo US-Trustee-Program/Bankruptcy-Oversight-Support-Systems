@@ -33,9 +33,6 @@ interface ConsolidationViewModel {
   isValidatingLeadCaseNumber: boolean;
   jointAdministrationRadio: React.Ref<RadioRef>;
   leadCase: ConsolidationOrderCase | null;
-  leadCaseDivisionRef: React.RefObject<ComboBoxRef>;
-  leadCaseNumberError: string;
-  leadCaseNumberRef: React.Ref<InputRef>;
   order: ConsolidationOrder;
   orderType: Map<string, string>;
   rejectButton: React.Ref<ButtonRef>;

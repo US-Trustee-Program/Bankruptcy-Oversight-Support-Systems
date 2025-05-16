@@ -60,7 +60,9 @@ function _CaseNotes(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
   }
 
   function mapEditButtonRefs() {
-    if (!caseNotes) return;
+    if (!caseNotes) {
+      return;
+    }
 
     const newRefs = new Map<string, React.RefObject<OpenModalButtonRef>>();
 

@@ -26,8 +26,6 @@ interface ConsolidationControls {
   confirmationModal: Ref<ConfirmationModalImperative>;
   addCaseModal: Ref<AddCaseModalImperative>;
   jointAdministrationRadio: Ref<RadioRef>;
-  leadCaseDivisionRef: Ref<ComboBoxRef>;
-  leadCaseNumberRef: Ref<InputRef>;
   rejectButton: Ref<ButtonRef>;
   substantiveRadio: Ref<RadioRef>;
   leadCaseFormToggle: Ref<CheckboxRef>;
@@ -36,7 +34,6 @@ interface ConsolidationControls {
 
   showConfirmationModal: ShowConfirmationModal;
   showAddCaseModal: ShowAddCaseModal;
-  disableLeadCaseForm: (disabled: boolean) => void;
   clearAllCheckBoxes: () => void;
   disableButton: (button: Ref<ButtonRef>, state: boolean) => void;
   unsetConsolidationType: () => void;

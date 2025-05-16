@@ -3,19 +3,13 @@ import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsN
 import { RadioGroup } from '@/lib/components/uswds/RadioGroup';
 import Radio from '@/lib/components/uswds/Radio';
 import { ConsolidationCaseTable } from '@/data-verification/consolidation/ConsolidationCasesTable';
-import Checkbox from '@/lib/components/uswds/Checkbox';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { CaseTable } from '@/data-verification/transfer/CaseTable';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderModal } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import ComboBox from '@/lib/components/combobox/ComboBox';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
-import { useEffect } from 'react';
 import { AddCaseModal } from '@/data-verification/consolidation/AddCaseModal';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 
@@ -31,18 +25,6 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
       viewModel.expandedAccordionId === `order-list-${viewModel.order.id}` ? 'Collapse' : 'Expand';
     return `Click to ${action}.`;
   }
-
-  useEffect(() => {
-    if (viewModel.showLeadCaseForm) {
-      const selectedOption = viewModel.filteredOfficeRecords?.find(
-        (office) => office.value === viewModel.divisionCode,
-      );
-
-      if (selectedOption && viewModel.leadCaseDivisionRef) {
-        viewModel.leadCaseDivisionRef.current?.setSelections([selectedOption]);
-      }
-    }
-  }, [viewModel.showLeadCaseForm]);
 
   return (
     <Accordion
@@ -159,90 +141,6 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                 >
                   Add Case
                 </OpenModalButton>
-              </div>
-              <div className="grid-col-1"></div>
-            </div>
-            <div
-              className="lead-case-form grid-row grid-gap-lg"
-              data-testid={`lead-case-form-${viewModel.order.id}`}
-            >
-              <div className="grid-col-1"></div>
-              <div className="grid-col-10">
-                <Checkbox
-                  id={`lead-case-form-checkbox-toggle-${viewModel.order.id}`}
-                  className="lead-case-form-toggle"
-                  onChange={(ev) => viewModel.handleToggleLeadCaseForm(ev.target.checked)}
-                  value=""
-                  ref={viewModel.leadCaseFormToggle}
-                  label="Lead Case Not Listed"
-                  checked={viewModel.showLeadCaseForm}
-                ></Checkbox>
-                {viewModel.showLeadCaseForm && (
-                  <section
-                    className={`lead-case-form-container lead-case-form-container-${viewModel.order.id}`}
-                  >
-                    <h3>Enter lead case details:</h3>
-                    <span id="lead-case-form-instructions">
-                      Choose a new court and enter a case number, and the lead case will be selected
-                      for this Case Event automatically.
-                    </span>
-                    <div className="lead-case-court-container">
-                      <ComboBox
-                        id={'lead-case-court'}
-                        className="lead-case-court"
-                        label="Select a court"
-                        ariaDescription="foo bar"
-                        aria-live="off"
-                        aria-describedby="lead-case-form-instructions"
-                        onUpdateSelection={viewModel.handleSelectLeadCaseCourt}
-                        options={viewModel.filteredOfficeRecords!}
-                        required={true}
-                        multiSelect={false}
-                        ref={viewModel.leadCaseDivisionRef}
-                      />
-                    </div>
-                    <div className="lead-case-number-container">
-                      <CaseNumberInput
-                        id={`lead-case-input-${viewModel.order.id}`}
-                        data-testid={`lead-case-input-${viewModel.order.id}`}
-                        className="usa-input"
-                        value={getCaseNumber(viewModel.leadCase?.caseId)}
-                        onChange={viewModel.handleLeadCaseInputChange}
-                        allowPartialCaseNumber={false}
-                        required={true}
-                        label="Enter a case number"
-                        ref={viewModel.leadCaseNumberRef}
-                        aria-describedby="lead-case-form-instructions"
-                      />
-                      {viewModel.leadCaseNumberError ? (
-                        <Alert
-                          id={`lead-case-number-alert-${viewModel.order.id}`}
-                          message={viewModel.leadCaseNumberError}
-                          type={UswdsAlertStyle.Error}
-                          show={true}
-                          slim={true}
-                          inline={true}
-                        ></Alert>
-                      ) : (
-                        <LoadingSpinner
-                          id={`lead-case-number-loading-spinner-${viewModel.order.id}`}
-                          caption="Verifying lead case number..."
-                          height="40px"
-                          hidden={!viewModel.isValidatingLeadCaseNumber}
-                        />
-                      )}
-                      {viewModel.foundValidCaseNumber && viewModel.leadCase && (
-                        <>
-                          <h4>Selected Lead Case</h4>
-                          <CaseTable
-                            id={`valid-case-number-found-${viewModel.order.id}`}
-                            cases={[viewModel.leadCase]}
-                          ></CaseTable>
-                        </>
-                      )}
-                    </div>
-                  </section>
-                )}
               </div>
               <div className="grid-col-1"></div>
             </div>
