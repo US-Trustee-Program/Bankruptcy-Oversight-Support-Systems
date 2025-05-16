@@ -270,8 +270,8 @@ const consolidationUseCase = (
       Promise.all(calls)
         .then((responses) => {
           const caseSummary = responses[0] as CaseSummary;
-          const attorneyAssignments = responses[1] as CaseAssignment[];
-          const associations = responses[2] as Consolidation[];
+          const associations = responses[1] as Consolidation[];
+          const attorneyAssignments = responses[2] as CaseAssignment[];
           store.setCaseToAdd({
             ...caseSummary,
             docketEntries: [],
