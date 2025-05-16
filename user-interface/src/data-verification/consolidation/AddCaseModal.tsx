@@ -76,7 +76,6 @@ function AddCaseForm(viewModel: AddCaseModel) {
         )}
         {viewModel.caseToAdd && (
           <>
-            {/*<h4>Selected Case</h4>*/}
             <div className="search-results grid-container">
               <div className="grid-row">
                 <h4 className="grid-col-4">Case Title</h4>
@@ -133,7 +132,7 @@ function _AddCaseModal(
     if (modalRef.current?.show) {
       const divisionCode = props.addCaseModel.defaultDivisionCode;
       const options = props.addCaseModel.filteredOfficeRecords;
-      const selected = options?.filter((option) => option.value === divisionCode) ?? [];
+      const selected = options!.filter((option) => option.value === divisionCode);
       props.addCaseModel.additionalCaseDivisionRef.current?.setSelections(selected);
       modalRef.current?.show({});
     }
