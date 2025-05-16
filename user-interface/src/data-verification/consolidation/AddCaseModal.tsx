@@ -2,7 +2,7 @@ import './AddCaseModal.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import ComboBox from '@/lib/components/combobox/ComboBox';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -19,21 +19,19 @@ export type AddCaseModalImperative = ModalRefType & {
   show: () => void;
 };
 
-// TODO: Refactor out the view model.
 function AddCaseForm(viewModel: AddCaseModel) {
   return (
     <section className={`add-case-form-container add-case-form-container-${viewModel.orderId}`}>
-      <h3>Enter lead case details:</h3>
-      <span id="add-case-form-instructions">
-        Choose a new court and enter a case number, and the lead case will be selected for this Case
-        Event automatically.
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+      <span id="add-case-form-instructions" tabIndex={0}>
+        Select the court and enter the case number of the case you would like to add.
       </span>
       <div className="add-case-court-container">
         <ComboBox
           id={'add-case-court'}
           className="add-case-court"
-          label="Select a court"
-          ariaDescription="foo bar"
+          label="Court"
+          ariaDescription=""
           aria-live="off"
           aria-describedby="add-case-form-instructions"
           onUpdateSelection={viewModel.handleAddCaseCourtSelectChange}
@@ -53,7 +51,7 @@ function AddCaseForm(viewModel: AddCaseModel) {
           allowPartialCaseNumber={false}
           required={true}
           disabled={viewModel.isLookingForCase}
-          label="Enter a case number"
+          label="Case number"
           ref={viewModel.additionalCaseNumberRef}
           aria-describedby="add-case-form-instructions"
         />
@@ -71,7 +69,7 @@ function AddCaseForm(viewModel: AddCaseModel) {
         ) : (
           <LoadingSpinner
             id={`add-case-number-loading-spinner-${viewModel.orderId}`}
-            caption="Verifying lead case number..."
+            caption="Searching for case..."
             height="40px"
             hidden={!viewModel.isLookingForCase}
           />
@@ -133,6 +131,10 @@ function _AddCaseModal(
 
   function show() {
     if (modalRef.current?.show) {
+      const divisionCode = props.addCaseModel.defaultDivisionCode;
+      const options = props.addCaseModel.filteredOfficeRecords;
+      const selected = options?.filter((option) => option.value === divisionCode) ?? [];
+      props.addCaseModel.additionalCaseDivisionRef.current?.setSelections(selected);
       modalRef.current?.show({});
     }
   }
@@ -145,13 +147,6 @@ function _AddCaseModal(
     show,
     hide: reset,
   }));
-
-  useEffect(() => {
-    const divisionCode = props.addCaseModel.defaultDivisionCode;
-    const options = props.addCaseModel.filteredOfficeRecords;
-    const selected = options?.filter((option) => option.value === divisionCode) ?? [];
-    props.addCaseModel.additionalCaseDivisionRef.current?.setSelections(selected);
-  }, []);
 
   return (
     <Modal

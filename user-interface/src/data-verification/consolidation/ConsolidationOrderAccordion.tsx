@@ -52,10 +52,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   ]);
 
   useEffect(() => {
-    useCase.getValidLeadCase();
-  }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
-
-  useEffect(() => {
     if (consolidationStore.caseToAddCourt && consolidationStore.caseToAddCaseNumber) {
       useCase.verifyCaseCanBeAdded();
     }
@@ -80,9 +76,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     isValidatingLeadCaseNumber: consolidationStore.isValidatingLeadCaseNumber,
     jointAdministrationRadio: consolidationControls.jointAdministrationRadio,
     leadCase: consolidationStore.leadCase,
-    leadCaseDivisionRef: consolidationControls.leadCaseDivisionRef,
-    leadCaseNumberError: consolidationStore.leadCaseNumberError,
-    leadCaseNumberRef: consolidationControls.leadCaseNumberRef,
     order: consolidationStore.order,
     orderType: orderType, // TODO: why is orderType a Map<string, string>?
     rejectButton: consolidationControls.rejectButton,
