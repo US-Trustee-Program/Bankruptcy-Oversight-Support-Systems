@@ -294,7 +294,11 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
             <AddCaseModal
               id={`add-case-modal-${viewModel.order.id}`}
               ref={viewModel.addCaseModal}
-              addCaseModel={{ ...viewModel, orderId: viewModel.order.id! }}
+              addCaseModel={{
+                ...viewModel,
+                orderId: viewModel.order.id!,
+                defaultDivisionCode: viewModel.order.courtDivisionCode,
+              }}
             ></AddCaseModal>
           </section>
         )}

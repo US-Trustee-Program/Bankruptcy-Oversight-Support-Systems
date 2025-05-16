@@ -88,6 +88,7 @@ interface AddCaseModel
     | 'handleAddCaseAction'
   > {
   orderId: string;
+  defaultDivisionCode: string;
 }
 
 export type { ConsolidationViewModel, AddCaseModel };
