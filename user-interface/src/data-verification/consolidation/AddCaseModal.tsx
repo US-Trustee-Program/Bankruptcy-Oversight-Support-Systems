@@ -160,9 +160,7 @@ function _AddCaseModal(
       className={`add-case-modal consolidation-order-modal`}
       heading="Add Case"
       data-testid={`add-case-modal-${orderId}`}
-      onClose={() => {
-        /* TODO: do we need to do anything? */
-      }}
+      onClose={props.addCaseModel.handleAddCaseReset}
       content={<AddCaseForm {...props.addCaseModel} />}
       actionButtonGroup={actionButtonGroup}
     ></Modal>
