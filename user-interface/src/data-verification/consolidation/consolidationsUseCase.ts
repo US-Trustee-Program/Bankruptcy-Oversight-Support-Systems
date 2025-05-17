@@ -63,32 +63,31 @@ const consolidationUseCase = (
   onOrderUpdate: OnOrderUpdate,
   onExpand?: OnExpand,
 ): ConsolidationsUseCase => {
-  function clearLeadCase(): void {
+  const clearLeadCase = (): void => {
     store.setLeadCase(null);
     store.setLeadCaseId('');
     store.setLeadCaseNumber('');
     store.setLeadCaseNumberError('');
     store.setFoundValidCaseNumber(false);
-  }
+  };
 
-  function clearSelectedCases(): void {
+  const clearSelectedCases = (): void => {
     store.setSelectedCases([]);
     controls.clearAllCheckBoxes();
-  }
+  };
 
-  function handleAddCaseAction() {
+  const handleAddCaseAction = () => {
     if (store.caseToAdd) {
       store.order.childCases.push(store.caseToAdd);
     }
     handleAddCaseReset();
-  }
+  };
 
-  function handleCaseAssociationResponse(
+  const handleCaseAssociationResponse = (
     response: ResponseBody<Consolidation[]>,
     currentLeadCaseId: string,
-  ) {
+  ) => {
     const associations = response.data;
-    // if lead is a child of another case
     const childCaseFactsList = associations
       .filter((reference) => reference.caseId === currentLeadCaseId)
       .filter((reference) => reference.documentType === 'CONSOLIDATION_TO')
@@ -136,9 +135,9 @@ const consolidationUseCase = (
     } else {
       return response.data as Consolidation[];
     }
-  }
+  };
 
-  function verifyCaseCanBeAdded() {
+  const verifyCaseCanBeAdded = () => {
     const api2 = useApi2();
     const caseIdToVerify = getCaseId({
       court: store.caseToAddCourt,
@@ -168,7 +167,6 @@ const consolidationUseCase = (
             return response.data as CaseSummary;
           })
           .catch((error) => {
-            // Brittle way to determine if we have encountered a 404...
             const isNotFound = (error.message as string).startsWith('404');
             const message = isNotFound
               ? "We couldn't find a case with that number."
@@ -223,9 +221,9 @@ const consolidationUseCase = (
           }, 100);
         });
     }
-  }
+  };
 
-  function approveConsolidation(action: ConfirmActionResults) {
+  const approveConsolidation = (action: ConfirmActionResults) => {
     const api = useApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
@@ -269,9 +267,9 @@ const consolidationUseCase = (
           });
         });
     }
-  }
+  };
 
-  function rejectConsolidation(action: ConfirmActionResults) {
+  const rejectConsolidation = (action: ConfirmActionResults) => {
     const api = useApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
@@ -309,9 +307,9 @@ const consolidationUseCase = (
           });
         });
     }
-  }
+  };
 
-  function updateSubmitButtonsState() {
+  const updateSubmitButtonsState = () => {
     if (store.selectedCases.length) {
       const disableApprove =
         !store.isDataEnhanced ||
@@ -326,54 +324,53 @@ const consolidationUseCase = (
       controls.disableButton(controls.approveButton, true);
     }
     controls.disableButton(controls.clearButton, store.isProcessing);
-  }
+  };
 
-  function areAnySelectedCasesConsolidated() {
+  const areAnySelectedCasesConsolidated = () => {
     const consolidatedSelections = store.selectedCases.filter(
       (bCase) => bCase.associations!.length > 0,
     );
     return consolidatedSelections.length !== 0;
-  }
+  };
 
-  function setOrderWithDataEnhancement(order: ConsolidationOrder) {
+  const setOrderWithDataEnhancement = (order: ConsolidationOrder) => {
     store.setOrder({ ...order });
-  }
+  };
 
-  function updateAllSelections(caseList: ConsolidationOrderCase[]) {
+  const updateAllSelections = (caseList: ConsolidationOrderCase[]) => {
     store.setSelectedCases(caseList);
-  }
+  };
 
-  //========== HANDLERS ==========
-  function handleApproveButtonClick() {
+  const handleApproveButtonClick = () => {
     controls.showConfirmationModal(
       store.selectedCases!,
       store.leadCase!,
       'approved',
       store.consolidationType!,
     );
-  }
+  };
 
-  function handleRejectButtonClick() {
+  const handleRejectButtonClick = () => {
     controls.showConfirmationModal(store.selectedCases, store.leadCase!, 'rejected');
-  }
+  };
 
-  function handleClearInputs(): void {
+  const handleClearInputs = (): void => {
     clearLeadCase();
     clearSelectedCases();
     handleToggleLeadCaseForm(false);
     controls.unsetConsolidationType();
-  }
+  };
 
-  function handleAddCaseReset(): void {
+  const handleAddCaseReset = (): void => {
     store.setCaseToAddCaseNumber('');
     store.setCaseToAddCourt('');
     controls.additionalCaseDivisionRef.current?.clearSelections();
     controls.additionalCaseNumberRef.current?.clearValue();
     store.setAddCaseNumberError(null);
     store.setCaseToAdd(null);
-  }
+  };
 
-  function handleConfirmAction(action: ConfirmActionResults): void {
+  const handleConfirmAction = (action: ConfirmActionResults): void => {
     switch (action.status) {
       case 'approved':
         approveConsolidation(action);
@@ -382,9 +379,9 @@ const consolidationUseCase = (
         rejectConsolidation(action);
         break;
     }
-  }
+  };
 
-  function handleIncludeCase(bCase: ConsolidationOrderCase) {
+  const handleIncludeCase = (bCase: ConsolidationOrderCase) => {
     let tempSelectedCases: ConsolidationOrderCase[];
     if (store.selectedCases.includes(bCase)) {
       tempSelectedCases = store.selectedCases.filter((aCase) => bCase !== aCase);
@@ -393,18 +390,18 @@ const consolidationUseCase = (
     }
     store.setSelectedCases(tempSelectedCases);
     updateSubmitButtonsState();
-  }
+  };
 
-  async function handleLeadCaseInputChange(caseNumber?: string) {
+  const handleLeadCaseInputChange = async (caseNumber?: string) => {
     if (caseNumber) {
       store.setLeadCaseNumber(caseNumber);
     } else {
       clearLeadCase();
       controls.disableButton(controls.approveButton, true);
     }
-  }
+  };
 
-  async function handleAddCaseNumberInputChange(caseNumber?: string) {
+  const handleAddCaseNumberInputChange = async (caseNumber?: string) => {
     if (caseNumber) {
       store.setCaseToAddCaseNumber(caseNumber);
     } else {
@@ -412,9 +409,9 @@ const consolidationUseCase = (
       store.setCaseToAdd(null);
       controls.disableButton(controls.approveButton, true);
     }
-  }
+  };
 
-  function handleAddCaseCourtSelectChange(option: ComboOption[]): void {
+  const handleAddCaseCourtSelectChange = (option: ComboOption[]): void => {
     const court = option[0]?.value ?? '';
     if (court) {
       store.setCaseToAddCourt(court);
@@ -423,9 +420,9 @@ const consolidationUseCase = (
       store.setCaseToAdd(null);
       controls.disableButton(controls.approveButton, true);
     }
-  }
+  };
 
-  function handleMarkLeadCase(bCase: ConsolidationOrderCase) {
+  const handleMarkLeadCase = (bCase: ConsolidationOrderCase) => {
     store.setShowLeadCaseForm(false);
     store.setLeadCaseNumber('');
     store.setLeadCaseCourt('');
@@ -437,9 +434,9 @@ const consolidationUseCase = (
       store.setLeadCaseId(bCase.caseId);
       store.setLeadCase(bCase);
     }
-  }
+  };
 
-  async function handleOnExpand() {
+  const handleOnExpand = async () => {
     const api2 = useApi2();
     if (onExpand) {
       onExpand(`order-list-${store.order.id}`);
@@ -465,21 +462,21 @@ const consolidationUseCase = (
       setOrderWithDataEnhancement(store.order);
       store.setIsDataEnhanced(isDataEnhanced);
     }
-  }
+  };
 
-  function handleSelectConsolidationType(value: string): void {
+  const handleSelectConsolidationType = (value: string): void => {
     store.setConsolidationType(value as ConsolidationType);
-  }
+  };
 
-  function handleSelectLeadCaseCourt(option: ComboOption[]): void {
+  const handleSelectLeadCaseCourt = (option: ComboOption[]): void => {
     const court = option[0]?.value ?? '';
     store.setLeadCaseCourt(court);
-  }
+  };
 
-  function handleToggleLeadCaseForm(checked: boolean): void {
+  const handleToggleLeadCaseForm = (checked: boolean): void => {
     clearLeadCase();
     store.setShowLeadCaseForm(checked);
-  }
+  };
 
   return {
     verifyCaseCanBeAdded,
