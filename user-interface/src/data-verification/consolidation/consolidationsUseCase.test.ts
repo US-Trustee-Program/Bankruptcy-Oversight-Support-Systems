@@ -27,30 +27,30 @@ describe('Consolidation UseCase tests', () => {
   const onOrderUpdateSpy = vi.fn();
   const { waitFor } = TestingUtilities;
 
-  function setupAddCase() {
+  const setupAddCase = () => {
     store.setCaseToAdd(mockAddCase);
     store.setCaseToAddCaseNumber(getCaseNumber(mockAddCase.caseId));
     store.setCaseToAddCourt(mockAddCase.courtDivisionCode);
     store.setAddCaseNumberError('error message');
-  }
+  };
 
-  function includeCases(mockCases: ConsolidationOrderCase[]) {
+  const includeCases = (mockCases: ConsolidationOrderCase[]) => {
     store.setSelectedCases(mockCases);
     store.setLeadCase(mockCases[1]);
     store.setConsolidationType('administrative');
-  }
+  };
 
-  function expectClearLeadCase() {
+  const expectClearLeadCase = () => {
     expect(store.leadCase).toBeNull();
     expect(store.leadCaseId).toEqual('');
     expect(store.leadCaseNumber).toEqual('');
     expect(store.leadCaseNumberError).toEqual('');
     expect(store.foundValidCaseNumber).toBe(false);
-  }
+  };
 
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
 
-  function initUseCase() {
+  const initUseCase = () => {
     const props = {
       order: mockOrder,
       statusType: orderStatusType,
@@ -66,7 +66,7 @@ describe('Consolidation UseCase tests', () => {
     controls = useConsolidationControlsMock();
 
     useCase = consolidationUseCase(store, controls, props.onOrderUpdate, props.onExpand);
-  }
+  };
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
