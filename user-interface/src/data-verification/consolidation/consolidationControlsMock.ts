@@ -107,22 +107,20 @@ export function useConsolidationControlsMock(): ConsolidationControls {
   const unsetConsolidationType = () => {};
 
   return {
-    approveButton,
-    caseTableActions: caseTableRef,
-    clearButton,
-    confirmationModal: confirmationModalRef,
-    jointAdministrationRadio: jointAdministrationRef,
-    rejectButton,
-    substantiveRadio: substantiveRef,
-    leadCaseFormToggle: toggleLeadCaseFormRef,
-    showConfirmationModal,
-    clearAllCheckBoxes,
-    disableButton,
-    unsetConsolidationType,
-
-    // TODO: CAMS-548 properties
     additionalCaseDivisionRef,
     additionalCaseNumberRef,
     addCaseModal: addCaseModalRef,
+    approveButton,
+    caseTableActions: caseTableRef,
+    clearAllCheckBoxes,
+    clearButton,
+    confirmationModal: confirmationModalRef,
+    disableButton,
+    jointAdministrationRadio: jointAdministrationRef,
+    leadCaseFormToggle: toggleLeadCaseFormRef,
+    rejectButton,
+    showConfirmationModal,
+    substantiveRadio: substantiveRef,
+    unsetConsolidationType,
   };
 }

@@ -49,22 +49,20 @@ export function useConsolidationControlsReact(): ConsolidationControls {
   };
 
   return {
-    approveButton,
-    caseTableActions,
-    clearButton,
-    confirmationModal,
-    jointAdministrationRadio,
-    rejectButton,
-    substantiveRadio,
-    leadCaseFormToggle,
-    showConfirmationModal,
-    clearAllCheckBoxes,
-    disableButton,
-    unsetConsolidationType,
-
-    // TODO: CAMS-548 properties
     additionalCaseDivisionRef,
     additionalCaseNumberRef,
     addCaseModal,
+    approveButton,
+    caseTableActions,
+    clearAllCheckBoxes,
+    clearButton,
+    confirmationModal,
+    disableButton,
+    jointAdministrationRadio,
+    leadCaseFormToggle,
+    rejectButton,
+    showConfirmationModal,
+    substantiveRadio,
+    unsetConsolidationType,
   };
 }
