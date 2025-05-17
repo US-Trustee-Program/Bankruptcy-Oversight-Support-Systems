@@ -10,7 +10,6 @@ import {
 import React from 'react';
 import {
   Ref,
-  ShowAddCaseModal,
   ShowConfirmationModal,
 } from '@/data-verification/consolidation/consolidationControls';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
@@ -54,7 +53,6 @@ interface ConsolidationViewModel {
   handleSelectLeadCaseCourt: (option: ComboOptionList) => void;
   handleToggleLeadCaseForm: (checked: boolean) => void;
   showConfirmationModal: ShowConfirmationModal;
-  showAddCaseModal: ShowAddCaseModal;
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
 
   // TODO: Reorg this when we are nearing done.
