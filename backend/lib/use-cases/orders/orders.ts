@@ -386,9 +386,9 @@ export class OrdersUseCase {
       response.push(updatedRemainingOrder as ConsolidationOrder);
     }
 
-    await consolidationsRepo.delete(provisionalOrder.id);
-
+    // Add the revised order to the repo and delete the original order.
     const createdConsolidation = await consolidationsRepo.create(newConsolidation);
+    await consolidationsRepo.delete(provisionalOrder.id);
     response.push(createdConsolidation as ConsolidationOrder);
 
     for (const childCase of newConsolidation.childCases) {

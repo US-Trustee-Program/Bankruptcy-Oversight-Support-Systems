@@ -1,6 +1,6 @@
 import {
   fetchLeadCaseAttorneys,
-  getCurrentLeadCaseId,
+  getCaseId,
 } from '@/data-verification/consolidation/consolidationOrderAccordionUtils';
 import { CaseAssignment } from '@common/cams/assignments';
 import { MockData } from '@common/cams/test-utilities/mock-data';
@@ -20,25 +20,22 @@ describe('consolidationOrderAccordion presenter tests', () => {
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
-  test('should get lead case id', () => {
-    const leadCaseCourt = '081';
-    const leadCaseNumber = '24-12345';
-    expect(getCurrentLeadCaseId({ leadCaseCourt, leadCaseNumber })).toEqual('081-24-12345');
+  test('should get case id', () => {
+    const court = '081';
+    const caseNumber = '24-12345';
+    expect(getCaseId({ court, caseNumber })).toEqual('081-24-12345');
   });
 
-  const leadCaseIdInputCases = [
-    { leadCaseCourt: '081' },
-    { leadCaseNumber: '24-12345' },
-    { leadCaseCourt: '2', leadCaseNumber: '12-42255' },
-    { leadCaseCourt: '225', leadCaseNumber: '12-422' },
+  const caseIdInputCases = [
+    { court: '081' },
+    { court: '24-12345' },
+    { court: '2', caseNumber: '12-42255' },
+    { court: '225', caseNumber: '12-422' },
   ];
 
-  test.each(leadCaseIdInputCases)(
-    'should get empty string for lead case id',
-    (params: { leadCaseCourt?: string; leadCaseNumber?: string }) => {
-      expect(getCurrentLeadCaseId(params)).toEqual('');
-    },
-  );
+  test.each(caseIdInputCases)('should get empty string for lead case id', (params) => {
+    expect(getCaseId(params)).toEqual('');
+  });
 
   test('should return empty array when no attorneys are found', async () => {
     const order: ConsolidationOrder = MockData.getConsolidationOrder();

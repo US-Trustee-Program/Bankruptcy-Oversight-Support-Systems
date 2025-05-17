@@ -86,7 +86,9 @@ function CaseNumberInputComponent(props: CaseNumberInputProps, ref: React.Ref<In
   }
 
   function handleOnFocus(ev: React.FocusEvent<HTMLElement>) {
-    if (onFocus) onFocus(ev);
+    if (onFocus) {
+      onFocus(ev);
+    }
   }
 
   function focus() {

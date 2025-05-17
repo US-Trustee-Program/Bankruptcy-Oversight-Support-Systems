@@ -52,8 +52,10 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
   ]);
 
   useEffect(() => {
-    useCase.getValidLeadCase();
-  }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
+    if (consolidationStore.caseToAddCourt && consolidationStore.caseToAddCaseNumber) {
+      useCase.verifyCaseCanBeAdded();
+    }
+  }, [consolidationStore.caseToAddCourt, consolidationStore.caseToAddCaseNumber]);
 
   const viewModel: ConsolidationViewModel = {
     accordionFieldHeaders: fieldHeaders,
@@ -74,9 +76,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     isValidatingLeadCaseNumber: consolidationStore.isValidatingLeadCaseNumber,
     jointAdministrationRadio: consolidationControls.jointAdministrationRadio,
     leadCase: consolidationStore.leadCase,
-    leadCaseDivisionRef: consolidationControls.leadCaseDivisionRef,
-    leadCaseNumberError: consolidationStore.leadCaseNumberError,
-    leadCaseNumberRef: consolidationControls.leadCaseNumberRef,
     order: consolidationStore.order,
     orderType: orderType, // TODO: why is orderType a Map<string, string>?
     rejectButton: consolidationControls.rejectButton,
@@ -99,6 +98,17 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleToggleLeadCaseForm: useCase.handleToggleLeadCaseForm,
     showConfirmationModal: consolidationControls.showConfirmationModal,
     updateAllSelections: useCase.updateAllSelections,
+
+    handleAddCaseReset: useCase.handleAddCaseReset,
+    handleAddCaseNumberInputChange: useCase.handleAddCaseNumberInputChange,
+    handleAddCaseCourtSelectChange: useCase.handleAddCaseCourtSelectChange,
+    addCaseModal: consolidationControls.addCaseModal,
+    handleAddCaseAction: useCase.handleAddCaseAction,
+    additionalCaseDivisionRef: consolidationControls.additionalCaseDivisionRef,
+    additionalCaseNumberRef: consolidationControls.additionalCaseNumberRef,
+    addCaseNumberError: consolidationStore.addCaseNumberError,
+    isLookingForCase: consolidationStore.isLookingForCase,
+    caseToAdd: consolidationStore.caseToAdd,
   };
 
   return <ConsolidationOrderAccordionView viewModel={viewModel}></ConsolidationOrderAccordionView>;

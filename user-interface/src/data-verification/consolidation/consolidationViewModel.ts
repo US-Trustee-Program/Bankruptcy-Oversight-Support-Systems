@@ -8,13 +8,23 @@ import {
   ConfirmationModalImperative,
 } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import React from 'react';
-import { ShowConfirmationModal } from '@/data-verification/consolidation/consolidationControls';
+import {
+  Ref,
+  ShowConfirmationModal,
+} from '@/data-verification/consolidation/consolidationControls';
 import { ComboOption, ComboOptionList } from '@/lib/components/combobox/ComboBox';
+import { AddCaseModalImperative } from '@/data-verification/consolidation/AddCaseModal';
 
 interface ConsolidationViewModel {
+  // Non-function properties
   accordionFieldHeaders: string[];
+  addCaseModal: React.RefObject<AddCaseModalImperative>;
+  addCaseNumberError: string | null;
+  additionalCaseDivisionRef: Ref<ComboBoxRef>;
+  additionalCaseNumberRef: Ref<InputRef>;
   approveButton: React.Ref<ButtonRef>;
   caseTableActions: React.Ref<OrderTableImperative>;
+  caseToAdd: ConsolidationOrderCase | null;
   clearButton: React.Ref<ButtonRef>;
   confirmationModal: React.Ref<ConfirmationModalImperative>;
   divisionCode: string | undefined;
@@ -24,13 +34,12 @@ interface ConsolidationViewModel {
   foundValidCaseNumber: boolean;
   hidden: boolean;
   isDataEnhanced: boolean;
+  isLookingForCase: boolean;
   isProcessing: boolean;
   isValidatingLeadCaseNumber: boolean;
   jointAdministrationRadio: React.Ref<RadioRef>;
   leadCase: ConsolidationOrderCase | null;
-  leadCaseDivisionRef: React.RefObject<ComboBoxRef>;
-  leadCaseNumberError: string;
-  leadCaseNumberRef: React.Ref<InputRef>;
+  leadCaseFormToggle: React.Ref<CheckboxRef>;
   order: ConsolidationOrder;
   orderType: Map<string, string>;
   rejectButton: React.Ref<ButtonRef>;
@@ -38,8 +47,12 @@ interface ConsolidationViewModel {
   showLeadCaseForm: boolean;
   statusType: Map<string, string>;
   substantiveRadio: React.Ref<RadioRef>;
-  leadCaseFormToggle: React.Ref<CheckboxRef>;
 
+  // Function properties
+  handleAddCaseAction: () => void;
+  handleAddCaseCourtSelectChange: (option: ComboOptionList) => void;
+  handleAddCaseNumberInputChange: (caseNumber?: string) => void;
+  handleAddCaseReset: () => void;
   handleApproveButtonClick: () => void;
   handleClearInputs: () => void;
   handleConfirmAction: (action: ConfirmActionResults) => void;
@@ -55,4 +68,22 @@ interface ConsolidationViewModel {
   updateAllSelections: (caseList: ConsolidationOrderCase[]) => void;
 }
 
-export type { ConsolidationViewModel };
+interface AddCaseModel
+  extends Pick<
+    ConsolidationViewModel,
+    | 'handleAddCaseCourtSelectChange'
+    | 'handleAddCaseNumberInputChange'
+    | 'handleAddCaseReset'
+    | 'filteredOfficeRecords'
+    | 'additionalCaseDivisionRef'
+    | 'additionalCaseNumberRef'
+    | 'addCaseNumberError'
+    | 'isLookingForCase'
+    | 'caseToAdd'
+    | 'handleAddCaseAction'
+  > {
+  orderId: string;
+  defaultDivisionCode: string;
+}
+
+export type { ConsolidationViewModel, AddCaseModel };

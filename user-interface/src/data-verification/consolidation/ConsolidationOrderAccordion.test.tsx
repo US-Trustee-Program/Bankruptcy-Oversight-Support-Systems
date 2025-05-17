@@ -881,24 +881,4 @@ describe('ConsolidationOrderAccordion tests', () => {
       expect(approveButton).toBeDisabled();
     });
   });
-
-  test('checking "lead case not listed" checkbox should clear markLeadCase button selection', async () => {
-    renderWithProps();
-    await openAccordion(user, order.id!);
-
-    const leadCaseNotListedCheckboxTestId = `button-checkbox-lead-case-form-checkbox-toggle-${order.id}-click-target`;
-    const leadCaseFormCheckbox = screen.getByTestId(leadCaseNotListedCheckboxTestId);
-    expect(leadCaseFormCheckbox).not.toBeChecked();
-
-    const markLeadButtonTestId = `button-assign-lead-case-list-${order.id}-0`;
-    const markLeadCaseButton = screen.getByTestId(markLeadButtonTestId);
-    expect(markLeadCaseButton).toHaveClass('usa-button--outline');
-
-    await user.click(markLeadCaseButton);
-    expect(markLeadCaseButton).not.toHaveClass('usa-button--outline');
-
-    await user.click(leadCaseFormCheckbox);
-    expect(leadCaseFormCheckbox).not.toBeChecked();
-    expect(screen.getByTestId(markLeadButtonTestId)).toHaveClass('usa-button--outline');
-  });
 });

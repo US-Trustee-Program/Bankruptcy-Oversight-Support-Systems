@@ -416,18 +416,6 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         >
           {label} {props.required && <span className="required-form-field">*</span>}
         </label>
-        {selectedMap.size > 0 && (
-          <Button
-            className="clear-all-button"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
-            onClick={handleClearAllClick}
-            onKeyDown={handleClearAllKeyDown}
-            id={`${comboBoxId}-clear-all`}
-            aria-label={`Clear all ${label ?? ''} items selected.`}
-          >
-            clear
-          </Button>
-        )}
       </div>
       <div className="usa-combo-box">
         <div
@@ -543,6 +531,18 @@ function ComboBoxComponent(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           </div>
         )}
       </div>
+      {selectedMap.size > 0 && (
+        <Button
+          className="clear-all-button"
+          uswdsStyle={UswdsButtonStyle.Unstyled}
+          onClick={handleClearAllClick}
+          onKeyDown={handleClearAllKeyDown}
+          id={`${comboBoxId}-clear-all`}
+          aria-label={`Clear all ${label ?? ''} items selected.`}
+        >
+          clear
+        </Button>
+      )}
     </div>
   );
 }

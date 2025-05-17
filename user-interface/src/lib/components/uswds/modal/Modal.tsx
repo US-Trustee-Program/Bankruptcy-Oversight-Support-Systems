@@ -1,8 +1,19 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  RefObject,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { SubmitCancelButtonGroup, SubmitCancelBtnProps } from './SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useComponent from '@/lib/hooks/UseComponent';
 import { ModalRefType, SubmitCancelButtonGroupRef, OpenModalButtonRef } from './modal-refs';
+
+export type ModalShowOptions = {
+  openModalButtonRef?: RefObject<OpenModalButtonRef>;
+};
 
 export interface ModalProps {
   modalId: string;
@@ -35,10 +46,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   }
 
   const handleKeyDown = (ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent) => {
-    if (!props.forceAction) {
-      if (ev.key === 'Escape') {
-        close(ev);
-      }
+    if (!props.forceAction && ev.key === 'Escape') {
+      close(ev);
     }
   };
 
@@ -46,7 +55,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     ev: React.KeyboardEvent<HTMLElement> | KeyboardEvent,
     firstEl: HTMLElement | null,
   ) => {
-    if (!firstEl) return;
+    if (!firstEl) {
+      return;
+    }
 
     if (
       ev.key == 'Tab' &&
@@ -76,8 +87,12 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
   function submitBtnClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (props.actionButtonGroup.submitButton?.onClick) {
       const { onClick, closeOnClick } = props.actionButtonGroup.submitButton;
-      if (onClick) onClick(e);
-      if (closeOnClick !== false) close(e);
+      if (onClick) {
+        onClick(e);
+      }
+      if (closeOnClick !== false) {
+        close(e);
+      }
     }
   }
 
@@ -97,11 +112,11 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
     }
   }
 
-  function showModal(options: object) {
+  function showModal(options: ModalShowOptions) {
     if (props.onOpen) {
       props.onOpen();
     }
-    if (options && 'openModalButtonRef' in options) {
+    if ('openModalButtonRef' in options) {
       const openRef = options.openModalButtonRef as React.RefObject<OpenModalButtonRef>;
       setOpenModalButtonRef(openRef);
     }
@@ -144,13 +159,17 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
             const inputLabel = firstEl.parentElement?.querySelector('label');
             if (inputLabel) {
               const labelButton = inputLabel.querySelector('button.usa-radio__label');
-              if (labelButton) firstEl = labelButton as HTMLElement;
+              if (labelButton) {
+                firstEl = labelButton as HTMLElement;
+              }
             }
           } else if (firstEl.classList.contains('usa-checkbox__input')) {
             const inputLabel = firstEl.parentElement?.querySelector('label');
             if (inputLabel) {
               const labelButton = inputLabel.querySelector('button.usa-checkbox__label');
-              if (labelButton) firstEl = labelButton as HTMLElement;
+              if (labelButton) {
+                firstEl = labelButton as HTMLElement;
+              }
             }
           }
         }
@@ -169,10 +188,12 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
       if (firstEl) {
         setFirstElement(firstEl);
-        (firstEl as HTMLElement).focus();
       } else {
         setFirstElement(modalShellRef.current as HTMLElement);
-        modalShellRef.current.focus();
+      }
+
+      if (firstEl) {
+        (firstEl as HTMLElement).focus();
       }
 
       const keyDownEventHandler = (ev: KeyboardEvent) => {
@@ -192,12 +213,9 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
 
   return (
     <div
-      className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
-      role="dialog"
       id={props.modalId + '-wrapper'}
+      className={`usa-modal-wrapper ${isVisible ? 'is-visible' : 'is-hidden'}`}
       data-testid={`modal-${props.modalId}`}
-      aria-labelledby={props.modalId + '-heading'}
-      aria-describedby={props.modalId + '-description'}
     >
       {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
       <div
@@ -217,6 +235,8 @@ function ModalComponent(props: ModalProps, ref: React.Ref<ModalRefType>) {
           data-testid={`modal-content-${props.modalId}`}
           role="dialog"
           aria-modal="true"
+          aria-labelledby={props.modalId + '-heading'}
+          aria-describedby={props.modalId + '-description'}
         >
           <div className="usa-modal__content">
             <div className="usa-modal__main">
