@@ -8,10 +8,44 @@ import { CaseTable } from '@/data-verification/transfer/CaseTable';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ConsolidationOrderModal } from '@/data-verification/consolidation/ConsolidationOrderModal';
 import { CaseNumber } from '@/lib/components/CaseNumber';
-import { ConsolidationViewModel } from '@/data-verification/consolidation/consolidationViewModel';
+import {
+  AddCaseModel,
+  ConsolidationViewModel,
+} from '@/data-verification/consolidation/consolidationViewModel';
 import { sanitizeText } from '@/lib/utils/sanitize-text';
 import { AddCaseModal } from '@/data-verification/consolidation/AddCaseModal';
 import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
+
+function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {
+  const {
+    handleAddCaseCourtSelectChange,
+    handleAddCaseNumberInputChange,
+    handleAddCaseReset,
+    filteredOfficeRecords,
+    additionalCaseDivisionRef,
+    additionalCaseNumberRef,
+    addCaseNumberError,
+    isLookingForCase,
+    caseToAdd,
+    handleAddCaseAction,
+    order: { id: orderId, courtDivisionCode: defaultDivisionCode },
+  } = viewModel;
+
+  return {
+    handleAddCaseCourtSelectChange,
+    handleAddCaseNumberInputChange,
+    handleAddCaseReset,
+    filteredOfficeRecords,
+    additionalCaseDivisionRef,
+    additionalCaseNumberRef,
+    addCaseNumberError,
+    isLookingForCase,
+    caseToAdd,
+    handleAddCaseAction,
+    orderId: orderId ?? '',
+    defaultDivisionCode,
+  };
+}
 
 export type ConsolidationOrderAccordionViewProps = {
   viewModel: ConsolidationViewModel;
@@ -188,15 +222,10 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
               onCancel={() => {}}
               onConfirm={viewModel.handleConfirmAction}
             ></ConsolidationOrderModal>
-            {/* TODO: remove excess properties from below since AddCaseModel requires only some properties from ConsolidationViewModel */}
             <AddCaseModal
               id={`add-case-modal-${viewModel.order.id}`}
               ref={viewModel.addCaseModal}
-              addCaseModel={{
-                ...viewModel,
-                orderId: viewModel.order.id!,
-                defaultDivisionCode: viewModel.order.courtDivisionCode,
-              }}
+              addCaseModel={toAddCaseModel(viewModel)}
             ></AddCaseModal>
           </section>
         )}
