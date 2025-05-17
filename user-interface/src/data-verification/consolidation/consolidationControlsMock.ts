@@ -101,7 +101,6 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     status: OrderStatus,
     consolidationType?: ConsolidationType,
   ) => {};
-  const showAddCaseModal = (defaultOffice: string) => {};
 
   const clearAllCheckBoxes = () => {};
   const disableButton = (button: Ref<ButtonRef>, state: boolean) => {};
@@ -125,6 +124,5 @@ export function useConsolidationControlsMock(): ConsolidationControls {
     additionalCaseDivisionRef,
     additionalCaseNumberRef,
     addCaseModal: addCaseModalRef,
-    showAddCaseModal,
   };
 }

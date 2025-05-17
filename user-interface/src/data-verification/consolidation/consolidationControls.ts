@@ -13,8 +13,6 @@ export type ShowConfirmationModal = (
   consolidationType?: ConsolidationType,
 ) => void;
 
-export type ShowAddCaseModal = (defaultOffice: string) => void;
-
 export type Ref<T> = {
   current: T | null;
 };
@@ -33,7 +31,6 @@ interface ConsolidationControls {
   additionalCaseNumberRef: Ref<InputRef>;
 
   showConfirmationModal: ShowConfirmationModal;
-  showAddCaseModal: ShowAddCaseModal;
   clearAllCheckBoxes: () => void;
   disableButton: (button: Ref<ButtonRef>, state: boolean) => void;
   unsetConsolidationType: () => void;

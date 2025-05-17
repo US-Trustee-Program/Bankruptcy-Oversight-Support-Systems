@@ -102,7 +102,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleAddCaseReset: useCase.handleAddCaseReset,
     handleAddCaseNumberInputChange: useCase.handleAddCaseNumberInputChange,
     handleAddCaseCourtSelectChange: useCase.handleAddCaseCourtSelectChange,
-    showAddCaseModal: consolidationControls.showAddCaseModal,
     addCaseModal: consolidationControls.addCaseModal,
     handleAddCaseAction: useCase.handleAddCaseAction,
     additionalCaseDivisionRef: consolidationControls.additionalCaseDivisionRef,

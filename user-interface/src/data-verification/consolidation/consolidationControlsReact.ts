@@ -35,11 +35,6 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     });
   };
 
-  const showAddCaseModal = (_defaultOffice: string) => {
-    // TODO: implement
-    // addCaseModal.show
-  };
-
   const unsetConsolidationType = () => {
     jointAdministrationRadio.current?.check(false);
     substantiveRadio.current?.check(false);
@@ -71,6 +66,5 @@ export function useConsolidationControlsReact(): ConsolidationControls {
     additionalCaseDivisionRef,
     additionalCaseNumberRef,
     addCaseModal,
-    showAddCaseModal,
   };
 }
