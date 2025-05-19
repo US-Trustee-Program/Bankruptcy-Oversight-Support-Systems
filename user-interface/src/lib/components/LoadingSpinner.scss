@@ -2,13 +2,11 @@
 .loading-spinner {
   display: flex;
   align-content: center;
-  align-items: flex-start;
-  flex-direction: row;
+  align-items: center;
 
   .loading-spinner-caption {
     padding-left: 0;
     line-height: 2.5rem;
-    align-self: center;
   }
 
   .animate-spin {
