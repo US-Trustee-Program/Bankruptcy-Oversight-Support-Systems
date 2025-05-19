@@ -281,6 +281,48 @@ describe('Consolidation UseCase tests', () => {
     expect(getCaseAssignmentsSpy).toHaveBeenCalledWith(mockAddCase.caseId);
   });
 
+  test('should display an alert if case is already included in the consolidation', async () => {
+    const setIsValidatingSpy = vi.spyOn(store, 'setIsLookingForCase');
+    const setAddCaseNumberErrorSpy = vi.spyOn(store, 'setAddCaseNumberError');
+    const setCaseToAddSpy = vi.spyOn(store, 'setCaseToAdd');
+
+    const caseSummary = MockData.getCaseSummary();
+    const summaryResponse: ResponseBody<CaseSummary> =
+      MockData.getNonPaginatedResponseBody<CaseSummary>(caseSummary);
+    const getCaseSummarySpy = vi.spyOn(Api2, 'getCaseSummary').mockResolvedValue(summaryResponse);
+
+    const associationsResponse: ResponseBody<Consolidation[]> = MockData.getPaginatedResponseBody<
+      Consolidation[]
+    >([]);
+    const getCaseAssociationsSpy = vi
+      .spyOn(Api2, 'getCaseAssociations')
+      .mockResolvedValue(associationsResponse);
+
+    const getCaseAssignmentsSpy = vi.spyOn(Api2, 'getCaseAssignments');
+
+    store.order = MockData.getConsolidationOrder();
+    store.order.childCases.push(mockAddCase);
+    setupAddCase();
+    useCase.verifyCaseCanBeAdded();
+
+    expect(setIsValidatingSpy).toHaveBeenCalledWith(false);
+    expect(setCaseToAddSpy).toHaveBeenCalledWith(mockAddCase);
+    expect(setAddCaseNumberErrorSpy).toHaveBeenCalledWith(
+      'This case is already included in the consolidation.',
+    );
+    expect(getCaseSummarySpy).not.toHaveBeenCalled();
+    expect(getCaseAssociationsSpy).not.toHaveBeenCalled();
+    expect(getCaseAssignmentsSpy).not.toHaveBeenCalled();
+  });
+
+  test('should add case to store.order.childCases when handleAddCaseAction is called an store.caseToAdd is set', async () => {
+    store.setCaseToAdd(mockAddCase);
+    expect(store.order.childCases).not.toContain(mockAddCase);
+
+    useCase.handleAddCaseAction();
+    expect(store.order.childCases).toContain(mockAddCase);
+  });
+
   test('should set selected cases', () => {
     expect(store.selectedCases).toEqual([]);
     const selections = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
