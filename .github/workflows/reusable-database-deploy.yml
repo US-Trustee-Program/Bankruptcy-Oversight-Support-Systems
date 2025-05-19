@@ -59,6 +59,7 @@ jobs:
         with:
           azcliversion: 2.62.0
           inlineScript: |
+            export AZURE_CORE_USE_MSAL_HTTP_CACHE=false
             cmd="az cosmosdb mongodb database exists --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} -n ${{ steps.generateE2eName.outputs.e2eDatabaseName }} -g ${{ secrets.AZURE_RG }} -o tsv"
             echo $cmd
             e2eCosmosDbExists=$($cmd)
