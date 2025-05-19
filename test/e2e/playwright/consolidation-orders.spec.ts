@@ -76,7 +76,7 @@ test.describe('Consolidation Orders', () => {
     }
 
     // mark first child case as lead case
-    const markAsLeadButton1 = await page.getByTestId(
+    const markAsLeadButton1 = page.getByTestId(
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );
 
@@ -114,11 +114,13 @@ test.describe('Consolidation Orders', () => {
     await page.getByTestId('order-status-filter-transfer').click();
 
     // Assert state of all filters
-    expect(page.getByTestId('order-status-filter-pending').locator('svg')).toBeVisible();
-    expect(page.getByTestId('order-status-filter-approved').locator('svg')).not.toBeVisible();
-    expect(page.getByTestId('order-status-filter-rejected').locator('svg')).not.toBeVisible();
-    expect(page.getByTestId('order-status-filter-transfer').locator('svg')).not.toBeVisible();
-    expect(page.getByTestId('order-status-filter-consolidation').locator('svg')).toBeVisible();
+    await expect(page.getByTestId('order-status-filter-pending').locator('svg')).toBeVisible();
+    await expect(page.getByTestId('order-status-filter-approved').locator('svg')).not.toBeVisible();
+    await expect(page.getByTestId('order-status-filter-rejected').locator('svg')).not.toBeVisible();
+    await expect(page.getByTestId('order-status-filter-transfer').locator('svg')).not.toBeVisible();
+    await expect(
+      page.getByTestId('order-status-filter-consolidation').locator('svg'),
+    ).toBeVisible();
 
     // Action open accordian
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
@@ -130,7 +132,7 @@ test.describe('Consolidation Orders', () => {
 
     await consolidationTypeSubstantive.click();
 
-    let firstChildCaseId;
+    let firstChildCaseId: string;
     if (isConsolidationOrder(pendingConsolidationOrder)) {
       firstChildCaseId = pendingConsolidationOrder.childCases[0].caseId.slice(4);
     }
@@ -141,27 +143,29 @@ test.describe('Consolidation Orders', () => {
       )
       .dispatchEvent('click');
 
+    // Open add case modal and check a case
     await page
-      .locator(
-        `#checkbox-lead-case-form-checkbox-toggle-${pendingConsolidationOrder.id}-click-target`,
-      )
+      .getByTestId(`accordion-content-${pendingConsolidationOrder.id}`)
+      .getByTestId('open-modal-button')
       .dispatchEvent('click');
 
-    // Action fill form for selecting a lead case not listed in child cases
+    // TODO: Need to fill in a child case Id that isn't already in the child cases list on the order.
+    // TODO: Get the child case Id from the seeded database.
+    await page.getByTestId(`add-case-input-${pendingConsolidationOrder.id}`).fill(firstChildCaseId);
+
+    await expect(
+      page.getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`),
+    ).toBeEnabled();
 
     await page
-      .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
-      .fill(firstChildCaseId);
+      .getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`)
+      .dispatchEvent('click');
 
-    // wait for loading assigned attorneys to complete
-    await page.waitForSelector(
-      `#lead-case-number-loading-spinner-${pendingConsolidationOrder.id}`,
-      timeoutOption,
-    );
-    await page.waitForSelector(
-      `#valid-case-number-found-${pendingConsolidationOrder.id}`,
-      timeoutOption,
-    );
+    await page
+      .getByTestId(
+        'button-checkbox-case-selection-case-list-67d4b30c-e90f-4d9d-9e52-f7c8ccb86f51-1-click-target',
+      )
+      .dispatchEvent('click');
 
     // Action click validate (approve button)
     await expect(
@@ -170,13 +174,14 @@ test.describe('Consolidation Orders', () => {
 
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
-      .click();
+      .dispatchEvent('click');
 
     // Assert modal opened and is actionable
-    expect(
+    await expect(
       page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
     ).toBeVisible();
-    expect(
+
+    await expect(
       page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
     ).toBeEnabled();
   });
