@@ -354,6 +354,78 @@ describe('Consolidation UseCase tests', () => {
     expect(disableButtonSpy).not.toHaveBeenCalledWith(controls.approveButton, false);
   });
 
+  test('areAnySelectedCasesConsolidated should return false if none of the selected case is consolidated', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const selections = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
+    store.setIsDataEnhanced(true);
+    store.setLeadCaseId('12-34567');
+    store.setConsolidationType('administrative');
+    useCase.updateAllSelections(selections);
+    useCase.updateSubmitButtonsState();
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, false);
+  });
+
+  test('should set case number to add if handleAddCaseNumberInputChange is supplied a case number', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    store.setCaseToAddCaseNumber('');
+    expect(store.caseToAddCaseNumber).toEqual('');
+    const bCase = MockData.getConsolidatedOrderCase();
+    const newCaseNumber = '11-11111';
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+    useCase.handleAddCaseNumberInputChange(newCaseNumber);
+
+    expect(store.caseToAdd).toEqual(bCase);
+    expect(store.caseToAddCaseNumber).toEqual(newCaseNumber);
+    expect(disableButtonSpy).not.toHaveBeenCalled();
+  });
+
+  test('should clear case number and case to add, and disable button if handleAddCaseNumberInputChange not supplied a case number', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const oldCaseNumber = '11-11111';
+    store.setCaseToAddCaseNumber(oldCaseNumber);
+    expect(store.caseToAddCaseNumber).toEqual(oldCaseNumber);
+    const bCase = MockData.getConsolidatedOrderCase();
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+    useCase.handleAddCaseNumberInputChange();
+
+    expect(store.caseToAdd).toBeNull();
+    expect(store.caseToAddCaseNumber).toEqual('');
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
+  });
+
+  test('handleAddCaseCourtSelectChange should update store.setCaseToAddCourt when a value is supplied', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const originalCourt = 'old court';
+    const newCourt = 'new court';
+    store.setCaseToAddCourt(originalCourt);
+    expect(store.caseToAddCourt).toEqual(originalCourt);
+    const bCase = MockData.getConsolidatedOrderCase();
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+
+    useCase.handleAddCaseCourtSelectChange([{ label: 'foo', value: newCourt }]);
+    expect(store.caseToAddCourt).toEqual(newCourt);
+    expect(store.caseToAdd).toEqual(bCase);
+    expect(disableButtonSpy).not.toHaveBeenCalled();
+  });
+
+  test('handleAddCaseCourtSelectChange should clear store.caseToAddCourt, store.caseToAdd, and disable approveButton when a value is not supplied', async () => {
+    const disableButtonSpy = vi.spyOn(controls, 'disableButton');
+    const originalCourt = 'old court';
+    store.setCaseToAddCourt(originalCourt);
+    expect(store.caseToAddCourt).toEqual(originalCourt);
+    const bCase = MockData.getConsolidatedOrderCase();
+    store.setCaseToAdd(bCase);
+    expect(store.caseToAdd).toEqual(bCase);
+
+    useCase.handleAddCaseCourtSelectChange([]);
+    expect(store.caseToAddCourt).toEqual('');
+    expect(store.caseToAdd).toBeNull();
+    expect(disableButtonSpy).toHaveBeenCalledWith(controls.approveButton, true);
+  });
+
   test('should throw if lead case is a child in any other consolidation', () => {
     const caseId = '120-23-12345';
     const documentType = 'CONSOLIDATION_TO';
