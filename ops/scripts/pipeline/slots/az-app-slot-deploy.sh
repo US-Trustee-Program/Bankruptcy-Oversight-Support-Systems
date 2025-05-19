@@ -60,7 +60,7 @@ trap on_exit EXIT
 # verify gitSha
 mkdir sha-verify
 pushd sha-verify
-unzip -q ../"${artifact_path}"
+unzip -q "${artifact_path}"
 shaFound=$(grep "${gitSha}" index.html)
 if [[ ${shaFound} == "" ]]; then
   exit 3
