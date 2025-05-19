@@ -150,7 +150,7 @@ function _AddCaseModal(
   return (
     <Modal
       ref={modalRef}
-      modalId={orderId}
+      modalId={`add-case-modal-${orderId}`}
       className={`add-case-modal consolidation-order-modal`}
       heading="Add Case"
       data-testid={`add-case-modal-${orderId}`}
