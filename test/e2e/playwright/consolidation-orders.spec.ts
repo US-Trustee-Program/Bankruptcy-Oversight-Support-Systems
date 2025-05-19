@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, ConsolidationOrder } from '../../../common/src/cams/orders';
 import { logout } from './login/login-helpers';
-import { KNOWN_GOOD_TRANSFER_FROM_CASE_ID } from '../scripts/data-generation-utils';
+import { KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER } from '../scripts/data-generation-utils';
 
 const timeoutOption = { timeout: 30000 };
 
@@ -69,7 +69,7 @@ test.describe('Consolidation Orders', () => {
         .locator(
           `button[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}-click-target"]`,
         )
-        .dispatchEvent('click');
+        .click();
     }
 
     // mark first child case as lead case
@@ -77,7 +77,7 @@ test.describe('Consolidation Orders', () => {
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );
 
-    await markAsLeadButton1.dispatchEvent('click');
+    await markAsLeadButton1.click();
 
     await expect(
       page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
@@ -132,27 +132,27 @@ test.describe('Consolidation Orders', () => {
       .getByTestId(
         `button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0-click-target`,
       )
-      .dispatchEvent('click');
+      .click();
 
     await page
       .getByTestId(`button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`)
-      .dispatchEvent('click');
+      .click();
 
     await page
       .getByTestId(
         `button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-1-click-target`,
       )
-      .dispatchEvent('click');
+      .click();
 
     // Open add case modal and check a case
     await page
       .getByTestId(`accordion-content-${pendingConsolidationOrder.id}`)
       .getByTestId('open-modal-button')
-      .dispatchEvent('click');
+      .click();
 
     await page
       .getByTestId(`add-case-input-${pendingConsolidationOrder.id}`)
-      .fill(KNOWN_GOOD_TRANSFER_FROM_CASE_ID.slice(4));
+      .fill(KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER);
 
     await expect(
       page.getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`),
@@ -160,7 +160,7 @@ test.describe('Consolidation Orders', () => {
 
     await page
       .getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`)
-      .dispatchEvent('click');
+      .click();
 
     // Action click validate (approve button)
     await expect(
@@ -169,7 +169,7 @@ test.describe('Consolidation Orders', () => {
 
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
-      .dispatchEvent('click');
+      .click();
 
     // Assert modal opened and is actionable
     await expect(
