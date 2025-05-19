@@ -49,7 +49,6 @@ const ButtonComponent = (props: ButtonProps, ref: React.Ref<ButtonRef>) => {
   const tabIndex = props.tabIndex ?? 0;
 
   function disableButton(state: boolean) {
-    console.log(`disabled state request = ${state}`);
     setIsDisabled(state);
   }
 
