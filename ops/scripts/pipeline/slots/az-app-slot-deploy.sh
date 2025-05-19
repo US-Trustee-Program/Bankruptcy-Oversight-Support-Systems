@@ -58,9 +58,9 @@ function on_exit() {
 trap on_exit EXIT
 
 # verify gitSha
+ls -la
 mkdir sha-verify
 pushd sha-verify
-ls -la
 fullPath=$(echo "../${artifact_path}" | sed 's#/\{2,\}#/#g')
 unzip -q "${fullPath}"
 shaFound=$(grep "${gitSha}" index.html)
