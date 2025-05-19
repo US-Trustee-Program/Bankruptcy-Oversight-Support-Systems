@@ -100,6 +100,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     const markAsLeadButton = screen.getByTestId(
       `button-assign-lead-case-list-${order.id}-${index}`,
     );
+    expect(markAsLeadButton).not.toBeNull();
     if (markAsLeadButton.classList.contains('usa-button--outline')) {
       await user.click(markAsLeadButton);
       expect(markAsLeadButton).not.toHaveClass('usa-button--outline');
@@ -112,16 +113,19 @@ describe('ConsolidationOrderAccordion tests', () => {
   async function selectTypeAndMarkLead() {
     const consolidationTypeRadio = document.querySelector('input[name="consolidation-type"]');
     const consolidationTypeRadioLabel = document.querySelector('.usa-radio__label');
-    await user.click(consolidationTypeRadioLabel!);
+    expect(consolidationTypeRadioLabel).not.toBeNull();
+    if (consolidationTypeRadioLabel) {
+      await user.click(consolidationTypeRadioLabel);
+    }
     expect(consolidationTypeRadio).toBeChecked();
 
     await clickMarkLeadButton(0);
   }
 
-  function clickCaseCheckbox(oid: string, idx: number) {
+  async function clickCaseCheckbox(oid: string, idx: number) {
     return testingUtilities.selectCheckbox(
       `case-selection-case-list-${oid}-${idx}`,
-    ) as HTMLInputElement | null;
+    ) as Promise<HTMLInputElement | null>;
   }
 
   function findCaseNumberInput(id: string) {
@@ -131,7 +135,9 @@ describe('ConsolidationOrderAccordion tests', () => {
   }
 
   async function enterCaseNumber(caseIdInput: Element | null | undefined, value: string) {
-    if (!caseIdInput) throw Error();
+    if (!caseIdInput) {
+      throw Error();
+    }
 
     await user.type(caseIdInput!, value);
   }
@@ -248,13 +254,13 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
-    const firstCheckbox = clickCaseCheckbox(order.id!, 0);
+    const firstCheckbox = await clickCaseCheckbox(order.id!, 0);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
     });
 
-    const secondCheckbox = clickCaseCheckbox(order.id!, 1);
+    const secondCheckbox = await clickCaseCheckbox(order.id!, 1);
     await waitFor(() => {
       expect(approveButton).toBeEnabled();
       expect(rejectButton).toBeEnabled();
@@ -751,6 +757,7 @@ describe('ConsolidationOrderAccordion tests', () => {
     });
   });
 
+  // TODO: The fact that this if failing makes no sense to me. Manually it works as expected.
   test.skip('should clear checkboxes and disable approve button when cancel is clicked', async () => {
     renderWithProps();
     await openAccordion(user, order.id!);
@@ -761,8 +768,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     expect(approveButton).not.toBeEnabled();
     expect(rejectButton).not.toBeEnabled();
 
-    const checkbox1: HTMLInputElement | null = clickCaseCheckbox(order.id!, 0);
-    const checkbox2: HTMLInputElement | null = clickCaseCheckbox(order.id!, 1);
+    const checkbox1: HTMLInputElement | null = await clickCaseCheckbox(order.id!, 0);
+    const checkbox2: HTMLInputElement | null = await clickCaseCheckbox(order.id!, 1);
 
     expect(approveButton).not.toBeEnabled();
 
@@ -799,8 +806,8 @@ describe('ConsolidationOrderAccordion tests', () => {
     const collapseButton = screen.getByTestId(`accordion-button-order-list-${order.id}`);
     expect(approveButton).not.toBeEnabled();
 
-    let checkbox1: HTMLInputElement | null = clickCaseCheckbox(order.id!, 0);
-    let checkbox2: HTMLInputElement | null = clickCaseCheckbox(order.id!, 1);
+    let checkbox1: HTMLInputElement | null = await clickCaseCheckbox(order.id!, 0);
+    let checkbox2: HTMLInputElement | null = await clickCaseCheckbox(order.id!, 1);
 
     await selectTypeAndMarkLead();
 
@@ -846,7 +853,7 @@ describe('ConsolidationOrderAccordion tests', () => {
       'table input[type="checkbox"]',
     );
 
-    const includeAllButton = testingUtilities.selectCheckbox(
+    const includeAllButton = await testingUtilities.selectCheckbox(
       `case-list-${order.id}-checkbox-toggle`,
     );
 
