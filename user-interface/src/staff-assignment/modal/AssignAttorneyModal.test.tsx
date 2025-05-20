@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AssignAttorneyModalProps, AssignAttorneyModalRef } from './assignAttorneyModal.types';
 import React from 'react';
@@ -11,6 +11,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import AssignAttorneyModal from './AssignAttorneyModal';
+import userEvent from '@testing-library/user-event';
 
 const offices = [REGION_02_GROUP_NY!];
 const susan = MockData.getAttorneyUser({ name: 'Susan Arbeit', offices });
@@ -94,35 +95,35 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
 
-    fireEvent.click(button);
+    await userEvent.click(button);
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
       expect(submitButton).toBeDisabled();
     });
 
-    const checkbox1 = testingUtilities.selectCheckbox('1-checkbox');
+    const checkbox1 = await testingUtilities.selectCheckbox('1-checkbox');
 
     await waitFor(() => {
       expect(checkbox1).toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    const checkbox2 = testingUtilities.selectCheckbox('2-checkbox');
+    const checkbox2 = await testingUtilities.selectCheckbox('2-checkbox');
 
     await waitFor(() => {
       expect(checkbox2).toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    testingUtilities.selectCheckbox('1-checkbox');
+    await testingUtilities.selectCheckbox('1-checkbox');
 
     await waitFor(() => {
       expect(checkbox1).not.toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    testingUtilities.selectCheckbox('2-checkbox');
+    await testingUtilities.selectCheckbox('2-checkbox');
 
     await waitFor(() => {
       expect(checkbox2).not.toBeChecked();
@@ -154,16 +155,16 @@ describe('Test Assign Attorney Modal Component', () => {
     const modal = screen.getByTestId(`modal-${modalId}`);
 
     const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
-    fireEvent.click(button);
+    await userEvent.click(button);
 
     await waitFor(() => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    testingUtilities.selectCheckbox('1-checkbox');
-    testingUtilities.selectCheckbox('2-checkbox');
-    testingUtilities.selectCheckbox('3-checkbox');
-    fireEvent.click(submitButton);
+    await testingUtilities.selectCheckbox('1-checkbox');
+    await testingUtilities.selectCheckbox('2-checkbox');
+    await testingUtilities.selectCheckbox('3-checkbox');
+    await userEvent.click(submitButton);
 
     const expectedAttorneys = attorneyList
       .sort((a, b) => {
@@ -258,10 +259,10 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    testingUtilities.selectCheckbox('1-checkbox');
-    testingUtilities.selectCheckbox('2-checkbox');
-    testingUtilities.selectCheckbox('3-checkbox');
-    fireEvent.click(submitButton);
+    await testingUtilities.selectCheckbox('1-checkbox');
+    await testingUtilities.selectCheckbox('2-checkbox');
+    await testingUtilities.selectCheckbox('3-checkbox');
+    await userEvent.click(submitButton);
 
     await waitFor(() => {
       expect(callback).toHaveBeenCalledWith(

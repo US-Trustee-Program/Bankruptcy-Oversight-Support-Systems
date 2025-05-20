@@ -33,6 +33,8 @@ export default defineConfig({
         '**/**humble.ts',
         '*.config.*js',
         ...coverageConfigDefaults.exclude,
+        './src/initialize.ts',
+        './envToConfig.js',
       ],
       thresholds: {
         branches: 90,

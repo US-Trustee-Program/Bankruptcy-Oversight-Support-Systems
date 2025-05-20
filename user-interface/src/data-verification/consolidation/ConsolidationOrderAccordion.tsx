@@ -51,11 +51,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     consolidationStore.consolidationType,
   ]);
 
-  useEffect(() => {
-    useCase.getValidLeadCase();
-  }, [consolidationStore.leadCaseNumber, consolidationStore.leadCaseCourt]);
-
   const viewModel: ConsolidationViewModel = {
+    caseToAddCaseNumber: consolidationStore.caseToAddCaseNumber,
+    caseToAddCourt: consolidationStore.caseToAddCourt,
     accordionFieldHeaders: fieldHeaders,
     approveButton: consolidationControls.approveButton,
     caseTableActions: consolidationControls.caseTableActions,
@@ -74,9 +72,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     isValidatingLeadCaseNumber: consolidationStore.isValidatingLeadCaseNumber,
     jointAdministrationRadio: consolidationControls.jointAdministrationRadio,
     leadCase: consolidationStore.leadCase,
-    leadCaseDivisionRef: consolidationControls.leadCaseDivisionRef,
-    leadCaseNumberError: consolidationStore.leadCaseNumberError,
-    leadCaseNumberRef: consolidationControls.leadCaseNumberRef,
     order: consolidationStore.order,
     orderType: orderType, // TODO: why is orderType a Map<string, string>?
     rejectButton: consolidationControls.rejectButton,
@@ -90,15 +85,25 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleClearInputs: useCase.handleClearInputs,
     handleConfirmAction: useCase.handleConfirmAction,
     handleIncludeCase: useCase.handleIncludeCase,
-    handleLeadCaseInputChange: useCase.handleLeadCaseInputChange,
     handleMarkLeadCase: useCase.handleMarkLeadCase,
     handleOnExpand: useCase.handleOnExpand,
     handleRejectButtonClick: useCase.handleRejectButtonClick,
     handleSelectConsolidationType: useCase.handleSelectConsolidationType,
     handleSelectLeadCaseCourt: useCase.handleSelectLeadCaseCourt,
-    handleToggleLeadCaseForm: useCase.handleToggleLeadCaseForm,
     showConfirmationModal: consolidationControls.showConfirmationModal,
     updateAllSelections: useCase.updateAllSelections,
+
+    handleAddCaseReset: useCase.handleAddCaseReset,
+    handleAddCaseNumberInputChange: useCase.handleAddCaseNumberInputChange,
+    handleAddCaseCourtSelectChange: useCase.handleAddCaseCourtSelectChange,
+    addCaseModal: consolidationControls.addCaseModal,
+    handleAddCaseAction: useCase.handleAddCaseAction,
+    additionalCaseDivisionRef: consolidationControls.additionalCaseDivisionRef,
+    additionalCaseNumberRef: consolidationControls.additionalCaseNumberRef,
+    addCaseNumberError: consolidationStore.addCaseNumberError,
+    isLookingForCase: consolidationStore.isLookingForCase,
+    caseToAdd: consolidationStore.caseToAdd,
+    verifyCaseCanBeAdded: useCase.verifyCaseCanBeAdded,
   };
 
   return <ConsolidationOrderAccordionView viewModel={viewModel}></ConsolidationOrderAccordionView>;

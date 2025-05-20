@@ -10,9 +10,17 @@ $listItemHoverBackground: #b0b0b0;
 
 .combo-box-form-group {
   max-width: 100%;
+  position: relative;
+
   .combo-box-label {
     display: flex;
     justify-content: space-between;
+  }
+
+  .clear-all-button {
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
   .usa-combo-box {
