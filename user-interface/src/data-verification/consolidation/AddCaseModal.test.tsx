@@ -92,7 +92,7 @@ describe('AddCaseModal', () => {
     expect(handleAddCaseReset).toHaveBeenCalled();
   });
 
-  test('k', () => {
+  test('should call verifyCaseCanBeAdded when provided caseToAddCaseNumber and caseToAddCourt', () => {
     const { viewModel } = renderWithProps();
     expect(viewModel.verifyCaseCanBeAdded).toHaveBeenCalled();
   });
