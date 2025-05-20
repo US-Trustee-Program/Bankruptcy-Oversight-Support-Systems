@@ -52,7 +52,6 @@ export interface ConsolidationsUseCase {
   handleRejectButtonClick(): void;
   handleSelectConsolidationType(value: string): void;
   handleSelectLeadCaseCourt(option: ComboOptionList): void;
-  handleToggleLeadCaseForm(checked: boolean): void;
   handleAddCaseNumberInputChange(caseNumber?: string): void;
   handleAddCaseCourtSelectChange(option: ComboOptionList): void;
 }
@@ -357,7 +356,6 @@ const consolidationUseCase = (
   const handleClearInputs = (): void => {
     clearLeadCase();
     clearSelectedCases();
-    handleToggleLeadCaseForm(false);
     controls.unsetConsolidationType();
   };
 
@@ -473,11 +471,6 @@ const consolidationUseCase = (
     store.setLeadCaseCourt(court);
   };
 
-  const handleToggleLeadCaseForm = (checked: boolean): void => {
-    clearLeadCase();
-    store.setShowLeadCaseForm(checked);
-  };
-
   return {
     verifyCaseCanBeAdded,
     updateSubmitButtonsState,
@@ -495,7 +488,6 @@ const consolidationUseCase = (
     handleRejectButtonClick,
     handleSelectConsolidationType,
     handleSelectLeadCaseCourt,
-    handleToggleLeadCaseForm,
     handleAddCaseCourtSelectChange,
     handleAddCaseNumberInputChange,
   };
