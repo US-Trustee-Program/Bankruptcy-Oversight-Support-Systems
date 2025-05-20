@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
-import { Order, isConsolidationOrder } from '../../../common/src/cams/orders';
+import { Order, ConsolidationOrder } from '../../../common/src/cams/orders';
 import { logout } from './login/login-helpers';
+import { KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER } from '../scripts/data-generation-utils';
 
 const timeoutOption = { timeout: 30000 };
 
@@ -40,9 +41,10 @@ test.describe('Consolidation Orders', () => {
     page,
   }) => {
     // get pending consolidation order id
-    const pendingConsolidationOrder: Order = orderResponseBody.find(
+    const pendingConsolidationOrder = orderResponseBody.find(
       (o) => o.orderType === 'consolidation' && o.status === 'pending',
-    );
+    ) as ConsolidationOrder;
+
     expect(pendingConsolidationOrder).not.toBeFalsy();
     await page.getByTestId('order-status-filter-transfer').click();
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
@@ -54,12 +56,7 @@ test.describe('Consolidation Orders', () => {
 
     await consolidationTypeSubstantive.click();
 
-    let childCaseCount = 0;
-    let firstChildCaseId;
-    if (isConsolidationOrder(pendingConsolidationOrder)) {
-      childCaseCount = pendingConsolidationOrder.childCases.length;
-      firstChildCaseId = pendingConsolidationOrder.childCases[0].caseId;
-    }
+    const childCaseCount = pendingConsolidationOrder.childCases.length;
 
     for (let i = 0; i < childCaseCount; ++i) {
       // The following is necessary because the USWDS checkbox input is rendered hidden off-screen.
@@ -72,21 +69,19 @@ test.describe('Consolidation Orders', () => {
         .locator(
           `button[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}-click-target"]`,
         )
-        .dispatchEvent('click');
+        .click();
     }
 
     // mark first child case as lead case
-    const markAsLeadButton1 = await page.getByTestId(
+    const markAsLeadButton1 = page.getByTestId(
       `button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`,
     );
 
-    // wait for loading assigned attorneys to complete
-    await page.waitForSelector(
-      `#loading-spinner-case-assignment-${firstChildCaseId}`,
-      timeoutOption,
-    );
-
     await markAsLeadButton1.click();
+
+    await expect(
+      page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
+    ).toBeEnabled();
 
     const approveButton = page.getByTestId(
       `button-accordion-approve-button-${pendingConsolidationOrder.id}`,
@@ -105,22 +100,25 @@ test.describe('Consolidation Orders', () => {
     page,
   }) => {
     // get pending consolidation order id
-    const pendingConsolidationOrder: Order = orderResponseBody.find(
+    const pendingConsolidationOrder = orderResponseBody.find(
       (o) => o.orderType === 'consolidation' && o.status === 'pending',
-    );
+    ) as ConsolidationOrder;
+
     expect(pendingConsolidationOrder).not.toBeFalsy();
 
     // Action update filter
     await page.getByTestId('order-status-filter-transfer').click();
 
     // Assert state of all filters
-    expect(page.getByTestId('order-status-filter-pending').locator('svg')).toBeVisible();
-    expect(page.getByTestId('order-status-filter-approved').locator('svg')).not.toBeVisible();
-    expect(page.getByTestId('order-status-filter-rejected').locator('svg')).not.toBeVisible();
-    expect(page.getByTestId('order-status-filter-transfer').locator('svg')).not.toBeVisible();
-    expect(page.getByTestId('order-status-filter-consolidation').locator('svg')).toBeVisible();
+    await expect(page.getByTestId('order-status-filter-pending').locator('svg')).toBeVisible();
+    await expect(page.getByTestId('order-status-filter-approved').locator('svg')).not.toBeVisible();
+    await expect(page.getByTestId('order-status-filter-rejected').locator('svg')).not.toBeVisible();
+    await expect(page.getByTestId('order-status-filter-transfer').locator('svg')).not.toBeVisible();
+    await expect(
+      page.getByTestId('order-status-filter-consolidation').locator('svg'),
+    ).toBeVisible();
 
-    // Action open accordian
+    // Action open accordion
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
 
     // select substantive consolidation type
@@ -130,38 +128,39 @@ test.describe('Consolidation Orders', () => {
 
     await consolidationTypeSubstantive.click();
 
-    let firstChildCaseId;
-    if (isConsolidationOrder(pendingConsolidationOrder)) {
-      firstChildCaseId = pendingConsolidationOrder.childCases[0].caseId.slice(4);
-    }
-
     await page
-      .locator(
-        `button[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0-click-target"]`,
+      .getByTestId(
+        `button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-0-click-target`,
       )
-      .dispatchEvent('click');
+      .click();
 
     await page
-      .locator(
-        `#checkbox-lead-case-form-checkbox-toggle-${pendingConsolidationOrder.id}-click-target`,
+      .getByTestId(`button-assign-lead-case-list-${pendingConsolidationOrder.id}-0`)
+      .click();
+
+    await page
+      .getByTestId(
+        `button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-1-click-target`,
       )
-      .dispatchEvent('click');
+      .click();
 
-    // Action fill form for selecting a lead case not listed in child cases
+    // Open add case modal and check a case
+    await page
+      .getByTestId(`accordion-content-${pendingConsolidationOrder.id}`)
+      .getByTestId('open-modal-button')
+      .click();
 
     await page
-      .getByTestId(`lead-case-input-${pendingConsolidationOrder.id}`)
-      .fill(firstChildCaseId);
+      .getByTestId(`add-case-input-${pendingConsolidationOrder.id}`)
+      .fill(KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER);
 
-    // wait for loading assigned attorneys to complete
-    await page.waitForSelector(
-      `#lead-case-number-loading-spinner-${pendingConsolidationOrder.id}`,
-      timeoutOption,
-    );
-    await page.waitForSelector(
-      `#valid-case-number-found-${pendingConsolidationOrder.id}`,
-      timeoutOption,
-    );
+    await expect(
+      page.getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`),
+    ).toBeEnabled();
+
+    await page
+      .getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`)
+      .click();
 
     // Action click validate (approve button)
     await expect(
@@ -173,10 +172,11 @@ test.describe('Consolidation Orders', () => {
       .click();
 
     // Assert modal opened and is actionable
-    expect(
+    await expect(
       page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
     ).toBeVisible();
-    expect(
+
+    await expect(
       page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
     ).toBeEnabled();
   });
