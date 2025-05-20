@@ -222,6 +222,7 @@ const consolidationUseCase = (
   };
 
   const approveConsolidation = (action: ConfirmActionResults) => {
+    // TODO: CAMS-447 Enforce consolidation orders must include ONE lead case and at least ONCE child case.
     const api = useApi2();
     const genericErrorMessage =
       'An unknown error has occurred and has been logged.  Please try again later.';
@@ -310,6 +311,7 @@ const consolidationUseCase = (
   const updateSubmitButtonsState = () => {
     if (store.selectedCases.length) {
       const disableApprove =
+        store.selectedCases.length <= 1 ||
         !store.isDataEnhanced ||
         store.leadCaseId === '' ||
         store.consolidationType === null ||

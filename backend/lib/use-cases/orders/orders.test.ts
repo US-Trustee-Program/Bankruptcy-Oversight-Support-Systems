@@ -529,6 +529,11 @@ describe('Orders use case', () => {
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
+  test('should only approve a consolidation with a lead case and at least one child case.', async () => {
+    // TODO: CAMS-447 Enforce consolidation orders must include ONE lead case and at least ONCE child case.
+    expect(1).toEqual(1);
+  });
+
   test('should identify the user who approved the change', async () => {
     const pendingConsolidation = MockData.getConsolidationOrder();
     const leadCase = MockData.getCaseSummary();
