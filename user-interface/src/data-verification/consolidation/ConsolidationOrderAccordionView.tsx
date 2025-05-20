@@ -208,7 +208,6 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   uswdsStyle={UswdsButtonStyle.Outline}
                   className="margin-right-2"
                   ref={viewModel.rejectButton}
-                  // disabled={true}
                 >
                   Reject
                 </Button>
