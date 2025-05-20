@@ -2,7 +2,7 @@ import './AddCaseModal.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import ComboBox from '@/lib/components/combobox/ComboBox';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -20,6 +20,13 @@ export type AddCaseModalImperative = ModalRefType & {
 };
 
 function AddCaseForm(viewModel: AddCaseModel) {
+  useEffect(() => {
+    const { caseToAddCaseNumber, caseToAddCourt } = viewModel;
+    if (caseToAddCourt && caseToAddCaseNumber) {
+      viewModel.verifyCaseCanBeAdded();
+    }
+  }, [viewModel.caseToAddCaseNumber, viewModel.caseToAddCourt]);
+
   return (
     <section className={`add-case-form-container add-case-form-container-${viewModel.orderId}`}>
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}

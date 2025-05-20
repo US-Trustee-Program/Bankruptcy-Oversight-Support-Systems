@@ -51,13 +51,9 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     consolidationStore.consolidationType,
   ]);
 
-  useEffect(() => {
-    if (consolidationStore.caseToAddCourt && consolidationStore.caseToAddCaseNumber) {
-      useCase.verifyCaseCanBeAdded();
-    }
-  }, [consolidationStore.caseToAddCourt, consolidationStore.caseToAddCaseNumber]);
-
   const viewModel: ConsolidationViewModel = {
+    caseToAddCaseNumber: consolidationStore.caseToAddCaseNumber,
+    caseToAddCourt: consolidationStore.caseToAddCourt,
     accordionFieldHeaders: fieldHeaders,
     approveButton: consolidationControls.approveButton,
     caseTableActions: consolidationControls.caseTableActions,
@@ -89,7 +85,6 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     handleClearInputs: useCase.handleClearInputs,
     handleConfirmAction: useCase.handleConfirmAction,
     handleIncludeCase: useCase.handleIncludeCase,
-    handleLeadCaseInputChange: useCase.handleLeadCaseInputChange,
     handleMarkLeadCase: useCase.handleMarkLeadCase,
     handleOnExpand: useCase.handleOnExpand,
     handleRejectButtonClick: useCase.handleRejectButtonClick,
@@ -108,6 +103,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     addCaseNumberError: consolidationStore.addCaseNumberError,
     isLookingForCase: consolidationStore.isLookingForCase,
     caseToAdd: consolidationStore.caseToAdd,
+    verifyCaseCanBeAdded: useCase.verifyCaseCanBeAdded,
   };
 
   return <ConsolidationOrderAccordionView viewModel={viewModel}></ConsolidationOrderAccordionView>;

@@ -18,6 +18,8 @@ import { OpenModalButton } from '@/lib/components/uswds/modal/OpenModalButton';
 
 function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {
   const {
+    caseToAddCaseNumber,
+    caseToAddCourt,
     handleAddCaseCourtSelectChange,
     handleAddCaseNumberInputChange,
     handleAddCaseReset,
@@ -28,10 +30,13 @@ function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {
     isLookingForCase,
     caseToAdd,
     handleAddCaseAction,
+    verifyCaseCanBeAdded,
     order: { id: orderId, courtDivisionCode: defaultDivisionCode },
   } = viewModel;
 
   return {
+    caseToAddCaseNumber,
+    caseToAddCourt,
     handleAddCaseCourtSelectChange,
     handleAddCaseNumberInputChange,
     handleAddCaseReset,
@@ -44,6 +49,7 @@ function toAddCaseModel(viewModel: ConsolidationViewModel): AddCaseModel {
     handleAddCaseAction,
     orderId: orderId ?? '',
     defaultDivisionCode,
+    verifyCaseCanBeAdded,
   };
 }
 
@@ -202,6 +208,7 @@ export function ConsolidationOrderAccordionView(props: ConsolidationOrderAccordi
                   uswdsStyle={UswdsButtonStyle.Outline}
                   className="margin-right-2"
                   ref={viewModel.rejectButton}
+                  // disabled={true}
                 >
                   Reject
                 </Button>

@@ -29,21 +29,21 @@ export class ConsolidationStoreMock implements ConsolidationStore {
     this.order = props.order;
   }
 
-  setCaseToAddCourt(val: string): void {
+  setCaseToAddCourt = (val: string): void => {
     this.caseToAddCourt = val;
-  }
+  };
 
-  setCaseToAddCaseNumber(val: string): void {
+  setCaseToAddCaseNumber = (val: string): void => {
     this.caseToAddCaseNumber = val;
-  }
+  };
 
-  setAddCaseNumberError(val: string | null): void {
+  setAddCaseNumberError = (val: string | null): void => {
     this.addCaseNumberError = val;
-  }
+  };
 
-  setCaseToAdd(val: ConsolidationOrderCase | null): void {
+  setCaseToAdd = (val: ConsolidationOrderCase | null): void => {
     this.caseToAdd = val;
-  }
+  };
 
   setConsolidationType = (newType: ConsolidationType): void => {
     this.consolidationType = newType;
@@ -65,9 +65,9 @@ export class ConsolidationStoreMock implements ConsolidationStore {
     this.isDataEnhanced = val;
   };
 
-  setIsLookingForCase(val: boolean): void {
+  setIsLookingForCase = (val: boolean): void => {
     this.isLookingForCase = val;
-  }
+  };
 
   setIsValidatingLeadCaseNumber = (val: boolean): void => {
     this.isValidatingLeadCaseNumber = val;
